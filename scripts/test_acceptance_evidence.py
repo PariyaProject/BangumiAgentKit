@@ -100,6 +100,18 @@ class PublicApiEvidenceTests(unittest.TestCase):
             {'bangumi.get_subject': {'docs/live-probes/public-tools-fixture.json'}},
         )
 
+    def test_explicitly_excluded_public_report_does_not_count(self):
+        self.write_report()
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report['acceptanceEligible'] = False
+        report['acceptanceExclusionReason'] = (
+            'The report exceeded its selected Epoch request budget.'
+        )
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+        self.assertEqual(GENERATOR.public_api_smoke_sources(self.catalog), {})
+
     def test_combines_successful_partial_reports_per_tool(self):
         self.write_report()
         second_report = json.loads(self.report_path.read_text(encoding='utf-8'))

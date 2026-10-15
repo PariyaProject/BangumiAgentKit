@@ -143,6 +143,9 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
             or report.get('mode') != 'read_only_public_api_smoke'
             or report.get('sourceProgram') != 'scripts/smoke-public-tools-online.ts'
             or report.get('probeScriptSha256') != probe_source_sha256
+            # Keep observed reports that failed their selected acceptance
+            # boundary available for audit, without granting matrix credit.
+            or report.get('acceptanceEligible') is False
         ):
             continue
         evidence_catalog_sha256 = report.get('catalogSha256')

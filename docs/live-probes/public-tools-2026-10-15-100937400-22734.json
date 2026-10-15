@@ -241,5 +241,7 @@
         "passed": true
       }
     }
-  ]
+  ],
+  "acceptanceEligible": false,
+  "acceptanceExclusionReason": "The selected Epoch required at most four HTTP requests per tool and 32 total; this report records 37 total, including seven each for the four cohort tools. Retain the observations for audit, exclude all eight rows from public API acceptance, and do not repeat the probe."
 }

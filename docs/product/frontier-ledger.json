@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-15T10:17:40Z",
+  "updated_at": "2026-10-15T10:35:36Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2693,7 +2693,7 @@
         "tests/unit/a01-aggregate-subject-cohort-answer-check.test.ts",
         "tests/unit/a01-aggregate-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "The bounded current-catalog report docs/live-probes/public-tools-2026-10-15-100937400-22734.json includes anonymous direct-public observations for aggregate_subject_cohort, compare_subject_cohorts, render_subject_cohort_aggregation, and render_subject_cohort_comparison; each cohort tool used maxSubjects=1, made 7 HTTP requests, and passed its bounded shape assertions. The report contains 8 tools and 37 HTTP requests total. This exceeded the selected Epoch's forecast cap of 4 requests per tool/32 total by five requests; record it as a scope deviation, not as meeting that cap, and never repeat the probe. These observations support only their public-matrix rows, do not answer the A01 cohort-analysis scenario or grant Agent/MCP credit, and do not alter the consumed A01 one-shot dispositions. Keep A01 UNASSESSED. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim.",
+      "next_action": "The bounded current-catalog report docs/live-probes/public-tools-2026-10-15-100937400-22734.json records anonymous public observations for eight tools and 37 HTTP requests total. This exceeded the selected Epoch's forecast cap of 4 requests per tool/32 total by five requests; retain it for audit, exclude all eight rows from public API acceptance, and never repeat the probe. For aggregate_subject_cohort, compare_subject_cohorts, render_subject_cohort_aggregation, and render_subject_cohort_comparison, these observations are excluded from their public-matrix rows. The observations do not support matrix credit, do not answer the A01 cohort-analysis scenario or grant Agent/MCP credit, and do not alter the consumed A01 one-shot dispositions. Keep A01 UNASSESSED. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2762,7 +2762,7 @@
         },
         "direct_public_cohort_tools_current_catalog_2026_10_15": {
           "report": "docs/live-probes/public-tools-2026-10-15-100937400-22734.json",
-          "report_sha256": "030614e34fa3819504459c82129fb1245e317babccd34d392ecf48a092939d25",
+          "report_sha256": "5f2f25821439032d857b0afb2b449e539f7eb759ef8832f44321c09346df6369",
           "deviation_note": "docs/research/run95-current-public-matrix-probe-budget-deviation-2026-10-15.md",
           "observed_at": "2026-10-15T10:09:37.400Z",
           "mode": "read_only_public_api_smoke",
@@ -2774,7 +2774,7 @@
             "requests_per_tool": 4,
             "total_requests": 32
           },
-          "scope_deviation": "The observed total exceeded the selected Epoch forecast by five requests. The four cohort tools each made seven requests with maxSubjects=1. This deviation is explicit and is not represented as meeting the planned cap; the probe is not repeated.",
+          "scope_deviation": "The observed total exceeded the selected Epoch forecast by five requests. The four cohort tools each made seven requests with maxSubjects=1. Retain the observations for audit but exclude all eight rows from public API acceptance; the probe is not repeated.",
           "cohort_tools": [
             {
               "tool": "bangumi.aggregate_subject_cohort",
@@ -2805,7 +2805,8 @@
               "assertions_passed": true
             }
           ],
-          "acceptance_boundary": "Direct public API evidence supports only these four matrix rows. A01 stays UNASSESSED; this does not establish the A01 cohort comparison answer or Agent/MCP acceptance. The report is summary-only; no visual-quality claim is made for Artifact outputs."
+          "matrix_disposition": {"status": "EXCLUDED", "rows_credited": 0, "reason": "The report exceeded the selected Epoch request budget of 4 per tool and 32 total.", "pending_rows": 8},
+          "acceptance_boundary": "The eight public observations are retained for audit but excluded from the public API acceptance matrix because the report exceeded the selected Epoch request budget. No rows are credited from this report. A01 stays UNASSESSED; this does not establish the A01 cohort comparison answer or Agent/MCP acceptance. The report is summary-only; no visual-quality claim is made for Artifact outputs."
         }
       }
     },

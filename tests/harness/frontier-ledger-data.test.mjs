@@ -387,7 +387,7 @@ test('G06 current-catalog cast probe is public-only, hash-bound, and does not im
   assert.match(evidence.acceptance_boundary, /does not add Agent\/MCP evidence/u);
 
   const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
-  assert.match(table, /公开 API 工具有逐项实测：65\/65；待补 0/u);
+  assert.match(table, /公开 API 工具有逐项实测：57\/65；待补 8/u);
   assert.ok(
     table.includes(`\`bangumi.get_subject_cast\` | \`none\` | \`read\` | `) &&
       table.includes(reportPath),
@@ -451,7 +451,7 @@ test('G09 current-catalog watch-order reports remain direct-public and hash-boun
   assert.match(evidence.acceptance_boundary, /establish complete graph coverage/u);
 
   const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
-  assert.match(table, /公开 API 工具有逐项实测：65\/65；待补 0/u);
+  assert.match(table, /公开 API 工具有逐项实测：57\/65；待补 8/u);
   for (const tool of ['bangumi.get_series_watch_order', 'bangumi.render_series_watch_order']) {
     const row = table.split('\n').find((line) => line.includes(`\`${tool}\``));
     assert.ok(row?.includes(reportPath), `${tool} row must cite the current report`);
@@ -478,6 +478,17 @@ test('A01 cohort public probes stay unassessed and disclose the request-cap devi
   assert.ok(evidence, 'A01 must cite its current-catalog public-only evidence');
   const reportText = readFileSync(path.join(root, reportPath), 'utf8');
   const report = JSON.parse(reportText);
+  assert.equal(report.acceptanceEligible, false);
+  assert.match(
+    report.acceptanceExclusionReason,
+    /selected Epoch.*four HTTP requests per tool and 32 total/u,
+  );
+  assert.deepEqual(evidence.matrix_disposition, {
+    status: 'EXCLUDED',
+    rows_credited: 0,
+    reason: 'The report exceeded the selected Epoch request budget of 4 per tool and 32 total.',
+    pending_rows: 8,
+  });
   assert.equal(evidence.report, reportPath);
   assert.equal(evidence.report_sha256, createHash('sha256').update(reportText).digest('hex'));
   assert.equal(evidence.catalog_sha256, report.catalogSha256);
@@ -506,7 +517,7 @@ test('A01 cohort public probes stay unassessed and disclose the request-cap devi
   const deviationNote = readFileSync(path.join(root, evidence.deviation_note), 'utf8');
   assert.match(deviationNote, /37 requests/u);
   assert.match(deviationNote, /not evidence that the original cap was met/u);
-  assert.match(deviationNote, /must explicitly assess the documented deviation/u);
+  assert.match(deviationNote, /excluded from the public API\s+acceptance matrix/u);
 
   const expectedTools = [
     'bangumi.aggregate_subject_cohort',
@@ -544,10 +555,14 @@ test('A01 cohort public probes stay unassessed and disclose the request-cap devi
   );
 
   const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
-  assert.match(table, /公开 API 工具有逐项实测：65\/65；待补 0/u);
+  assert.match(table, /公开 API 工具有逐项实测：57\/65；待补 8/u);
   assert.match(table, /Agent→MCP 模型调用证据：81\/96/u);
   for (const tool of expectedTools) {
     const row = table.split('\n').find((line) => line.includes(`\`${tool}\``));
-    assert.ok(row?.includes(reportPath), `${tool} row must cite the current report`);
+    assert.ok(row, `${tool} row must remain in the matrix`);
+    const columns = row.split('|').map((column) => column.trim());
+    assert.equal(columns[7], '⬜', `${tool} must not receive public API credit`);
+    assert.ok(!row.includes(reportPath), `${tool} row must not cite excluded evidence`);
+    assert.match(columns[13], /补公开 API/u, `${tool} must remain pending`);
   }
 });
