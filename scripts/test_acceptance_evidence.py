@@ -166,6 +166,13 @@ class PublicApiEvidenceTests(unittest.TestCase):
         path.write_text(json.dumps(report), encoding='utf-8')
         return path
 
+    def update_p02_chronology_summaries(self, update):
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        update(report['result']['releaseChronology'])
+        update(report['results'][0]['result']['releaseChronology'])
+        path.write_text(json.dumps(report), encoding='utf-8')
+
     def test_counts_hash_bound_profile_specific_report_within_budget(self):
         path = self.write_p02_chronology_report()
         self.assertEqual(
@@ -235,6 +242,40 @@ class PublicApiEvidenceTests(unittest.TestCase):
         report = json.loads(path.read_text(encoding='utf-8'))
         report['results'][0]['assertions']['rawResponsePresent'] = True
         path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_an_impossible_calendar_date(self):
+        self.write_p02_chronology_report()
+        self.update_p02_chronology_summaries(
+            lambda chronology: chronology['earliestObserved'].update(date='2016-99-99'),
+        )
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_state_inconsistent_with_date_counts(self):
+        self.write_p02_chronology_report()
+
+        def remove_all_valid_dates(chronology):
+            chronology['validDateSubjects'] = 0
+            chronology['missingDateSubjects'] = 1
+            chronology['state'] = 'partial'
+            chronology.pop('earliestObserved')
+            chronology.pop('latestObserved')
+
+        self.update_p02_chronology_summaries(remove_all_valid_dates)
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_when_earliest_is_after_latest(self):
+        self.write_p02_chronology_report()
+        self.update_p02_chronology_summaries(
+            lambda chronology: chronology['earliestObserved'].update(date='2016-04-01'),
+        )
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_more_tied_subjects_than_valid_dates(self):
+        self.write_p02_chronology_report()
+        self.update_p02_chronology_summaries(
+            lambda chronology: chronology['earliestObserved'].update(tiedSubjectCount=2),
+        )
         self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
 
     def test_combines_successful_partial_reports_per_tool(self):

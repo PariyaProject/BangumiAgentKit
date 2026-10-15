@@ -256,16 +256,20 @@ def p02_public_chronology_summary_is_valid(summary: object) -> bool:
     selected = chronology['selectedSubjectDetails']
     succeeded = chronology['succeededSubjectDetails']
     failed = chronology['failedSubjectDetails']
+    valid_dates = chronology['validDateSubjects']
     if (
         selected > P02_PUBLIC_CHRONOLOGY_INPUT['maxChronologySubjects']
         or succeeded + failed != selected
-        or chronology['validDateSubjects']
+        or valid_dates
         + chronology['missingDateSubjects']
         + chronology['invalidDateSubjects']
         != succeeded
+        or (valid_dates == 0 and chronology['state'] != 'not_computable')
+        or (valid_dates > 0 and chronology['state'] != 'partial')
     ):
         return False
 
+    parsed_extrema: dict[str, date] = {}
     for name in ('earliestObserved', 'latestObserved'):
         if name not in chronology:
             continue
@@ -277,7 +281,12 @@ def p02_public_chronology_summary_is_valid(summary: object) -> bool:
             or re.fullmatch(r'\d{4}-\d{2}-\d{2}', extrema['date']) is None
             or type(extrema.get('tiedSubjectCount')) is not int
             or extrema['tiedSubjectCount'] < 1
+            or extrema['tiedSubjectCount'] > valid_dates
         ):
+            return False
+        try:
+            parsed_extrema[name] = date.fromisoformat(extrema['date'])
+        except ValueError:
             return False
     if chronology['validDateSubjects'] > 0 and not {
         'earliestObserved',
@@ -288,6 +297,17 @@ def p02_public_chronology_summary_is_valid(summary: object) -> bool:
         {'earliestObserved', 'latestObserved'},
     ):
         return False
+    if valid_dates > 0:
+        earliest_date = parsed_extrema['earliestObserved']
+        latest_date = parsed_extrema['latestObserved']
+        if earliest_date > latest_date:
+            return False
+        if (
+            earliest_date == latest_date
+            and chronology['earliestObserved']['tiedSubjectCount']
+            != chronology['latestObserved']['tiedSubjectCount']
+        ):
+            return False
     return True
 
 
