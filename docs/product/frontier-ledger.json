@@ -2279,9 +2279,10 @@
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
         "docs/research/run95-p06-render-person-profile-public-probe-2026-10-16.md",
+        "docs/research/run95-p06-render-person-profile-agent-mcp-offline-fixture-source-contract-2026-10-16.md",
         "docs/live-probes/public-tools-2026-10-15-154413213-10706.json"
       ],
-      "next_action": "Keep UNASSESSED. The corrected replacement anonymous render_person_profile observation for person 13684 used maxSubjects=1, maxCharacters=1, maxCredits=1, chronology disabled, and four combined HTTP requests (three Bangumi API plus one renderer asset); API and asset redirect hops share the cap. Its sanitized ArtifactRef summary supports only this tool's public matrix row. The initial API-only report is uncredited because its renderer asset total was not measured. This evidence does not establish the exact latest 20 works, current airing status, or person-graph completeness. Do not infer ongoing/finished state or Agent/MCP acceptance from this render call.",
+      "next_action": "Keep UNASSESSED. The anonymous public render_person_profile observation for personId=13684 is limited to its public/API matrix row, has a four-request combined API+asset budget, and does not establish latest-20 recency or ongoing status. Run #95 selected a distinct fixed synthetic offline render_person_profile Agent/MCP profile solely for the tool matrix; it must use its own permanent one-shot claim and exact reviewed Candidate. Even if accepted, that profile is not P06 scenario evidence and does not establish real-person data, latest-20 ordering, ongoing status, or visual quality. Do not repeat the public input or infer scenario completion.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "evidence": {
         "fresh_render_person_profile_public_observation_2026_10_16": {

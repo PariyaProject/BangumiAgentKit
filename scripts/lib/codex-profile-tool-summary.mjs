@@ -7,7 +7,30 @@ import {
   summarizeR05SubjectOverlapToolResult,
 } from './r05-shared-person-overlap-evidence.mjs';
 
-export function summarizeProfileToolResult(result, expectedArguments, profileId = null) {
+export function summarizeProfileToolResult(
+  result,
+  expectedArguments,
+  profileId = null,
+  artifactSummary = null,
+) {
+  if (profileId === 'p06-render-person-profile-offline-agent-mcp-v1') {
+    const artifact = artifactSummary && typeof artifactSummary === 'object' ? artifactSummary : {};
+    return {
+      resultState: result?.artifact?.id ? 'artifact_returned' : 'artifact_missing',
+      artifact: {
+        returned: artifact.returned === true,
+        persisted: artifact.persisted === true,
+        mimeType: typeof artifact.mimeType === 'string' ? artifact.mimeType : null,
+        width: Number.isInteger(artifact.width) ? artifact.width : null,
+        height: Number.isInteger(artifact.height) ? artifact.height : null,
+        byteLength: Number.isInteger(artifact.byteLength) ? artifact.byteLength : null,
+        sha256: typeof artifact.sha256 === 'string' ? artifact.sha256 : null,
+        pngSignatureValid: artifact.pngSignatureValid === true,
+        ...(artifact.decoded === true ? { decoded: true } : {}),
+        ...(artifact.dimensionsMatch === true ? { dimensionsMatch: true } : {}),
+      },
+    };
+  }
   if (profileId === P03_PROFILE_ID) {
     return summarizeP03PersonProfileToolResult(result, expectedArguments);
   }

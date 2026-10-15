@@ -33,10 +33,17 @@ import {
   assertC07CohortRenderOfflineProfile,
   createC07CohortRenderOfflineFixtureFetch,
 } from '../../scripts/lib/c07-cohort-render-offline-fixture.mjs';
+import {
+  assertP06RenderPersonProfileOfflineProfile,
+  createP06RenderPersonProfileAssetGuard,
+  createP06RenderPersonProfileOfflineFetch,
+  P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+} from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 import { inspectC07PngArtifact } from '../../scripts/lib/c07-png-artifact-validation.mjs';
 import { buildG06PrivacySummary } from '../../scripts/lib/g06-privacy-summary.mjs';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
+import { RenderService } from '../../packages/renderer/dist/index.js';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
 import { StdioMcpExecutionIdentityProvider } from './dist/identity.js';
 import { toMcpTool } from './dist/catalog.js';
@@ -131,7 +138,7 @@ function writeSanitizedSummary(summaryPath, summary, serverInstanceId) {
   fs.renameSync(temporary, absolute);
 }
 
-function parseArguments(argv) {
+export function parseArguments(argv) {
   const values = new Map();
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
@@ -173,6 +180,13 @@ function parseArguments(argv) {
     }
     const profile = getAgentMcpProfileById(profileId);
     if (!profile) throw new Error('Unknown closed Agent/MCP profile id.');
+    let registeredNetworkMode;
+    if (profile.networkMode !== undefined) {
+      if (!assertP06RenderPersonProfileOfflineProfile(profile)) {
+        throw new Error('Registered profile network mode is not supported.');
+      }
+      registeredNetworkMode = profile.networkMode;
+    }
     return {
       profile,
       toolName: profile.toolName,
@@ -181,7 +195,7 @@ function parseArguments(argv) {
       summaryPath,
       candidateSha,
       bundleSha256,
-      networkMode: undefined,
+      networkMode: registeredNetworkMode,
     };
   }
 
@@ -263,7 +277,16 @@ async function main(argv = process.argv.slice(2)) {
   const offlineFixture =
     config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
       ? createC07CohortRenderOfflineFixtureFetch()
+      : config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
+        ? createP06RenderPersonProfileOfflineFetch()
+        : null;
+  const p06AssetGuard =
+    config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
+      ? createP06RenderPersonProfileAssetGuard()
       : null;
+  const renderService = p06AssetGuard
+    ? new RenderService(undefined, undefined, p06AssetGuard.assetResolver)
+    : undefined;
   const publicHttpClient = new HttpClient({
     baseUrl: 'https://api.bgm.tv',
     timeoutMs: 10000,
@@ -272,6 +295,7 @@ async function main(argv = process.argv.slice(2)) {
   const dependencies = createRuntimeDependenciesWithStorage(storage, {
     publicHttpClient,
     artifactStore,
+    ...(renderService ? { renderService } : {}),
   });
   const registry = new ToolRegistry(dependencies, { profile: 'full', renderTarget: 'chat' });
   const [tool] = filterAllowedTools(registry.getTools(), config.toolName);
@@ -294,13 +318,18 @@ async function main(argv = process.argv.slice(2)) {
   let summary = {
     schemaVersion: 1,
     ...(config.profile
-      ? { serverProfile: 'closed-profile-sequence-anonymous-public-v1' }
+      ? {
+          serverProfile: config.networkMode
+            ? 'closed-profile-sequence-anonymous-offline-v1'
+            : 'closed-profile-sequence-anonymous-public-v1',
+        }
       : { serverProfile: 'one-tool-anonymous-public-v1' }),
     ...(config.profile
       ? {
           profileId: config.profile.id,
           argumentProfile: config.profile.argumentProfile,
           expectedCallCount: config.profile.calls.length,
+          ...(config.networkMode ? { networkMode: config.networkMode } : {}),
         }
       : {}),
     sourceRevision,
@@ -320,6 +349,7 @@ async function main(argv = process.argv.slice(2)) {
       ? { results: Array(config.profile.calls.length).fill(null) }
       : { result: null }),
     ...(offlineFixture ? { offlineFixture: offlineFixture.snapshot() } : {}),
+    ...(p06AssetGuard ? { offlineAssetBoundary: p06AssetGuard.snapshot() } : {}),
     privacy: buildG06PrivacySummary(),
   };
   writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
@@ -419,10 +449,15 @@ async function main(argv = process.argv.slice(2)) {
           };
         }
         if (config.profile) {
+          const artifactSummary =
+            config.profile.id === 'p06-render-person-profile-offline-agent-mcp-v1'
+              ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
+              : null;
           const resultSummary = summarizeProfileToolResult(
             result,
             expectedArguments,
             config.profile.id,
+            artifactSummary,
           );
           const results = [...summary.results];
           results[sequenceIndex] = {
@@ -448,6 +483,7 @@ async function main(argv = process.argv.slice(2)) {
           };
         }
         if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
+        if (p06AssetGuard) summary = { ...summary, offlineAssetBoundary: p06AssetGuard.snapshot() };
         writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
         const presentation = presentMcpToolResult(config.toolName, result);
         return {
@@ -468,6 +504,7 @@ async function main(argv = process.argv.slice(2)) {
           summary = { ...summary, serverResultStatus: 'ERROR', errorCode };
         }
         if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
+        if (p06AssetGuard) summary = { ...summary, offlineAssetBoundary: p06AssetGuard.snapshot() };
         writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
         return {
           content: [

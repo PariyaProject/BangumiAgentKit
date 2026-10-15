@@ -9,6 +9,8 @@ import catalog from '../../docs/tool-catalog.json';
 const ROOT = process.cwd();
 const CATALOG_TEXT = readFileSync(join(ROOT, 'docs/tool-catalog.json'), 'utf8');
 const TABLE = readFileSync(join(ROOT, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
+const FRONTIER = JSON.parse(readFileSync(join(ROOT, 'docs/product/frontier-ledger.json'), 'utf8'));
+const P06_AGENT_MCP_REPORT_PATH = 'docs/live-probes/p06-render-person-profile-agent-mcp-run95.json';
 const COMPACT_EVIDENCE = JSON.parse(
   readFileSync(join(ROOT, 'docs/live-probes/pariya-agent-compact-e2e-2026-09-23.json'), 'utf8'),
 );
@@ -346,6 +348,19 @@ function isCurrentS04Report(report: any): boolean {
 const CURRENT_D05_REPORT = isCurrentD05Report(D05_REPORT) ? D05_REPORT : null;
 const CURRENT_S04_REPORT = isCurrentS04Report(S04_REPORT) ? S04_REPORT : null;
 const CURRENT_C07_RENDERER_REPORT = CODEX_LUNA_EVIDENCE.find(isCurrentC07RendererReport) ?? null;
+const CURRENT_P06_AGENT_MCP_MATRIX = (() => {
+  const row = rowsByTool().get('bangumi.render_person_profile');
+  const frontierRecord = FRONTIER.records?.find((record: any) => record.id === 'P06');
+  return Boolean(
+    existsSync(join(ROOT, P06_AGENT_MCP_REPORT_PATH)) &&
+    row?.length === 13 &&
+    statusMark(row[9]) === '✅' &&
+    row[9]?.includes(P06_AGENT_MCP_REPORT_PATH) &&
+    !row[6]?.includes(P06_AGENT_MCP_REPORT_PATH) &&
+    frontierRecord?.status === 'UNASSESSED' &&
+    frontierRecord.source_refs?.includes(P06_AGENT_MCP_REPORT_PATH),
+  );
+})();
 
 // Preserve prior reports as history, but count only the newest current-contract
 // report for each tool in the current-source acceptance matrix.
@@ -672,6 +687,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       ),
       ...(CURRENT_D05_REPORT ? ['bangumi.query_subjects'] : []),
       ...(CURRENT_S04_REPORT ? ['bangumi.get_subject_cast'] : []),
+      ...(CURRENT_P06_AGENT_MCP_MATRIX ? ['bangumi.render_person_profile'] : []),
     ];
 
     expect(rows.size).toBe(96);
@@ -699,7 +715,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_subject_cohort_aggregation',
         ...(CURRENT_C07_RENDERER_REPORT ? [] : ['bangumi.render_subject_cohort_comparison']),
         'bangumi.render_query_subjects',
-        'bangumi.render_person_profile',
+        ...(CURRENT_P06_AGENT_MCP_MATRIX ? [] : ['bangumi.render_person_profile']),
         'bangumi.render_series_watch_order',
         'bangumi.auth_start',
         'bangumi.manage_index',
@@ -740,6 +756,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_revision_intelligence',
         'bangumi.get_subject',
         ...(CURRENT_S04_REPORT ? ['bangumi.get_subject_cast'] : []),
+        ...(CURRENT_P06_AGENT_MCP_MATRIX ? ['bangumi.render_person_profile'] : []),
         'bangumi.get_subject_comparison',
         'bangumi.get_subject_identity',
         'bangumi.get_subject_index_membership',
@@ -794,6 +811,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.update_episode_progress',
         ...(CURRENT_D05_REPORT ? ['bangumi.query_subjects'] : []),
         ...(CURRENT_S04_REPORT ? ['bangumi.get_subject_cast'] : []),
+        ...(CURRENT_P06_AGENT_MCP_MATRIX ? ['bangumi.render_person_profile'] : []),
       ].sort(),
     );
 

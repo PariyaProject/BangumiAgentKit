@@ -148,6 +148,7 @@ import { validateC01SanitizedReportFile } from './acceptance/write-c01-rating-co
 import { validateC03SanitizedReportFile } from './acceptance/write-c03-profile-report.mjs';
 import { validateP03SanitizedReportFile } from './acceptance/write-p03-person-name-cn-report.mjs';
 import { validateR05SanitizedReportFile } from './acceptance/write-r05-shared-person-overlap-report.mjs';
+import { validateP06SanitizedReportFile } from './acceptance/write-p06-render-person-profile-agent-mcp-report.mjs';
 import {
   G06_MODEL,
   G06_REASONING_EFFORT,
@@ -3723,6 +3724,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateR05SanitizedReportFile(claim, root, reportPath);
     case 'c03-voice-actor-comparison-v1':
       return validateC03SanitizedReportFile(claim, root, reportPath);
+    case 'p06-render-person-profile-offline-agent-mcp-v1':
+      return validateP06SanitizedReportFile(claim, root, reportPath);
     default:
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_REPORT_VALIDATOR_MISSING',
