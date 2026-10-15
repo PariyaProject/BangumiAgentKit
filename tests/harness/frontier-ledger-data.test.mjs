@@ -348,3 +348,49 @@ test('R05 remains unassessed after bounded positive preflight without a global c
   );
   assert.match(report, /not evidence that the two works have no connection/u);
 });
+
+test('G06 current-catalog cast probe is public-only, hash-bound, and does not imply complete coverage', () => {
+  const record = ledger.records.find(({ id }) => id === 'G06');
+  assert.ok(record, 'G06 must remain in the canonical frontier');
+  assert.equal(record.status, 'PARTIAL');
+
+  const reportPath = 'docs/live-probes/public-tools-2026-10-15-092632892-50913.json';
+  assert.ok(record.source_refs.includes(reportPath));
+  assert.match(record.next_action, /Never rerun the G06 profile/u);
+  assert.match(record.next_action, /does not count as Agent\/MCP answer acceptance/u);
+  assert.match(record.next_action, /do not claim a complete cast\/CV list/u);
+
+  const evidence = record.evidence?.direct_public_get_subject_cast_current_catalog;
+  assert.ok(evidence, 'G06 must point at the refreshed current-catalog report');
+  const reportText = readFileSync(path.join(root, reportPath), 'utf8');
+  const report = JSON.parse(reportText);
+  assert.equal(evidence.report, reportPath);
+  assert.equal(evidence.report_sha256, createHash('sha256').update(reportText).digest('hex'));
+  assert.equal(evidence.catalog_sha256, report.catalogSha256);
+  assert.equal(
+    evidence.probe_script_sha256,
+    createHash('sha256')
+      .update(readFileSync(path.join(root, report.sourceProgram)))
+      .digest('hex'),
+  );
+  assert.equal(report.probeCount, 1);
+  assert.equal(report.httpRequests, 1);
+  assert.deepEqual(report.selectedTools, ['bangumi.get_subject_cast']);
+  assert.deepEqual(report.results[0].input, { subjectId: 41529, limit: 2 });
+  assert.equal(report.results[0].assertions.passed, true);
+  assert.deepEqual(Object.keys(report.results[0].result).sort(), [
+    'castCount',
+    'observed',
+    'returned',
+    'subjectId',
+  ]);
+  assert.match(evidence.acceptance_boundary, /does not add Agent\/MCP evidence/u);
+
+  const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
+  assert.match(table, /公开 API 工具有逐项实测：55\/65；待补 10/u);
+  assert.ok(
+    table.includes(`\`bangumi.get_subject_cast\` | \`none\` | \`read\` | `) &&
+      table.includes(reportPath),
+    'the generated tool matrix must cite the current report for get_subject_cast',
+  );
+});
