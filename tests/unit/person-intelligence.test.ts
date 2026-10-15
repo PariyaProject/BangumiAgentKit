@@ -334,6 +334,7 @@ describe('PR-7D person intelligence aggregation', () => {
           JSON.stringify([
             { id: 31, type: 2, name: 'Missing date' },
             { id: 32, type: 2, name: 'Invalid date' },
+            { id: 33, type: 2, name: 'Date with trailing line terminator' },
           ]),
           { status: 200 },
         );
@@ -343,6 +344,9 @@ describe('PR-7D person intelligence aggregation', () => {
       if (url.endsWith('/subjects/32')) {
         return new Response('{"id":32,"date":"not-a-date"}', { status: 200 });
       }
+      if (url.endsWith('/subjects/33')) {
+        return new Response(JSON.stringify({ id: 33, date: '2020-01-01\n' }), { status: 200 });
+      }
       throw new Error(`Unexpected URL: ${url}`);
     });
     const service = new PersonService(new HttpClient({ fetchFn: mockFetch }));
@@ -351,12 +355,12 @@ describe('PR-7D person intelligence aggregation', () => {
 
     expect(result.releaseChronology).toMatchObject({
       state: 'not_computable',
-      selectedSubjectDetails: 2,
-      succeededSubjectDetails: 2,
+      selectedSubjectDetails: 3,
+      succeededSubjectDetails: 3,
       failedSubjectDetails: 0,
       validDateSubjects: 0,
       missingDateSubjects: 1,
-      invalidDateSubjects: 1,
+      invalidDateSubjects: 2,
     });
     expect(result.releaseChronology).not.toHaveProperty('earliestObserved');
     expect(result.releaseChronology).not.toHaveProperty('latestObserved');
