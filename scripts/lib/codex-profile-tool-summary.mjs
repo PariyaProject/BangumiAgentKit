@@ -2,10 +2,17 @@ import {
   P03_PROFILE_ID,
   summarizeP03PersonProfileToolResult,
 } from './p03-person-name-cn-evidence.mjs';
+import {
+  R05_PROFILE_ID,
+  summarizeR05SubjectOverlapToolResult,
+} from './r05-shared-person-overlap-evidence.mjs';
 
 export function summarizeProfileToolResult(result, expectedArguments, profileId = null) {
   if (profileId === P03_PROFILE_ID) {
     return summarizeP03PersonProfileToolResult(result, expectedArguments);
+  }
+  if (profileId === R05_PROFILE_ID) {
+    return summarizeR05SubjectOverlapToolResult(result, expectedArguments);
   }
   const summary = result?.summary;
   const coverage = result?.coverage;

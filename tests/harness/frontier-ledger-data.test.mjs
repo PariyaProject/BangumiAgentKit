@@ -318,7 +318,7 @@ test('community source and OP-003 closures are evidence-bound and keep discussio
   assert.match(opportunity.reopen_when, /versioned public discussion API/u);
 });
 
-test('R05 failed pair preflight stays unassessed without a negative-connectivity claim', () => {
+test('R05 remains unassessed after bounded positive preflight without a global connectivity claim', () => {
   const record = ledger.records.find(({ id }) => id === 'R05');
   assert.ok(record, 'R05 must remain in the canonical frontier');
   assert.equal(record.status, 'UNASSESSED');
@@ -327,12 +327,15 @@ test('R05 failed pair preflight stays unassessed without a negative-connectivity
       'docs/research/run95-r05-preflight-no-shared-voice-actor-2026-10-15.md',
     ),
   );
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-r05-k-on-season-shared-person-preflight-2026-10-15.json',
+    ),
+  );
   assert.match(record.next_action, /No Agent\/MCP call or claim was made/u);
   assert.match(record.next_action, /not a negative connectivity finding/u);
-  assert.match(
-    record.next_action,
-    /different pair with a preverified positive shared stable person ID/u,
-  );
+  assert.match(record.next_action, /20 IDs in the returned-row intersection/u);
+  assert.match(record.next_action, /UNASSESSED\/uncredited/u);
 
   const report = readFileSync(
     path.join(root, 'docs/research/run95-r05-preflight-no-shared-voice-actor-2026-10-15.md'),

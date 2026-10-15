@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -87,15 +87,17 @@ import {
   p01RunnerPublicKeySha256,
 } from '../../scripts/acceptance/p01-runner-receipt.mjs';
 import { makeP01Report } from './p01-report-fixture.mjs';
+import { makeR05ProfileReportInput } from './fixtures/r05-profile-report-input.mjs';
+import { writeR05SharedPersonOverlapReport } from '../../scripts/acceptance/write-r05-shared-person-overlap-report.mjs';
 import { getAgentMcpProfileById } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const cli = path.join(root, 'scripts/agent-harness.mjs');
 const mockBin = path.join(root, 'tests/harness/mock-harness-bin.mjs');
 const sha = (digit) => digit.repeat(40);
 const D07_EPOCH_ID = 'run95-d07-current-rank-by-release-year';
 const C03_PROFILE = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
 const P03_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
+const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const mandatoryChecks = [
   'harness-control',
   'sqlite-default',
@@ -134,7 +136,7 @@ function createMockEnvironment(overrides = {}) {
     fs.writeFileSync(wrapper, `#!/bin/sh\nexec "${process.execPath}" "${mockBin}" ${tool} "$@"\n`);
     fs.chmodSync(wrapper, 0o755);
   }
-  const { frontierLedger, ...stateOverrides } = overrides;
+  const { frontierLedger, harnessRoot = root, ...stateOverrides } = overrides;
   const { run, epoch } = controlFixture();
   const statePath = path.join(directory, 'state.json');
   const state = {
@@ -176,18 +178,22 @@ function createMockEnvironment(overrides = {}) {
     run,
     epoch,
     execute(args, envOverrides = {}) {
-      return spawnSync(process.execPath, [cli, ...args], {
-        cwd: root,
-        encoding: 'utf8',
-        env: {
-          ...process.env,
-          PATH: `${binDirectory}:${process.env.PATH}`,
-          HARNESS_MOCK_STATE: statePath,
-          HARNESS_FRONTIER_LEDGER_PATH: frontierLedgerPath,
-          HARNESS_G04_BUNDLE_SHA256: 'c'.repeat(64),
-          ...envOverrides,
+      return spawnSync(
+        process.execPath,
+        [path.join(harnessRoot, 'scripts/agent-harness.mjs'), ...args],
+        {
+          cwd: harnessRoot,
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            PATH: `${binDirectory}:${process.env.PATH}`,
+            HARNESS_MOCK_STATE: statePath,
+            HARNESS_FRONTIER_LEDGER_PATH: frontierLedgerPath,
+            HARNESS_G04_BUNDLE_SHA256: 'c'.repeat(64),
+            ...envOverrides,
+          },
         },
-      });
+      );
     },
     readState() {
       return JSON.parse(fs.readFileSync(statePath, 'utf8'));
@@ -196,6 +202,63 @@ function createMockEnvironment(overrides = {}) {
       fs.rmSync(directory, { recursive: true, force: true });
     },
   };
+}
+
+function symlinkSource(source, target) {
+  fs.symlinkSync(source, target, fs.statSync(source).isDirectory() ? 'dir' : 'file');
+}
+
+function mirrorDocsWithoutR05Report(source, target, relative = '') {
+  const excludedReport = R05_PROFILE.reportPath.replace(/^docs\//u, '');
+  fs.mkdirSync(target, { recursive: true });
+  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
+    const childRelative = relative ? `${relative}/${entry.name}` : entry.name;
+    if (childRelative === excludedReport) continue;
+    const sourcePath = path.join(source, entry.name);
+    const targetPath = path.join(target, entry.name);
+    if (excludedReport.startsWith(`${childRelative}/`)) {
+      mirrorDocsWithoutR05Report(sourcePath, targetPath, childRelative);
+    } else {
+      symlinkSource(sourcePath, targetPath);
+    }
+  }
+}
+
+function createIsolatedHarnessRoot() {
+  const harnessRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'r05-harness-root-'));
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    if (entry.name === '.git') continue;
+    const sourcePath = path.join(root, entry.name);
+    const targetPath = path.join(harnessRoot, entry.name);
+    if (entry.name === 'docs') {
+      mirrorDocsWithoutR05Report(sourcePath, targetPath);
+    } else if (entry.name === 'scripts') {
+      fs.mkdirSync(targetPath);
+      for (const scriptEntry of fs.readdirSync(sourcePath, { withFileTypes: true })) {
+        const scriptSource = path.join(sourcePath, scriptEntry.name);
+        const scriptTarget = path.join(targetPath, scriptEntry.name);
+        if (scriptEntry.name === 'agent-harness.mjs') {
+          fs.copyFileSync(scriptSource, scriptTarget);
+        } else if (scriptEntry.name === 'acceptance') {
+          fs.mkdirSync(scriptTarget);
+          for (const acceptanceEntry of fs.readdirSync(scriptSource, { withFileTypes: true })) {
+            const acceptanceSource = path.join(scriptSource, acceptanceEntry.name);
+            const acceptanceTarget = path.join(scriptTarget, acceptanceEntry.name);
+            if (acceptanceEntry.name === 'write-r05-shared-person-overlap-report.mjs') {
+              fs.copyFileSync(acceptanceSource, acceptanceTarget);
+            } else {
+              symlinkSource(acceptanceSource, acceptanceTarget);
+            }
+          }
+        } else {
+          symlinkSource(scriptSource, scriptTarget);
+        }
+      }
+    } else {
+      symlinkSource(sourcePath, targetPath);
+    }
+  }
+  return harnessRoot;
 }
 
 function g04LegacyReconciliationFixture({ dispositionOverrides = {} } = {}) {
@@ -1639,6 +1702,131 @@ test('P03 Harness profile status, create-once claim, and no-retry result use its
     assert.equal(JSON.parse(status.stdout).retry_allowed, false);
   } finally {
     environment.cleanup();
+  }
+});
+
+test('R05 Harness profile uses its own permanent claim label and terminal no-retry disposition', () => {
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(R05_PROFILE);
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', R05_PROFILE.id];
+  try {
+    const initial = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(initial.status, 0, initial.stderr);
+    const initialState = JSON.parse(initial.stdout);
+    assert.equal(initialState.state, 'UNCLAIMED');
+    assert.equal(initialState.frontier_id, 'R05');
+    assert.equal(initialState.tool_name, 'bangumi.get_subject_overlap');
+    assert.equal(initialState.call_count, 1);
+    assert.equal(initialState.review_gate.eligible, true);
+
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    assert.equal(claimResult.state, 'AGENT_MCP_PROFILE_CLAIMED');
+    assert.equal(claimResult.retryAllowed, false);
+
+    const duplicate = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(duplicate.status, 2);
+
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'INCONCLUSIVE',
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(status.status, 0, status.stderr);
+    assert.equal(JSON.parse(status.stdout).state, 'INCONCLUSIVE');
+    assert.equal(JSON.parse(status.stdout).retry_allowed, false);
+    assert.equal(
+      environment.readState().repositoryLabels['harness-r95-r05-subject-overlap-claimed'].name,
+      'harness-r95-r05-subject-overlap-claimed',
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('R05 Harness records a valid REPORT_WRITTEN report with its exact digest', () => {
+  const harnessRoot = createIsolatedHarnessRoot();
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(R05_PROFILE, {
+    harnessRoot,
+  });
+  const runnerKeyPair = generateKeyPairSync('ed25519');
+  const publicKeyDer = runnerKeyPair.publicKey.export({ type: 'spki', format: 'der' });
+  const publicKeyBase64 = publicKeyDer.toString('base64');
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', R05_PROFILE.id];
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    const claim = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.agent_mcp_profile_dispositions[R05_PROFILE.id];
+
+    const report = writeR05SharedPersonOverlapReport(
+      makeR05ProfileReportInput(harnessRoot, claim),
+      { privateKey: runnerKeyPair.privateKey },
+    );
+    assert.equal(report.passed, true, JSON.stringify(report));
+    const mockState = environment.readState();
+    mockState.dirty = `?? ${R05_PROFILE.reportPath}`;
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(mockState, null, 2)}\n`);
+
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'REPORT_WRITTEN',
+      '--report-sha256',
+      report.reportSha256,
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    assert.equal(JSON.parse(terminal.stdout).state, 'AGENT_MCP_PROFILE_RESULT_RECORDED');
+    const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(status.status, 0, status.stderr);
+    assert.equal(JSON.parse(status.stdout).state, 'REPORT_WRITTEN');
+    const disposition = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.agent_mcp_profile_dispositions[R05_PROFILE.id];
+    assert.equal(disposition.state, 'REPORT_WRITTEN');
+    assert.equal(disposition.reportSha256, report.reportSha256);
+    assert.equal(disposition.reportPath, R05_PROFILE.reportPath);
+    assert.equal(disposition.reportWritten, true);
+    assert.equal(disposition.retryAllowed, false);
+  } finally {
+    environment.cleanup();
+    fs.rmSync(harnessRoot, { recursive: true, force: true });
   }
 });
 
