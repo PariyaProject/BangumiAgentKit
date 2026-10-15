@@ -1871,10 +1871,11 @@
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
         "docs/research/run95-c01-rating-count-difference-source-contract-2026-10-15.md",
+        "docs/research/run95-c01-rating-count-difference-source-contract-2026-10-16.md",
         "scripts/acceptance/agent-mcp-profile-registry.json",
         "scripts/lib/c01-rating-count-evidence.mjs"
       ],
-      "next_action": "C01 remains UNASSESSED and uncredited until the new fixed Agent/MCP profile is accepted. After the exact Candidate has passing mandatory CI, Harness candidate readiness, and same-identity GPT-6 Luna Max PASS, invoke the permanent profile exactly once: bangumi.get_subject_comparison with subjectIds=[41529,46729], maxCast=1, maxStaff=1, maxRelations=1. The answer must report source-matched current rating totals and signed B-A delta, state that practical sufficiency has no caller-provided threshold, and make no statistical-significance claim. If any runner/result/answer gate is inconclusive, preserve the no-retry terminal state. An accepted bounded answer may move C01 only to PARTIAL; one pair cannot establish population significance or a general threshold. Source contract: docs/research/run95-c01-rating-count-difference-source-contract-2026-10-15.md.",
+      "next_action": "C01 remains UNASSESSED and uncredited. Its fixed Run #95 profile was already claimed on PR #180 Candidate 26d1ca261d34ef7587cc6617a0274ca3fa404da7 / Base 7248c774b2bc46a8d51b4ed20eb1ccc071d769c9; Harness recorded INCONCLUSIVE, reportWritten=false, retryAllowed=false (claim profile-run-95-pr-180-26d1ca261d34-1792076591431). Do not invoke or retry c01-rating-count-gap-v1. No current rating totals or C01 Agent/MCP answer were accepted. The 2026-10-16 source-contract report is static documentation only and adds no execution credit. Keep tool-matrix counts unchanged; any future C01 work must use a genuinely distinct Harness-selected profile, never a substitute retry.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

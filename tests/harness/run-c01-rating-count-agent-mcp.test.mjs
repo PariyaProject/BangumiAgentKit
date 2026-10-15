@@ -154,7 +154,7 @@ test('C01 review gate binds exact candidate, current base, seven checks, and sam
   );
 });
 
-test('C01 attempt classification never invokes an already claimed or terminal profile again', () => {
+test('C01 attempt classification rejects ambiguous and terminal profile states before invocation', () => {
   assert.equal(
     classifyC01ProfileAttempt({ state: 'UNCLAIMED', disposition: null }, false),
     'START',
@@ -174,6 +174,10 @@ test('C01 attempt classification never invokes an already claimed or terminal pr
   assert.equal(
     classifyC01ProfileAttempt({ state: 'REPORT_WRITTEN', disposition: { claimId: 'x' } }, true),
     'TERMINAL',
+  );
+  assert.equal(
+    classifyC01ProfileAttempt({ state: 'AMBIGUOUS_TERMINAL_LATCH', disposition: null }, false),
+    'REJECT',
   );
 });
 
