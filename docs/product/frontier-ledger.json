@@ -2759,7 +2759,14 @@
         "scripts/acceptance/run-a01-aggregate-codex-agent-mcp.mjs",
         "scripts/acceptance/run-a01-aggregate-codex-agent-mcp.d.mts",
         "tests/unit/a01-aggregate-subject-cohort-answer-check.test.ts",
-        "tests/unit/a01-aggregate-codex-agent-mcp-runner.test.ts"
+        "tests/unit/a01-aggregate-codex-agent-mcp-runner.test.ts",
+        "docs/live-probes/public-tools-2026-10-15-174045481-99856.json",
+        "scripts/smoke-fresh-public-api-matrix-five-post-v2-20261016.ts",
+        "scripts/lib/fresh-public-api-matrix-five-post-v2-scope.ts",
+        "scripts/lib/fresh-public-request-search-fetch-v2.ts",
+        "scripts/lib/fresh-public-request-budget.ts",
+        "tests/unit/fresh-public-api-matrix-five-post-v2-scope.test.ts",
+        "tests/unit/fresh-public-request-search-fetch-v2.test.ts"
       ],
       "next_action": "Keep A01 UNASSESSED. Direct-public observations for compare_subject_cohorts, aggregate_subject_cohort, render_subject_cohort_comparison, and render_subject_cohort_aggregation may support only their respective public-matrix rows; they do not answer the cohort-analysis scenario or grant Agent/MCP credit. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
@@ -2827,6 +2834,32 @@
           "gpt_6_luna_max_pass_required": true,
           "no_retry": true,
           "limitations": "Exactly one attempt was consumed and is INCONCLUSIVE; no raw answer, raw result, subject names/IDs, or credentials were retained. The sanitized report remains bound to Candidate 6cd66e72a9a92ee13dc0049cd677145fc5a1ad80 and Base ee05068484b8192f737c4b9437913f80e068680e. Do not rerun. This does not resolve the original compare_subject_cohorts question or establish population completeness, significance, causality, quality, or trends."
+        },
+        "direct_public_api_matrix_probe_2026_10_15": {
+          "report": "docs/live-probes/public-tools-2026-10-15-174045481-99856.json",
+          "report_sha256": "a37a49b8e517ebf33dd1c4b71fece33271ab98ac3adcbf48bb5af13bf76ea001",
+          "scope_id": "run95-fresh-five-public-api-post-v2-20261016",
+          "tools": [
+            "bangumi.aggregate_subject_cohort",
+            "bangumi.compare_subject_cohorts",
+            "bangumi.render_subject_cohort_aggregation",
+            "bangumi.render_subject_cohort_comparison"
+          ],
+          "request_count": 19,
+          "api_request_counts": {
+            "bangumi.aggregate_subject_cohort": 4,
+            "bangumi.compare_subject_cohorts": 4,
+            "bangumi.render_subject_cohort_aggregation": 7,
+            "bangumi.render_subject_cohort_comparison": 4
+          },
+          "result_summaries": {
+            "bangumi.aggregate_subject_cohort": "partial with sanitized keys only",
+            "bangumi.compare_subject_cohorts": "partial with sanitized keys only",
+            "bangumi.render_subject_cohort_aggregation": "artifact summary only",
+            "bangumi.render_subject_cohort_comparison": "artifact summary only"
+          },
+          "assertions_passed": true,
+          "acceptance_boundary": "This exact current-catalog direct ToolRegistry observation supports only the four corresponding anonymous public/API matrix rows. It does not answer the A01 cohort-analysis question, change A01 from UNASSESSED, add Agent/MCP or one-shot credit, or establish population completeness, significance, trends, causality, or stability. The report stores summaries and counters only, not subject rows, names, identifiers, request bodies, or image bytes."
         }
       }
     },
