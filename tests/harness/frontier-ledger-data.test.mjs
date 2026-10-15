@@ -96,7 +96,12 @@ test('C03 terminal no-report profile stays unassessed and cannot be retried', ()
   const record = ledger.records.find(({ id }) => id === 'C03');
   assert.ok(record, 'C03 must remain in the canonical frontier');
   assert.equal(record.status, 'UNASSESSED');
-  assert.equal(record.evidence?.capabilities, undefined, 'C03 receives no capability credit');
+  assert.equal(record.evidence, undefined, 'C03 has no report evidence or capability credit');
+  assert.equal(
+    existsSync(path.join(root, 'docs/live-probes/c03-voice-actor-comparison-agent-mcp-run95.json')),
+    false,
+    'the inconclusive C03 claim produced no report that could earn Agent/MCP credit',
+  );
 
   const dispositionPath = 'docs/research/run95-c03-profile-terminal-disposition-2026-10-15.md';
   assert.ok(record.source_refs.includes(dispositionPath));
@@ -109,6 +114,9 @@ test('C03 terminal no-report profile stays unassessed and cannot be retried', ()
 
   const disposition = readFileSync(path.join(root, dispositionPath), 'utf8');
   assert.match(disposition, /PR #162/u);
+  assert.match(disposition, /run95-c03-profile-aware-agent-mcp-20261014/u);
+  assert.match(disposition, /harness-r95-c03-activity-claimed/u);
+  assert.match(disposition, /harness-r95-c03-activity-terminal/u);
   assert.match(disposition, /INCONCLUSIVE/u);
   assert.match(disposition, /reportWritten=false/u);
   assert.match(disposition, /retryAllowed=false/u);
