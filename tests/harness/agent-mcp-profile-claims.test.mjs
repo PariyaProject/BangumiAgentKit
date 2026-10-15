@@ -34,7 +34,28 @@ test('C03 profile registry is closed, immutable, and binds two exact calls', () 
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 3);
+  assert.equal(listAgentMcpProfiles().length, 4);
+  const c01 = getAgentMcpProfileById('c01-rating-count-gap-v1');
+  assert.ok(c01);
+  assert.equal(c01.frontierId, 'C01');
+  assert.equal(c01.epochId, 'run95-c01-rating-count-gap-agent-mcp-20261015');
+  assert.deepEqual(c01.calls, [
+    {
+      toolName: 'bangumi.get_subject_comparison',
+      arguments: {
+        subjectIds: [41529, 46729],
+        maxCast: 1,
+        maxStaff: 1,
+        maxRelations: 1,
+      },
+    },
+  ]);
+  assert.equal(getAgentMcpProfile('bangumi.get_subject_comparison', c01.argumentProfile), c01);
+  assert.equal(
+    agentMcpProfileClaimLabelDescription(c01),
+    'Run 95 C01 profile c01-rating-count-gap-v1; permanent one-shot latch.',
+  );
+  assert.match(agentMcpProfileRegistrySha256(c01.id), /^[0-9a-f]{64}$/u);
   const p03 = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
   assert.ok(p03);
   assert.equal(p03.frontierId, 'P03');
