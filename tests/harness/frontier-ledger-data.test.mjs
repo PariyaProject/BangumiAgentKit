@@ -306,6 +306,20 @@ test('P06 offline renderer matrix evidence cannot close the latest-20 scenario',
   }
 });
 
+test('P02 offline person-profile matrix evidence cannot close first/latest participation', () => {
+  const record = ledger.records.find(({ id }) => id === 'P02');
+  assert.ok(record, 'P02 must remain in the canonical frontier');
+  assert.equal(record.status, 'PARTIAL');
+  assert.match(record.next_action, /Keep P02 PARTIAL/u);
+  assert.match(record.next_action, /no P02 scenario credit/u);
+  assert.match(record.next_action, /57\/65 with eight rows pending/u);
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-contract-2026-10-16.md',
+    ),
+  );
+});
+
 test('P05 records its bounded live report as partial returned-row evidence', () => {
   const record = ledger.records.find(({ id }) => id === 'P05');
   assert.ok(record, 'P05 must remain in the canonical frontier');

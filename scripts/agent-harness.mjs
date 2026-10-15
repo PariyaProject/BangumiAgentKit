@@ -150,6 +150,7 @@ import { validateC03SanitizedReportFile } from './acceptance/write-c03-profile-r
 import { validateP03SanitizedReportFile } from './acceptance/write-p03-person-name-cn-report.mjs';
 import { validateR05SanitizedReportFile } from './acceptance/write-r05-shared-person-overlap-report.mjs';
 import { validateP06SanitizedReportFile } from './acceptance/write-p06-render-person-profile-agent-mcp-report.mjs';
+import { validateP02SanitizedReportFile } from './acceptance/write-p02-person-profile-agent-mcp-report.mjs';
 import {
   G06_MODEL,
   G06_REASONING_EFFORT,
@@ -222,6 +223,11 @@ import {
 } from './acceptance/d07-current-rank-answer-check.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
+const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
+  'p06-render-person-profile-offline-agent-mcp-v1',
+  'p02-person-profile-offline-agent-mcp-v1',
+]);
+const profileRequiresExactCiRunEvidence = (profileId) => PROFILE_CI_RUN_EVIDENCE_IDS.has(profileId);
 const P01_MODEL = 'gpt-6-luna';
 const P01_REASONING_EFFORT = 'max';
 const P01_TOOL_NAME = 'bangumi.get_person_activity';
@@ -3377,8 +3383,8 @@ function assertAgentMcpProfileReviewReadiness(
   const baseSha = epoch.base_sha;
   const currentBaseSha = remoteBaseSha('master');
   const latestReview = epoch.review_history?.at(-1);
-  const p06CiEvidence =
-    profile.id === 'p06-render-person-profile-offline-agent-mcp-v1'
+  const profileCiEvidence =
+    profileRequiresExactCiRunEvidence(profile.id)
       ? deriveP06CiRunEvidence(epoch.ci?.url, pr.statusCheckRollup)
       : null;
   let runnerReceiptPublicKeySha256;
@@ -3422,7 +3428,7 @@ function assertAgentMcpProfileReviewReadiness(
     epoch.ci?.sha !== candidateSha ||
     epoch.ci?.status !== 'SUCCESS' ||
     !mandatoryChecksSuccessful(pr.statusCheckRollup) ||
-    (profile.id === 'p06-render-person-profile-offline-agent-mcp-v1' && !p06CiEvidence) ||
+    (profileRequiresExactCiRunEvidence(profile.id) && !profileCiEvidence) ||
     latestReview?.candidate_sha !== candidateSha ||
     latestReview.reviewed_base_sha !== baseSha ||
     latestReview.verdict !== 'PASS' ||
@@ -3462,7 +3468,7 @@ function assertAgentMcpProfileReviewReadiness(
     baseSha,
     reviewerId: latestReview.reviewer_id,
     runnerReceiptPublicKeySha256,
-    ...(p06CiEvidence ?? {}),
+    ...(profileCiEvidence ?? {}),
   };
 }
 
@@ -3614,7 +3620,7 @@ function commandEpochAgentMcpProfileClaim(options) {
     baseSha: ready.baseSha,
     ciSha: ready.candidateSha,
     ciStatus: 'SUCCESS',
-    ...(profile.id === 'p06-render-person-profile-offline-agent-mcp-v1'
+    ...(profileRequiresExactCiRunEvidence(profile.id)
       ? { ciRunId: ready.ciRunId, ciChecks: ready.ciChecks }
       : {}),
     reviewerId: ready.reviewerId,
@@ -3631,13 +3637,13 @@ function commandEpochAgentMcpProfileClaim(options) {
       assertReady: () => {
         const currentReady = assertAgentMcpProfileReviewReadiness(gate);
         if (
-          profile.id === 'p06-render-person-profile-offline-agent-mcp-v1' &&
+          profileRequiresExactCiRunEvidence(profile.id) &&
           (currentReady.ciRunId !== claim.ciRunId ||
             canonicalHash(currentReady.ciChecks) !== canonicalHash(claim.ciChecks))
         ) {
           throw new HarnessInvariantError(
             'AGENT_MCP_PROFILE_CI_IDENTITY_CHANGED',
-            'P06 CI run identity changed while the profile claim was being established.',
+            'Profile CI run identity changed while the one-shot claim was being established.',
             { profileId },
           );
         }
@@ -3682,7 +3688,7 @@ function commandEpochAgentMcpProfileClaim(options) {
     baseSha: ready.baseSha,
     ciSha: ready.candidateSha,
     ciStatus: 'SUCCESS',
-    ...(profile.id === 'p06-render-person-profile-offline-agent-mcp-v1'
+    ...(profileRequiresExactCiRunEvidence(profile.id)
       ? { ciRunId: ready.ciRunId, ciChecks: ready.ciChecks }
       : {}),
     reviewerId: ready.reviewerId,
@@ -3701,15 +3707,15 @@ function assertAgentMcpProfileClaimCurrent(profile, claim) {
   const pr = epochResult.view;
   const latestReview = epoch.review_history?.at(-1);
   const currentBaseSha = remoteBaseSha('master');
-  const p06CiEvidence =
-    profile.id === 'p06-render-person-profile-offline-agent-mcp-v1'
+  const profileCiEvidence =
+    profileRequiresExactCiRunEvidence(profile.id)
       ? deriveP06CiRunEvidence(epoch.ci?.url, pr.statusCheckRollup)
       : null;
-  const p06CiIdentityCurrent =
-    profile.id !== 'p06-render-person-profile-offline-agent-mcp-v1' ||
-    (p06CiEvidence !== null &&
-      claim.ciRunId === p06CiEvidence.ciRunId &&
-      canonicalHash(claim.ciChecks) === canonicalHash(p06CiEvidence.ciChecks));
+  const profileCiIdentityCurrent =
+    !profileRequiresExactCiRunEvidence(profile.id) ||
+    (profileCiEvidence !== null &&
+      claim.ciRunId === profileCiEvidence.ciRunId &&
+      canonicalHash(claim.ciChecks) === canonicalHash(profileCiEvidence.ciChecks));
   const valid =
     runResult.view.number === claim.runNumber &&
     run.state === 'EPOCH_ACTIVE' &&
@@ -3738,7 +3744,7 @@ function assertAgentMcpProfileClaimCurrent(profile, claim) {
     pr.headRefName === epoch.branch &&
     pr.headRefOid === claim.sourceCandidateSha &&
     mandatoryChecksSuccessful(pr.statusCheckRollup) &&
-    p06CiIdentityCurrent &&
+    profileCiIdentityCurrent &&
     agentMcpProfileBundleMatches(claim.sourceCandidateSha, claim.bundleSha256, true);
   if (!valid) {
     throw new HarnessInvariantError(
@@ -3762,6 +3768,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateC03SanitizedReportFile(claim, root, reportPath);
     case 'p06-render-person-profile-offline-agent-mcp-v1':
       return validateP06SanitizedReportFile(claim, root, reportPath);
+    case 'p02-person-profile-offline-agent-mcp-v1':
+      return validateP02SanitizedReportFile(claim, root, reportPath);
     default:
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_REPORT_VALIDATOR_MISSING',
@@ -3822,8 +3830,7 @@ function commandEpochAgentMcpProfileResult(options) {
     current.bundleSha256 &&
     current.runnerReceiptPublicKeySha256 &&
     current.retryAllowed === false &&
-    (profile.id !== 'p06-render-person-profile-offline-agent-mcp-v1' ||
-      isValidP06CiRunEvidence(current));
+    (!profileRequiresExactCiRunEvidence(profile.id) || isValidP06CiRunEvidence(current));
   if (!claimMatches) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_CLAIM_MISMATCH',
