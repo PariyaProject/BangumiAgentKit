@@ -287,6 +287,25 @@ test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retr
   });
 });
 
+test('P06 offline renderer matrix evidence cannot close the latest-20 scenario', () => {
+  const record = ledger.records.find(({ id }) => id === 'P06');
+  assert.ok(record, 'P06 must remain in the canonical frontier');
+  assert.equal(record.status, 'UNASSESSED');
+  assert.match(record.next_action, /Keep UNASSESSED/u);
+  assert.match(record.next_action, /synthetic offline render_person_profile Agent\/MCP/u);
+  assert.match(record.next_action, /does not establish real-person data/u);
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-p06-render-person-profile-agent-mcp-offline-fixture-source-contract-2026-10-16.md',
+    ),
+  );
+  const reportPath = 'docs/live-probes/p06-render-person-profile-agent-mcp-run95.json';
+  if (record.source_refs.includes(reportPath)) {
+    assert.match(record.next_action, /matrix-only/u);
+    assert.match(record.next_action, /no scenario acceptance/u);
+  }
+});
+
 test('P05 records its bounded live report as partial returned-row evidence', () => {
   const record = ledger.records.find(({ id }) => id === 'P05');
   assert.ok(record, 'P05 must remain in the canonical frontier');
@@ -532,7 +551,7 @@ test('G06 current-catalog cast probe is public-only, hash-bound, and does not im
   assert.match(evidence.acceptance_boundary, /does not add Agent\/MCP evidence/u);
 
   const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
-  assert.match(table, /公开 API 工具有逐项实测：65\/65；待补 0/u);
+  assert.match(table, /公开 API 工具有逐项实测：57\/65；待补 8/u);
   assert.ok(
     table.includes(`\`bangumi.get_subject_cast\` | \`none\` | \`read\` | `) &&
       table.includes(reportPath),
@@ -596,7 +615,7 @@ test('G09 current-catalog watch-order reports remain direct-public and hash-boun
   assert.match(evidence.acceptance_boundary, /establish complete graph coverage/u);
 
   const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
-  assert.match(table, /公开 API 工具有逐项实测：65\/65；待补 0/u);
+  assert.match(table, /公开 API 工具有逐项实测：57\/65；待补 8/u);
   for (const tool of ['bangumi.get_series_watch_order', 'bangumi.render_series_watch_order']) {
     const row = table.split('\n').find((line) => line.includes(`\`${tool}\``));
     assert.ok(row?.includes(reportPath), `${tool} row must cite the current report`);

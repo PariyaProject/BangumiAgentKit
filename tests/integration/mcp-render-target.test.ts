@@ -10,6 +10,11 @@ import {
   C07_COHORT_RENDER_EXPECTED_ARGUMENTS,
   createC07CohortRenderOfflineFixtureFetch,
 } from '../../scripts/lib/c07-cohort-render-offline-fixture.mjs';
+import {
+  createP06RenderPersonProfileAssetGuard,
+  createP06RenderPersonProfileOfflineFetch,
+  P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS,
+} from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 
 const subjectFixture = {
   id: 123,
@@ -331,5 +336,79 @@ describe('MCP renderer target', () => {
     );
     expect(artifactStore.saveArtifact).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(fixture.snapshot())).not.toContain('Synthetic Cohort');
+  });
+
+  it('renders the fixed P06 synthetic profile through three local reads and no asset resolution', async () => {
+    const fixture = createP06RenderPersonProfileOfflineFetch();
+    const fetchFn = vi.fn(fixture.fetchFn);
+    const assetGuard = createP06RenderPersonProfileAssetGuard();
+    const renderService = new RenderService(
+      undefined,
+      undefined,
+      assetGuard.assetResolver as never,
+    );
+    const storage = new MemoryStorage();
+    const artifactBuffers: Buffer[] = [];
+    const artifactStore = {
+      saveArtifact: vi.fn(async (buffer: Buffer, mimeType = 'image/png' as const, size = {}) => {
+        artifactBuffers.push(Buffer.from(buffer));
+        return {
+          id: 'p06-synthetic-fixture-artifact',
+          mimeType,
+          ...size,
+          expiresAt: '2099-01-01T00:00:00.000Z',
+        };
+      }),
+    };
+    const dependencies = createRuntimeDependenciesWithStorage(storage, {
+      publicHttpClient: new HttpClient({ baseUrl: 'https://api.bgm.tv', fetchFn }),
+      renderService,
+      artifactStore: artifactStore as never,
+    });
+    const registry = new ToolRegistry(dependencies, { profile: 'full', renderTarget: 'chat' });
+
+    try {
+      const result = (await registry.executeTool(
+        'bangumi.render_person_profile',
+        P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS,
+        {
+          principalId: 'anonymous',
+          botInstanceId: 'p06-offline-fixture-test',
+          conversationId: 'p06-offline-fixture-test',
+        },
+      )) as { artifact?: { mimeType?: string; width?: number; height?: number } };
+
+      expect(result.artifact).toMatchObject({
+        mimeType: 'image/png',
+        width: expect.any(Number),
+        height: expect.any(Number),
+      });
+      expect(result.artifact?.width).toBeGreaterThan(0);
+      expect(result.artifact?.height).toBeGreaterThan(0);
+      expect(fetchFn).toHaveBeenCalledTimes(3);
+      expect(fixture.snapshot()).toMatchObject({
+        requestCount: 3,
+        personRequestCount: 1,
+        subjectsRequestCount: 1,
+        charactersRequestCount: 1,
+        duplicateRequestCount: 0,
+        unexpectedRequestCount: 0,
+        authorizationHeaderCount: 0,
+        expectedOperationsComplete: true,
+      });
+      expect(assetGuard.snapshot()).toEqual({
+        assetResolutionCallCount: 0,
+        nonEmptyAssetUrlCount: 0,
+        blockedAssetRequestCount: 0,
+      });
+      expect(artifactStore.saveArtifact).toHaveBeenCalledOnce();
+      expect(artifactBuffers).toHaveLength(1);
+      expect(artifactBuffers[0]?.subarray(0, 8)).toEqual(
+        Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+      );
+    } finally {
+      await registry.close();
+      await storage.close();
+    }
   });
 });

@@ -135,6 +135,58 @@ class PublicApiEvidenceTests(unittest.TestCase):
             {'bangumi.get_subject': {'docs/live-probes/public-tools-fixture.json'}},
         )
 
+    def test_explicitly_excluded_public_report_does_not_count(self):
+        self.write_report()
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report['acceptanceEligible'] = False
+        report['acceptanceExclusionReason'] = 'The user-directed matrix disposition keeps this row pending.'
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+        self.assertEqual(GENERATOR.public_api_smoke_sources(self.catalog), {})
+
+    def test_hash_bound_exclusion_keeps_report_bytes_but_removes_its_credit(self):
+        self.write_report()
+        report_bytes = self.report_path.read_bytes()
+        exclusions_path = self.root / 'docs/product/public-api-evidence-exclusions.json'
+        exclusions_path.parent.mkdir(parents=True, exist_ok=True)
+        exclusions_path.write_text(
+            json.dumps({
+                'schemaVersion': 1,
+                'excludedReports': [{
+                    'path': 'docs/live-probes/public-tools-fixture.json',
+                    'sha256': hashlib.sha256(report_bytes).hexdigest(),
+                    'selectedTools': ['bangumi.get_subject'],
+                    'reason': 'The requested matrix scope leaves this row pending.',
+                }],
+            }),
+            encoding='utf-8',
+        )
+
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+        self.assertEqual(GENERATOR.public_api_smoke_sources(self.catalog), {})
+        self.assertEqual(self.report_path.read_bytes(), report_bytes)
+
+    def test_hash_bound_exclusion_fails_closed_when_the_report_changes(self):
+        self.write_report()
+        exclusions_path = self.root / 'docs/product/public-api-evidence-exclusions.json'
+        exclusions_path.parent.mkdir(parents=True, exist_ok=True)
+        exclusions_path.write_text(
+            json.dumps({
+                'schemaVersion': 1,
+                'excludedReports': [{
+                    'path': 'docs/live-probes/public-tools-fixture.json',
+                    'sha256': 'f' * 64,
+                    'selectedTools': ['bangumi.get_subject'],
+                    'reason': 'The requested matrix scope leaves this row pending.',
+                }],
+            }),
+            encoding='utf-8',
+        )
+
+        with self.assertRaises(ValueError):
+            GENERATOR.public_api_smoke_sources(self.catalog)
+
     def write_fresh_render_person_profile_report(self):
         tool = GENERATOR.FRESH_RENDER_PERSON_PROFILE_PUBLIC_TOOL
         input_data = GENERATOR.FRESH_RENDER_PERSON_PROFILE_PUBLIC_INPUT
@@ -7200,6 +7252,256 @@ class R05ProfileReportValidationTests(unittest.TestCase):
             'GET /community/topics',
         ]
         self.assertFalse(self.validate_report(unbound_source_operation))
+
+
+class P06OfflineProfileReportValidationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='p06-offline-profile-report-test-')
+        self.root = Path(self.temp_dir.name)
+        self.report_path = self.root / GENERATOR.CODEX_P06_REPORT_RELATIVE_PATH
+        self.report_path.parent.mkdir(parents=True)
+        selection_path = self.root / GENERATOR.CODEX_P06_SELECTION_EVIDENCE_RELATIVE_PATH
+        selection_path.parent.mkdir(parents=True, exist_ok=True)
+        selection_path.write_bytes(
+            (GENERATOR.ROOT / GENERATOR.CODEX_P06_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes(),
+        )
+        self.catalog_path = self.root / 'docs/tool-catalog.json'
+        self.catalog_path.parent.mkdir(parents=True, exist_ok=True)
+        self.catalog_path.write_bytes(GENERATOR.CATALOG.read_bytes())
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier_path.parent.mkdir(parents=True, exist_ok=True)
+        frontier = json.loads((GENERATOR.ROOT / 'docs/product/frontier-ledger.json').read_text())
+        p06 = next(record for record in frontier['records'] if record['id'] == 'P06')
+        p06['source_refs'].append(GENERATOR.CODEX_P06_REPORT_RELATIVE_PATH)
+        frontier_path.write_text(json.dumps(frontier), encoding='utf-8')
+        self.originals = (GENERATOR.ROOT, GENERATOR.CATALOG, GENERATOR.LIVE_PROBE_DIR)
+        GENERATOR.ROOT = self.root
+        GENERATOR.CATALOG = self.catalog_path
+        GENERATOR.LIVE_PROBE_DIR = self.root / 'docs/live-probes'
+        self.report = self.build_report()
+
+    def tearDown(self):
+        GENERATOR.ROOT, GENERATOR.CATALOG, GENERATOR.LIVE_PROBE_DIR = self.originals
+        self.temp_dir.cleanup()
+
+    def build_report(self):
+        catalog_bytes = self.catalog_path.read_bytes()
+        catalog = json.loads(catalog_bytes)
+        tool = next(item for item in catalog if item['name'] == GENERATOR.CODEX_P06_TOOL_NAME)
+        selection_bytes = (self.root / GENERATOR.CODEX_P06_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
+        fixture = {
+            'profile': GENERATOR.CODEX_P06_NETWORK_MODE, 'requestCount': 3,
+            'personRequestCount': 1, 'subjectsRequestCount': 1, 'charactersRequestCount': 1,
+            'duplicateRequestCount': 0, 'unexpectedRequestCount': 0,
+            'authorizationHeaderCount': 0, 'expectedOperationsComplete': True,
+        }
+        receipt_payload = {field: None for field in GENERATOR.CODEX_P06_RECEIPT_PAYLOAD_FIELDS}
+        return {
+            'schemaVersion': 1, 'evidenceKind': GENERATOR.CODEX_P06_EVIDENCE_KIND,
+            'runNumber': 95, 'frontierId': 'P06', 'scenarioId': None,
+            'epochId': GENERATOR.CODEX_P06_EPOCH_ID,
+            'profileId': GENERATOR.CODEX_P06_PROFILE_ID,
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'model': 'gpt-6-luna', 'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr222-round1', 'codexCliVersion': '1.2.14',
+            'observedAt': '2026-10-16T05:00:00.000Z', 'sourceRevision': 'a' * 40,
+            'baseSha': 'b' * 40, 'ciSha': 'a' * 40, 'ciStatus': 'SUCCESS',
+            'ciRunId': '38806371672',
+            'ciChecks': [
+                {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+                for name in GENERATOR.CODEX_P06_REQUIRED_CI_CHECKS
+            ],
+            'prNumber': 222, 'claimId': 'profile-run-95-pr-222-aaaaaaaaaaaa-1792100000000',
+            'mcpBundleSha256': 'c' * 64,
+            'registrySha256': GENERATOR.CODEX_P06_PROFILE_REGISTRY_SHA256,
+            'selectionEvidenceSha256': hashlib.sha256(selection_bytes).hexdigest(),
+            'toolName': GENERATOR.CODEX_P06_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_P06_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_P06_EXPECTED_ARGUMENTS_SHA256,
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode()).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': [GENERATOR.CODEX_P06_TOOL_NAME], 'serverToolCount': 1,
+            'networkMode': GENERATOR.CODEX_P06_NETWORK_MODE,
+            'mcpServerNames': ['bgk_p06_profile'], 'processExitCode': 0,
+            'resultStatus': 'SUCCESS', 'eventStreamParsed': True, 'turnCompleted': True,
+            'codexMcpToolEventCount': 1, 'codexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0, 'nonMcpToolTypes': [], 'shellToolCallCount': 0,
+            'allowedCallCount': 1, 'deniedCallCount': 0,
+            'answerCheckMethod': GENERATOR.CODEX_P06_ANSWER_CHECK_METHOD,
+            'answerSha256': hashlib.sha256(b'P06_SYNTHETIC_PROFILE_RENDERED').hexdigest(),
+            'answerUtf8Bytes': len(b'P06_SYNTHETIC_PROFILE_RENDERED'),
+            'answerChecks': {key: True for key in GENERATOR.CODEX_P06_ANSWER_CHECK_FIELDS},
+            'offlineFixture': fixture,
+            'offlineAssetBoundary': {
+                'assetResolutionCallCount': 0, 'nonEmptyAssetUrlCount': 0,
+                'blockedAssetRequestCount': 0,
+            },
+            'networkBoundary': {
+                'liveBangumiApiRequestCount': 0, 'rendererAssetRequestCount': 0,
+                'fullCodexHarnessNetworkSandboxed': False,
+            },
+            'artifact': {
+                'returned': True, 'persisted': False, 'mimeType': 'image/png',
+                'width': 480, 'height': 640, 'byteLength': 12000,
+                'sha256': 'd' * 64, 'pngSignatureValid': True,
+            },
+            'privacy': {
+                'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+                'writesAttempted': False, 'communityRead': False, 'qqPipelineTested': False,
+                'timClientTested': False, 'promptStored': False, 'answerStored': False,
+                'rawFixtureRowsStored': False, 'rawToolResultStored': False,
+                'artifactImageBytesStored': False, 'credentialsStored': False,
+            },
+            'runnerReceipt': {
+                'schemaVersion': 1,
+                'kind': 'p06-render-person-profile-offline-runner-receipt-v1',
+                'publicKeyBase64': 'AQ==', 'publicKeySha256': 'e' * 64,
+                'payload': receipt_payload, 'signature': 'AA==',
+            },
+        }
+
+    def validate_report(self, report):
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        def validate_embedded_report(args, **kwargs):
+            payload = json.loads(kwargs['input'])
+            embedded = base64.b64decode(payload['reportBytesBase64'])
+            return subprocess.CompletedProcess(
+                args, 0,
+                json.dumps({'passed': True, 'reportSha256': hashlib.sha256(embedded).hexdigest()}),
+                '',
+            )
+
+        with (
+            patch.object(GENERATOR, 'codex_p06_profile_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
+            patch.object(GENERATOR, 'codex_p06_profile_report_candidate_binding_is_current', return_value=True),
+            patch.object(GENERATOR, 'codex_p06_profile_disposition_matches_report', return_value={'state': 'REPORT_WRITTEN'}),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+        ):
+            return GENERATOR.codex_p06_profile_report_is_valid(
+                report, harness_status={'fixture': True}, report_path=self.report_path,
+                epoch_status={'fixture': True},
+            )
+
+    def test_accepts_one_synthetic_matrix_report_while_P06_remains_unassessed(self):
+        self.assertTrue(GENERATOR.codex_p06_frontier_is_unassessed())
+        self.assertTrue(self.validate_report(self.report))
+
+    def test_rejects_scenario_credit_network_expansion_and_raw_fields(self):
+        scenario_credit = json.loads(json.dumps(self.report))
+        scenario_credit['scenarioId'] = 'P06'
+        self.assertFalse(self.validate_report(scenario_credit))
+
+        expanded_network = json.loads(json.dumps(self.report))
+        expanded_network['offlineFixture']['requestCount'] = 4
+        self.assertFalse(self.validate_report(expanded_network))
+
+        raw_answer = json.loads(json.dumps(self.report))
+        raw_answer['rawAnswer'] = 'synthetic response text'
+        self.assertFalse(self.validate_report(raw_answer))
+
+        wrong_ci_run = json.loads(json.dumps(self.report))
+        wrong_ci_run['ciRunId'] = 'not-a-run-id'
+        self.assertFalse(self.validate_report(wrong_ci_run))
+
+        wrong_ci_check = json.loads(json.dumps(self.report))
+        wrong_ci_check['ciChecks'][0]['conclusion'] = 'FAILURE'
+        self.assertFalse(self.validate_report(wrong_ci_check))
+
+    def test_terminal_disposition_binds_exact_ci_run_and_checks(self):
+        report = self.report
+        receipt = report['runnerReceipt']
+        report_sha256 = 'f' * 64
+        disposition = {
+            'claimId': report['claimId'],
+            'profileId': GENERATOR.CODEX_P06_PROFILE_ID,
+            'frontierId': 'P06',
+            'epochId': GENERATOR.CODEX_P06_EPOCH_ID,
+            'runNumber': 95,
+            'prNumber': report['prNumber'],
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'ciRunId': report['ciRunId'],
+            'ciChecks': report['ciChecks'],
+            'reviewerId': report['reviewerId'],
+            'bundleSha256': report['mcpBundleSha256'],
+            'registrySha256': GENERATOR.CODEX_P06_PROFILE_REGISTRY_SHA256,
+            'toolName': GENERATOR.CODEX_P06_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_P06_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_P06_EXPECTED_ARGUMENTS_SHA256,
+            'reportWritten': True,
+            'reportPath': GENERATOR.CODEX_P06_REPORT_RELATIVE_PATH,
+            'reportSha256': report_sha256,
+            'retryAllowed': False,
+            'runnerReceiptPublicKey': receipt['publicKeyBase64'],
+            'runnerReceiptPublicKeySha256': receipt['publicKeySha256'],
+            'runnerReceiptSha256': GENERATOR._canonical_json_sha256(receipt),
+        }
+        status = {
+            'state': 'REPORT_WRITTEN',
+            'profile_id': GENERATOR.CODEX_P06_PROFILE_ID,
+            'pr': report['prNumber'],
+            'tool_name': GENERATOR.CODEX_P06_TOOL_NAME,
+            'argument_profile': GENERATOR.CODEX_P06_ARGUMENT_PROFILE,
+            'expected_arguments_sha256': GENERATOR.CODEX_P06_EXPECTED_ARGUMENTS_SHA256,
+            'registry_sha256': GENERATOR.CODEX_P06_PROFILE_REGISTRY_SHA256,
+            'claim_label_present': True,
+            'terminal_label_present': True,
+            'disposition': disposition,
+        }
+        self.assertIsNotNone(
+            GENERATOR.codex_p06_profile_disposition_matches_report(
+                report, status, report_sha256,
+            ),
+        )
+
+        disposition['ciRunId'] = '99999999999'
+        self.assertIsNone(
+            GENERATOR.codex_p06_profile_disposition_matches_report(
+                report, status, report_sha256,
+            ),
+        )
+
+        disposition['ciRunId'] = report['ciRunId']
+        disposition['ciChecks'] = [
+            {'name': 'unexpected-check', 'status': 'COMPLETED', 'conclusion': 'SUCCESS'},
+        ]
+        self.assertIsNone(
+            GENERATOR.codex_p06_profile_disposition_matches_report(
+                report, status, report_sha256,
+            ),
+        )
+
+    def test_rejects_a_frontier_status_change(self):
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier = json.loads(frontier_path.read_text(encoding='utf-8'))
+        next(item for item in frontier['records'] if item['id'] == 'P06')['status'] = 'PARTIAL'
+        frontier_path.write_text(json.dumps(frontier), encoding='utf-8')
+        self.assertFalse(GENERATOR.codex_p06_frontier_is_unassessed())
+
+    def test_routes_the_report_to_only_render_person_profile_agent_mcp(self):
+        self.report_path.write_text(json.dumps(self.report), encoding='utf-8')
+        catalog = json.loads(self.catalog_path.read_text(encoding='utf-8'))
+        with (
+            patch.object(GENERATOR, 'codex_p06_profile_harness_status', return_value={'fixture': True}),
+            patch.object(GENERATOR, 'codex_p06_profile_epoch_harness_status', return_value={'fixture': True}),
+            patch.object(GENERATOR, 'codex_p06_profile_report_is_valid', return_value=True),
+            patch.object(GENERATOR, 'codex_p06_profile_report_matches_candidate_revision', return_value=True),
+        ):
+            sources = GENERATOR.model_mcp_e2e_sources(catalog)
+        self.assertEqual(
+            sources,
+            {
+                'bangumi.render_person_profile': {
+                    GENERATOR.CODEX_P06_REPORT_RELATIVE_PATH,
+                },
+            },
+        )
 
 
 class C03PersonSelectionEvidenceTests(unittest.TestCase):
