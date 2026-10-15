@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-15T06:23:34Z",
+  "updated_at": "2026-10-15T09:29:05Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -450,6 +450,7 @@
         "docs/research/run75-frontier-delta-after-pr76-2026-10-03.md",
         "docs/live-probes/g06-cast-agent-renderer-2026-10-03.json",
         "docs/live-probes/public-tools-2026-10-13-094144522-15089.json",
+        "docs/live-probes/public-tools-2026-10-15-092632892-50913.json",
         "apps/mcp/src/result-presenter.ts",
         "tests/integration/mcp-result-presenter.test.ts",
         "scripts/acceptance/subject-cast-answer-check.mjs",
@@ -484,7 +485,7 @@
         "scripts/agent-harness.mjs",
         "tests/harness/agent-harness-cli.test.mjs"
       ],
-      "next_action": "Run #95 G06 Agent/MCP one-shot on PR #149 was terminal INCONCLUSIVE: one target MCP call returned server SUCCESS, but Codex error items prevented an accepted report; retryAllowed=false. Never rerun the G06 profile {subjectId:218707,limit:100}. A separate direct-public ToolRegistry refresh is recorded in docs/live-probes/public-tools-2026-10-13-094144522-15089.json: one anonymous request with subjectId=41529, limit=2, current catalog/script hashes, and passing bounded identity/shape assertions. It supports only the bangumi.get_subject_cast direct public API matrix cell; it does not count as Agent/MCP answer acceptance. The endpoint has no documented pagination or total, and the result is locally capped, so keep G06 PARTIAL and do not claim a complete cast/CV list. No OAuth/account/community/QQ/TIM access was used.",
+      "next_action": "Run #95 G06 Agent/MCP one-shot on PR #149 was terminal INCONCLUSIVE: one target MCP call returned server SUCCESS, but Codex error items prevented an accepted report; retryAllowed=false. Never rerun the G06 profile {subjectId:218707,limit:100}. The earlier direct-public get_subject_cast report public-tools-2026-10-13-094144522-15089.json was bound to a stale catalog hash. A current-catalog refresh is recorded in docs/live-probes/public-tools-2026-10-15-092632892-50913.json: one anonymous request with subjectId=41529, limit=2, one HTTP request, current catalog/script hashes, and passing bounded identity/shape assertions. It supports only the bangumi.get_subject_cast direct public API matrix cell; it does not count as Agent/MCP answer acceptance. The endpoint has no documented pagination or total, and the result is locally capped, so keep G06 PARTIAL and do not claim a complete cast/CV list. No OAuth/account/community/QQ/TIM access was used.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -524,6 +525,20 @@
         ],
         "live_probe": "docs/live-probes/g06-cast-agent-renderer-2026-10-03.json",
         "current_agent_canary_report": "docs/research/run89-g06-cast-agent-canary-2026-10-05.json",
+        "direct_public_get_subject_cast_current_catalog": {
+          "report": "docs/live-probes/public-tools-2026-10-15-092632892-50913.json",
+          "report_sha256": "ffd231db92b9fcc8e5b05d92523eae0a832410bec23dec49ee3fe5b19245f981",
+          "tool": "bangumi.get_subject_cast",
+          "input": { "subjectId": 41529, "limit": 2 },
+          "observed_at": "2026-10-15T09:26:32.892Z",
+          "mode": "read_only_public_api_smoke",
+          "request_count": 1,
+          "result_summary": { "subjectId": 41529, "observed": 9, "returned": 2, "castCount": 2 },
+          "assertions_passed": true,
+          "catalog_sha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
+          "probe_script_sha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
+          "acceptance_boundary": "Current-catalog direct public ToolRegistry evidence for this exact tool only. It does not add Agent/MCP evidence, prove complete cast coverage, or complete G06; keep G06 PARTIAL."
+        },
         "mcp_text_projection": {
           "tool": "bangumi.get_subject_cast",
           "limit_utf8_bytes": 3600,
