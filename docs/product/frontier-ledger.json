@@ -3031,8 +3031,8 @@
       "user_question": "两个作品之间是否通过系列或人物相连？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-r05-preflight-no-shared-voice-actor-2026-10-15.md"],
+      "next_action": "2026-10-15 preflight: official v0 searches resolved TV anime IDs 1424 (K-On!) and 876 (Clannad After Story); their returned cast actor-ID sets had no intersection. No Agent/MCP call or claim was made. This is not a negative connectivity finding; keep R05 UNASSESSED. Any new attempt requires a separately selected Epoch and a different pair with a preverified positive shared stable person ID.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
