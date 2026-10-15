@@ -12,7 +12,6 @@ import {
 import {
   R05_ANSWER_CHECK_FIELDS,
   R05_PROFILE_ID,
-  buildR05McpTextProjection,
   summarizeR05SubjectOverlapToolResult,
   validateR05McpTextProjection,
   validateR05ResultSummary,
