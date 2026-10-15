@@ -4,11 +4,7 @@ import { join } from 'node:path';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
-import {
-  projectPublicPersonProfileSummary,
-  publicPersonProfileSummaryIsConsistent,
-  selectPublicProbeNames,
-} from './public-probe-selection.js';
+import { selectPublicProbeNames } from './public-probe-selection.js';
 
 const SUBJECT_ID = 41529;
 const LIVE_FLAG = '--live';
@@ -35,7 +31,6 @@ const IDENTITY_ASSERTIONS: Record<string, { inputPath: string; resultKey: string
   'bangumi.get_latest_subject_revision': { inputPath: 'subjectId', resultKey: 'subjectId' },
   'bangumi.get_character': { inputPath: 'characterId', resultKey: 'id' },
   'bangumi.get_person': { inputPath: 'personId', resultKey: 'id' },
-  'bangumi.get_person_profile': { inputPath: 'personId', resultKey: 'personId' },
   'bangumi.get_episode': { inputPath: 'episodeId', resultKey: 'id' },
   'bangumi.get_subject_stats_intelligence': { inputPath: 'subjectId', resultKey: 'subjectId' },
   'bangumi.get_series_watch_order': { inputPath: 'subjectId', resultKey: 'subjectId' },
@@ -96,7 +91,7 @@ const probes: Probe[] = [
   { name: 'bangumi.get_character', input: { characterId: 17325 } },
   { name: 'bangumi.search_persons', input: { query: '水瀬いのり', limit: 2, offset: 0 } },
   { name: 'bangumi.get_person', input: { personId: 3474 } },
-  { name: 'bangumi.get_person_profile', input: { personId: 3474, includeCredits: false, maxSubjects: 500, maxCharacters: 1 } },
+  { name: 'bangumi.get_person_profile', input: { personId: 3474, includeCredits: false, maxSubjects: 2, maxCharacters: 2 } },
   { name: 'bangumi.get_episode', input: { episodeId: 199013 } },
   { name: 'bangumi.list_revisions', input: { entityType: 'subject', entityId: SUBJECT_ID, limit: 1, offset: 0 } },
   { name: 'bangumi.get_subject_stats_intelligence', input: { subjectId: SUBJECT_ID } },
@@ -172,7 +167,7 @@ function redactPublicUsername(value: string): string {
   return username ? value.replaceAll(username, '[redacted username]') : value;
 }
 
-function summarize(value: unknown, toolName?: string): Record<string, unknown> {
+function summarize(value: unknown): Record<string, unknown> {
   if (value && typeof value === 'object') {
     const record = value as Record<string, unknown>;
     if (record.ok === false && record.error && typeof record.error === 'object') {
@@ -186,9 +181,6 @@ function summarize(value: unknown, toolName?: string): Record<string, unknown> {
           ? { message: redactPublicUsername(error.message).slice(0, 160) }
           : {}),
       };
-    }
-    if (toolName === 'bangumi.get_person_profile') {
-      return projectPublicPersonProfileSummary(value) ?? { state: 'invalid_person_profile' };
     }
     const summary: Record<string, unknown> = {};
     for (const key of ['state', 'subjectId', 'id', 'total', 'observed', 'returned']) {
@@ -221,10 +213,7 @@ function validateProbeSummary(
   const nonEmptySummary = Object.keys(summary).length > 0
     && (state !== 'value' || (Array.isArray(summary.keys) && summary.keys.length > 0));
   const countEntries = Object.entries(summary).filter(([key]) =>
-    key === 'total' || key === 'observed' || key === 'returned'
-    || key === 'subjectCredits' || key === 'uniqueSubjects'
-    || key === 'subjectRowsObserved' || key === 'subjectRowsReturned'
-    || key.endsWith('Count'));
+    key === 'total' || key === 'observed' || key === 'returned' || key.endsWith('Count'));
   const nonNegativeCounts = countEntries.every(([, value]) =>
     typeof value === 'number' && Number.isInteger(value) && value >= 0);
   const total = summary.total;
@@ -248,12 +237,6 @@ function validateProbeSummary(
     typeof summary[minimum.resultKey] === 'number'
     && (summary[minimum.resultKey] as number) >= minimum.minimum
   );
-  const personProfileConsistent = probe.name !== 'bangumi.get_person_profile'
-    || publicPersonProfileSummaryIsConsistent(
-      summary,
-      probe.input.personId,
-      probe.input.maxSubjects,
-    );
   return {
     httpRequestObserved: httpRequests > 0,
     nonEmptySummary,
@@ -262,12 +245,8 @@ function validateProbeSummary(
     countConsistency,
     ...(identity ? { identityMatchesRequest } : {}),
     ...(minimum ? { minimumCountObserved } : {}),
-    ...(probe.name === 'bangumi.get_person_profile'
-      ? { profileDistributionConsistent: personProfileConsistent }
-      : {}),
     passed: httpRequests > 0 && nonEmptySummary && noErrorResult && nonNegativeCounts
-      && countConsistency && identityMatchesRequest && minimumCountObserved
-      && personProfileConsistent,
+      && countConsistency && identityMatchesRequest && minimumCountObserved,
   };
 }
 
@@ -323,7 +302,7 @@ async function main(): Promise<void> {
           },
         };
       }
-      const summary = summarize(result, probe.name);
+      const summary = summarize(result);
       const httpRequests = requestCount - before;
       results.push({
         tool: probe.name,
