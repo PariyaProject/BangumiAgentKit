@@ -568,3 +568,55 @@ test('G09 current-catalog watch-order reports remain direct-public and hash-boun
     assert.ok(row?.includes(reportPath), `${tool} row must cite the current report`);
   }
 });
+
+test('A05 and D02 terminal one-shot dispositions remain unassessed and cannot be retried', () => {
+  const dispositionPath =
+    'docs/research/run95-a05-d02-terminal-disposition-reconciliation-2026-10-15.md';
+  const cases = [
+    {
+      id: 'A05',
+      noRetry: /one-shot claim is consumed and must never be retried/u,
+      staleInvitation:
+        /Use its existing one-tool Agent\/MCP runner|If the report is accepted/iu,
+    },
+    {
+      id: 'D02',
+      noRetry: /retryAllowed=false/u,
+      staleInvitation:
+        /Assess current capability coverage, bounded scope salvage, and direct evidence/u,
+    },
+  ];
+
+  for (const item of cases) {
+    const record = ledger.records.find(({ id }) => id === item.id);
+    assert.ok(record, `${item.id} must remain in the canonical frontier`);
+    assert.equal(record.status, 'UNASSESSED');
+    assert.equal(record.evidence, undefined, `${item.id} must remain uncredited`);
+    assert.ok(record.source_refs.includes(dispositionPath));
+    assert.match(record.next_action, item.noRetry);
+    assert.match(record.next_action, /another safe unspent frontier/u);
+    assert.doesNotMatch(record.next_action, item.staleInvitation);
+  }
+
+  const note = readFileSync(path.join(root, dispositionPath), 'utf8');
+  assert.match(
+    note,
+    /PR #146 merged at `9bf2db2b15d8508a7abff605dd10730edc2e12e8`/u,
+  );
+  assert.match(note, /2026-10-13T00:59:31Z.*INCONCLUSIVE/u);
+  assert.match(
+    note,
+    /b3bdea257b4a17d47198b9ee01f956211dcd34be4a09280d4674331d7cf8a566/u,
+  );
+  assert.match(
+    note,
+    /Run #95 Issue #95's later budget-extension history at `2026-10-13T09:39:55Z`/u,
+  );
+  assert.match(note, /Closed PR #152's Harness control record/u);
+  assert.match(note, /`INCONCLUSIVE`, `reportWritten=false`, and `retryAllowed=false`/u);
+  assert.match(note, /frontier statuses and acceptance matrix are unchanged/u);
+  assert.doesNotMatch(
+    note,
+    /claimId|claim-id|personId|A05_EXPECTED_QUERY_ARGUMENTS|expectedArguments/iu,
+  );
+});

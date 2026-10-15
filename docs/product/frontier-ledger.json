@@ -1663,8 +1663,8 @@
       "user_question": "适合喜欢《少女终末旅行》的低刺激末世旅行动画有哪些？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-a05-d02-terminal-disposition-reconciliation-2026-10-15.md"],
+      "next_action": "D02 remains UNASSESSED and uncredited. The closed PR #152 Harness record is terminal INCONCLUSIVE with reportWritten=false and retryAllowed=false. Do not rerun the D02 query or reopen that one-shot; no Agent/MCP answer or matrix credit was accepted. Continue Run #95 on another safe unspent frontier. Disposition: docs/research/run95-a05-d02-terminal-disposition-reconciliation-2026-10-15.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -2858,9 +2858,10 @@
       "status": "UNASSESSED",
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-a05-collection-completion-source-contract-2026-10-09.md"
+        "docs/research/run95-a05-collection-completion-source-contract-2026-10-09.md",
+        "docs/research/run95-a05-d02-terminal-disposition-reconciliation-2026-10-15.md"
       ],
-      "next_action": "A05 remains UNASSESSED. Use its existing one-tool Agent/MCP runner only after Harness verifies a clean exact Candidate/current Base, all required checks, and GPT-6 Luna Max PASS. The fixed public query profile is `A05_EXPECTED_QUERY_ARGUMENTS` and returns one anonymous read-only `bangumi.query_subjects` observation with no account, community, or write path. Its local one-shot claim is permanent: any failed or inconclusive attempt must never be retried and receives no matrix credit. If the report is accepted, change to PARTIAL only, preserving experimental search, estimated totals, bounded-sample, formula, and unresolved-bucket limits. No OAuth/account/community/QQ/TIM action.",
+      "next_action": "A05 remains UNASSESSED and uncredited. Its one bounded Run #95 Agent/MCP invocation ended INCONCLUSIVE; the one-shot claim is consumed and must never be retried. The sanitized result did not validate the answer rows against the source result or establish bounded, consistent coverage; no accepted report or Agent/MCP matrix credit exists. Preserve the experimental-search, estimated-total, bounded-sample, formula, and unresolved-bucket limits. Do not invoke the A05 runner again; continue Run #95 on another safe unspent frontier. Disposition: docs/research/run95-a05-d02-terminal-disposition-reconciliation-2026-10-15.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
