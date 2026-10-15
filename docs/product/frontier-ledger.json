@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-15T12:47:13Z",
+  "updated_at": "2026-10-15T23:20:34Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -3169,8 +3169,25 @@
       "user_question": "某系列是否有剧场版必须插入 TV 观看顺序？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "scripts/acceptance/agent-mcp-profile-registry.json",
+        "scripts/lib/r04-series-watch-order-offline-fixture.mjs",
+        "scripts/lib/codex-profile-tool-summary.mjs",
+        "apps/mcp/codex-one-tool-mcp-server.mjs",
+        "scripts/lib/codex-one-tool-mcp-arguments.mjs",
+        "scripts/acceptance/run-r04-series-watch-order-offline-agent-mcp.mjs",
+        "scripts/acceptance/write-r04-series-watch-order-offline-agent-mcp-report.mjs",
+        "scripts/acceptance/validate-r04-series-watch-order-offline-agent-mcp-report.mjs",
+        "scripts/agent-harness.mjs",
+        "scripts/generate-tool-acceptance-tasks.py",
+        "tests/harness/r04-series-watch-order-offline-fixture.test.mjs",
+        "tests/harness/run-r04-series-watch-order-offline-agent-mcp.test.mjs",
+        "tests/harness/write-r04-series-watch-order-offline-agent-mcp-report.test.mjs",
+        "scripts/test_acceptance_evidence.py",
+        "docs/research/run95-r04-series-watch-order-offline-matrix-contract-2026-10-16.md"
+      ],
+      "next_action": "Run #95 selected a distinct synthetic offline get_series_watch_order Agent/MCP matrix-only profile. The fixed fixture contains no real series or film IDs and makes no public API call. It grants no R04 scenario credit: R04 stays UNASSESSED and the question whether a theatrical film is mandatory remains unanswered. Only a valid signed REPORT_WRITTEN report may credit this one Agent/MCP cell; an INCONCLUSIVE result is permanent/no-retry. The public matrix remains 57/65 with eight rows pending and 31 N/A. Preserve the spent P02/C03/P03/P06 claims and PR #173 probe.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

@@ -34,7 +34,7 @@ test('C03 profile registry is closed, immutable, and binds two exact calls', () 
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 6);
+  assert.equal(listAgentMcpProfiles().length, 7);
   const c01 = getAgentMcpProfileById('c01-rating-count-gap-v1');
   assert.ok(c01);
   assert.equal(c01.frontierId, 'C01');
@@ -130,6 +130,29 @@ test('C03 profile registry is closed, immutable, and binds two exact calls', () 
   );
   assert.match(agentMcpProfileArgumentsSha256(p02), /^[0-9a-f]{64}$/u);
   assert.match(agentMcpProfileRegistrySha256(p02.id), /^[0-9a-f]{64}$/u);
+  const r04 = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v1');
+  assert.ok(r04);
+  assert.equal(r04.frontierId, 'R04');
+  assert.equal(r04.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(r04.networkMode, 'run95-r04-series-watch-order-offline-v1');
+  assert.equal(r04.toolName, 'bangumi.get_series_watch_order');
+  assert.deepEqual(r04.calls, [
+    {
+      toolName: 'bangumi.get_series_watch_order',
+      arguments: {
+        subjectId: 990801,
+        depth: 0,
+        maxNodes: 1,
+        media: 'anime',
+      },
+    },
+  ]);
+  assert.match(agentMcpProfileArgumentsSha256(r04), /^[0-9a-f]{64}$/u);
+  assert.match(agentMcpProfileRegistrySha256(r04.id), /^[0-9a-f]{64}$/u);
+  assert.equal(
+    agentMcpProfileClaimLabelDescription(r04),
+    'Run 95 R04 profile r04-series-watch-order-offline-agent-mcp-v1; permanent one-shot latch.',
+  );
   assert.equal(
     agentMcpProfileRegistrySha256(),
     '7e3bfd3c5f7815faf5f279759739572e86f62308e81faff518d775aa1eaa9e92',

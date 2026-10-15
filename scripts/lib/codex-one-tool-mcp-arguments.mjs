@@ -7,6 +7,7 @@ import { assertC07CohortRenderOfflineProfile } from './c07-cohort-render-offline
 import { canonicalJson } from './codex-one-tool-evidence.mjs';
 import { assertP06RenderPersonProfileOfflineProfile } from './p06-render-person-profile-offline-fixture.mjs';
 import { assertP02PersonProfileOfflineProfile } from './p02-person-profile-offline-fixture.mjs';
+import { assertR04SeriesWatchOrderOfflineProfile } from './r04-series-watch-order-offline-fixture.mjs';
 
 export function parseCodexOneToolMcpArguments(argv) {
   const values = new Map();
@@ -54,7 +55,8 @@ export function parseCodexOneToolMcpArguments(argv) {
     if (profile.networkMode !== undefined) {
       const approved =
         assertP06RenderPersonProfileOfflineProfile(profile) ||
-        assertP02PersonProfileOfflineProfile(profile);
+        assertP02PersonProfileOfflineProfile(profile) ||
+        assertR04SeriesWatchOrderOfflineProfile(profile);
       if (!approved) {
         throw new Error('Registered profile network mode is not supported.');
       }
