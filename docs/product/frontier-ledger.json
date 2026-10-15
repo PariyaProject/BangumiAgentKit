@@ -3102,8 +3102,8 @@
       "user_question": "两个作品之间是否通过系列或人物相连？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-r05-preflight-no-shared-voice-actor-2026-10-15.md", "docs/research/run95-r05-k-on-season-shared-person-preflight-2026-10-15.json"],
-      "next_action": "2026-10-15 selected a separate Harness Epoch for K-On! TV subjects 1424 and 3774 after official anonymous-v0 search resolved both exact anime identities. Their returned character rows contain 38 and 42 distinct actor IDs, with 20 IDs in the returned-row intersection. This is positive bounded source preflight only. No Agent/MCP call or claim was made. This is not a negative connectivity finding and does not establish complete cast coverage; R05 stays UNASSESSED/uncredited until the exact reviewed Candidate produces an accepted fixed-profile report.",
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-r05-preflight-no-shared-voice-actor-2026-10-15.md", "docs/research/run95-r05-k-on-season-shared-person-preflight-2026-10-15.json", "docs/research/run95-r05-profile-terminal-disposition-2026-10-15.md"],
+      "next_action": "Run #95's fixed R05 profile was claimed on PR #170 and terminated INCONCLUSIVE without a report (retryAllowed=false; see docs/research/run95-r05-profile-terminal-disposition-2026-10-15.md). PR #169's earlier no-claim preflight predates this terminal disposition. Keep R05 UNASSESSED and uncredited; a missing report does not restore eligibility. Never rerun the consumed fixed R05 profile. Continue Run #95 on another safe unspent frontier; any future R05 method requires a separately reviewed, unspent claim and fresh evidence.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

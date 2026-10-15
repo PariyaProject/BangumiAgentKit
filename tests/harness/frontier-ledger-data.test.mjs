@@ -349,10 +349,16 @@ test('community source and OP-003 closures are evidence-bound and keep discussio
   assert.match(opportunity.reopen_when, /versioned public discussion API/u);
 });
 
-test('R05 remains unassessed after bounded positive preflight without a global connectivity claim', () => {
+test('R05 terminal no-report profile remains unassessed and cannot be retried', () => {
   const record = ledger.records.find(({ id }) => id === 'R05');
   assert.ok(record, 'R05 must remain in the canonical frontier');
   assert.equal(record.status, 'UNASSESSED');
+  assert.equal(record.evidence, undefined, 'R05 has no accepted report evidence or capability credit');
+
+  const reportPath = 'docs/live-probes/r05-k-on-season-shared-person-agent-mcp-run95.json';
+  assert.equal(existsSync(path.join(root, reportPath)), false, 'the terminal claim wrote no report');
+  const dispositionPath = 'docs/research/run95-r05-profile-terminal-disposition-2026-10-15.md';
+  assert.ok(record.source_refs.includes(dispositionPath));
   assert.ok(
     record.source_refs.includes(
       'docs/research/run95-r05-preflight-no-shared-voice-actor-2026-10-15.md',
@@ -363,21 +369,34 @@ test('R05 remains unassessed after bounded positive preflight without a global c
       'docs/research/run95-r05-k-on-season-shared-person-preflight-2026-10-15.json',
     ),
   );
-  assert.match(record.next_action, /No Agent\/MCP call or claim was made/u);
-  assert.match(record.next_action, /not a negative connectivity finding/u);
-  assert.match(record.next_action, /20 IDs in the returned-row intersection/u);
-  assert.match(record.next_action, /UNASSESSED\/uncredited/u);
+  assert.match(record.next_action, /PR #170.*INCONCLUSIVE without a report/u);
+  assert.match(record.next_action, /retryAllowed=false/u);
+  assert.match(record.next_action, /PR #169's earlier no-claim preflight predates/u);
+  assert.match(record.next_action, /missing report does not restore eligibility/u);
+  assert.match(record.next_action, /Never rerun the consumed fixed R05 profile/u);
+  assert.match(record.next_action, /another safe unspent frontier/u);
+  assert.doesNotMatch(record.next_action, /No Agent\/MCP call or claim was made/u);
 
-  const report = readFileSync(
+  const earlierPreflight = readFileSync(
     path.join(root, 'docs/research/run95-r05-preflight-no-shared-voice-actor-2026-10-15.md'),
     'utf8',
   );
-  assert.match(report, /intersection of the two returned actor-ID sets was empty/u);
+  assert.match(earlierPreflight, /intersection of the two returned actor-ID sets was empty/u);
   assert.match(
-    report,
+    earlierPreflight,
     /No Agent\/MCP call was made, no claim or permanent latch was created/u,
   );
-  assert.match(report, /not evidence that the two works have no connection/u);
+  assert.match(earlierPreflight, /not evidence that the two works have no connection/u);
+
+  const disposition = readFileSync(path.join(root, dispositionPath), 'utf8');
+  assert.match(disposition, /PR #170/u);
+  assert.match(disposition, /run95-r05-k-on-season-shared-person-20261015/u);
+  assert.match(disposition, /INCONCLUSIVE/u);
+  assert.match(disposition, /reportWritten=false/u);
+  assert.match(disposition, /retryAllowed=false/u);
+  assert.match(disposition, /harness-r95-r05-subject-overlap-claimed/u);
+  assert.match(disposition, /harness-r95-r05-subject-overlap-terminal/u);
+  assert.doesNotMatch(disposition, /claimId|expectedArguments|runnerReceiptPublicKey|1424|3774/iu);
 });
 
 test('G06 current-catalog cast probe is public-only, hash-bound, and does not imply complete coverage', () => {
