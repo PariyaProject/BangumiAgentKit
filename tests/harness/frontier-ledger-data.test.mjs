@@ -317,3 +317,31 @@ test('community source and OP-003 closures are evidence-bound and keep discussio
   assert.match(opportunity.closure_reason, /no verifiable public community source/u);
   assert.match(opportunity.reopen_when, /versioned public discussion API/u);
 });
+
+test('R05 failed pair preflight stays unassessed without a negative-connectivity claim', () => {
+  const record = ledger.records.find(({ id }) => id === 'R05');
+  assert.ok(record, 'R05 must remain in the canonical frontier');
+  assert.equal(record.status, 'UNASSESSED');
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-r05-preflight-no-shared-voice-actor-2026-10-15.md',
+    ),
+  );
+  assert.match(record.next_action, /No Agent\/MCP call or claim was made/u);
+  assert.match(record.next_action, /not a negative connectivity finding/u);
+  assert.match(
+    record.next_action,
+    /different pair with a preverified positive shared stable person ID/u,
+  );
+
+  const report = readFileSync(
+    path.join(root, 'docs/research/run95-r05-preflight-no-shared-voice-actor-2026-10-15.md'),
+    'utf8',
+  );
+  assert.match(report, /intersection of the two returned actor-ID sets was empty/u);
+  assert.match(
+    report,
+    /No Agent\/MCP call was made, no claim or permanent latch was created/u,
+  );
+  assert.match(report, /not evidence that the two works have no connection/u);
+});
