@@ -387,10 +387,73 @@ test('G06 current-catalog cast probe is public-only, hash-bound, and does not im
   assert.match(evidence.acceptance_boundary, /does not add Agent\/MCP evidence/u);
 
   const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
-  assert.match(table, /公开 API 工具有逐项实测：55\/65；待补 10/u);
+  assert.match(table, /公开 API 工具有逐项实测：57\/65；待补 8/u);
   assert.ok(
     table.includes(`\`bangumi.get_subject_cast\` | \`none\` | \`read\` | `) &&
       table.includes(reportPath),
     'the generated tool matrix must cite the current report for get_subject_cast',
   );
+});
+
+test('G09 current-catalog watch-order reports remain direct-public and hash-bound', () => {
+  const record = ledger.records.find(({ id }) => id === 'G09');
+  assert.ok(record, 'G09 must remain in the canonical frontier');
+  assert.equal(record.status, 'PARTIAL');
+
+  const reportPath = 'docs/live-probes/public-tools-2026-10-15-094954394-75684.json';
+  assert.ok(record.source_refs.includes(reportPath));
+  assert.match(record.next_action, /earlier Run #95 direct-public G09 reports.*stale catalog SHA/u);
+  assert.match(record.next_action, /Keep G09 PARTIAL and never retry/u);
+
+  const evidence = record.evidence?.direct_public_watch_order_current_catalog_2026_10_15;
+  assert.ok(evidence, 'G09 must point at the refreshed current-catalog report');
+  const reportText = readFileSync(path.join(root, reportPath), 'utf8');
+  const report = JSON.parse(reportText);
+  assert.equal(evidence.report, reportPath);
+  assert.equal(evidence.report_sha256, createHash('sha256').update(reportText).digest('hex'));
+  assert.equal(evidence.catalog_sha256, report.catalogSha256);
+  assert.equal(
+    evidence.probe_script_sha256,
+    createHash('sha256')
+      .update(readFileSync(path.join(root, report.sourceProgram)))
+      .digest('hex'),
+  );
+  assert.equal(report.probeCount, 2);
+  assert.equal(report.httpRequests, 4);
+  assert.deepEqual(report.selectedTools, [
+    'bangumi.get_series_watch_order',
+    'bangumi.render_series_watch_order',
+  ]);
+  assert.deepEqual(
+    report.results.map(({ tool, input, httpRequests, assertions }) => ({
+      tool,
+      input,
+      httpRequests,
+      passed: assertions.passed,
+    })),
+    [
+      {
+        tool: 'bangumi.get_series_watch_order',
+        input: { subjectId: 41529, depth: 0, maxNodes: 1 },
+        httpRequests: 2,
+        passed: true,
+      },
+      {
+        tool: 'bangumi.render_series_watch_order',
+        input: { subjectId: 41529, depth: 0, maxNodes: 1 },
+        httpRequests: 2,
+        passed: true,
+      },
+    ],
+  );
+  assert.deepEqual(Object.keys(report.results[1].result), ['state', 'keys']);
+  assert.match(evidence.acceptance_boundary, /does not add Agent\/MCP evidence/u);
+  assert.match(evidence.acceptance_boundary, /establish complete graph coverage/u);
+
+  const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
+  assert.match(table, /公开 API 工具有逐项实测：57\/65；待补 8/u);
+  for (const tool of ['bangumi.get_series_watch_order', 'bangumi.render_series_watch_order']) {
+    const row = table.split('\n').find((line) => line.includes(`\`${tool}\``));
+    assert.ok(row?.includes(reportPath), `${tool} row must cite the current report`);
+  }
 });

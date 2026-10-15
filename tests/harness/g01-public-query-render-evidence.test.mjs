@@ -64,6 +64,6 @@ test('G01 direct-public query renderer evidence stays separate from its spent ca
     .filter((line) => line.split('|')[7]?.includes('◐')).length;
   assert.ok(publicEvidenceSummary);
   assert.equal(Number(publicEvidenceSummary[1]), publicEvidenceRows);
-  assert.equal(Number(publicEvidenceSummary[1]), 55);
+  assert.equal(Number(publicEvidenceSummary[1]), 57);
   assert.match(acceptance, /Agent→MCP 模型调用证据：81\/96/);
 });
