@@ -92,6 +92,29 @@ test('D07, P01, and A01 keep stable scenario guidance and defer claim state to H
   }
 });
 
+test('C03 terminal no-report profile stays unassessed and cannot be retried', () => {
+  const record = ledger.records.find(({ id }) => id === 'C03');
+  assert.ok(record, 'C03 must remain in the canonical frontier');
+  assert.equal(record.status, 'UNASSESSED');
+  assert.equal(record.evidence?.capabilities, undefined, 'C03 receives no capability credit');
+
+  const dispositionPath = 'docs/research/run95-c03-profile-terminal-disposition-2026-10-15.md';
+  assert.ok(record.source_refs.includes(dispositionPath));
+  assert.match(record.next_action, /INCONCLUSIVE without a report/u);
+  assert.match(record.next_action, /retryAllowed=false/u);
+  assert.match(record.next_action, /missing report does not restore eligibility/u);
+  assert.match(record.next_action, /Never rerun this consumed Run #95 profile/u);
+  assert.match(record.next_action, /another safe unspent frontier/u);
+  assert.doesNotMatch(record.next_action, /run the registered one-shot profile once/iu);
+
+  const disposition = readFileSync(path.join(root, dispositionPath), 'utf8');
+  assert.match(disposition, /PR #162/u);
+  assert.match(disposition, /INCONCLUSIVE/u);
+  assert.match(disposition, /reportWritten=false/u);
+  assert.match(disposition, /retryAllowed=false/u);
+  assert.doesNotMatch(disposition, /expectedArguments|runnerReceiptPublicKey|4765|17075/iu);
+});
+
 test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retriable', () => {
   const record = ledger.records.find(({ id }) => id === 'P03');
   assert.ok(record, 'P03 must remain in the canonical frontier');
