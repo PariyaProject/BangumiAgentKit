@@ -2665,7 +2665,7 @@ describe('MCP tool result presentation', () => {
         id: index + 11,
         name: `Empty title ${index}`,
         nameCn: `Empty title ${index}`,
-        nameCnSource: '',
+        nameCnSource: index === 0 ? '   ' : '',
       })),
       ...Array.from({ length: 10 }, (_, index) => ({
         id: index + 31,
