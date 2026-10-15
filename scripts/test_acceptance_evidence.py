@@ -7254,6 +7254,11 @@ class P06OfflineProfileReportValidationTests(unittest.TestCase):
             'reviewerId': 'gpt-6-luna-max-run95-pr222-round1', 'codexCliVersion': '1.2.14',
             'observedAt': '2026-10-16T05:00:00.000Z', 'sourceRevision': 'a' * 40,
             'baseSha': 'b' * 40, 'ciSha': 'a' * 40, 'ciStatus': 'SUCCESS',
+            'ciRunId': '38806371672',
+            'ciChecks': [
+                {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+                for name in GENERATOR.CODEX_P06_REQUIRED_CI_CHECKS
+            ],
             'prNumber': 222, 'claimId': 'profile-run-95-pr-222-aaaaaaaaaaaa-1792100000000',
             'mcpBundleSha256': 'c' * 64,
             'registrySha256': GENERATOR.CODEX_P06_PROFILE_REGISTRY_SHA256,
@@ -7344,6 +7349,81 @@ class P06OfflineProfileReportValidationTests(unittest.TestCase):
         raw_answer = json.loads(json.dumps(self.report))
         raw_answer['rawAnswer'] = 'synthetic response text'
         self.assertFalse(self.validate_report(raw_answer))
+
+        wrong_ci_run = json.loads(json.dumps(self.report))
+        wrong_ci_run['ciRunId'] = 'not-a-run-id'
+        self.assertFalse(self.validate_report(wrong_ci_run))
+
+        wrong_ci_check = json.loads(json.dumps(self.report))
+        wrong_ci_check['ciChecks'][0]['conclusion'] = 'FAILURE'
+        self.assertFalse(self.validate_report(wrong_ci_check))
+
+    def test_terminal_disposition_binds_exact_ci_run_and_checks(self):
+        report = self.report
+        receipt = report['runnerReceipt']
+        report_sha256 = 'f' * 64
+        disposition = {
+            'claimId': report['claimId'],
+            'profileId': GENERATOR.CODEX_P06_PROFILE_ID,
+            'frontierId': 'P06',
+            'epochId': GENERATOR.CODEX_P06_EPOCH_ID,
+            'runNumber': 95,
+            'prNumber': report['prNumber'],
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'ciRunId': report['ciRunId'],
+            'ciChecks': report['ciChecks'],
+            'reviewerId': report['reviewerId'],
+            'bundleSha256': report['mcpBundleSha256'],
+            'registrySha256': GENERATOR.CODEX_P06_PROFILE_REGISTRY_SHA256,
+            'toolName': GENERATOR.CODEX_P06_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_P06_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_P06_EXPECTED_ARGUMENTS_SHA256,
+            'reportWritten': True,
+            'reportPath': GENERATOR.CODEX_P06_REPORT_RELATIVE_PATH,
+            'reportSha256': report_sha256,
+            'retryAllowed': False,
+            'runnerReceiptPublicKey': receipt['publicKeyBase64'],
+            'runnerReceiptPublicKeySha256': receipt['publicKeySha256'],
+            'runnerReceiptSha256': GENERATOR._canonical_json_sha256(receipt),
+        }
+        status = {
+            'state': 'REPORT_WRITTEN',
+            'profile_id': GENERATOR.CODEX_P06_PROFILE_ID,
+            'pr': report['prNumber'],
+            'tool_name': GENERATOR.CODEX_P06_TOOL_NAME,
+            'argument_profile': GENERATOR.CODEX_P06_ARGUMENT_PROFILE,
+            'expected_arguments_sha256': GENERATOR.CODEX_P06_EXPECTED_ARGUMENTS_SHA256,
+            'registry_sha256': GENERATOR.CODEX_P06_PROFILE_REGISTRY_SHA256,
+            'claim_label_present': True,
+            'terminal_label_present': True,
+            'disposition': disposition,
+        }
+        self.assertIsNotNone(
+            GENERATOR.codex_p06_profile_disposition_matches_report(
+                report, status, report_sha256,
+            ),
+        )
+
+        disposition['ciRunId'] = '99999999999'
+        self.assertIsNone(
+            GENERATOR.codex_p06_profile_disposition_matches_report(
+                report, status, report_sha256,
+            ),
+        )
+
+        disposition['ciRunId'] = report['ciRunId']
+        disposition['ciChecks'] = [
+            {'name': 'unexpected-check', 'status': 'COMPLETED', 'conclusion': 'SUCCESS'},
+        ]
+        self.assertIsNone(
+            GENERATOR.codex_p06_profile_disposition_matches_report(
+                report, status, report_sha256,
+            ),
+        )
 
     def test_rejects_a_frontier_status_change(self):
         frontier_path = self.root / 'docs/product/frontier-ledger.json'

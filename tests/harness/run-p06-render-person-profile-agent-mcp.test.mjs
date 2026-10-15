@@ -16,6 +16,7 @@ const PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-
 const SOURCE_SHA = 'a'.repeat(40);
 const BASE_SHA = 'b'.repeat(40);
 const BUNDLE_SHA = 'c'.repeat(64);
+const CI_RUN_ID = '38806371672';
 const PR_NUMBER = 222;
 const BRANCH = 'codex/epoch-run95-p06-render-person-profile-agent-mcp-offline-20261016';
 const REVIEWER_ID = `gpt-6-luna-max-run95-pr${PR_NUMBER}-round1`;
@@ -52,7 +53,11 @@ function statusFixture() {
         reviewed_base_sha: BASE_SHA,
         candidate_sha: SOURCE_SHA,
         review_pass_sha: SOURCE_SHA,
-        ci: { sha: SOURCE_SHA, status: 'SUCCESS' },
+        ci: {
+          sha: SOURCE_SHA,
+          status: 'SUCCESS',
+          url: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${CI_RUN_ID}`,
+        },
         state: 'REVIEW_PASSED',
         advances_frontier_ids: ['P06'],
         scope_closure: { related_work_remaining: false },
@@ -77,10 +82,11 @@ function pullRequestFixture() {
     baseRefName: 'master',
     headRefName: BRANCH,
     headRefOid: SOURCE_SHA,
-    statusCheckRollup: REQUIRED_CHECKS.map((name) => ({
+    statusCheckRollup: REQUIRED_CHECKS.map((name, index) => ({
       name,
       status: 'COMPLETED',
       conclusion: 'SUCCESS',
+      detailsUrl: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${CI_RUN_ID}/job/${116668186145 + index}`,
     })),
   };
 }
@@ -152,12 +158,39 @@ test('P06 Candidate gate requires exact CI, Base, and same-identity Luna Max PAS
     baseSha: BASE_SHA,
     prNumber: PR_NUMBER,
     reviewerId: REVIEWER_ID,
+    ciRunId: CI_RUN_ID,
+    ciChecks: REQUIRED_CHECKS.map((name) => ({
+      name,
+      status: 'COMPLETED',
+      conclusion: 'SUCCESS',
+    })),
   });
 
   const missingCheck = pullRequestFixture();
   missingCheck.statusCheckRollup.pop();
   assert.throws(() =>
     assertCandidateReviewGate(statusFixture(), missingCheck, {
+      sourceRevision: SOURCE_SHA,
+      currentBaseSha: BASE_SHA,
+      readGit: readGitFixture,
+    }),
+  );
+
+  const missingCheckRun = pullRequestFixture();
+  missingCheckRun.statusCheckRollup[0].detailsUrl = null;
+  assert.throws(() =>
+    assertCandidateReviewGate(statusFixture(), missingCheckRun, {
+      sourceRevision: SOURCE_SHA,
+      currentBaseSha: BASE_SHA,
+      readGit: readGitFixture,
+    }),
+  );
+
+  const mismatchedCheckRun = pullRequestFixture();
+  mismatchedCheckRun.statusCheckRollup[0].detailsUrl =
+    'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/99999999999/job/1';
+  assert.throws(() =>
+    assertCandidateReviewGate(statusFixture(), mismatchedCheckRun, {
       sourceRevision: SOURCE_SHA,
       currentBaseSha: BASE_SHA,
       readGit: readGitFixture,

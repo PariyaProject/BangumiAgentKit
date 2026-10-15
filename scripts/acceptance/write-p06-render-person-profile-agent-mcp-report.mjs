@@ -9,6 +9,7 @@ import {
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
+import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   assertP06RenderPersonProfileOfflineProfile,
   P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
@@ -38,6 +39,8 @@ const REPORT_FIELDS = new Set([
   'baseSha',
   'ciSha',
   'ciStatus',
+  'ciRunId',
+  'ciChecks',
   'prNumber',
   'claimId',
   'mcpBundleSha256',
@@ -97,6 +100,8 @@ const RECEIPT_PAYLOAD_FIELDS = new Set([
   'baseSha',
   'ciSha',
   'ciStatus',
+  'ciRunId',
+  'ciChecks',
   'reviewerId',
   'bundleSha256',
   'registrySha256',
@@ -223,6 +228,9 @@ function matchesClaim(report, claim) {
     report.baseSha === claim.baseSha &&
     report.ciSha === claim.ciSha &&
     report.ciStatus === claim.ciStatus &&
+    report.ciRunId === claim.ciRunId &&
+    canonicalAgentMcpProfileJson(report.ciChecks) ===
+      canonicalAgentMcpProfileJson(claim.ciChecks) &&
     report.reviewerId === claim.reviewerId &&
     report.mcpBundleSha256 === claim.bundleSha256 &&
     report.registrySha256 === claim.registrySha256 &&
@@ -256,6 +264,8 @@ export function buildP06RunnerReceiptPayload(report, { eventStreamSha256, server
     baseSha: report.baseSha,
     ciSha: report.ciSha,
     ciStatus: report.ciStatus,
+    ciRunId: report.ciRunId,
+    ciChecks: report.ciChecks,
     reviewerId: report.reviewerId,
     bundleSha256: report.mcpBundleSha256,
     registrySha256: report.registrySha256,
@@ -305,14 +315,21 @@ function createRunnerReceipt(payload, { publicKeyBase64, privateKey }) {
 }
 
 export function validateP06ProfileReport(report, claim, reportBytes = null) {
+  const claimStateValid =
+    (claim?.state === 'CLAIMED' && claim.reportWritten === false) ||
+    (claim?.state === 'REPORT_WRITTEN' &&
+      claim.reportWritten === true &&
+      Buffer.isBuffer(reportBytes) &&
+      claim.reportSha256 === sha256(reportBytes));
   if (
     !PROFILE ||
     !assertP06RenderPersonProfileOfflineProfile(PROFILE) ||
     !exactKeys(report, REPORT_FIELDS) ||
     !claim ||
     claim.profileId !== PROFILE.id ||
-    claim.state !== 'CLAIMED' ||
+    !claimStateValid ||
     claim.retryAllowed !== false ||
+    !isValidP06CiRunEvidence({ ciRunId: report.ciRunId, ciChecks: report.ciChecks }) ||
     !matchesClaim(report, claim)
   ) {
     return { passed: false, reason: 'P06_REPORT_CLAIM_INVALID' };
@@ -488,6 +505,7 @@ export function buildP06ProfileReport(
     claim?.profileId !== PROFILE.id ||
     claim.state !== 'CLAIMED' ||
     claim.retryAllowed !== false ||
+    !isValidP06CiRunEvidence({ ciRunId: claim.ciRunId, ciChecks: claim.ciChecks }) ||
     !serverSummary ||
     !events ||
     !Array.isArray(completedMcpCalls) ||
@@ -556,6 +574,8 @@ export function buildP06ProfileReport(
     baseSha: claim.baseSha,
     ciSha: claim.ciSha,
     ciStatus: claim.ciStatus,
+    ciRunId: claim.ciRunId,
+    ciChecks: claim.ciChecks,
     prNumber: claim.prNumber,
     claimId: claim.claimId,
     mcpBundleSha256: claim.bundleSha256,

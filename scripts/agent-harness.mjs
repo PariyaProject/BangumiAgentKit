@@ -85,6 +85,7 @@ import {
   getAgentMcpProfileById,
   listAgentMcpProfiles,
 } from './lib/agent-mcp-profile-claims.mjs';
+import { deriveP06CiRunEvidence, isValidP06CiRunEvidence } from './lib/p06-ci-run-evidence.mjs';
 import {
   acquireG04OneShotGitHubLatch,
   claimG04OneShotAtomically,
@@ -3376,6 +3377,10 @@ function assertAgentMcpProfileReviewReadiness(
   const baseSha = epoch.base_sha;
   const currentBaseSha = remoteBaseSha('master');
   const latestReview = epoch.review_history?.at(-1);
+  const p06CiEvidence =
+    profile.id === 'p06-render-person-profile-offline-agent-mcp-v1'
+      ? deriveP06CiRunEvidence(epoch.ci?.url, pr.statusCheckRollup)
+      : null;
   let runnerReceiptPublicKeySha256;
   if (checkRunnerReceiptKey) {
     try {
@@ -3417,6 +3422,7 @@ function assertAgentMcpProfileReviewReadiness(
     epoch.ci?.sha !== candidateSha ||
     epoch.ci?.status !== 'SUCCESS' ||
     !mandatoryChecksSuccessful(pr.statusCheckRollup) ||
+    (profile.id === 'p06-render-person-profile-offline-agent-mcp-v1' && !p06CiEvidence) ||
     latestReview?.candidate_sha !== candidateSha ||
     latestReview.reviewed_base_sha !== baseSha ||
     latestReview.verdict !== 'PASS' ||
@@ -3456,6 +3462,7 @@ function assertAgentMcpProfileReviewReadiness(
     baseSha,
     reviewerId: latestReview.reviewer_id,
     runnerReceiptPublicKeySha256,
+    ...(p06CiEvidence ?? {}),
   };
 }
 
@@ -3607,6 +3614,9 @@ function commandEpochAgentMcpProfileClaim(options) {
     baseSha: ready.baseSha,
     ciSha: ready.candidateSha,
     ciStatus: 'SUCCESS',
+    ...(profile.id === 'p06-render-person-profile-offline-agent-mcp-v1'
+      ? { ciRunId: ready.ciRunId, ciChecks: ready.ciChecks }
+      : {}),
     reviewerId: ready.reviewerId,
     bundleSha256,
     runnerReceiptPublicKey: runnerPublicKey,
@@ -3618,7 +3628,20 @@ function commandEpochAgentMcpProfileClaim(options) {
   try {
     claimAgentMcpProfileAtomically({
       claim,
-      assertReady: () => assertAgentMcpProfileReviewReadiness(gate),
+      assertReady: () => {
+        const currentReady = assertAgentMcpProfileReviewReadiness(gate);
+        if (
+          profile.id === 'p06-render-person-profile-offline-agent-mcp-v1' &&
+          (currentReady.ciRunId !== claim.ciRunId ||
+            canonicalHash(currentReady.ciChecks) !== canonicalHash(claim.ciChecks))
+        ) {
+          throw new HarnessInvariantError(
+            'AGENT_MCP_PROFILE_CI_IDENTITY_CHANGED',
+            'P06 CI run identity changed while the profile claim was being established.',
+            { profileId },
+          );
+        }
+      },
       acquireGlobalLatch: () => acquireAgentMcpProfileGitHubLatch(gh, profile),
       persistClaim: (currentClaim) => {
         const latest = epochState(prNumber);
@@ -3659,6 +3682,9 @@ function commandEpochAgentMcpProfileClaim(options) {
     baseSha: ready.baseSha,
     ciSha: ready.candidateSha,
     ciStatus: 'SUCCESS',
+    ...(profile.id === 'p06-render-person-profile-offline-agent-mcp-v1'
+      ? { ciRunId: ready.ciRunId, ciChecks: ready.ciChecks }
+      : {}),
     reviewerId: ready.reviewerId,
     bundleSha256,
     expectedArgumentsSha256: claim.expectedArgumentsSha256,
@@ -3675,6 +3701,15 @@ function assertAgentMcpProfileClaimCurrent(profile, claim) {
   const pr = epochResult.view;
   const latestReview = epoch.review_history?.at(-1);
   const currentBaseSha = remoteBaseSha('master');
+  const p06CiEvidence =
+    profile.id === 'p06-render-person-profile-offline-agent-mcp-v1'
+      ? deriveP06CiRunEvidence(epoch.ci?.url, pr.statusCheckRollup)
+      : null;
+  const p06CiIdentityCurrent =
+    profile.id !== 'p06-render-person-profile-offline-agent-mcp-v1' ||
+    (p06CiEvidence !== null &&
+      claim.ciRunId === p06CiEvidence.ciRunId &&
+      canonicalHash(claim.ciChecks) === canonicalHash(p06CiEvidence.ciChecks));
   const valid =
     runResult.view.number === claim.runNumber &&
     run.state === 'EPOCH_ACTIVE' &&
@@ -3703,6 +3738,7 @@ function assertAgentMcpProfileClaimCurrent(profile, claim) {
     pr.headRefName === epoch.branch &&
     pr.headRefOid === claim.sourceCandidateSha &&
     mandatoryChecksSuccessful(pr.statusCheckRollup) &&
+    p06CiIdentityCurrent &&
     agentMcpProfileBundleMatches(claim.sourceCandidateSha, claim.bundleSha256, true);
   if (!valid) {
     throw new HarnessInvariantError(
@@ -3785,7 +3821,9 @@ function commandEpochAgentMcpProfileResult(options) {
     isG16LunaMaxReviewerId(current.reviewerId, Number(prNumber)) &&
     current.bundleSha256 &&
     current.runnerReceiptPublicKeySha256 &&
-    current.retryAllowed === false;
+    current.retryAllowed === false &&
+    (profile.id !== 'p06-render-person-profile-offline-agent-mcp-v1' ||
+      isValidP06CiRunEvidence(current));
   if (!claimMatches) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_CLAIM_MISMATCH',

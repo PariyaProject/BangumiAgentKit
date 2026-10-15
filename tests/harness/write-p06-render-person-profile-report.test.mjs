@@ -19,6 +19,16 @@ import {
 
 const PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
 const ACKNOWLEDGEMENT = 'P06_SYNTHETIC_PROFILE_RENDERED';
+const CI_RUN_ID = '38806371672';
+const CI_CHECKS = [
+  'harness-control',
+  'sqlite-default',
+  'host-integration',
+  'standalone-release-smoke',
+  'postgres-compat',
+  'provider-foundation',
+  'discovery-foundation',
+].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
 function fixtureInput() {
@@ -45,6 +55,8 @@ function fixtureInput() {
     baseSha: '1'.repeat(40),
     ciSha: '0'.repeat(40),
     ciStatus: 'SUCCESS',
+    ciRunId: CI_RUN_ID,
+    ciChecks: CI_CHECKS,
     reviewerId: 'gpt-6-luna-max-run95-pr222-round1',
     bundleSha256: '2'.repeat(64),
     runnerReceiptPublicKey: publicKeyBase64,
@@ -149,6 +161,10 @@ test('P06 report builder signs only sanitized matrix evidence with no scenario c
   assert.equal(built.report.scenarioId, null);
   assert.equal(built.report.toolName, 'bangumi.render_person_profile');
   assert.equal(built.report.networkBoundary.fullCodexHarnessNetworkSandboxed, false);
+  assert.equal(built.report.ciRunId, input.claim.ciRunId);
+  assert.deepEqual(built.report.ciChecks, input.claim.ciChecks);
+  assert.equal(built.report.runnerReceipt.payload.ciRunId, input.claim.ciRunId);
+  assert.deepEqual(built.report.runnerReceipt.payload.ciChecks, input.claim.ciChecks);
   assert.deepEqual(built.report.offlineFixture, input.serverSummary.offlineFixture);
   assert.deepEqual(built.report.offlineAssetBoundary, input.serverSummary.offlineAssetBoundary);
   assert.equal(validateP06ProfileReport(built.report, input.claim).passed, true);
@@ -188,6 +204,10 @@ test('P06 report validator rejects changed fixture counters and any modified sig
   const tamperedNetworkBoundary = structuredClone(built.report);
   tamperedNetworkBoundary.networkBoundary.fullCodexHarnessNetworkSandboxed = true;
   assert.equal(validateP06ProfileReport(tamperedNetworkBoundary, input.claim).passed, false);
+
+  const tamperedCiIdentity = structuredClone(built.report);
+  tamperedCiIdentity.ciChecks[0].name = 'unexpected-check';
+  assert.equal(validateP06ProfileReport(tamperedCiIdentity, input.claim).passed, false);
 });
 
 test('P06 report builder fails closed for a changed one-tool argument object', () => {
@@ -207,4 +227,33 @@ test('P06 report builder binds catalog hashes to the current Candidate catalog',
   const result = buildP06ProfileReport(input, { privateKey: keyPair.privateKey });
   assert.equal(result.passed, false);
   assert.equal(result.reason, 'P06_REPORT_FIELDS_INVALID');
+});
+
+test('P06 report validator accepts only the exact durable REPORT_WRITTEN disposition', () => {
+  const { input, keyPair } = fixtureInput();
+  const built = buildP06ProfileReport(input, { privateKey: keyPair.privateKey });
+  assert.equal(built.passed, true, JSON.stringify(built));
+
+  const reportBytes = Buffer.from(`${JSON.stringify(built.report, null, 2)}\n`, 'utf8');
+  const terminalClaim = {
+    ...input.claim,
+    state: 'REPORT_WRITTEN',
+    reportWritten: true,
+    reportSha256: sha256(reportBytes),
+  };
+  assert.equal(validateP06ProfileReport(built.report, terminalClaim, reportBytes).passed, true);
+
+  assert.equal(
+    validateP06ProfileReport(
+      built.report,
+      { ...terminalClaim, reportSha256: 'f'.repeat(64) },
+      reportBytes,
+    ).passed,
+    false,
+  );
+  assert.equal(
+    validateP06ProfileReport(built.report, { ...terminalClaim, reportWritten: false }, reportBytes)
+      .passed,
+    false,
+  );
 });

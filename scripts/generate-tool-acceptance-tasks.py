@@ -1602,7 +1602,8 @@ CODEX_P06_EVIDENCE_REFRESH_PATHS = {
 CODEX_P06_REPORT_FIELDS = {
     'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
     'profileId', 'profile', 'model', 'reasoningEffort', 'reviewerId', 'codexCliVersion',
-    'observedAt', 'sourceRevision', 'baseSha', 'ciSha', 'ciStatus', 'prNumber', 'claimId',
+    'observedAt', 'sourceRevision', 'baseSha', 'ciSha', 'ciStatus', 'ciRunId', 'ciChecks',
+    'prNumber', 'claimId',
     'mcpBundleSha256', 'registrySha256', 'toolName', 'argumentProfile',
     'expectedArgumentsSha256', 'selectionEvidenceSha256', 'catalogSha256',
     'toolDescriptionSha256', 'inputSchemaSha256',
@@ -1643,7 +1644,8 @@ CODEX_P06_RECEIPT_FIELDS = {
 }
 CODEX_P06_RECEIPT_PAYLOAD_FIELDS = {
     'schemaVersion', 'kind', 'sanitizedReportSha256', 'claimId', 'profileId', 'runNumber', 'frontierId', 'epochId',
-    'prNumber', 'sourceRevision', 'baseSha', 'ciSha', 'ciStatus', 'reviewerId', 'bundleSha256',
+    'prNumber', 'sourceRevision', 'baseSha', 'ciSha', 'ciStatus', 'ciRunId', 'ciChecks',
+    'reviewerId', 'bundleSha256',
     'registrySha256', 'toolName', 'argumentProfile', 'expectedArgumentsSha256',
     'selectionEvidenceSha256',
     'codexCliVersion', 'processExitCode', 'resultStatus', 'eventStreamParsed', 'turnCompleted',
@@ -1652,6 +1654,15 @@ CODEX_P06_RECEIPT_PAYLOAD_FIELDS = {
     'offlineFixtureSha256', 'offlineAssetBoundarySha256', 'artifactSha256', 'answerSha256',
     'eventStreamSha256', 'serverSummarySha256',
 }
+CODEX_P06_REQUIRED_CI_CHECKS = (
+    'harness-control',
+    'sqlite-default',
+    'host-integration',
+    'standalone-release-smoke',
+    'postgres-compat',
+    'provider-foundation',
+    'discovery-foundation',
+)
 CODEX_G06_EXPECTED_ARGUMENTS = {'subjectId': 218707, 'limit': 100}
 CODEX_G06_REPORT_RELATIVE_PATH = 'docs/live-probes/g06-subject-cast-agent-mcp-run95.json'
 CODEX_D07_EXPECTED_YEARS = tuple(range(2016, 2026))
@@ -5472,6 +5483,8 @@ def codex_p06_profile_disposition_matches_report(
         'baseSha': report.get('baseSha'),
         'ciSha': report.get('sourceRevision'),
         'ciStatus': 'SUCCESS',
+        'ciRunId': report.get('ciRunId'),
+        'ciChecks': report.get('ciChecks'),
         'reviewerId': report.get('reviewerId'),
         'bundleSha256': report.get('mcpBundleSha256'),
         'registrySha256': CODEX_P06_PROFILE_REGISTRY_SHA256,
@@ -7945,6 +7958,12 @@ def codex_p06_profile_report_is_valid(
         or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
         or report.get('ciSha') != source_revision
         or report.get('ciStatus') != 'SUCCESS'
+        or not isinstance(report.get('ciRunId'), str)
+        or re.fullmatch(r'[1-9]\d{3,}', report['ciRunId']) is None
+        or report.get('ciChecks') != [
+            {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+            for name in CODEX_P06_REQUIRED_CI_CHECKS
+        ]
         or type(pr_number) is not int
         or pr_number < 1
         or not isinstance(report.get('claimId'), str)
