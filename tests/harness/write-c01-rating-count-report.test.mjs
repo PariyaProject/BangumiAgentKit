@@ -9,7 +9,10 @@ import {
   agentMcpProfileRegistrySha256,
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
-import { projectC01ComparisonResult } from '../../scripts/lib/c01-rating-count-evidence.mjs';
+import {
+  C01_SAFE_SCOPE_NOTE,
+  projectC01ComparisonResult,
+} from '../../scripts/lib/c01-rating-count-evidence.mjs';
 import {
   buildC01ProfileReport,
   validateC01SanitizedReportFile,
@@ -67,8 +70,7 @@ const answer = JSON.stringify({
   ratingTotalDelta: -1150,
   thresholdAssessment: 'not_assessable_without_threshold',
   statisticalSignificance: 'not_established',
-  scopeNote:
-    '这是两个条目的当前来源快照；未提供实践阈值，无法判断差异是否足够大；未进行统计显著性检验，本结果不代表统计显著性。',
+  scopeNote: C01_SAFE_SCOPE_NOTE,
 });
 
 function makeClaim() {

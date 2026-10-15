@@ -90,7 +90,10 @@ import { makeP01Report } from './p01-report-fixture.mjs';
 import { makeR05ProfileReportInput } from './fixtures/r05-profile-report-input.mjs';
 import { writeR05SharedPersonOverlapReport } from '../../scripts/acceptance/write-r05-shared-person-overlap-report.mjs';
 import { getAgentMcpProfileById } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
-import { projectC01ComparisonResult } from '../../scripts/lib/c01-rating-count-evidence.mjs';
+import {
+  C01_SAFE_SCOPE_NOTE,
+  projectC01ComparisonResult,
+} from '../../scripts/lib/c01-rating-count-evidence.mjs';
 import { writeC01ProfileReport } from '../../scripts/acceptance/write-c01-rating-count-report.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
@@ -1893,8 +1896,7 @@ test('C01 Harness records a valid REPORT_WRITTEN report with its exact signed di
     ratingTotalDelta: -1150,
     thresholdAssessment: 'not_assessable_without_threshold',
     statisticalSignificance: 'not_established',
-    scopeNote:
-      '这是两个条目的当前来源快照；未提供实践阈值，无法判断差异是否足够大；未进行统计显著性检验，本结果不代表统计显著性。',
+    scopeNote: C01_SAFE_SCOPE_NOTE,
   });
   try {
     const initial = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
@@ -1965,6 +1967,64 @@ test('C01 Harness records a valid REPORT_WRITTEN report with its exact signed di
     assert.equal(disposition.reportSha256, report.reportSha256);
     assert.equal(disposition.reportPath, C01_PROFILE.reportPath);
     assert.equal(disposition.reportWritten, true);
+    assert.equal(disposition.retryAllowed, false);
+  } finally {
+    environment.cleanup();
+    fs.rmSync(harnessRoot, { recursive: true, force: true });
+  }
+});
+
+test('C01 Harness terminalizes an invalid retained report as INCONCLUSIVE with its exact digest', () => {
+  const harnessRoot = createIsolatedHarnessRoot();
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(C01_PROFILE, {
+    harnessRoot,
+  });
+  const runnerKeyPair = generateKeyPairSync('ed25519');
+  const publicKeyBase64 = runnerKeyPair.publicKey
+    .export({ type: 'spki', format: 'der' })
+    .toString('base64');
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', C01_PROFILE.id];
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    const retainedReport = Buffer.from('{ invalid C01 report artifact }', 'utf8');
+    const reportSha256 = createHash('sha256').update(retainedReport).digest('hex');
+    const reportPath = path.join(harnessRoot, C01_PROFILE.reportPath);
+    fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+    fs.writeFileSync(reportPath, retainedReport);
+    const mockState = environment.readState();
+    mockState.dirty = `?? ${C01_PROFILE.reportPath}`;
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(mockState, null, 2)}\n`);
+
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--report-sha256',
+      reportSha256,
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    const terminalResult = JSON.parse(terminal.stdout);
+    assert.equal(terminalResult.state, 'AGENT_MCP_PROFILE_RESULT_RECORDED');
+    assert.equal(terminalResult.resultState, 'INCONCLUSIVE');
+    assert.equal(terminalResult.unacceptedReportSha256, reportSha256);
+    const disposition = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.agent_mcp_profile_dispositions[C01_PROFILE.id];
+    assert.equal(disposition.state, 'INCONCLUSIVE');
+    assert.equal(disposition.unacceptedReportSha256, reportSha256);
     assert.equal(disposition.retryAllowed, false);
   } finally {
     environment.cleanup();

@@ -3,6 +3,8 @@ import { getAgentMcpProfileById } from './agent-mcp-profile-claims.mjs';
 export const C01_PROFILE_ID = 'c01-rating-count-gap-v1';
 export const C01_PROFILE = getAgentMcpProfileById(C01_PROFILE_ID);
 export const C01_MAX_ANSWER_BYTES = 4096;
+export const C01_SAFE_SCOPE_NOTE =
+  '这是两个条目的当前来源快照；未提供实践阈值，无法判断差异是否足够大；未进行统计显著性检验。';
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -118,23 +120,6 @@ export function projectC01ComparisonResult(result) {
   };
 }
 
-function hasThresholdCaveat(value) {
-  return (
-    /(?:没有|未提供|未指定|未给出).{0,12}(?:实践|实际|判断|大小)?阈值/u.test(value) &&
-    /(?:不能|无法|不足以).{0,12}(?:判断|确定).{0,12}(?:足够大|是否够大|实际差异)/u.test(value)
-  );
-}
-
-function hasSignificanceCaveat(value) {
-  const denial = /(?:未进行统计显著性(?:检验|测试)|本结果不代表统计显著性|不证明统计显著性)/u.test(
-    value,
-  );
-  const affirmative =
-    /(?:差异|差距).{0,8}(?:具有|达到|证明|显示).{0,8}统计显著/u.test(value) ||
-    /(?:统计显著性|统计显著).{0,8}(?:成立|明显|达到|已证明)/u.test(value);
-  return denial && !affirmative;
-}
-
 export function verifyC01Answer(answerText, sourceResult) {
   if (!C01_PROFILE || typeof answerText !== 'string') return fail('ANSWER_INVALID');
   if (Buffer.byteLength(answerText, 'utf8') > C01_MAX_ANSWER_BYTES) return fail('ANSWER_TOO_LARGE');
@@ -172,12 +157,7 @@ export function verifyC01Answer(answerText, sourceResult) {
     return fail('THRESHOLD_ASSESSMENT_UNSUPPORTED');
   if (answer.statisticalSignificance !== 'not_established')
     return fail('STATISTICAL_SIGNIFICANCE_UNSUPPORTED');
-  if (
-    typeof answer.scopeNote !== 'string' ||
-    !hasThresholdCaveat(answer.scopeNote) ||
-    !hasSignificanceCaveat(answer.scopeNote)
-  )
-    return fail('SCOPE_CAVEAT_MISSING');
+  if (answer.scopeNote !== C01_SAFE_SCOPE_NOTE) return fail('SCOPE_CAVEAT_MISSING');
   return {
     passed: true,
     reason: null,

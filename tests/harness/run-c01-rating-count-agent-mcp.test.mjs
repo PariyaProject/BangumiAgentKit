@@ -3,10 +3,13 @@ import test from 'node:test';
 import {
   assertC01CandidateReviewGate,
   buildC01CodexExecArgs,
+  classifyC01RecoveredReport,
   classifyC01ProfileAttempt,
+  isC01StoredReportConsistent,
   validateC01RunnerArgs,
   validateC01ServerSummary,
 } from '../../scripts/acceptance/run-c01-rating-count-agent-mcp.mjs';
+import { C01_SAFE_SCOPE_NOTE } from '../../scripts/lib/c01-rating-count-evidence.mjs';
 import {
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
@@ -112,6 +115,9 @@ test('C01 Codex request is ephemeral, read-only, Luna Max, and exposes exactly o
   assert.ok(args.some((entry) => entry.includes('mcp_servers.bgk_c01_one_tool.enabled_tools=')));
   assert.ok(args.some((entry) => entry.includes('bangumi.get_subject_comparison')));
   assert.equal(args.at(-1).includes('exactly once'), true);
+  assert.ok(
+    args.at(-1).includes(`Set scopeNote to exactly ${JSON.stringify(C01_SAFE_SCOPE_NOTE)}`),
+  );
   assert.equal(args.at(-1).includes('Do not call the gap significant'), true);
 });
 
@@ -168,6 +174,51 @@ test('C01 attempt classification never invokes an already claimed or terminal pr
   assert.equal(
     classifyC01ProfileAttempt({ state: 'REPORT_WRITTEN', disposition: { claimId: 'x' } }, true),
     'TERMINAL',
+  );
+});
+
+test('C01 accepts a stored report only when its durable digest and report validation match', () => {
+  const reportSha256 = 'f'.repeat(64);
+  const validation = { passed: true, reportSha256 };
+  assert.equal(
+    isC01StoredReportConsistent(
+      { state: 'REPORT_WRITTEN', reportSha256 },
+      reportSha256,
+      validation,
+    ),
+    true,
+  );
+  assert.equal(
+    isC01StoredReportConsistent({ state: 'REPORT_WRITTEN', reportSha256 }, null, null),
+    false,
+  );
+  assert.equal(
+    isC01StoredReportConsistent(
+      { state: 'REPORT_WRITTEN', reportSha256 },
+      'e'.repeat(64),
+      validation,
+    ),
+    false,
+  );
+  assert.equal(
+    isC01StoredReportConsistent({ state: 'REPORT_WRITTEN', reportSha256 }, reportSha256, {
+      passed: false,
+      reportSha256,
+    }),
+    false,
+  );
+});
+
+test('C01 recovers only a validated report as REPORT_WRITTEN and terminalizes invalid artifacts', () => {
+  const reportSha256 = 'd'.repeat(64);
+  assert.equal(
+    classifyC01RecoveredReport({ passed: true, reportSha256 }, reportSha256),
+    'REPORT_WRITTEN',
+  );
+  assert.equal(classifyC01RecoveredReport({ passed: false }, reportSha256), 'INCONCLUSIVE');
+  assert.equal(
+    classifyC01RecoveredReport({ passed: true, reportSha256: 'c'.repeat(64) }, reportSha256),
+    'INCONCLUSIVE',
   );
 });
 

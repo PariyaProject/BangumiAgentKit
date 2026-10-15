@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  C01_SAFE_SCOPE_NOTE,
   projectC01ComparisonResult,
   verifyC01Answer,
 } from '../../scripts/lib/c01-rating-count-evidence.mjs';
@@ -56,8 +57,7 @@ const validAnswer = {
   ratingTotalDelta: -1150,
   thresholdAssessment: 'not_assessable_without_threshold',
   statisticalSignificance: 'not_established',
-  scopeNote:
-    '这是两个条目的当前来源快照；未提供实践阈值，无法判断差异是否足够大；未进行统计显著性检验，本结果不代表统计显著性。',
+  scopeNote: C01_SAFE_SCOPE_NOTE,
 };
 
 test('C01 projects only the exact current rating totals and signed B-minus-A delta', () => {
@@ -112,7 +112,7 @@ test('C01 rejects incorrect identity, count, delta, or unsupported significance'
   }
 });
 
-test('C01 requires both the practical-threshold and significance caveats', () => {
+test('C01 requires the exact safe current-snapshot caveat and rejects contradictions', () => {
   assert.equal(
     verifyC01Answer(JSON.stringify({ ...validAnswer, scopeNote: '评分人数差了 1150。' }), result)
       .reason,
@@ -128,6 +128,16 @@ test('C01 requires both the practical-threshold and significance caveats', () =>
     ).reason,
     'SCOPE_CAVEAT_MISSING',
   );
+  for (const scopeNote of [
+    'This is a current snapshot. No threshold was supplied, so practical size is unknown; no significance test was performed.',
+    '当前快照；未提供实践阈值，无法判断差异是否足够大；未进行统计显著性检验；差异显著。',
+    '未提供实践阈值，无法判断差异是否足够大；未进行统计显著性检验。',
+  ]) {
+    assert.equal(
+      verifyC01Answer(JSON.stringify({ ...validAnswer, scopeNote }), result).reason,
+      'SCOPE_CAVEAT_MISSING',
+    );
+  }
 });
 
 test('C01 refuses unknown, conflicting, or mismatched source metrics', () => {
