@@ -1,5 +1,5 @@
 import { createHash, generateKeyPairSync } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, lstatSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -59,6 +59,57 @@ Read the complete structuredContent result. Return one plain JSON object with ex
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const tomlString = (value) => JSON.stringify(value);
 const tomlStringArray = (values) => `[${values.map(tomlString).join(', ')}]`;
+
+export function validateC01SelectionEvidence(selectionEvidencePath, { root = ROOT, baseSha } = {}) {
+  try {
+    if (
+      typeof selectionEvidencePath !== 'string' ||
+      selectionEvidencePath.trim() === '' ||
+      path.isAbsolute(selectionEvidencePath) ||
+      selectionEvidencePath.split(/[\\/]/u).includes('..') ||
+      typeof baseSha !== 'string' ||
+      !/^[0-9a-f]{40}$/u.test(baseSha)
+    )
+      return false;
+
+    const repositoryRoot = path.resolve(root);
+    const resolvedPath = path.resolve(repositoryRoot, selectionEvidencePath);
+    const relativePath = path.relative(repositoryRoot, resolvedPath);
+    if (
+      relativePath === '' ||
+      relativePath === '..' ||
+      relativePath.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(relativePath)
+    )
+      return false;
+
+    let current = repositoryRoot;
+    const pathParts = relativePath.split(path.sep);
+    for (const [index, part] of pathParts.entries()) {
+      current = path.join(current, part);
+      const metadata = lstatSync(current);
+      if (metadata.isSymbolicLink()) return false;
+      if (index < pathParts.length - 1 && !metadata.isDirectory()) return false;
+      if (index === pathParts.length - 1 && !metadata.isFile()) return false;
+    }
+
+    const evidence = readFileSync(resolvedPath, 'utf8');
+    const requiredSourceMarkers = [
+      `# Run #95 C01:`,
+      baseSha,
+      '## Supported answer',
+      '## Coverage limits',
+      'first-party `bangumi/server` master OpenAPI revision',
+      'https://github.com/bangumi/server/blob/',
+      'https://github.com/PariyaProject/BangumiAgentKit/blob/',
+      'no Bangumi API or MCP call was made',
+      'does not establish any current rating totals',
+    ];
+    return requiredSourceMarkers.every((marker) => evidence.includes(marker));
+  } catch {
+    return false;
+  }
+}
 
 export function validateC01RunnerArgs(args) {
   if (args.length === 1 && args[0] === '--help') return 'help';
@@ -605,6 +656,10 @@ function runC01Profile() {
   const initialStatus = readEpochStatus(prNumber);
   const initialPr = readPullRequest(prNumber);
   const initialBase = fetchCurrentMaster();
+  if (!validateC01SelectionEvidence(PROFILE.selectionEvidencePath, { baseSha: initialBase }))
+    throw new Error(
+      'C01 one-shot requires a repo-contained source contract pinned to the exact Base.',
+    );
   const initialGate = assertC01CandidateReviewGate(initialStatus, initialPr, {
     sourceRevision,
     currentBaseSha: initialBase,

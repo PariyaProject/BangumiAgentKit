@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import {
   assertC01CandidateReviewGate,
@@ -6,6 +9,7 @@ import {
   classifyC01RecoveredReport,
   classifyC01ProfileAttempt,
   isC01StoredReportConsistent,
+  validateC01SelectionEvidence,
   validateC01RunnerArgs,
   validateC01ServerSummary,
 } from '../../scripts/acceptance/run-c01-rating-count-agent-mcp.mjs';
@@ -90,6 +94,52 @@ test('C01 runner accepts only the governed Run #95 invocation', () => {
   assert.equal(validateC01RunnerArgs(['--run', '95']), 'run');
   assert.throws(() => validateC01RunnerArgs(['--run', '94']));
   assert.throws(() => validateC01RunnerArgs(['--run', '95', '--retry']));
+});
+
+test('C01 one-shot requires a repository-local, non-symlink source contract pinned to its Base', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'c01-source-contract-'));
+  const baseSha = 'd'.repeat(40);
+  const relativePath = 'docs/research/c01-source-contract.md';
+  const reportPath = path.join(root, relativePath);
+  const sourceContract = [
+    '# Run #95 C01: rating-total difference source contract',
+    `Rechecked against master ${baseSha} and the first-party \`bangumi/server\` master OpenAPI revision.`,
+    '## Supported answer',
+    'https://github.com/bangumi/server/blob/revision/openapi/v0.yaml',
+    'https://github.com/PariyaProject/BangumiAgentKit/blob/revision/packages/tools/src/subject-comparison.ts',
+    '## Coverage limits',
+    'This static source review made no Bangumi API or MCP call; no Bangumi API or MCP call was made and it does not establish any current rating totals.',
+  ].join('\n');
+  mkdirSync(path.dirname(reportPath), { recursive: true });
+  writeFileSync(reportPath, sourceContract);
+
+  try {
+    assert.equal(validateC01SelectionEvidence(relativePath, { root, baseSha }), true);
+    assert.equal(
+      validateC01SelectionEvidence(relativePath, { root, baseSha: 'e'.repeat(40) }),
+      false,
+    );
+    assert.equal(
+      validateC01SelectionEvidence('../c01-source-contract.md', { root, baseSha }),
+      false,
+    );
+    assert.equal(
+      validateC01SelectionEvidence('/tmp/c01-source-contract.md', { root, baseSha }),
+      false,
+    );
+
+    const symlinkPath = path.join(root, 'docs/research/linked-source-contract.md');
+    symlinkSync(reportPath, symlinkPath);
+    assert.equal(
+      validateC01SelectionEvidence('docs/research/linked-source-contract.md', { root, baseSha }),
+      false,
+    );
+
+    writeFileSync(reportPath, sourceContract.replace('## Coverage limits', '## More notes'));
+    assert.equal(validateC01SelectionEvidence(relativePath, { root, baseSha }), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('C01 Codex request is ephemeral, read-only, Luna Max, and exposes exactly one tool', () => {
