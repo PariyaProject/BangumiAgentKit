@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-15T03:20:25Z",
+  "updated_at": "2026-10-15T04:09:00Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2054,10 +2054,66 @@
       "user_question": "某人物作品按媒介分布如何？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-p05-person-work-media-distribution-source-contract-2026-10-15.md",
+        "packages/bangumi-core/src/services/person-service.ts",
+        "packages/tools/src/definitions/read-tools.ts",
+        "scripts/acceptance/p05-person-media-public-probe.mjs",
+        "scripts/acceptance/run-p05-person-media-public-probe.ts",
+        "tests/harness/p05-person-media-public-probe.test.mjs",
+        "tests/harness/frontier-ledger-data.test.mjs"
+      ],
+      "next_action": "Keep UNASSESSED until the dedicated one-read report exists and its count/coverage assertions pass. Run it only after exact Candidate/Base validation, all seven mandatory CI checks, Harness review readiness, and the assigned same-identity GPT-6 Luna Max PASS. Any valid result supports only Bangumi subject-type distribution among rows returned to that invocation, with observed/returned/truncated counts and undocumented upstream completeness; it does not support platform or exhaustive career-wide distribution. No Agent/MCP, renderer, OAuth/account, community/HTML, write, QQ, or TIM acceptance is implied.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "evidence": {
+        "p05_person_media_distribution_2026_10_15": {
+          "source_report": "docs/research/run95-p05-person-work-media-distribution-source-contract-2026-10-15.md",
+          "official_source_contract": {
+            "endpoint": "GET /v0/persons/{person_id}/subjects",
+            "subject_type_codes": {
+              "1": "book",
+              "2": "anime",
+              "3": "music",
+              "4": "game",
+              "6": "real",
+              "unknown": "other"
+            },
+            "pagination_total_order_or_completeness_documented": false,
+            "claim_limit": "Bangumi subject-type distribution among returned relation rows only; these categories are not media platforms and upstream completeness is undocumented."
+          },
+          "planned_public_profile": {
+            "tool": "bangumi.get_person_profile",
+            "arguments": {
+              "personId": 3474,
+              "includeCredits": false,
+              "maxSubjects": 500,
+              "maxCharacters": 1
+            },
+            "live_query_run": false
+          },
+          "runner_contract": {
+            "runner": "scripts/acceptance/run-p05-person-media-public-probe.ts",
+            "projection_and_gate": "scripts/acceptance/p05-person-media-public-probe.mjs",
+            "test": "tests/harness/p05-person-media-public-probe.test.mjs",
+            "retained_summary": [
+              "aggregate subject-type counts",
+              "unique-subject counts",
+              "raw type codes",
+              "observed/returned/truncated subject-row coverage",
+              "upstream completeness marker"
+            ],
+            "excluded_source_data": [
+              "work names and titles",
+              "images",
+              "relation IDs",
+              "raw response payload"
+            ]
+          },
+          "status_boundary": "UNASSESSED: static source and runner evidence are recorded; no person-profile request has been made and no direct observation is claimed."
+        }
+      }
     },
     {
       "id": "P06",

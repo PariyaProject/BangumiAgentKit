@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -89,6 +89,43 @@ test('D07, P01, and A01 keep stable scenario guidance and defer claim state to H
     if (item.publicRows) assert.match(record.next_action, item.publicRows);
     assertOneShotRuntimeIsHarnessOwned(record);
   }
+});
+
+test('P05 remains unassessed until its gated one-read report exists', () => {
+  const record = ledger.records.find(({ id }) => id === 'P05');
+  assert.ok(record, 'P05 must remain in the canonical frontier');
+  assert.equal(record.status, 'UNASSESSED');
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-p05-person-work-media-distribution-source-contract-2026-10-15.md',
+    ),
+  );
+  assert.ok(
+    record.source_refs.includes('scripts/acceptance/run-p05-person-media-public-probe.ts'),
+  );
+
+  const evidence = record.evidence?.p05_person_media_distribution_2026_10_15;
+  assert.ok(evidence, 'P05 source and runner evidence must be recorded');
+  assert.equal(evidence.planned_public_profile.tool, 'bangumi.get_person_profile');
+  assert.deepEqual(evidence.planned_public_profile.arguments, {
+    personId: 3474,
+    includeCredits: false,
+    maxSubjects: 500,
+    maxCharacters: 1,
+  });
+  assert.equal(evidence.planned_public_profile.live_query_run, false);
+  assert.equal(
+    evidence.official_source_contract.pagination_total_order_or_completeness_documented,
+    false,
+  );
+  assert.match(evidence.official_source_contract.claim_limit, /returned relation rows only/u);
+  assert.match(record.next_action, /assigned same-identity GPT-6 Luna Max PASS/u);
+  assert.match(record.next_action, /does not support platform or exhaustive career-wide distribution/u);
+  assert.equal(
+    existsSync(path.join(root, 'docs/live-probes/p05-person-media-public-probe-run95.json')),
+    false,
+    'an unassessed P05 frontier must not have a live report',
+  );
 });
 
 test('community source and OP-003 closures are evidence-bound and keep discussion scenarios unresolved', () => {
