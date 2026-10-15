@@ -39,11 +39,14 @@ class PublicApiEvidenceTests(unittest.TestCase):
         self.catalog = [
             {'name': 'bangumi.get_subject', 'auth': 'none'},
             {'name': 'bangumi.get_episode', 'auth': 'none'},
+            {'name': 'bangumi.get_person_profile', 'auth': 'none'},
             {'name': 'bangumi.auth_status', 'auth': 'none'},
         ]
         self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
         self.probe_path = self.root / 'scripts/smoke-public-tools-online.ts'
         self.probe_path.write_text('// fixture probe source\n', encoding='utf-8')
+        self.p02_probe_path = self.root / 'scripts/smoke-person-profile-chronology-online.ts'
+        self.p02_probe_path.write_text('// fixture P02 probe source\n', encoding='utf-8')
         self.original_root = GENERATOR.ROOT
         self.original_catalog = GENERATOR.CATALOG
         self.original_probe_dir = GENERATOR.LIVE_PROBE_DIR
@@ -99,6 +102,181 @@ class PublicApiEvidenceTests(unittest.TestCase):
             GENERATOR.public_api_smoke_sources(self.catalog),
             {'bangumi.get_subject': {'docs/live-probes/public-tools-fixture.json'}},
         )
+
+    def write_p02_chronology_report(self, *, http_requests=4, max_per_tool=4, max_total=4):
+        assertions = {
+            'httpRequestObserved': True,
+            'httpRequestBudget': True,
+            'nonEmptySummary': True,
+            'noErrorResult': True,
+            'nonNegativeCounts': True,
+            'countConsistency': True,
+            'nonErrorResult': True,
+            'correctPerson': True,
+            'chronologyReturned': True,
+            'chronologyBounded': True,
+            'chronologyCountsConsistent': True,
+            'relationCoverageConsistent': True,
+            'passed': True,
+        }
+        summary = {
+            'state': 'partial',
+            'subjectCoverage': {'observed': 107, 'returned': 107, 'truncated': False},
+            'releaseChronology': {
+                'state': 'partial',
+                'sourceCompleteness': 'undocumented',
+                'dateSemantics': 'official-subject-air-release-date',
+                'selectedSubjectDetails': 1,
+                'succeededSubjectDetails': 1,
+                'failedSubjectDetails': 0,
+                'validDateSubjects': 1,
+                'missingDateSubjects': 0,
+                'invalidDateSubjects': 0,
+                'omittedAnimeSubjects': 19,
+                'earliestObserved': {'date': '2016-03-28', 'tiedSubjectCount': 1},
+                'latestObserved': {'date': '2016-03-28', 'tiedSubjectCount': 1},
+            },
+        }
+        result = {
+            'tool': GENERATOR.P02_PUBLIC_CHRONOLOGY_TOOL,
+            'input': GENERATOR.P02_PUBLIC_CHRONOLOGY_INPUT,
+            'httpRequests': http_requests,
+            'result': summary,
+            'assertions': assertions,
+        }
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'bangumi_public_api_tool_registry_smoke',
+            'observedAt': '2026-10-15T11:06:39.385Z',
+            'mode': 'read_only_public_api_smoke',
+            'sourceProgram': 'scripts/smoke-person-profile-chronology-online.ts',
+            'catalogSha256': hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
+            'probeScriptSha256': hashlib.sha256(self.p02_probe_path.read_bytes()).hexdigest(),
+            'requestBudget': {'maxPerTool': max_per_tool, 'maxTotal': max_total},
+            'httpRequests': http_requests,
+            'budgetBlocked': False,
+            'selectedTools': [GENERATOR.P02_PUBLIC_CHRONOLOGY_TOOL],
+            'probeCount': 1,
+            'input': GENERATOR.P02_PUBLIC_CHRONOLOGY_INPUT,
+            'result': summary,
+            'results': [result],
+            'limits': GENERATOR.P02_PUBLIC_CHRONOLOGY_LIMITS,
+        }
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        path.write_text(json.dumps(report), encoding='utf-8')
+        return path
+
+    def update_p02_chronology_summaries(self, update):
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        update(report['result']['releaseChronology'])
+        update(report['results'][0]['result']['releaseChronology'])
+        path.write_text(json.dumps(report), encoding='utf-8')
+
+    def test_counts_hash_bound_profile_specific_report_within_budget(self):
+        path = self.write_p02_chronology_report()
+        self.assertEqual(
+            GENERATOR.public_api_smoke_sources(self.catalog),
+            {GENERATOR.P02_PUBLIC_CHRONOLOGY_TOOL: {f'docs/live-probes/{path.name}'}},
+        )
+
+    def test_excludes_profile_specific_report_over_budget(self):
+        self.write_p02_chronology_report(http_requests=5)
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_a_different_input(self):
+        self.write_p02_chronology_report()
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        report['results'][0]['input']['personId'] += 1
+        path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_a_different_budget(self):
+        self.write_p02_chronology_report(max_total=5)
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_after_request_guard_blocks(self):
+        self.write_p02_chronology_report()
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        report['budgetBlocked'] = True
+        path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_a_different_top_level_input(self):
+        self.write_p02_chronology_report()
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        report['input']['personId'] += 1
+        path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_extra_raw_top_level_field(self):
+        self.write_p02_chronology_report()
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        report['rawResponse'] = {'person': {'name': 'private raw payload'}}
+        path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_extra_summary_field(self):
+        self.write_p02_chronology_report()
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        report['results'][0]['result']['rawSubjectRows'] = [{'id': 999}]
+        path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_missing_a_chronology_assertion(self):
+        self.write_p02_chronology_report()
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        del report['results'][0]['assertions']['chronologyCountsConsistent']
+        path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_an_extra_assertion(self):
+        self.write_p02_chronology_report()
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        report['results'][0]['assertions']['rawResponsePresent'] = True
+        path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_an_impossible_calendar_date(self):
+        self.write_p02_chronology_report()
+        self.update_p02_chronology_summaries(
+            lambda chronology: chronology['earliestObserved'].update(date='2016-99-99'),
+        )
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_state_inconsistent_with_date_counts(self):
+        self.write_p02_chronology_report()
+
+        def remove_all_valid_dates(chronology):
+            chronology['validDateSubjects'] = 0
+            chronology['missingDateSubjects'] = 1
+            chronology['state'] = 'partial'
+            chronology.pop('earliestObserved')
+            chronology.pop('latestObserved')
+
+        self.update_p02_chronology_summaries(remove_all_valid_dates)
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_when_earliest_is_after_latest(self):
+        self.write_p02_chronology_report()
+        self.update_p02_chronology_summaries(
+            lambda chronology: chronology['earliestObserved'].update(date='2016-04-01'),
+        )
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_more_tied_subjects_than_valid_dates(self):
+        self.write_p02_chronology_report()
+        self.update_p02_chronology_summaries(
+            lambda chronology: chronology['earliestObserved'].update(tiedSubjectCount=2),
+        )
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
 
     def test_combines_successful_partial_reports_per_tool(self):
         self.write_report()

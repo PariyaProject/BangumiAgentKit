@@ -53,6 +53,91 @@ PUBLIC_API_REQUIRED_ASSERTIONS = {
     'countConsistency',
     'passed',
 }
+PUBLIC_API_PROBE_PROGRAMS = {
+    'scripts/smoke-public-tools-online.ts',
+    'scripts/smoke-person-profile-chronology-online.ts',
+}
+P02_PUBLIC_CHRONOLOGY_TOOL = 'bangumi.get_person_profile'
+P02_PUBLIC_CHRONOLOGY_INPUT = {
+    'personId': 13684,
+    'includeCredits': False,
+    'maxSubjects': 500,
+    'maxCharacters': 1,
+    'includeChronology': True,
+    'maxChronologySubjects': 1,
+}
+P02_PUBLIC_CHRONOLOGY_REPORT_KEYS = {
+    'schemaVersion',
+    'evidenceKind',
+    'observedAt',
+    'mode',
+    'sourceProgram',
+    'catalogSha256',
+    'probeScriptSha256',
+    'requestBudget',
+    'httpRequests',
+    'budgetBlocked',
+    'selectedTools',
+    'probeCount',
+    'input',
+    'result',
+    'results',
+    'limits',
+}
+P02_PUBLIC_CHRONOLOGY_RESULT_KEYS = {
+    'tool',
+    'input',
+    'httpRequests',
+    'result',
+    'assertions',
+}
+P02_PUBLIC_CHRONOLOGY_ASSERTION_KEYS = {
+    'httpRequestObserved',
+    'httpRequestBudget',
+    'nonEmptySummary',
+    'noErrorResult',
+    'nonNegativeCounts',
+    'countConsistency',
+    'nonErrorResult',
+    'correctPerson',
+    'chronologyReturned',
+    'chronologyBounded',
+    'chronologyCountsConsistent',
+    'relationCoverageConsistent',
+    'passed',
+}
+P02_PUBLIC_CHRONOLOGY_SUMMARY_KEYS = {
+    'state',
+    'subjectCoverage',
+    'releaseChronology',
+}
+P02_PUBLIC_CHRONOLOGY_SUBJECT_COVERAGE_KEYS = {
+    'observed',
+    'returned',
+    'truncated',
+}
+P02_PUBLIC_CHRONOLOGY_BASE_KEYS = {
+    'state',
+    'sourceCompleteness',
+    'dateSemantics',
+    'selectedSubjectDetails',
+    'succeededSubjectDetails',
+    'failedSubjectDetails',
+    'validDateSubjects',
+    'missingDateSubjects',
+    'invalidDateSubjects',
+    'omittedAnimeSubjects',
+}
+P02_PUBLIC_CHRONOLOGY_EXTREMA_KEYS = {'date', 'tiedSubjectCount'}
+P02_PUBLIC_CHRONOLOGY_LIMITS = [
+    'one anonymous public ToolRegistry call',
+    'hard maximum of four outgoing HTTP requests',
+    'one returned anime subject detail at most',
+    'summary only; no names, relation/subject IDs, full payloads, or image bytes',
+    'observed sample only; no career-wide chronology claim',
+]
+
+
 def test_source() -> str:
     chunks = []
     for path in (ROOT / 'tests').rglob('*'):
@@ -117,14 +202,125 @@ def report_source_ref(path: Path) -> str:
         return path.name
 
 
+def p02_public_chronology_summary_is_valid(summary: object) -> bool:
+    if not isinstance(summary, dict) or set(summary) != P02_PUBLIC_CHRONOLOGY_SUMMARY_KEYS:
+        return False
+    if summary.get('state') != 'partial':
+        return False
+    subject_coverage = summary.get('subjectCoverage')
+    if (
+        not isinstance(subject_coverage, dict)
+        or set(subject_coverage) != P02_PUBLIC_CHRONOLOGY_SUBJECT_COVERAGE_KEYS
+    ):
+        return False
+    observed = subject_coverage.get('observed')
+    returned = subject_coverage.get('returned')
+    if (
+        type(observed) is not int
+        or observed < 0
+        or type(returned) is not int
+        or returned < 0
+        or returned > observed
+        or type(subject_coverage.get('truncated')) is not bool
+    ):
+        return False
+
+    chronology = summary.get('releaseChronology')
+    if not isinstance(chronology, dict):
+        return False
+    chronology_keys = set(chronology)
+    allowed_chronology_keys = P02_PUBLIC_CHRONOLOGY_BASE_KEYS | {
+        'earliestObserved',
+        'latestObserved',
+    }
+    if (
+        not P02_PUBLIC_CHRONOLOGY_BASE_KEYS.issubset(chronology_keys)
+        or not chronology_keys.issubset(allowed_chronology_keys)
+        or chronology.get('state') not in {'partial', 'not_computable'}
+        or chronology.get('sourceCompleteness') != 'undocumented'
+        or chronology.get('dateSemantics') != 'official-subject-air-release-date'
+    ):
+        return False
+
+    count_names = {
+        'selectedSubjectDetails',
+        'succeededSubjectDetails',
+        'failedSubjectDetails',
+        'validDateSubjects',
+        'missingDateSubjects',
+        'invalidDateSubjects',
+        'omittedAnimeSubjects',
+    }
+    if any(type(chronology.get(name)) is not int or chronology[name] < 0 for name in count_names):
+        return False
+    selected = chronology['selectedSubjectDetails']
+    succeeded = chronology['succeededSubjectDetails']
+    failed = chronology['failedSubjectDetails']
+    valid_dates = chronology['validDateSubjects']
+    if (
+        selected > P02_PUBLIC_CHRONOLOGY_INPUT['maxChronologySubjects']
+        or succeeded + failed != selected
+        or valid_dates
+        + chronology['missingDateSubjects']
+        + chronology['invalidDateSubjects']
+        != succeeded
+        or (valid_dates == 0 and chronology['state'] != 'not_computable')
+        or (valid_dates > 0 and chronology['state'] != 'partial')
+    ):
+        return False
+
+    parsed_extrema: dict[str, date] = {}
+    for name in ('earliestObserved', 'latestObserved'):
+        if name not in chronology:
+            continue
+        extrema = chronology[name]
+        if (
+            not isinstance(extrema, dict)
+            or set(extrema) != P02_PUBLIC_CHRONOLOGY_EXTREMA_KEYS
+            or not isinstance(extrema.get('date'), str)
+            or re.fullmatch(r'\d{4}-\d{2}-\d{2}', extrema['date']) is None
+            or type(extrema.get('tiedSubjectCount')) is not int
+            or extrema['tiedSubjectCount'] < 1
+            or extrema['tiedSubjectCount'] > valid_dates
+        ):
+            return False
+        try:
+            parsed_extrema[name] = date.fromisoformat(extrema['date'])
+        except ValueError:
+            return False
+    if chronology['validDateSubjects'] > 0 and not {
+        'earliestObserved',
+        'latestObserved',
+    }.issubset(chronology_keys):
+        return False
+    if chronology['validDateSubjects'] == 0 and chronology_keys.intersection(
+        {'earliestObserved', 'latestObserved'},
+    ):
+        return False
+    if valid_dates > 0:
+        earliest_date = parsed_extrema['earliestObserved']
+        latest_date = parsed_extrema['latestObserved']
+        if earliest_date > latest_date:
+            return False
+        if (
+            earliest_date == latest_date
+            and chronology['earliestObserved']['tiedSubjectCount']
+            != chronology['latestObserved']['tiedSubjectCount']
+        ):
+            return False
+    return True
+
+
 def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
     """Trust hash-bound public probes per tool, not per unrelated catalog entry."""
     catalog_bytes = CATALOG.read_bytes()
     catalog_sha256 = hashlib.sha256(catalog_bytes).hexdigest()
     current_by_name = {item['name']: item for item in catalog}
-    probe_source_sha256 = hashlib.sha256(
-        (ROOT / 'scripts/smoke-public-tools-online.ts').read_bytes()
-    ).hexdigest()
+    probe_source_sha256_by_program = {
+        program: hashlib.sha256((ROOT / program).read_bytes()).hexdigest()
+        for program in PUBLIC_API_PROBE_PROGRAMS
+        if (ROOT / program).is_file()
+    }
     current_names = {item['name'] for item in catalog}
     public_candidates = {
         item['name'] for item in catalog
@@ -136,13 +332,15 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
             report = json.loads(path.read_text(encoding='utf-8'))
         except (OSError, ValueError):
             continue
+        source_program = report.get('sourceProgram') if isinstance(report, dict) else None
         if (
             not isinstance(report, dict)
             or report.get('schemaVersion') != 1
             or report.get('evidenceKind') != 'bangumi_public_api_tool_registry_smoke'
             or report.get('mode') != 'read_only_public_api_smoke'
-            or report.get('sourceProgram') != 'scripts/smoke-public-tools-online.ts'
-            or report.get('probeScriptSha256') != probe_source_sha256
+            or not isinstance(source_program, str)
+            or source_program not in probe_source_sha256_by_program
+            or report.get('probeScriptSha256') != probe_source_sha256_by_program.get(source_program)
         ):
             continue
         evidence_catalog_sha256 = report.get('catalogSha256')
@@ -183,6 +381,47 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
         }
         if set(result_by_name) != set(selected):
             continue
+        request_budget = report.get('requestBudget')
+        if source_program == 'scripts/smoke-person-profile-chronology-online.ts':
+            if selected != [P02_PUBLIC_CHRONOLOGY_TOOL]:
+                continue
+            p02_result = result_by_name.get(P02_PUBLIC_CHRONOLOGY_TOOL)
+            if not isinstance(p02_result, dict):
+                continue
+            p02_assertions = p02_result.get('assertions')
+            if (
+                set(report) != P02_PUBLIC_CHRONOLOGY_REPORT_KEYS
+                or request_budget != {'maxPerTool': 4, 'maxTotal': 4}
+                or report.get('budgetBlocked') is not False
+                or report.get('input') != P02_PUBLIC_CHRONOLOGY_INPUT
+                or not isinstance(report.get('observedAt'), str)
+                or re.fullmatch(
+                    r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z',
+                    report['observedAt'],
+                ) is None
+                or report.get('limits') != P02_PUBLIC_CHRONOLOGY_LIMITS
+                or set(p02_result) != P02_PUBLIC_CHRONOLOGY_RESULT_KEYS
+                or p02_result.get('input') != P02_PUBLIC_CHRONOLOGY_INPUT
+                or not isinstance(p02_assertions, dict)
+                or set(p02_assertions) != P02_PUBLIC_CHRONOLOGY_ASSERTION_KEYS
+                or not p02_public_chronology_summary_is_valid(report.get('result'))
+                or report.get('result') != p02_result.get('result')
+            ):
+                continue
+        if request_budget is not None:
+            per_tool_limit = request_budget.get('maxPerTool') if isinstance(request_budget, dict) else None
+            total_limit = request_budget.get('maxTotal') if isinstance(request_budget, dict) else None
+            reported_total = report.get('httpRequests')
+            request_counts = [result_by_name[name].get('httpRequests') for name in selected]
+            if (
+                type(per_tool_limit) is not int
+                or type(total_limit) is not int
+                or type(reported_total) is not int
+                or reported_total > total_limit
+                or not all(type(count) is int and 1 <= count <= per_tool_limit for count in request_counts)
+                or sum(request_counts) != reported_total
+            ):
+                continue
         for name in selected:
             evidence_tool = evidence_by_name.get(name)
             current_tool = current_by_name.get(name)
