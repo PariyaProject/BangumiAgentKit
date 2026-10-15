@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-15T10:09:37.400Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
+  "probeScriptSha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
+  "sourceProgram": "scripts/smoke-public-tools-online.ts",
+  "subjectId": 41529,
+  "userAgent": "BangumiAgentKit/live-public-probe",
+  "probeCount": 8,
+  "httpRequests": 37,
+  "selectedTools": [
+    "bangumi.query_subjects",
+    "bangumi.get_person_profile",
+    "bangumi.aggregate_subject_cohort",
+    "bangumi.compare_subject_cohorts",
+    "bangumi.render_person_profile",
+    "bangumi.render_query_subjects",
+    "bangumi.render_subject_cohort_aggregation",
+    "bangumi.render_subject_cohort_comparison"
+  ],
+  "limits": [
+    "selected named public/read tools only",
+    "sequential probes with 1.2s spacing",
+    "no OAuth",
+    "no writes",
+    "summaries only"
+  ],
+  "redactions": [
+    "username values are omitted from recorded inputs"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.query_subjects",
+      "input": {
+        "media": "anime",
+        "year": 2026,
+        "month": 7,
+        "resultMode": "top",
+        "limit": 1,
+        "sort": "date",
+        "order": "asc",
+        "explain": "none"
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "ok",
+        "itemsCount": 1,
+        "warningsCount": 0
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "minimumCountObserved": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.get_person_profile",
+      "input": {
+        "personId": 3474,
+        "includeCredits": false,
+        "maxSubjects": 2,
+        "maxCharacters": 2
+      },
+      "httpRequests": 3,
+      "result": {
+        "state": "partial",
+        "warningsCount": 1
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.aggregate_subject_cohort",
+      "input": {
+        "cohort": {
+          "query": {
+            "media": "anime",
+            "year": 2012,
+            "resultMode": "all"
+          }
+        },
+        "maxSubjects": 1
+      },
+      "httpRequests": 7,
+      "result": {
+        "state": "partial",
+        "warningsCount": 5
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.compare_subject_cohorts",
+      "input": {
+        "cohorts": [
+          {
+            "query": {
+              "media": "anime",
+              "year": 2012,
+              "resultMode": "all"
+            }
+          }
+        ],
+        "maxSubjects": 1
+      },
+      "httpRequests": 7,
+      "result": {
+        "state": "partial",
+        "warningsCount": 5
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_person_profile",
+      "input": {
+        "personId": 3474,
+        "maxSubjects": 2,
+        "maxCharacters": 2,
+        "maxCredits": 2
+      },
+      "httpRequests": 3,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_query_subjects",
+      "input": {
+        "media": "anime",
+        "year": 2012,
+        "resultMode": "top",
+        "limit": 1
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_aggregation",
+      "input": {
+        "cohort": {
+          "query": {
+            "media": "anime",
+            "year": 2012,
+            "resultMode": "all"
+          }
+        },
+        "maxSubjects": 1
+      },
+      "httpRequests": 7,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_comparison",
+      "input": {
+        "cohorts": [
+          {
+            "query": {
+              "media": "anime",
+              "year": 2012,
+              "resultMode": "all"
+            }
+          }
+        ],
+        "maxSubjects": 1
+      },
+      "httpRequests": 7,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    }
+  ]
+}
