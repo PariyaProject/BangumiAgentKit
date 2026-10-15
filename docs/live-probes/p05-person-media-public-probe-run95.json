@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_p05_person_media_direct_public_tool_registry_v1",
+  "runNumber": 95,
+  "frontierId": "P05",
+  "epochId": "run95-p05-person-media-distribution-public-probe-20261015",
+  "prNumber": 166,
+  "claimId": "p05-run-95-pr-166-8e37cb727977-1792040146274",
+  "sourceRevision": "8e37cb727977b6f74d20f270d75d90a189206d5b",
+  "baseSha": "244b5426e2ae99006b9eadcf3275db4187ef3288",
+  "ciSha": "8e37cb727977b6f74d20f270d75d90a189206d5b",
+  "ciStatus": "SUCCESS",
+  "reviewerId": "gpt-6-luna-max-run95-pr166-round1",
+  "reviewVerdict": "PASS",
+  "reviewPassSha": "8e37cb727977b6f74d20f270d75d90a189206d5b",
+  "observedAt": "2026-10-15T04:55:56.002Z",
+  "toolName": "bangumi.get_person_profile",
+  "argumentProfile": "p05-person-media-types-3474-500-subjects-v1",
+  "arguments": {
+    "personId": 3474,
+    "includeCredits": false,
+    "maxSubjects": 500,
+    "maxCharacters": 1
+  },
+  "toolInvocationCount": 1,
+  "httpRequests": 3,
+  "resultState": "SUCCESS",
+  "resultSummary": {
+    "state": "complete",
+    "personId": 3474,
+    "subjectCredits": 402,
+    "uniqueSubjects": 370,
+    "subjectRowsObserved": 402,
+    "subjectRowsReturned": 402,
+    "subjectRowsTruncated": false,
+    "sourceCompleteness": "undocumented",
+    "subjectMedia": [
+      {
+        "key": "anime",
+        "label": "anime",
+        "count": 401,
+        "uniqueSubjects": 369,
+        "rawCodes": [
+          2
+        ]
+      },
+      {
+        "key": "game",
+        "label": "game",
+        "count": 1,
+        "uniqueSubjects": 1,
+        "rawCodes": [
+          4
+        ]
+      }
+    ]
+  },
+  "resultByteLength": 5434,
+  "resultSha256": "5dd8fd9952e05377ed691bd4209196ee2487434396b715c43d0d57a4a18c937f",
+  "toolCallErrorType": null,
+  "runnerScriptSha256": "b22f1ce7d14eae3f3b177f2a58373caa57fd358d9e87489b45d747a56426e69b",
+  "assertions": {
+    "exactHarnessCandidateGate": true,
+    "exactPublicReadArguments": true,
+    "exactlyOneToolInvocation": true,
+    "anonymousPublicRequestObserved": true,
+    "personMediaSummaryValid": true
+  },
+  "limits": [
+    "anonymous public ToolRegistry read only",
+    "one exact get_person_profile invocation",
+    "subject type counts describe only returned relation rows",
+    "upstream relation completeness is undocumented",
+    "no OAuth, account, community, HTML, writes, QQ, or TIM"
+  ]
+}
