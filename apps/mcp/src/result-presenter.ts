@@ -72,6 +72,7 @@ type SubjectRelationsEvidenceResult = JsonObject & {
 };
 
 const PERSON_ACTIVITY_TOOL = 'bangumi.get_person_activity';
+const PERSON_PROFILE_TOOL = 'bangumi.get_person_profile';
 const SUBJECT_STAFF_TOOL = 'bangumi.get_subject_staff';
 const SUBJECT_CAST_TOOL = 'bangumi.get_subject_cast';
 const SUBJECT_OVERVIEW_TOOL = 'bangumi.get_subject_overview';
@@ -82,6 +83,7 @@ const SERIES_WATCH_ORDER_TOOL = 'bangumi.get_series_watch_order';
 const QUERY_SUBJECTS_TOOL = 'bangumi.query_subjects';
 const SUBJECT_RELATIONS_TOOL = 'bangumi.get_subject_relations';
 const MAX_PERSON_ROWS = 6;
+const MAX_PERSON_PROFILE_TITLE_ROWS = 6;
 const MAX_MONTH_BUCKETS = 6;
 const MAX_SECTION_ITEMS = 4;
 const MAX_STAFF_GROUPS = 6;
@@ -95,6 +97,8 @@ const TEXT_VIEW_SCOPE_NOTE =
   'Only included rows are shown; partial or truncated coverage is not a complete source list, and omission is not evidence of absence.';
 const SUBJECT_COHORT_TEXT_SCOPE_NOTE =
   'Rows are truncated; omitted rows are not evidence of absence. SD is descriptive, not significance or polarization. Overlap counts in both means. Full result is structuredContent.';
+const PERSON_PROFILE_TEXT_SCOPE_NOTE =
+  '仅本次收到的作品关系行；官方 name_cn 去除首尾空白后非空才算来源已提供。空值/缺失不证明没有中文名，上游关系完整性未声明，文本省略也不代表作品不存在。完整明细见 structuredContent。';
 
 export function presentMcpToolResult(toolName: string, result: unknown): McpToolResultPresentation {
   const fullText = serializeFullResult(result);
@@ -105,6 +109,16 @@ export function presentMcpToolResult(toolName: string, result: unknown): McpTool
   ) {
     return {
       text: compactSubjectRelations(result),
+      structuredContent: result,
+    };
+  }
+
+  if (toolName === PERSON_PROFILE_TOOL && isPersonProfileToolResult(result)) {
+    return {
+      text:
+        utf8Bytes(fullText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES
+          ? fullText
+          : compactPersonProfileResult(result),
       structuredContent: result,
     };
   }
@@ -186,6 +200,105 @@ export function presentMcpToolResult(toolName: string, result: unknown): McpTool
 function serializeFullResult(result: unknown): string {
   if (typeof result === 'string') return result;
   return JSON.stringify(result, null, 2) ?? 'null';
+}
+
+type PersonProfileToolResult = JsonObject & {
+  state?: string;
+  person?: JsonObject;
+  summary?: JsonObject;
+  coverage: JsonObject & {
+    state?: string;
+    subjects: JsonObject & {
+      observed?: number;
+      returned?: number;
+      truncated?: boolean;
+      sourceCompleteness?: string;
+      nameCnSourceSemantics?: string;
+    };
+  };
+  credits?: JsonObject & { subjects?: JsonObject[] };
+};
+
+function isPersonProfileToolResult(value: unknown): value is PersonProfileToolResult {
+  return (
+    isJsonObject(value) && isJsonObject(value.coverage) && isJsonObject(value.coverage.subjects)
+  );
+}
+
+function clipPersonProfileText(value: unknown, maximumCharacters = 80): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const characters = Array.from(value);
+  if (characters.length <= maximumCharacters) return value;
+  return `${characters.slice(0, maximumCharacters - 1).join('')}…`;
+}
+
+function compactPersonProfileResult(result: PersonProfileToolResult): string {
+  const sourceRows = Array.isArray(result.credits?.subjects) ? result.credits.subjects : [];
+  const nameCnSourceCounts = { present: 0, empty: 0, missing: 0 };
+  const positiveRows = sourceRows.filter((row) => {
+    if (typeof row.nameCnSource === 'string' && row.nameCnSource.trim().length > 0) {
+      nameCnSourceCounts.present += 1;
+      return true;
+    }
+    if (typeof row.nameCnSource === 'string') nameCnSourceCounts.empty += 1;
+    else nameCnSourceCounts.missing += 1;
+    return false;
+  });
+  const listedRows = positiveRows.slice(0, MAX_PERSON_PROFILE_TITLE_ROWS).map((row) => ({
+    ...(Number.isSafeInteger(row.id) ? { id: row.id } : {}),
+    ...(clipPersonProfileText(row.name) ? { name: clipPersonProfileText(row.name) } : {}),
+    nameCnSource: clipPersonProfileText(row.nameCnSource),
+  }));
+  const person = isJsonObject(result.person) ? result.person : {};
+  const summary = isJsonObject(result.summary) ? result.summary : {};
+  return JSON.stringify(
+    {
+      state: typeof result.state === 'string' ? result.state : 'unknown',
+      person: {
+        ...(Number.isSafeInteger(person.id) ? { id: person.id } : {}),
+        ...(clipPersonProfileText(person.name) ? { name: clipPersonProfileText(person.name) } : {}),
+        ...(clipPersonProfileText(person.nameCn)
+          ? { nameCn: clipPersonProfileText(person.nameCn) }
+          : {}),
+      },
+      summary: {
+        uniqueSubjects: Number.isSafeInteger(summary.uniqueSubjects)
+          ? summary.uniqueSubjects
+          : null,
+        subjectCredits: Number.isSafeInteger(summary.subjectCredits)
+          ? summary.subjectCredits
+          : null,
+      },
+      coverage: {
+        state: typeof result.coverage.state === 'string' ? result.coverage.state : 'unknown',
+        subjects: {
+          observed: Number.isSafeInteger(result.coverage.subjects.observed)
+            ? result.coverage.subjects.observed
+            : null,
+          returned: Number.isSafeInteger(result.coverage.subjects.returned)
+            ? result.coverage.subjects.returned
+            : null,
+          truncated:
+            typeof result.coverage.subjects.truncated === 'boolean'
+              ? result.coverage.subjects.truncated
+              : null,
+          sourceCompleteness: 'undocumented',
+          nameCnSourceSemantics:
+            result.coverage.subjects.nameCnSourceSemantics ??
+            'nameCnSource 去除首尾空白后非空表示官方 name_cn 已提供；空值或缺失仅表示本次没有可用字段，不证明无中文名。',
+          creditRowsIncluded: Array.isArray(result.credits?.subjects),
+          nameCnSourceCounts,
+        },
+      },
+      sourceNameCnRows: listedRows,
+      returnedCreditRowsObserved: sourceRows.length,
+      returnedCreditRowsWithNameCnSource: positiveRows.length,
+      nameCnRowsOmittedFromText: Math.max(0, positiveRows.length - listedRows.length),
+      scopeNote: PERSON_PROFILE_TEXT_SCOPE_NOTE,
+    },
+    null,
+    2,
+  );
 }
 
 function utf8Bytes(value: string): number {

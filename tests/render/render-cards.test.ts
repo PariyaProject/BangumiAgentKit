@@ -527,14 +527,22 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
         birthDay: 2,
       },
       subjects: {
-        items: Array.from({ length: 6 }, (_, index) => ({
-          id: index + 1,
-          name: `Very Long Japanese Title ${index + 1}`,
-          nameCn: '这是一个非常长的中文条目名称用于测试移动端换行和层级',
-          mediaType: 'anime' as const,
-          mediaTypeCode: 2,
-          staffRole: '艺术家',
-        })),
+        items: Array.from({ length: 6 }, (_, index) => {
+          const name = `Very Long Japanese Title ${index + 1}`;
+          const sourceTitle = '这是一个非常长的中文条目名称用于测试移动端换行和层级';
+          const nameCnSource =
+            index === 1 ? name : index === 2 ? '' : index === 3 ? null : sourceTitle;
+          return {
+            id: index + 1,
+            name,
+            nameCn:
+              typeof nameCnSource === 'string' && nameCnSource.length > 0 ? nameCnSource : name,
+            nameCnSource,
+            mediaType: 'anime' as const,
+            mediaTypeCode: 2,
+            staffRole: '艺术家',
+          };
+        }),
         observed: 9,
         returned: 6,
         truncated: true,
@@ -572,7 +580,7 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     };
 
     const vm: PersonProfileViewModel = buildPersonProfileViewModel(profile, {
-      maxSubjectCredits: 1,
+      maxSubjectCredits: 4,
       maxCharacterCredits: 1,
       retrievedAt: '2026-08-10T00:00:00Z',
     });
@@ -581,10 +589,10 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
       state: 'partial',
       observed: 16,
       returned: 11,
-      rendered: 2,
+      rendered: 5,
       unobserved: 5,
     });
-    expect(vm.hiddenSubjectCredits).toBe(5);
+    expect(vm.hiddenSubjectCredits).toBe(2);
     expect(vm.hiddenCharacterCredits).toBe(4);
     expect(vm.unobservedSubjectCredits).toBe(3);
     expect(vm.unobservedCharacterCredits).toBe(2);
@@ -594,8 +602,12 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(html).toContain('width:640px');
     expect(html).toContain('水濑祈');
     expect(html).toContain('简介（摘要）：');
-    expect(html).toContain('已观察 16 条，返回 11 条，展示 2 条');
-    expect(html).toContain('另有 5 条已返回关系未展示');
+    expect(html).toContain('已观察 16 条，返回 11 条，展示 5 条');
+    expect(html).toContain('上游未说明作品关系是否完整');
+    expect(html).toContain('上游已提供中文名（与原名相同）');
+    expect(html).toContain('上游中文名字段为空');
+    expect(html).toContain('上游未返回中文名字段');
+    expect(html).toContain('另有 2 条已返回关系未展示');
     expect(html).toContain('另有 3 条关系未读取');
 
     const result = await renderService.renderCard(vm, { width: 640, deviceScaleFactor: 1 });

@@ -29,6 +29,8 @@ export interface PersonRelationSubject {
   id: number;
   name: string;
   nameCn: string;
+  /** Raw official `name_cn`; null means the source field was absent or invalid. */
+  nameCnSource?: string | null;
   staffRole?: string;
   mediaType?: SubjectType;
   mediaTypeCode?: number;

@@ -73,7 +73,7 @@
 | --: | -------------------------------------------- | -------------------------------------------------- |
 | P01 | 这位人物最常担任哪些职位？                   | person→subject staff roles、role normalization     |
 | P02 | 某人物首次参与动画和最近参与动画分别是什么？ | work dates、missing-date policy                    |
-| P03 | 某人物参与的作品里，哪些拥有中文译名？       | person works、name/name_cn completeness            |
+| P03 | 某人物参与的作品里，哪些拥有中文译名？       | returned person-work rows、raw name_cn presence、unknown upstream completeness |
 | P04 | 这位人物与哪些人合作最频繁？                 | co-credit graph、unique subject dedupe、role scope |
 | P05 | 某人物作品按媒介分布如何？                   | subject type/platform、media normalization         |
 | P06 | 某人物最近 20 个作品中哪些仍在连载？         | air status/date、pagination、current retrieval     |

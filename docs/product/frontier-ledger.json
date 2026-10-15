@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-13T15:38:16Z",
+  "updated_at": "2026-10-15T01:24:46Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1987,10 +1987,10 @@
       "kind": "scenario",
       "user_question": "某人物参与的作品里，哪些拥有中文译名？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
-      "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
+      "status": "PARTIAL",
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-p03-person-chinese-title-current-contract-2026-10-15.md", "packages/bangumi-core/src/services/person-service.ts", "packages/tools/src/definitions/read-tools.ts", "apps/mcp/src/result-presenter.ts", "packages/renderer/src/templates/PersonProfileCard.tsx", "tests/unit/person-intelligence.test.ts", "tests/semantic/semantic-tools.test.ts", "tests/integration/mcp-result-presenter.test.ts", "tests/render/render-cards.test.ts"],
+      "next_action": "For returned person-work rows, treat a raw nameCnSource that remains non-empty after trimming as explicit name_cn evidence, including when it equals name. Empty/missing values do not prove absence. Source completeness is undocumented; compact MCP text reports source-state counts and omitted rows, while structuredContent retains the returned result. Keep PARTIAL until current Agent/MCP answer evidence or an upstream completeness contract justifies a stronger claim.",
+      "reopen_when": "A current-source Agent/MCP answer profile is accepted for a named person, or official v0 adds pagination/total/completeness semantics for person-work relations.",
       "related_ids": []
     },
     {

@@ -208,13 +208,14 @@ export function mapPersonRelationSubject(raw: {
   staff?: string;
   eps?: string;
   name?: string;
-  name_cn?: string;
+  name_cn?: string | null;
   image?: string;
 }): PersonRelationSubject {
   return {
     id: raw.id,
     name: raw.name || '',
     nameCn: raw.name_cn || raw.name || '',
+    nameCnSource: typeof raw.name_cn === 'string' ? raw.name_cn : null,
     staffRole: raw.staff || undefined,
     mediaType: mapSubjectType(raw.type),
     mediaTypeCode: raw.type,

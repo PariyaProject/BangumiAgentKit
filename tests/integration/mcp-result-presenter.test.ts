@@ -2653,6 +2653,77 @@ describe('MCP tool result presentation', () => {
     expect(parsed.exclusions[0]).toEqual({ reason: 'subject_detail_cap', count: 12 });
   });
 
+  it('preserves positive person name_cn evidence in bounded MCP text', () => {
+    const subjects = [
+      ...Array.from({ length: 10 }, (_, index) => ({
+        id: index + 1,
+        name: `Original title ${index} ${'source'.repeat(30)}`,
+        nameCn: `中文译名 ${index} ${'标题'.repeat(40)}`,
+        nameCnSource: `中文译名 ${index} ${'标题'.repeat(40)}`,
+      })),
+      ...Array.from({ length: 20 }, (_, index) => ({
+        id: index + 11,
+        name: `Empty title ${index}`,
+        nameCn: `Empty title ${index}`,
+        nameCnSource: '',
+      })),
+      ...Array.from({ length: 10 }, (_, index) => ({
+        id: index + 31,
+        name: `Missing title ${index}`,
+        nameCn: `Missing title ${index}`,
+        nameCnSource: null,
+      })),
+    ];
+    const original = {
+      state: 'complete',
+      person: { id: 4765, name: 'Person', nameCn: '人物' },
+      summary: { uniqueSubjects: 40, subjectCredits: 40 },
+      coverage: {
+        state: 'partial',
+        subjects: {
+          observed: 60,
+          returned: 40,
+          truncated: true,
+          sourceCompleteness: 'undocumented',
+          nameCnSourceSemantics:
+            'nameCnSource 去除首尾空白后非空表示官方 name_cn 已提供；空值或缺失仅表示本次没有可用字段，不证明无中文名。',
+        },
+      },
+      credits: { subjects, characters: [] },
+      limitations: ['Person work relations have no documented completeness contract.'],
+    };
+
+    const presentation = presentMcpToolResult(
+      'bangumi.get_person_profile',
+      original as unknown as Record<string, unknown>,
+    );
+    const parsed = JSON.parse(presentation.text);
+
+    expect(presentation.structuredContent).toEqual(original);
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(parsed.coverage.subjects).toMatchObject({
+      observed: 60,
+      returned: 40,
+      truncated: true,
+      sourceCompleteness: 'undocumented',
+      nameCnSourceSemantics: expect.stringContaining('不证明无中文名'),
+      creditRowsIncluded: true,
+      nameCnSourceCounts: { present: 10, empty: 20, missing: 10 },
+    });
+    expect(parsed.sourceNameCnRows).toHaveLength(6);
+    expect(parsed.sourceNameCnRows[0]).toMatchObject({
+      id: 1,
+      name: expect.stringContaining('Original title 0'),
+      nameCnSource: expect.stringContaining('中文译名 0'),
+    });
+    expect(parsed.returnedCreditRowsObserved).toBe(40);
+    expect(parsed.returnedCreditRowsWithNameCnSource).toBe(10);
+    expect(parsed.nameCnRowsOmittedFromText).toBe(4);
+    expect(parsed.scopeNote).toContain('空值/缺失不证明没有中文名');
+  });
+
   it('retains the score ranking and its independent partial coverage in MCP text', async () => {
     const original = makePersonActivityResult();
     original.rows = [];

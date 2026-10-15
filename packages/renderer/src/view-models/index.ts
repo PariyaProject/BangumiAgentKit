@@ -642,6 +642,7 @@ export interface PersonProfileCreditViewModel {
   id: number;
   name: string;
   nameCn?: string;
+  nameCnSource?: string | null;
   role?: string;
   subjectName?: string;
   subjectNameCn?: string;
@@ -708,6 +709,7 @@ export interface PersonProfileViewModel {
     returned: number;
     rendered: number;
     unobserved: number;
+    subjectSourceCompleteness: 'undocumented';
   };
   limitations: string[];
   warnings: Array<{

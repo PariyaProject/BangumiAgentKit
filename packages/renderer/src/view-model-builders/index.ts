@@ -2491,6 +2491,7 @@ export function buildPersonProfileViewModel(
       id: subject.id,
       name: subject.name,
       nameCn: subject.nameCn,
+      nameCnSource: subject.nameCnSource,
       role: subject.staffRole,
       eps: subject.eps,
     }));
@@ -2584,8 +2585,10 @@ export function buildPersonProfileViewModel(
       returned,
       rendered,
       unobserved: Math.max(0, observed - returned),
+      subjectSourceCompleteness: 'undocumented',
     },
     limitations: options.limitations || [
+      '人物作品关系接口没有分页、总数或完整性承诺；本次返回范围未截断只表示本地没有截断收到的关系行，不代表完整人物作品表。空或缺失的官方 name_cn 不证明该作品没有中文名。',
       '关系接口没有作品日期，因此不能从此卡片推断最近活动或时间窗口工作量。',
       '没有历史快照，因此不显示增长或趋势结论。',
       '关系明细按官方接口返回顺序展示，仅作为样本，不代表最新或优先级排序。',
