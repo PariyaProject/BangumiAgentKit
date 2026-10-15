@@ -2029,7 +2029,7 @@
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-p02-observed-animation-release-chronology-2026-10-15.md", "packages/bangumi-core/src/models/person.ts", "packages/bangumi-core/src/services/person-service.ts", "packages/tools/src/definitions/read-tools.ts", "packages/tools/src/definitions/render-presentation-tools.ts", "apps/mcp/src/result-presenter.ts", "packages/renderer/src/view-models/index.ts", "packages/renderer/src/view-model-builders/index.ts", "packages/renderer/src/templates/PersonProfileCard.tsx", "docs/tool-catalog.json", "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md", "tests/unit/person-intelligence.test.ts", "tests/integration/mcp-result-presenter.test.ts", "tests/integration/mcp-schema.test.ts", "tests/integration/tool-direct-execute-read.test.ts", "tests/render/render-cards.test.ts", "docs/live-probes/public-tools-p02-person-profile-chronology-2026-10-15.json"],
-      "next_action": "Keep PARTIAL. One authorized anonymous ToolRegistry observation of bangumi.get_person_profile used four actual HTTP requests and passed all assertions. It returned 107 subject relations and one successful sampled chronology detail with official air/release date 2016-03-28; 19 anime relations were omitted and source completeness is undocumented. This sample does not establish career-wide first/latest participation or actual work dates. Never rerun the query. The public API matrix is 58/65; Agent/MCP remains 81/96 and QQ/TIM remains 0/96. Reopen only if an authoritative completeness/order contract or a separately selected bounded scope supports a stronger claim.",
+      "next_action": "Keep PARTIAL. One authorized anonymous ToolRegistry observation of bangumi.get_person_profile used four actual HTTP requests and passed all assertions. It returned 107 subject relations and one successful sampled chronology detail with official air/release date 2016-03-28; 19 anime relations were omitted and source completeness is undocumented. This sample does not establish career-wide first/latest participation or actual work dates. Never rerun the query. The public API matrix is 59/65 with 6 rows pending; Agent/MCP remains 81/96 and QQ/TIM remains 0/96. Reopen only if an authoritative completeness/order contract or a separately selected bounded scope supports a stronger claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2275,9 +2275,31 @@
       "user_question": "某人物最近 20 个作品中哪些仍在连载？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-p06-render-person-profile-public-probe-2026-10-16.md",
+        "docs/live-probes/public-tools-2026-10-15-151849327-87132.json"
+      ],
+      "next_action": "Keep UNASSESSED. One fresh anonymous render_person_profile public observation for person 13684 used maxSubjects=1, maxCharacters=1, maxCredits=1, chronology disabled, and three HTTP requests; its sanitized ArtifactRef summary supports only this tool's public matrix row. It does not establish the exact latest 20 works, current airing status, or person-graph completeness. Do not infer ongoing/finished state or Agent/MCP acceptance from this render call.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
+      "evidence": {
+        "fresh_render_person_profile_public_observation_2026_10_16": {
+          "scope_id": "run95-fresh-render-person-profile-13684-v1",
+          "tool": "bangumi.render_person_profile",
+          "input": {
+            "personId": 13684,
+            "maxSubjects": 1,
+            "maxCharacters": 1,
+            "maxCredits": 1,
+            "includeChronology": false
+          },
+          "http_requests": 3,
+          "result_summary": { "state": "value", "keys": ["artifact"] },
+          "report": "docs/live-probes/public-tools-2026-10-15-151849327-87132.json",
+          "report_sha256": "8e15739c8187b96a542bbec5d356da5382b8f845d9f79894a9bb6e99d16dbd14",
+          "claim_boundary": "One current-catalog anonymous ToolRegistry renderer observation only; no raw relation rows, image bytes, scenario acceptance, Agent/MCP, recency, ongoing-status, or upstream-completeness claim."
+        }
+      },
       "related_ids": []
     },
     {

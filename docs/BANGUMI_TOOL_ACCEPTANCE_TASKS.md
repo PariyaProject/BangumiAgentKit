@@ -5,7 +5,7 @@
 ## 总览
 
 - [x] 每个工具都有直接 `execute` 夹具：96/96。
-- [ ] 匿名可用的公开 API 工具有逐项实测：58/65；待补 7。
+- [ ] 匿名可用的公开 API 工具有逐项实测：59/65；待补 6。
 - [x] 匿名公开 API 不适用项已单独分类：31/96；这些工具由账号验收或本地状态验收覆盖。
 - [ ] 需要账号的工具完成真实 OAuth/账号验收：33 项目前不能用本地 mock 代替。
 - [ ] 无账号认证门禁拒绝路径已验证：21/22 项；门禁通过不代表真实账号功能通过。
@@ -93,7 +93,7 @@
 | `bangumi.render_latest_subject_revision` | `none` | `read` | `docs/tool-catalog.json#/72` | `tests/integration/tool-direct-execute-render.test.ts:124` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-latest-subject-revision-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.render_person_activity` | `none` | `read` | `docs/tool-catalog.json#/73` | `tests/integration/tool-direct-execute-render.test.ts:125` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-person-activity-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.render_person_collaboration` | `none` | `read` | `docs/tool-catalog.json#/74` | `tests/integration/tool-direct-execute-render.test.ts:126` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-person-collaboration-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.render_person_profile` | `none` | `read` | `docs/tool-catalog.json#/75` | `tests/integration/tool-direct-execute-render.test.ts:127` | ✅ | ⬜ | — | — | ⬜ | ⬜ | ⬜ | 补公开 API；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_person_profile` | `none` | `read` | `docs/tool-catalog.json#/75` | `tests/integration/tool-direct-execute-render.test.ts:127` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-10-15-151849327-87132.json` | — | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.render_query_subjects` | `none` | `read` | `docs/tool-catalog.json#/76` | `tests/integration/tool-direct-execute-render.test.ts:128` | ✅ | ⬜ | — | — | ⬜ | ⬜ | ⬜ | 补公开 API；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.render_revision_timeline` | `none` | `read` | `docs/tool-catalog.json#/77` | `tests/integration/tool-direct-execute-render.test.ts:129` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-revision-timeline-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.render_search` | `none` | `read` | `docs/tool-catalog.json#/78` | `tests/integration/tool-catalog-completeness.test.ts:432` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-search-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |

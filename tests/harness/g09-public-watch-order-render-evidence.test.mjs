@@ -59,6 +59,6 @@ test('G09 public render evidence records only the artifact key and no canary res
     .filter((line) => line.split('|')[7]?.includes('◐')).length;
   assert.ok(publicEvidenceSummary);
   assert.equal(Number(publicEvidenceSummary[1]), publicEvidenceRows);
-  assert.equal(Number(publicEvidenceSummary[1]), 58);
+  assert.equal(Number(publicEvidenceSummary[1]), 59);
   assert.match(acceptance, /Agent→MCP 模型调用证据：81\/96/);
 });

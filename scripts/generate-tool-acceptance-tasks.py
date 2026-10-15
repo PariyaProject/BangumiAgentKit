@@ -56,6 +56,17 @@ PUBLIC_API_REQUIRED_ASSERTIONS = {
 PUBLIC_API_PROBE_PROGRAMS = {
     'scripts/smoke-public-tools-online.ts',
     'scripts/smoke-person-profile-chronology-online.ts',
+    'scripts/smoke-fresh-render-person-profile-public.ts',
+}
+FRESH_RENDER_PERSON_PROFILE_PUBLIC_PROGRAM = 'scripts/smoke-fresh-render-person-profile-public.ts'
+FRESH_RENDER_PERSON_PROFILE_PUBLIC_SCOPE_ID = 'run95-fresh-render-person-profile-13684-v1'
+FRESH_RENDER_PERSON_PROFILE_PUBLIC_TOOL = 'bangumi.render_person_profile'
+FRESH_RENDER_PERSON_PROFILE_PUBLIC_INPUT = {
+    'personId': 13684,
+    'maxSubjects': 1,
+    'maxCharacters': 1,
+    'maxCredits': 1,
+    'includeChronology': False,
 }
 P02_PUBLIC_CHRONOLOGY_TOOL = 'bangumi.get_person_profile'
 P02_PUBLIC_CHRONOLOGY_INPUT = {
@@ -381,6 +392,21 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
         }
         if set(result_by_name) != set(selected):
             continue
+        if source_program == FRESH_RENDER_PERSON_PROFILE_PUBLIC_PROGRAM:
+            fresh_result = result_by_name.get(FRESH_RENDER_PERSON_PROFILE_PUBLIC_TOOL)
+            fresh_assertions = fresh_result.get('assertions') if isinstance(fresh_result, dict) else None
+            if (
+                selected != [FRESH_RENDER_PERSON_PROFILE_PUBLIC_TOOL]
+                or report.get('scopeId') != FRESH_RENDER_PERSON_PROFILE_PUBLIC_SCOPE_ID
+                or report.get('budgetBlocked') is not False
+                or report.get('requestBudget') != {'maxPerTool': 4, 'maxTotal': 4}
+                or not isinstance(fresh_result, dict)
+                or fresh_result.get('input') != FRESH_RENDER_PERSON_PROFILE_PUBLIC_INPUT
+                or not isinstance(fresh_assertions, dict)
+                or fresh_assertions.get('scopeInputExact') is not True
+                or fresh_assertions.get('scopeRequestCap') is not True
+            ):
+                continue
         request_budget = report.get('requestBudget')
         if source_program == 'scripts/smoke-person-profile-chronology-online.ts':
             if selected != [P02_PUBLIC_CHRONOLOGY_TOOL]:
