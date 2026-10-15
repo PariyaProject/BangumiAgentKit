@@ -115,6 +115,10 @@ test('community source and OP-003 closures are evidence-bound and keep discussio
   assert.ok(opportunity, 'OP-003 must remain in the canonical ledger');
   assert.equal(opportunity.status, 'CLOSED_NO_SAFE_SOURCE');
   assert.ok(
+    Date.parse(ledger.updated_at) >= Date.parse(opportunity.research_closure.completed_at),
+    'the frontier ledger timestamp must include the latest OP-003 closure',
+  );
+  assert.ok(
     opportunity.source_refs.includes(
       'docs/research/run95-op003-community-source-contract-2026-10-15.md',
     ),
