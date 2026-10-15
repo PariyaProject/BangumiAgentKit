@@ -1495,7 +1495,7 @@
   },
   {
     "name": "bangumi.get_person_profile",
-    "description": "生成一个现实人物/声优/制作人员的结构化履历摘要：身份、媒介分布、原始职位/角色标签、去重作品/角色计数和受限关系明细。用于 Agent 一次回答“这个人参与过什么”；时间窗口、最近活动、工作量趋势和合作次数需要额外数据，本工具不会猜测。",
+    "description": "生成现实人物/声优/制作人员的结构化履历摘要。可选 includeChronology=true，以最多 48 个等距采样的动画作品官方播出/发行日期，报告本次样本中观察到的最早和最近日期；人物关系顺序和完整性未声明，因此不能据此声称完整生涯首作/最近作品或实际参与日期。该选项默认关闭。时间窗工作量、趋势和合作次数仍需额外数据，本工具不会猜测。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -1524,6 +1524,16 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 500
+        },
+        "includeChronology": {
+          "description": "是否额外读取受限动画作品详情并计算观察样本发行日期极值；默认 false",
+          "type": "boolean"
+        },
+        "maxChronologySubjects": {
+          "description": "includeChronology=true 时最多读取的动画作品详情数，最高 48",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 48
         }
       },
       "required": ["personId"],
@@ -3215,7 +3225,7 @@
   },
   {
     "name": "bangumi.render_person_profile",
-    "description": "生成现实人物/声优/制作人员履历与关系分布图片卡片 Artifact。",
+    "description": "生成现实人物/声优/制作人员履历与关系分布图片卡片 Artifact。可选 includeChronology=true 显示最多 48 部采样动画的官方播出/发行日期极值和覆盖限制；默认关闭，且不代表完整生涯首作/最近作品或实际参与日期。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -3246,6 +3256,16 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 20
+        },
+        "includeChronology": {
+          "description": "是否额外读取受限动画作品详情并展示观察样本发行日期极值；默认 false",
+          "type": "boolean"
+        },
+        "maxChronologySubjects": {
+          "description": "includeChronology=true 时最多读取的动画作品详情数，最高 48",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 48
         }
       },
       "required": ["personId"],

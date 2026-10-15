@@ -84,6 +84,7 @@ const QUERY_SUBJECTS_TOOL = 'bangumi.query_subjects';
 const SUBJECT_RELATIONS_TOOL = 'bangumi.get_subject_relations';
 const MAX_PERSON_ROWS = 6;
 const MAX_PERSON_PROFILE_TITLE_ROWS = 6;
+const MAX_PERSON_PROFILE_CHRONOLOGY_TIE_ROWS = 2;
 const MAX_PERSON_PROFILE_FIELD_UTF8_BYTES = 160;
 const MAX_MONTH_BUCKETS = 6;
 const MAX_SECTION_ITEMS = 4;
@@ -218,6 +219,7 @@ type PersonProfileToolResult = JsonObject & {
     };
   };
   credits?: JsonObject & { subjects?: JsonObject[] };
+  releaseChronology?: JsonObject;
 };
 
 function isPersonProfileToolResult(value: unknown): value is PersonProfileToolResult {
@@ -245,6 +247,81 @@ function clipPersonProfileText(
     clippedBytes += characterBytes;
   }
   return `${clipped}${ellipsis}`;
+}
+
+function compactPersonProfileChronology(chronology: JsonObject): JsonObject {
+  const compactExtreme = (value: unknown): JsonObject | undefined => {
+    if (!isJsonObject(value)) return undefined;
+    const subjects = Array.isArray(value.subjects) ? value.subjects.filter(isJsonObject) : [];
+    const listedSubjects = subjects.slice(0, MAX_PERSON_PROFILE_CHRONOLOGY_TIE_ROWS).map((subject) => ({
+      ...(Number.isSafeInteger(subject.id) ? { id: subject.id } : {}),
+      ...(clipPersonProfileText(subject.name, 80)
+        ? { name: clipPersonProfileText(subject.name, 80) }
+        : {}),
+    }));
+    return {
+      ...(clipPersonProfileText(value.date) ? { date: clipPersonProfileText(value.date) } : {}),
+      subjectCount: subjects.length,
+      subjects: listedSubjects,
+      subjectsOmittedFromText: Math.max(0, subjects.length - listedSubjects.length),
+    };
+  };
+  const limitations = Array.isArray(chronology.limitations)
+    ? chronology.limitations
+        .filter((item): item is string => typeof item === 'string')
+        .slice(0, 2)
+        .map((item) => clipPersonProfileText(item, 120))
+        .filter((item): item is string => item !== undefined)
+    : [];
+  const earliestObserved = compactExtreme(chronology.earliestObserved);
+  const latestObserved = compactExtreme(chronology.latestObserved);
+  return {
+    state: clipPersonProfileText(chronology.state) ?? 'unknown',
+    sourceCompleteness: 'undocumented',
+    dateSemantics:
+      clipPersonProfileText(chronology.dateSemantics) ?? 'official-subject-air-release-date',
+    samplingStrategy: clipPersonProfileText(chronology.samplingStrategy) ?? 'unknown',
+    relationRowsObserved: Number.isSafeInteger(chronology.relationRowsObserved)
+      ? chronology.relationRowsObserved
+      : null,
+    relationRowsReturned: Number.isSafeInteger(chronology.relationRowsReturned)
+      ? chronology.relationRowsReturned
+      : null,
+    relationRowsTruncated:
+      typeof chronology.relationRowsTruncated === 'boolean'
+        ? chronology.relationRowsTruncated
+        : null,
+    animeRelationRowsReturned: Number.isSafeInteger(chronology.animeRelationRowsReturned)
+      ? chronology.animeRelationRowsReturned
+      : null,
+    uniqueAnimeSubjects: Number.isSafeInteger(chronology.uniqueAnimeSubjects)
+      ? chronology.uniqueAnimeSubjects
+      : null,
+    selectedSubjectDetails: Number.isSafeInteger(chronology.selectedSubjectDetails)
+      ? chronology.selectedSubjectDetails
+      : null,
+    succeededSubjectDetails: Number.isSafeInteger(chronology.succeededSubjectDetails)
+      ? chronology.succeededSubjectDetails
+      : null,
+    failedSubjectDetails: Number.isSafeInteger(chronology.failedSubjectDetails)
+      ? chronology.failedSubjectDetails
+      : null,
+    validDateSubjects: Number.isSafeInteger(chronology.validDateSubjects)
+      ? chronology.validDateSubjects
+      : null,
+    missingDateSubjects: Number.isSafeInteger(chronology.missingDateSubjects)
+      ? chronology.missingDateSubjects
+      : null,
+    invalidDateSubjects: Number.isSafeInteger(chronology.invalidDateSubjects)
+      ? chronology.invalidDateSubjects
+      : null,
+    omittedAnimeSubjects: Number.isSafeInteger(chronology.omittedAnimeSubjects)
+      ? chronology.omittedAnimeSubjects
+      : null,
+    ...(earliestObserved ? { earliestObserved } : {}),
+    ...(latestObserved ? { latestObserved } : {}),
+    limitations,
+  };
 }
 
 function compactPersonProfileResult(result: PersonProfileToolResult): string {
@@ -313,6 +390,9 @@ function compactPersonProfileResult(result: PersonProfileToolResult): string {
         nameCnRowsOmittedFromText: creditRowsIncluded
           ? Math.max(0, positiveRows.length - listedRows.length)
           : null,
+        ...(isJsonObject(result.releaseChronology)
+          ? { releaseChronology: compactPersonProfileChronology(result.releaseChronology) }
+          : {}),
         scopeNote: PERSON_PROFILE_TEXT_SCOPE_NOTE,
       },
       null,

@@ -227,6 +227,141 @@ describe('PR-7D person intelligence aggregation', () => {
     expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 
+  it('reports deterministic sampled release-date extrema with bounded detail reads', async () => {
+    const animeIds = Array.from({ length: 60 }, (_, index) => index + 1);
+    const selectedIds = Array.from({ length: 48 }, (_, index) =>
+      animeIds[Math.floor((index * (animeIds.length - 1)) / 47)]!,
+    );
+    let activeDetails = 0;
+    let maxActiveDetails = 0;
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.endsWith('/persons/22')) {
+        return new Response(JSON.stringify({ id: 22, name: 'Person', career: ['seiyu'] }), {
+          status: 200,
+        });
+      }
+      if (url.endsWith('/persons/22/subjects')) {
+        return new Response(
+          JSON.stringify([
+            ...animeIds.map((id) => ({ id, type: 2, name: `Anime ${id}` })),
+            { id: 900, type: 3, name: 'Music' },
+          ]),
+          { status: 200 },
+        );
+      }
+      if (url.endsWith('/persons/22/characters')) {
+        return new Response('[]', { status: 200 });
+      }
+      const match = /\/subjects\/(\d+)$/.exec(url);
+      if (!match) throw new Error(`Unexpected URL: ${url}`);
+      const id = Number(match[1]);
+      activeDetails += 1;
+      maxActiveDetails = Math.max(maxActiveDetails, activeDetails);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      activeDetails -= 1;
+      if (id === selectedIds[4]) {
+        return new Response('{"date":"2010-01-01"}', {
+          status: 200,
+          headers: { 'content-length': '1048577' },
+        });
+      }
+      if (id === selectedIds[2]) return new Response('{"id":3}', { status: 200 });
+      if (id === selectedIds[3]) {
+        return new Response(JSON.stringify({ id, date: '2020-02-30' }), { status: 200 });
+      }
+      if (id === selectedIds[0] || id === selectedIds[1]) {
+        return new Response(JSON.stringify({ id, date: '2000-01-01' }), { status: 200 });
+      }
+      if (id === selectedIds[46] || id === selectedIds[47]) {
+        return new Response(JSON.stringify({ id, date: '2030-12-31' }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ id, date: '2010-01-01' }), { status: 200 });
+    });
+    const service = new PersonService(new HttpClient({ fetchFn: mockFetch }));
+
+    const result = await service.getPersonProfile(22, {
+      includeChronology: true,
+      maxChronologySubjects: 80,
+    });
+
+    expect(result.releaseChronology).toMatchObject({
+      state: 'partial',
+      sourceCompleteness: 'undocumented',
+      dateSemantics: 'official-subject-air-release-date',
+      samplingStrategy: 'evenly-spaced-returned-anime-relations',
+      relationRowsObserved: 61,
+      relationRowsReturned: 61,
+      animeRelationRowsReturned: 60,
+      uniqueAnimeSubjects: 60,
+      selectedSubjectIds: selectedIds,
+      selectedSubjectDetails: 48,
+      succeededSubjectDetails: 47,
+      failedSubjectDetails: 1,
+      validDateSubjects: 45,
+      missingDateSubjects: 1,
+      invalidDateSubjects: 1,
+      omittedAnimeSubjects: 12,
+      maxConcurrency: 4,
+      responseByteLimit: 1_048_576,
+      earliestObserved: {
+        date: '2000-01-01',
+        subjects: [
+          { id: selectedIds[0], name: `Anime ${selectedIds[0]}` },
+          { id: selectedIds[1], name: `Anime ${selectedIds[1]}` },
+        ],
+      },
+      latestObserved: {
+        date: '2030-12-31',
+        subjects: [
+          { id: selectedIds[46], name: `Anime ${selectedIds[46]}` },
+          { id: selectedIds[47], name: `Anime ${selectedIds[47]}` },
+        ],
+      },
+    });
+    expect(result.releaseChronology?.selectedSubjectIds).not.toContain(900);
+    expect(mockFetch).toHaveBeenCalledTimes(3 + 48);
+    expect(maxActiveDetails).toBeGreaterThan(1);
+    expect(maxActiveDetails).toBeLessThanOrEqual(4);
+  });
+
+  it('marks chronology not computable when the selected animation details have no valid dates', async () => {
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.endsWith('/persons/23')) {
+        return new Response(JSON.stringify({ id: 23, name: 'Person' }), { status: 200 });
+      }
+      if (url.endsWith('/persons/23/subjects')) {
+        return new Response(
+          JSON.stringify([
+            { id: 31, type: 2, name: 'Missing date' },
+            { id: 32, type: 2, name: 'Invalid date' },
+          ]),
+          { status: 200 },
+        );
+      }
+      if (url.endsWith('/persons/23/characters')) return new Response('[]', { status: 200 });
+      if (url.endsWith('/subjects/31')) return new Response('{"id":31}', { status: 200 });
+      if (url.endsWith('/subjects/32')) {
+        return new Response('{"id":32,"date":"not-a-date"}', { status: 200 });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    const service = new PersonService(new HttpClient({ fetchFn: mockFetch }));
+
+    const result = await service.getPersonProfile(23, { includeChronology: true });
+
+    expect(result.releaseChronology).toMatchObject({
+      state: 'not_computable',
+      selectedSubjectDetails: 2,
+      succeededSubjectDetails: 2,
+      failedSubjectDetails: 0,
+      validDateSubjects: 0,
+      missingDateSubjects: 1,
+      invalidDateSubjects: 1,
+    });
+    expect(result.releaseChronology).not.toHaveProperty('earliestObserved');
+    expect(result.releaseChronology).not.toHaveProperty('latestObserved');
+  });
+
   it('maps subject staff rows and preserves episode/track participation', async () => {
     const mockFetch = vi.fn().mockResolvedValue(
       new Response(

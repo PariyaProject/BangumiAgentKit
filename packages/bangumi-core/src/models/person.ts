@@ -76,6 +76,41 @@ export interface RelationCollection<T> {
   schemaDriftRows?: number;
 }
 
+export interface PersonReleaseChronologySubject {
+  id: number;
+  name: string;
+}
+
+export interface PersonReleaseChronologyExtreme {
+  date: string;
+  subjects: PersonReleaseChronologySubject[];
+}
+
+export interface PersonReleaseChronology {
+  state: 'partial' | 'not_computable';
+  sourceCompleteness: 'undocumented';
+  dateSemantics: 'official-subject-air-release-date';
+  samplingStrategy: 'all-returned-anime-relations' | 'evenly-spaced-returned-anime-relations';
+  relationRowsObserved: number;
+  relationRowsReturned: number;
+  relationRowsTruncated: boolean;
+  animeRelationRowsReturned: number;
+  uniqueAnimeSubjects: number;
+  selectedSubjectIds: number[];
+  selectedSubjectDetails: number;
+  succeededSubjectDetails: number;
+  failedSubjectDetails: number;
+  validDateSubjects: number;
+  missingDateSubjects: number;
+  invalidDateSubjects: number;
+  omittedAnimeSubjects: number;
+  maxConcurrency: number;
+  responseByteLimit: number;
+  earliestObserved?: PersonReleaseChronologyExtreme;
+  latestObserved?: PersonReleaseChronologyExtreme;
+  limitations: string[];
+}
+
 export interface PersonActivityDistribution {
   key: string;
   label: string;
@@ -101,4 +136,5 @@ export interface PersonActivityProfile {
   subjects: RelationCollection<PersonRelationSubject>;
   characters: RelationCollection<PersonRelationCharacter>;
   summary: PersonActivitySummary;
+  releaseChronology?: PersonReleaseChronology;
 }

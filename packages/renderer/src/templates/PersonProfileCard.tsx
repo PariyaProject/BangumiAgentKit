@@ -410,6 +410,65 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
         />
       </div>
 
+      {viewModel.releaseChronology && (
+        <div
+          style={{
+            backgroundColor: `${theme.warning}12`,
+            border: `1px solid ${theme.warning}`,
+            borderRadius: theme.radius.md,
+            padding: theme.spacing.md,
+            color: theme.text,
+            fontSize: '12px',
+            lineHeight: 1.5,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: theme.spacing.xs }}>
+            动画播出/发行日期观察（受限样本）
+          </div>
+          {viewModel.releaseChronology.state === 'not_computable' ? (
+            <div style={{ color: theme.textMuted }}>
+              已选取 {viewModel.releaseChronology.selectedSubjectDetails} 部动画作品详情，但没有可用的有效日期，无法计算样本极值。
+            </div>
+          ) : (
+            ([
+              {
+                label: '本次样本中最早日期',
+                extreme: viewModel.releaseChronology.earliestObserved,
+              },
+              {
+                label: '本次样本中最近日期',
+                extreme: viewModel.releaseChronology.latestObserved,
+              },
+            ] as const).map(({ label, extreme }) => {
+              if (!extreme) return null;
+              const visibleSubjects = extreme.subjects.slice(0, 3);
+              return (
+                <div key={label} style={{ marginBottom: theme.spacing.xs }}>
+                  <span style={{ color: theme.accent, fontWeight: 700 }}>
+                    {label}：{extreme.date}
+                  </span>
+                  {' · '}
+                  {visibleSubjects.map((subject) => `${subject.name} (#${subject.id})`).join('、')}
+                  {extreme.subjects.length > visibleSubjects.length
+                    ? ` 等（同日共 ${extreme.subjects.length} 部）`
+                    : ''}
+                </div>
+              );
+            })
+          )}
+          <div style={{ color: theme.textMuted }}>
+            动画关系 {viewModel.releaseChronology.animeRelationRowsReturned} 行，去重后{' '}
+            {viewModel.releaseChronology.uniqueAnimeSubjects} 部；读取{' '}
+            {viewModel.releaseChronology.selectedSubjectDetails} 部详情，成功{' '}
+            {viewModel.releaseChronology.succeededSubjectDetails}，失败{' '}
+            {viewModel.releaseChronology.failedSubjectDetails}；缺日期{' '}
+            {viewModel.releaseChronology.missingDateSubjects}，日期无效{' '}
+            {viewModel.releaseChronology.invalidDateSubjects}，样本外{' '}
+            {viewModel.releaseChronology.omittedAnimeSubjects} 部。上游关系完整性未说明。
+          </div>
+        </div>
+      )}
+
       <div
         style={{
           backgroundColor: coverage.state === 'partial' ? `${theme.warning}18` : theme.surfaceAlt,

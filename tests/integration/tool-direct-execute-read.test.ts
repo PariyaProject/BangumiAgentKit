@@ -103,6 +103,56 @@ describe('direct execute coverage for bounded read tools', () => {
     expect(fetchFn).toHaveBeenCalled();
   });
 
+  it('exposes opt-in sampled chronology from bangumi.get_person_profile', async () => {
+    const fetchFn = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/24')) {
+        return new Response(JSON.stringify({ id: 24, name: 'Profile Person' }), { status: 200 });
+      }
+      if (url.endsWith('/v0/persons/24/subjects')) {
+        return new Response(
+          JSON.stringify([
+            { id: 51, type: 2, name: 'First Sample Anime', name_cn: '动画一', staff: 'CV', eps: '' },
+            { id: 52, type: 3, name: 'Music', name_cn: '音乐', staff: 'artist', eps: '' },
+          ]),
+          { status: 200 },
+        );
+      }
+      if (url.endsWith('/v0/persons/24/characters')) return new Response('[]', { status: 200 });
+      if (url.endsWith('/v0/subjects/51')) {
+        return new Response(JSON.stringify({ id: 51, type: 2, date: '2001-10-01' }), {
+          status: 200,
+        });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    const client = new HttpClient({ fetchFn });
+    const tools = new Map(createReadTools(client).map((tool) => [tool.name, tool]));
+
+    const result = await (tools.get('bangumi.get_person_profile')!.execute as any)(
+      { personId: 24, includeChronology: true, maxChronologySubjects: 1 },
+      context,
+      {},
+    );
+
+    expect(result.releaseChronology).toMatchObject({
+      state: 'partial',
+      selectedSubjectIds: [51],
+      earliestObserved: {
+        date: '2001-10-01',
+        subjects: [{ id: 51, name: 'First Sample Anime' }],
+      },
+      latestObserved: {
+        date: '2001-10-01',
+        subjects: [{ id: 51, name: 'First Sample Anime' }],
+      },
+    });
+    expect(result.evidence).toContainEqual(
+      expect.objectContaining({ operation: 'GET /v0/subjects/{subject_id}', selected: 1 }),
+    );
+    expect(fetchFn).toHaveBeenCalledTimes(4);
+  });
+
   it('executes stats, stats intelligence, identity, and history fallback directly', async () => {
     const stats = {
       score: 8.5,

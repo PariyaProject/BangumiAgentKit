@@ -2724,6 +2724,89 @@ describe('MCP tool result presentation', () => {
     expect(parsed.scopeNote).toContain('空字符串、纯空白字符串、缺失或无效值不证明没有中文名');
   });
 
+  it('keeps release chronology coverage and tied date extrema in compact MCP text', () => {
+    const repeatedName = '非常长的动画条目名称'.repeat(40);
+    const tiedSubjects = Array.from({ length: 48 }, (_, index) => ({
+      id: index + 1,
+      name: repeatedName,
+    }));
+    const original = {
+      state: 'partial',
+      person: { id: 4765, name: 'Person', nameCn: '人物' },
+      summary: { uniqueSubjects: 80, subjectCredits: 80 },
+      coverage: {
+        state: 'partial',
+        subjects: { observed: 90, returned: 80, truncated: true },
+      },
+      credits: {
+        subjects: Array.from({ length: 80 }, (_, index) => ({
+          id: index + 100,
+          name: repeatedName,
+          nameCnSource: '中文名',
+        })),
+      },
+      releaseChronology: {
+        state: 'partial',
+        sourceCompleteness: 'undocumented',
+        dateSemantics: 'official-subject-air-release-date',
+        samplingStrategy: 'evenly-spaced-returned-anime-relations',
+        relationRowsObserved: 90,
+        relationRowsReturned: 80,
+        relationRowsTruncated: true,
+        animeRelationRowsReturned: 70,
+        uniqueAnimeSubjects: 70,
+        selectedSubjectIds: Array.from({ length: 48 }, (_, index) => index + 1),
+        selectedSubjectDetails: 48,
+        succeededSubjectDetails: 47,
+        failedSubjectDetails: 1,
+        validDateSubjects: 40,
+        missingDateSubjects: 4,
+        invalidDateSubjects: 3,
+        omittedAnimeSubjects: 22,
+        maxConcurrency: 4,
+        responseByteLimit: 1_048_576,
+        earliestObserved: { date: '1990-01-01', subjects: tiedSubjects },
+        latestObserved: { date: '2025-12-31', subjects: tiedSubjects },
+        limitations: [
+          '极值只代表本次采样到的官方播出/发行日期，不代表实际工作日期。',
+          '人物作品关系上游完整性和排序未说明，不能推断完整生涯首作或最近作品。',
+        ],
+      },
+    };
+
+    const presentation = presentMcpToolResult(
+      'bangumi.get_person_profile',
+      original as unknown as Record<string, unknown>,
+    );
+    const parsed = JSON.parse(presentation.text);
+
+    expect(presentation.structuredContent).toEqual(original);
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(parsed.releaseChronology).toMatchObject({
+      state: 'partial',
+      sourceCompleteness: 'undocumented',
+      samplingStrategy: 'evenly-spaced-returned-anime-relations',
+      selectedSubjectDetails: 48,
+      failedSubjectDetails: 1,
+      omittedAnimeSubjects: 22,
+      earliestObserved: {
+        date: '1990-01-01',
+        subjectCount: 48,
+        subjects: expect.any(Array),
+        subjectsOmittedFromText: 46,
+      },
+      latestObserved: {
+        date: '2025-12-31',
+        subjectCount: 48,
+        subjectsOmittedFromText: 46,
+      },
+    });
+    expect(parsed.releaseChronology.earliestObserved.subjects).toHaveLength(2);
+    expect(parsed.releaseChronology.earliestObserved.subjects[0].name).toContain('…');
+  });
+
   it('keeps oversized multi-byte person titles within the MCP UTF-8 byte budget', () => {
     const title = '🌸'.repeat(80);
     const original = {

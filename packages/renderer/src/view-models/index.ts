@@ -1,3 +1,5 @@
+import type { PersonReleaseChronology } from '@bangumi-agent-kit/bangumi-core';
+
 export interface SubjectCardViewModel {
   template: 'subject-card';
   version: 1;
@@ -710,6 +712,7 @@ export interface PersonProfileViewModel {
     rendered: number;
     unobserved: number;
   };
+  releaseChronology?: PersonReleaseChronology;
   limitations: string[];
   warnings: Array<{
     code: string;
