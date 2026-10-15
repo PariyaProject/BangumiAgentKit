@@ -9,6 +9,7 @@ import type {
   SubjectStatsIntelligenceResult,
   SeriesWatchOrderResult,
   SeriesVoiceActorPresence,
+  SubjectOverlapResult,
   SubjectStaffGroup,
   SubjectStaffMember,
 } from '@bangumi-agent-kit/bangumi-core';
@@ -82,6 +83,7 @@ const SUBJECT_COHORT_AGGREGATION_TOOL = 'bangumi.aggregate_subject_cohort';
 const SERIES_WATCH_ORDER_TOOL = 'bangumi.get_series_watch_order';
 const QUERY_SUBJECTS_TOOL = 'bangumi.query_subjects';
 const SUBJECT_RELATIONS_TOOL = 'bangumi.get_subject_relations';
+const SUBJECT_OVERLAP_TOOL = 'bangumi.get_subject_overlap';
 const MAX_PERSON_ROWS = 6;
 const MAX_PERSON_PROFILE_TITLE_ROWS = 6;
 const MAX_PERSON_PROFILE_CHRONOLOGY_TIE_ROWS = 2;
@@ -175,6 +177,13 @@ export function presentMcpToolResult(toolName: string, result: unknown): McpTool
     const text = compactSubjectOverview(result);
     return {
       text,
+      structuredContent: result,
+    };
+  }
+
+  if (toolName === SUBJECT_OVERLAP_TOOL && isSubjectOverlapResult(result)) {
+    return {
+      text: compactSubjectOverlap(result),
       structuredContent: result,
     };
   }
@@ -863,6 +872,71 @@ function compactSubjectRelations(result: SubjectRelationsEvidenceResult): string
 
 function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isSubjectOverlapResult(value: unknown): value is SubjectOverlapResult {
+  return (
+    isJsonObject(value) &&
+    Array.isArray(value.subjectIds) &&
+    value.subjectIds.every((subjectId) => Number.isSafeInteger(subjectId) && subjectId > 0) &&
+    ['cast', 'staff', 'all'].includes(String(value.kind)) &&
+    ['all', 'main'].includes(String(value.castRole)) &&
+    Array.isArray(value.subjects) &&
+    Array.isArray(value.pairs) &&
+    isJsonObject(value.coverage) &&
+    isJsonObject(value.source)
+  );
+}
+
+function compactSubjectOverlapRelation(
+  relation: SubjectOverlapResult['pairs'][number]['cast'] | SubjectOverlapResult['pairs'][number]['staff'],
+) {
+  if (!relation) return undefined;
+  const sharedPeople = relation.items.slice(0, 1).map((person) => ({
+    personId: person.personId,
+    creditSubjectIds: [...new Set(person.credits.map((credit) => credit.subjectId))].sort(
+      (left, right) => left - right,
+    ),
+  }));
+  return {
+    state: relation.state,
+    sharedPeople,
+    sharedPeopleOmittedFromText: Math.max(0, relation.items.length - sharedPeople.length),
+    coverage: {
+      state: relation.coverage.state,
+      returned: relation.coverage.returned,
+      omitted: relation.coverage.omitted,
+      truncated: relation.coverage.truncated,
+    },
+  };
+}
+
+function compactSubjectOverlap(result: SubjectOverlapResult): string {
+  const pairs = result.pairs.slice(0, 4).map((pair) => ({
+    pairId: pair.pairId,
+    leftSubjectId: pair.leftSubjectId,
+    rightSubjectId: pair.rightSubjectId,
+    rank: pair.rank,
+    ...(pair.cast ? { cast: compactSubjectOverlapRelation(pair.cast) } : {}),
+    ...(pair.staff ? { staff: compactSubjectOverlapRelation(pair.staff) } : {}),
+  }));
+  return JSON.stringify({
+    subjectIds: result.subjectIds,
+    kind: result.kind,
+    castRole: result.castRole,
+    pairs,
+    pairsOmittedFromText: Math.max(0, result.pairs.length - pairs.length),
+    coverage: {
+      requestedSubjects: result.coverage.requestedSubjects,
+      returnedSubjects: result.coverage.returnedSubjects,
+      requestedPairs: result.coverage.requestedPairs,
+      returnedPairs: result.coverage.returnedPairs,
+      omittedPairs: result.coverage.omittedPairs,
+      truncated: result.coverage.truncated,
+    },
+    scopeNote:
+      '只覆盖本次官方 v0 返回的有界关系行，不代表完整演职员表或完整关系图；未返回内容不构成否定证据。',
+  });
 }
 
 function isSubjectCohortComparisonResult(

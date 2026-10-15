@@ -34,12 +34,37 @@ test('C03 profile registry is closed, immutable, and binds two exact calls', () 
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 2);
+  assert.equal(listAgentMcpProfiles().length, 3);
   const p03 = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
   assert.ok(p03);
   assert.equal(p03.frontierId, 'P03');
   assert.equal(p03.calls.length, 1);
   assert.equal(getAgentMcpProfile('bangumi.get_person_profile', p03.argumentProfile), p03);
+  const r05 = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
+  assert.ok(r05);
+  assert.equal(r05.frontierId, 'R05');
+  assert.equal(r05.epochId, 'run95-r05-k-on-season-shared-person-20261015');
+  assert.deepEqual(r05.calls, [
+    {
+      toolName: 'bangumi.get_subject_overlap',
+      arguments: {
+        subjectIds: [1424, 3774],
+        kind: 'cast',
+        castRole: 'all',
+        maxCast: 80,
+        maxPairs: 1,
+        maxPeople: 8,
+      },
+    },
+  ]);
+  assert.equal(
+    getAgentMcpProfile('bangumi.get_subject_overlap', r05.argumentProfile),
+    r05,
+  );
+  assert.equal(
+    agentMcpProfileClaimLabelDescription(r05),
+    'Run 95 R05 profile r05-k-on-season-shared-person-v1; permanent one-shot latch.',
+  );
   assert.equal(
     agentMcpProfileRegistrySha256(),
     '7e3bfd3c5f7815faf5f279759739572e86f62308e81faff518d775aa1eaa9e92',

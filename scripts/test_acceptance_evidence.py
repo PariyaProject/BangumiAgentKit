@@ -6158,6 +6158,250 @@ class AuthAcceptanceEvidenceTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
 
 
+class R05PreflightEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.path = GENERATOR.ROOT / GENERATOR.CODEX_R05_SELECTION_EVIDENCE_RELATIVE_PATH
+        self.evidence = json.loads(self.path.read_text(encoding='utf-8'))
+
+    def test_accepts_exact_anonymous_subject_and_cast_id_preflight(self):
+        self.assertTrue(GENERATOR.codex_r05_selection_evidence_is_valid(self.evidence))
+        self.assertTrue(GENERATOR.codex_r05_selection_evidence_file_is_valid())
+
+    def test_rejects_changed_subject_ids_or_missing_positive_intersection(self):
+        changed_subject = json.loads(json.dumps(self.evidence))
+        changed_subject['selectedSubjects'][1]['id'] = 876
+        self.assertFalse(GENERATOR.codex_r05_selection_evidence_is_valid(changed_subject))
+
+        no_shared_ids = json.loads(json.dumps(self.evidence))
+        no_shared_ids['sharedPersonIds'] = []
+        self.assertFalse(GENERATOR.codex_r05_selection_evidence_is_valid(no_shared_ids))
+
+    def test_rejects_authentication_or_raw_person_data(self):
+        authenticated = json.loads(json.dumps(self.evidence))
+        authenticated['oauthAttempted'] = True
+        self.assertFalse(GENERATOR.codex_r05_selection_evidence_is_valid(authenticated))
+
+        retained_names = json.loads(json.dumps(self.evidence))
+        retained_names['personNamesStored'] = True
+        self.assertFalse(GENERATOR.codex_r05_selection_evidence_is_valid(retained_names))
+
+
+class R05CandidateBindingTests(unittest.TestCase):
+    def setUp(self):
+        candidate = 'a' * 40
+        base = 'b' * 40
+        self.report = {
+            'sourceRevision': candidate,
+            'baseSha': base,
+            'prNumber': 170,
+            'mcpBundleSha256': 'c' * 64,
+        }
+        self.status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 170},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_R05_EPOCH_ID,
+                    'pr_number': 170,
+                    'base_branch': 'master',
+                    'base_sha': base,
+                    'candidate_sha': candidate,
+                    'branch': 'codex/epoch-r05',
+                },
+                'pr_head_sha': candidate,
+                'pr_head_ref_name': 'codex/epoch-r05',
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base,
+                'pr_is_draft': False,
+            },
+        }
+        self.paths = [
+            GENERATOR.CODEX_R05_REPORT_RELATIVE_PATH,
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+        ]
+
+    def test_accepts_current_candidate_and_only_report_refresh_paths(self):
+        self.assertTrue(
+            GENERATOR.codex_r05_profile_candidate_binding_is_valid(
+                self.report, self.status, self.paths, self.report['mcpBundleSha256'],
+            ),
+        )
+        self.assertTrue(GENERATOR.codex_r05_profile_evidence_refresh_paths_are_valid(self.paths))
+
+    def test_rejects_candidate_or_path_drift(self):
+        changed = json.loads(json.dumps(self.status))
+        changed['epoch']['state']['base_sha'] = 'd' * 40
+        changed['epoch']['pr_base_sha'] = 'd' * 40
+        self.assertFalse(
+            GENERATOR.codex_r05_profile_candidate_binding_is_valid(
+                self.report, changed, self.paths, self.report['mcpBundleSha256'],
+            ),
+        )
+        self.assertFalse(
+            GENERATOR.codex_r05_profile_evidence_refresh_paths_are_valid(
+                self.paths + ['docs/agent/PRODUCT_CHARTER.md'],
+            ),
+        )
+
+
+class R05ProfileReportValidationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='r05-profile-report-test-')
+        self.root = Path(self.temp_dir.name)
+        (self.root / 'docs/live-probes').mkdir(parents=True)
+        selection_path = self.root / GENERATOR.CODEX_R05_SELECTION_EVIDENCE_RELATIVE_PATH
+        selection_path.parent.mkdir(parents=True, exist_ok=True)
+        source_selection = GENERATOR.ROOT / GENERATOR.CODEX_R05_SELECTION_EVIDENCE_RELATIVE_PATH
+        selection_path.write_bytes(source_selection.read_bytes())
+        self.report_path = self.root / GENERATOR.CODEX_R05_REPORT_RELATIVE_PATH
+        self.original_root = GENERATOR.ROOT
+        self.original_live_probe_dir = GENERATOR.LIVE_PROBE_DIR
+        GENERATOR.ROOT = self.root
+        GENERATOR.LIVE_PROBE_DIR = self.root / 'docs/live-probes'
+        self.report = self.build_report()
+
+    def tearDown(self):
+        GENERATOR.ROOT = self.original_root
+        GENERATOR.LIVE_PROBE_DIR = self.original_live_probe_dir
+        self.temp_dir.cleanup()
+
+    def build_report(self):
+        selection_path = self.root / GENERATOR.CODEX_R05_SELECTION_EVIDENCE_RELATIVE_PATH
+        selection_bytes = selection_path.read_bytes()
+        source_revision = 'a' * 40
+        shared_person = {'personId': 3847, 'creditSubjectIds': [1424, 3774]}
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': GENERATOR.CODEX_R05_EVIDENCE_KIND,
+            'runNumber': 95,
+            'frontierId': 'R05',
+            'scenarioId': 'R05',
+            'epochId': GENERATOR.CODEX_R05_EPOCH_ID,
+            'profileId': GENERATOR.CODEX_R05_PROFILE_ID,
+            'profile': 'codex-luna-max-agent-mcp-profile-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr42-round1',
+            'codexCliVersion': '1.2.14',
+            'sourceRevision': source_revision,
+            'baseSha': 'b' * 40,
+            'ciSha': source_revision,
+            'ciStatus': 'SUCCESS',
+            'prNumber': 42,
+            'claimId': 'profile-run-95-pr-42-abcdef123456-1700000000000',
+            'mcpBundleSha256': 'c' * 64,
+            'registrySha256': GENERATOR.CODEX_R05_PROFILE_REGISTRY_SHA256,
+            'toolName': GENERATOR.CODEX_R05_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_R05_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_R05_EXPECTED_ARGUMENTS_SHA256,
+            'selectionEvidenceSha256': hashlib.sha256(selection_bytes).hexdigest(),
+            'catalogSha256': 'd' * 64,
+            'toolDescriptionSha256': 'e' * 64,
+            'inputSchemaSha256': 'f' * 64,
+            'serverToolNames': [GENERATOR.CODEX_R05_TOOL_NAME],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_r05_overlap'],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'mcpTextProjectionValid': True,
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'answerCheckMethod': GENERATOR.CODEX_R05_ANSWER_CHECK_METHOD,
+            'answerSha256': '1' * 64,
+            'answerUtf8Bytes': 128,
+            'answerChecks': {field: True for field in GENERATOR.CODEX_R05_ANSWER_CHECK_FIELDS},
+            'resultSummary': {
+                'subjectIds': [1424, 3774],
+                'state': 'partial',
+                'kind': 'cast',
+                'castRole': 'all',
+                'formulaVersion': 'subject-overlap-v1',
+                'subjects': [
+                    {'subjectId': 1424, 'type': 'anime', 'state': 'partial'},
+                    {'subjectId': 3774, 'type': 'anime', 'state': 'partial'},
+                ],
+                'pair': {
+                    'pairId': '1424:3774',
+                    'leftSubjectId': 1424,
+                    'rightSubjectId': 3774,
+                    'rank': 1,
+                    'cast': {
+                        'state': 'partial',
+                        'sharedPeople': [shared_person],
+                        'coverage': {},
+                    },
+                },
+                'coverage': {
+                    'requestedSubjects': 2,
+                    'returnedSubjects': 2,
+                    'requestedPairs': 1,
+                    'returnedPairs': 1,
+                    'omittedPairs': 0,
+                    'limits': {'maxCast': 80, 'maxPairs': 1, 'maxPeople': 8},
+                    'truncated': True,
+                },
+                'source': {},
+                'warnings': [],
+            },
+            'privacy': {field: False for field in GENERATOR.CODEX_R05_PRIVACY_FIELDS},
+            'runnerReceipt': {},
+        }
+
+    def validate_report(self, report):
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        report_bytes = self.report_path.read_bytes()
+
+        def validate_embedded_report(args, **kwargs):
+            payload = json.loads(kwargs['input'])
+            embedded = base64.b64decode(payload['reportBytesBase64'])
+            return subprocess.CompletedProcess(
+                args,
+                0,
+                json.dumps({'passed': True, 'reportSha256': hashlib.sha256(embedded).hexdigest()}),
+                '',
+            )
+
+        with (
+            patch.object(GENERATOR, 'codex_r05_profile_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_r05_profile_report_candidate_binding_is_current', return_value=True),
+            patch.object(GENERATOR, 'codex_r05_profile_disposition_matches_report', return_value={'state': 'REPORT_WRITTEN'}),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+        ):
+            return GENERATOR.codex_r05_profile_report_is_valid(
+                report,
+                harness_status={'fixture': True},
+                report_path=self.report_path,
+                epoch_status={'fixture': True},
+            )
+
+    def test_accepts_a_well_shaped_positive_report_when_embedded_validation_passes(self):
+        self.assertTrue(self.validate_report(self.report))
+
+    def test_rejects_unverified_ids_extra_raw_fields_and_privacy_expansion(self):
+        unknown_person = json.loads(json.dumps(self.report))
+        unknown_person['resultSummary']['pair']['cast']['sharedPeople'][0]['personId'] = 9999
+        self.assertFalse(self.validate_report(unknown_person))
+
+        raw_answer = json.loads(json.dumps(self.report))
+        raw_answer['rawAnswer'] = 'not allowed'
+        self.assertFalse(self.validate_report(raw_answer))
+
+        privacy_expansion = json.loads(json.dumps(self.report))
+        privacy_expansion['privacy']['accountDataRead'] = True
+        self.assertFalse(self.validate_report(privacy_expansion))
+
+
 class C03PersonSelectionEvidenceTests(unittest.TestCase):
     def setUp(self):
         self.evidence = {

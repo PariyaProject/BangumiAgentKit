@@ -6,6 +6,7 @@ import type {
   PersonActivityResult,
   SeriesWatchOrderResult,
   SubjectComparisonResult,
+  SubjectOverlapResult,
   SubjectOverviewResult,
   SubjectStatsIntelligenceResult,
 } from '@bangumi-agent-kit/bangumi-core';
@@ -1292,6 +1293,148 @@ describe('MCP tool result presentation', () => {
     expect(unrelatedPresentation).toEqual({
       text: JSON.stringify(unrelatedLarge, null, 2),
     });
+  });
+
+  it('returns a bounded, identity-bound overlap text view and the exact full structured result', () => {
+    const result: SubjectOverlapResult = {
+      subjectIds: [1424, 3774],
+      state: 'partial',
+      kind: 'cast',
+      castRole: 'all',
+      subjects: [
+        {
+          subjectId: 1424,
+          state: 'partial',
+          subject: { id: 1424, name: 'けいおん！', nameCn: '轻音少女', type: 'anime' },
+          sections: { cast: 'partial', staff: 'complete' },
+          coverage: {
+            sourceRequestsAttempted: 2,
+            sourceRequestsSucceeded: 2,
+            cast: { observed: 37, returned: 37, truncated: false },
+            staff: { observed: 0, returned: 0, truncated: false },
+          },
+        },
+        {
+          subjectId: 3774,
+          state: 'partial',
+          subject: { id: 3774, name: 'けいおん！！', nameCn: '轻音少女 第二季', type: 'anime' },
+          sections: { cast: 'partial', staff: 'complete' },
+          coverage: {
+            sourceRequestsAttempted: 2,
+            sourceRequestsSucceeded: 2,
+            cast: { observed: 64, returned: 64, truncated: false },
+            staff: { observed: 0, returned: 0, truncated: false },
+          },
+        },
+      ],
+      pairs: [
+        {
+          pairId: '1424:3774',
+          leftSubjectId: 1424,
+          rightSubjectId: 3774,
+          rank: 1,
+          rankScore: 20,
+          rankBasis: 'cast_matched_ids',
+          cast: {
+            state: 'partial',
+            items: [
+              {
+                personId: 3847,
+                name: 'not included in text',
+                career: ['seiyuu'],
+                matchBasis: 'all_cast_credits',
+                credits: [
+                  { subjectId: 1424, characters: [{ name: 'A', relation: '主角', roleFamily: 'main' }] },
+                  { subjectId: 3774, characters: [{ name: 'A', relation: '主角', roleFamily: 'main' }] },
+                ],
+              },
+            ],
+            coverage: {
+              state: 'partial',
+              left: {
+                subjectId: 1424,
+                state: 'partial',
+                rowsObserved: 37,
+                rowsReturned: 37,
+                uniqueIdsReturned: 38,
+                missingIdRows: 0,
+                truncated: false,
+              },
+              right: {
+                subjectId: 3774,
+                state: 'partial',
+                rowsObserved: 64,
+                rowsReturned: 64,
+                uniqueIdsReturned: 42,
+                missingIdRows: 0,
+                truncated: false,
+              },
+              candidateIds: 60,
+              matchedIds: 20,
+              unionIds: 60,
+              returned: 1,
+              omitted: 19,
+              truncated: true,
+            },
+          },
+        },
+      ],
+      formulaVersion: 'subject-overlap-v1',
+      coverage: {
+        requestedSubjects: 2,
+        returnedSubjects: 2,
+        requestedPairs: 1,
+        returnedPairs: 1,
+        omittedPairs: 0,
+        limits: { maxSubjects: 8, maxCast: 80, maxStaff: 48, maxPairs: 1, maxPeople: 8 },
+        truncated: true,
+      },
+      source: {
+        official: {
+          class: 'official-v0',
+          operations: ['/v0/subjects/{subject_id}/characters'],
+          attemptedAt: '2026-10-15T07:39:00.000Z',
+          retrievedAt: '2026-10-15T07:39:01.000Z',
+        },
+        derived: {
+          class: 'derived-s7',
+          operations: ['subject-overlap-composition'],
+          attemptedAt: '2026-10-15T07:39:00.000Z',
+          retrievedAt: '2026-10-15T07:39:01.000Z',
+        },
+      },
+      operationEvidence: [],
+      evidence: [],
+      warnings: [],
+      limitations: [],
+    };
+
+    const presentation = presentMcpToolResult('bangumi.get_subject_overlap', result);
+    const textView = JSON.parse(presentation.text);
+    expect(presentation.structuredContent).toBe(result);
+    expect(new TextEncoder().encode(presentation.text).byteLength).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(textView).toMatchObject({
+      subjectIds: [1424, 3774],
+      kind: 'cast',
+      castRole: 'all',
+      pairs: [
+        {
+          pairId: '1424:3774',
+          leftSubjectId: 1424,
+          rightSubjectId: 3774,
+          cast: {
+            state: 'partial',
+            sharedPeople: [{ personId: 3847, creditSubjectIds: [1424, 3774] }],
+            sharedPeopleOmittedFromText: 0,
+          },
+        },
+      ],
+      pairsOmittedFromText: 0,
+    });
+    expect(presentation.text).not.toContain('not included in text');
+    expect(textView.scopeNote).toContain('不代表完整演职员表');
   });
 
   it('bounds large cohort text while preserving standard deviation, overlap, and full structuredContent', () => {

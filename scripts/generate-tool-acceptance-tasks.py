@@ -586,6 +586,75 @@ CODEX_C03_COMPARISON_FIELDS = {
     'observedSubjectIds', 'sharedSubjectIds', 'observedCommonCount',
     'observedMainRoleShares', 'coveragePartial',
 }
+CODEX_R05_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'r05-k-on-season-shared-person-v1'
+)
+CODEX_R05_PROFILE_ID = CODEX_R05_PROFILE['id']
+CODEX_R05_EPOCH_ID = CODEX_R05_PROFILE['epochId']
+CODEX_R05_TOOL_NAME = CODEX_R05_PROFILE['toolName']
+CODEX_R05_ARGUMENT_PROFILE = CODEX_R05_PROFILE['argumentProfile']
+CODEX_R05_EXPECTED_CALLS = CODEX_R05_PROFILE['calls']
+CODEX_R05_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_R05_EXPECTED_CALLS],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_R05_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_R05_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_R05_REPORT_RELATIVE_PATH = CODEX_R05_PROFILE['reportPath']
+CODEX_R05_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_R05_PROFILE['selectionEvidencePath']
+CODEX_R05_EVIDENCE_KIND = CODEX_R05_PROFILE['evidenceKind']
+CODEX_R05_ANSWER_CHECK_METHOD = CODEX_R05_PROFILE['answerCheckMethod']
+CODEX_R05_EVIDENCE_REFRESH_PATHS = {
+    CODEX_R05_REPORT_RELATIVE_PATH,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+}
+CODEX_R05_ANSWER_CHECK_FIELDS = {
+    'validJsonShape', 'exactSubjectIds', 'exactSharedPersonId',
+    'creditEvidenceForBothSubjects', 'castStateCopied',
+    'boundedCoverageDisclosure', 'positiveOnlyOutput',
+}
+CODEX_R05_PRIVACY_FIELDS = {
+    'authProfile', 'oauthAttempted', 'accountDataRead', 'writesAttempted', 'communityRead',
+    'qqPipelineTested', 'timClientTested', 'promptStored', 'answerStored', 'rawResultStored',
+    'credentialsStored',
+}
+CODEX_R05_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
+    'profileId', 'profile', 'model', 'reasoningEffort', 'reviewerId', 'codexCliVersion',
+    'sourceRevision', 'baseSha', 'ciSha', 'ciStatus', 'prNumber', 'claimId', 'mcpBundleSha256',
+    'registrySha256', 'toolName', 'argumentProfile', 'expectedArgumentsSha256',
+    'selectionEvidenceSha256', 'catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256',
+    'serverToolNames', 'serverToolCount', 'mcpServerNames', 'processExitCode', 'resultStatus',
+    'mcpTextProjectionValid', 'eventStreamParsed', 'turnCompleted', 'codexMcpToolEventCount',
+    'codexErrorItemCount', 'nonMcpToolEventCount', 'nonMcpToolTypes', 'shellToolCallCount',
+    'allowedCallCount', 'deniedCallCount', 'answerCheckMethod', 'answerSha256', 'answerUtf8Bytes',
+    'answerChecks', 'resultSummary', 'privacy', 'runnerReceipt',
+}
+CODEX_R05_SHARED_PERSON_IDS = [
+    3847, 4011, 4633, 5001, 5003, 5072, 5104, 5117, 5118, 5119,
+    5127, 5228, 23302, 58216, 58217, 58222, 72254, 78942, 78943, 79084,
+]
+CODEX_R05_RECEIPT_FIELDS = {
+    'schemaVersion', 'kind', 'publicKeyBase64', 'publicKeySha256', 'payload', 'signature',
+}
+CODEX_R05_RECEIPT_PAYLOAD_FIELDS = {
+    'schemaVersion', 'kind', 'claimId', 'profileId', 'runNumber', 'frontierId', 'epochId',
+    'prNumber', 'sourceRevision', 'baseSha', 'ciSha', 'ciStatus', 'reviewerId', 'bundleSha256',
+    'registrySha256', 'toolName', 'argumentProfile', 'expectedArgumentsSha256',
+    'selectionEvidenceSha256', 'codexCliVersion', 'processExitCode', 'resultStatus',
+    'mcpTextProjectionValid', 'eventStreamParsed', 'turnCompleted', 'codexMcpToolEventCount',
+    'codexErrorItemCount', 'nonMcpToolEventCount', 'shellToolCallCount', 'allowedCallCount',
+    'deniedCallCount', 'eventStreamSha256', 'serverSummarySha256', 'answerSha256',
+    'answerChecksSha256', 'resultSummarySha256',
+}
 CODEX_C03_RECEIPT_FIELDS = {
     'schemaVersion', 'kind', 'publicKeyBase64', 'publicKeySha256', 'payload', 'signature',
 }
@@ -2144,6 +2213,65 @@ CODEX_C03_PROBE_IMPLEMENTATION_MARKERS = {
         'def codex_c03_profile_report_is_valid(',
         'def codex_c03_profile_report_matches_candidate_revision(',
         'CODEX_C03_REPORT_RELATIVE_PATH',
+    ),
+}
+CODEX_R05_PROBE_IMPLEMENTATION_MARKERS = {
+    'docs/research/run95-r05-k-on-season-shared-person-preflight-2026-10-15.json': (
+        '"evidenceKind": "bangumi_official_public_r05_shared_person_preflight_v1"',
+        '"id": 1424',
+        '"id": 3774',
+        '"sharedPersonIds"',
+        '"rawResponsesStored": false',
+    ),
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "r05-k-on-season-shared-person-v1"',
+        '"argumentProfile": "fixed-r05-k-on-tv-seasons-1424-3774-cast-80-pair-1-people-8-v1"',
+        '"reportPath": "docs/live-probes/r05-k-on-season-shared-person-agent-mcp-run95.json"',
+        '"selectionEvidencePath": "docs/research/run95-r05-k-on-season-shared-person-preflight-2026-10-15.json"',
+    ),
+    'scripts/lib/r05-shared-person-overlap-evidence.mjs': (
+        'export function validateR05SelectionEvidence(',
+        'export function summarizeR05SubjectOverlapToolResult(',
+        'export function verifyR05Answer(',
+        'export function validateR05McpTextProjection(',
+    ),
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        'R05_PROFILE_ID,',
+        'summarizeR05SubjectOverlapToolResult,',
+    ),
+    'apps/mcp/src/result-presenter.ts': (
+        'const SUBJECT_OVERLAP_TOOL =',
+        'function compactSubjectOverlap(',
+        'structuredContent: result,',
+    ),
+    'scripts/acceptance/run-r05-shared-person-overlap-agent-mcp.mjs': (
+        'export function validateR05RunnerArgs(',
+        'export function assertR05CandidateReviewGate(',
+        'export function buildR05CodexExecArgs(',
+        'export function validateR05ServerSummary(',
+        'function runR05Profile(',
+    ),
+    'scripts/acceptance/write-r05-shared-person-overlap-report.mjs': (
+        'export function buildR05RunnerReceiptPayload(',
+        'export function validateR05ProfileReport(',
+        'export function validateR05SanitizedReportFile(',
+        'export function writeR05SharedPersonOverlapReport(',
+    ),
+    'scripts/acceptance/validate-r05-profile-report.mjs': (
+        'validateR05ProfileReport(',
+    ),
+    'tests/harness/r05-shared-person-overlap-evidence.test.mjs': (
+        'R05 projection retains exact shared stable ID',
+        'R05 rejects mismatched credits',
+    ),
+    'tests/harness/write-r05-shared-person-overlap-report.test.mjs': (
+        'R05 writer emits only sanitized, signed, claim-bound report bytes',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'CODEX_R05_PROFILE_REGISTRY_SHA256',
+        'def codex_r05_selection_evidence_is_valid(',
+        'def codex_r05_profile_report_is_valid(',
+        'CODEX_R05_REPORT_RELATIVE_PATH',
     ),
 }
 CODEX_G06_PROBE_IMPLEMENTATION_MARKERS = {
@@ -3951,6 +4079,136 @@ def codex_c03_profile_report_candidate_binding_is_current(
     )
 
 
+def codex_r05_profile_revision_has_implementation(revision: object) -> bool:
+    """Bind R05 evidence to the exact registry, source projector, runner, and report validator."""
+    if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(str(ROOT), revision, CODEX_R05_PROBE_IMPLEMENTATION_MARKERS)
+    )
+
+
+def codex_r05_profile_report_matches_candidate_revision(
+    report_path: Path, revision: object,
+) -> bool:
+    """Bind the R05 sanitized report to its exact pre-query reviewed Candidate."""
+    if not codex_r05_profile_revision_has_implementation(revision):
+        return False
+    return _codex_relations_report_matches_candidate_revision(
+        report_path, revision, CODEX_R05_REPORT_RELATIVE_PATH,
+    )
+
+
+def codex_r05_profile_evidence_refresh_paths_are_valid(paths: object) -> bool:
+    return (
+        isinstance(paths, (list, tuple, set, frozenset))
+        and CODEX_R05_REPORT_RELATIVE_PATH in paths
+        and all(isinstance(item, str) and item in CODEX_R05_EVIDENCE_REFRESH_PATHS for item in paths)
+    )
+
+
+def codex_r05_profile_candidate_binding_is_valid(
+    report: object,
+    epoch_status: object,
+    changed_paths: object,
+    current_bundle_sha256: object,
+) -> bool:
+    """Bind R05 evidence to the live exact Candidate and report-only refresh commit."""
+    if not isinstance(report, dict) or not isinstance(epoch_status, dict):
+        return False
+    run = epoch_status.get('run')
+    epoch_result = epoch_status.get('epoch')
+    if not isinstance(run, dict) or not isinstance(epoch_result, dict):
+        return False
+    run_state = run.get('state')
+    epoch = epoch_result.get('state')
+    if not isinstance(run_state, dict) or not isinstance(epoch, dict):
+        return False
+    candidate_sha = epoch.get('candidate_sha')
+    source_sha = report.get('sourceRevision')
+    pr_number = report.get('prNumber')
+    branch = epoch.get('branch')
+    reviews = epoch.get('review_history', [])
+    latest_review = reviews[-1] if isinstance(reviews, list) and reviews else None
+    active_pr = (
+        run_state.get('state') == 'EPOCH_ACTIVE'
+        and run_state.get('active_epoch_pr') == pr_number
+        and epoch_result.get('github_state') == 'OPEN'
+        and epoch.get('state') != 'MERGED'
+    )
+    merged_pr = (
+        epoch.get('state') == 'MERGED'
+        and epoch_result.get('github_state') == 'MERGED'
+        and isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == candidate_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+    )
+    return (
+        type(pr_number) is int
+        and pr_number > 0
+        and run.get('number') == 95
+        and (active_pr or merged_pr)
+        and epoch.get('epoch_id') == CODEX_R05_EPOCH_ID
+        and epoch.get('pr_number') == pr_number
+        and epoch.get('base_branch') == 'master'
+        and isinstance(branch, str)
+        and epoch.get('base_sha') == report.get('baseSha')
+        and epoch_result.get('pr_base_ref_name') == 'master'
+        and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
+        and epoch_result.get('pr_head_ref_name') == branch
+        and epoch_result.get('pr_is_draft') is False
+        and isinstance(candidate_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
+        and epoch_result.get('pr_head_sha') == candidate_sha
+        and isinstance(source_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
+        and codex_r05_profile_evidence_refresh_paths_are_valid(changed_paths)
+        and current_bundle_sha256 == report.get('mcpBundleSha256')
+    )
+
+
+def _codex_r05_profile_report_candidate_paths(
+    source_revision: object, candidate_sha: object,
+) -> set[str] | None:
+    if (
+        not isinstance(source_revision, str)
+        or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
+        or not isinstance(candidate_sha, str)
+        or re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is None
+        or _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', source_revision, candidate_sha,
+        ).returncode != 0
+    ):
+        return None
+    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
+    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
+    if diff.returncode != 0 or status.returncode != 0:
+        return None
+    paths = set(diff.stdout.splitlines())
+    for line in status.stdout.splitlines():
+        if len(line) < 4:
+            return None
+        paths.add(line[3:])
+    return paths
+
+
+def codex_r05_profile_report_candidate_binding_is_current(
+    report: dict[str, object], epoch_status: object,
+) -> bool:
+    candidate = None
+    if isinstance(epoch_status, dict):
+        epoch_result = epoch_status.get('epoch')
+        epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
+        candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
+    paths = _codex_r05_profile_report_candidate_paths(report.get('sourceRevision'), candidate)
+    bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
+    return codex_r05_profile_candidate_binding_is_valid(
+        report, epoch_status, paths, bundle_sha256,
+    )
+
+
 def codex_c03_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
     """Read the active Run, PR, Candidate, and exact live PR head from Harness."""
     if type(pr_number) is not int or pr_number < 1:
@@ -4032,6 +4290,87 @@ def codex_c03_person_selection_file_is_valid() -> bool:
     except (OSError, ValueError):
         return False
     return codex_c03_person_selection_evidence_is_valid(evidence)
+
+
+def codex_r05_selection_evidence_is_valid(evidence: object) -> bool:
+    """Validate exact anonymous-v0 identity and positive shared-ID preflight evidence."""
+    fields = {
+        'schemaVersion', 'evidenceKind', 'epochId', 'observedDate', 'recordedAt', 'subjectSearch',
+        'selectedSubjects', 'characterRows', 'sharedPersonIds', 'interpretationLimit',
+        'authenticationUsed', 'oauthAttempted', 'accountDataRead', 'rawResponsesStored',
+        'personNamesStored',
+    }
+    if not isinstance(evidence, dict) or set(evidence) != fields:
+        return False
+    try:
+        recorded_at = datetime.fromisoformat(str(evidence.get('recordedAt')).replace('Z', '+00:00'))
+    except ValueError:
+        return False
+    search = evidence.get('subjectSearch')
+    subjects = evidence.get('selectedSubjects')
+    rows = evidence.get('characterRows')
+    expected_subjects = [
+        {'id': 1424, 'name': 'けいおん！', 'nameCn': '轻音少女', 'type': 2, 'date': '2009-04-02'},
+        {'id': 3774, 'name': 'けいおん！！', 'nameCn': '轻音少女 第二季', 'type': 2, 'date': '2010-04-06'},
+    ]
+    expected_rows = [
+        {'subjectId': 1424, 'rowsReceived': 37, 'distinctActorIdsReturned': 38},
+        {'subjectId': 3774, 'rowsReceived': 64, 'distinctActorIdsReturned': 42},
+    ]
+    return (
+        type(evidence.get('schemaVersion')) is int
+        and evidence.get('schemaVersion') == 1
+        and evidence.get('evidenceKind') == 'bangumi_official_public_r05_shared_person_preflight_v1'
+        and evidence.get('epochId') == CODEX_R05_EPOCH_ID
+        and evidence.get('observedDate') == '2026-10-15'
+        and recorded_at.tzinfo is not None
+        and isinstance(search, dict)
+        and set(search) == {'endpoint', 'method', 'keyword', 'typeFilter', 'returnedCount'}
+        and search.get('endpoint') == 'https://api.bgm.tv/v0/search/subjects'
+        and search.get('method') == 'POST'
+        and search.get('keyword') == '轻音少女'
+        and search.get('typeFilter') == [2]
+        and type(search.get('returnedCount')) is int
+        and search.get('returnedCount') == 3
+        and isinstance(subjects, list)
+        and len(subjects) == 2
+        and all(
+            isinstance(item, dict)
+            and set(item) == {'id', 'name', 'nameCn', 'type', 'date'}
+            and type(item.get('id')) is int
+            and type(item.get('type')) is int
+            and item == expected_subjects[index]
+            for index, item in enumerate(subjects)
+        )
+        and isinstance(rows, list)
+        and len(rows) == 2
+        and all(
+            isinstance(item, dict)
+            and set(item) == {'subjectId', 'rowsReceived', 'distinctActorIdsReturned'}
+            and all(type(item.get(key)) is int for key in item)
+            and item == expected_rows[index]
+            for index, item in enumerate(rows)
+        )
+        and evidence.get('sharedPersonIds') == CODEX_R05_SHARED_PERSON_IDS
+        and evidence.get('interpretationLimit') == (
+            'Intersection applies only to actor IDs in the returned current rows; '
+            'it does not establish exhaustive cast coverage or global connectivity.'
+        )
+        and evidence.get('authenticationUsed') is False
+        and evidence.get('oauthAttempted') is False
+        and evidence.get('accountDataRead') is False
+        and evidence.get('rawResponsesStored') is False
+        and evidence.get('personNamesStored') is False
+    )
+
+
+def codex_r05_selection_evidence_file_is_valid() -> bool:
+    path = ROOT / CODEX_R05_SELECTION_EVIDENCE_RELATIVE_PATH
+    try:
+        evidence = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    return codex_r05_selection_evidence_is_valid(evidence)
 
 
 def codex_s02_report_is_valid(report: object) -> bool:
@@ -5025,6 +5364,99 @@ def codex_c03_profile_disposition_matches_report(
     return disposition
 
 
+def codex_r05_profile_harness_status(pr_number: object) -> dict[str, object] | None:
+    """Read the exact registered R05 profile disposition and permanent latches."""
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                'node', str(ROOT / 'scripts/agent-harness.mjs'),
+                'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
+                '--profile-id', CODEX_R05_PROFILE_ID,
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_r05_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
+    """Read the active Run, exact Epoch Candidate, and live GitHub PR head."""
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            ['node', str(ROOT / 'scripts/agent-harness.mjs'), 'status', '--run', '95', '--pr', str(pr_number)],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_r05_profile_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+) -> dict[str, object] | None:
+    """Require the exact durable REPORT_WRITTEN claim and both permanent profile latches."""
+    if not isinstance(harness_status, dict):
+        return None
+    receipt = report.get('runnerReceipt')
+    disposition = harness_status.get('disposition')
+    if (
+        harness_status.get('state') != 'REPORT_WRITTEN'
+        or harness_status.get('profile_id') != CODEX_R05_PROFILE_ID
+        or harness_status.get('pr') != report.get('prNumber')
+        or harness_status.get('tool_name') != CODEX_R05_TOOL_NAME
+        or harness_status.get('argument_profile') != CODEX_R05_ARGUMENT_PROFILE
+        or harness_status.get('expected_arguments_sha256') != CODEX_R05_EXPECTED_ARGUMENTS_SHA256
+        or harness_status.get('registry_sha256') != CODEX_R05_PROFILE_REGISTRY_SHA256
+        or harness_status.get('claim_label_present') is not True
+        or harness_status.get('terminal_label_present') is not True
+        or not isinstance(disposition, dict)
+        or not isinstance(receipt, dict)
+        or type(report_sha256) is not str
+        or re.fullmatch(r'[0-9a-f]{64}', report_sha256) is None
+    ):
+        return None
+    expected = {
+        'claimId': report.get('claimId'),
+        'profileId': CODEX_R05_PROFILE_ID,
+        'frontierId': 'R05',
+        'epochId': CODEX_R05_EPOCH_ID,
+        'runNumber': 95,
+        'prNumber': report.get('prNumber'),
+        'state': 'REPORT_WRITTEN',
+        'sourceCandidateSha': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'ciSha': report.get('sourceRevision'),
+        'ciStatus': 'SUCCESS',
+        'reviewerId': report.get('reviewerId'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'registrySha256': CODEX_R05_PROFILE_REGISTRY_SHA256,
+        'toolName': CODEX_R05_TOOL_NAME,
+        'argumentProfile': CODEX_R05_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': CODEX_R05_EXPECTED_ARGUMENTS_SHA256,
+        'reportWritten': True,
+        'reportPath': CODEX_R05_REPORT_RELATIVE_PATH,
+        'reportSha256': report_sha256,
+        'retryAllowed': False,
+        'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
+        'runnerReceiptPublicKeySha256': receipt.get('publicKeySha256'),
+        'runnerReceiptSha256': _canonical_json_sha256(receipt),
+    }
+    if any(disposition.get(key) != value for key, value in expected.items()):
+        return None
+    return disposition
+
+
 def codex_r01_harness_status(pr_number: object) -> dict[str, object] | None:
     """Read the durable Run/Epoch R01 disposition through the Harness status command."""
     if type(pr_number) is not int or pr_number < 1:
@@ -5926,6 +6358,186 @@ def codex_c03_profile_report_is_valid(
     if disposition is None:
         return False
     validator = ROOT / 'scripts/acceptance/validate-c03-profile-report.mjs'
+    validation = subprocess.run(
+        ['node', str(validator)],
+        cwd=ROOT,
+        input=json.dumps({
+            'claim': disposition,
+            'reportBytesBase64': base64.b64encode(report_bytes).decode('ascii'),
+        }),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if validation.returncode != 0:
+        return False
+    try:
+        result = json.loads(validation.stdout)
+    except (TypeError, ValueError):
+        return False
+    return result.get('passed') is True and result.get('reportSha256') == report_sha256
+
+
+def codex_r05_profile_report_is_valid(
+    report: object,
+    harness_status: object = None,
+    report_path: Path | None = None,
+    epoch_status: object = None,
+) -> bool:
+    """Validate exact signed R05 evidence, current preflight, Candidate, and Harness claim."""
+    if not isinstance(report, dict) or set(report) != CODEX_R05_REPORT_FIELDS:
+        return False
+    path = report_path or (LIVE_PROBE_DIR / Path(CODEX_R05_REPORT_RELATIVE_PATH).name)
+    try:
+        relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+        report_bytes = path.read_bytes()
+    except (OSError, ValueError):
+        return False
+    try:
+        selection_bytes = (ROOT / CODEX_R05_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
+        selection = json.loads(selection_bytes)
+    except (OSError, ValueError):
+        return False
+    source_revision = report.get('sourceRevision')
+    pr_number = report.get('prNumber')
+    if (
+        relative_path != CODEX_R05_REPORT_RELATIVE_PATH
+        or type(report.get('schemaVersion')) is not int
+        or report.get('schemaVersion') != 1
+        or report.get('evidenceKind') != CODEX_R05_EVIDENCE_KIND
+        or type(report.get('runNumber')) is not int
+        or report.get('runNumber') != 95
+        or report.get('frontierId') != 'R05'
+        or report.get('scenarioId') != 'R05'
+        or report.get('epochId') != CODEX_R05_EPOCH_ID
+        or report.get('profileId') != CODEX_R05_PROFILE_ID
+        or report.get('profile') != 'codex-luna-max-agent-mcp-profile-v1'
+        or report.get('model') != 'gpt-6-luna'
+        or report.get('reasoningEffort') != 'max'
+        or not isinstance(report.get('reviewerId'), str)
+        or re.fullmatch(
+            rf'gpt-6-luna-max-run95-pr{report.get("prNumber")}-round[1-9]\d*',
+            report['reviewerId'],
+        ) is None
+        or not isinstance(report.get('codexCliVersion'), str)
+        or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
+        or report.get('toolName') != CODEX_R05_TOOL_NAME
+        or report.get('argumentProfile') != CODEX_R05_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != CODEX_R05_EXPECTED_ARGUMENTS_SHA256
+        or report.get('registrySha256') != CODEX_R05_PROFILE_REGISTRY_SHA256
+        or not codex_r05_profile_revision_has_implementation(source_revision)
+        or not codex_r05_selection_evidence_is_valid(selection)
+        or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
+        or not isinstance(report.get('baseSha'), str)
+        or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
+        or report.get('ciSha') != source_revision
+        or report.get('ciStatus') != 'SUCCESS'
+        or type(pr_number) is not int
+        or pr_number < 1
+        or report.get('resultStatus') != 'SUCCESS'
+        or type(report.get('processExitCode')) is not int
+        or report.get('processExitCode') != 0
+        or report.get('mcpTextProjectionValid') is not True
+        or report.get('eventStreamParsed') is not True
+        or report.get('turnCompleted') is not True
+        or type(report.get('codexMcpToolEventCount')) is not int
+        or report.get('codexMcpToolEventCount') != 1
+        or type(report.get('codexErrorItemCount')) is not int
+        or report.get('codexErrorItemCount') != 0
+        or type(report.get('nonMcpToolEventCount')) is not int
+        or report.get('nonMcpToolEventCount') != 0
+        or report.get('nonMcpToolTypes') != []
+        or type(report.get('shellToolCallCount')) is not int
+        or report.get('shellToolCallCount') != 0
+        or type(report.get('allowedCallCount')) is not int
+        or report.get('allowedCallCount') != 1
+        or type(report.get('deniedCallCount')) is not int
+        or report.get('deniedCallCount') != 0
+        or report.get('serverToolNames') != [CODEX_R05_TOOL_NAME]
+        or type(report.get('serverToolCount')) is not int
+        or report.get('serverToolCount') != 1
+        or report.get('mcpServerNames') != ['bgk_r05_overlap']
+        or report.get('answerCheckMethod') != CODEX_R05_ANSWER_CHECK_METHOD
+        or not isinstance(report.get('answerSha256'), str)
+        or re.fullmatch(r'[0-9a-f]{64}', report['answerSha256']) is None
+        or type(report.get('answerUtf8Bytes')) is not int
+        or not 0 < report['answerUtf8Bytes'] <= CODEX_R05_PROFILE['maxAnswerBytes']
+    ):
+        return False
+
+    if (
+        not isinstance(report.get('answerChecks'), dict)
+        or set(report['answerChecks']) != CODEX_R05_ANSWER_CHECK_FIELDS
+        or not all(value is True for value in report['answerChecks'].values())
+        or not isinstance(report.get('privacy'), dict)
+        or set(report['privacy']) != CODEX_R05_PRIVACY_FIELDS
+        or not all(value is False for value in report['privacy'].values())
+    ):
+        return False
+
+    summary = report.get('resultSummary')
+    if (
+        not isinstance(summary, dict)
+        or set(summary) != {
+            'subjectIds', 'state', 'kind', 'castRole', 'formulaVersion', 'subjects', 'pair',
+            'coverage', 'source', 'warnings',
+        }
+        or summary.get('subjectIds') != [1424, 3774]
+        or summary.get('state') not in {'complete', 'partial', 'unavailable', 'not_found', 'not_computable'}
+        or summary.get('kind') != 'cast'
+        or summary.get('castRole') != 'all'
+        or summary.get('formulaVersion') != 'subject-overlap-v1'
+        or not isinstance(summary.get('subjects'), list)
+        or len(summary['subjects']) != 2
+        or not isinstance(summary.get('pair'), dict)
+        or summary['pair'].get('pairId') != '1424:3774'
+        or summary['pair'].get('leftSubjectId') != 1424
+        or summary['pair'].get('rightSubjectId') != 3774
+        or summary['pair'].get('rank') != 1
+        or not isinstance(summary['pair'].get('cast'), dict)
+        or summary['pair']['cast'].get('state') not in {'complete', 'partial', 'unavailable', 'not_computable'}
+        or not isinstance(summary['pair']['cast'].get('sharedPeople'), list)
+        or len(summary['pair']['cast']['sharedPeople']) != 1
+        or not isinstance(summary.get('coverage'), dict)
+        or summary['coverage'].get('requestedSubjects') != 2
+        or summary['coverage'].get('returnedSubjects') != 2
+        or summary['coverage'].get('requestedPairs') != 1
+        or summary['coverage'].get('returnedPairs') != 1
+        or summary['coverage'].get('omittedPairs') != 0
+        or summary['coverage'].get('limits') != {'maxCast': 80, 'maxPairs': 1, 'maxPeople': 8}
+        or not isinstance(summary['coverage'].get('truncated'), bool)
+    ):
+        return False
+    for index, expected_subject_id in enumerate((1424, 3774)):
+        subject = summary['subjects'][index]
+        if (
+            not isinstance(subject, dict)
+            or set(subject) != {'subjectId', 'type', 'state'}
+            or subject.get('subjectId') != expected_subject_id
+            or subject.get('type') != 'anime'
+            or subject.get('state') not in {'complete', 'partial', 'unavailable', 'not_found', 'not_computable'}
+        ):
+            return False
+    shared_person = summary['pair']['cast']['sharedPeople'][0]
+    if (
+        not isinstance(shared_person, dict)
+        or set(shared_person) != {'personId', 'creditSubjectIds'}
+        or type(shared_person.get('personId')) is not int
+        or shared_person.get('personId') not in CODEX_R05_SHARED_PERSON_IDS
+        or shared_person.get('creditSubjectIds') != [1424, 3774]
+    ):
+        return False
+
+    report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+    current_epoch_status = epoch_status or codex_r05_profile_epoch_harness_status(pr_number)
+    if not codex_r05_profile_report_candidate_binding_is_current(report, current_epoch_status):
+        return False
+    status = harness_status or codex_r05_profile_harness_status(pr_number)
+    disposition = codex_r05_profile_disposition_matches_report(report, status, report_sha256)
+    if disposition is None:
+        return False
+    validator = ROOT / 'scripts/acceptance/validate-r05-profile-report.mjs'
     validation = subprocess.run(
         ['node', str(validator)],
         cwd=ROOT,
@@ -9035,6 +9647,21 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             ):
                 continue
             sources.setdefault(CODEX_C03_TOOL_NAME, set()).add(report_source_ref(path))
+            continue
+        if report.get('evidenceKind') == CODEX_R05_EVIDENCE_KIND:
+            current_status = codex_r05_profile_harness_status(report.get('prNumber'))
+            current_epoch_status = codex_r05_profile_epoch_harness_status(report.get('prNumber'))
+            if (
+                path.name != Path(CODEX_R05_REPORT_RELATIVE_PATH).name
+                or not codex_r05_profile_report_is_valid(
+                    report, current_status, path, current_epoch_status,
+                )
+                or not codex_r05_profile_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault(CODEX_R05_TOOL_NAME, set()).add(report_source_ref(path))
             continue
         if report.get('evidenceKind') == 'codex_cli_g06_subject_cast_agent_mcp':
             try:

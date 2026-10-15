@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_official_public_r05_shared_person_preflight_v1",
+  "epochId": "run95-r05-k-on-season-shared-person-20261015",
+  "observedDate": "2026-10-15",
+  "recordedAt": "2026-10-15T07:50:27Z",
+  "subjectSearch": {
+    "endpoint": "https://api.bgm.tv/v0/search/subjects",
+    "method": "POST",
+    "keyword": "轻音少女",
+    "typeFilter": [2],
+    "returnedCount": 3
+  },
+  "selectedSubjects": [
+    {
+      "id": 1424,
+      "name": "けいおん！",
+      "nameCn": "轻音少女",
+      "type": 2,
+      "date": "2009-04-02"
+    },
+    {
+      "id": 3774,
+      "name": "けいおん！！",
+      "nameCn": "轻音少女 第二季",
+      "type": 2,
+      "date": "2010-04-06"
+    }
+  ],
+  "characterRows": [
+    {
+      "subjectId": 1424,
+      "rowsReceived": 37,
+      "distinctActorIdsReturned": 38
+    },
+    {
+      "subjectId": 3774,
+      "rowsReceived": 64,
+      "distinctActorIdsReturned": 42
+    }
+  ],
+  "sharedPersonIds": [
+    3847, 4011, 4633, 5001, 5003, 5072, 5104, 5117, 5118, 5119, 5127, 5228, 23302, 58216, 58217,
+    58222, 72254, 78942, 78943, 79084
+  ],
+  "interpretationLimit": "Intersection applies only to actor IDs in the returned current rows; it does not establish exhaustive cast coverage or global connectivity.",
+  "authenticationUsed": false,
+  "oauthAttempted": false,
+  "accountDataRead": false,
+  "rawResponsesStored": false,
+  "personNamesStored": false
+}

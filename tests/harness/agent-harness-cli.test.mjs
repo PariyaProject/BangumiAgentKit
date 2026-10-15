@@ -96,6 +96,7 @@ const sha = (digit) => digit.repeat(40);
 const D07_EPOCH_ID = 'run95-d07-current-rank-by-release-year';
 const C03_PROFILE = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
 const P03_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
+const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const mandatoryChecks = [
   'harness-control',
   'sqlite-default',
@@ -1637,6 +1638,69 @@ test('P03 Harness profile status, create-once claim, and no-retry result use its
     assert.equal(status.status, 0, status.stderr);
     assert.equal(JSON.parse(status.stdout).state, 'INCONCLUSIVE');
     assert.equal(JSON.parse(status.stdout).retry_allowed, false);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('R05 Harness profile uses its own permanent claim label and terminal no-retry disposition', () => {
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(R05_PROFILE);
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', R05_PROFILE.id];
+  try {
+    const initial = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(initial.status, 0, initial.stderr);
+    const initialState = JSON.parse(initial.stdout);
+    assert.equal(initialState.state, 'UNCLAIMED');
+    assert.equal(initialState.frontier_id, 'R05');
+    assert.equal(initialState.tool_name, 'bangumi.get_subject_overlap');
+    assert.equal(initialState.call_count, 1);
+    assert.equal(initialState.review_gate.eligible, true);
+
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    assert.equal(claimResult.state, 'AGENT_MCP_PROFILE_CLAIMED');
+    assert.equal(claimResult.retryAllowed, false);
+
+    const duplicate = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(duplicate.status, 2);
+
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'INCONCLUSIVE',
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(status.status, 0, status.stderr);
+    assert.equal(JSON.parse(status.stdout).state, 'INCONCLUSIVE');
+    assert.equal(JSON.parse(status.stdout).retry_allowed, false);
+    assert.equal(
+      environment.readState().repositoryLabels['harness-r95-r05-subject-overlap-claimed'].name,
+      'harness-r95-r05-subject-overlap-claimed',
+    );
   } finally {
     environment.cleanup();
   }

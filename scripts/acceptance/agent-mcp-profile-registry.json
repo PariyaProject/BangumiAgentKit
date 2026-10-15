@@ -67,6 +67,34 @@
           }
         }
       ]
+    },
+    {
+      "id": "r05-k-on-season-shared-person-v1",
+      "frontierId": "R05",
+      "epochId": "run95-r05-k-on-season-shared-person-20261015",
+      "toolName": "bangumi.get_subject_overlap",
+      "argumentProfile": "fixed-r05-k-on-tv-seasons-1424-3774-cast-80-pair-1-people-8-v1",
+      "claimLabelName": "harness-r95-r05-subject-overlap-claimed",
+      "reportPath": "docs/live-probes/r05-k-on-season-shared-person-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-r05-k-on-season-shared-person-preflight-2026-10-15.json",
+      "evidenceKind": "codex_cli_r05_shared_person_overlap_agent_mcp",
+      "answerCheckMethod": "r05-positive-shared-person-exact-id-evidence-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 2048,
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_overlap",
+          "arguments": {
+            "subjectIds": [1424, 3774],
+            "kind": "cast",
+            "castRole": "all",
+            "maxCast": 80,
+            "maxPairs": 1,
+            "maxPeople": 8
+          }
+        }
+      ]
     }
   ]
 }
