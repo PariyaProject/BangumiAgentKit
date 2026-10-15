@@ -90,12 +90,18 @@ import { makeP01Report } from './p01-report-fixture.mjs';
 import { makeR05ProfileReportInput } from './fixtures/r05-profile-report-input.mjs';
 import { writeR05SharedPersonOverlapReport } from '../../scripts/acceptance/write-r05-shared-person-overlap-report.mjs';
 import { getAgentMcpProfileById } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
+import {
+  C01_SAFE_SCOPE_NOTE,
+  projectC01ComparisonResult,
+} from '../../scripts/lib/c01-rating-count-evidence.mjs';
+import { writeC01ProfileReport } from '../../scripts/acceptance/write-c01-rating-count-report.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const mockBin = path.join(root, 'tests/harness/mock-harness-bin.mjs');
 const sha = (digit) => digit.repeat(40);
 const D07_EPOCH_ID = 'run95-d07-current-rank-by-release-year';
 const C03_PROFILE = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
+const C01_PROFILE = getAgentMcpProfileById('c01-rating-count-gap-v1');
 const P03_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
 const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const mandatoryChecks = [
@@ -1823,6 +1829,202 @@ test('R05 Harness records a valid REPORT_WRITTEN report with its exact digest', 
     assert.equal(disposition.reportSha256, report.reportSha256);
     assert.equal(disposition.reportPath, R05_PROFILE.reportPath);
     assert.equal(disposition.reportWritten, true);
+    assert.equal(disposition.retryAllowed, false);
+  } finally {
+    environment.cleanup();
+    fs.rmSync(harnessRoot, { recursive: true, force: true });
+  }
+});
+
+test('C01 Harness records a valid REPORT_WRITTEN report with its exact signed digest', () => {
+  const harnessRoot = createIsolatedHarnessRoot();
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(C01_PROFILE, {
+    harnessRoot,
+  });
+  const runnerKeyPair = generateKeyPairSync('ed25519');
+  const publicKeyBase64 = runnerKeyPair.publicKey
+    .export({ type: 'spki', format: 'der' })
+    .toString('base64');
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', C01_PROFILE.id];
+  const comparisonResult = {
+    subjectIds: [41529, 46729],
+    state: 'partial',
+    subjects: [
+      {
+        subjectId: 41529,
+        state: 'complete',
+        subject: { id: 41529, name: 'BTOOOM!', nameCn: '惊爆游戏' },
+        stats: { ratingTotal: 1400 },
+      },
+      {
+        subjectId: 46729,
+        state: 'partial',
+        subject: { id: 46729, name: 'Sample Work' },
+        stats: { ratingTotal: 250 },
+      },
+    ],
+    metrics: [{ key: 'ratingTotal', state: 'complete', values: [1400, 250], delta: -1150 }],
+    formulaVersion: 'subject-comparison-v2',
+    source: {
+      official: {
+        class: 'official-v0',
+        operations: ['GET /v0/subjects/{subject_id}'],
+        attemptedAt: '2026-10-15T12:00:00.000Z',
+        retrievedAt: '2026-10-15T12:00:01.000Z',
+      },
+      derived: {
+        class: 'derived-s7',
+        operations: ['subject-comparison'],
+        attemptedAt: '2026-10-15T12:00:01.000Z',
+        retrievedAt: '2026-10-15T12:00:01.000Z',
+      },
+    },
+    coverage: {
+      requestedSubjects: 2,
+      returnedSubjects: 2,
+      subjectsComplete: 1,
+      subjectsPartial: 1,
+      limits: { maxSubjects: 2, maxCast: 1, maxStaff: 1, maxRelations: 1 },
+    },
+  };
+  const answer = JSON.stringify({
+    schemaVersion: 1,
+    subjects: [
+      { subjectId: 41529, name: '惊爆游戏', ratingTotal: 1400 },
+      { subjectId: 46729, name: 'Sample Work', ratingTotal: 250 },
+    ],
+    ratingTotalDelta: -1150,
+    thresholdAssessment: 'not_assessable_without_threshold',
+    statisticalSignificance: 'not_established',
+    scopeNote: C01_SAFE_SCOPE_NOTE,
+  });
+  try {
+    const initial = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(initial.status, 0, initial.stderr);
+    assert.equal(JSON.parse(initial.stdout).state, 'UNCLAIMED');
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    const claim = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.agent_mcp_profile_dispositions[C01_PROFILE.id];
+    const report = writeC01ProfileReport(
+      {
+        claim,
+        source: projectC01ComparisonResult(comparisonResult),
+        rawResult: comparisonResult,
+        answer,
+        codexCliVersion: '0.1.0',
+        events: {
+          processExitCode: 0,
+          eventStreamParsed: true,
+          turnCompleted: true,
+          codexMcpToolEventCount: 1,
+          codexErrorItemCount: 0,
+          nonMcpToolEventCount: 0,
+          nonMcpToolTypes: [],
+          shellToolCallCount: 0,
+          mcpServerNames: ['bgk_c01_one_tool'],
+          allowedCallCount: 1,
+          deniedCallCount: 0,
+        },
+        eventStreamSha256: 'd'.repeat(64),
+        serverSummarySha256: 'e'.repeat(64),
+      },
+      { privateKey: runnerKeyPair.privateKey, root: harnessRoot },
+    );
+    assert.equal(report.passed, true, JSON.stringify(report));
+
+    const mockState = environment.readState();
+    mockState.dirty = `?? ${C01_PROFILE.reportPath}`;
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(mockState, null, 2)}\n`);
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'REPORT_WRITTEN',
+      '--report-sha256',
+      report.reportSha256,
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    assert.equal(JSON.parse(terminal.stdout).state, 'AGENT_MCP_PROFILE_RESULT_RECORDED');
+    const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(status.status, 0, status.stderr);
+    assert.equal(JSON.parse(status.stdout).state, 'REPORT_WRITTEN');
+    const disposition = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.agent_mcp_profile_dispositions[C01_PROFILE.id];
+    assert.equal(disposition.state, 'REPORT_WRITTEN');
+    assert.equal(disposition.reportSha256, report.reportSha256);
+    assert.equal(disposition.reportPath, C01_PROFILE.reportPath);
+    assert.equal(disposition.reportWritten, true);
+    assert.equal(disposition.retryAllowed, false);
+  } finally {
+    environment.cleanup();
+    fs.rmSync(harnessRoot, { recursive: true, force: true });
+  }
+});
+
+test('C01 Harness terminalizes an invalid retained report as INCONCLUSIVE with its exact digest', () => {
+  const harnessRoot = createIsolatedHarnessRoot();
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(C01_PROFILE, {
+    harnessRoot,
+  });
+  const runnerKeyPair = generateKeyPairSync('ed25519');
+  const publicKeyBase64 = runnerKeyPair.publicKey
+    .export({ type: 'spki', format: 'der' })
+    .toString('base64');
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', C01_PROFILE.id];
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    const retainedReport = Buffer.from('{ invalid C01 report artifact }', 'utf8');
+    const reportSha256 = createHash('sha256').update(retainedReport).digest('hex');
+    const reportPath = path.join(harnessRoot, C01_PROFILE.reportPath);
+    fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+    fs.writeFileSync(reportPath, retainedReport);
+    const mockState = environment.readState();
+    mockState.dirty = `?? ${C01_PROFILE.reportPath}`;
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(mockState, null, 2)}\n`);
+
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--report-sha256',
+      reportSha256,
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    const terminalResult = JSON.parse(terminal.stdout);
+    assert.equal(terminalResult.state, 'AGENT_MCP_PROFILE_RESULT_RECORDED');
+    assert.equal(terminalResult.resultState, 'INCONCLUSIVE');
+    assert.equal(terminalResult.unacceptedReportSha256, reportSha256);
+    const disposition = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.agent_mcp_profile_dispositions[C01_PROFILE.id];
+    assert.equal(disposition.state, 'INCONCLUSIVE');
+    assert.equal(disposition.unacceptedReportSha256, reportSha256);
     assert.equal(disposition.retryAllowed, false);
   } finally {
     environment.cleanup();

@@ -2,6 +2,32 @@
   "schemaVersion": 1,
   "profiles": [
     {
+      "id": "c01-rating-count-gap-v1",
+      "frontierId": "C01",
+      "epochId": "run95-c01-rating-count-gap-agent-mcp-20261015",
+      "toolName": "bangumi.get_subject_comparison",
+      "argumentProfile": "fixed-c01-rating-count-gap-41529-46729-limits-1-v1",
+      "claimLabelName": "harness-r95-c01-rating-count-gap-claimed",
+      "reportPath": "docs/live-probes/c01-rating-count-gap-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-c01-rating-count-difference-source-contract-2026-10-15.md",
+      "evidenceKind": "codex_cli_c01_rating_count_gap_agent_mcp",
+      "answerCheckMethod": "c01-source-matched-rating-total-delta-no-threshold-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 4096,
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_comparison",
+          "arguments": {
+            "subjectIds": [41529, 46729],
+            "maxCast": 1,
+            "maxStaff": 1,
+            "maxRelations": 1
+          }
+        }
+      ]
+    },
+    {
       "id": "c03-voice-actor-comparison-v1",
       "frontierId": "C03",
       "epochId": "run95-c03-profile-aware-agent-mcp-20261014",
