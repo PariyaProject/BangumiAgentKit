@@ -6343,5 +6343,157 @@ class C03ReportValidationRulesTests(unittest.TestCase):
         )
 
 
+class C03ReportAcceptanceTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='c03-report-acceptance-test-')
+        self.root = Path(self.temp_dir.name)
+        self.report_path = self.root / GENERATOR.CODEX_C03_REPORT_RELATIVE_PATH
+        self.report_path.parent.mkdir(parents=True)
+        self.original_root = GENERATOR.ROOT
+        GENERATOR.ROOT = self.root
+
+    def tearDown(self):
+        GENERATOR.ROOT = self.original_root
+        self.temp_dir.cleanup()
+
+    def build_report(self):
+        candidate = 'a' * 40
+        actors = []
+        for call in GENERATOR.CODEX_C03_EXPECTED_CALLS:
+            actors.append({
+                'personId': call['arguments']['personId'],
+                'state': 'complete',
+                'window': {
+                    'months': 36,
+                    'start': '2023-11-01',
+                    'end': '2026-10-14',
+                    'asOfSemantics': 'calendar_months_ending_on_as_of_date',
+                },
+                'uniqueSubjects': 0,
+                'roleCounts': {'main': 0, 'support': 0, 'unknown': 0},
+                'observedRows': [],
+                'coverage': {
+                    'relationRowsObserved': 0,
+                    'relationRowsSelected': 0,
+                    'relationRowsDroppedAtLimit': 0,
+                    'subjectDetailsSucceeded': 0,
+                    'subjectDetailsFailed': 0,
+                    'rowsEligible': 0,
+                    'rowsReturned': 0,
+                    'outputTruncated': False,
+                    'unknownRoleRows': 0,
+                    'truncated': False,
+                },
+            })
+        actors[0]['coverage']['rowsReturned'] = None
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': GENERATOR.CODEX_C03_EVIDENCE_KIND,
+            'runNumber': 95,
+            'frontierId': 'C03',
+            'scenarioId': 'C03',
+            'epochId': GENERATOR.CODEX_C03_EPOCH_ID,
+            'profileId': GENERATOR.CODEX_C03_PROFILE_ID,
+            'profile': 'codex-luna-max-agent-mcp-profile-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr162-round1',
+            'codexCliVersion': '1.2.3',
+            'sourceRevision': candidate,
+            'baseSha': 'b' * 40,
+            'ciSha': candidate,
+            'ciStatus': 'SUCCESS',
+            'prNumber': 162,
+            'claimId': 'c03-claim-fixture',
+            'mcpBundleSha256': 'c' * 64,
+            'registrySha256': GENERATOR.CODEX_AGENT_MCP_PROFILE_REGISTRY_SHA256,
+            'toolName': GENERATOR.CODEX_C03_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_C03_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_C03_EXPECTED_ARGUMENTS_SHA256,
+            'catalogSha256': 'd' * 64,
+            'toolDescriptionSha256': 'e' * 64,
+            'inputSchemaSha256': 'f' * 64,
+            'serverToolNames': [GENERATOR.CODEX_C03_TOOL_NAME],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_c03_profile'],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': len(GENERATOR.CODEX_C03_EXPECTED_CALLS),
+            'codexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': len(GENERATOR.CODEX_C03_EXPECTED_CALLS),
+            'deniedCallCount': 0,
+            'answerCheckMethod': GENERATOR.CODEX_C03_ANSWER_CHECK_METHOD,
+            'answerSha256': '1' * 64,
+            'answerUtf8Bytes': 1,
+            'answerChecks': {field: True for field in GENERATOR.CODEX_C03_ANSWER_CHECK_FIELDS},
+            'actors': actors,
+            'comparison': {
+                'observedSubjectIds': [[], []],
+                'sharedSubjectIds': [],
+                'observedCommonCount': 0,
+                'observedMainRoleShares': [
+                    {
+                        'personId': actor['personId'],
+                        'numerator': 0,
+                        'denominator': 0,
+                        'ratio': None,
+                        'state': 'complete',
+                    }
+                    for actor in actors
+                ],
+                'coveragePartial': True,
+            },
+            'privacy': {field: False for field in GENERATOR.CODEX_C03_PRIVACY_FIELDS},
+            'runnerReceipt': {},
+        }
+
+    def validate_report(self, report):
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        def validate_embedded_report(args, **kwargs):
+            payload = json.loads(kwargs['input'])
+            report_bytes = base64.b64decode(payload['reportBytesBase64'])
+            return subprocess.CompletedProcess(
+                args,
+                0,
+                json.dumps({
+                    'passed': True,
+                    'reportSha256': hashlib.sha256(report_bytes).hexdigest(),
+                }),
+                '',
+            )
+
+        with (
+            patch.object(GENERATOR, 'codex_c03_profile_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_c03_person_selection_file_is_valid', return_value=True),
+            patch.object(GENERATOR, 'codex_c03_profile_report_candidate_binding_is_current', return_value=True),
+            patch.object(GENERATOR, 'codex_c03_profile_disposition_matches_report', return_value={'state': 'REPORT_WRITTEN'}),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+        ):
+            return GENERATOR.codex_c03_profile_report_is_valid(
+                report,
+                harness_status={'fixture': True},
+                report_path=self.report_path,
+                epoch_status={'fixture': True},
+            )
+
+    def test_accepts_unknown_rows_returned_as_partial_report_coverage(self):
+        report = self.build_report()
+
+        self.assertTrue(report['comparison']['coveragePartial'])
+        self.assertTrue(self.validate_report(report))
+
+    def test_rejects_known_rows_returned_count_that_disagrees_with_observed_rows(self):
+        report = self.build_report()
+        report['actors'][0]['coverage']['rowsReturned'] = 1
+
+        self.assertFalse(self.validate_report(report))
+
+
 if __name__ == '__main__':
     unittest.main()

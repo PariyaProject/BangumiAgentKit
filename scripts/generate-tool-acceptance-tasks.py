@@ -5889,7 +5889,8 @@ def codex_c03_profile_report_is_valid(
             for field in CODEX_C03_COVERAGE_BOOLEAN_FIELDS
         ):
             return False
-        if actor['coverage'].get('rowsReturned') != len(actor['observedRows']):
+        rows_returned = actor['coverage'].get('rowsReturned')
+        if rows_returned is not None and rows_returned != len(actor['observedRows']):
             return False
         observed_subject_ids.append(ids)
         denominator = actor['uniqueSubjects']
