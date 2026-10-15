@@ -22,6 +22,7 @@ import {
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
 import {
+  P03_CANONICAL_COVERAGE_NOTE,
   P03_PROFILE_ID,
   validateP03McpTextProjection,
   validateP03ResultSummary,
@@ -56,7 +57,7 @@ const PROMPT = `P03 Run 95: answer the bounded question “某人物参与的作
 
 Return one plain JSON object with exactly these keys: personId, personName, sourceNameCnRows, subjectsObserved, subjectsReturned, subjectsTruncated, sourceCompleteness, returnedCreditRowsObserved, nameCnSourceCounts, nameCnRowsOmittedFromText, coverageNote. Copy personId/personName, the returned coverage values, counts, and omitted count from the exact tool result. sourceNameCnRows must exactly preserve the text-visible positive rows, in source order, as objects with only id and nameCnSource. Include only rows whose raw nameCnSource is a string that remains non-empty after trimming; do not include empty, whitespace-only, absent, or invalid values. Do not normalize or invent title strings. If a title is visibly clipped with an ellipsis, preserve that exact visible string.
 
-coverageNote must include these exact statements: “官方 name_cn 去除首尾空白后非空才算来源已提供”; “若 name_cn 与原名相同，这只证明字段有值，不证明发生了翻译”; “空字符串、纯空白、缺失或无效值不证明没有中文名”; “上游关系完整性未声明”; “未列出的作品不代表没有中文名”; “这不是完整生涯列表”; “列表中的超长标题可能用省略号截断”. Say whether subjectsTruncated is true or false. A positive name_cn value is source evidence; it does not prove that a name is a translation when it matches the original name. Never infer that an unreturned work is absent. Keep the answer under ${PROFILE.maxAnswerBytes} UTF-8 bytes. Do not request another call.`;
+coverageNote must equal exactly this string, without additions: “${P03_CANONICAL_COVERAGE_NOTE}”. Set subjectsTruncated to the exact boolean from the tool result (true or false). A positive name_cn value is source evidence; it does not prove that a name is a translation when it matches the original name. Never infer that an unreturned work is absent. Keep the answer under ${PROFILE.maxAnswerBytes} UTF-8 bytes. Do not request another call.`;
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const tomlString = (value) => JSON.stringify(value);
 const tomlStringArray = (values) => `[${values.map(tomlString).join(', ')}]`;

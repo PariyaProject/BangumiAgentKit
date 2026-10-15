@@ -117,10 +117,7 @@ export function presentMcpToolResult(toolName: string, result: unknown): McpTool
 
   if (toolName === PERSON_PROFILE_TOOL && isPersonProfileToolResult(result)) {
     return {
-      text:
-        utf8Bytes(fullText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES
-          ? fullText
-          : compactPersonProfileResult(result),
+      text: compactPersonProfileResult(result),
       structuredContent: result,
     };
   }

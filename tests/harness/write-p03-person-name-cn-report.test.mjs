@@ -15,6 +15,7 @@ import {
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
+  P03_CANONICAL_COVERAGE_NOTE,
   summarizeP03PersonProfileToolResult,
   validateP03McpTextProjection,
   P03_PROFILE_ID,
@@ -86,8 +87,7 @@ function fixture() {
     returnedCreditRowsObserved: resultSummary.returnedCreditRowsObserved,
     nameCnSourceCounts: resultSummary.nameCnSourceCounts,
     nameCnRowsOmittedFromText: resultSummary.nameCnRowsOmittedFromText,
-    coverageNote:
-      '官方 name_cn 去除首尾空白后非空才算来源已提供；若 name_cn 与原名相同，这只证明字段有值，不证明发生了翻译；空字符串、纯空白、缺失或无效值不证明没有中文名。上游关系完整性未声明；本地未截断，未列出的作品不代表没有中文名，这不是完整生涯列表；列表中的超长标题可能用省略号截断。',
+    coverageNote: P03_CANONICAL_COVERAGE_NOTE,
   });
   const keyPair = generateKeyPairSync('ed25519');
   const publicKeyDer = keyPair.publicKey.export({ type: 'spki', format: 'der' });

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  P03_CANONICAL_COVERAGE_NOTE,
   P03_PROFILE_ID,
   summarizeP03PersonProfileToolResult,
   validateP03McpTextProjection,
@@ -77,8 +78,7 @@ function answerFor(summary) {
     returnedCreditRowsObserved: summary.returnedCreditRowsObserved,
     nameCnSourceCounts: summary.nameCnSourceCounts,
     nameCnRowsOmittedFromText: summary.nameCnRowsOmittedFromText,
-    coverageNote:
-      '仅本次返回行中官方 name_cn 去除首尾空白后非空才算来源已提供；若 name_cn 与原名相同，这只证明字段有值，不证明发生了翻译；空字符串、纯空白、缺失或无效值不证明没有中文名。上游关系完整性未声明；已本地截断，未列出的作品不代表没有中文名，这不是完整生涯列表；列表中的超长标题可能用省略号截断。',
+    coverageNote: P03_CANONICAL_COVERAGE_NOTE,
   });
 }
 
@@ -109,6 +109,15 @@ test('P03 summary counts positive, empty and unavailable source values and bound
   assert.equal(summary.coverage.subjectsTruncated, true);
   assert.equal(summary.coverage.sourceCompleteness, 'undocumented');
   assert.equal(validateP03ResultSummary(summary), true);
+});
+
+test('P03 summary rejects a truncation flag inconsistent with observed and returned counts', () => {
+  const summary = summarizeP03PersonProfileToolResult(resultFixture(), profile.calls[0].arguments);
+  const inconsistent = {
+    ...summary,
+    coverage: { ...summary.coverage, subjectsTruncated: false },
+  };
+  assert.equal(validateP03ResultSummary(inconsistent), false);
 });
 
 test('P03 summary marks long source titles that compact MCP text clips', () => {
@@ -155,6 +164,10 @@ test('P03 answer check rejects empty-only answers and any absence/completeness c
   const answer = JSON.parse(answerFor(summary));
   answer.coverageNote = '没有中文名，列表是完整生涯清单。';
   assert.equal(verifyP03Answer(JSON.stringify(answer), summary).passed, false);
+
+  const contradictory = JSON.parse(answerFor(summary));
+  contradictory.coverageNote += ' 其他作品都没有中文名，这就是完整清单。';
+  assert.equal(verifyP03Answer(JSON.stringify(contradictory), summary).passed, false);
 
   const emptyOnly = {
     ...resultFixture(),

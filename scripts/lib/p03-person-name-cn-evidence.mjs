@@ -7,6 +7,8 @@ import {
 export const P03_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v1';
 export const P03_MAX_TITLE_BYTES = 160;
 export const P03_MAX_LISTED_ROWS = 6;
+export const P03_CANONICAL_COVERAGE_NOTE =
+  '官方 name_cn 去除首尾空白后非空才算来源已提供；若 name_cn 与原名相同，这只证明字段有值，不证明发生了翻译；空字符串、纯空白、缺失或无效值不证明没有中文名；上游关系完整性未声明；未列出的作品不代表没有中文名；这不是完整生涯列表；列表中的超长标题可能用省略号截断。';
 export const P03_ANSWER_CHECK_FIELDS = Object.freeze([
   'validJsonShape',
   'exactPersonIdentity',
@@ -20,6 +22,7 @@ export const P03_ANSWER_CHECK_FIELDS = Object.freeze([
   'emptyAndUnavailableAreNotAbsenceEvidence',
   'undocumentedCompletenessDisclosed',
   'omittedRowsAreNotAbsenceEvidence',
+  'coverageNoteIsCanonical',
   'noCareerCompletenessClaim',
 ]);
 
@@ -209,6 +212,7 @@ export function verifyP03Answer(answer, resultSummary) {
       resultSummary?.coverage?.sourceCompleteness === 'undocumented',
     omittedRowsAreNotAbsenceEvidence:
       validJsonShape && note.includes('未列出的作品不代表没有中文名'),
+    coverageNoteIsCanonical: validJsonShape && parsed.coverageNote === P03_CANONICAL_COVERAGE_NOTE,
     noCareerCompletenessClaim: validJsonShape && note.includes('这不是完整生涯列表'),
   };
   return {
@@ -321,6 +325,7 @@ export function validateP03ResultSummary(
     coverage.subjectsReturned !== summary.returnedCreditRowsObserved ||
     summary.returnedCreditRowsObserved !== counts?.present + counts?.empty + counts?.unavailable ||
     typeof coverage.subjectsTruncated !== 'boolean' ||
+    coverage.subjectsTruncated !== coverage.subjectsObserved > coverage.subjectsReturned ||
     coverage.sourceCompleteness !== 'undocumented' ||
     canonicalAgentMcpProfileJson(Object.keys(counts ?? {}).sort()) !==
       canonicalAgentMcpProfileJson([...COUNTS].sort()) ||

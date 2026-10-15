@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-15T05:01:08Z",
+  "updated_at": "2026-10-15T06:04:23Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2025,7 +2025,7 @@
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md","docs/research/run95-p03-person-chinese-title-current-contract-2026-10-15.md","packages/bangumi-core/src/services/person-service.ts","packages/tools/src/definitions/read-tools.ts","apps/mcp/src/result-presenter.ts","packages/renderer/src/templates/PersonProfileCard.tsx","tests/unit/person-intelligence.test.ts","tests/semantic/semantic-tools.test.ts","tests/integration/mcp-result-presenter.test.ts","tests/render/render-cards.test.ts","scripts/acceptance/agent-mcp-profile-registry.json","scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs","scripts/acceptance/write-p03-person-name-cn-report.mjs","scripts/lib/p03-person-name-cn-evidence.mjs","scripts/agent-harness.mjs","docs/product/g26-mcp-bundle-attestation.json","tests/harness/p03-person-name-cn-evidence.test.mjs","tests/harness/run-p03-person-name-cn-agent-mcp.test.mjs","tests/harness/write-p03-person-name-cn-report.test.mjs"],
-      "next_action": "P03 remains PARTIAL. The selected Run #95 profile makes one anonymous bangumi.get_person_profile call for public personId 4765 with includeCredits=true, maxSubjects=500, and maxCharacters=1. It accepts only returned rows whose raw nameCnSource string remains non-empty after trimming; answers list only exact positive compact-text rows and report present/empty/unavailable plus observed/returned/truncated coverage and omitted positive rows. Upstream completeness is undocumented; empty, whitespace-only, absent, invalid, unreturned, or text-omitted rows do not prove absence. A populated name_cn matching the original does not prove a translation. Execute only after exact Candidate/Base 7/7 CI, Harness profile readiness, and same-identity GPT-6 Luna Max PASS; then record the signed sanitized report and durable terminal claim. Do not claim career-wide completeness.",
+      "next_action": "P03 remains PARTIAL. The round-1 exact-Candidate review found answer-note contradiction, small-result text-projection, and truncation-counter consistency gaps; all three are corrected on the active PR branch with regressions. Re-run exact Candidate/Base 7/7 CI and obtain same-identity GPT-6 Luna Max PASS before the single anonymous profile call. Then record the signed sanitized report and durable terminal claim. Do not claim career-wide completeness.",
       "reopen_when": "A current-source Agent/MCP answer profile is accepted for a named person, or official v0 adds pagination/total/completeness semantics for person-work relations.",
       "evidence": {
         "p03_agent_mcp_profile_preflight": {
@@ -2038,12 +2038,14 @@
           "claim_state": "UNCLAIMED",
           "live_query_run": false,
           "source_completeness": "undocumented",
-          "status_boundary": "PARTIAL until the reviewed current Agent/MCP answer and signed report are accepted.",
+          "status_boundary": "PARTIAL and uncredited until the corrective candidate passes exact CI/review, the fixed one-shot succeeds, and its signed report is accepted.",
           "checks": [
-            "P03 focused summary, compact-text projection, answer, runner, report, and claim tests passed 27/27.",
-            "Targeted Harness profile CLI checks passed 2/2; C03 remains terminal INCONCLUSIVE with retryAllowed=false.",
-            "Full Harness suite passed 276/276; typecheck, lint, build, legacy-path guard, acceptance:check, and frontier:check passed.",
-            "Two builds reproduced MCP bundle SHA-256 60e10980dd2a42158721a1565ee878f833726f56164b8d8376d02a0dc636e76b; the current attestation matches."
+            "Round-1 exact-Candidate GPT-6 Luna Max review of head 022ea48405de829af0732c29e518f15aaf9fad7d against Base 2884aff638512652cfe99e4b496dd915332ad052 returned CORRECTIVE_REQUIRED with three findings (P1/P1/P2), recorded through Harness.",
+            "Corrective regressions: exact canonical coverageNote rejects appended absence/completeness claims; person-profile MCP text always uses the positive-only compact projection; subjectsTruncated must equal subjectsObserved > subjectsReturned.",
+            "Focused P03/C03/profile/claim/report Harness tests passed 28/28. MCP result-presenter integration passed 35/35, including a full result below 3600 UTF-8 bytes checked against the P03 projection validator.",
+            "Full Harness suite passed 277/277. Typecheck, lint, build, legacy-path guard, acceptance:check, frontier:check, Prettier, and diff checks passed.",
+            "Two independent builds reproduced MCP bundle SHA-256 ba30619c0426aa54ab30e5063a71cdd5c63e38795a23c7c8e4c74eafec5707a8; the current attestation matches.",
+            "No P03 claim or live query has run. P03 remains UNCLAIMED and PARTIAL; C03 remains terminal INCONCLUSIVE with retryAllowed=false."
           ]
         }
       },

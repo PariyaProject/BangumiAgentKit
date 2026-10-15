@@ -16,6 +16,8 @@ import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/disc
 import type { SubjectCohortComparisonResult } from '@bangumi-agent-kit/discovery';
 import type { ToolRegistry } from '@bangumi-agent-kit/tools';
 import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
+// @ts-expect-error The acceptance helper is JavaScript without a declaration file.
+import * as P03Evidence from '../../scripts/lib/p03-person-name-cn-evidence.mjs';
 import {
   MCP_TOOL_TEXT_MAX_UTF8_BYTES,
   presentMcpToolResult,
@@ -2722,6 +2724,43 @@ describe('MCP tool result presentation', () => {
     expect(parsed.returnedCreditRowsWithNameCnSource).toBe(10);
     expect(parsed.nameCnRowsOmittedFromText).toBe(4);
     expect(parsed.scopeNote).toContain('空字符串、纯空白字符串、缺失或无效值不证明没有中文名');
+  });
+
+  it('keeps a small person-profile result in the compact form expected by P03 validation', () => {
+    const original = {
+      state: 'partial',
+      person: { id: 4765, name: 'Inori Minase', nameCn: '水濑祈' },
+      summary: { uniqueSubjects: 1, subjectCredits: 1 },
+      coverage: {
+        state: 'partial',
+        subjects: {
+          observed: 1,
+          returned: 1,
+          truncated: false,
+          sourceCompleteness: 'undocumented',
+        },
+      },
+      credits: {
+        subjects: [{ id: 42, name: 'Original title', nameCnSource: '译名' }],
+        characters: [],
+      },
+    };
+    const summary = P03Evidence.summarizeP03PersonProfileToolResult(original, {
+      personId: 4765,
+      includeCredits: true,
+      maxSubjects: 500,
+      maxCharacters: 1,
+    });
+    const presentation = presentMcpToolResult(
+      'bangumi.get_person_profile',
+      original as unknown as Record<string, unknown>,
+    );
+
+    expect(Buffer.byteLength(JSON.stringify(original, null, 2), 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(presentation.structuredContent).toEqual(original);
+    expect(P03Evidence.validateP03McpTextProjection(presentation.text, summary).passed).toBe(true);
   });
 
   it('keeps release chronology coverage and tied date extrema in compact MCP text', () => {
