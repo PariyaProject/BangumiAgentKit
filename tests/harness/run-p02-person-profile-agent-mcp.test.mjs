@@ -4,7 +4,11 @@ import {
   agentMcpProfileArgumentsSha256,
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
-import { P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE } from '../../scripts/lib/p02-person-profile-offline-fixture.mjs';
+import {
+  P02_PERSON_PROFILE_EXPECTED_ARGUMENTS,
+  P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+} from '../../scripts/lib/p02-person-profile-offline-fixture.mjs';
+import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 import {
   buildP02CodexExecArgs,
   validateP02RunnerArgs,
@@ -94,6 +98,46 @@ test('P02 server summary requires exactly the three synthetic responses', () => 
       {
         ...summary,
         results: [{ ...summary.results[0], resultSummary: { personId: 4765, state: 'partial' } }],
+      },
+      SOURCE_SHA,
+      BUNDLE_SHA,
+    ),
+    false,
+  );
+  const mismatchedResultSummary = summarizeProfileToolResult(
+    { person: { id: 990702 }, state: 'partial' },
+    P02_PERSON_PROFILE_EXPECTED_ARGUMENTS,
+    PROFILE.id,
+  );
+  assert.deepEqual(mismatchedResultSummary, { personId: 990702, state: 'partial' });
+  assert.equal(
+    validateServerSummary(
+      {
+        ...summary,
+        results: [{
+          ...summary.results[0],
+          resultSummary: mismatchedResultSummary,
+        }],
+      },
+      SOURCE_SHA,
+      BUNDLE_SHA,
+    ),
+    false,
+  );
+  const missingResultIdentitySummary = summarizeProfileToolResult(
+    { person: {}, state: 'partial' },
+    P02_PERSON_PROFILE_EXPECTED_ARGUMENTS,
+    PROFILE.id,
+  );
+  assert.deepEqual(missingResultIdentitySummary, { personId: null, state: 'partial' });
+  assert.equal(
+    validateServerSummary(
+      {
+        ...summary,
+        results: [{
+          ...summary.results[0],
+          resultSummary: missingResultIdentitySummary,
+        }],
       },
       SOURCE_SHA,
       BUNDLE_SHA,

@@ -3484,6 +3484,10 @@ CODEX_P06_PROBE_IMPLEMENTATION_MARKERS = {
     ),
 }
 CODEX_P02_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        'profileId === P02_PERSON_PROFILE_OFFLINE_PROFILE_ID',
+        'Number.isSafeInteger(result?.person?.id)',
+    ),
     'scripts/acceptance/agent-mcp-profile-registry.json': (
         '"id": "p02-person-profile-offline-agent-mcp-v1"',
         '"networkMode": "run95-p02-person-profile-offline-v1"',
