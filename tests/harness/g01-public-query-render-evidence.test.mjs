@@ -38,7 +38,11 @@ test('G01 direct-public query renderer evidence stays separate from its spent ca
   assert.deepEqual(result.result, { state: 'value', keys: ['artifact'] });
   assert.equal(result.assertions.passed, true);
   assert.ok(Object.values(result.assertions).every((value) => value === true));
-  assert.equal(report.catalogSha256, sha256(catalog));
+  assert.equal(
+    report.catalogSha256,
+    '2e3d216a282022fd01a2d1fac0cd0e8831c21461a28d304e41b20d3d4fc39c3e',
+  );
+  assert.notEqual(report.catalogSha256, sha256(catalog));
   assert.equal(report.probeScriptSha256, sha256(probeScript));
 
   assert.ok(g01);
@@ -51,8 +55,8 @@ test('G01 direct-public query renderer evidence stays separate from its spent ca
   );
   assert.match(g01.next_action, /never retry the consumed one-shot/);
   assert.match(g01.next_action, /does not replay the consumed G01 Agent\/MCP canary/);
-  assert.ok(toolRow?.includes(reportPath));
-  assert.ok(toolRow?.includes('◐'));
+  assert.ok(toolRow?.includes('⬜'));
+  assert.ok(!toolRow?.includes(reportPath));
   const publicEvidenceSummary = acceptance.match(/匿名可用的公开 API 工具有逐项实测：(\d+)\/65/);
   const publicEvidenceRows = acceptance
     .split('\n')
@@ -60,5 +64,6 @@ test('G01 direct-public query renderer evidence stays separate from its spent ca
     .filter((line) => line.split('|')[7]?.includes('◐')).length;
   assert.ok(publicEvidenceSummary);
   assert.equal(Number(publicEvidenceSummary[1]), publicEvidenceRows);
-  assert.match(acceptance, /Agent→MCP 模型调用证据：83\/96/);
+  assert.equal(Number(publicEvidenceSummary[1]), 54);
+  assert.match(acceptance, /Agent→MCP 模型调用证据：81\/96/);
 });

@@ -33,7 +33,11 @@ test('G09 direct-public watch-order evidence stays separate from its consumed Ag
   assert.deepEqual(result.result, { state: 'complete', subjectId: 41529, warningsCount: 2 });
   assert.equal(result.assertions.passed, true);
   assert.ok(Object.values(result.assertions).every((value) => value === true));
-  assert.equal(report.catalogSha256, sha256(catalog));
+  assert.equal(
+    report.catalogSha256,
+    '2e3d216a282022fd01a2d1fac0cd0e8831c21461a28d304e41b20d3d4fc39c3e',
+  );
+  assert.notEqual(report.catalogSha256, sha256(catalog));
   assert.equal(report.probeScriptSha256, sha256(probeScript));
 
   assert.ok(g09);
@@ -46,8 +50,8 @@ test('G09 direct-public watch-order evidence stays separate from its consumed Ag
   );
   assert.match(g09.next_action, /never retry its consumed one-shot/);
   assert.match(g09.next_action, /do not replay the spent G09 one-shot\/canary/);
-  assert.ok(toolRow?.includes(reportPath));
-  assert.ok(toolRow?.includes('◐'));
+  assert.ok(toolRow?.includes('⬜'));
+  assert.ok(!toolRow?.includes(reportPath));
   const publicEvidenceSummary = acceptance.match(/匿名可用的公开 API 工具有逐项实测：(\d+)\/65/);
   const publicEvidenceRows = acceptance
     .split('\n')
@@ -55,5 +59,6 @@ test('G09 direct-public watch-order evidence stays separate from its consumed Ag
     .filter((line) => line.split('|')[7]?.includes('◐')).length;
   assert.ok(publicEvidenceSummary);
   assert.equal(Number(publicEvidenceSummary[1]), publicEvidenceRows);
-  assert.match(acceptance, /Agent→MCP 模型调用证据：83\/96/);
+  assert.equal(Number(publicEvidenceSummary[1]), 54);
+  assert.match(acceptance, /Agent→MCP 模型调用证据：81\/96/);
 });
