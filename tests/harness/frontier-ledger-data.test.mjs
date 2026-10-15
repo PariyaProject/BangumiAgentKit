@@ -387,7 +387,7 @@ test('G06 current-catalog cast probe is public-only, hash-bound, and does not im
   assert.match(evidence.acceptance_boundary, /does not add Agent\/MCP evidence/u);
 
   const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
-  assert.match(table, /公开 API 工具有逐项实测：57\/65；待补 8/u);
+  assert.match(table, /公开 API 工具有逐项实测：58\/65；待补 7/u);
   assert.ok(
     table.includes(`\`bangumi.get_subject_cast\` | \`none\` | \`read\` | `) &&
       table.includes(reportPath),
@@ -451,7 +451,7 @@ test('G09 current-catalog watch-order reports remain direct-public and hash-boun
   assert.match(evidence.acceptance_boundary, /establish complete graph coverage/u);
 
   const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
-  assert.match(table, /公开 API 工具有逐项实测：57\/65；待补 8/u);
+  assert.match(table, /公开 API 工具有逐项实测：58\/65；待补 7/u);
   for (const tool of ['bangumi.get_series_watch_order', 'bangumi.render_series_watch_order']) {
     const row = table.split('\n').find((line) => line.includes(`\`${tool}\``));
     assert.ok(row?.includes(reportPath), `${tool} row must cite the current report`);
