@@ -92,6 +92,53 @@ test('D07, P01, and A01 keep stable scenario guidance and defer claim state to H
   }
 });
 
+test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retriable', () => {
+  const record = ledger.records.find(({ id }) => id === 'P03');
+  assert.ok(record, 'P03 must remain in the canonical frontier');
+  assert.equal(record.status, 'PARTIAL');
+  assert.match(record.next_action, /PARTIAL and uncredited/u);
+  assert.match(record.next_action, /INCONCLUSIVE/u);
+  assert.match(record.next_action, /retryAllowed=false/u);
+  assert.match(record.next_action, /Do not repeat this call/u);
+
+  const preflight = record.evidence?.p03_agent_mcp_profile_preflight;
+  assert.ok(preflight, 'the historical preflight snapshot must remain available');
+  assert.equal(preflight.claim_state, 'UNCLAIMED');
+  assert.equal(preflight.live_query_run, false);
+  assert.match(preflight.status_boundary, /preflight snapshot/u);
+  assert.match(preflight.status_boundary, /later terminal INCONCLUSIVE disposition/u);
+
+  const result = record.evidence?.p03_agent_mcp_profile_result;
+  assert.ok(result, 'the terminal disposition must be recorded separately');
+  assert.equal(result.claim_state, 'INCONCLUSIVE');
+  assert.equal(result.calls, 1);
+  assert.equal(result.report_written, false);
+  assert.equal(result.report_present, false);
+  assert.equal(result.retry_allowed, false);
+  assert.equal(result.reason_code, 'P03_AGENT_MCP_ASSERTION_FAILED');
+  assert.equal(result.source_candidate_sha, '623b555db249fe8be9e4f52ec5fab371236deb18');
+  assert.equal(result.base_sha, '2884aff638512652cfe99e4b496dd915332ad052');
+  assert.equal(result.ci_run, '38690431294');
+  assert.equal(result.merge_commit_sha, '019b41b05abfd512d1d64d31d649cc6c684771fe');
+  assert.deepEqual(result.sanitized_assertions, {
+    event_stream_parsed: true,
+    turn_completed: true,
+    exact_registered_call: true,
+    exact_tool_event: false,
+    structured_readback: false,
+    mcp_text_projection_valid: true,
+    server_summary_valid: true,
+    answer_person_identity_exact: false,
+    codex_error_item_count: 3,
+    non_mcp_tool_event_count: 0,
+    shell_tool_call_count: 0,
+  });
+  assert.doesNotMatch(
+    JSON.stringify(result),
+    /raw_answer|raw_api_payload|raw_event_stream|prompt|account_data/iu,
+  );
+});
+
 test('P05 records its bounded live report as partial returned-row evidence', () => {
   const record = ledger.records.find(({ id }) => id === 'P05');
   assert.ok(record, 'P05 must remain in the canonical frontier');
