@@ -14,7 +14,7 @@ The local first-party schema is `openapi/upstream/v0.yaml` at `/v0/persons/{pers
 
 - Person-work rows preserve the existing display `nameCn` fallback and carry `nameCnSource` separately. The source field is the raw string, including an explicit empty string; `null` represents an absent or invalid runtime field.
 - `get_person_profile` reports `coverage.subjects.sourceCompleteness = "undocumented"`. Its local `complete` state means only that the received rows were not locally capped and selected identity fields were present; it does not establish that the endpoint returned every person-work relation.
-- MCP text reports counts for present, empty, and missing `nameCnSource` among returned credit rows. It lists up to six positive rows and counts any additional positive rows omitted from text; the full returned result remains in `structuredContent`.
-- The rendered profile card labels the returned scope and shows whether each displayed row has a source title value, an empty field, or a missing field.
+- MCP text reports counts for present, empty (including whitespace-only), and unavailable `nameCnSource` values among included credit rows. An unavailable value combines an absent field with an invalid non-string value; when credit rows are excluded, these counts and row metrics are unavailable. It lists up to six positive rows within a 3600-byte UTF-8 limit and counts any additional positive rows omitted from text; the full returned result remains in `structuredContent`.
+- The rendered profile card labels the returned scope and shows whether each displayed row has a source title value, an empty field, or an unavailable field (absent or invalid).
 
 P03 advances only to `PARTIAL`. No career-wide list, negative conclusion, current-source Agent/MCP answer acceptance, or complete relation graph is claimed. C03 remains terminal INCONCLUSIVE and is not retried.

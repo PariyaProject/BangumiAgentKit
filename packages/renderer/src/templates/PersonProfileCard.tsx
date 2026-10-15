@@ -190,7 +190,7 @@ function CreditList({
               {item.nameCnSource !== undefined && (
                 <div style={{ color: theme.textMuted, fontSize: '11px', overflowWrap: 'anywhere' }}>
                   {item.nameCnSource === null
-                    ? '上游未返回中文名字段'
+                    ? '本次没有可用的中文名字段（缺失或值无效）'
                     : item.nameCnSource.trim().length === 0
                       ? '上游中文名字段为空'
                       : `上游已提供中文名${item.nameCnSource === item.name ? '（与原名相同）' : ''}`}

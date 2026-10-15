@@ -1047,7 +1047,7 @@ export function createReadTools(
             truncated: profile.subjects.truncated,
             sourceCompleteness: 'undocumented',
             nameCnSourceSemantics:
-              'nameCnSource 去除首尾空白后非空表示官方 name_cn 已提供；空值或缺失仅表示本次没有可用字段，不证明无中文名。',
+              'nameCnSource 去除首尾空白后非空表示官方 name_cn 已提供；空字符串或纯空白字符串表示本次为空，缺失或非字符串值合并为不可用，不能据此断言字段未返回或作品没有中文名。',
           },
           characters: {
             observed: profile.characters.observed,
@@ -1081,7 +1081,7 @@ export function createReadTools(
           },
         ],
         limitations: [
-          '人物作品关系接口没有分页、总数或完整性承诺；本次返回范围未截断只表示本地没有截断收到的关系行，不代表完整人物作品表。nameCnSource 为空或缺失不证明该作品没有中文名。',
+          '人物作品关系接口没有分页、总数或完整性承诺；本次返回范围未截断只表示本地没有截断收到的关系行，不代表完整人物作品表。nameCnSource 为空字符串、纯空白字符串、缺失或非字符串值不证明该作品没有中文名。',
           '人物关系接口不提供作品日期，不能从本结果计算最近作品或 3/6/12 个月工作量。',
           '本仓库没有兼容历史快照，不能计算增长、趋势或前后窗口比较。',
           '合作人数和共同作品需要额外的 subject→persons 图遍历，本工具不伪造该统计。',

@@ -84,6 +84,7 @@ const QUERY_SUBJECTS_TOOL = 'bangumi.query_subjects';
 const SUBJECT_RELATIONS_TOOL = 'bangumi.get_subject_relations';
 const MAX_PERSON_ROWS = 6;
 const MAX_PERSON_PROFILE_TITLE_ROWS = 6;
+const MAX_PERSON_PROFILE_FIELD_UTF8_BYTES = 160;
 const MAX_MONTH_BUCKETS = 6;
 const MAX_SECTION_ITEMS = 4;
 const MAX_STAFF_GROUPS = 6;
@@ -98,7 +99,7 @@ const TEXT_VIEW_SCOPE_NOTE =
 const SUBJECT_COHORT_TEXT_SCOPE_NOTE =
   'Rows are truncated; omitted rows are not evidence of absence. SD is descriptive, not significance or polarization. Overlap counts in both means. Full result is structuredContent.';
 const PERSON_PROFILE_TEXT_SCOPE_NOTE =
-  '仅本次收到的作品关系行；官方 name_cn 去除首尾空白后非空才算来源已提供。空值/缺失不证明没有中文名，上游关系完整性未声明，文本省略也不代表作品不存在。完整明细见 structuredContent。';
+  '仅本次收到的作品关系行；官方 name_cn 去除首尾空白后非空才算来源已提供。空字符串、纯空白字符串、缺失或无效值不证明没有中文名，上游关系完整性未声明，文本省略也不代表作品不存在。完整明细见 structuredContent。';
 
 export function presentMcpToolResult(toolName: string, result: unknown): McpToolResultPresentation {
   const fullText = serializeFullResult(result);
@@ -225,80 +226,110 @@ function isPersonProfileToolResult(value: unknown): value is PersonProfileToolRe
   );
 }
 
-function clipPersonProfileText(value: unknown, maximumCharacters = 80): string | undefined {
+function clipPersonProfileText(
+  value: unknown,
+  maximumBytes = MAX_PERSON_PROFILE_FIELD_UTF8_BYTES,
+): string | undefined {
   if (typeof value !== 'string') return undefined;
-  const characters = Array.from(value);
-  if (characters.length <= maximumCharacters) return value;
-  return `${characters.slice(0, maximumCharacters - 1).join('')}…`;
+  if (utf8Bytes(value) <= maximumBytes) return value;
+
+  const ellipsis = '…';
+  const ellipsisBytes = utf8Bytes(ellipsis);
+  if (maximumBytes < ellipsisBytes) return undefined;
+  let clipped = '';
+  let clippedBytes = 0;
+  for (const character of value) {
+    const characterBytes = utf8Bytes(character);
+    if (clippedBytes + characterBytes + ellipsisBytes > maximumBytes) break;
+    clipped += character;
+    clippedBytes += characterBytes;
+  }
+  return `${clipped}${ellipsis}`;
 }
 
 function compactPersonProfileResult(result: PersonProfileToolResult): string {
+  const creditRowsIncluded = Array.isArray(result.credits?.subjects);
   const sourceRows = Array.isArray(result.credits?.subjects) ? result.credits.subjects : [];
-  const nameCnSourceCounts = { present: 0, empty: 0, missing: 0 };
+  const observedNameCnSourceCounts = { present: 0, empty: 0, unavailable: 0 };
   const positiveRows = sourceRows.filter((row) => {
     if (typeof row.nameCnSource === 'string' && row.nameCnSource.trim().length > 0) {
-      nameCnSourceCounts.present += 1;
+      observedNameCnSourceCounts.present += 1;
       return true;
     }
-    if (typeof row.nameCnSource === 'string') nameCnSourceCounts.empty += 1;
-    else nameCnSourceCounts.missing += 1;
+    if (typeof row.nameCnSource === 'string') observedNameCnSourceCounts.empty += 1;
+    else observedNameCnSourceCounts.unavailable += 1;
     return false;
   });
-  const listedRows = positiveRows.slice(0, MAX_PERSON_PROFILE_TITLE_ROWS).map((row) => ({
-    ...(Number.isSafeInteger(row.id) ? { id: row.id } : {}),
-    ...(clipPersonProfileText(row.name) ? { name: clipPersonProfileText(row.name) } : {}),
-    nameCnSource: clipPersonProfileText(row.nameCnSource),
-  }));
   const person = isJsonObject(result.person) ? result.person : {};
   const summary = isJsonObject(result.summary) ? result.summary : {};
-  return JSON.stringify(
-    {
-      state: typeof result.state === 'string' ? result.state : 'unknown',
-      person: {
-        ...(Number.isSafeInteger(person.id) ? { id: person.id } : {}),
-        ...(clipPersonProfileText(person.name) ? { name: clipPersonProfileText(person.name) } : {}),
-        ...(clipPersonProfileText(person.nameCn)
-          ? { nameCn: clipPersonProfileText(person.nameCn) }
-          : {}),
-      },
-      summary: {
-        uniqueSubjects: Number.isSafeInteger(summary.uniqueSubjects)
-          ? summary.uniqueSubjects
-          : null,
-        subjectCredits: Number.isSafeInteger(summary.subjectCredits)
-          ? summary.subjectCredits
-          : null,
-      },
-      coverage: {
-        state: typeof result.coverage.state === 'string' ? result.coverage.state : 'unknown',
-        subjects: {
-          observed: Number.isSafeInteger(result.coverage.subjects.observed)
-            ? result.coverage.subjects.observed
-            : null,
-          returned: Number.isSafeInteger(result.coverage.subjects.returned)
-            ? result.coverage.subjects.returned
-            : null,
-          truncated:
-            typeof result.coverage.subjects.truncated === 'boolean'
-              ? result.coverage.subjects.truncated
-              : null,
-          sourceCompleteness: 'undocumented',
-          nameCnSourceSemantics:
-            result.coverage.subjects.nameCnSourceSemantics ??
-            'nameCnSource 去除首尾空白后非空表示官方 name_cn 已提供；空值或缺失仅表示本次没有可用字段，不证明无中文名。',
-          creditRowsIncluded: Array.isArray(result.credits?.subjects),
-          nameCnSourceCounts,
+  const nameCnSourceCounts = creditRowsIncluded ? observedNameCnSourceCounts : null;
+  const buildText = (rowLimit: number): string => {
+    const listedRows = positiveRows.slice(0, rowLimit).map((row) => ({
+      ...(Number.isSafeInteger(row.id) ? { id: row.id } : {}),
+      ...(clipPersonProfileText(row.name) ? { name: clipPersonProfileText(row.name) } : {}),
+      nameCnSource: clipPersonProfileText(row.nameCnSource),
+    }));
+    return JSON.stringify(
+      {
+        state: clipPersonProfileText(result.state) ?? 'unknown',
+        person: {
+          ...(Number.isSafeInteger(person.id) ? { id: person.id } : {}),
+          ...(clipPersonProfileText(person.name) ? { name: clipPersonProfileText(person.name) } : {}),
+          ...(clipPersonProfileText(person.nameCn)
+            ? { nameCn: clipPersonProfileText(person.nameCn) }
+            : {}),
         },
+        summary: {
+          uniqueSubjects: Number.isSafeInteger(summary.uniqueSubjects)
+            ? summary.uniqueSubjects
+            : null,
+          subjectCredits: Number.isSafeInteger(summary.subjectCredits)
+            ? summary.subjectCredits
+            : null,
+        },
+        coverage: {
+          state: clipPersonProfileText(result.coverage.state) ?? 'unknown',
+          subjects: {
+            observed: Number.isSafeInteger(result.coverage.subjects.observed)
+              ? result.coverage.subjects.observed
+              : null,
+            returned: Number.isSafeInteger(result.coverage.subjects.returned)
+              ? result.coverage.subjects.returned
+              : null,
+            truncated:
+              typeof result.coverage.subjects.truncated === 'boolean'
+                ? result.coverage.subjects.truncated
+                : null,
+            sourceCompleteness: 'undocumented',
+            nameCnSourceSemantics:
+              'nameCnSource 去除首尾空白后非空表示官方 name_cn 已提供；空字符串或纯空白字符串归为 empty，缺失或非字符串值归为 unavailable，不能据此断言字段未返回或作品没有中文名。',
+            creditRowsIncluded,
+            nameCnSourceCounts,
+          },
+        },
+        sourceNameCnRows: listedRows,
+        returnedCreditRowsObserved: creditRowsIncluded ? sourceRows.length : null,
+        returnedCreditRowsWithNameCnSource: creditRowsIncluded ? positiveRows.length : null,
+        nameCnRowsOmittedFromText: creditRowsIncluded
+          ? Math.max(0, positiveRows.length - listedRows.length)
+          : null,
+        scopeNote: PERSON_PROFILE_TEXT_SCOPE_NOTE,
       },
-      sourceNameCnRows: listedRows,
-      returnedCreditRowsObserved: sourceRows.length,
-      returnedCreditRowsWithNameCnSource: positiveRows.length,
-      nameCnRowsOmittedFromText: Math.max(0, positiveRows.length - listedRows.length),
-      scopeNote: PERSON_PROFILE_TEXT_SCOPE_NOTE,
-    },
-    null,
-    2,
-  );
+      null,
+      2,
+    );
+  };
+
+  let rowLimit = Math.min(MAX_PERSON_PROFILE_TITLE_ROWS, positiveRows.length);
+  let text = buildText(rowLimit);
+  while (utf8Bytes(text) > MCP_TOOL_TEXT_MAX_UTF8_BYTES && rowLimit > 0) {
+    rowLimit -= 1;
+    text = buildText(rowLimit);
+  }
+  if (utf8Bytes(text) > MCP_TOOL_TEXT_MAX_UTF8_BYTES) {
+    throw new Error('Person profile MCP text exceeded its UTF-8 byte limit after compaction');
+  }
+  return text;
 }
 
 function utf8Bytes(value: string): number {

@@ -709,7 +709,6 @@ export interface PersonProfileViewModel {
     returned: number;
     rendered: number;
     unobserved: number;
-    subjectSourceCompleteness: 'undocumented';
   };
   limitations: string[];
   warnings: Array<{

@@ -2686,7 +2686,7 @@ describe('MCP tool result presentation', () => {
           truncated: true,
           sourceCompleteness: 'undocumented',
           nameCnSourceSemantics:
-            'nameCnSource 去除首尾空白后非空表示官方 name_cn 已提供；空值或缺失仅表示本次没有可用字段，不证明无中文名。',
+            'nameCnSource 去除首尾空白后非空表示官方 name_cn 已提供；空字符串或纯空白字符串表示本次为空，缺失或非字符串值合并为不可用，不能据此断言字段未返回或作品没有中文名。',
         },
       },
       credits: { subjects, characters: [] },
@@ -2708,9 +2708,9 @@ describe('MCP tool result presentation', () => {
       returned: 40,
       truncated: true,
       sourceCompleteness: 'undocumented',
-      nameCnSourceSemantics: expect.stringContaining('不证明无中文名'),
+      nameCnSourceSemantics: expect.stringContaining('不能据此断言字段未返回'),
       creditRowsIncluded: true,
-      nameCnSourceCounts: { present: 10, empty: 20, missing: 10 },
+      nameCnSourceCounts: { present: 10, empty: 20, unavailable: 10 },
     });
     expect(parsed.sourceNameCnRows).toHaveLength(6);
     expect(parsed.sourceNameCnRows[0]).toMatchObject({
@@ -2721,7 +2721,71 @@ describe('MCP tool result presentation', () => {
     expect(parsed.returnedCreditRowsObserved).toBe(40);
     expect(parsed.returnedCreditRowsWithNameCnSource).toBe(10);
     expect(parsed.nameCnRowsOmittedFromText).toBe(4);
-    expect(parsed.scopeNote).toContain('空值/缺失不证明没有中文名');
+    expect(parsed.scopeNote).toContain('空字符串、纯空白字符串、缺失或无效值不证明没有中文名');
+  });
+
+  it('keeps oversized multi-byte person titles within the MCP UTF-8 byte budget', () => {
+    const title = '🌸'.repeat(80);
+    const original = {
+      state: 'complete',
+      person: { id: 4765, name: 'Person', nameCn: '人物' },
+      summary: { uniqueSubjects: 6, subjectCredits: 6 },
+      coverage: {
+        state: 'partial',
+        subjects: { observed: 6, returned: 6, truncated: false },
+      },
+      credits: {
+        subjects: Array.from({ length: 6 }, (_, index) => ({
+          id: index + 1,
+          name: title,
+          nameCnSource: title,
+        })),
+      },
+    };
+
+    const presentation = presentMcpToolResult(
+      'bangumi.get_person_profile',
+      original as unknown as Record<string, unknown>,
+    );
+    const parsed = JSON.parse(presentation.text);
+
+    expect(presentation.structuredContent).toEqual(original);
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(parsed.sourceNameCnRows.length).toBeGreaterThan(0);
+    expect(parsed.sourceNameCnRows[0].name).toContain('…');
+    expect(parsed.sourceNameCnRows[0].nameCnSource).toContain('…');
+  });
+
+  it('marks person title counts unavailable when compact MCP output excludes credit rows', () => {
+    const original = {
+      state: 'complete',
+      person: { id: 4765, name: 'Person'.repeat(1000), nameCn: '人物' },
+      summary: { uniqueSubjects: 4, subjectCredits: 4 },
+      coverage: {
+        state: 'partial',
+        subjects: { observed: 6, returned: 4, truncated: true },
+      },
+    };
+
+    const presentation = presentMcpToolResult(
+      'bangumi.get_person_profile',
+      original as unknown as Record<string, unknown>,
+    );
+    const parsed = JSON.parse(presentation.text);
+
+    expect(presentation.structuredContent).toEqual(original);
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(parsed.coverage.subjects).toMatchObject({
+      creditRowsIncluded: false,
+      nameCnSourceCounts: null,
+    });
+    expect(parsed.returnedCreditRowsObserved).toBeNull();
+    expect(parsed.returnedCreditRowsWithNameCnSource).toBeNull();
+    expect(parsed.nameCnRowsOmittedFromText).toBeNull();
   });
 
   it('retains the score ranking and its independent partial coverage in MCP text', async () => {

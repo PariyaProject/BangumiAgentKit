@@ -606,7 +606,7 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(html).toContain('上游未说明作品关系是否完整');
     expect(html).toContain('上游已提供中文名（与原名相同）');
     expect(html).toContain('上游中文名字段为空');
-    expect(html).toContain('上游未返回中文名字段');
+    expect(html).toContain('本次没有可用的中文名字段（缺失或值无效）');
     expect(html).toContain('另有 2 条已返回关系未展示');
     expect(html).toContain('另有 3 条关系未读取');
 
