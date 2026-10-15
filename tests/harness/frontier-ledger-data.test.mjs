@@ -110,8 +110,11 @@ test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retr
 
   const result = record.evidence?.p03_agent_mcp_profile_result;
   assert.ok(result, 'the terminal disposition must be recorded separately');
+  assert.equal(result.epoch_id, 'run95-p03-person-chinese-title-agent-mcp-20261015');
+  assert.equal(result.profile_id, 'p03-person-name-cn-agent-mcp-v1');
   assert.equal(result.claim_state, 'INCONCLUSIVE');
   assert.equal(result.calls, 1);
+  assert.equal(result.source_completeness, 'undocumented');
   assert.equal(result.report_written, false);
   assert.equal(result.report_present, false);
   assert.equal(result.retry_allowed, false);
@@ -119,7 +122,14 @@ test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retr
   assert.equal(result.source_candidate_sha, '623b555db249fe8be9e4f52ec5fab371236deb18');
   assert.equal(result.base_sha, '2884aff638512652cfe99e4b496dd915332ad052');
   assert.equal(result.ci_run, '38690431294');
+  assert.equal(result.ci_status, 'SUCCESS');
+  assert.equal(result.reviewer_id, 'gpt-6-luna-max-run95-pr167-round1');
+  assert.equal(
+    result.bundle_sha256,
+    'ba30619c0426aa54ab30e5063a71cdd5c63e38795a23c7c8e4c74eafec5707a8',
+  );
   assert.equal(result.merge_commit_sha, '019b41b05abfd512d1d64d31d649cc6c684771fe');
+  assert.equal(result.finished_at, '2026-10-15T06:17:56.449Z');
   assert.deepEqual(result.sanitized_assertions, {
     event_stream_parsed: true,
     turn_completed: true,
