@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-15T06:04:23Z",
+  "updated_at": "2026-10-15T06:23:34Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2025,8 +2025,8 @@
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md","docs/research/run95-p03-person-chinese-title-current-contract-2026-10-15.md","packages/bangumi-core/src/services/person-service.ts","packages/tools/src/definitions/read-tools.ts","apps/mcp/src/result-presenter.ts","packages/renderer/src/templates/PersonProfileCard.tsx","tests/unit/person-intelligence.test.ts","tests/semantic/semantic-tools.test.ts","tests/integration/mcp-result-presenter.test.ts","tests/render/render-cards.test.ts","scripts/acceptance/agent-mcp-profile-registry.json","scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs","scripts/acceptance/write-p03-person-name-cn-report.mjs","scripts/lib/p03-person-name-cn-evidence.mjs","scripts/agent-harness.mjs","docs/product/g26-mcp-bundle-attestation.json","tests/harness/p03-person-name-cn-evidence.test.mjs","tests/harness/run-p03-person-name-cn-agent-mcp.test.mjs","tests/harness/write-p03-person-name-cn-report.test.mjs"],
-      "next_action": "P03 remains PARTIAL. The round-1 exact-Candidate review found answer-note contradiction, small-result text-projection, and truncation-counter consistency gaps; all three are corrected on the active PR branch with regressions. Re-run exact Candidate/Base 7/7 CI and obtain same-identity GPT-6 Luna Max PASS before the single anonymous profile call. Then record the signed sanitized report and durable terminal claim. Do not claim career-wide completeness.",
-      "reopen_when": "A current-source Agent/MCP answer profile is accepted for a named person, or official v0 adds pagination/total/completeness semantics for person-work relations.",
+      "next_action": "P03 remains PARTIAL and uncredited. The one anonymous profile invocation ended INCONCLUSIVE with no accepted report; its durable claim has retryAllowed=false. Do not repeat this call or infer career-wide absence/completeness. Reopen only through a separately registered, independently authorized profile or if official v0 adds pagination/total/completeness semantics.",
+      "reopen_when": "A separately registered, independently authorized current-source Agent/MCP profile is available without retrying the terminal claim, or official v0 adds pagination/total/completeness semantics for person-work relations.",
       "evidence": {
         "p03_agent_mcp_profile_preflight": {
           "epoch_id": "run95-p03-person-chinese-title-agent-mcp-20261015",
@@ -2038,15 +2038,47 @@
           "claim_state": "UNCLAIMED",
           "live_query_run": false,
           "source_completeness": "undocumented",
-          "status_boundary": "PARTIAL and uncredited until the corrective candidate passes exact CI/review, the fixed one-shot succeeds, and its signed report is accepted.",
+          "status_boundary": "This is the preflight snapshot before the one-shot claim; the later terminal INCONCLUSIVE disposition is recorded separately. P03 remains PARTIAL and uncredited.",
           "checks": [
             "Round-1 exact-Candidate GPT-6 Luna Max review of head 022ea48405de829af0732c29e518f15aaf9fad7d against Base 2884aff638512652cfe99e4b496dd915332ad052 returned CORRECTIVE_REQUIRED with three findings (P1/P1/P2), recorded through Harness.",
             "Corrective regressions: exact canonical coverageNote rejects appended absence/completeness claims; person-profile MCP text always uses the positive-only compact projection; subjectsTruncated must equal subjectsObserved > subjectsReturned.",
             "Focused P03/C03/profile/claim/report Harness tests passed 28/28. MCP result-presenter integration passed 35/35, including a full result below 3600 UTF-8 bytes checked against the P03 projection validator.",
             "Full Harness suite passed 277/277. Typecheck, lint, build, legacy-path guard, acceptance:check, frontier:check, Prettier, and diff checks passed.",
             "Two independent builds reproduced MCP bundle SHA-256 ba30619c0426aa54ab30e5063a71cdd5c63e38795a23c7c8e4c74eafec5707a8; the current attestation matches.",
-            "No P03 claim or live query has run. P03 remains UNCLAIMED and PARTIAL; C03 remains terminal INCONCLUSIVE with retryAllowed=false."
+            "At this preflight snapshot no P03 claim/query had run; the later terminal disposition is recorded separately below. P03 remains PARTIAL; C03 remains terminal INCONCLUSIVE with retryAllowed=false."
           ]
+        },
+        "p03_agent_mcp_profile_result": {
+          "epoch_id": "run95-p03-person-chinese-title-agent-mcp-20261015",
+          "profile_id": "p03-person-name-cn-agent-mcp-v1",
+          "claim_state": "INCONCLUSIVE",
+          "calls": 1,
+          "source_completeness": "undocumented",
+          "report_written": false,
+          "report_present": false,
+          "retry_allowed": false,
+          "reason_code": "P03_AGENT_MCP_ASSERTION_FAILED",
+          "source_candidate_sha": "623b555db249fe8be9e4f52ec5fab371236deb18",
+          "base_sha": "2884aff638512652cfe99e4b496dd915332ad052",
+          "ci_run": "38690431294",
+          "ci_status": "SUCCESS",
+          "reviewer_id": "gpt-6-luna-max-run95-pr167-round1",
+          "bundle_sha256": "ba30619c0426aa54ab30e5063a71cdd5c63e38795a23c7c8e4c74eafec5707a8",
+          "merge_commit_sha": "019b41b05abfd512d1d64d31d649cc6c684771fe",
+          "finished_at": "2026-10-15T06:17:56.449Z",
+          "sanitized_assertions": {
+            "event_stream_parsed": true,
+            "turn_completed": true,
+            "exact_registered_call": true,
+            "exact_tool_event": false,
+            "structured_readback": false,
+            "mcp_text_projection_valid": true,
+            "server_summary_valid": true,
+            "answer_person_identity_exact": false,
+            "codex_error_item_count": 3,
+            "non_mcp_tool_event_count": 0,
+            "shell_tool_call_count": 0
+          }
         }
       },
       "related_ids": []
