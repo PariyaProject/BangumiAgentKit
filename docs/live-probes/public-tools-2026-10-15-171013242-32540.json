@@ -1,0 +1,368 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-15T17:10:13.242Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
+  "probeScriptSha256": "42bbdd7ef91c80824365eca96c00728cba3cf441cce8d687da69971ea297b7f6",
+  "sourceProgram": "scripts/smoke-fresh-public-api-matrix-six-20261016.ts",
+  "supportingSourceSha256": {
+    "scripts/lib/fresh-public-api-matrix-six-scope.ts": "12d2b312ec42c7fadc90500fde5c35685e70cd6457fce465943ddf7909757727",
+    "scripts/lib/fresh-public-request-budget.ts": "e855abe79b11eaf9360fac207316d1cb3a539fda5e7bac47a29aa66cdc68059c"
+  },
+  "scopeId": "run95-fresh-six-public-api-rows-20261016",
+  "requestBudget": {
+    "maxPerTool": 8,
+    "maxTotal": 32
+  },
+  "requestAccounting": {
+    "scope": "bangumi_api_and_renderer_assets",
+    "redirectsIncluded": true,
+    "apiRetryAttemptsIncluded": true,
+    "apiRedirectHopsIncluded": true,
+    "rendererAssetRedirectHopsIncluded": true,
+    "bangumiApi": 5,
+    "rendererAsset": 0,
+    "total": 5,
+    "perTool": {
+      "bangumi.aggregate_subject_cohort": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0
+      },
+      "bangumi.compare_subject_cohorts": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0
+      },
+      "bangumi.query_subjects": {
+        "bangumiApi": 5,
+        "rendererAsset": 0,
+        "total": 5
+      },
+      "bangumi.render_query_subjects": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0
+      },
+      "bangumi.render_subject_cohort_aggregation": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0
+      },
+      "bangumi.render_subject_cohort_comparison": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0
+      }
+    }
+  },
+  "budgetBlocked": false,
+  "httpRequests": 5,
+  "selectedTools": [
+    "bangumi.aggregate_subject_cohort",
+    "bangumi.compare_subject_cohorts",
+    "bangumi.query_subjects",
+    "bangumi.render_query_subjects",
+    "bangumi.render_subject_cohort_aggregation",
+    "bangumi.render_subject_cohort_comparison"
+  ],
+  "probeCount": 6,
+  "limits": [
+    "exactly six fixed anonymous public/read ToolRegistry calls in selected order",
+    "at most eight combined API and renderer asset requests per tool and 32 total",
+    "every API attempt/retry, API redirect hop, asset request, and asset redirect hop is counted",
+    "stop before dispatch after any request budget breach",
+    "no OAuth, account, community, HTML, writes, QQ, or TIM",
+    "sanitized summaries only; no raw result rows or image bytes",
+    "temporary rendered artifacts are removed after the run",
+    "a failed or budget-blocked report receives no matrix credit"
+  ],
+  "redactions": [
+    "result row values, titles, names, identifiers, and image bytes are not persisted"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.aggregate_subject_cohort",
+      "input": {
+        "cohort": {
+          "query": {
+            "media": "anime",
+            "year": 2013,
+            "month": 2,
+            "resultMode": "all"
+          }
+        },
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 0,
+      "requestAccounting": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true
+      },
+      "result": {
+        "state": "unavailable",
+        "keys": [
+          "state",
+          "cohorts",
+          "metrics",
+          "formulaVersion",
+          "coverage",
+          "source",
+          "evidence",
+          "warnings",
+          "limitations",
+          "retrievedAt"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": false,
+        "scopeInputExact": true,
+        "scopeRequestCap": false,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "nonEmptySummary": true,
+        "noErrorResult": false,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": false
+      }
+    },
+    {
+      "tool": "bangumi.compare_subject_cohorts",
+      "input": {
+        "cohorts": [
+          {
+            "label": "Run95 direct public 2014-03",
+            "query": {
+              "media": "anime",
+              "year": 2014,
+              "month": 3,
+              "resultMode": "all"
+            }
+          }
+        ],
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 0,
+      "requestAccounting": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true
+      },
+      "result": {
+        "state": "unavailable",
+        "keys": [
+          "state",
+          "cohorts",
+          "metrics",
+          "formulaVersion",
+          "coverage",
+          "source",
+          "evidence",
+          "warnings",
+          "limitations",
+          "retrievedAt"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": false,
+        "scopeInputExact": true,
+        "scopeRequestCap": false,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "nonEmptySummary": true,
+        "noErrorResult": false,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": false
+      }
+    },
+    {
+      "tool": "bangumi.query_subjects",
+      "input": {
+        "media": "anime",
+        "year": 2018,
+        "month": 6,
+        "resultMode": "top",
+        "limit": 1,
+        "sort": "date",
+        "order": "asc",
+        "explain": "none"
+      },
+      "attempted": true,
+      "httpRequests": 5,
+      "requestAccounting": {
+        "bangumiApi": 5,
+        "rendererAsset": 0,
+        "total": 5,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true
+      },
+      "result": {
+        "state": "partial",
+        "keys": [
+          "state",
+          "items",
+          "plan",
+          "coverage",
+          "warnings",
+          "evidence"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_query_subjects",
+      "input": {
+        "media": "anime",
+        "year": 2019,
+        "month": 7,
+        "resultMode": "top",
+        "limit": 1
+      },
+      "attempted": true,
+      "httpRequests": 0,
+      "requestAccounting": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true
+      },
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": false,
+        "scopeInputExact": true,
+        "scopeRequestCap": false,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": false
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_aggregation",
+      "input": {
+        "cohort": {
+          "query": {
+            "media": "anime",
+            "year": 2015,
+            "month": 4,
+            "resultMode": "all"
+          }
+        },
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 0,
+      "requestAccounting": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true
+      },
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": false,
+        "scopeInputExact": true,
+        "scopeRequestCap": false,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": false
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_comparison",
+      "input": {
+        "cohorts": [
+          {
+            "label": "Run95 direct public 2016-05",
+            "query": {
+              "media": "anime",
+              "year": 2016,
+              "month": 5,
+              "resultMode": "all"
+            }
+          }
+        ],
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 0,
+      "requestAccounting": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true
+      },
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": false,
+        "scopeInputExact": true,
+        "scopeRequestCap": false,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": false
+      }
+    }
+  ]
+}

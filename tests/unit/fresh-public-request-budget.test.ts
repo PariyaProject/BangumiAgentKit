@@ -151,4 +151,111 @@ describe('fresh public probe request budget', () => {
       budgetBlocked: false,
     });
   });
+
+  it('enforces each tool scope and blocks every later scope before dispatch after a breach', async () => {
+    const budget = new PublicRequestBudget(6, 1);
+    const dispatchedUrls: string[] = [];
+    const countedFetch = createBudgetedPublicFetch(budget, async (input) => {
+      dispatchedUrls.push(String(input));
+      return new Response('{}', { status: 200 });
+    });
+
+    await expect(
+      budget.withScope('tool-a', async () => {
+        await countedFetch('https://api.example.test/tool-a/first');
+        await countedFetch('https://api.example.test/tool-a/over-cap');
+      }),
+    ).rejects.toThrow('PUBLIC_PROBE_REQUEST_BUDGET_EXCEEDED');
+
+    await expect(
+      budget.withScope('tool-b', async () =>
+        countedFetch('https://api.example.test/tool-b/blocked'),
+      ),
+    ).rejects.toThrow('PUBLIC_PROBE_REQUEST_BUDGET_EXCEEDED');
+
+    expect(dispatchedUrls).toEqual(['https://api.example.test/tool-a/first']);
+    expect(budget.snapshotScope('tool-a')).toEqual({ bangumiApi: 1, rendererAsset: 0, total: 1 });
+    expect(budget.snapshotScope('tool-b')).toEqual({ bangumiApi: 0, rendererAsset: 0, total: 0 });
+    expect(budget.snapshot()).toEqual({
+      bangumiApi: 1,
+      rendererAsset: 0,
+      total: 1,
+      budgetBlocked: true,
+    });
+  });
+
+  it('requires a tool scope whenever a per-scope ceiling is configured', async () => {
+    const budget = new PublicRequestBudget(4, 2);
+    const fetchImpl = vi.fn(async () => new Response('{}', { status: 200 }));
+    const countedFetch = createBudgetedPublicFetch(budget, fetchImpl);
+
+    await expect(countedFetch('https://api.example.test/out-of-scope')).rejects.toThrow(
+      'PUBLIC_PROBE_REQUEST_BUDGET_EXCEEDED',
+    );
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(budget.snapshot()).toEqual({
+      bangumiApi: 0,
+      rendererAsset: 0,
+      total: 0,
+      budgetBlocked: true,
+    });
+  });
+
+  it('blocks overlapping tool scopes instead of misattributing their requests', async () => {
+    const budget = new PublicRequestBudget(8, 4);
+    const fetchImpl = vi.fn(async () => new Response('{}', { status: 200 }));
+    const countedFetch = createBudgetedPublicFetch(budget, fetchImpl);
+
+    await expect(
+      budget.withScope('tool-a', async () =>
+        budget.withScope('tool-b', async () => countedFetch('https://api.example.test/tool-b')),
+      ),
+    ).rejects.toThrow('PUBLIC_PROBE_REQUEST_BUDGET_EXCEEDED');
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(budget.snapshot()).toEqual({
+      bangumiApi: 0,
+      rendererAsset: 0,
+      total: 0,
+      budgetBlocked: true,
+    });
+  });
+
+  it('applies one tool ceiling across its API request and renderer asset redirects', async () => {
+    const budget = new PublicRequestBudget(6, 2);
+    const apiFetch = vi.fn(async () => new Response('{}', { status: 200 }));
+    const countedApiFetch = createBudgetedPublicFetch(budget, apiFetch);
+    const assetRequest = vi.fn(async (url: string) => ({
+      status: 302,
+      headers: { location: '/next.png' },
+      buffer: Buffer.alloc(0),
+      url,
+    }));
+    const resolver: AssetNetworkResolver = {
+      async resolve() {
+        return [{ address: '93.184.216.34', family: 4 }];
+      },
+    };
+
+    await expect(
+      budget.withScope('render-tool', async () => {
+        await countedApiFetch('https://api.example.test/v0/subjects');
+        await fetchAndProcessImage(
+          'https://images.example.test/start.png',
+          new BudgetedAssetHttpTransport(budget, { request: assetRequest }),
+          resolver,
+        );
+      }),
+    ).rejects.toThrow('PUBLIC_PROBE_REQUEST_BUDGET_EXCEEDED');
+
+    expect(apiFetch).toHaveBeenCalledTimes(1);
+    expect(assetRequest).toHaveBeenCalledTimes(1);
+    expect(budget.snapshotScope('render-tool')).toEqual({
+      bangumiApi: 1,
+      rendererAsset: 1,
+      total: 2,
+    });
+    expect(budget.snapshot().budgetBlocked).toBe(true);
+  });
 });

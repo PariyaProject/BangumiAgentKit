@@ -45,6 +45,9 @@ PUBLIC_API_FAILURE_STATES = {
     'unsupported',
     'upstream_error',
 }
+PUBLIC_API_SAFE_SUMMARY_TYPES = {
+    'undefined', 'object', 'boolean', 'number', 'string', 'function', 'symbol', 'bigint',
+}
 PUBLIC_API_REQUIRED_ASSERTIONS = {
     'httpRequestObserved',
     'nonEmptySummary',
@@ -59,6 +62,8 @@ PUBLIC_API_PROBE_PROGRAMS = {
     'scripts/smoke-fresh-render-person-profile-public.ts',
     'scripts/smoke-fresh-render-person-profile-public-unbounded-v1.ts',
     'scripts/smoke-fresh-render-person-profile-public-retry-accounted-v1.ts',
+    'scripts/smoke-fresh-public-api-matrix-six-20261016.ts',
+    'scripts/smoke-fresh-public-api-matrix-five-post-v2-20261016.ts',
 }
 FRESH_RENDER_PERSON_PROFILE_PUBLIC_PROGRAM = 'scripts/smoke-fresh-render-person-profile-public.ts'
 FRESH_RENDER_PERSON_PROFILE_UNBOUNDED_PROGRAM = (
@@ -79,6 +84,205 @@ FRESH_RENDER_PERSON_PROFILE_PUBLIC_INPUT = {
     'maxCharacters': 1,
     'maxCredits': 1,
     'includeChronology': False,
+}
+FRESH_PUBLIC_API_MATRIX_SIX_PROGRAM = (
+    'scripts/smoke-fresh-public-api-matrix-six-20261016.ts'
+)
+FRESH_PUBLIC_API_MATRIX_SIX_SCOPE_PROGRAM = (
+    'scripts/lib/fresh-public-api-matrix-six-scope.ts'
+)
+FRESH_PUBLIC_API_MATRIX_SIX_BUDGET_PROGRAM = (
+    'scripts/lib/fresh-public-request-budget.ts'
+)
+FRESH_PUBLIC_API_MATRIX_SIX_SCOPE_ID = 'run95-fresh-six-public-api-rows-20261016'
+FRESH_PUBLIC_API_MATRIX_SIX_MAX_PER_TOOL = 8
+FRESH_PUBLIC_API_MATRIX_SIX_MAX_TOTAL = 32
+FRESH_PUBLIC_API_MATRIX_SIX_INPUTS = {
+    'bangumi.aggregate_subject_cohort': {
+        'cohort': {
+            'query': {'media': 'anime', 'year': 2013, 'month': 2, 'resultMode': 'all'},
+        },
+        'maxSubjects': 1,
+    },
+    'bangumi.compare_subject_cohorts': {
+        'cohorts': [{
+            'label': 'Run95 direct public 2014-03',
+            'query': {'media': 'anime', 'year': 2014, 'month': 3, 'resultMode': 'all'},
+        }],
+        'maxSubjects': 1,
+    },
+    'bangumi.query_subjects': {
+        'media': 'anime',
+        'year': 2018,
+        'month': 6,
+        'resultMode': 'top',
+        'limit': 1,
+        'sort': 'date',
+        'order': 'asc',
+        'explain': 'none',
+    },
+    'bangumi.render_query_subjects': {
+        'media': 'anime',
+        'year': 2019,
+        'month': 7,
+        'resultMode': 'top',
+        'limit': 1,
+    },
+    'bangumi.render_subject_cohort_aggregation': {
+        'cohort': {
+            'query': {'media': 'anime', 'year': 2015, 'month': 4, 'resultMode': 'all'},
+        },
+        'maxSubjects': 1,
+    },
+    'bangumi.render_subject_cohort_comparison': {
+        'cohorts': [{
+            'label': 'Run95 direct public 2016-05',
+            'query': {'media': 'anime', 'year': 2016, 'month': 5, 'resultMode': 'all'},
+        }],
+        'maxSubjects': 1,
+    },
+}
+FRESH_PUBLIC_API_MATRIX_SIX_TOOLS = list(FRESH_PUBLIC_API_MATRIX_SIX_INPUTS)
+FRESH_PUBLIC_API_MATRIX_SIX_REQUIRED_ASSERTIONS = {
+    'httpRequestObserved',
+    'scopeInputExact',
+    'scopeRequestCap',
+    'apiRetryAttemptsIncluded',
+    'apiRedirectHopsIncluded',
+    'rendererAssetRedirectHopsIncluded',
+    'nonEmptySummary',
+    'noErrorResult',
+    'nonNegativeCounts',
+    'countConsistency',
+    'passed',
+}
+FRESH_PUBLIC_API_MATRIX_SIX_REPORT_KEYS = {
+    'schemaVersion',
+    'evidenceKind',
+    'observedAt',
+    'mode',
+    'catalogSha256',
+    'probeScriptSha256',
+    'sourceProgram',
+    'supportingSourceSha256',
+    'scopeId',
+    'requestBudget',
+    'requestAccounting',
+    'budgetBlocked',
+    'httpRequests',
+    'selectedTools',
+    'probeCount',
+    'limits',
+    'redactions',
+    'results',
+}
+FRESH_PUBLIC_API_MATRIX_SIX_LIMITS = [
+    'exactly six fixed anonymous public/read ToolRegistry calls in selected order',
+    'at most eight combined API and renderer asset requests per tool and 32 total',
+    'every API attempt/retry, API redirect hop, asset request, and asset redirect hop is counted',
+    'stop before dispatch after any request budget breach',
+    'no OAuth, account, community, HTML, writes, QQ, or TIM',
+    'sanitized summaries only; no raw result rows or image bytes',
+    'temporary rendered artifacts are removed after the run',
+    'a failed or budget-blocked report receives no matrix credit',
+]
+FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_PROGRAM = (
+    'scripts/smoke-fresh-public-api-matrix-five-post-v2-20261016.ts'
+)
+FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SCOPE_PROGRAM = (
+    'scripts/lib/fresh-public-api-matrix-five-post-v2-scope.ts'
+)
+FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM = (
+    'scripts/lib/fresh-public-request-search-fetch-v2.ts'
+)
+FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SCOPE_ID = (
+    'run95-fresh-five-public-api-post-v2-20261016'
+)
+FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_MAX_PER_TOOL = 8
+FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_MAX_TOTAL = 32
+FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_INPUTS = {
+    'bangumi.aggregate_subject_cohort': {
+        'cohort': {
+            'query': {
+                'media': 'anime',
+                'year': 2020,
+                'month': 2,
+                'resultMode': 'all',
+                'limit': 1,
+            },
+        },
+        'maxSubjects': 1,
+    },
+    'bangumi.compare_subject_cohorts': {
+        'cohorts': [{
+            'label': 'Run95 public POST-safe 2021-03',
+            'query': {
+                'media': 'anime',
+                'year': 2021,
+                'month': 3,
+                'resultMode': 'all',
+                'limit': 1,
+            },
+        }],
+        'maxSubjects': 1,
+    },
+    'bangumi.render_query_subjects': {
+        'media': 'anime',
+        'year': 2022,
+        'month': 6,
+        'resultMode': 'top',
+        'limit': 1,
+    },
+    'bangumi.render_subject_cohort_aggregation': {
+        'cohort': {
+            'query': {
+                'media': 'anime',
+                'year': 2023,
+                'month': 4,
+                'resultMode': 'all',
+                'limit': 1,
+            },
+        },
+        'maxSubjects': 1,
+    },
+    'bangumi.render_subject_cohort_comparison': {
+        'cohorts': [{
+            'label': 'Run95 public POST-safe 2020-05',
+            'query': {
+                'media': 'anime',
+                'year': 2020,
+                'month': 5,
+                'resultMode': 'all',
+                'limit': 1,
+            },
+        }],
+        'maxSubjects': 1,
+    },
+}
+FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_TOOLS = list(
+    FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_INPUTS,
+)
+FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_REQUIRED_ASSERTIONS = (
+    FRESH_PUBLIC_API_MATRIX_SIX_REQUIRED_ASSERTIONS
+    | {'anonymousSearchPostAllowed', 'searchPostPathRestricted'}
+)
+FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_REPORT_KEYS = {
+    *FRESH_PUBLIC_API_MATRIX_SIX_REPORT_KEYS,
+}
+FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_LIMITS = [
+    'exactly five fixed anonymous public/read ToolRegistry calls in selected order',
+    'at most eight combined API and renderer asset requests per tool and 32 total',
+    'anonymous JSON POST is limited to https://api.bgm.tv/v0/search/subjects',
+    'every API attempt/retry, same-host API redirect hop, asset request, and asset redirect hop is counted',
+    'stop before dispatch after any request budget breach',
+    'no OAuth, account, community, HTML, writes, QQ, or TIM',
+    'sanitized summaries only; no raw result rows or image bytes',
+    'temporary rendered artifacts are removed after the run',
+    'a failed or budget-blocked report receives no matrix credit for failed rows',
+]
+FRESH_PUBLIC_API_MATRIX_SCOPED_PROGRAMS = {
+    FRESH_PUBLIC_API_MATRIX_SIX_PROGRAM,
+    FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_PROGRAM,
 }
 P02_PUBLIC_CHRONOLOGY_TOOL = 'bangumi.get_person_profile'
 P02_PUBLIC_CHRONOLOGY_INPUT = {
@@ -446,6 +650,24 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 or fresh_assertions.get('apiRetryAttemptsIncluded') is not True
             ):
                 continue
+        if source_program in FRESH_PUBLIC_API_MATRIX_SCOPED_PROGRAMS:
+            if source_program == FRESH_PUBLIC_API_MATRIX_SIX_PROGRAM:
+                scope_valid = fresh_public_api_matrix_six_report_is_valid(
+                    report, result_by_name,
+                )
+                scoped_tools = FRESH_PUBLIC_API_MATRIX_SIX_TOOLS
+            else:
+                scope_valid = fresh_public_api_matrix_five_post_v2_report_is_valid(
+                    report, result_by_name,
+                )
+                scoped_tools = FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_TOOLS
+            if not scope_valid or any(
+                not isinstance(current_by_name.get(name), dict)
+                or current_by_name[name].get('auth') != 'none'
+                or current_by_name[name].get('risk') != 'read'
+                for name in scoped_tools
+            ):
+                continue
         request_budget = report.get('requestBudget')
         if source_program == 'scripts/smoke-person-profile-chronology-online.ts':
             if selected != [P02_PUBLIC_CHRONOLOGY_TOOL]:
@@ -483,7 +705,12 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 or type(total_limit) is not int
                 or type(reported_total) is not int
                 or reported_total > total_limit
-                or not all(type(count) is int and 1 <= count <= per_tool_limit for count in request_counts)
+                or not all(
+                    type(count) is int
+                    and (0 if source_program in FRESH_PUBLIC_API_MATRIX_SCOPED_PROGRAMS else 1)
+                    <= count <= per_tool_limit
+                    for count in request_counts
+                )
                 or sum(request_counts) != reported_total
             ):
                 continue
@@ -504,6 +731,17 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
             assertions = result.get('assertions')
             request_count = result.get('httpRequests')
             recorded_input = result.get('input')
+            if source_program in FRESH_PUBLIC_API_MATRIX_SCOPED_PROGRAMS:
+                summary_keys = summary.get('keys') if isinstance(summary, dict) else None
+                summary_type = summary.get('type') if isinstance(summary, dict) else None
+                safe_nonempty_summary = (
+                    isinstance(summary_keys, list) and len(summary_keys) > 0
+                ) or (
+                    isinstance(summary_type, str)
+                    and summary_type in PUBLIC_API_SAFE_SUMMARY_TYPES
+                )
+                if not safe_nonempty_summary:
+                    continue
             if (
                 not isinstance(summary, dict)
                 or not summary
@@ -555,6 +793,219 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
             report_source_ref(a01_path),
         )
     return sources
+
+
+def fresh_public_api_matrix_six_report_is_valid(
+    report: dict,
+    result_by_name: dict[str, dict],
+) -> bool:
+    """Validate the exact six-tool report; credit passing rows independently."""
+    return fresh_public_api_matrix_scoped_report_is_valid(
+        report,
+        result_by_name,
+        scope_id=FRESH_PUBLIC_API_MATRIX_SIX_SCOPE_ID,
+        inputs=FRESH_PUBLIC_API_MATRIX_SIX_INPUTS,
+        max_per_tool=FRESH_PUBLIC_API_MATRIX_SIX_MAX_PER_TOOL,
+        max_total=FRESH_PUBLIC_API_MATRIX_SIX_MAX_TOTAL,
+        supporting_sources={
+            FRESH_PUBLIC_API_MATRIX_SIX_SCOPE_PROGRAM,
+            FRESH_PUBLIC_API_MATRIX_SIX_BUDGET_PROGRAM,
+        },
+        required_assertions=FRESH_PUBLIC_API_MATRIX_SIX_REQUIRED_ASSERTIONS,
+        limits=FRESH_PUBLIC_API_MATRIX_SIX_LIMITS,
+        report_keys=FRESH_PUBLIC_API_MATRIX_SIX_REPORT_KEYS,
+        accounting_metadata={
+            'scope': 'bangumi_api_and_renderer_assets',
+            'redirectsIncluded': True,
+            'apiRetryAttemptsIncluded': True,
+            'apiRedirectHopsIncluded': True,
+            'rendererAssetRedirectHopsIncluded': True,
+        },
+        result_accounting_metadata={
+            'apiRetryAttemptsIncluded': True,
+            'apiRedirectHopsIncluded': True,
+            'rendererAssetRedirectHopsIncluded': True,
+        },
+        redactions=[
+            'result row values, titles, names, identifiers, and image bytes are not persisted',
+        ],
+    )
+
+
+def fresh_public_api_matrix_five_post_v2_report_is_valid(
+    report: dict,
+    result_by_name: dict[str, dict],
+) -> bool:
+    """Validate the exact POST-safe five-tool scope; credit passing rows independently."""
+    return fresh_public_api_matrix_scoped_report_is_valid(
+        report,
+        result_by_name,
+        scope_id=FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SCOPE_ID,
+        inputs=FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_INPUTS,
+        max_per_tool=FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_MAX_PER_TOOL,
+        max_total=FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_MAX_TOTAL,
+        supporting_sources={
+            FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SCOPE_PROGRAM,
+            FRESH_PUBLIC_API_MATRIX_SIX_BUDGET_PROGRAM,
+            FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM,
+        },
+        required_assertions=FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_REQUIRED_ASSERTIONS,
+        limits=FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_LIMITS,
+        report_keys=FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_REPORT_KEYS,
+        accounting_metadata={
+            'scope': 'bangumi_api_and_renderer_assets',
+            'redirectsIncluded': True,
+            'apiRetryAttemptsIncluded': True,
+            'apiRedirectHopsIncluded': True,
+            'rendererAssetRedirectHopsIncluded': True,
+            'anonymousSearchPostAllowed': True,
+            'searchPostPathRestricted': True,
+            'publicPostPath': '/v0/search/subjects',
+        },
+        result_accounting_metadata={
+            'apiRetryAttemptsIncluded': True,
+            'apiRedirectHopsIncluded': True,
+            'rendererAssetRedirectHopsIncluded': True,
+            'anonymousSearchPostAllowed': True,
+            'searchPostPathRestricted': True,
+        },
+        redactions=[
+            'result row values, titles, names, identifiers, request bodies, and image bytes are not persisted',
+        ],
+    )
+
+
+def fresh_public_api_matrix_scoped_report_is_valid(
+    report: dict,
+    result_by_name: dict[str, dict],
+    *,
+    scope_id: str,
+    inputs: dict[str, dict],
+    max_per_tool: int,
+    max_total: int,
+    supporting_sources: set[str],
+    required_assertions: set[str],
+    limits: list[str],
+    report_keys: set[str],
+    accounting_metadata: dict[str, object],
+    result_accounting_metadata: dict[str, object],
+    redactions: list[str],
+) -> bool:
+    tools = list(inputs)
+    actual_supporting_sources = report.get('supportingSourceSha256')
+    if not isinstance(actual_supporting_sources, dict) or set(actual_supporting_sources) != supporting_sources:
+        return False
+    for relative_path in supporting_sources:
+        source_path = ROOT / relative_path
+        if not source_path.is_file() or actual_supporting_sources.get(relative_path) != hashlib.sha256(source_path.read_bytes()).hexdigest():
+            return False
+
+    if (
+        set(report) != report_keys
+        or report.get('scopeId') != scope_id
+        or report.get('selectedTools') != tools
+        or not isinstance(report.get('results'), list)
+        or [item.get('tool') if isinstance(item, dict) else None for item in report['results']]
+        != tools
+        or type(report.get('probeCount')) is not int
+        or report.get('probeCount') != len(tools)
+        or report.get('budgetBlocked') is not False
+        or report.get('requestBudget') != {'maxPerTool': max_per_tool, 'maxTotal': max_total}
+        or not isinstance(report.get('observedAt'), str)
+        or re.fullmatch(
+            r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z',
+            report['observedAt'],
+        ) is None
+        or report.get('limits') != limits
+        or report.get('redactions') != redactions
+    ):
+        return False
+
+    request_accounting = report.get('requestAccounting')
+    expected_accounting_keys = set(accounting_metadata) | {
+        'bangumiApi', 'rendererAsset', 'total', 'perTool',
+    }
+    if (
+        not isinstance(request_accounting, dict)
+        or set(request_accounting) != expected_accounting_keys
+        or any(request_accounting.get(key) != value for key, value in accounting_metadata.items())
+    ):
+        return False
+
+    per_tool = request_accounting.get('perTool')
+    if not isinstance(per_tool, dict) or set(per_tool) != set(tools):
+        return False
+    aggregate = {'bangumiApi': 0, 'rendererAsset': 0, 'total': 0}
+    for tool in tools:
+        counts = per_tool.get(tool)
+        if not isinstance(counts, dict) or set(counts) != {'bangumiApi', 'rendererAsset', 'total'}:
+            return False
+        if any(type(counts.get(key)) is not int or counts[key] < 0 for key in aggregate):
+            return False
+        if counts['total'] != counts['bangumiApi'] + counts['rendererAsset']:
+            return False
+        if not 0 <= counts['total'] <= max_per_tool:
+            return False
+        for key in aggregate:
+            aggregate[key] += counts[key]
+
+        result = result_by_name.get(tool)
+        if not isinstance(result, dict) or set(result) != {
+            'tool', 'input', 'attempted', 'httpRequests', 'requestAccounting', 'result', 'assertions',
+        }:
+            return False
+        if (
+            result.get('tool') != tool
+            or result.get('input') != inputs[tool]
+            or result.get('attempted') is not True
+            or type(result.get('httpRequests')) is not int
+            or result.get('httpRequests') != counts['total']
+        ):
+            return False
+        if result.get('requestAccounting') != {**counts, **result_accounting_metadata}:
+            return False
+
+        summary = result.get('result')
+        if (
+            not isinstance(summary, dict)
+            or not set(summary).issubset({'state', 'keys', 'type', 'code', 'upstreamStatus', 'retryable'})
+            or not isinstance(summary.get('state'), str)
+            or ('keys' in summary and (
+                not isinstance(summary['keys'], list)
+                or len(summary['keys']) > 16
+                or not all(isinstance(key, str) for key in summary['keys'])
+            ))
+            or ('type' in summary and (
+                not isinstance(summary.get('type'), str)
+                or summary['type'] not in PUBLIC_API_SAFE_SUMMARY_TYPES
+            ))
+            or ('code' in summary and not isinstance(summary.get('code'), str))
+            or ('upstreamStatus' in summary and type(summary.get('upstreamStatus')) is not int)
+            or ('retryable' in summary and type(summary.get('retryable')) is not bool)
+        ):
+            return False
+
+        assertions = result.get('assertions')
+        if (
+            not isinstance(assertions, dict)
+            or set(assertions) != required_assertions
+            or not all(type(value) is bool for value in assertions.values())
+        ):
+            return False
+
+    if any(
+        type(request_accounting.get(key)) is not int
+        or request_accounting[key] != aggregate[key]
+        for key in aggregate
+    ):
+        return False
+    total = aggregate['total']
+    return (
+        type(report.get('httpRequests')) is int
+        and report['httpRequests'] == total
+        and total <= max_total
+        and total == sum(result_by_name[tool]['httpRequests'] for tool in tools)
+    )
 
 
 def public_api_smoke_names(catalog: list[dict]) -> set[str]:
