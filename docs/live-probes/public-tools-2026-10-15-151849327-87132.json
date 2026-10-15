@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-15T15:18:49.327Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
+  "probeScriptSha256": "471826d6331f6f473cdb8326c3c557544be1f1b60a0fa13b92525e3c087ef862",
+  "sourceProgram": "scripts/smoke-fresh-render-person-profile-public-unbounded-v1.ts",
+  "executedProgram": "scripts/smoke-fresh-render-person-profile-public.ts",
+  "scopeId": "run95-fresh-render-person-profile-13684-v1",
+  "requestBudget": {
+    "maxPerTool": 4,
+    "maxTotal": 4
+  },
+  "budgetBlocked": false,
+  "requestAccounting": {
+    "scope": "bangumi_api_fetch_only",
+    "redirectsIncluded": false,
+    "rendererAssetsIncluded": false,
+    "totalHttpRequests": null,
+    "creditDisposition": "superseded_unbounded_asset_request_count"
+  },
+  "userAgent": "BangumiAgentKit/live-public-probe",
+  "probeCount": 1,
+  "httpRequests": 3,
+  "selectedTools": [
+    "bangumi.render_person_profile"
+  ],
+  "limits": [
+    "exactly one anonymous public/read ToolRegistry call",
+    "one fresh fixed person profile with one-row local caps",
+    "at most four HTTP requests; no retries",
+    "no OAuth or account access",
+    "summary only; no raw rows or artifact bytes"
+  ],
+  "redactions": [
+    "person relation rows, names, and image bytes are not persisted"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.render_person_profile",
+      "input": {
+        "personId": 13684,
+        "maxSubjects": 1,
+        "maxCharacters": 1,
+        "maxCredits": 1,
+        "includeChronology": false
+      },
+      "httpRequests": 3,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    }
+  ]
+}
