@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-15T09:51:02Z",
+  "updated_at": "2026-10-15T12:47:13Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1080,9 +1080,10 @@
         "tests/unit/g15-agent-answer-check.test.ts",
         "docs/research/run92-g15-subject-comparison-agent-canary-2026-10-05.json",
         "docs/research/run92-g15-subject-comparison-agent-candidate-c-2026-10-05.json",
+        "docs/research/run95-g15-terminal-disposition-reconciliation-2026-10-15.md",
         "tests/unit/g15-agent-canary-report.test.ts"
       ],
-      "next_action": "Run #92 / PR #94 Candidate A's historical Agent/MCP read used checker v1; review findings G15-R2/G15-R3 demonstrated caveat/formula and fractional-episode false positives. Its sanitized report is superseded and not credited as final answer acceptance; raw answer/result were not retained. Candidate C (463f1303950746bcfd247d7c28ed04dbf68e51a7) passed exact-SHA CI 7/7 and the final-corrective Harness gate, then one fresh read completed only bangumi.get_subject_comparison. The 3,511-byte text was bounded and checker v2 matched 2/2 identities, 3/4 metric rows, with one mismatch and no missing rows; all caveat checks passed, but answer acceptance failed. The sanitized report records no raw answer/result. Do not retry the public call. Candidate D records this failed result and must pass exact-SHA CI plus the final-corrective Candidate gate before integrating the four code corrections. Keep G15 PARTIAL; one current snapshot does not establish exhaustive coverage or correct Agent answer behavior, and QQ/TIM display remains separate.",
+      "next_action": "PR #94's g15-subject-comparison-agent-answer Epoch is MERGED at 4c0e08bd488484f4443aefbea36a4219ef1ad2f4. Its final corrective Candidate D eccbe37e1878118f709a60863dbcebd6d0e0598f is on master with exact CI run 37270020917 passing 7/7; the four implementation corrections are already integrated. Candidate A's checker-v1 result remains historical and superseded. Candidate C's single current-source read matched 3/4 metric rows with one mismatch, so answer acceptance failed; raw prompt/answer/MCP result were not retained and the read must never be retried. No G15 answer acceptance or Agent/MCP credit is earned; keep G15 PARTIAL because one partial current snapshot cannot establish correct Agent behavior, source completeness, or history. Continue Run #95 on another safe unspent frontier. Disposition: docs/research/run95-g15-terminal-disposition-reconciliation-2026-10-15.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-012"]
     },

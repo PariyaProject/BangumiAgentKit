@@ -399,6 +399,43 @@ test('R05 terminal no-report profile remains unassessed and cannot be retried', 
   assert.doesNotMatch(disposition, /claimId|expectedArguments|runnerReceiptPublicKey|1424|3774/iu);
 });
 
+test('G15 merged corrective implementation does not credit or retry the failed answer read', () => {
+  const record = ledger.records.find(({ id }) => id === 'G15');
+  assert.ok(record, 'G15 must remain in the canonical frontier');
+  assert.equal(record.status, 'PARTIAL');
+  assert.equal(record.evidence, undefined, 'the failed answer read earns no new frontier credit');
+
+  const reportPath = 'docs/research/run92-g15-subject-comparison-agent-candidate-c-2026-10-05.json';
+  assert.ok(record.source_refs.includes(reportPath));
+  const report = JSON.parse(readFileSync(path.join(root, reportPath), 'utf8'));
+  assert.equal(report.frontierStatus, 'PARTIAL');
+  assert.equal(report.passed, false);
+  assert.equal(report.reviewDisposition.status, 'AGENT_ANSWER_VALIDATION_FAILED');
+  assert.equal(report.reviewDisposition.expectedMetricRows, 4);
+  assert.equal(report.reviewDisposition.metricRowsMatched, 3);
+  assert.equal(report.reviewDisposition.mismatchedMetricRows, 1);
+  assert.equal(report.reviewDisposition.rawAnswerOrMcpResultAvailableForReassessment, false);
+  assert.equal(report.reviewDisposition.retryPerformed, false);
+  assert.equal(report.reviewDisposition.additionalPublicCallPerformed, false);
+
+  const dispositionPath = 'docs/research/run95-g15-terminal-disposition-reconciliation-2026-10-15.md';
+  assert.ok(record.source_refs.includes(dispositionPath));
+  const disposition = readFileSync(path.join(root, dispositionPath), 'utf8');
+  assert.match(disposition, /PR #94/u);
+  assert.match(disposition, /4c0e08bd488484f4443aefbea36a4219ef1ad2f4/u);
+  assert.match(disposition, /eccbe37e1878118f709a60863dbcebd6d0e0598f/u);
+  assert.match(disposition, /37270020917.*seven required/u);
+  assert.match(disposition, /three of four metric rows/u);
+  assert.match(disposition, /Do not repeat either G15\s+Agent\/MCP read/u);
+
+  assert.match(record.next_action, /PR #94.*MERGED/u);
+  assert.match(record.next_action, /four implementation corrections are already integrated/u);
+  assert.match(record.next_action, /Candidate C's single current-source read matched 3\/4/u);
+  assert.match(record.next_action, /must never be retried/u);
+  assert.match(record.next_action, /another safe unspent frontier/u);
+  assert.doesNotMatch(record.next_action, /Candidate D.*must pass.*before integrating/iu);
+});
+
 test('G06 current-catalog cast probe is public-only, hash-bound, and does not imply complete coverage', () => {
   const record = ledger.records.find(({ id }) => id === 'G06');
   assert.ok(record, 'G06 must remain in the canonical frontier');
