@@ -20,6 +20,103 @@ function fail(code) {
   return { passed: false, reason: code };
 }
 
+function hasDuplicateJsonObjectKeys(text) {
+  let index = 0;
+  const isWhitespace = (character) =>
+    character === ' ' || character === '\n' || character === '\r' || character === '\t';
+  const skipWhitespace = () => {
+    while (isWhitespace(text[index])) index += 1;
+  };
+  const readString = () => {
+    const start = index;
+    if (text[index] !== '"') throw new Error('Expected a JSON string.');
+    index += 1;
+    while (index < text.length) {
+      const character = text[index];
+      index += 1;
+      if (character === '\\') {
+        index += 1;
+      } else if (character === '"') {
+        return JSON.parse(text.slice(start, index));
+      }
+    }
+    throw new Error('Unterminated JSON string.');
+  };
+  const scanValue = (depth = 0) => {
+    if (depth > 16) throw new Error('JSON nesting is too deep.');
+    skipWhitespace();
+    const character = text[index];
+    if (character === '{') {
+      index += 1;
+      skipWhitespace();
+      if (text[index] === '}') {
+        index += 1;
+        return false;
+      }
+      const keys = new Set();
+      while (index < text.length) {
+        skipWhitespace();
+        const key = readString();
+        if (keys.has(key)) return true;
+        keys.add(key);
+        skipWhitespace();
+        if (text[index] !== ':') throw new Error('Expected a JSON object separator.');
+        index += 1;
+        if (scanValue(depth + 1)) return true;
+        skipWhitespace();
+        if (text[index] === '}') {
+          index += 1;
+          return false;
+        }
+        if (text[index] !== ',') throw new Error('Expected a JSON object delimiter.');
+        index += 1;
+      }
+      throw new Error('Unterminated JSON object.');
+    }
+    if (character === '[') {
+      index += 1;
+      skipWhitespace();
+      if (text[index] === ']') {
+        index += 1;
+        return false;
+      }
+      while (index < text.length) {
+        if (scanValue(depth + 1)) return true;
+        skipWhitespace();
+        if (text[index] === ']') {
+          index += 1;
+          return false;
+        }
+        if (text[index] !== ',') throw new Error('Expected a JSON array delimiter.');
+        index += 1;
+      }
+      throw new Error('Unterminated JSON array.');
+    }
+    if (character === '"') {
+      readString();
+      return false;
+    }
+    const start = index;
+    while (
+      index < text.length &&
+      !isWhitespace(text[index]) &&
+      ![',', ']', '}'].includes(text[index])
+    ) {
+      index += 1;
+    }
+    if (start === index) throw new Error('Expected a JSON value.');
+    return false;
+  };
+
+  try {
+    const duplicate = scanValue();
+    skipWhitespace();
+    return duplicate || index !== text.length;
+  } catch {
+    return true;
+  }
+}
+
 export function projectC01ComparisonResult(result) {
   if (!C01_PROFILE || !isRecord(result)) throw new TypeError('C01 profile/result is unavailable.');
   const expectedIds = C01_PROFILE.calls[0].arguments.subjectIds;
@@ -131,6 +228,7 @@ export function verifyC01Answer(answerText, sourceResult) {
   } catch {
     return fail('SOURCE_OR_ANSWER_INVALID');
   }
+  if (hasDuplicateJsonObjectKeys(answerText)) return fail('ANSWER_DUPLICATE_KEYS');
   if (
     !exactKeys(answer, [
       'schemaVersion',

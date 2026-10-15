@@ -140,6 +140,27 @@ test('C01 requires the exact safe current-snapshot caveat and rejects contradict
   }
 });
 
+test('C01 rejects duplicate JSON member names before checking the safe answer', () => {
+  const safeNote = JSON.stringify(C01_SAFE_SCOPE_NOTE);
+  const encoded = JSON.stringify(validAnswer);
+  const duplicateScopeNote = encoded.replace(
+    `"scopeNote":${safeNote}`,
+    `"scopeNote":"差异显著","scopeNote":${safeNote}`,
+  );
+  const escapedDuplicateScopeNote = encoded.replace(
+    `"scopeNote":${safeNote}`,
+    `"scopeNote":"差异显著","scope\\u004eote":${safeNote}`,
+  );
+  const duplicateSubjectId = encoded.replace(
+    '"subjectId":41529',
+    '"subjectId":1,"subjectId":41529',
+  );
+
+  for (const answerText of [duplicateScopeNote, escapedDuplicateScopeNote, duplicateSubjectId]) {
+    assert.equal(verifyC01Answer(answerText, result).reason, 'ANSWER_DUPLICATE_KEYS');
+  }
+});
+
 test('C01 refuses unknown, conflicting, or mismatched source metrics', () => {
   assert.throws(
     () =>
