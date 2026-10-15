@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import type {
   AssetHttpTransport,
   AssetNetworkResolver,
@@ -119,6 +120,35 @@ describe('fresh public probe request budget', () => {
       rendererAsset: 1,
       total: 3,
       budgetBlocked: true,
+    });
+  });
+
+  it('counts HttpClient automatic read-only retries under the shared API budget', async () => {
+    const budget = new PublicRequestBudget(4);
+    let attempts = 0;
+    const fetchFn = createBudgetedPublicFetch(budget, async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        return new Response(JSON.stringify({ message: 'temporary upstream error' }), {
+          status: 503,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response('{}', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    const client = new HttpClient({ fetchFn });
+
+    await expect(client.request({ method: 'GET', path: '/v0/persons/13684' })).resolves.toEqual({});
+
+    expect(attempts).toBe(2);
+    expect(budget.snapshot()).toEqual({
+      bangumiApi: 2,
+      rendererAsset: 0,
+      total: 2,
+      budgetBlocked: false,
     });
   });
 });

@@ -58,11 +58,19 @@ PUBLIC_API_PROBE_PROGRAMS = {
     'scripts/smoke-person-profile-chronology-online.ts',
     'scripts/smoke-fresh-render-person-profile-public.ts',
     'scripts/smoke-fresh-render-person-profile-public-unbounded-v1.ts',
+    'scripts/smoke-fresh-render-person-profile-public-retry-accounted-v1.ts',
 }
 FRESH_RENDER_PERSON_PROFILE_PUBLIC_PROGRAM = 'scripts/smoke-fresh-render-person-profile-public.ts'
 FRESH_RENDER_PERSON_PROFILE_UNBOUNDED_PROGRAM = (
     'scripts/smoke-fresh-render-person-profile-public-unbounded-v1.ts'
 )
+FRESH_RENDER_PERSON_PROFILE_RETRY_ACCOUNTED_PROGRAM = (
+    'scripts/smoke-fresh-render-person-profile-public-retry-accounted-v1.ts'
+)
+FRESH_RENDER_PERSON_PROFILE_ACCOUNTED_PROGRAMS = {
+    FRESH_RENDER_PERSON_PROFILE_PUBLIC_PROGRAM,
+    FRESH_RENDER_PERSON_PROFILE_RETRY_ACCOUNTED_PROGRAM,
+}
 FRESH_RENDER_PERSON_PROFILE_PUBLIC_SCOPE_ID = 'run95-fresh-render-person-profile-13684-v1'
 FRESH_RENDER_PERSON_PROFILE_PUBLIC_TOOL = 'bangumi.render_person_profile'
 FRESH_RENDER_PERSON_PROFILE_PUBLIC_INPUT = {
@@ -401,7 +409,7 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
         }
         if set(result_by_name) != set(selected):
             continue
-        if source_program == FRESH_RENDER_PERSON_PROFILE_PUBLIC_PROGRAM:
+        if source_program in FRESH_RENDER_PERSON_PROFILE_ACCOUNTED_PROGRAMS:
             fresh_result = result_by_name.get(FRESH_RENDER_PERSON_PROFILE_PUBLIC_TOOL)
             fresh_assertions = fresh_result.get('assertions') if isinstance(fresh_result, dict) else None
             request_accounting = report.get('requestAccounting')
@@ -419,6 +427,7 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 or not isinstance(request_accounting, dict)
                 or request_accounting.get('scope') != 'bangumi_api_and_renderer_assets'
                 or request_accounting.get('redirectsIncluded') is not True
+                or request_accounting.get('apiRetryAttemptsIncluded') is not True
                 or any(type(count) is not int or count < 0 for count in accounting_counts)
                 or request_accounting.get('total')
                 != request_accounting.get('bangumiApi') + request_accounting.get('rendererAsset')
@@ -427,12 +436,14 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 or result_accounting.get('bangumiApi') != request_accounting.get('bangumiApi')
                 or result_accounting.get('rendererAsset') != request_accounting.get('rendererAsset')
                 or result_accounting.get('total') != request_accounting.get('total')
+                or result_accounting.get('apiRetryAttemptsIncluded') is not True
                 or not isinstance(fresh_result, dict)
                 or fresh_result.get('httpRequests') != request_accounting.get('total')
                 or fresh_result.get('input') != FRESH_RENDER_PERSON_PROFILE_PUBLIC_INPUT
                 or not isinstance(fresh_assertions, dict)
                 or fresh_assertions.get('scopeInputExact') is not True
                 or fresh_assertions.get('scopeRequestCap') is not True
+                or fresh_assertions.get('apiRetryAttemptsIncluded') is not True
             ):
                 continue
         request_budget = report.get('requestBudget')

@@ -127,6 +127,8 @@ async function main(): Promise<void> {
     (state !== 'value' || (Array.isArray(result.keys) && result.keys.length > 0));
   const countConsistency = counts.total === counts.bangumiApi + counts.rendererAsset;
   const scopeRequestCap = !counts.budgetBlocked && counts.total <= scope.maxHttpRequests;
+  // HttpClient invokes the injected fetchFn for every request attempt, including retries.
+  const apiRetryAttemptsIncluded = true;
   const assertions = {
     httpRequestObserved: counts.total > 0,
     scopeInputExact:
@@ -136,6 +138,7 @@ async function main(): Promise<void> {
       scope.input.maxCredits === 1 &&
       scope.input.includeChronology === false,
     scopeRequestCap,
+    apiRetryAttemptsIncluded,
     nonEmptySummary,
     noErrorResult,
     nonNegativeCounts: counts.bangumiApi >= 0 && counts.rendererAsset >= 0,
@@ -144,6 +147,7 @@ async function main(): Promise<void> {
       counts.total > 0 &&
       !counts.budgetBlocked &&
       scopeRequestCap &&
+      apiRetryAttemptsIncluded &&
       countConsistency &&
       nonEmptySummary &&
       noErrorResult,
@@ -165,6 +169,7 @@ async function main(): Promise<void> {
     requestAccounting: {
       scope: 'bangumi_api_and_renderer_assets',
       redirectsIncluded: true,
+      apiRetryAttemptsIncluded: true,
       bangumiApi: counts.bangumiApi,
       rendererAsset: counts.rendererAsset,
       total: counts.total,
@@ -177,7 +182,7 @@ async function main(): Promise<void> {
     limits: [
       'exactly one anonymous public/read ToolRegistry call',
       'one fresh fixed person profile with one-row local caps',
-      'at most four combined Bangumi API and renderer asset HTTP requests; each redirect hop counts; no retries',
+      'at most four combined Bangumi API and renderer asset HTTP requests; any API retry attempt and every redirect hop counts against the cap',
       'no OAuth or account access',
       'summary only; no raw rows or artifact bytes',
       'temporary rendered artifacts removed after the single call',
@@ -192,6 +197,7 @@ async function main(): Promise<void> {
           bangumiApi: counts.bangumiApi,
           rendererAsset: counts.rendererAsset,
           total: counts.total,
+          apiRetryAttemptsIncluded: true,
         },
         result,
         assertions,

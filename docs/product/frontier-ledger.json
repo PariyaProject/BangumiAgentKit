@@ -2297,11 +2297,12 @@
           "http_request_breakdown": {
             "bangumi_api": 3,
             "renderer_asset": 1,
-            "redirect_hops_counted": true
+            "redirect_hops_counted": true,
+            "api_retry_attempts_included": true
           },
           "result_summary": { "state": "value", "keys": ["artifact"] },
           "report": "docs/live-probes/public-tools-2026-10-15-154413213-10706.json",
-          "report_sha256": "3b08ab1d2214d8612d8cac27d6a435a92151b882652fdf518bf58efa3696d955",
+          "report_sha256": "a8df54997370c724c0a3e252e2455b6c02064bf51caf50aa4af71a0dfe9281bf",
           "claim_boundary": "One current-catalog anonymous ToolRegistry renderer observation only; no raw relation rows, image bytes, scenario acceptance, Agent/MCP, recency, ongoing-status, or upstream-completeness claim."
         },
         "superseded_initial_public_observation_2026_10_15": {

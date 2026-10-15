@@ -5,7 +5,7 @@
   "mode": "read_only_public_api_smoke",
   "catalogSha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
   "probeScriptSha256": "428ecc9da51b757ca15bf1cec91eef685e2d5e618f1598493afc0cf890f1bd91",
-  "sourceProgram": "scripts/smoke-fresh-render-person-profile-public.ts",
+  "sourceProgram": "scripts/smoke-fresh-render-person-profile-public-retry-accounted-v1.ts",
   "scopeId": "run95-fresh-render-person-profile-13684-v1",
   "requestBudget": {
     "maxPerTool": 4,
@@ -16,26 +16,23 @@
     "redirectsIncluded": true,
     "bangumiApi": 3,
     "rendererAsset": 1,
-    "total": 4
+    "total": 4,
+    "apiRetryAttemptsIncluded": true
   },
   "budgetBlocked": false,
   "userAgent": "BangumiAgentKit/live-public-probe",
   "probeCount": 1,
   "httpRequests": 4,
-  "selectedTools": [
-    "bangumi.render_person_profile"
-  ],
+  "selectedTools": ["bangumi.render_person_profile"],
   "limits": [
     "exactly one anonymous public/read ToolRegistry call",
     "one fresh fixed person profile with one-row local caps",
-    "at most four combined Bangumi API and renderer asset HTTP requests; each redirect hop counts; no retries",
+    "at most four combined Bangumi API and renderer asset HTTP requests; API retry attempts and every redirect hop count against the cap",
     "no OAuth or account access",
     "summary only; no raw rows or artifact bytes",
     "temporary rendered artifacts removed after the single call"
   ],
-  "redactions": [
-    "person relation rows, names, and image bytes are not persisted"
-  ],
+  "redactions": ["person relation rows, names, and image bytes are not persisted"],
   "results": [
     {
       "tool": "bangumi.render_person_profile",
@@ -50,13 +47,12 @@
       "requestAccounting": {
         "bangumiApi": 3,
         "rendererAsset": 1,
-        "total": 4
+        "total": 4,
+        "apiRetryAttemptsIncluded": true
       },
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       },
       "assertions": {
         "httpRequestObserved": true,
@@ -66,8 +62,13 @@
         "noErrorResult": true,
         "nonNegativeCounts": true,
         "countConsistency": true,
-        "passed": true
+        "passed": true,
+        "apiRetryAttemptsIncluded": true
       }
     }
+  ],
+  "executedProgram": "scripts/smoke-fresh-render-person-profile-public.ts",
+  "postObservationClarifications": [
+    "The original emitted limits string said no retries, but the fixed scope did not disable HttpClient automatic read-only retries. Those retries were permitted; each injected fetchFn attempt was counted by the shared request budget. The archived source is byte-for-byte identical to the executed probe. This clarification does not alter the recorded 3 Bangumi API + 1 renderer asset counts; no new public request was made."
   ]
 }

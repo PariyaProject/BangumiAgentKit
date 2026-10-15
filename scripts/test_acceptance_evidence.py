@@ -52,6 +52,9 @@ class PublicApiEvidenceTests(unittest.TestCase):
         self.unbounded_fresh_profile_probe_path = self.root / GENERATOR.FRESH_RENDER_PERSON_PROFILE_UNBOUNDED_PROGRAM
         self.unbounded_fresh_profile_probe_path.parent.mkdir(parents=True, exist_ok=True)
         self.unbounded_fresh_profile_probe_path.write_text('// fixture historical unbounded probe source\n', encoding='utf-8')
+        self.retry_accounted_fresh_profile_probe_path = self.root / GENERATOR.FRESH_RENDER_PERSON_PROFILE_RETRY_ACCOUNTED_PROGRAM
+        self.retry_accounted_fresh_profile_probe_path.parent.mkdir(parents=True, exist_ok=True)
+        self.retry_accounted_fresh_profile_probe_path.write_text('// fixture executed retry-accounted probe source\n', encoding='utf-8')
         self.original_root = GENERATOR.ROOT
         self.original_catalog = GENERATOR.CATALOG
         self.original_probe_dir = GENERATOR.LIVE_PROBE_DIR
@@ -118,6 +121,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
             'httpRequestObserved': True,
             'scopeInputExact': True,
             'scopeRequestCap': True,
+            'apiRetryAttemptsIncluded': True,
             'nonEmptySummary': True,
             'noErrorResult': True,
             'nonNegativeCounts': True,
@@ -132,6 +136,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
                 'bangumiApi': 2,
                 'rendererAsset': 1,
                 'total': 3,
+                'apiRetryAttemptsIncluded': True,
             },
             'result': {'state': 'value', 'keys': ['artifact']},
             'assertions': assertions,
@@ -149,6 +154,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
             'requestAccounting': {
                 'scope': 'bangumi_api_and_renderer_assets',
                 'redirectsIncluded': True,
+                'apiRetryAttemptsIncluded': True,
                 'bangumiApi': 2,
                 'rendererAsset': 1,
                 'total': 3,
@@ -181,6 +187,36 @@ class PublicApiEvidenceTests(unittest.TestCase):
         report['requestAccounting']['rendererAsset'] = 2
         self.report_path.write_text(json.dumps(report), encoding='utf-8')
         self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_rejects_fresh_person_profile_report_without_retry_attempt_accounting(self):
+        mutations = (
+            lambda report: report['requestAccounting'].pop('apiRetryAttemptsIncluded'),
+            lambda report: report['requestAccounting'].__setitem__('apiRetryAttemptsIncluded', False),
+            lambda report: report['results'][0]['requestAccounting'].pop('apiRetryAttemptsIncluded'),
+            lambda report: report['results'][0]['requestAccounting'].__setitem__('apiRetryAttemptsIncluded', False),
+            lambda report: report['results'][0]['assertions'].pop('apiRetryAttemptsIncluded'),
+            lambda report: report['results'][0]['assertions'].__setitem__('apiRetryAttemptsIncluded', False),
+        )
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                self.write_fresh_render_person_profile_report()
+                report = json.loads(self.report_path.read_text(encoding='utf-8'))
+                mutate(report)
+                self.report_path.write_text(json.dumps(report), encoding='utf-8')
+                self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_accepts_hash_bound_retry_accounted_archive_of_executed_source(self):
+        self.write_fresh_render_person_profile_report()
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report['sourceProgram'] = GENERATOR.FRESH_RENDER_PERSON_PROFILE_RETRY_ACCOUNTED_PROGRAM
+        report['probeScriptSha256'] = hashlib.sha256(
+            self.retry_accounted_fresh_profile_probe_path.read_bytes()
+        ).hexdigest()
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(
+            GENERATOR.public_api_smoke_names(self.catalog),
+            {'bangumi.render_person_profile'},
+        )
 
     def test_excludes_hash_bound_historical_report_that_omitted_asset_requests(self):
         self.write_fresh_render_person_profile_report()
