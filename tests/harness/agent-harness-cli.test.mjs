@@ -61,6 +61,12 @@ import {
   P01_EXPECTED_QUERY_ARGUMENTS,
 } from '../../scripts/acceptance/p01-person-position-answer-check.mjs';
 import {
+  P05_ARGUMENTS_SHA256,
+  P05_ARGUMENT_PROFILE,
+  P05_EPOCH_ID,
+  P05_TOOL_NAME,
+} from '../../scripts/acceptance/p05-person-media-public-probe.mjs';
+import {
   R01_ARGUMENT_PROFILE,
   R01_EPOCH_ID,
   R01_EXPECTED_QUERY_ARGUMENTS,
@@ -71,6 +77,10 @@ import {
   r01OneShotTerminalLabelDescription,
   r01OneShotTerminalLabelName,
 } from '../../scripts/lib/r01-one-shot-claim.mjs';
+import {
+  P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION,
+  P05_ONE_SHOT_LATCH_LABEL_NAME,
+} from '../../scripts/lib/p05-one-shot-claim.mjs';
 import { validateR01SanitizedReportFile } from '../../scripts/acceptance/write-r01-agent-mcp-report.mjs';
 import {
   generateP01RunnerReceiptKeyPair,
@@ -1400,6 +1410,52 @@ function passedCandidateFixture() {
   run.outer_sol.consumed = 1;
   run.outer_sol.product.consumed = 1;
   return { run, epoch };
+}
+
+function run95P05ClaimFixture() {
+  const { run, epoch } = passedCandidateFixture();
+  const candidateSha = sha('b');
+  const baseSha = sha('a');
+  const reviewerId = 'gpt-6-luna-max-run95-pr166-round1';
+  const branch = 'codex/epoch-run95-p05-person-media-distribution-public-probe-20261015';
+  run.state = 'EPOCH_ACTIVE';
+  run.profile = 'AUTONOMOUS_EVOLUTION';
+  run.active_epoch_pr = 166;
+  run.pending_epoch = null;
+  run.next_action = 'RESUME_PR_166';
+  epoch.epoch_id = P05_EPOCH_ID;
+  epoch.pr_number = 166;
+  epoch.branch = branch;
+  epoch.base_branch = 'master';
+  epoch.base_sha = baseSha;
+  epoch.reviewed_base_sha = baseSha;
+  epoch.candidate_sha = candidateSha;
+  epoch.review_pass_sha = candidateSha;
+  epoch.state = 'REVIEW_PASSED';
+  epoch.advances_frontier_ids = ['P05'];
+  epoch.ci = { sha: candidateSha, status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.review.reviewer_id = null;
+  epoch.review.runtime = { state: 'COMPLETED', reason: null, allocation: 'NORMAL' };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'The exact source, frontier, and runner gates are ready.',
+    why_not_extend_further: 'Adjacent person questions require different sources and semantics.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'The fixed one-read profile and claim path are bounded.',
+  };
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: reviewerId,
+      candidate_sha: candidateSha,
+      reviewed_base_sha: baseSha,
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  return { run, epoch, candidateSha, baseSha, reviewerId, branch };
 }
 
 function c03ReviewReadyEnvironment(overrides = {}) {
@@ -2857,6 +2913,202 @@ test('CLI terminalizes an invalid claim-bound R01 report as unaccepted and non-r
   }
 });
 
+test('CLI P05 claim is repository-global and read back from the active PR before query authority', () => {
+  const { run, epoch, candidateSha, baseSha, reviewerId, branch } = run95P05ClaimFixture();
+  const common = {
+    runIssueNumber: 95,
+    runIssueTitle: 'Run 95 P05 claim fixture',
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch,
+    featureBranch: branch,
+    featureHeadSha: candidateSha,
+    baseSha,
+    prState: 'OPEN',
+    draft: false,
+    checks: mandatoryChecks.map((name) => ({
+      name,
+      status: 'COMPLETED',
+      conclusion: 'SUCCESS',
+    })),
+  };
+  const firstClone = createMockEnvironment(common);
+  const claimArgs = [
+    'epoch:p05-one-shot-claim',
+    '--run',
+    '95',
+    '--pr',
+    '166',
+    '--candidate',
+    candidateSha,
+    '--base',
+    baseSha,
+    '--reviewer-id',
+    reviewerId,
+  ];
+  try {
+    const acquired = firstClone.execute(claimArgs);
+    assert.equal(acquired.status, 0, acquired.stderr);
+    const acquiredResult = JSON.parse(acquired.stdout);
+    assert.equal(acquiredResult.state, 'P05_ONE_SHOT_CLAIMED');
+    assert.equal(acquiredResult.globalLatch, P05_ONE_SHOT_LATCH_LABEL_NAME);
+    assert.equal(acquiredResult.expectedArgumentsSha256, P05_ARGUMENTS_SHA256);
+
+    const firstState = firstClone.readState();
+    const disposition = parseControlBlock(firstState.prBody, EPOCH_MARKER)
+      .adversarial_preflight.p05_one_shot_disposition;
+    assert.equal(disposition.claimId, acquiredResult.claimId);
+    assert.equal(disposition.frontierId, 'P05');
+    assert.equal(disposition.epochId, P05_EPOCH_ID);
+    assert.equal(disposition.state, 'CLAIMED');
+    assert.equal(disposition.sourceCandidateSha, candidateSha);
+    assert.equal(disposition.baseSha, baseSha);
+    assert.equal(disposition.reviewerId, reviewerId);
+    assert.equal(disposition.retryAllowed, false);
+    assert.deepEqual(disposition.globalLatch, {
+      name: P05_ONE_SHOT_LATCH_LABEL_NAME,
+      description: P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION,
+    });
+    assert.deepEqual(firstState.repositoryLabels[P05_ONE_SHOT_LATCH_LABEL_NAME], {
+      name: P05_ONE_SHOT_LATCH_LABEL_NAME,
+      color: 'b60205',
+      description: P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION,
+    });
+
+    const terminal = firstClone.execute([
+      'epoch:p05-one-shot-result',
+      '--run',
+      '95',
+      '--pr',
+      '166',
+      '--claim-id',
+      acquiredResult.claimId,
+      '--state',
+      'INCONCLUSIVE',
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    const terminalDisposition = parseControlBlock(firstClone.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.p05_one_shot_disposition;
+    assert.equal(terminalDisposition.state, 'INCONCLUSIVE');
+    assert.equal(terminalDisposition.reportWritten, false);
+    assert.equal(terminalDisposition.retryAllowed, false);
+
+    const staleSecondClone = createMockEnvironment({
+      ...common,
+      repositoryLabels: firstClone.readState().repositoryLabels,
+    });
+    try {
+      const refused = staleSecondClone.execute(claimArgs);
+      assert.equal(refused.status, 2);
+      assert.match(refused.stderr, /^P05_ONESHOT_ALREADY_CLAIMED:/u);
+      const secondState = staleSecondClone.readState();
+      assert.equal(
+        parseControlBlock(secondState.prBody, EPOCH_MARKER).adversarial_preflight
+          .p05_one_shot_disposition,
+        undefined,
+        'a clone that loses the global latch must not write a PR claim',
+      );
+      assert.equal(
+        secondState.calls.some(
+          ({ args }) => args[0] === 'api' && args[1] === 'repos/{owner}/{repo}/pulls/166',
+        ),
+        false,
+        'a clone that loses the global latch must not patch the active PR',
+      );
+    } finally {
+      staleSecondClone.cleanup();
+    }
+  } finally {
+    firstClone.cleanup();
+  }
+});
+
+test('CLI refuses P05 integration until the global one-shot claim has a terminal result', () => {
+  const { run, epoch, candidateSha, baseSha, branch } = run95P05ClaimFixture();
+  const environment = createMockEnvironment({
+    runIssueNumber: 95,
+    runIssueTitle: 'Run 95 P05 merge-gate fixture',
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch,
+    featureBranch: branch,
+    featureHeadSha: candidateSha,
+    baseSha,
+    prState: 'OPEN',
+    draft: false,
+  });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '166']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^P05_ONESHOT_RECONCILIATION_REQUIRED:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
+    assert.equal(
+      environment.readState().calls.some(
+        ({ args }) => args[0] === 'pr' && args[1] === 'merge',
+      ),
+      false,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI merges P05 only after terminal claim and repository latch agree', () => {
+  const { run, epoch, candidateSha, baseSha, reviewerId, branch } = run95P05ClaimFixture();
+  const claimId = 'p05-run-95-pr-166-bbbbbbbbbbbb-terminal';
+  epoch.adversarial_preflight.p05_one_shot_disposition = {
+    schemaVersion: 1,
+    claimId,
+    frontierId: 'P05',
+    epochId: P05_EPOCH_ID,
+    runNumber: 95,
+    toolName: P05_TOOL_NAME,
+    argumentProfile: P05_ARGUMENT_PROFILE,
+    expectedArgumentsSha256: P05_ARGUMENTS_SHA256,
+    state: 'INCONCLUSIVE',
+    resultState: 'INCONCLUSIVE',
+    sourceCandidateSha: candidateSha,
+    baseSha,
+    ciSha: candidateSha,
+    ciStatus: 'SUCCESS',
+    prNumber: 166,
+    reviewerId,
+    globalLatch: {
+      name: P05_ONE_SHOT_LATCH_LABEL_NAME,
+      description: P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION,
+    },
+    reportWritten: false,
+    retryAllowed: false,
+    finishedAt: '2026-10-15T00:00:00.000Z',
+  };
+  const environment = createMockEnvironment({
+    runIssueNumber: 95,
+    runIssueTitle: 'Run 95 P05 merge-gate fixture',
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch,
+    featureBranch: branch,
+    featureHeadSha: candidateSha,
+    baseSha,
+    prState: 'OPEN',
+    draft: false,
+    repositoryLabels: {
+      [P05_ONE_SHOT_LATCH_LABEL_NAME]: {
+        name: P05_ONE_SHOT_LATCH_LABEL_NAME,
+        color: 'b60205',
+        description: P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION,
+      },
+    },
+  });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '166']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(parseControlBlock(environment.readState().prBody, EPOCH_MARKER).state, 'MERGED');
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('CLI G19 one-shot claim and terminal result persist in the durable Epoch control body', () => {
   const { run, epoch } = passedCandidateFixture();
   const reviewerId = 'gpt-6-luna-max-run95-pr42-round1';
@@ -3576,6 +3828,50 @@ test('CLI Candidate refresh cannot clear the durable G19 one-shot disposition', 
       reportWritten: false,
       retryAllowed: false,
     });
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Candidate refresh cannot clear or replace a durable P05 one-shot claim', () => {
+  const { run, epoch, branch } = run95P05ClaimFixture();
+  const disposition = {
+    claimId: 'p05-run-95-pr-166-bbbbbbbbbbbb-test',
+    frontierId: 'P05',
+    epochId: P05_EPOCH_ID,
+    state: 'INCONCLUSIVE',
+    reportWritten: false,
+    retryAllowed: false,
+  };
+  epoch.adversarial_preflight.p05_one_shot_disposition = disposition;
+  const environment = createMockEnvironment({
+    runIssueNumber: 95,
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch,
+    featureBranch: branch,
+    featureHeadSha: sha('d'),
+    baseSha: sha('a'),
+    draft: false,
+  });
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--run',
+      '95',
+      '--pr',
+      '166',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('d'),
+        candidate_refresh_reason: 'Preserve the P05 one-shot disposition.',
+      }),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^P05_ONESHOT_DISPOSITION_IMMUTABLE:/u);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_PASSED');
+    assert.deepEqual(stored.adversarial_preflight.p05_one_shot_disposition, disposition);
   } finally {
     environment.cleanup();
   }
