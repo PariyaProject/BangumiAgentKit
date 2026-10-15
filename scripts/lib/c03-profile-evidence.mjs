@@ -4,6 +4,57 @@ import {
 } from './agent-mcp-profile-claims.mjs';
 
 const PROFILE = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
+const COVERAGE_COUNTER_FIELDS = Object.freeze([
+  'relationRowsObserved',
+  'relationRowsSelected',
+  'relationRowsDroppedAtLimit',
+  'subjectDetailsSucceeded',
+  'subjectDetailsFailed',
+  'rowsEligible',
+  'rowsReturned',
+  'unknownRoleRows',
+]);
+const COVERAGE_BOOLEAN_FIELDS = Object.freeze(['outputTruncated', 'truncated']);
+const PROFILE_EVIDENCE_REFRESH_PATHS = new Set([
+  PROFILE.reportPath,
+  'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+  'docs/product/frontier-ledger.json',
+]);
+
+function dateParts(value) {
+  if (typeof value !== 'string' || !/^(\d{4})-(\d{2})-(\d{2})$/u.test(value)) return null;
+  const [, yearText, monthText, dayText] = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(value);
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  if (year < 1 || month < 1 || month > 12 || day < 1) return null;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (day > daysInMonth[month - 1]) return null;
+  return { year, month, day };
+}
+
+export function isC03CalendarWindow(window, expectedMonths) {
+  if (!window || !integer(expectedMonths, 1) || window.months !== expectedMonths) return false;
+  const start = dateParts(window.start);
+  const end = dateParts(window.end);
+  if (!start || !end) return false;
+  const endMonthIndex = end.year * 12 + end.month - 1;
+  const startMonthIndex = endMonthIndex - expectedMonths + 1;
+  const startYear = Math.floor(startMonthIndex / 12);
+  const startMonth = (startMonthIndex % 12) + 1;
+  const expectedStart = `${String(startYear).padStart(4, '0')}-${String(startMonth).padStart(2, '0')}-01`;
+  return window.start === expectedStart;
+}
+
+export function isC03ProfileEvidenceRefreshPaths(paths) {
+  return (
+    Array.isArray(paths) &&
+    paths.length > 0 &&
+    paths.includes(PROFILE.reportPath) &&
+    paths.every((item) => typeof item === 'string' && PROFILE_EVIDENCE_REFRESH_PATHS.has(item))
+  );
+}
 
 function integer(value, minimum = 0) {
   return Number.isSafeInteger(value) && value >= minimum;
@@ -97,11 +148,12 @@ export function summarizeC03ActorResult(result, expectedArguments) {
         : null,
       rowsEligible: integer(coverage?.rowsEligible) ? coverage.rowsEligible : null,
       rowsReturned: integer(coverage?.rowsReturned) ? coverage.rowsReturned : null,
-      outputTruncated: coverage?.outputTruncated === true,
+      outputTruncated:
+        typeof coverage?.outputTruncated === 'boolean' ? coverage.outputTruncated : null,
       unknownRoleRows: integer(coverage?.staffRoleUnknownRows)
         ? coverage.staffRoleUnknownRows
         : null,
-      truncated: coverage?.truncated === true,
+      truncated: typeof coverage?.truncated === 'boolean' ? coverage.truncated : null,
     },
   };
 }
@@ -147,8 +199,10 @@ export function buildC03ObservedComparison(actors) {
     coveragePartial: actors.some(
       (actor) =>
         actor.state !== 'complete' ||
-        actor.coverage.outputTruncated ||
-        actor.coverage.truncated ||
+        COVERAGE_COUNTER_FIELDS.some((field) => actor.coverage[field] === null) ||
+        COVERAGE_BOOLEAN_FIELDS.some((field) => actor.coverage[field] === null) ||
+        actor.coverage.outputTruncated === true ||
+        actor.coverage.truncated === true ||
         (actor.coverage.relationRowsDroppedAtLimit ?? 0) > 0 ||
         (actor.coverage.subjectDetailsFailed ?? 0) > 0 ||
         actor.coverage.unknownRoleRows === null ||

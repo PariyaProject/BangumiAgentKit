@@ -133,6 +133,7 @@ if (tool === 'gh') {
       headRefName: pr?.headRefName ?? state.featureBranch,
       headRefOid: pr?.headRefOid ?? state.featureHeadSha,
       baseRefName: pr?.baseRefName ?? state.baseBranch,
+      baseRefOid: pr?.baseRefOid ?? state.baseSha,
       mergeStateStatus: 'CLEAN',
       statusCheckRollup: pr?.checks ?? state.checks ?? [],
       mergeCommit: state.mergeCommit ? { oid: state.mergeCommit } : null,
@@ -183,7 +184,13 @@ if (tool === 'gh') {
     }
     output();
   } else if (command === 'diff' && rest.includes('--name-only')) {
-    output((state.changedPaths ?? []).join('\n'));
+    const range = rest.find((arg) => arg.includes('...'));
+    output(
+      (range === state.candidateRefreshRange
+        ? (state.candidateRefreshPaths ?? [])
+        : (state.changedPaths ?? [])
+      ).join('\n'),
+    );
   } else if (command === 'log') output((state.commitSubjects ?? []).join('\n'));
   else if (command === 'merge-base' && rest[0] === '--is-ancestor') {
     if (state.candidateIsAncestor === false) fail('not ancestor');

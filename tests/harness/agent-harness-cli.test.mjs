@@ -1574,6 +1574,155 @@ test('C03 profile claim and terminal state cannot be cleared during Candidate re
   }
 });
 
+function c03ReportWrittenDisposition() {
+  return {
+    claimId: 'profile-run-95-pr-42-bbbbbbbbbbbb-1700000000000',
+    profileId: C03_PROFILE.id,
+    state: 'REPORT_WRITTEN',
+    sourceCandidateSha: sha('b'),
+    bundleSha256: 'c'.repeat(64),
+    reportPath: C03_PROFILE.reportPath,
+    reportSha256: 'd'.repeat(64),
+    reportWritten: true,
+    retryAllowed: false,
+  };
+}
+
+function c03ReportRefreshEnvironment(disposition, overrides = {}, epochOverrides = {}) {
+  const { run, epoch } = passedCandidateFixture();
+  Object.assign(epoch, epochOverrides);
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'Preserve the exact C03 report claim through an evidence-only refresh.',
+    agent_mcp_profile_dispositions: { [C03_PROFILE.id]: structuredClone(disposition) },
+  };
+  const refreshPaths = [
+    C03_PROFILE.reportPath,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+  ];
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('e'),
+    candidateRefreshRange: `${sha('b')}...${sha('e')}`,
+    candidateRefreshPaths: refreshPaths,
+    draft: false,
+    ...overrides,
+  });
+  return { environment, run, epoch };
+}
+
+test('C03 report Candidate refresh accepts only the report and bounded acceptance evidence', () => {
+  const disposition = c03ReportWrittenDisposition();
+  const { environment } = c03ReportRefreshEnvironment(disposition);
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('e'),
+        candidate_refresh_reason: 'Commit the C03 report and update its acceptance evidence.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Preserve the exact C03 report claim through an evidence-only refresh.',
+          agent_mcp_profile_dispositions: { [C03_PROFILE.id]: disposition },
+        },
+      }),
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_READY');
+    assert.equal(stored.candidate_sha, sha('e'));
+    assert.deepEqual(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[C03_PROFILE.id],
+      disposition,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C03 report Candidate refresh rejects a runtime or unrelated path change', () => {
+  const { environment } = c03ReportRefreshEnvironment(
+    c03ReportWrittenDisposition(),
+    {
+      candidateRefreshPaths: [
+        C03_PROFILE.reportPath,
+        'docs/product/frontier-ledger.json',
+        'apps/mcp/codex-one-tool-mcp-server.mjs',
+      ],
+    },
+    {
+      state: 'CORRECTIVE_REQUIRED',
+      candidate_sha: sha('d'),
+      review_pass_sha: null,
+    },
+  );
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('e'),
+        candidate_refresh_reason: 'Attempt a runtime code change after the C03 report.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Preserve the exact C03 report claim through an evidence-only refresh.',
+          agent_mcp_profile_dispositions: {
+            [C03_PROFILE.id]: c03ReportWrittenDisposition(),
+          },
+        },
+      }),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).candidate_sha,
+      sha('d'),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C03 report Candidate refresh rejects an MCP bundle change', () => {
+  const disposition = c03ReportWrittenDisposition();
+  const { environment } = c03ReportRefreshEnvironment(disposition);
+  try {
+    const result = environment.execute(
+      [
+        'candidate:check',
+        '--pr',
+        '42',
+        '--evidence',
+        candidateEvidence(environment, {
+          candidate_sha: sha('e'),
+          candidate_refresh_reason: 'Attempt an MCP bundle change after the C03 report.',
+          adversarial_preflight: {
+            completed: true,
+            summary: 'Preserve the exact C03 report claim through an evidence-only refresh.',
+            agent_mcp_profile_dispositions: { [C03_PROFILE.id]: disposition },
+          },
+        }),
+      ],
+      { HARNESS_G04_BUNDLE_SHA256: 'f'.repeat(64) },
+    );
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).candidate_sha,
+      sha('b'),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('C03 terminal result fails closed when the permanent claim latch is missing', () => {
   const { environment, reviewerId } = c03ReviewReadyEnvironment();
   const keyPair = generateG04RunnerReceiptKeyPair();

@@ -9,7 +9,12 @@ import {
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
-import { buildC03ObservedComparison, verifyC03Answer } from '../lib/c03-profile-evidence.mjs';
+import {
+  buildC03ObservedComparison,
+  isC03CalendarWindow,
+  summarizeC03ActorResult,
+  verifyC03Answer,
+} from '../lib/c03-profile-evidence.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PROFILE = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
@@ -235,6 +240,18 @@ export function createC03RunnerReceipt(payload, { publicKeyBase64, privateKey })
   };
 }
 
+export function projectC03ProfileActors(serverSummary) {
+  if (
+    !Array.isArray(serverSummary?.results) ||
+    serverSummary.results.length !== PROFILE.calls.length
+  ) {
+    throw new TypeError('C03 actor projection requires the exact registered result pair.');
+  }
+  return serverSummary.results.map((item, index) =>
+    summarizeC03ActorResult(item?.resultSummary, PROFILE.calls[index].arguments),
+  );
+}
+
 export function writeC03ProfileReport(input, { privateKey } = {}) {
   const { claim, serverSummary, completedMcpCalls, events } = input ?? {};
   if (
@@ -285,7 +302,7 @@ export function writeC03ProfileReport(input, { privateKey } = {}) {
       return { passed: false, reason: `C03_CALL_${index}_MISMATCH` };
   }
 
-  const actors = serverSummary.results.map((item) => item.resultSummary);
+  const actors = projectC03ProfileActors(serverSummary);
   const answerResult = verifyC03Answer(input.answer, actors);
   if (!answerResult.passed) return { passed: false, reason: answerResult.reason };
   const answerBytes = Buffer.byteLength(input.answer, 'utf8');
@@ -486,9 +503,7 @@ export function validateC03ProfileReport(report, claim, reportBytes = null) {
         !actor.window ||
         Object.keys(actor.window).sort().join('\0') !==
           [...ACTOR_WINDOW_FIELDS].sort().join('\0') ||
-        actor?.window?.months !== expected.windowMonths ||
-        !/^\d{4}-\d{2}-\d{2}$/u.test(actor?.window?.start ?? '') ||
-        !/^\d{4}-\d{2}-\d{2}$/u.test(actor?.window?.end ?? '') ||
+        !isC03CalendarWindow(actor?.window, expected.windowMonths) ||
         actor?.window?.asOfSemantics !== 'calendar_months_ending_on_as_of_date' ||
         !actor.roleCounts ||
         Object.keys(actor.roleCounts).sort().join('\0') !==
@@ -514,7 +529,24 @@ export function validateC03ProfileReport(report, claim, reportBytes = null) {
         ) ||
         !actor.coverage ||
         Object.keys(actor.coverage).sort().join('\0') !==
-          [...ACTOR_COVERAGE_FIELDS].sort().join('\0')
+          [...ACTOR_COVERAGE_FIELDS].sort().join('\0') ||
+        [
+          'relationRowsObserved',
+          'relationRowsSelected',
+          'relationRowsDroppedAtLimit',
+          'subjectDetailsSucceeded',
+          'subjectDetailsFailed',
+          'rowsEligible',
+          'rowsReturned',
+          'unknownRoleRows',
+        ].some(
+          (field) =>
+            actor.coverage[field] !== null &&
+            (!Number.isSafeInteger(actor.coverage[field]) || actor.coverage[field] < 0),
+        ) ||
+        ['outputTruncated', 'truncated'].some(
+          (field) => actor.coverage[field] !== null && typeof actor.coverage[field] !== 'boolean',
+        )
       )
         fail(`C03_ACTOR_${index}_INVALID`);
     }

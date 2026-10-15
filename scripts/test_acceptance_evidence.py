@@ -6209,5 +6209,139 @@ class C03PersonSelectionEvidenceTests(unittest.TestCase):
         self.assertFalse(GENERATOR.codex_c03_person_selection_evidence_is_valid(raw_data))
 
 
+class C03ReportValidationRulesTests(unittest.TestCase):
+    def setUp(self):
+        candidate = 'a' * 40
+        base = 'b' * 40
+        self.report = {
+            'sourceRevision': candidate,
+            'baseSha': base,
+            'prNumber': 162,
+            'mcpBundleSha256': 'c' * 64,
+        }
+        self.status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 162},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_C03_EPOCH_ID,
+                    'pr_number': 162,
+                    'base_branch': 'master',
+                    'base_sha': base,
+                    'candidate_sha': candidate,
+                    'branch': 'codex/c03',
+                },
+                'pr_head_sha': candidate,
+                'pr_head_ref_name': 'codex/c03',
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base,
+                'pr_is_draft': False,
+            },
+        }
+        self.changed_paths = [
+            GENERATOR.CODEX_C03_REPORT_RELATIVE_PATH,
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+        ]
+
+    def test_accepts_current_candidate_with_evidence_only_refresh(self):
+        self.assertTrue(
+            GENERATOR.codex_c03_profile_candidate_binding_is_valid(
+                self.report, self.status, self.changed_paths, self.report['mcpBundleSha256'],
+            ),
+        )
+        self.assertTrue(
+            GENERATOR.codex_c03_profile_evidence_refresh_paths_are_valid(self.changed_paths),
+        )
+
+        merged = json.loads(json.dumps(self.status))
+        merged['run']['state']['active_epoch_pr'] = 163
+        merged['epoch']['github_state'] = 'MERGED'
+        merged['epoch']['state']['state'] = 'MERGED'
+        merged['epoch']['pr_base_sha'] = 'd' * 40
+        merged['epoch']['state']['review_history'] = [{
+            'candidate_sha': self.status['epoch']['state']['candidate_sha'],
+            'reviewed_base_sha': self.report['baseSha'],
+            'verdict': 'PASS',
+        }]
+        self.assertTrue(
+            GENERATOR.codex_c03_profile_candidate_binding_is_valid(
+                self.report, merged, self.changed_paths, self.report['mcpBundleSha256'],
+            ),
+        )
+
+    def test_rejects_runtime_changes_stale_heads_or_changed_bundle(self):
+        runtime_paths = [
+            GENERATOR.CODEX_C03_REPORT_RELATIVE_PATH,
+            'apps/mcp/codex-one-tool-mcp-server.mjs',
+        ]
+        self.assertFalse(
+            GENERATOR.codex_c03_profile_candidate_binding_is_valid(
+                self.report, self.status, runtime_paths, self.report['mcpBundleSha256'],
+            ),
+        )
+
+        stale = json.loads(json.dumps(self.status))
+        stale['epoch']['pr_head_sha'] = 'd' * 40
+        self.assertFalse(
+            GENERATOR.codex_c03_profile_candidate_binding_is_valid(
+                self.report, stale, self.changed_paths, self.report['mcpBundleSha256'],
+            ),
+        )
+        self.assertFalse(
+            GENERATOR.codex_c03_profile_candidate_binding_is_valid(
+                self.report, self.status, self.changed_paths, 'e' * 64,
+            ),
+        )
+
+    def test_calendar_window_must_be_real_and_exactly_36_calendar_months(self):
+        valid = {
+            'months': 36,
+            'start': '2023-11-01',
+            'end': '2026-10-14',
+        }
+        self.assertTrue(GENERATOR.codex_c03_profile_calendar_window_is_valid(valid, 36))
+        self.assertFalse(
+            GENERATOR.codex_c03_profile_calendar_window_is_valid(
+                {**valid, 'end': '2026-02-30'}, 36,
+            ),
+        )
+        self.assertFalse(
+            GENERATOR.codex_c03_profile_calendar_window_is_valid(
+                {**valid, 'start': '2023-12-01'}, 36,
+            ),
+        )
+
+    def test_every_missing_coverage_counter_makes_a_complete_result_partial(self):
+        coverage = {
+            'relationRowsObserved': 0,
+            'relationRowsSelected': 0,
+            'relationRowsDroppedAtLimit': 0,
+            'subjectDetailsSucceeded': 0,
+            'subjectDetailsFailed': 0,
+            'rowsEligible': 0,
+            'rowsReturned': 0,
+            'outputTruncated': False,
+            'unknownRoleRows': 0,
+            'truncated': False,
+        }
+        actor = {'state': 'complete', 'coverage': coverage}
+        self.assertFalse(GENERATOR.codex_c03_profile_actor_coverage_is_partial(actor))
+        for field in coverage:
+            partial_actor = {'state': 'complete', 'coverage': {**coverage, field: None}}
+            self.assertTrue(
+                GENERATOR.codex_c03_profile_actor_coverage_is_partial(partial_actor),
+                field,
+            )
+        self.assertTrue(
+            GENERATOR.codex_c03_profile_actor_coverage_is_partial(
+                {'state': 'complete', 'coverage': {key: value for key, value in coverage.items() if key != 'relationRowsSelected'}},
+            ),
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

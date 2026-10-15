@@ -21,10 +21,37 @@ import {
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
+import { isC03CalendarWindow } from '../lib/c03-profile-evidence.mjs';
 import { writeC03ProfileReport } from './write-c03-profile-report.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PROFILE = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
+const RESULT_SUMMARY_FIELDS = [
+  'personId',
+  'state',
+  'window',
+  'summary',
+  'coverage',
+  'observedRows',
+];
+const WINDOW_FIELDS = ['months', 'start', 'end', 'asOfSemantics'];
+const SUMMARY_FIELDS = ['uniqueSubjects', 'byRole'];
+const ROLE_FIELDS = ['key', 'creditRows', 'uniqueSubjects'];
+const COVERAGE_FIELDS = [
+  'relationRowsObserved',
+  'relationRowsSelected',
+  'relationRowsDroppedAtLimit',
+  'subjectDetailsSucceeded',
+  'subjectDetailsFailed',
+  'rowsEligible',
+  'rowsReturned',
+  'outputTruncated',
+  'staffRoleUnknownRows',
+  'truncated',
+];
+const COVERAGE_COUNTER_FIELDS = COVERAGE_FIELDS.filter(
+  (field) => !['outputTruncated', 'truncated'].includes(field),
+);
 const RUN_NUMBER = 95;
 const MODEL = 'gpt-6-luna';
 const REASONING_EFFORT = 'max';
@@ -396,14 +423,62 @@ export function validateC03ServerSummary(summary, sourceRevision, bundleSha256) 
     return false;
   for (let index = 0; index < PROFILE.calls.length; index += 1) {
     const result = summary.results[index];
+    const actor = result?.resultSummary;
+    const roles = actor?.summary?.byRole;
+    const coverage = actor?.coverage;
     if (
       result?.sequenceIndex !== index ||
       result?.status !== 'SUCCESS' ||
-      result.resultSummary?.personId !== PROFILE.calls[index].arguments.personId ||
-      result.resultSummary?.window?.months !== PROFILE.calls[index].arguments.windowMonths ||
-      !Array.isArray(result.resultSummary?.observedRows) ||
-      !Number.isSafeInteger(result.resultSummary?.coverage?.staffRoleUnknownRows) ||
-      result.resultSummary.coverage.staffRoleUnknownRows < 0
+      !actor ||
+      JSON.stringify(Object.keys(actor).sort()) !==
+        JSON.stringify([...RESULT_SUMMARY_FIELDS].sort()) ||
+      actor.personId !== PROFILE.calls[index].arguments.personId ||
+      !['complete', 'partial', 'unavailable', 'not_computable', 'unknown'].includes(actor.state) ||
+      !actor.window ||
+      JSON.stringify(Object.keys(actor.window).sort()) !==
+        JSON.stringify([...WINDOW_FIELDS].sort()) ||
+      !isC03CalendarWindow(actor.window, PROFILE.calls[index].arguments.windowMonths) ||
+      actor.window.asOfSemantics !== 'calendar_months_ending_on_as_of_date' ||
+      !actor.summary ||
+      JSON.stringify(Object.keys(actor.summary).sort()) !==
+        JSON.stringify([...SUMMARY_FIELDS].sort()) ||
+      !Number.isSafeInteger(actor.summary.uniqueSubjects) ||
+      actor.summary.uniqueSubjects < 0 ||
+      !Array.isArray(roles) ||
+      roles.length > 3 ||
+      roles.some(
+        (role) =>
+          !role ||
+          JSON.stringify(Object.keys(role).sort()) !== JSON.stringify([...ROLE_FIELDS].sort()) ||
+          !['main', 'support', 'unknown'].includes(role.key) ||
+          !Number.isSafeInteger(role.creditRows) ||
+          role.creditRows < 0 ||
+          !Number.isSafeInteger(role.uniqueSubjects) ||
+          role.uniqueSubjects < 0 ||
+          role.uniqueSubjects > actor.summary.uniqueSubjects,
+      ) ||
+      new Set(roles.map((role) => role.key)).size !== roles.length ||
+      !coverage ||
+      JSON.stringify(Object.keys(coverage).sort()) !==
+        JSON.stringify([...COVERAGE_FIELDS].sort()) ||
+      COVERAGE_COUNTER_FIELDS.some(
+        (field) =>
+          coverage[field] !== null &&
+          (!Number.isSafeInteger(coverage[field]) || coverage[field] < 0),
+      ) ||
+      ['outputTruncated', 'truncated'].some(
+        (field) => coverage[field] !== null && typeof coverage[field] !== 'boolean',
+      ) ||
+      !Array.isArray(actor.observedRows) ||
+      actor.observedRows.length > PROFILE.calls[index].arguments.maxRows ||
+      actor.observedRows.some(
+        (row) =>
+          !row ||
+          JSON.stringify(Object.keys(row).sort()) !== JSON.stringify(['roleFamily', 'subjectId']) ||
+          !Number.isSafeInteger(row.subjectId) ||
+          row.subjectId < 1 ||
+          !['main', 'support', 'unknown'].includes(row.roleFamily),
+      )
     )
       return false;
   }

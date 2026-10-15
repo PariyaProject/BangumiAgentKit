@@ -214,7 +214,7 @@ function parseArguments(argv) {
   };
 }
 
-function summarizeProfileToolResult(result, expectedArguments) {
+export function summarizeProfileToolResult(result, expectedArguments) {
   const summary = result?.summary;
   const coverage = result?.coverage;
   const rows = Array.isArray(result?.rows) ? result.rows : [];
@@ -257,11 +257,12 @@ function summarizeProfileToolResult(result, expectedArguments) {
         : null,
       rowsEligible: Number.isInteger(coverage?.rowsEligible) ? coverage.rowsEligible : null,
       rowsReturned: Number.isInteger(coverage?.rowsReturned) ? coverage.rowsReturned : null,
-      outputTruncated: coverage?.outputTruncated === true,
+      outputTruncated:
+        typeof coverage?.outputTruncated === 'boolean' ? coverage.outputTruncated : null,
       staffRoleUnknownRows: Number.isInteger(coverage?.staffRoleUnknownRows)
         ? coverage.staffRoleUnknownRows
         : null,
-      truncated: coverage?.truncated === true,
+      truncated: typeof coverage?.truncated === 'boolean' ? coverage.truncated : null,
     },
     observedRows: rows.slice(0, expectedArguments.maxRows).map((row) => ({
       subjectId: Number.isSafeInteger(row?.subjectId) && row.subjectId > 0 ? row.subjectId : null,

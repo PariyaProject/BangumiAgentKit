@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildC03ObservedComparison,
+  isC03CalendarWindow,
+  isC03ProfileEvidenceRefreshPaths,
   summarizeC03ActorResult,
   verifyC03Answer,
 } from '../../scripts/lib/c03-profile-evidence.mjs';
@@ -132,6 +134,86 @@ test('C03 comparison marks missing unknown-role coverage as partial', () => {
   }
   actors[0].coverage.unknownRoleRows = null;
   assert.equal(buildC03ObservedComparison(actors).coveragePartial, true);
+});
+
+test('C03 comparison marks every missing numeric or boolean coverage counter as partial', () => {
+  const expectedCoverage = {
+    relationRowsObserved: 0,
+    relationRowsSelected: 0,
+    relationRowsDroppedAtLimit: 0,
+    subjectDetailsSucceeded: 0,
+    subjectDetailsFailed: 0,
+    rowsEligible: 0,
+    rowsReturned: 0,
+    outputTruncated: false,
+    staffRoleUnknownRows: 0,
+    truncated: false,
+  };
+  const expectedSummary = {
+    uniqueSubjects: 0,
+    byRole: [],
+  };
+  const window = {
+    months: 36,
+    start: '2023-11-01',
+    end: '2026-10-14',
+    asOfSemantics: 'calendar_months_ending_on_as_of_date',
+  };
+  for (const field of Object.keys(expectedCoverage)) {
+    const projectedField = field === 'staffRoleUnknownRows' ? 'unknownRoleRows' : field;
+    const actors = profile.calls.map((call, index) =>
+      summarizeC03ActorResult(
+        {
+          state: 'complete',
+          window,
+          summary: expectedSummary,
+          coverage:
+            index === 0
+              ? Object.fromEntries(
+                  Object.entries(expectedCoverage).filter(([key]) => key !== field),
+                )
+              : expectedCoverage,
+          rows: [],
+        },
+        call.arguments,
+      ),
+    );
+    assert.equal(actors[0].coverage[projectedField], null, field);
+    assert.equal(buildC03ObservedComparison(actors).coveragePartial, true, field);
+  }
+});
+
+test('C03 calendar window requires real dates and the exact calendar-month range', () => {
+  const valid = {
+    months: 36,
+    start: '2023-11-01',
+    end: '2026-10-14',
+  };
+  assert.equal(isC03CalendarWindow(valid, 36), true);
+  assert.equal(isC03CalendarWindow({ ...valid, end: '2026-02-30' }, 36), false);
+  assert.equal(isC03CalendarWindow({ ...valid, start: '2023-12-01' }, 36), false);
+  assert.equal(isC03CalendarWindow({ ...valid, months: 35 }, 36), false);
+});
+
+test('C03 report refresh permits only its report and acceptance evidence files', () => {
+  assert.equal(
+    isC03ProfileEvidenceRefreshPaths([
+      profile.reportPath,
+      'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+      'docs/product/frontier-ledger.json',
+    ]),
+    true,
+  );
+  assert.equal(isC03ProfileEvidenceRefreshPaths([profile.reportPath]), true);
+  assert.equal(
+    isC03ProfileEvidenceRefreshPaths([
+      profile.reportPath,
+      'apps/mcp/codex-one-tool-mcp-server.mjs',
+    ]),
+    false,
+  );
+  assert.equal(isC03ProfileEvidenceRefreshPaths(['docs/product/frontier-ledger.json']), false);
+  assert.equal(isC03ProfileEvidenceRefreshPaths([]), false);
 });
 
 test('C03 comparison requires identical observed calendar windows', () => {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { summarizeProfileToolResult } from '../../apps/mcp/codex-one-tool-mcp-server.mjs';
 import {
   buildC03CodexExecArgs,
   classifyC03ProfileAttempt,
@@ -89,7 +90,7 @@ test('C03 Codex invocation exposes only the registered MCP tool and disables oth
   assert.equal(args.at(-1).includes('Do not call any other tool'), true);
 });
 
-test('C03 server summary must preserve unknown-role coverage for both ordered calls', () => {
+test('C03 server summary must preserve all coverage fields for both ordered calls', () => {
   const catalogBytes = readFileSync(new URL('../../docs/tool-catalog.json', import.meta.url));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
   const tool = catalog.find((entry) => entry.name === profile.toolName);
@@ -115,8 +116,26 @@ test('C03 server summary must preserve unknown-role coverage for both ordered ca
       status: 'SUCCESS',
       resultSummary: {
         personId: call.arguments.personId,
-        window: { months: call.arguments.windowMonths },
-        coverage: { staffRoleUnknownRows: 0 },
+        state: 'complete',
+        window: {
+          months: call.arguments.windowMonths,
+          start: '2023-11-01',
+          end: '2026-10-14',
+          asOfSemantics: 'calendar_months_ending_on_as_of_date',
+        },
+        summary: { uniqueSubjects: 0, byRole: [] },
+        coverage: {
+          relationRowsObserved: 0,
+          relationRowsSelected: 0,
+          relationRowsDroppedAtLimit: 0,
+          subjectDetailsSucceeded: 0,
+          subjectDetailsFailed: 0,
+          rowsEligible: 0,
+          rowsReturned: 0,
+          outputTruncated: false,
+          staffRoleUnknownRows: 0,
+          truncated: false,
+        },
         observedRows: [],
       },
     })),
@@ -133,10 +152,48 @@ test('C03 server summary must preserve unknown-role coverage for both ordered ca
     false,
   );
 
+  const unknownCoverage = structuredClone(summary);
+  unknownCoverage.results[0].resultSummary.coverage.relationRowsSelected = null;
+  assert.equal(
+    validateC03ServerSummary(unknownCoverage, summary.sourceRevision, summary.bundleSha256),
+    true,
+  );
+
   const invalidCoverage = structuredClone(summary);
   invalidCoverage.results[1].resultSummary.coverage.staffRoleUnknownRows = -1;
   assert.equal(
     validateC03ServerSummary(invalidCoverage, summary.sourceRevision, summary.bundleSha256),
     false,
   );
+});
+
+test('C03 MCP server preserves missing truncation counters as unknown', () => {
+  const result = summarizeProfileToolResult(
+    {
+      state: 'complete',
+      window: {
+        months: 36,
+        start: '2023-11-01',
+        end: '2026-10-14',
+        asOfSemantics: 'calendar_months_ending_on_as_of_date',
+      },
+      summary: { uniqueSubjects: 0, byRole: [] },
+      coverage: {},
+      rows: [],
+    },
+    profile.calls[0].arguments,
+  );
+  assert.equal(result.coverage.outputTruncated, null);
+  assert.equal(result.coverage.truncated, null);
+  for (const field of [
+    'relationRowsObserved',
+    'relationRowsSelected',
+    'relationRowsDroppedAtLimit',
+    'subjectDetailsSucceeded',
+    'subjectDetailsFailed',
+    'rowsEligible',
+    'rowsReturned',
+    'staffRoleUnknownRows',
+  ])
+    assert.equal(result.coverage[field], null, field);
 });

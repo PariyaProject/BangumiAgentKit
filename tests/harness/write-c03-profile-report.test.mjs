@@ -10,6 +10,7 @@ import { buildC03ObservedComparison } from '../../scripts/lib/c03-profile-eviden
 import {
   buildC03RunnerReceiptPayload,
   createC03RunnerReceipt,
+  projectC03ProfileActors,
   validateC03ProfileReport,
 } from '../../scripts/acceptance/write-c03-profile-report.mjs';
 
@@ -179,6 +180,42 @@ function fixture() {
   return { claim, report };
 }
 
+test('C03 report projection carries missing counters through as partial coverage', () => {
+  const results = profile.calls.map((call, index) => ({
+    resultSummary: {
+      personId: call.arguments.personId,
+      state: 'complete',
+      window: {
+        months: 36,
+        start: '2023-11-01',
+        end: '2026-10-14',
+        asOfSemantics: 'calendar_months_ending_on_as_of_date',
+      },
+      summary: {
+        uniqueSubjects: 1,
+        byRole: [{ key: 'main', creditRows: 1, uniqueSubjects: 1 }],
+      },
+      coverage: {
+        relationRowsObserved: 1,
+        relationRowsSelected: index === 0 ? null : 1,
+        relationRowsDroppedAtLimit: 0,
+        subjectDetailsSucceeded: 1,
+        subjectDetailsFailed: 0,
+        rowsEligible: 1,
+        rowsReturned: 1,
+        outputTruncated: index === 0 ? null : false,
+        staffRoleUnknownRows: 0,
+        truncated: false,
+      },
+      observedRows: [{ subjectId: 10 + index, roleFamily: 'main' }],
+    },
+  }));
+  const actors = projectC03ProfileActors({ results });
+  assert.equal(actors[0].coverage.relationRowsSelected, null);
+  assert.equal(actors[0].coverage.outputTruncated, null);
+  assert.equal(buildC03ObservedComparison(actors).coveragePartial, true);
+});
+
 test('C03 report requires exact claim, bounded actors, role math, privacy, and signed receipt', () => {
   const { claim, report } = fixture();
   const bytes = Buffer.from(`${JSON.stringify(report, null, 2)}\n`);
@@ -213,6 +250,26 @@ test('C03 report requires exact claim, bounded actors, role math, privacy, and s
   assert.equal(
     validateC03ProfileReport(untrustedWindow, claim, Buffer.from(JSON.stringify(untrustedWindow)))
       .passed,
+    false,
+  );
+
+  const impossibleWindow = structuredClone(report);
+  impossibleWindow.actors[0].window.end = '2026-02-30';
+  assert.equal(
+    validateC03ProfileReport(impossibleWindow, claim, Buffer.from(JSON.stringify(impossibleWindow)))
+      .passed,
+    false,
+  );
+
+  const incorrectWindowLength = structuredClone(report);
+  incorrectWindowLength.actors[0].window.start = '2023-12-01';
+  incorrectWindowLength.actors[1].window.start = '2023-12-01';
+  assert.equal(
+    validateC03ProfileReport(
+      incorrectWindowLength,
+      claim,
+      Buffer.from(JSON.stringify(incorrectWindowLength)),
+    ).passed,
     false,
   );
 

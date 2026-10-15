@@ -84,6 +84,7 @@ import {
   classifyAgentMcpProfileInconclusiveReport,
   getAgentMcpProfileById,
 } from './lib/agent-mcp-profile-claims.mjs';
+import { isC03ProfileEvidenceRefreshPaths } from './lib/c03-profile-evidence.mjs';
 import {
   acquireG04OneShotGitHubLatch,
   claimG04OneShotAtomically,
@@ -518,7 +519,7 @@ function prView(number) {
       'view',
       String(number),
       '--json',
-      'number,title,body,state,url,isDraft,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,mergeCommit',
+      'number,title,body,state,url,isDraft,headRefName,headRefOid,baseRefName,baseRefOid,mergeStateStatus,statusCheckRollup,mergeCommit',
     ),
   );
 }
@@ -798,8 +799,12 @@ function commandStatus(options) {
       number: epochResult.view.number,
       url: epochResult.view.url,
       github_state: epochResult.view.state,
+      pr_head_ref_name: epochResult.view.headRefName,
       state: epochResult.state,
       pr_head_sha: epochResult.view.headRefOid,
+      pr_base_ref_name: epochResult.view.baseRefName,
+      pr_base_sha: epochResult.view.baseRefOid,
+      pr_is_draft: epochResult.view.isDraft,
     };
   }
   print(result);
@@ -1314,6 +1319,7 @@ function commandCandidateCheck(options) {
       );
     }
   }
+  assertC03ReportCandidateRefresh(epoch, head);
   if (refreshingPassedCandidate) {
     if (epoch.review_pass_sha !== epoch.candidate_sha) {
       throw new HarnessInvariantError(
@@ -3059,6 +3065,35 @@ function agentMcpProfileBundleMatches(candidateSha, bundleSha256, allowReportWor
     );
   } catch {
     return false;
+  }
+}
+
+function assertC03ReportCandidateRefresh(epoch, candidateSha) {
+  const profile = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
+  const disposition = agentMcpProfileClaims(epoch)[profile.id];
+  if (disposition?.state !== 'REPORT_WRITTEN') return;
+  const sourceCandidateSha = disposition.sourceCandidateSha;
+  if (
+    !isAncestor(sourceCandidateSha, candidateSha) ||
+    (epoch.candidate_sha && !isAncestor(epoch.candidate_sha, candidateSha))
+  ) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_REFRESH_SOURCE_INVALID',
+      'A C03 report refresh must descend from the exact Candidate that authorized its query.',
+    );
+  }
+  const changedSinceReport = git('diff', '--name-only', `${sourceCandidateSha}...${candidateSha}`)
+    .split('\n')
+    .filter(Boolean);
+  if (
+    !isC03ProfileEvidenceRefreshPaths(changedSinceReport) ||
+    !agentMcpProfileBundleMatches(candidateSha, disposition.bundleSha256)
+  ) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID',
+      'A C03 report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
+      { changedPaths: changedSinceReport },
+    );
   }
 }
 
