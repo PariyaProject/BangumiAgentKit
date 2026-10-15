@@ -66,6 +66,76 @@ P02_PUBLIC_CHRONOLOGY_INPUT = {
     'includeChronology': True,
     'maxChronologySubjects': 1,
 }
+P02_PUBLIC_CHRONOLOGY_REPORT_KEYS = {
+    'schemaVersion',
+    'evidenceKind',
+    'observedAt',
+    'mode',
+    'sourceProgram',
+    'catalogSha256',
+    'probeScriptSha256',
+    'requestBudget',
+    'httpRequests',
+    'budgetBlocked',
+    'selectedTools',
+    'probeCount',
+    'input',
+    'result',
+    'results',
+    'limits',
+}
+P02_PUBLIC_CHRONOLOGY_RESULT_KEYS = {
+    'tool',
+    'input',
+    'httpRequests',
+    'result',
+    'assertions',
+}
+P02_PUBLIC_CHRONOLOGY_ASSERTION_KEYS = {
+    'httpRequestObserved',
+    'httpRequestBudget',
+    'nonEmptySummary',
+    'noErrorResult',
+    'nonNegativeCounts',
+    'countConsistency',
+    'nonErrorResult',
+    'correctPerson',
+    'chronologyReturned',
+    'chronologyBounded',
+    'chronologyCountsConsistent',
+    'relationCoverageConsistent',
+    'passed',
+}
+P02_PUBLIC_CHRONOLOGY_SUMMARY_KEYS = {
+    'state',
+    'subjectCoverage',
+    'releaseChronology',
+}
+P02_PUBLIC_CHRONOLOGY_SUBJECT_COVERAGE_KEYS = {
+    'observed',
+    'returned',
+    'truncated',
+}
+P02_PUBLIC_CHRONOLOGY_BASE_KEYS = {
+    'state',
+    'sourceCompleteness',
+    'dateSemantics',
+    'selectedSubjectDetails',
+    'succeededSubjectDetails',
+    'failedSubjectDetails',
+    'validDateSubjects',
+    'missingDateSubjects',
+    'invalidDateSubjects',
+    'omittedAnimeSubjects',
+}
+P02_PUBLIC_CHRONOLOGY_EXTREMA_KEYS = {'date', 'tiedSubjectCount'}
+P02_PUBLIC_CHRONOLOGY_LIMITS = [
+    'one anonymous public ToolRegistry call',
+    'hard maximum of four outgoing HTTP requests',
+    'one returned anime subject detail at most',
+    'summary only; no names, relation/subject IDs, full payloads, or image bytes',
+    'observed sample only; no career-wide chronology claim',
+]
 
 
 def test_source() -> str:
@@ -130,6 +200,95 @@ def report_source_ref(path: Path) -> str:
     except ValueError:
         # Test harnesses may deliberately point LIVE_PROBE_DIR at a temporary directory.
         return path.name
+
+
+def p02_public_chronology_summary_is_valid(summary: object) -> bool:
+    if not isinstance(summary, dict) or set(summary) != P02_PUBLIC_CHRONOLOGY_SUMMARY_KEYS:
+        return False
+    if summary.get('state') != 'partial':
+        return False
+    subject_coverage = summary.get('subjectCoverage')
+    if (
+        not isinstance(subject_coverage, dict)
+        or set(subject_coverage) != P02_PUBLIC_CHRONOLOGY_SUBJECT_COVERAGE_KEYS
+    ):
+        return False
+    observed = subject_coverage.get('observed')
+    returned = subject_coverage.get('returned')
+    if (
+        type(observed) is not int
+        or observed < 0
+        or type(returned) is not int
+        or returned < 0
+        or returned > observed
+        or type(subject_coverage.get('truncated')) is not bool
+    ):
+        return False
+
+    chronology = summary.get('releaseChronology')
+    if not isinstance(chronology, dict):
+        return False
+    chronology_keys = set(chronology)
+    allowed_chronology_keys = P02_PUBLIC_CHRONOLOGY_BASE_KEYS | {
+        'earliestObserved',
+        'latestObserved',
+    }
+    if (
+        not P02_PUBLIC_CHRONOLOGY_BASE_KEYS.issubset(chronology_keys)
+        or not chronology_keys.issubset(allowed_chronology_keys)
+        or chronology.get('state') not in {'partial', 'not_computable'}
+        or chronology.get('sourceCompleteness') != 'undocumented'
+        or chronology.get('dateSemantics') != 'official-subject-air-release-date'
+    ):
+        return False
+
+    count_names = {
+        'selectedSubjectDetails',
+        'succeededSubjectDetails',
+        'failedSubjectDetails',
+        'validDateSubjects',
+        'missingDateSubjects',
+        'invalidDateSubjects',
+        'omittedAnimeSubjects',
+    }
+    if any(type(chronology.get(name)) is not int or chronology[name] < 0 for name in count_names):
+        return False
+    selected = chronology['selectedSubjectDetails']
+    succeeded = chronology['succeededSubjectDetails']
+    failed = chronology['failedSubjectDetails']
+    if (
+        selected > P02_PUBLIC_CHRONOLOGY_INPUT['maxChronologySubjects']
+        or succeeded + failed != selected
+        or chronology['validDateSubjects']
+        + chronology['missingDateSubjects']
+        + chronology['invalidDateSubjects']
+        != succeeded
+    ):
+        return False
+
+    for name in ('earliestObserved', 'latestObserved'):
+        if name not in chronology:
+            continue
+        extrema = chronology[name]
+        if (
+            not isinstance(extrema, dict)
+            or set(extrema) != P02_PUBLIC_CHRONOLOGY_EXTREMA_KEYS
+            or not isinstance(extrema.get('date'), str)
+            or re.fullmatch(r'\d{4}-\d{2}-\d{2}', extrema['date']) is None
+            or type(extrema.get('tiedSubjectCount')) is not int
+            or extrema['tiedSubjectCount'] < 1
+        ):
+            return False
+    if chronology['validDateSubjects'] > 0 and not {
+        'earliestObserved',
+        'latestObserved',
+    }.issubset(chronology_keys):
+        return False
+    if chronology['validDateSubjects'] == 0 and chronology_keys.intersection(
+        {'earliestObserved', 'latestObserved'},
+    ):
+        return False
+    return True
 
 
 def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
@@ -204,13 +363,29 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
             continue
         request_budget = report.get('requestBudget')
         if source_program == 'scripts/smoke-person-profile-chronology-online.ts':
+            if selected != [P02_PUBLIC_CHRONOLOGY_TOOL]:
+                continue
+            p02_result = result_by_name.get(P02_PUBLIC_CHRONOLOGY_TOOL)
+            if not isinstance(p02_result, dict):
+                continue
+            p02_assertions = p02_result.get('assertions')
             if (
-                selected != [P02_PUBLIC_CHRONOLOGY_TOOL]
+                set(report) != P02_PUBLIC_CHRONOLOGY_REPORT_KEYS
                 or request_budget != {'maxPerTool': 4, 'maxTotal': 4}
                 or report.get('budgetBlocked') is not False
                 or report.get('input') != P02_PUBLIC_CHRONOLOGY_INPUT
-                or result_by_name[P02_PUBLIC_CHRONOLOGY_TOOL].get('input')
-                != P02_PUBLIC_CHRONOLOGY_INPUT
+                or not isinstance(report.get('observedAt'), str)
+                or re.fullmatch(
+                    r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z',
+                    report['observedAt'],
+                ) is None
+                or report.get('limits') != P02_PUBLIC_CHRONOLOGY_LIMITS
+                or set(p02_result) != P02_PUBLIC_CHRONOLOGY_RESULT_KEYS
+                or p02_result.get('input') != P02_PUBLIC_CHRONOLOGY_INPUT
+                or not isinstance(p02_assertions, dict)
+                or set(p02_assertions) != P02_PUBLIC_CHRONOLOGY_ASSERTION_KEYS
+                or not p02_public_chronology_summary_is_valid(report.get('result'))
+                or report.get('result') != p02_result.get('result')
             ):
                 continue
         if request_budget is not None:
