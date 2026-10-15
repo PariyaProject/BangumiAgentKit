@@ -77,12 +77,14 @@ import {
   p01RunnerPublicKeySha256,
 } from '../../scripts/acceptance/p01-runner-receipt.mjs';
 import { makeP01Report } from './p01-report-fixture.mjs';
+import { getAgentMcpProfileById } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(root, 'scripts/agent-harness.mjs');
 const mockBin = path.join(root, 'tests/harness/mock-harness-bin.mjs');
 const sha = (digit) => digit.repeat(40);
 const D07_EPOCH_ID = 'run95-d07-current-rank-by-release-year';
+const C03_PROFILE = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
 const mandatoryChecks = [
   'harness-control',
   'sqlite-default',
@@ -1399,6 +1401,370 @@ function passedCandidateFixture() {
   run.outer_sol.product.consumed = 1;
   return { run, epoch };
 }
+
+function c03ReviewReadyEnvironment(overrides = {}) {
+  const { run, epoch } = passedCandidateFixture();
+  const branch = 'codex/epoch-run95-c03-profile-aware-agent-mcp-20261014';
+  const reviewerId = 'gpt-6-luna-max-run95-pr42-round1';
+  run.state = 'EPOCH_ACTIVE';
+  run.profile = 'AUTONOMOUS_EVOLUTION';
+  run.active_epoch_pr = 42;
+  run.pending_epoch = null;
+  epoch.epoch_id = C03_PROFILE.epochId;
+  epoch.branch = branch;
+  epoch.base_branch = 'master';
+  epoch.pr_number = 42;
+  epoch.base_sha = sha('a');
+  epoch.candidate_sha = sha('b');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.review_pass_sha = sha('b');
+  epoch.state = 'REVIEW_PASSED';
+  epoch.advances_frontier_ids = ['C03'];
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'The C03 claim path and runner are one coherent profile slice.',
+    why_not_extend_further: 'Other scenarios need separate profiles and evidence.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'The exact two-call profile was checked.',
+  };
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: reviewerId,
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  run.outer_sol.consumed = 1;
+  run.outer_sol.product.consumed = 1;
+  const environment = createMockEnvironment({
+    runIssueNumber: 95,
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch,
+    featureBranch: branch,
+    featureHeadSha: sha('b'),
+    baseSha: sha('a'),
+    draft: false,
+    checks: mandatoryChecks.map((name) => ({ name, conclusion: 'SUCCESS' })),
+    ...overrides,
+  });
+  return { environment, reviewerId, branch, run, epoch };
+}
+
+test('C03 Harness profile status, create-once claim, and terminal result are durable and fail closed', () => {
+  const { environment, reviewerId } = c03ReviewReadyEnvironment();
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', C03_PROFILE.id];
+  try {
+    const initial = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(initial.status, 0, initial.stderr);
+    const initialState = JSON.parse(initial.stdout);
+    assert.equal(initialState.state, 'UNCLAIMED');
+    assert.equal(initialState.review_gate.eligible, true);
+    assert.equal(initialState.tool_name, 'bangumi.get_person_activity');
+    assert.equal(initialState.call_count, 2);
+
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    assert.equal(claimResult.state, 'AGENT_MCP_PROFILE_CLAIMED');
+    assert.equal(claimResult.retryAllowed, false);
+    const afterClaim = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(afterClaim.status, 0, afterClaim.stderr);
+    assert.equal(JSON.parse(afterClaim.stdout).state, 'CLAIMED');
+
+    const duplicate = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(duplicate.status, 2);
+    assert.match(duplicate.stderr, /^AGENT_MCP_PROFILE_CLAIM_GATE_FAILED:/u);
+
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'INCONCLUSIVE',
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    const terminalResult = JSON.parse(terminal.stdout);
+    assert.equal(terminalResult.state, 'AGENT_MCP_PROFILE_RESULT_RECORDED');
+    assert.equal(terminalResult.retryAllowed, false);
+
+    const afterTerminal = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(afterTerminal.status, 0, afterTerminal.stderr);
+    assert.equal(JSON.parse(afterTerminal.stdout).state, 'INCONCLUSIVE');
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    const disposition = stored.adversarial_preflight.agent_mcp_profile_dispositions[C03_PROFILE.id];
+    assert.equal(disposition.state, 'INCONCLUSIVE');
+    assert.equal(disposition.retryAllowed, false);
+    assert.equal(
+      environment.readState().repositoryLabels['harness-r95-c03-activity-claimed'].name,
+      'harness-r95-c03-activity-claimed',
+    );
+    assert.equal(
+      environment.readState().repositoryLabels['harness-r95-c03-activity-terminal'].description,
+      'Run95 C03 INCONCLUSIVE no-report',
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C03 profile claim and terminal state cannot be cleared during Candidate refresh', () => {
+  const { run, epoch } = passedCandidateFixture();
+  const disposition = {
+    claimId: 'profile-run-95-pr-42-bbbbbbbbbbbb-1700000000000',
+    profileId: C03_PROFILE.id,
+    state: 'INCONCLUSIVE',
+    retryAllowed: false,
+  };
+  epoch.adversarial_preflight.agent_mcp_profile_dispositions = {
+    [C03_PROFILE.id]: structuredClone(disposition),
+  };
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('d'),
+    draft: false,
+  });
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('d'),
+        candidate_refresh_reason: 'Attempt to clear the terminal C03 profile claim.',
+      }),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_DISPOSITION_IMMUTABLE:/u);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.deepEqual(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[C03_PROFILE.id],
+      disposition,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+function c03ReportWrittenDisposition() {
+  return {
+    claimId: 'profile-run-95-pr-42-bbbbbbbbbbbb-1700000000000',
+    profileId: C03_PROFILE.id,
+    state: 'REPORT_WRITTEN',
+    sourceCandidateSha: sha('b'),
+    bundleSha256: 'c'.repeat(64),
+    reportPath: C03_PROFILE.reportPath,
+    reportSha256: 'd'.repeat(64),
+    reportWritten: true,
+    retryAllowed: false,
+  };
+}
+
+function c03ReportRefreshEnvironment(disposition, overrides = {}, epochOverrides = {}) {
+  const { run, epoch } = passedCandidateFixture();
+  Object.assign(epoch, epochOverrides);
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'Preserve the exact C03 report claim through an evidence-only refresh.',
+    agent_mcp_profile_dispositions: { [C03_PROFILE.id]: structuredClone(disposition) },
+  };
+  const refreshPaths = [
+    C03_PROFILE.reportPath,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+  ];
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('e'),
+    candidateRefreshRange: `${sha('b')}...${sha('e')}`,
+    candidateRefreshPaths: refreshPaths,
+    draft: false,
+    ...overrides,
+  });
+  return { environment, run, epoch };
+}
+
+test('C03 report Candidate refresh accepts only the report and bounded acceptance evidence', () => {
+  const disposition = c03ReportWrittenDisposition();
+  const { environment } = c03ReportRefreshEnvironment(disposition);
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('e'),
+        candidate_refresh_reason: 'Commit the C03 report and update its acceptance evidence.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Preserve the exact C03 report claim through an evidence-only refresh.',
+          agent_mcp_profile_dispositions: { [C03_PROFILE.id]: disposition },
+        },
+      }),
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_READY');
+    assert.equal(stored.candidate_sha, sha('e'));
+    assert.deepEqual(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[C03_PROFILE.id],
+      disposition,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C03 report Candidate refresh rejects a runtime or unrelated path change', () => {
+  const { environment } = c03ReportRefreshEnvironment(
+    c03ReportWrittenDisposition(),
+    {
+      candidateRefreshPaths: [
+        C03_PROFILE.reportPath,
+        'docs/product/frontier-ledger.json',
+        'apps/mcp/codex-one-tool-mcp-server.mjs',
+      ],
+    },
+    {
+      state: 'CORRECTIVE_REQUIRED',
+      candidate_sha: sha('d'),
+      review_pass_sha: null,
+    },
+  );
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('e'),
+        candidate_refresh_reason: 'Attempt a runtime code change after the C03 report.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Preserve the exact C03 report claim through an evidence-only refresh.',
+          agent_mcp_profile_dispositions: {
+            [C03_PROFILE.id]: c03ReportWrittenDisposition(),
+          },
+        },
+      }),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).candidate_sha,
+      sha('d'),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C03 report Candidate refresh rejects an MCP bundle change', () => {
+  const disposition = c03ReportWrittenDisposition();
+  const { environment } = c03ReportRefreshEnvironment(disposition);
+  try {
+    const result = environment.execute(
+      [
+        'candidate:check',
+        '--pr',
+        '42',
+        '--evidence',
+        candidateEvidence(environment, {
+          candidate_sha: sha('e'),
+          candidate_refresh_reason: 'Attempt an MCP bundle change after the C03 report.',
+          adversarial_preflight: {
+            completed: true,
+            summary: 'Preserve the exact C03 report claim through an evidence-only refresh.',
+            agent_mcp_profile_dispositions: { [C03_PROFILE.id]: disposition },
+          },
+        }),
+      ],
+      { HARNESS_G04_BUNDLE_SHA256: 'f'.repeat(64) },
+    );
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).candidate_sha,
+      sha('b'),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C03 terminal result fails closed when the permanent claim latch is missing', () => {
+  const { environment, reviewerId } = c03ReviewReadyEnvironment();
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', C03_PROFILE.id];
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimId = JSON.parse(claimed.stdout).claimId;
+    const state = environment.readState();
+    delete state.repositoryLabels['harness-r95-c03-activity-claimed'];
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimId,
+      '--state',
+      'INCONCLUSIVE',
+    ]);
+    assert.equal(terminal.status, 2);
+    assert.match(terminal.stderr, /^AGENT_MCP_PROFILE_CLAIM_LATCH_MISMATCH:/u);
+    const finalState = environment.readState();
+    assert.equal(finalState.repositoryLabels['harness-r95-c03-activity-terminal'], undefined);
+    const stored = parseControlBlock(finalState.prBody, EPOCH_MARKER);
+    assert.equal(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[C03_PROFILE.id].state,
+      'CLAIMED',
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
 
 test('CLI directs a passed G06 review to reconcile its one-shot before merge', () => {
   const { run, epoch } = controlFixture();

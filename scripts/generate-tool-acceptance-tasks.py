@@ -510,6 +510,95 @@ CODEX_G16_EXPECTED_ARGUMENTS = {
     'maxSubjectDetails': 16,
     'maxRows': 20,
 }
+CODEX_AGENT_MCP_PROFILE_REGISTRY_RELATIVE_PATH = (
+    'scripts/acceptance/agent-mcp-profile-registry.json'
+)
+CODEX_AGENT_MCP_PROFILE_REGISTRY_PATH = ROOT / CODEX_AGENT_MCP_PROFILE_REGISTRY_RELATIVE_PATH
+CODEX_AGENT_MCP_PROFILE_REGISTRY_BYTES = CODEX_AGENT_MCP_PROFILE_REGISTRY_PATH.read_bytes()
+CODEX_AGENT_MCP_PROFILE_REGISTRY_SHA256 = hashlib.sha256(
+    CODEX_AGENT_MCP_PROFILE_REGISTRY_BYTES,
+).hexdigest()
+CODEX_AGENT_MCP_PROFILE_REGISTRY = json.loads(
+    CODEX_AGENT_MCP_PROFILE_REGISTRY_BYTES.decode('utf-8'),
+)
+CODEX_C03_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'c03-voice-actor-comparison-v1'
+)
+CODEX_C03_PROFILE_ID = CODEX_C03_PROFILE['id']
+CODEX_C03_EPOCH_ID = CODEX_C03_PROFILE['epochId']
+CODEX_C03_TOOL_NAME = CODEX_C03_PROFILE['toolName']
+CODEX_C03_ARGUMENT_PROFILE = CODEX_C03_PROFILE['argumentProfile']
+CODEX_C03_EXPECTED_CALLS = CODEX_C03_PROFILE['calls']
+CODEX_C03_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_C03_EXPECTED_CALLS],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_C03_REPORT_RELATIVE_PATH = CODEX_C03_PROFILE['reportPath']
+CODEX_C03_EVIDENCE_REFRESH_PATHS = {
+    CODEX_C03_REPORT_RELATIVE_PATH,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+}
+CODEX_C03_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_C03_PROFILE['selectionEvidencePath']
+CODEX_C03_EVIDENCE_KIND = CODEX_C03_PROFILE['evidenceKind']
+CODEX_C03_ANSWER_CHECK_METHOD = CODEX_C03_PROFILE['answerCheckMethod']
+CODEX_C03_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
+    'profileId', 'profile', 'model', 'reasoningEffort', 'reviewerId', 'codexCliVersion',
+    'sourceRevision', 'baseSha', 'ciSha', 'ciStatus', 'prNumber', 'claimId', 'mcpBundleSha256',
+    'registrySha256', 'toolName', 'argumentProfile', 'expectedArgumentsSha256', 'catalogSha256',
+    'toolDescriptionSha256', 'inputSchemaSha256', 'serverToolNames', 'serverToolCount',
+    'mcpServerNames', 'processExitCode', 'resultStatus', 'eventStreamParsed', 'turnCompleted',
+    'codexMcpToolEventCount', 'codexErrorItemCount', 'nonMcpToolEventCount', 'nonMcpToolTypes',
+    'shellToolCallCount', 'allowedCallCount', 'deniedCallCount', 'answerCheckMethod',
+    'answerSha256', 'answerUtf8Bytes', 'answerChecks', 'actors', 'comparison', 'privacy',
+    'runnerReceipt',
+}
+CODEX_C03_ANSWER_CHECK_FIELDS = {
+    'exactBoundedSubjectOverlap', 'exactObservedMainRoleShares', 'partialCoverageDisclosed',
+    'omittedWorksNotClaimedAbsent', 'noCareerCompletenessClaim',
+}
+CODEX_C03_PRIVACY_FIELDS = {
+    'authProfile', 'oauthAttempted', 'accountDataRead', 'writesAttempted', 'communityRead',
+    'qqPipelineTested', 'timClientTested', 'promptStored', 'answerStored', 'rawResultStored',
+    'credentialsStored',
+}
+CODEX_C03_ACTOR_FIELDS = {
+    'personId', 'state', 'window', 'uniqueSubjects', 'roleCounts', 'observedRows', 'coverage',
+}
+CODEX_C03_ACTOR_WINDOW_FIELDS = {'months', 'start', 'end', 'asOfSemantics'}
+CODEX_C03_ACTOR_ROW_FIELDS = {'subjectId', 'roleFamily'}
+CODEX_C03_ACTOR_COVERAGE_FIELDS = {
+    'relationRowsObserved', 'relationRowsSelected', 'relationRowsDroppedAtLimit',
+    'subjectDetailsSucceeded', 'subjectDetailsFailed', 'rowsEligible', 'rowsReturned',
+    'outputTruncated', 'unknownRoleRows', 'truncated',
+}
+CODEX_C03_COVERAGE_COUNTER_FIELDS = {
+    'relationRowsObserved', 'relationRowsSelected', 'relationRowsDroppedAtLimit',
+    'subjectDetailsSucceeded', 'subjectDetailsFailed', 'rowsEligible', 'rowsReturned',
+    'unknownRoleRows',
+}
+CODEX_C03_COVERAGE_BOOLEAN_FIELDS = {'outputTruncated', 'truncated'}
+CODEX_C03_COMPARISON_FIELDS = {
+    'observedSubjectIds', 'sharedSubjectIds', 'observedCommonCount',
+    'observedMainRoleShares', 'coveragePartial',
+}
+CODEX_C03_RECEIPT_FIELDS = {
+    'schemaVersion', 'kind', 'publicKeyBase64', 'publicKeySha256', 'payload', 'signature',
+}
+CODEX_C03_RECEIPT_PAYLOAD_FIELDS = {
+    'schemaVersion', 'kind', 'claimId', 'profileId', 'runNumber', 'frontierId', 'epochId',
+    'prNumber', 'sourceRevision', 'baseSha', 'ciSha', 'ciStatus', 'reviewerId',
+    'bundleSha256', 'registrySha256', 'toolName', 'argumentProfile',
+    'expectedArgumentsSha256', 'codexCliVersion', 'processExitCode', 'resultStatus',
+    'eventStreamParsed', 'turnCompleted', 'codexMcpToolEventCount', 'codexErrorItemCount',
+    'nonMcpToolEventCount', 'shellToolCallCount', 'allowedCallCount', 'deniedCallCount',
+    'eventStreamSha256', 'serverSummarySha256', 'answerSha256', 'answerChecksSha256',
+    'actorsSha256', 'comparisonSha256',
+}
 CODEX_G06_EXPECTED_ARGUMENTS = {'subjectId': 218707, 'limit': 100}
 CODEX_G06_REPORT_RELATIVE_PATH = 'docs/live-probes/g06-subject-cast-agent-mcp-run95.json'
 CODEX_D07_EXPECTED_YEARS = tuple(range(2016, 2026))
@@ -1984,6 +2073,77 @@ CODEX_G16_PROBE_IMPLEMENTATION_MARKERS = {
         'def codex_g16_harness_disposition_matches_report(',
         'CODEX_G16_EXPECTED_ARGUMENTS',
         'CODEX_G16_REPORT_RELATIVE_PATH',
+    ),
+}
+CODEX_C03_PROBE_IMPLEMENTATION_MARKERS = {
+    'docs/research/run95-c03-person-selection-2026-10-14.json': (
+        '"evidenceKind": "bangumi_official_public_person_selection_v1"',
+        '"careerFilter": "seiyu"',
+        '"responseBodySha256": "7c981bfd227de4905c0d4bf416c50b98ff4c365e160d5a37bc2187854ecfdc2b"',
+        '"personId": 4765',
+        '"personId": 17075',
+    ),
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "c03-voice-actor-comparison-v1"',
+        '"argumentProfile": "fixed-c03-voice-pair-4765-17075-tv-36m-48r-16d-8rows-v1"',
+        '"reportPath": "docs/live-probes/c03-voice-actor-comparison-agent-mcp-run95.json"',
+        '"selectionEvidencePath": "docs/research/run95-c03-person-selection-2026-10-14.json"',
+    ),
+    'scripts/acceptance/run-c03-profile-codex-agent-mcp.mjs': (
+        'export function validateC03RunnerArgs(',
+        'export function classifyC03ProfileAttempt(',
+        'export function assertC03CandidateReviewGate(',
+        'export function buildC03CodexExecArgs(',
+        'export function validateC03ServerSummary(',
+        'function runC03Profile(',
+    ),
+    'scripts/lib/agent-mcp-profile-claims.mjs': (
+        'export function getAgentMcpProfileById(',
+        'export function claimAgentMcpProfileAtomically(',
+        'export function classifyAgentMcpProfileInconclusiveReport(',
+        'export function acquireAgentMcpProfileTerminalGitHubLatch(',
+    ),
+    'scripts/lib/c03-profile-evidence.mjs': (
+        'export function summarizeC03ActorResult(',
+        'export function buildC03ObservedComparison(',
+        'export function verifyC03Answer(',
+    ),
+    'scripts/lib/codex-one-tool-evidence.mjs': (
+        'export function authorizeToolCallSequence(',
+        'export function createProfileCallQueue(',
+        'export function claimProfileSequenceCall(',
+    ),
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        'export function summarizeProfileToolResult(',
+        'outputTruncated:',
+        'staffRoleUnknownRows:',
+        'truncated:',
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        'closed-profile-sequence-anonymous-public-v1',
+        'authorizeToolCallSequence(',
+        'createProfileCallQueue(',
+        'summarizeProfileToolResult(',
+    ),
+    'scripts/acceptance/write-c03-profile-report.mjs': (
+        'export function buildC03RunnerReceiptPayload(',
+        'export function createC03RunnerReceipt(',
+        'export function validateC03ProfileReport(',
+        'export function validateC03SanitizedReportFile(',
+    ),
+    'scripts/agent-harness.mjs': (
+        'function assertAgentMcpProfileReviewReadiness(',
+        'function commandEpochAgentMcpProfileStatus(',
+        'function commandEpochAgentMcpProfileClaim(',
+        'function commandEpochAgentMcpProfileResult(',
+        'agent_mcp_profile_dispositions',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'CODEX_C03_PROFILE_REGISTRY_SHA256',
+        'def codex_c03_person_selection_evidence_is_valid(',
+        'def codex_c03_profile_report_is_valid(',
+        'def codex_c03_profile_report_matches_candidate_revision(',
+        'CODEX_C03_REPORT_RELATIVE_PATH',
     ),
 }
 CODEX_G06_PROBE_IMPLEMENTATION_MARKERS = {
@@ -3659,6 +3819,221 @@ def codex_g16_report_matches_candidate_revision(report_path: Path, revision: obj
     )
 
 
+def codex_c03_profile_revision_has_implementation(revision: object) -> bool:
+    """Bind C03 evidence to the exact closed profile registry, runner, and Harness path."""
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_C03_PROBE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
+def codex_c03_profile_report_matches_candidate_revision(
+    report_path: Path, revision: object,
+) -> bool:
+    """Bind C03 sanitized evidence to the exact pre-query reviewed Candidate."""
+    if not codex_c03_profile_revision_has_implementation(revision):
+        return False
+    return _codex_relations_report_matches_candidate_revision(
+        report_path, revision, CODEX_C03_REPORT_RELATIVE_PATH,
+    )
+
+
+def codex_c03_profile_evidence_refresh_paths_are_valid(paths: object) -> bool:
+    return (
+        isinstance(paths, (list, tuple, set, frozenset))
+        and CODEX_C03_REPORT_RELATIVE_PATH in paths
+        and all(isinstance(item, str) and item in CODEX_C03_EVIDENCE_REFRESH_PATHS for item in paths)
+    )
+
+
+def codex_c03_profile_candidate_binding_is_valid(
+    report: object,
+    epoch_status: object,
+    changed_paths: object,
+    current_bundle_sha256: object,
+) -> bool:
+    """Bind a C03 report to the live Candidate and an evidence-only report refresh."""
+    if not isinstance(report, dict) or not isinstance(epoch_status, dict):
+        return False
+    run = epoch_status.get('run')
+    epoch_result = epoch_status.get('epoch')
+    if not isinstance(run, dict) or not isinstance(epoch_result, dict):
+        return False
+    run_state = run.get('state')
+    epoch = epoch_result.get('state')
+    if not isinstance(run_state, dict) or not isinstance(epoch, dict):
+        return False
+    candidate_sha = epoch.get('candidate_sha')
+    source_sha = report.get('sourceRevision')
+    pr_number = report.get('prNumber')
+    branch = epoch.get('branch')
+    latest_review = epoch.get('review_history', [])
+    latest_review = latest_review[-1] if isinstance(latest_review, list) and latest_review else None
+    active_pr = (
+        run_state.get('state') == 'EPOCH_ACTIVE'
+        and run_state.get('active_epoch_pr') == pr_number
+        and epoch_result.get('github_state') == 'OPEN'
+        and epoch.get('state') != 'MERGED'
+    )
+    merged_pr = (
+        epoch.get('state') == 'MERGED'
+        and epoch_result.get('github_state') == 'MERGED'
+        and isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == candidate_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+    )
+    return (
+        type(pr_number) is int
+        and pr_number > 0
+        and run.get('number') == 95
+        and (active_pr or merged_pr)
+        and epoch.get('epoch_id') == CODEX_C03_EPOCH_ID
+        and epoch.get('pr_number') == pr_number
+        and epoch.get('base_branch') == 'master'
+        and isinstance(branch, str)
+        and epoch.get('base_sha') == report.get('baseSha')
+        and epoch_result.get('pr_base_ref_name') == 'master'
+        and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
+        and epoch_result.get('pr_head_ref_name') == branch
+        and epoch_result.get('pr_is_draft') is False
+        and isinstance(candidate_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
+        and epoch_result.get('pr_head_sha') == candidate_sha
+        and isinstance(source_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
+        and codex_c03_profile_evidence_refresh_paths_are_valid(changed_paths)
+        and current_bundle_sha256 == report.get('mcpBundleSha256')
+    )
+
+
+def _codex_c03_profile_report_candidate_paths(
+    source_revision: object, candidate_sha: object,
+) -> set[str] | None:
+    if (
+        not isinstance(source_revision, str)
+        or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
+        or not isinstance(candidate_sha, str)
+        or re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is None
+        or _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', source_revision, candidate_sha,
+        ).returncode != 0
+    ):
+        return None
+    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
+    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
+    if diff.returncode != 0 or status.returncode != 0:
+        return None
+    paths = set(diff.stdout.splitlines())
+    for line in status.stdout.splitlines():
+        if len(line) < 4:
+            return None
+        paths.add(line[3:])
+    return paths
+
+
+def codex_c03_profile_report_candidate_binding_is_current(
+    report: dict[str, object], epoch_status: object,
+) -> bool:
+    candidate = None
+    if isinstance(epoch_status, dict):
+        epoch_result = epoch_status.get('epoch')
+        epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
+        candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
+    paths = _codex_c03_profile_report_candidate_paths(report.get('sourceRevision'), candidate)
+    bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
+    return codex_c03_profile_candidate_binding_is_valid(
+        report, epoch_status, paths, bundle_sha256,
+    )
+
+
+def codex_c03_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
+    """Read the active Run, PR, Candidate, and exact live PR head from Harness."""
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                'node', str(ROOT / 'scripts/agent-harness.mjs'), 'status',
+                '--run', '95', '--pr', str(pr_number),
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_c03_person_selection_evidence_is_valid(evidence: object) -> bool:
+    """Validate the bounded anonymous-public source record for the fixed C03 voice-actor pair."""
+    fields = {
+        'schemaVersion', 'evidenceKind', 'observedDate', 'sourceEndpoint', 'method',
+        'careerFilter', 'requestLimit', 'requestOffset', 'responseStatus', 'responseCount',
+        'requestBodySha256', 'responseBodySha256', 'selectionRule', 'selected',
+        'authenticationUsed', 'oauthAttempted', 'accountDataRead', 'namesStored',
+        'rawResponseStored',
+    }
+    if not isinstance(evidence, dict) or set(evidence) != fields:
+        return False
+    expected_ids = [call['arguments']['personId'] for call in CODEX_C03_EXPECTED_CALLS]
+    selected = evidence.get('selected')
+    return (
+        type(evidence.get('schemaVersion')) is int
+        and evidence.get('schemaVersion') == 1
+        and evidence.get('evidenceKind') == 'bangumi_official_public_person_selection_v1'
+        and evidence.get('observedDate') == '2026-10-14'
+        and evidence.get('sourceEndpoint') == 'https://api.bgm.tv/v0/search/persons'
+        and evidence.get('method') == 'POST'
+        and evidence.get('careerFilter') == 'seiyu'
+        and type(evidence.get('requestLimit')) is int
+        and evidence.get('requestLimit') == 5
+        and type(evidence.get('requestOffset')) is int
+        and evidence.get('requestOffset') == 0
+        and type(evidence.get('responseStatus')) is int
+        and evidence.get('responseStatus') == 200
+        and type(evidence.get('responseCount')) is int
+        and evidence.get('responseCount') == 5
+        and isinstance(evidence.get('requestBodySha256'), str)
+        and re.fullmatch(r'[0-9a-f]{64}', evidence['requestBodySha256']) is not None
+        and isinstance(evidence.get('responseBodySha256'), str)
+        and re.fullmatch(r'[0-9a-f]{64}', evidence['responseBodySha256']) is not None
+        and evidence.get('selectionRule') == 'first-two-returned-results-with-seiyu-career'
+        and isinstance(selected, list)
+        and len(selected) == 2
+        and all(
+            isinstance(item, dict)
+            and set(item) == {'personId', 'resultIndex', 'careerIncludesSeiyu'}
+            and type(item.get('personId')) is int
+            and type(item.get('resultIndex')) is int
+            and item.get('personId') == expected_ids[index]
+            and item.get('resultIndex') == index
+            and item.get('careerIncludesSeiyu') is True
+            for index, item in enumerate(selected)
+        )
+        and evidence.get('authenticationUsed') is False
+        and evidence.get('oauthAttempted') is False
+        and evidence.get('accountDataRead') is False
+        and evidence.get('namesStored') is False
+        and evidence.get('rawResponseStored') is False
+    )
+
+
+def codex_c03_person_selection_file_is_valid() -> bool:
+    path = ROOT / CODEX_C03_SELECTION_EVIDENCE_RELATIVE_PATH
+    try:
+        evidence = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    return codex_c03_person_selection_evidence_is_valid(evidence)
+
+
 def codex_s02_report_is_valid(report: object) -> bool:
     """Validate sanitized S02 Agent/MCP evidence for the exact Luna Max one-tool run."""
     if not isinstance(report, dict) or set(report) != CODEX_S02_REPORT_FIELDS:
@@ -4574,6 +4949,82 @@ def codex_g16_harness_disposition_matches_report(
     return disposition
 
 
+def codex_c03_profile_harness_status(pr_number: object) -> dict[str, object] | None:
+    """Read the exact registered C03 profile disposition and permanent latches."""
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    harness_script = ROOT / 'scripts/agent-harness.mjs'
+    try:
+        result = subprocess.run(
+            [
+                'node', str(harness_script), 'epoch:agent-mcp-profile-status',
+                '--run', '95', '--pr', str(pr_number), '--profile-id', CODEX_C03_PROFILE_ID,
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_c03_profile_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+) -> dict[str, object] | None:
+    """Require a claim-bound terminal result and both exact permanent GitHub latches."""
+    if not isinstance(harness_status, dict):
+        return None
+    receipt = report.get('runnerReceipt')
+    disposition = harness_status.get('disposition')
+    if (
+        harness_status.get('state') != 'REPORT_WRITTEN'
+        or harness_status.get('profile_id') != CODEX_C03_PROFILE_ID
+        or harness_status.get('pr') != report.get('prNumber')
+        or harness_status.get('tool_name') != CODEX_C03_TOOL_NAME
+        or harness_status.get('argument_profile') != CODEX_C03_ARGUMENT_PROFILE
+        or harness_status.get('expected_arguments_sha256') != CODEX_C03_EXPECTED_ARGUMENTS_SHA256
+        or harness_status.get('registry_sha256') != CODEX_AGENT_MCP_PROFILE_REGISTRY_SHA256
+        or harness_status.get('claim_label_present') is not True
+        or harness_status.get('terminal_label_present') is not True
+        or not isinstance(disposition, dict)
+        or not isinstance(receipt, dict)
+        or type(report_sha256) is not str
+        or not re.fullmatch(r'[0-9a-f]{64}', report_sha256)
+    ):
+        return None
+    expected = {
+        'claimId': report.get('claimId'),
+        'profileId': CODEX_C03_PROFILE_ID,
+        'frontierId': 'C03',
+        'epochId': CODEX_C03_EPOCH_ID,
+        'runNumber': 95,
+        'prNumber': report.get('prNumber'),
+        'state': 'REPORT_WRITTEN',
+        'sourceCandidateSha': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'ciSha': report.get('sourceRevision'),
+        'ciStatus': 'SUCCESS',
+        'reviewerId': report.get('reviewerId'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'registrySha256': CODEX_AGENT_MCP_PROFILE_REGISTRY_SHA256,
+        'toolName': CODEX_C03_TOOL_NAME,
+        'argumentProfile': CODEX_C03_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': CODEX_C03_EXPECTED_ARGUMENTS_SHA256,
+        'reportWritten': True,
+        'reportPath': CODEX_C03_REPORT_RELATIVE_PATH,
+        'reportSha256': report_sha256,
+        'retryAllowed': False,
+        'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
+        'runnerReceiptPublicKeySha256': receipt.get('publicKeySha256'),
+        'runnerReceiptSha256': _canonical_json_sha256(receipt),
+    }
+    if any(disposition.get(key) != value for key, value in expected.items()):
+        return None
+    return disposition
+
+
 def codex_r01_harness_status(pr_number: object) -> dict[str, object] | None:
     """Read the durable Run/Epoch R01 disposition through the Harness status command."""
     if type(pr_number) is not int or pr_number < 1:
@@ -5265,6 +5716,235 @@ def codex_p01_probe_revision_has_implementation(revision: object) -> bool:
     if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
         return False
     return _codex_revision_has_markers(str(ROOT), revision, CODEX_P01_PROBE_IMPLEMENTATION_MARKERS)
+
+
+def codex_c03_profile_calendar_window_is_valid(window: object, expected_months: object) -> bool:
+    if (
+        not isinstance(window, dict)
+        or type(expected_months) is not int
+        or expected_months < 1
+        or type(window.get('months')) is not int
+        or window.get('months') != expected_months
+        or not isinstance(window.get('start'), str)
+        or re.fullmatch(r'\d{4}-\d{2}-\d{2}', window['start']) is None
+        or not isinstance(window.get('end'), str)
+        or re.fullmatch(r'\d{4}-\d{2}-\d{2}', window['end']) is None
+    ):
+        return False
+    try:
+        start = date.fromisoformat(window['start'])
+        end = date.fromisoformat(window['end'])
+    except ValueError:
+        return False
+    start_month_index = end.year * 12 + end.month - 1 - (expected_months - 1)
+    start_year, start_month_zero_based = divmod(start_month_index, 12)
+    try:
+        expected_start = date(start_year, start_month_zero_based + 1, 1)
+    except ValueError:
+        return False
+    return start == expected_start
+
+
+def codex_c03_profile_actor_coverage_is_partial(actor: object) -> bool:
+    if not isinstance(actor, dict) or not isinstance(actor.get('coverage'), dict):
+        return True
+    coverage = actor['coverage']
+    return (
+        actor.get('state') != 'complete'
+        or any(coverage.get(field) is None for field in CODEX_C03_COVERAGE_COUNTER_FIELDS)
+        or any(coverage.get(field) is None for field in CODEX_C03_COVERAGE_BOOLEAN_FIELDS)
+        or coverage['outputTruncated'] is True
+        or coverage['truncated'] is True
+        or coverage['relationRowsDroppedAtLimit'] > 0
+        or coverage['subjectDetailsFailed'] > 0
+        or coverage['unknownRoleRows'] > 0
+    )
+
+
+def codex_c03_profile_report_is_valid(
+    report: object,
+    harness_status: object = None,
+    report_path: Path | None = None,
+    epoch_status: object = None,
+) -> bool:
+    """Validate signed C03 profile evidence and its exact durable Harness disposition."""
+    if not isinstance(report, dict) or set(report) != CODEX_C03_REPORT_FIELDS:
+        return False
+    path = report_path or (LIVE_PROBE_DIR / Path(CODEX_C03_REPORT_RELATIVE_PATH).name)
+    try:
+        relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+        report_bytes = path.read_bytes()
+    except (OSError, ValueError):
+        return False
+    if (
+        relative_path != CODEX_C03_REPORT_RELATIVE_PATH
+        or type(report.get('schemaVersion')) is not int
+        or report.get('schemaVersion') != 1
+        or report.get('evidenceKind') != CODEX_C03_EVIDENCE_KIND
+        or report.get('runNumber') != 95
+        or report.get('frontierId') != 'C03'
+        or report.get('scenarioId') != 'C03'
+        or report.get('epochId') != CODEX_C03_EPOCH_ID
+        or report.get('profileId') != CODEX_C03_PROFILE_ID
+        or report.get('profile') != 'codex-luna-max-agent-mcp-profile-v1'
+        or report.get('model') != 'gpt-6-luna'
+        or report.get('reasoningEffort') != 'max'
+        or not isinstance(report.get('reviewerId'), str)
+        or re.fullmatch(
+            rf'gpt-6-luna-max-run95-pr{report.get("prNumber")}-round[1-9]\d*',
+            report['reviewerId'],
+        ) is None
+        or not isinstance(report.get('codexCliVersion'), str)
+        or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
+        or report.get('toolName') != CODEX_C03_TOOL_NAME
+        or report.get('argumentProfile') != CODEX_C03_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != CODEX_C03_EXPECTED_ARGUMENTS_SHA256
+        or report.get('registrySha256') != CODEX_AGENT_MCP_PROFILE_REGISTRY_SHA256
+        or not codex_c03_profile_revision_has_implementation(report.get('sourceRevision'))
+        or not codex_c03_person_selection_file_is_valid()
+        or not isinstance(report.get('baseSha'), str)
+        or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
+        or report.get('ciSha') != report.get('sourceRevision')
+        or report.get('ciStatus') != 'SUCCESS'
+        or type(report.get('prNumber')) is not int
+        or report['prNumber'] < 1
+        or report.get('resultStatus') != 'SUCCESS'
+        or report.get('processExitCode') != 0
+        or report.get('eventStreamParsed') is not True
+        or report.get('turnCompleted') is not True
+        or report.get('codexMcpToolEventCount') != len(CODEX_C03_EXPECTED_CALLS)
+        or report.get('codexErrorItemCount') != 0
+        or report.get('nonMcpToolEventCount') != 0
+        or report.get('nonMcpToolTypes') != []
+        or report.get('shellToolCallCount') != 0
+        or report.get('allowedCallCount') != len(CODEX_C03_EXPECTED_CALLS)
+        or report.get('deniedCallCount') != 0
+        or report.get('serverToolNames') != [CODEX_C03_TOOL_NAME]
+        or report.get('serverToolCount') != 1
+        or report.get('mcpServerNames') != ['bgk_c03_profile']
+        or report.get('answerCheckMethod') != CODEX_C03_ANSWER_CHECK_METHOD
+        or not isinstance(report.get('answerSha256'), str)
+        or re.fullmatch(r'[0-9a-f]{64}', report['answerSha256']) is None
+        or type(report.get('answerUtf8Bytes')) is not int
+        or not 0 < report['answerUtf8Bytes'] <= CODEX_C03_PROFILE['maxAnswerBytes']
+    ):
+        return False
+
+    if not isinstance(report.get('answerChecks'), dict) or set(report['answerChecks']) != CODEX_C03_ANSWER_CHECK_FIELDS or not all(
+        value is True for value in report['answerChecks'].values()
+    ):
+        return False
+    if not isinstance(report.get('privacy'), dict) or set(report['privacy']) != CODEX_C03_PRIVACY_FIELDS or not all(
+        value is False for value in report['privacy'].values()
+    ):
+        return False
+    actors = report.get('actors')
+    if not isinstance(actors, list) or len(actors) != len(CODEX_C03_EXPECTED_CALLS):
+        return False
+    observed_subject_ids = []
+    expected_shares = []
+    for index, actor in enumerate(actors):
+        expected_arguments = CODEX_C03_EXPECTED_CALLS[index]['arguments']
+        if (
+            not isinstance(actor, dict) or set(actor) != CODEX_C03_ACTOR_FIELDS
+            or actor.get('personId') != expected_arguments['personId']
+            or actor.get('state') not in {'complete', 'partial', 'unavailable', 'not_computable', 'unknown'}
+            or not isinstance(actor.get('window'), dict)
+            or set(actor['window']) != CODEX_C03_ACTOR_WINDOW_FIELDS
+            or not codex_c03_profile_calendar_window_is_valid(
+                actor['window'], expected_arguments['windowMonths'],
+            )
+            or actor['window'].get('asOfSemantics') != 'calendar_months_ending_on_as_of_date'
+            or not isinstance(actor.get('roleCounts'), dict)
+            or set(actor['roleCounts']) != {'main', 'support', 'unknown'}
+            or type(actor.get('uniqueSubjects')) is not int or actor['uniqueSubjects'] < 0
+            or not isinstance(actor.get('coverage'), dict)
+            or set(actor['coverage']) != CODEX_C03_ACTOR_COVERAGE_FIELDS
+            or not isinstance(actor.get('observedRows'), list)
+            or len(actor['observedRows']) > expected_arguments['maxRows']
+        ):
+            return False
+        if any(
+            type(actor['roleCounts'][role]) is not int
+            or actor['roleCounts'][role] < 0
+            or actor['roleCounts'][role] > actor['uniqueSubjects']
+            for role in ('main', 'support', 'unknown')
+        ):
+            return False
+        if any(
+            not isinstance(row, dict) or set(row) != CODEX_C03_ACTOR_ROW_FIELDS
+            or type(row.get('subjectId')) is not int or row['subjectId'] < 1
+            or row.get('roleFamily') not in {'main', 'support', 'unknown'}
+            for row in actor['observedRows']
+        ):
+            return False
+        ids = sorted({row['subjectId'] for row in actor['observedRows']})
+        if any(
+            actor['coverage'].get(field) is not None
+            and (type(actor['coverage'][field]) is not int or actor['coverage'][field] < 0)
+            for field in CODEX_C03_COVERAGE_COUNTER_FIELDS
+        ) or any(
+            actor['coverage'].get(field) is not None
+            and type(actor['coverage'][field]) is not bool
+            for field in CODEX_C03_COVERAGE_BOOLEAN_FIELDS
+        ):
+            return False
+        rows_returned = actor['coverage'].get('rowsReturned')
+        if rows_returned is not None and rows_returned != len(actor['observedRows']):
+            return False
+        observed_subject_ids.append(ids)
+        denominator = actor['uniqueSubjects']
+        numerator = actor['roleCounts']['main']
+        expected_shares.append({
+            'personId': actor['personId'],
+            'numerator': numerator,
+            'denominator': denominator,
+            'ratio': numerator / denominator if denominator > 0 else None,
+            'state': actor['state'],
+        })
+    expected_shared = sorted(set(observed_subject_ids[0]) & set(observed_subject_ids[1]))
+    if actors[0]['window'] != actors[1]['window']:
+        return False
+    expected_partial = any(codex_c03_profile_actor_coverage_is_partial(actor) for actor in actors)
+    comparison = report.get('comparison')
+    if (
+        not isinstance(comparison, dict) or set(comparison) != CODEX_C03_COMPARISON_FIELDS
+        or comparison.get('observedSubjectIds') != observed_subject_ids
+        or comparison.get('sharedSubjectIds') != expected_shared
+        or comparison.get('observedCommonCount') != len(expected_shared)
+        or comparison.get('observedMainRoleShares') != expected_shares
+        or comparison.get('coveragePartial') is not expected_partial
+    ):
+        return False
+
+    report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+    current_epoch_status = epoch_status or codex_c03_profile_epoch_harness_status(report['prNumber'])
+    if not codex_c03_profile_report_candidate_binding_is_current(report, current_epoch_status):
+        return False
+    status = harness_status or codex_c03_profile_harness_status(report['prNumber'])
+    disposition = codex_c03_profile_disposition_matches_report(report, status, report_sha256)
+    if disposition is None:
+        return False
+    validator = ROOT / 'scripts/acceptance/validate-c03-profile-report.mjs'
+    validation = subprocess.run(
+        ['node', str(validator)],
+        cwd=ROOT,
+        input=json.dumps({
+            'claim': disposition,
+            'reportBytesBase64': base64.b64encode(report_bytes).decode('ascii'),
+        }),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if validation.returncode != 0:
+        return False
+    try:
+        result = json.loads(validation.stdout)
+    except (TypeError, ValueError):
+        return False
+    return result.get('passed') is True and result.get('reportSha256') == report_sha256
 
 
 def codex_g19_report_is_valid(report: object) -> bool:
@@ -8254,6 +8934,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(LIVE_PROBE_DIR / CODEX_G04_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G05_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G16_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(LIVE_PROBE_DIR / CODEX_C03_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_D07_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G19_REPORT_RELATIVE_PATH.split('/')[-1])
@@ -8339,6 +9020,21 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             ):
                 continue
             sources.setdefault('bangumi.get_person_activity', set()).add(report_source_ref(path))
+            continue
+        if report.get('evidenceKind') == CODEX_C03_EVIDENCE_KIND:
+            current_status = codex_c03_profile_harness_status(report.get('prNumber'))
+            current_epoch_status = codex_c03_profile_epoch_harness_status(report.get('prNumber'))
+            if (
+                path.name != Path(CODEX_C03_REPORT_RELATIVE_PATH).name
+                or not codex_c03_profile_report_is_valid(
+                    report, current_status, path, current_epoch_status,
+                )
+                or not codex_c03_profile_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault(CODEX_C03_TOOL_NAME, set()).add(report_source_ref(path))
             continue
         if report.get('evidenceKind') == 'codex_cli_g06_subject_cast_agent_mcp':
             try:

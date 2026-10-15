@@ -620,6 +620,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_G04_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G05_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G16_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_C03_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G19_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_P01_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S03_PROBE_IMPLEMENTATION_MARKERS,
@@ -6155,6 +6156,343 @@ class AuthAcceptanceEvidenceTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+
+
+class C03PersonSelectionEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.evidence = {
+            'schemaVersion': 1,
+            'evidenceKind': 'bangumi_official_public_person_selection_v1',
+            'observedDate': '2026-10-14',
+            'sourceEndpoint': 'https://api.bgm.tv/v0/search/persons',
+            'method': 'POST',
+            'careerFilter': 'seiyu',
+            'requestLimit': 5,
+            'requestOffset': 0,
+            'responseStatus': 200,
+            'responseCount': 5,
+            'requestBodySha256': 'a' * 64,
+            'responseBodySha256': 'b' * 64,
+            'selectionRule': 'first-two-returned-results-with-seiyu-career',
+            'selected': [
+                {'personId': call['arguments']['personId'], 'resultIndex': index,
+                 'careerIncludesSeiyu': True}
+                for index, call in enumerate(GENERATOR.CODEX_C03_EXPECTED_CALLS)
+            ],
+            'authenticationUsed': False,
+            'oauthAttempted': False,
+            'accountDataRead': False,
+            'namesStored': False,
+            'rawResponseStored': False,
+        }
+
+    def test_accepts_a_current_bounded_voice_actor_lookup(self):
+        self.assertTrue(GENERATOR.codex_c03_person_selection_evidence_is_valid(self.evidence))
+        self.assertTrue(GENERATOR.codex_c03_person_selection_file_is_valid())
+
+    def test_rejects_a_different_person_or_unverified_career(self):
+        changed_id = json.loads(json.dumps(self.evidence))
+        changed_id['selected'][0]['personId'] += 1
+        self.assertFalse(GENERATOR.codex_c03_person_selection_evidence_is_valid(changed_id))
+
+        unverified_career = json.loads(json.dumps(self.evidence))
+        unverified_career['selected'][1]['careerIncludesSeiyu'] = False
+        self.assertFalse(GENERATOR.codex_c03_person_selection_evidence_is_valid(unverified_career))
+
+    def test_rejects_authentication_or_raw_person_data(self):
+        authenticated = json.loads(json.dumps(self.evidence))
+        authenticated['authenticationUsed'] = True
+        self.assertFalse(GENERATOR.codex_c03_person_selection_evidence_is_valid(authenticated))
+
+        raw_data = json.loads(json.dumps(self.evidence))
+        raw_data['namesStored'] = True
+        self.assertFalse(GENERATOR.codex_c03_person_selection_evidence_is_valid(raw_data))
+
+
+class C03ReportValidationRulesTests(unittest.TestCase):
+    def setUp(self):
+        candidate = 'a' * 40
+        base = 'b' * 40
+        self.report = {
+            'sourceRevision': candidate,
+            'baseSha': base,
+            'prNumber': 162,
+            'mcpBundleSha256': 'c' * 64,
+        }
+        self.status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 162},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_C03_EPOCH_ID,
+                    'pr_number': 162,
+                    'base_branch': 'master',
+                    'base_sha': base,
+                    'candidate_sha': candidate,
+                    'branch': 'codex/c03',
+                },
+                'pr_head_sha': candidate,
+                'pr_head_ref_name': 'codex/c03',
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base,
+                'pr_is_draft': False,
+            },
+        }
+        self.changed_paths = [
+            GENERATOR.CODEX_C03_REPORT_RELATIVE_PATH,
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+        ]
+
+    def test_accepts_current_candidate_with_evidence_only_refresh(self):
+        self.assertTrue(
+            GENERATOR.codex_c03_profile_candidate_binding_is_valid(
+                self.report, self.status, self.changed_paths, self.report['mcpBundleSha256'],
+            ),
+        )
+        self.assertTrue(
+            GENERATOR.codex_c03_profile_evidence_refresh_paths_are_valid(self.changed_paths),
+        )
+
+        merged = json.loads(json.dumps(self.status))
+        merged['run']['state']['active_epoch_pr'] = 163
+        merged['epoch']['github_state'] = 'MERGED'
+        merged['epoch']['state']['state'] = 'MERGED'
+        merged['epoch']['pr_base_sha'] = 'd' * 40
+        merged['epoch']['state']['review_history'] = [{
+            'candidate_sha': self.status['epoch']['state']['candidate_sha'],
+            'reviewed_base_sha': self.report['baseSha'],
+            'verdict': 'PASS',
+        }]
+        self.assertTrue(
+            GENERATOR.codex_c03_profile_candidate_binding_is_valid(
+                self.report, merged, self.changed_paths, self.report['mcpBundleSha256'],
+            ),
+        )
+
+    def test_rejects_runtime_changes_stale_heads_or_changed_bundle(self):
+        runtime_paths = [
+            GENERATOR.CODEX_C03_REPORT_RELATIVE_PATH,
+            'apps/mcp/codex-one-tool-mcp-server.mjs',
+        ]
+        self.assertFalse(
+            GENERATOR.codex_c03_profile_candidate_binding_is_valid(
+                self.report, self.status, runtime_paths, self.report['mcpBundleSha256'],
+            ),
+        )
+
+        stale = json.loads(json.dumps(self.status))
+        stale['epoch']['pr_head_sha'] = 'd' * 40
+        self.assertFalse(
+            GENERATOR.codex_c03_profile_candidate_binding_is_valid(
+                self.report, stale, self.changed_paths, self.report['mcpBundleSha256'],
+            ),
+        )
+        self.assertFalse(
+            GENERATOR.codex_c03_profile_candidate_binding_is_valid(
+                self.report, self.status, self.changed_paths, 'e' * 64,
+            ),
+        )
+
+    def test_calendar_window_must_be_real_and_exactly_36_calendar_months(self):
+        valid = {
+            'months': 36,
+            'start': '2023-11-01',
+            'end': '2026-10-14',
+        }
+        self.assertTrue(GENERATOR.codex_c03_profile_calendar_window_is_valid(valid, 36))
+        self.assertFalse(
+            GENERATOR.codex_c03_profile_calendar_window_is_valid(
+                {**valid, 'end': '2026-02-30'}, 36,
+            ),
+        )
+        self.assertFalse(
+            GENERATOR.codex_c03_profile_calendar_window_is_valid(
+                {**valid, 'start': '2023-12-01'}, 36,
+            ),
+        )
+
+    def test_every_missing_coverage_counter_makes_a_complete_result_partial(self):
+        coverage = {
+            'relationRowsObserved': 0,
+            'relationRowsSelected': 0,
+            'relationRowsDroppedAtLimit': 0,
+            'subjectDetailsSucceeded': 0,
+            'subjectDetailsFailed': 0,
+            'rowsEligible': 0,
+            'rowsReturned': 0,
+            'outputTruncated': False,
+            'unknownRoleRows': 0,
+            'truncated': False,
+        }
+        actor = {'state': 'complete', 'coverage': coverage}
+        self.assertFalse(GENERATOR.codex_c03_profile_actor_coverage_is_partial(actor))
+        for field in coverage:
+            partial_actor = {'state': 'complete', 'coverage': {**coverage, field: None}}
+            self.assertTrue(
+                GENERATOR.codex_c03_profile_actor_coverage_is_partial(partial_actor),
+                field,
+            )
+        self.assertTrue(
+            GENERATOR.codex_c03_profile_actor_coverage_is_partial(
+                {'state': 'complete', 'coverage': {key: value for key, value in coverage.items() if key != 'relationRowsSelected'}},
+            ),
+        )
+
+
+class C03ReportAcceptanceTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='c03-report-acceptance-test-')
+        self.root = Path(self.temp_dir.name)
+        self.report_path = self.root / GENERATOR.CODEX_C03_REPORT_RELATIVE_PATH
+        self.report_path.parent.mkdir(parents=True)
+        self.original_root = GENERATOR.ROOT
+        GENERATOR.ROOT = self.root
+
+    def tearDown(self):
+        GENERATOR.ROOT = self.original_root
+        self.temp_dir.cleanup()
+
+    def build_report(self):
+        candidate = 'a' * 40
+        actors = []
+        for call in GENERATOR.CODEX_C03_EXPECTED_CALLS:
+            actors.append({
+                'personId': call['arguments']['personId'],
+                'state': 'complete',
+                'window': {
+                    'months': 36,
+                    'start': '2023-11-01',
+                    'end': '2026-10-14',
+                    'asOfSemantics': 'calendar_months_ending_on_as_of_date',
+                },
+                'uniqueSubjects': 0,
+                'roleCounts': {'main': 0, 'support': 0, 'unknown': 0},
+                'observedRows': [],
+                'coverage': {
+                    'relationRowsObserved': 0,
+                    'relationRowsSelected': 0,
+                    'relationRowsDroppedAtLimit': 0,
+                    'subjectDetailsSucceeded': 0,
+                    'subjectDetailsFailed': 0,
+                    'rowsEligible': 0,
+                    'rowsReturned': 0,
+                    'outputTruncated': False,
+                    'unknownRoleRows': 0,
+                    'truncated': False,
+                },
+            })
+        actors[0]['coverage']['rowsReturned'] = None
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': GENERATOR.CODEX_C03_EVIDENCE_KIND,
+            'runNumber': 95,
+            'frontierId': 'C03',
+            'scenarioId': 'C03',
+            'epochId': GENERATOR.CODEX_C03_EPOCH_ID,
+            'profileId': GENERATOR.CODEX_C03_PROFILE_ID,
+            'profile': 'codex-luna-max-agent-mcp-profile-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr162-round1',
+            'codexCliVersion': '1.2.3',
+            'sourceRevision': candidate,
+            'baseSha': 'b' * 40,
+            'ciSha': candidate,
+            'ciStatus': 'SUCCESS',
+            'prNumber': 162,
+            'claimId': 'c03-claim-fixture',
+            'mcpBundleSha256': 'c' * 64,
+            'registrySha256': GENERATOR.CODEX_AGENT_MCP_PROFILE_REGISTRY_SHA256,
+            'toolName': GENERATOR.CODEX_C03_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_C03_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_C03_EXPECTED_ARGUMENTS_SHA256,
+            'catalogSha256': 'd' * 64,
+            'toolDescriptionSha256': 'e' * 64,
+            'inputSchemaSha256': 'f' * 64,
+            'serverToolNames': [GENERATOR.CODEX_C03_TOOL_NAME],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_c03_profile'],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': len(GENERATOR.CODEX_C03_EXPECTED_CALLS),
+            'codexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': len(GENERATOR.CODEX_C03_EXPECTED_CALLS),
+            'deniedCallCount': 0,
+            'answerCheckMethod': GENERATOR.CODEX_C03_ANSWER_CHECK_METHOD,
+            'answerSha256': '1' * 64,
+            'answerUtf8Bytes': 1,
+            'answerChecks': {field: True for field in GENERATOR.CODEX_C03_ANSWER_CHECK_FIELDS},
+            'actors': actors,
+            'comparison': {
+                'observedSubjectIds': [[], []],
+                'sharedSubjectIds': [],
+                'observedCommonCount': 0,
+                'observedMainRoleShares': [
+                    {
+                        'personId': actor['personId'],
+                        'numerator': 0,
+                        'denominator': 0,
+                        'ratio': None,
+                        'state': 'complete',
+                    }
+                    for actor in actors
+                ],
+                'coveragePartial': True,
+            },
+            'privacy': {field: False for field in GENERATOR.CODEX_C03_PRIVACY_FIELDS},
+            'runnerReceipt': {},
+        }
+
+    def validate_report(self, report):
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        def validate_embedded_report(args, **kwargs):
+            payload = json.loads(kwargs['input'])
+            report_bytes = base64.b64decode(payload['reportBytesBase64'])
+            return subprocess.CompletedProcess(
+                args,
+                0,
+                json.dumps({
+                    'passed': True,
+                    'reportSha256': hashlib.sha256(report_bytes).hexdigest(),
+                }),
+                '',
+            )
+
+        with (
+            patch.object(GENERATOR, 'codex_c03_profile_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_c03_person_selection_file_is_valid', return_value=True),
+            patch.object(GENERATOR, 'codex_c03_profile_report_candidate_binding_is_current', return_value=True),
+            patch.object(GENERATOR, 'codex_c03_profile_disposition_matches_report', return_value={'state': 'REPORT_WRITTEN'}),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+        ):
+            return GENERATOR.codex_c03_profile_report_is_valid(
+                report,
+                harness_status={'fixture': True},
+                report_path=self.report_path,
+                epoch_status={'fixture': True},
+            )
+
+    def test_accepts_unknown_rows_returned_as_partial_report_coverage(self):
+        report = self.build_report()
+
+        self.assertTrue(report['comparison']['coveragePartial'])
+        self.assertTrue(self.validate_report(report))
+
+    def test_rejects_known_rows_returned_count_that_disagrees_with_observed_rows(self):
+        report = self.build_report()
+        report['actors'][0]['coverage']['rowsReturned'] = 1
+
+        self.assertFalse(self.validate_report(report))
 
 
 if __name__ == '__main__':

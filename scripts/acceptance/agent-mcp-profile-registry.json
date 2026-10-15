@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "id": "c03-voice-actor-comparison-v1",
+      "frontierId": "C03",
+      "epochId": "run95-c03-profile-aware-agent-mcp-20261014",
+      "toolName": "bangumi.get_person_activity",
+      "argumentProfile": "fixed-c03-voice-pair-4765-17075-tv-36m-48r-16d-8rows-v1",
+      "claimLabelName": "harness-r95-c03-activity-claimed",
+      "reportPath": "docs/live-probes/c03-voice-actor-comparison-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-c03-person-selection-2026-10-14.json",
+      "evidenceKind": "codex_cli_c03_person_activity_agent_mcp",
+      "answerCheckMethod": "c03-observed-overlap-and-main-role-share-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 16384,
+      "calls": [
+        {
+          "toolName": "bangumi.get_person_activity",
+          "arguments": {
+            "personId": 4765,
+            "kind": "voice",
+            "media": "tv",
+            "windowMonths": 36,
+            "maxRelations": 48,
+            "maxSubjectDetails": 16,
+            "maxRows": 8
+          }
+        },
+        {
+          "toolName": "bangumi.get_person_activity",
+          "arguments": {
+            "personId": 17075,
+            "kind": "voice",
+            "media": "tv",
+            "windowMonths": 36,
+            "maxRelations": 48,
+            "maxSubjectDetails": 16,
+            "maxRows": 8
+          }
+        }
+      ]
+    }
+  ]
+}

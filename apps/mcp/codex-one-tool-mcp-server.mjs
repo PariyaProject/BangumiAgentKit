@@ -9,12 +9,20 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import {
   authorizeToolCall,
+  authorizeToolCallSequence,
   canonicalJson,
+  claimProfileSequenceCall,
   claimSingleToolCall,
+  createProfileCallQueue,
   filterAllowedTools,
   publicReadOnlyToolAnnotations,
   summarizeToolResult,
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
+import {
+  agentMcpProfileArgumentsSha256,
+  getAgentMcpProfileById,
+} from '../../scripts/lib/agent-mcp-profile-claims.mjs';
+import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 import {
   computeMcpBundleSha256,
   gitRepositoryText,
@@ -131,6 +139,7 @@ function parseArguments(argv) {
       ![
         '--tool',
         '--arguments-json',
+        '--profile-id',
         '--summary-file',
         '--candidate-sha',
         '--bundle-sha256',
@@ -145,20 +154,42 @@ function parseArguments(argv) {
   }
   const toolName = values.get('--tool');
   const encodedArguments = values.get('--arguments-json');
+  const profileId = values.get('--profile-id');
   const summaryPath = values.get('--summary-file');
   const candidateSha = values.get('--candidate-sha');
   const bundleSha256 = values.get('--bundle-sha256');
   const networkMode = values.get('--network-mode');
-  if (!toolName || !/^bangumi\.[a-z][a-z0-9_]*$/u.test(toolName)) {
-    throw new Error('A single exact Bangumi tool name is required.');
-  }
-  if (!encodedArguments || !summaryPath || !candidateSha || !bundleSha256) {
-    throw new Error(
-      '--arguments-json, --summary-file, --candidate-sha, and --bundle-sha256 are required.',
-    );
+  if (!summaryPath || !candidateSha || !bundleSha256) {
+    throw new Error('--summary-file, --candidate-sha, and --bundle-sha256 are required.');
   }
   if (!/^[0-9a-f]{40}$/u.test(candidateSha) || !/^[0-9a-f]{64}$/u.test(bundleSha256)) {
     throw new Error('Exact Candidate and built MCP bundle hashes are required.');
+  }
+  if (profileId) {
+    if (toolName || encodedArguments || networkMode) {
+      throw new Error(
+        'A registered profile cannot be combined with arbitrary tool, arguments, or network mode.',
+      );
+    }
+    const profile = getAgentMcpProfileById(profileId);
+    if (!profile) throw new Error('Unknown closed Agent/MCP profile id.');
+    return {
+      profile,
+      toolName: profile.toolName,
+      expectedArgumentSequence: profile.calls.map((call) => call.arguments),
+      expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+      summaryPath,
+      candidateSha,
+      bundleSha256,
+      networkMode: undefined,
+    };
+  }
+
+  if (!toolName || !/^bangumi\.[a-z][a-z0-9_]*$/u.test(toolName)) {
+    throw new Error('A single exact Bangumi tool name is required.');
+  }
+  if (!encodedArguments) {
+    throw new Error('--arguments-json is required for the fixed single-query profile.');
   }
   const expectedArguments = JSON.parse(encodedArguments);
   if (
@@ -169,7 +200,19 @@ function parseArguments(argv) {
     throw new Error('Fixed arguments must be a JSON object.');
   }
   assertC07CohortRenderOfflineProfile({ networkMode, toolName, expectedArguments });
-  return { toolName, expectedArguments, summaryPath, candidateSha, bundleSha256, networkMode };
+  return {
+    profile: null,
+    toolName,
+    expectedArguments,
+    expectedArgumentSequence: null,
+    expectedArgumentsSha256: createHash('sha256')
+      .update(canonicalJson(expectedArguments), 'utf8')
+      .digest('hex'),
+    summaryPath,
+    candidateSha,
+    bundleSha256,
+    networkMode,
+  };
 }
 
 function runtimeCandidateMatches(sourceRevision, bundleSha256) {
@@ -246,9 +289,20 @@ async function main(argv = process.argv.slice(2)) {
   );
   let allowedCalls = 0;
   let deniedCalls = 0;
+  let profileSequenceFailed = false;
+  const enqueueProfileCall = config.profile ? createProfileCallQueue() : null;
   let summary = {
     schemaVersion: 1,
-    serverProfile: 'one-tool-anonymous-public-v1',
+    ...(config.profile
+      ? { serverProfile: 'closed-profile-sequence-anonymous-public-v1' }
+      : { serverProfile: 'one-tool-anonymous-public-v1' }),
+    ...(config.profile
+      ? {
+          profileId: config.profile.id,
+          argumentProfile: config.profile.argumentProfile,
+          expectedCallCount: config.profile.calls.length,
+        }
+      : {}),
     sourceRevision,
     bundleSha256,
     catalogSha256: createHash('sha256').update(catalogBytes).digest('hex'),
@@ -257,14 +311,14 @@ async function main(argv = process.argv.slice(2)) {
     inputSchemaSha256,
     serverToolNames: [config.toolName],
     serverToolCount: 1,
-    expectedArgumentsSha256: createHash('sha256')
-      .update(canonicalJson(config.expectedArguments), 'utf8')
-      .digest('hex'),
+    expectedArgumentsSha256: config.expectedArgumentsSha256,
     serverResultStatus: 'NOT_RUN',
     allowedCallCount: 0,
     deniedCallCount: 0,
     argumentMatch: false,
-    result: null,
+    ...(config.profile
+      ? { results: Array(config.profile.calls.length).fill(null) }
+      : { result: null }),
     ...(offlineFixture ? { offlineFixture: offlineFixture.snapshot() } : {}),
     privacy: buildG06PrivacySummary(),
   };
@@ -272,13 +326,21 @@ async function main(argv = process.argv.slice(2)) {
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [mcpTool] }));
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const call = authorizeToolCall({
-      name: request.params.name,
-      args: request.params.arguments || {},
-      expectedTool: config.toolName,
-      expectedArguments: config.expectedArguments,
-      completedCalls: allowedCalls,
-    });
+    const call = config.profile
+      ? authorizeToolCallSequence({
+          name: request.params.name,
+          args: request.params.arguments || {},
+          expectedTool: config.toolName,
+          expectedArgumentSequence: config.expectedArgumentSequence,
+          completedCalls: allowedCalls,
+        })
+      : authorizeToolCall({
+          name: request.params.name,
+          args: request.params.arguments || {},
+          expectedTool: config.toolName,
+          expectedArguments: config.expectedArguments,
+          completedCalls: allowedCalls,
+        });
     if (!call.allowed) {
       deniedCalls += 1;
       summary = { ...summary, deniedCallCount: deniedCalls };
@@ -288,7 +350,11 @@ async function main(argv = process.argv.slice(2)) {
         isError: true,
       };
     }
-    if (!claimSingleToolCall(`${path.resolve(config.summaryPath)}.call-claimed`)) {
+    const sequenceIndex = config.profile ? call.sequenceIndex : 0;
+    const callClaimed = config.profile
+      ? claimProfileSequenceCall(`${path.resolve(config.summaryPath)}.call-claimed`, sequenceIndex)
+      : claimSingleToolCall(`${path.resolve(config.summaryPath)}.call-claimed`);
+    if (!callClaimed) {
       deniedCalls += 1;
       summary = { ...summary, deniedCallCount: deniedCalls };
       writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
@@ -309,65 +375,108 @@ async function main(argv = process.argv.slice(2)) {
     allowedCalls += 1;
     summary = { ...summary, allowedCallCount: allowedCalls, argumentMatch: true };
     writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
-    try {
-      const identity = await identityProvider.resolveContext(request);
-      const result = await registry.executeTool(config.toolName, config.expectedArguments, {
-        ...identity,
-        requestId: `req_${randomUUID()}`,
-        confirmationId: undefined,
-      });
-      if (!runtimeCandidateMatches(sourceRevision, bundleSha256)) {
-        summary = {
-          ...summary,
-          serverResultStatus: 'ERROR',
-          errorCode: 'CANDIDATE_DRIFT',
+    const runAcceptedCall = async () => {
+      try {
+        if (config.profile && profileSequenceFailed) {
+          deniedCalls += 1;
+          summary = { ...summary, deniedCallCount: deniedCalls };
+          writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Rejected by one-tool QA server: PROFILE_SEQUENCE_PREVIOUS_CALL_FAILED.',
+              },
+            ],
+            isError: true,
+          };
+        }
+        const identity = await identityProvider.resolveContext(request);
+        const expectedArguments = config.profile
+          ? config.expectedArgumentSequence[sequenceIndex]
+          : config.expectedArguments;
+        const result = await registry.executeTool(config.toolName, expectedArguments, {
+          ...identity,
+          requestId: `req_${randomUUID()}`,
+          confirmationId: undefined,
+        });
+        if (!runtimeCandidateMatches(sourceRevision, bundleSha256)) {
+          if (config.profile) profileSequenceFailed = true;
+          summary = {
+            ...summary,
+            serverResultStatus: 'ERROR',
+            errorCode: 'CANDIDATE_DRIFT',
+          };
+          writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'G26 result not accepted: Candidate changed during execution.',
+              },
+            ],
+            isError: true,
+          };
+        }
+        if (config.profile) {
+          const resultSummary = summarizeProfileToolResult(result, expectedArguments);
+          const results = [...summary.results];
+          results[sequenceIndex] = {
+            sequenceIndex,
+            status: 'SUCCESS',
+            resultSummary,
+          };
+          summary = {
+            ...summary,
+            serverResultStatus: results.every(Boolean) ? 'SUCCESS' : 'PARTIAL',
+            results,
+          };
+        } else {
+          const resultSummary = summarizeToolResult(
+            config.toolName,
+            result,
+            artifactStore.summarize(result?.artifact?.id, { verifyPng: Boolean(offlineFixture) }),
+          );
+          summary = {
+            ...summary,
+            serverResultStatus: 'SUCCESS',
+            result: resultSummary,
+          };
+        }
+        if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
+        writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+        const presentation = presentMcpToolResult(config.toolName, result);
+        return {
+          content: [{ type: 'text', text: presentation.text }],
+          ...(presentation.structuredContent
+            ? { structuredContent: presentation.structuredContent }
+            : {}),
         };
+      } catch (error) {
+        if (config.profile) profileSequenceFailed = true;
+        const publicError = toPublicError(error);
+        const errorCode = typeof publicError.code === 'string' ? publicError.code : 'UNKNOWN_ERROR';
+        if (config.profile) {
+          const results = [...summary.results];
+          results[sequenceIndex] = { sequenceIndex, status: 'ERROR', errorCode };
+          summary = { ...summary, serverResultStatus: 'ERROR', results };
+        } else {
+          summary = { ...summary, serverResultStatus: 'ERROR', errorCode };
+        }
+        if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
         writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
         return {
           content: [
-            { type: 'text', text: 'G26 result not accepted: Candidate changed during execution.' },
+            {
+              type: 'text',
+              text: JSON.stringify({ code: publicError.code, message: publicError.message }),
+            },
           ],
           isError: true,
         };
       }
-      const resultSummary = summarizeToolResult(
-        config.toolName,
-        result,
-        artifactStore.summarize(result?.artifact?.id, { verifyPng: Boolean(offlineFixture) }),
-      );
-      summary = {
-        ...summary,
-        serverResultStatus: 'SUCCESS',
-        result: resultSummary,
-        ...(offlineFixture ? { offlineFixture: offlineFixture.snapshot() } : {}),
-      };
-      writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
-      const presentation = presentMcpToolResult(config.toolName, result);
-      return {
-        content: [{ type: 'text', text: presentation.text }],
-        ...(presentation.structuredContent
-          ? { structuredContent: presentation.structuredContent }
-          : {}),
-      };
-    } catch (error) {
-      const publicError = toPublicError(error);
-      summary = {
-        ...summary,
-        serverResultStatus: 'ERROR',
-        errorCode: typeof publicError.code === 'string' ? publicError.code : 'UNKNOWN_ERROR',
-        ...(offlineFixture ? { offlineFixture: offlineFixture.snapshot() } : {}),
-      };
-      writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({ code: publicError.code, message: publicError.message }),
-          },
-        ],
-        isError: true,
-      };
-    }
+    };
+    return config.profile ? enqueueProfileCall(runAcceptedCall) : runAcceptedCall();
   });
 
   const transport = new StdioServerTransport();

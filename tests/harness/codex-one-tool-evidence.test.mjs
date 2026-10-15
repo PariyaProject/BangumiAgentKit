@@ -5,10 +5,13 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   authorizeToolCall,
+  authorizeToolCallSequence,
   canonicalJson,
+  claimProfileSequenceCall,
   claimSingleToolCall,
   checkRendererAnswer,
   checkStatsAnswer,
+  createProfileCallQueue,
   filterAllowedTools,
   publicReadOnlyToolAnnotations,
   statsTypedAnswerMatches,
@@ -18,6 +21,7 @@ import {
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
 import { buildG06PrivacySummary, G06_PRIVACY } from '../../scripts/lib/g06-privacy-summary.mjs';
 import { g06ServerPrivacyMatches } from '../../scripts/acceptance/write-g06-agent-mcp-report.mjs';
+import { getAgentMcpProfileById } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 
 const target = 'bangumi.get_subject_stats_intelligence';
 const expectedArguments = { subjectId: 218707 };
@@ -76,6 +80,50 @@ test('fixed query gate allows one exact read and rejects wrong tool, arguments, 
   });
 });
 
+test('profile sequence gate permits only the next exact argument object for its one tool', () => {
+  const profile = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
+  const expectedArgumentSequence = profile.calls.map((call) => call.arguments);
+  const base = { expectedTool: 'bangumi.get_person_activity', expectedArgumentSequence };
+  assert.deepEqual(authorizeToolCallSequence({
+    ...base, name: 'bangumi.auth_status', args: {}, completedCalls: 0,
+  }), { allowed: false, code: 'TOOL_NOT_ALLOWLISTED' });
+  assert.deepEqual(authorizeToolCallSequence({
+    ...base, name: 'bangumi.get_person_activity', args: expectedArgumentSequence[1], completedCalls: 0,
+  }), { allowed: false, code: 'ARGUMENTS_DO_NOT_MATCH_PROFILE_SEQUENCE' });
+  assert.deepEqual(authorizeToolCallSequence({
+    ...base, name: 'bangumi.get_person_activity', args: expectedArgumentSequence[0], completedCalls: 0,
+  }), { allowed: true, code: 'ALLOWLISTED_PROFILE_QUERY', sequenceIndex: 0 });
+  assert.deepEqual(authorizeToolCallSequence({
+    ...base, name: 'bangumi.get_person_activity', args: expectedArgumentSequence[1], completedCalls: 1,
+  }), { allowed: true, code: 'ALLOWLISTED_PROFILE_QUERY', sequenceIndex: 1 });
+  assert.deepEqual(authorizeToolCallSequence({
+    ...base, name: 'bangumi.get_person_activity', args: expectedArgumentSequence[1], completedCalls: 2,
+  }), { allowed: false, code: 'CALL_LIMIT_REACHED' });
+});
+
+test('profile call queue serializes overlapping requests and releases after failure', async () => {
+  const enqueue = createProfileCallQueue();
+  const events = [];
+  let releaseFirst;
+  const first = enqueue(async () => {
+    events.push('first-start');
+    await new Promise((resolve) => { releaseFirst = resolve; });
+    events.push('first-end');
+  });
+  const second = enqueue(async () => { events.push('second-start'); });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(events, ['first-start']);
+  releaseFirst();
+  await Promise.all([first, second]);
+  assert.deepEqual(events, ['first-start', 'first-end', 'second-start']);
+
+  const failed = enqueue(async () => { throw new Error('first operation failed'); });
+  const afterFailure = enqueue(async () => { events.push('after-failure'); });
+  await assert.rejects(failed, /first operation failed/u);
+  await afterFailure;
+  assert.equal(events.at(-1), 'after-failure');
+});
+
 test('shared call claim permits one process-wide call and denies later claims', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-one-tool-lock-test-'));
   const lockPath = path.join(root, 'call-claimed');
@@ -83,6 +131,21 @@ test('shared call claim permits one process-wide call and denies later claims', 
     assert.equal(claimSingleToolCall(lockPath), true);
     assert.equal(claimSingleToolCall(lockPath), false);
     assert.equal(fs.statSync(lockPath).mode & 0o777, 0o600);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('profile sequence claims are create-only per ordered slot and fail closed outside bounds', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-profile-sequence-lock-test-'));
+  const lockPath = path.join(root, 'profile');
+  try {
+    assert.equal(claimProfileSequenceCall(lockPath, 0), true);
+    assert.equal(claimProfileSequenceCall(lockPath, 0), false);
+    assert.equal(claimProfileSequenceCall(lockPath, 1), true);
+    assert.equal(claimProfileSequenceCall(lockPath, 1), false);
+    assert.equal(fs.statSync(`${lockPath}.call-1-claimed`).mode & 0o777, 0o600);
+    assert.throws(() => claimProfileSequenceCall(lockPath, 8), /bounded zero-based call index/u);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
