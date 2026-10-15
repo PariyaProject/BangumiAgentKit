@@ -128,8 +128,18 @@ test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retr
   ]);
   assert.equal(preflight.claim_state, 'UNCLAIMED');
   assert.equal(preflight.live_query_run, false);
-  assert.match(preflight.status_boundary, /preflight snapshot/u);
-  assert.match(preflight.status_boundary, /later terminal INCONCLUSIVE disposition/u);
+  assert.equal(
+    preflight.status_boundary,
+    'This is the preflight snapshot before the one-shot claim; the later terminal INCONCLUSIVE disposition is recorded separately. P03 remains PARTIAL and uncredited.',
+  );
+  assert.deepEqual(preflight.checks, [
+    'Round-1 exact-Candidate GPT-6 Luna Max review of head 022ea48405de829af0732c29e518f15aaf9fad7d against Base 2884aff638512652cfe99e4b496dd915332ad052 returned CORRECTIVE_REQUIRED with three findings (P1/P1/P2), recorded through Harness.',
+    'Corrective regressions: exact canonical coverageNote rejects appended absence/completeness claims; person-profile MCP text always uses the positive-only compact projection; subjectsTruncated must equal subjectsObserved > subjectsReturned.',
+    'Focused P03/C03/profile/claim/report Harness tests passed 28/28. MCP result-presenter integration passed 35/35, including a full result below 3600 UTF-8 bytes checked against the P03 projection validator.',
+    'Full Harness suite passed 277/277. Typecheck, lint, build, legacy-path guard, acceptance:check, frontier:check, Prettier, and diff checks passed.',
+    'Two independent builds reproduced MCP bundle SHA-256 ba30619c0426aa54ab30e5063a71cdd5c63e38795a23c7c8e4c74eafec5707a8; the current attestation matches.',
+    'At this preflight snapshot no P03 claim/query had run; the later terminal disposition is recorded separately below. P03 remains PARTIAL; C03 remains terminal INCONCLUSIVE with retryAllowed=false.',
+  ]);
 
   const result = record.evidence?.p03_agent_mcp_profile_result;
   assert.ok(result, 'the terminal disposition must be recorded separately');
