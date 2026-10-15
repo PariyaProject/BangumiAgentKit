@@ -1,0 +1,344 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-15T17:40:45.481Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
+  "probeScriptSha256": "d07736bda42fc57c765393da100843cdaeb1c25547bcf69f5dded99fc5b70221",
+  "sourceProgram": "scripts/smoke-fresh-public-api-matrix-five-post-v2-20261016.ts",
+  "supportingSourceSha256": {
+    "scripts/lib/fresh-public-api-matrix-five-post-v2-scope.ts": "7ba04ea53ab2ff0ebc747615fb266f5e29b989a2797ac76a121085fff58e79f2",
+    "scripts/lib/fresh-public-request-budget.ts": "e855abe79b11eaf9360fac207316d1cb3a539fda5e7bac47a29aa66cdc68059c",
+    "scripts/lib/fresh-public-request-search-fetch-v2.ts": "81a19ee1aa4704ebcdf8318e2cfac55c43bf4653bd42180bf4fb52d5813e7df3"
+  },
+  "scopeId": "run95-fresh-five-public-api-post-v2-20261016",
+  "requestBudget": {
+    "maxPerTool": 8,
+    "maxTotal": 32
+  },
+  "requestAccounting": {
+    "scope": "bangumi_api_and_renderer_assets",
+    "redirectsIncluded": true,
+    "apiRetryAttemptsIncluded": true,
+    "apiRedirectHopsIncluded": true,
+    "rendererAssetRedirectHopsIncluded": true,
+    "anonymousSearchPostAllowed": true,
+    "searchPostPathRestricted": true,
+    "publicPostPath": "/v0/search/subjects",
+    "bangumiApi": 20,
+    "rendererAsset": 1,
+    "total": 21,
+    "perTool": {
+      "bangumi.aggregate_subject_cohort": {
+        "bangumiApi": 4,
+        "rendererAsset": 0,
+        "total": 4
+      },
+      "bangumi.compare_subject_cohorts": {
+        "bangumiApi": 4,
+        "rendererAsset": 0,
+        "total": 4
+      },
+      "bangumi.render_query_subjects": {
+        "bangumiApi": 1,
+        "rendererAsset": 1,
+        "total": 2
+      },
+      "bangumi.render_subject_cohort_aggregation": {
+        "bangumiApi": 7,
+        "rendererAsset": 0,
+        "total": 7
+      },
+      "bangumi.render_subject_cohort_comparison": {
+        "bangumiApi": 4,
+        "rendererAsset": 0,
+        "total": 4
+      }
+    }
+  },
+  "budgetBlocked": false,
+  "httpRequests": 21,
+  "selectedTools": [
+    "bangumi.aggregate_subject_cohort",
+    "bangumi.compare_subject_cohorts",
+    "bangumi.render_query_subjects",
+    "bangumi.render_subject_cohort_aggregation",
+    "bangumi.render_subject_cohort_comparison"
+  ],
+  "probeCount": 5,
+  "limits": [
+    "exactly five fixed anonymous public/read ToolRegistry calls in selected order",
+    "at most eight combined API and renderer asset requests per tool and 32 total",
+    "anonymous JSON POST is limited to https://api.bgm.tv/v0/search/subjects",
+    "every API attempt/retry, same-host API redirect hop, asset request, and asset redirect hop is counted",
+    "stop before dispatch after any request budget breach",
+    "no OAuth, account, community, HTML, writes, QQ, or TIM",
+    "sanitized summaries only; no raw result rows or image bytes",
+    "temporary rendered artifacts are removed after the run",
+    "a failed or budget-blocked report receives no matrix credit for failed rows"
+  ],
+  "redactions": [
+    "result row values, titles, names, identifiers, request bodies, and image bytes are not persisted"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.aggregate_subject_cohort",
+      "input": {
+        "cohort": {
+          "query": {
+            "media": "anime",
+            "year": 2020,
+            "month": 2,
+            "resultMode": "all",
+            "limit": 1
+          }
+        },
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 4,
+      "requestAccounting": {
+        "bangumiApi": 4,
+        "rendererAsset": 0,
+        "total": 4,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true
+      },
+      "result": {
+        "state": "partial",
+        "keys": [
+          "state",
+          "cohorts",
+          "metrics",
+          "formulaVersion",
+          "coverage",
+          "source",
+          "evidence",
+          "warnings",
+          "limitations",
+          "retrievedAt"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.compare_subject_cohorts",
+      "input": {
+        "cohorts": [
+          {
+            "label": "Run95 public POST-safe 2021-03",
+            "query": {
+              "media": "anime",
+              "year": 2021,
+              "month": 3,
+              "resultMode": "all",
+              "limit": 1
+            }
+          }
+        ],
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 4,
+      "requestAccounting": {
+        "bangumiApi": 4,
+        "rendererAsset": 0,
+        "total": 4,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true
+      },
+      "result": {
+        "state": "partial",
+        "keys": [
+          "state",
+          "cohorts",
+          "metrics",
+          "formulaVersion",
+          "coverage",
+          "source",
+          "evidence",
+          "warnings",
+          "limitations",
+          "retrievedAt"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_query_subjects",
+      "input": {
+        "media": "anime",
+        "year": 2022,
+        "month": 6,
+        "resultMode": "top",
+        "limit": 1
+      },
+      "attempted": true,
+      "httpRequests": 2,
+      "requestAccounting": {
+        "bangumiApi": 1,
+        "rendererAsset": 1,
+        "total": 2,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true
+      },
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_aggregation",
+      "input": {
+        "cohort": {
+          "query": {
+            "media": "anime",
+            "year": 2023,
+            "month": 4,
+            "resultMode": "all",
+            "limit": 1
+          }
+        },
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 7,
+      "requestAccounting": {
+        "bangumiApi": 7,
+        "rendererAsset": 0,
+        "total": 7,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true
+      },
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_comparison",
+      "input": {
+        "cohorts": [
+          {
+            "label": "Run95 public POST-safe 2020-05",
+            "query": {
+              "media": "anime",
+              "year": 2020,
+              "month": 5,
+              "resultMode": "all",
+              "limit": 1
+            }
+          }
+        ],
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 4,
+      "requestAccounting": {
+        "bangumiApi": 4,
+        "rendererAsset": 0,
+        "total": 4,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true
+      },
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    }
+  ]
+}

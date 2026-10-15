@@ -116,6 +116,40 @@ test('D07, P01, and A01 keep stable scenario guidance and defer claim state to H
   }
 });
 
+test('A01 public matrix evidence remains direct-only and does not promote the scenario', () => {
+  const record = ledger.records.find(({ id }) => id === 'A01');
+  assert.ok(record, 'A01 must remain in the canonical frontier');
+  assert.equal(record.status, 'UNASSESSED');
+  const evidence = record.evidence?.direct_public_api_matrix_probe_2026_10_15;
+  assert.ok(evidence, 'A01 must retain the bounded direct-public matrix observation');
+  assert.ok(record.source_refs.includes(evidence.report));
+
+  const reportText = readFileSync(path.join(root, evidence.report), 'utf8');
+  const report = JSON.parse(reportText);
+  assert.equal(
+    evidence.report_sha256,
+    createHash('sha256').update(reportText).digest('hex'),
+  );
+  assert.equal(report.scopeId, evidence.scope_id);
+  assert.equal(evidence.request_count, 19);
+  assert.deepEqual(
+    report.selectedTools.filter((tool) => evidence.tools.includes(tool)),
+    evidence.tools,
+  );
+  assert.equal(
+    report.results
+      .filter(({ tool }) => evidence.tools.includes(tool))
+      .every(({ assertions }) => assertions.passed === true),
+    true,
+  );
+  assert.match(
+    evidence.acceptance_boundary,
+    /does not answer the A01 cohort-analysis question/u,
+  );
+  assert.match(evidence.acceptance_boundary, /change A01 from UNASSESSED/u);
+  assert.match(evidence.acceptance_boundary, /add Agent\/MCP or one-shot credit/u);
+});
+
 test('C03 terminal no-report profile stays unassessed and cannot be retried', () => {
   const record = ledger.records.find(({ id }) => id === 'C03');
   assert.ok(record, 'C03 must remain in the canonical frontier');
@@ -498,7 +532,7 @@ test('G06 current-catalog cast probe is public-only, hash-bound, and does not im
   assert.match(evidence.acceptance_boundary, /does not add Agent\/MCP evidence/u);
 
   const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
-  assert.match(table, /公开 API 工具有逐项实测：59\/65；待补 6/u);
+  assert.match(table, /公开 API 工具有逐项实测：65\/65；待补 0/u);
   assert.ok(
     table.includes(`\`bangumi.get_subject_cast\` | \`none\` | \`read\` | `) &&
       table.includes(reportPath),
@@ -562,7 +596,7 @@ test('G09 current-catalog watch-order reports remain direct-public and hash-boun
   assert.match(evidence.acceptance_boundary, /establish complete graph coverage/u);
 
   const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
-  assert.match(table, /公开 API 工具有逐项实测：59\/65；待补 6/u);
+  assert.match(table, /公开 API 工具有逐项实测：65\/65；待补 0/u);
   for (const tool of ['bangumi.get_series_watch_order', 'bangumi.render_series_watch_order']) {
     const row = table.split('\n').find((line) => line.includes(`\`${tool}\``));
     assert.ok(row?.includes(reportPath), `${tool} row must cite the current report`);
