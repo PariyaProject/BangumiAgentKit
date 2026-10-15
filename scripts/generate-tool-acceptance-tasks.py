@@ -3280,10 +3280,15 @@ CODEX_P06_PROBE_IMPLEMENTATION_MARKERS = {
         'does not establish real-person data',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
-        'assertP06RenderPersonProfileOfflineProfile(',
+        'parseCodexOneToolMcpArguments(argv)',
         'createP06RenderPersonProfileOfflineFetch()',
         'createP06RenderPersonProfileAssetGuard()',
         "'p06-render-person-profile-offline-agent-mcp-v1'",
+    ),
+    'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
+        'export function parseCodexOneToolMcpArguments(',
+        'A registered profile cannot be combined with arbitrary tool, arguments, or network mode.',
+        'assertP06RenderPersonProfileOfflineProfile(profile)',
     ),
     'scripts/acceptance/run-p06-render-person-profile-agent-mcp.mjs': (
         'export function validateP06RunnerArgs(',

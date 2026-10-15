@@ -18,11 +18,8 @@ import {
   publicReadOnlyToolAnnotations,
   summarizeToolResult,
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
-import {
-  agentMcpProfileArgumentsSha256,
-  getAgentMcpProfileById,
-} from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
+import { parseCodexOneToolMcpArguments } from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
 import {
   computeMcpBundleSha256,
   gitRepositoryText,
@@ -34,7 +31,6 @@ import {
   createC07CohortRenderOfflineFixtureFetch,
 } from '../../scripts/lib/c07-cohort-render-offline-fixture.mjs';
 import {
-  assertP06RenderPersonProfileOfflineProfile,
   createP06RenderPersonProfileAssetGuard,
   createP06RenderPersonProfileOfflineFetch,
   P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
@@ -139,94 +135,8 @@ function writeSanitizedSummary(summaryPath, summary, serverInstanceId) {
 }
 
 export function parseArguments(argv) {
-  const values = new Map();
-  for (let index = 0; index < argv.length; index += 1) {
-    const key = argv[index];
-    if (
-      ![
-        '--tool',
-        '--arguments-json',
-        '--profile-id',
-        '--summary-file',
-        '--candidate-sha',
-        '--bundle-sha256',
-        '--network-mode',
-      ].includes(key)
-    ) {
-      throw new Error(`Unknown argument: ${key}`);
-    }
-    if (values.has(key) || index + 1 >= argv.length) throw new Error(`Invalid ${key} argument.`);
-    values.set(key, argv[index + 1]);
-    index += 1;
-  }
-  const toolName = values.get('--tool');
-  const encodedArguments = values.get('--arguments-json');
-  const profileId = values.get('--profile-id');
-  const summaryPath = values.get('--summary-file');
-  const candidateSha = values.get('--candidate-sha');
-  const bundleSha256 = values.get('--bundle-sha256');
-  const networkMode = values.get('--network-mode');
-  if (!summaryPath || !candidateSha || !bundleSha256) {
-    throw new Error('--summary-file, --candidate-sha, and --bundle-sha256 are required.');
-  }
-  if (!/^[0-9a-f]{40}$/u.test(candidateSha) || !/^[0-9a-f]{64}$/u.test(bundleSha256)) {
-    throw new Error('Exact Candidate and built MCP bundle hashes are required.');
-  }
-  if (profileId) {
-    if (toolName || encodedArguments || networkMode) {
-      throw new Error(
-        'A registered profile cannot be combined with arbitrary tool, arguments, or network mode.',
-      );
-    }
-    const profile = getAgentMcpProfileById(profileId);
-    if (!profile) throw new Error('Unknown closed Agent/MCP profile id.');
-    let registeredNetworkMode;
-    if (profile.networkMode !== undefined) {
-      if (!assertP06RenderPersonProfileOfflineProfile(profile)) {
-        throw new Error('Registered profile network mode is not supported.');
-      }
-      registeredNetworkMode = profile.networkMode;
-    }
-    return {
-      profile,
-      toolName: profile.toolName,
-      expectedArgumentSequence: profile.calls.map((call) => call.arguments),
-      expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
-      summaryPath,
-      candidateSha,
-      bundleSha256,
-      networkMode: registeredNetworkMode,
-    };
-  }
-
-  if (!toolName || !/^bangumi\.[a-z][a-z0-9_]*$/u.test(toolName)) {
-    throw new Error('A single exact Bangumi tool name is required.');
-  }
-  if (!encodedArguments) {
-    throw new Error('--arguments-json is required for the fixed single-query profile.');
-  }
-  const expectedArguments = JSON.parse(encodedArguments);
-  if (
-    !expectedArguments ||
-    typeof expectedArguments !== 'object' ||
-    Array.isArray(expectedArguments)
-  ) {
-    throw new Error('Fixed arguments must be a JSON object.');
-  }
-  assertC07CohortRenderOfflineProfile({ networkMode, toolName, expectedArguments });
-  return {
-    profile: null,
-    toolName,
-    expectedArguments,
-    expectedArgumentSequence: null,
-    expectedArgumentsSha256: createHash('sha256')
-      .update(canonicalJson(expectedArguments), 'utf8')
-      .digest('hex'),
-    summaryPath,
-    candidateSha,
-    bundleSha256,
-    networkMode,
-  };
+  // The pure parser validates mandatory '--candidate-sha' and bundle digests.
+  return parseCodexOneToolMcpArguments(argv);
 }
 
 function runtimeCandidateMatches(sourceRevision, bundleSha256) {
@@ -246,6 +156,13 @@ function runtimeCandidateMatches(sourceRevision, bundleSha256) {
 
 async function main(argv = process.argv.slice(2)) {
   const config = parseArguments(argv);
+  if (config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE) {
+    assertC07CohortRenderOfflineProfile({
+      networkMode: config.networkMode,
+      toolName: config.toolName,
+      expectedArguments: config.expectedArguments,
+    });
+  }
   const serverInstanceId = randomUUID();
   for (const key of Object.keys(process.env)) {
     if (/(?:BANGUMI|BGM_|OAUTH|TOKEN|SECRET|CREDENTIAL|API[_-]?KEY)/iu.test(key)) {

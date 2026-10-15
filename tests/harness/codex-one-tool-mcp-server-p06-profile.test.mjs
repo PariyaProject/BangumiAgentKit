@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseArguments } from '../../apps/mcp/codex-one-tool-mcp-server.mjs';
+import { parseCodexOneToolMcpArguments } from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
 import {
   P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS,
   P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
@@ -17,7 +17,7 @@ const REQUIRED = [
 ];
 
 test('registered P06 profile selects only its immutable offline network mode', () => {
-  const config = parseArguments([
+  const config = parseCodexOneToolMcpArguments([
     '--profile-id',
     P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID,
     ...REQUIRED,
@@ -30,7 +30,7 @@ test('registered P06 profile selects only its immutable offline network mode', (
 
 test('P06 registered profile rejects arbitrary arguments and caller-selected network modes', () => {
   assert.throws(() =>
-    parseArguments([
+    parseCodexOneToolMcpArguments([
       '--profile-id',
       P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID,
       '--network-mode',
@@ -39,7 +39,7 @@ test('P06 registered profile rejects arbitrary arguments and caller-selected net
     ]),
   );
   assert.throws(() =>
-    parseArguments([
+    parseCodexOneToolMcpArguments([
       '--profile-id',
       P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID,
       '--tool',
@@ -51,7 +51,7 @@ test('P06 registered profile rejects arbitrary arguments and caller-selected net
 
 test('P06 offline network mode cannot be selected by an arbitrary one-tool invocation', () => {
   assert.throws(() =>
-    parseArguments([
+    parseCodexOneToolMcpArguments([
       '--tool',
       'bangumi.render_person_profile',
       '--arguments-json',
