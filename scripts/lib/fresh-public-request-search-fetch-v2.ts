@@ -20,6 +20,41 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+function normalizedBangumiPath(pathname: string): string | null {
+  try {
+    const url = new URL(pathname, PUBLIC_API_ORIGIN);
+    return url.origin === PUBLIC_API_ORIGIN ? url.pathname : null;
+  } catch {
+    return null;
+  }
+}
+
+function isPrivateBangumiPath(pathname: string): boolean {
+  let decodedPath = pathname;
+  for (let depth = 0; depth < 10; depth += 1) {
+    const normalizedPath = normalizedBangumiPath(decodedPath);
+    if (normalizedPath === null || /^\/+p1(?:\/|;|$)/i.test(normalizedPath)) {
+      return true;
+    }
+
+    let nextPath: string;
+    try {
+      nextPath = decodeURIComponent(decodedPath);
+    } catch {
+      return true;
+    }
+    if (nextPath === decodedPath) return false;
+    decodedPath = nextPath;
+  }
+
+  const normalizedPath = normalizedBangumiPath(decodedPath);
+  return (
+    normalizedPath === null ||
+    /^\/+p1(?:\/|;|$)/i.test(normalizedPath) ||
+    /%[0-9a-f]{2}/i.test(normalizedPath)
+  );
+}
+
 /** Count public API attempts while permitting only Bangumi's anonymous read-only search POST. */
 export function createBudgetedPublicSearchFetchV2(
   budget: PublicRequestBudget,
@@ -33,6 +68,9 @@ export function createBudgetedPublicSearchFetchV2(
     const initialUrl = new URL(request.url);
     if (initialUrl.protocol !== 'https:' || initialUrl.origin !== PUBLIC_API_ORIGIN) {
       throw new Error('The fixed public probe only permits HTTPS requests to api.bgm.tv.');
+    }
+    if (isPrivateBangumiPath(initialUrl.pathname)) {
+      throw new Error('The fixed public probe does not permit Bangumi private /p1 paths.');
     }
     if (
       request.credentials === 'include' ||
@@ -68,6 +106,7 @@ export function createBudgetedPublicSearchFetchV2(
       if (
         currentUrl.protocol !== 'https:' ||
         currentUrl.origin !== PUBLIC_API_ORIGIN ||
+        isPrivateBangumiPath(currentUrl.pathname) ||
         (request.method === 'POST' && currentUrl.pathname !== PUBLIC_SEARCH_PATH)
       ) {
         throw new Error(
@@ -95,6 +134,7 @@ export function createBudgetedPublicSearchFetchV2(
       if (
         nextUrl.protocol !== 'https:' ||
         nextUrl.origin !== PUBLIC_API_ORIGIN ||
+        isPrivateBangumiPath(nextUrl.pathname) ||
         (request.method === 'POST' &&
           (!POST_REDIRECT_STATUSES.has(response.status) || nextUrl.pathname !== PUBLIC_SEARCH_PATH))
       ) {

@@ -16,7 +16,7 @@ function profileYear(input: Record<string, unknown>): number {
 
 describe('fresh six-row public API scope', () => {
   it('keeps the selected tool order, fixed windows, and one-row limits', () => {
-    expect(scope.id).toBe('run95-fresh-six-public-api-rows-20261016');
+    expect(scope.id).toBe('run95-fresh-six-public-api-private-path-guard-v1-20261016');
     expect(scope.maxRequestsPerTool).toBe(8);
     expect(scope.maxRequestsTotal).toBe(32);
     expect(scope.tools.map(({ tool }) => tool)).toEqual([
@@ -31,7 +31,9 @@ describe('fresh six-row public API scope', () => {
       {
         tool: 'bangumi.aggregate_subject_cohort',
         input: {
-          cohort: { query: { media: 'anime', year: 2013, month: 2, resultMode: 'all' } },
+          cohort: {
+            query: { media: 'anime', year: 2025, month: 1, resultMode: 'all', limit: 1 },
+          },
           maxSubjects: 1,
         },
       },
@@ -40,8 +42,8 @@ describe('fresh six-row public API scope', () => {
         input: {
           cohorts: [
             {
-              label: 'Run95 direct public 2014-03',
-              query: { media: 'anime', year: 2014, month: 3, resultMode: 'all' },
+              label: 'Run95 private path guard 2025-02',
+              query: { media: 'anime', year: 2025, month: 2, resultMode: 'all', limit: 1 },
             },
           ],
           maxSubjects: 1,
@@ -51,8 +53,8 @@ describe('fresh six-row public API scope', () => {
         tool: 'bangumi.query_subjects',
         input: {
           media: 'anime',
-          year: 2018,
-          month: 6,
+          year: 2025,
+          month: 3,
           resultMode: 'top',
           limit: 1,
           sort: 'date',
@@ -62,12 +64,14 @@ describe('fresh six-row public API scope', () => {
       },
       {
         tool: 'bangumi.render_query_subjects',
-        input: { media: 'anime', year: 2019, month: 7, resultMode: 'top', limit: 1 },
+        input: { media: 'anime', year: 2025, month: 4, resultMode: 'top', limit: 1 },
       },
       {
         tool: 'bangumi.render_subject_cohort_aggregation',
         input: {
-          cohort: { query: { media: 'anime', year: 2015, month: 4, resultMode: 'all' } },
+          cohort: {
+            query: { media: 'anime', year: 2025, month: 5, resultMode: 'all', limit: 1 },
+          },
           maxSubjects: 1,
         },
       },
@@ -76,8 +80,8 @@ describe('fresh six-row public API scope', () => {
         input: {
           cohorts: [
             {
-              label: 'Run95 direct public 2016-05',
-              query: { media: 'anime', year: 2016, month: 5, resultMode: 'all' },
+              label: 'Run95 private path guard 2025-06',
+              query: { media: 'anime', year: 2025, month: 6, resultMode: 'all', limit: 1 },
             },
           ],
           maxSubjects: 1,
@@ -85,13 +89,11 @@ describe('fresh six-row public API scope', () => {
       },
     ]);
     expect(scope.tools.map(({ input }) => profileYear(input))).toEqual([
-      2013, 2014, 2018, 2019, 2015, 2016,
+      2025, 2025, 2025, 2025, 2025, 2025,
     ]);
-    expect(
-      scope.tools.every(({ input }) => profileYear(input) >= 2013 && profileYear(input) <= 2019),
-    ).toBe(true);
+    expect(scope.tools.every(({ input }) => profileYear(input) === 2025)).toBe(true);
     expect(scope.tools.map(({ input }) => profileYear(input))).not.toContain(2012);
-    expect(scope.tools.map(({ input }) => profileYear(input))).not.toContain(2026);
+    expect(scope.tools.map(({ input }) => profileYear(input))).not.toContain(2013);
     for (const { input } of scope.tools) {
       const profileInput = input as unknown as Record<string, unknown>;
       if (typeof profileInput.maxSubjects === 'number') expect(profileInput.maxSubjects).toBe(1);
@@ -124,6 +126,24 @@ describe('fresh six-row public API scope', () => {
         [
           { cohort: { query: { media: 'anime', year: 2012, resultMode: 'all' } }, maxSubjects: 1 },
           {
+            cohort: {
+              query: { media: 'anime', year: 2013, month: 2, resultMode: 'all' },
+            },
+            maxSubjects: 1,
+          },
+          {
+            cohort: {
+              query: {
+                media: 'anime',
+                year: 2020,
+                month: 2,
+                resultMode: 'all',
+                limit: 1,
+              },
+            },
+            maxSubjects: 1,
+          },
+          {
             cohort: { query: { media: 'anime', year: 2012, resultMode: 'all' } },
             maxSubjects: 1,
           },
@@ -134,6 +154,30 @@ describe('fresh six-row public API scope', () => {
         [
           {
             cohorts: [{ query: { media: 'anime', year: 2012, resultMode: 'all' } }],
+            maxSubjects: 1,
+          },
+          {
+            cohorts: [
+              {
+                label: 'Run95 direct public 2014-03',
+                query: { media: 'anime', year: 2014, month: 3, resultMode: 'all' },
+              },
+            ],
+            maxSubjects: 1,
+          },
+          {
+            cohorts: [
+              {
+                label: 'Run95 public POST-safe 2021-03',
+                query: {
+                  media: 'anime',
+                  year: 2021,
+                  month: 3,
+                  resultMode: 'all',
+                  limit: 1,
+                },
+              },
+            ],
             maxSubjects: 1,
           },
           {
@@ -166,6 +210,26 @@ describe('fresh six-row public API scope', () => {
       [
         'bangumi.query_subjects',
         [
+          {
+            media: 'anime',
+            year: 2018,
+            month: 6,
+            resultMode: 'top',
+            limit: 1,
+            sort: 'date',
+            order: 'asc',
+            explain: 'none',
+          },
+          {
+            media: 'anime',
+            year: 2017,
+            month: 9,
+            resultMode: 'top',
+            limit: 1,
+            sort: 'date',
+            order: 'asc',
+            explain: 'none',
+          },
           {
             media: 'anime',
             year: 2026,
@@ -210,6 +274,8 @@ describe('fresh six-row public API scope', () => {
       [
         'bangumi.render_query_subjects',
         [
+          { media: 'anime', year: 2019, month: 7, resultMode: 'top', limit: 1 },
+          { media: 'anime', year: 2022, month: 6, resultMode: 'top', limit: 1 },
           { media: 'anime', year: 2012, resultMode: 'top', limit: 1 },
           {
             media: 'anime',
@@ -226,11 +292,53 @@ describe('fresh six-row public API scope', () => {
       ],
       [
         'bangumi.render_subject_cohort_aggregation',
-        [{ cohort: { query: { media: 'anime', year: 2012, resultMode: 'all' } }, maxSubjects: 1 }],
+        [
+          { cohort: { query: { media: 'anime', year: 2012, resultMode: 'all' } }, maxSubjects: 1 },
+          {
+            cohort: { query: { media: 'anime', year: 2015, month: 4, resultMode: 'all' } },
+            maxSubjects: 1,
+          },
+          {
+            cohort: {
+              query: {
+                media: 'anime',
+                year: 2023,
+                month: 4,
+                resultMode: 'all',
+                limit: 1,
+              },
+            },
+            maxSubjects: 1,
+          },
+        ],
       ],
       [
         'bangumi.render_subject_cohort_comparison',
         [
+          {
+            cohorts: [
+              {
+                label: 'Run95 direct public 2016-05',
+                query: { media: 'anime', year: 2016, month: 5, resultMode: 'all' },
+              },
+            ],
+            maxSubjects: 1,
+          },
+          {
+            cohorts: [
+              {
+                label: 'Run95 public POST-safe 2020-05',
+                query: {
+                  media: 'anime',
+                  year: 2020,
+                  month: 5,
+                  resultMode: 'all',
+                  limit: 1,
+                },
+              },
+            ],
+            maxSubjects: 1,
+          },
           {
             cohorts: [{ query: { media: 'anime', year: 2012, resultMode: 'all' } }],
             maxSubjects: 1,

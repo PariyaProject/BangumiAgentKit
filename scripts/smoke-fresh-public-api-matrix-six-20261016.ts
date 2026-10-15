@@ -90,6 +90,7 @@ function notAttemptedResult(probe: Probe) {
       anonymousSearchPostAllowed: true,
       searchPostPathRestricted: true,
       apiRedirectOriginRestricted: true,
+      apiRedirectPrivatePathBlocked: true,
     },
     result: { state: 'not_attempted' },
     assertions: {
@@ -102,6 +103,7 @@ function notAttemptedResult(probe: Probe) {
       anonymousSearchPostAllowed: true,
       searchPostPathRestricted: true,
       apiRedirectOriginRestricted: true,
+      apiRedirectPrivatePathBlocked: true,
       nonEmptySummary: false,
       noErrorResult: false,
       nonNegativeCounts: true,
@@ -137,6 +139,7 @@ function makeResult(
   const countConsistency =
     scopedCounts.total === scopedCounts.bangumiApi + scopedCounts.rendererAsset;
   const apiRedirectOriginRestricted = true;
+  const apiRedirectPrivatePathBlocked = true;
   const assertions = {
     httpRequestObserved,
     scopeInputExact,
@@ -147,6 +150,7 @@ function makeResult(
     anonymousSearchPostAllowed: true,
     searchPostPathRestricted: true,
     apiRedirectOriginRestricted,
+    apiRedirectPrivatePathBlocked,
     nonEmptySummary,
     noErrorResult,
     nonNegativeCounts,
@@ -157,6 +161,7 @@ function makeResult(
       scopeInputExact &&
       scopeRequestCap &&
       apiRedirectOriginRestricted &&
+      apiRedirectPrivatePathBlocked &&
       nonEmptySummary &&
       noErrorResult &&
       nonNegativeCounts &&
@@ -176,6 +181,7 @@ function makeResult(
       anonymousSearchPostAllowed: true,
       searchPostPathRestricted: true,
       apiRedirectOriginRestricted: true,
+      apiRedirectPrivatePathBlocked,
     },
     result,
     assertions,
@@ -302,6 +308,7 @@ async function main(): Promise<void> {
       searchPostPathRestricted: true,
       apiRedirectOrigin: 'https://api.bgm.tv',
       apiRedirectOriginRestricted: true,
+      apiRedirectPrivatePathBlocked: true,
       bangumiApi: totalAccounting.bangumiApi,
       rendererAsset: totalAccounting.rendererAsset,
       total: totalAccounting.total,
@@ -316,6 +323,7 @@ async function main(): Promise<void> {
       'at most eight combined API and renderer asset requests per tool and 32 total',
       'every API attempt/retry, API redirect hop, asset request, and asset redirect hop is counted',
       'API redirects remain on HTTPS api.bgm.tv and anonymous POST stays on /v0/search/subjects',
+      'private /p1 paths are rejected before dispatch, including same-origin redirects',
       'stop before dispatch after any request budget breach',
       'no OAuth, account, community, HTML, writes, QQ, or TIM',
       'sanitized summaries only; no raw result rows or image bytes',

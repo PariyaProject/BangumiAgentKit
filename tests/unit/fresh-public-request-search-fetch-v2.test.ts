@@ -84,6 +84,59 @@ describe('fresh public search POST fetch v2', () => {
     expect(budget.snapshot().total).toBe(0);
   });
 
+  it.each(['GET', 'HEAD'] as const)(
+    'rejects a private /p1 %s path before network dispatch, including encoded forms',
+    async (method) => {
+      const budget = new PublicRequestBudget(4, 2);
+      const fetchImpl = vi.fn(async () => new Response('{}', { status: 200 }));
+      const fetchFn = createBudgetedPublicSearchFetchV2(budget, fetchImpl);
+
+      for (const path of [
+        '/p1',
+        '/p1/me',
+        '/p1;private/me',
+        '/%70%31/me',
+        '/%2570%2531/me',
+        '/v0/%252e%252e/p1/me',
+      ]) {
+        await expect(fetchFn('https://api.bgm.tv' + path, { method })).rejects.toThrow(
+          'private /p1 paths',
+        );
+      }
+
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(budget.snapshot().total).toBe(0);
+    },
+  );
+
+  it.each(['GET', 'HEAD'] as const)(
+    'rejects a same-origin %s redirect to private /p1 before dispatching the target',
+    async (method) => {
+      for (const location of ['/p1/me', '/%2570%2531/me', '/v0/%252e%252e/p1/me']) {
+        const budget = new PublicRequestBudget(4, 2);
+        const dispatchedUrls: string[] = [];
+        const fetchImpl = vi.fn(async (input) => {
+          dispatchedUrls.push(String(input));
+          return new Response(null, { status: 302, headers: { location } });
+        });
+        const fetchFn = createBudgetedPublicSearchFetchV2(budget, fetchImpl);
+
+        await expect(
+          budget.withScope('bangumi.query_subjects', async () =>
+            fetchFn('https://api.bgm.tv/v0/subjects', { method }),
+          ),
+        ).rejects.toThrow('refused an unsupported API redirect');
+
+        expect(dispatchedUrls).toEqual(['https://api.bgm.tv/v0/subjects']);
+        expect(budget.snapshotScope('bangumi.query_subjects')).toEqual({
+          bangumiApi: 1,
+          rendererAsset: 0,
+          total: 1,
+        });
+      }
+    },
+  );
+
   it('rejects a cross-origin search redirect without dispatching the target', async () => {
     const budget = new PublicRequestBudget(4, 2);
     const fetchImpl = vi.fn(

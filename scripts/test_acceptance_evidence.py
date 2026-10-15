@@ -306,6 +306,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
                     'anonymousSearchPostAllowed': True,
                     'searchPostPathRestricted': True,
                     'apiRedirectOriginRestricted': True,
+                    'apiRedirectPrivatePathBlocked': True,
                 },
                 'result': {'state': 'partial', 'keys': ['state', 'items']},
                 'assertions': {
@@ -351,7 +352,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
                 'searchPostPathRestricted': True,
                 'apiRedirectOrigin': 'https://api.bgm.tv',
                 'apiRedirectOriginRestricted': True,
-                'publicPostPath': '/v0/search/subjects',
+                'apiRedirectPrivatePathBlocked': True,
                 'bangumiApi': total_api,
                 'rendererAsset': total_assets,
                 'total': total_requests,
@@ -420,6 +421,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
                 'anonymousSearchPostAllowed': True,
                 'searchPostPathRestricted': True,
                 'apiRedirectOriginRestricted': True,
+                'apiRedirectPrivatePathBlocked': True,
             })
             report['requestAccounting']['perTool'][result['tool']] = counts
             for key in aggregate:
@@ -443,6 +445,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
             lambda report: report['requestBudget'].__setitem__('maxTotal', 33),
             lambda report: report['requestAccounting'].__setitem__('apiRetryAttemptsIncluded', False),
             lambda report: report['requestAccounting'].__setitem__('apiRedirectOriginRestricted', False),
+            lambda report: report['requestAccounting'].__setitem__('apiRedirectPrivatePathBlocked', False),
             lambda report: report['supportingSourceSha256'].pop(
                 GENERATOR.FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM,
             ),
@@ -479,6 +482,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
                 'anonymousSearchPostAllowed': True,
                 'searchPostPathRestricted': True,
                 'apiRedirectOriginRestricted': True,
+                'apiRedirectPrivatePathBlocked': True,
             },
             'result': {'state': 'partial', 'keys': ['state', 'items']},
             'assertions': {
@@ -520,6 +524,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
                 'searchPostPathRestricted': True,
                 'apiRedirectOrigin': 'https://api.bgm.tv',
                 'apiRedirectOriginRestricted': True,
+                'apiRedirectPrivatePathBlocked': True,
                 'publicPostPath': '/v0/search/subjects',
                 **counts,
                 'perTool': {tool: counts},
@@ -551,6 +556,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
         mutations = (
             lambda report: report['results'][0]['input'].__setitem__('year', 2018),
             lambda report: report['requestAccounting'].__setitem__('apiRedirectOriginRestricted', False),
+            lambda report: report['requestAccounting'].__setitem__('apiRedirectPrivatePathBlocked', False),
             lambda report: report['requestAccounting'].__setitem__('apiRedirectOrigin', 'http://api.bgm.tv'),
             lambda report: report['supportingSourceSha256'].pop(
                 GENERATOR.FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM,
@@ -607,6 +613,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
                     'rendererAssetRedirectHopsIncluded': True,
                     'anonymousSearchPostAllowed': True,
                     'searchPostPathRestricted': True,
+                    'apiRedirectPrivatePathBlocked': True,
                 },
                 'result': {'state': 'partial', 'keys': ['state', 'items']},
                 'assertions': {
@@ -650,6 +657,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
                 'rendererAssetRedirectHopsIncluded': True,
                 'anonymousSearchPostAllowed': True,
                 'searchPostPathRestricted': True,
+                'apiRedirectPrivatePathBlocked': True,
                 'publicPostPath': '/v0/search/subjects',
                 'bangumiApi': total_api,
                 'rendererAsset': total_assets,
@@ -682,6 +690,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
                 GENERATOR.FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM,
             ),
             lambda report: report['requestAccounting'].__setitem__('publicPostPath', '/v0/subjects'),
+            lambda report: report['requestAccounting'].__setitem__('apiRedirectPrivatePathBlocked', False),
             lambda report: report['requestAccounting'].__setitem__('anonymousSearchPostAllowed', False),
             lambda report: report.__setitem__('budgetBlocked', True),
         )

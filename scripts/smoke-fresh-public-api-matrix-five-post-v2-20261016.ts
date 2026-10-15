@@ -89,6 +89,7 @@ function notAttemptedResult(probe: Probe) {
       rendererAssetRedirectHopsIncluded: true,
       anonymousSearchPostAllowed: true,
       searchPostPathRestricted: true,
+      apiRedirectPrivatePathBlocked: true,
     },
     result: { state: 'not_attempted' },
     assertions: {
@@ -100,6 +101,7 @@ function notAttemptedResult(probe: Probe) {
       rendererAssetRedirectHopsIncluded: true,
       anonymousSearchPostAllowed: true,
       searchPostPathRestricted: true,
+      apiRedirectPrivatePathBlocked: true,
       nonEmptySummary: false,
       noErrorResult: false,
       nonNegativeCounts: true,
@@ -134,6 +136,7 @@ function makeResult(
   const nonNegativeCounts = scopedCounts.bangumiApi >= 0 && scopedCounts.rendererAsset >= 0;
   const countConsistency =
     scopedCounts.total === scopedCounts.bangumiApi + scopedCounts.rendererAsset;
+  const apiRedirectPrivatePathBlocked = true;
   const assertions = {
     httpRequestObserved,
     scopeInputExact,
@@ -143,6 +146,7 @@ function makeResult(
     rendererAssetRedirectHopsIncluded: true,
     anonymousSearchPostAllowed: true,
     searchPostPathRestricted: true,
+    apiRedirectPrivatePathBlocked,
     nonEmptySummary,
     noErrorResult,
     nonNegativeCounts,
@@ -152,6 +156,7 @@ function makeResult(
       httpRequestObserved &&
       scopeInputExact &&
       scopeRequestCap &&
+      apiRedirectPrivatePathBlocked &&
       nonEmptySummary &&
       noErrorResult &&
       nonNegativeCounts &&
@@ -170,6 +175,7 @@ function makeResult(
       rendererAssetRedirectHopsIncluded: true,
       anonymousSearchPostAllowed: true,
       searchPostPathRestricted: true,
+      apiRedirectPrivatePathBlocked,
     },
     result,
     assertions,
@@ -294,6 +300,7 @@ async function main(): Promise<void> {
       rendererAssetRedirectHopsIncluded: true,
       anonymousSearchPostAllowed: true,
       searchPostPathRestricted: true,
+      apiRedirectPrivatePathBlocked: true,
       publicPostPath: '/v0/search/subjects',
       bangumiApi: totalAccounting.bangumiApi,
       rendererAsset: totalAccounting.rendererAsset,
@@ -309,6 +316,7 @@ async function main(): Promise<void> {
       'at most eight combined API and renderer asset requests per tool and 32 total',
       'anonymous JSON POST is limited to https://api.bgm.tv/v0/search/subjects',
       'every API attempt/retry, same-host API redirect hop, asset request, and asset redirect hop is counted',
+      'private /p1 paths are rejected before dispatch, including same-origin redirects',
       'stop before dispatch after any request budget breach',
       'no OAuth, account, community, HTML, writes, QQ, or TIM',
       'sanitized summaries only; no raw result rows or image bytes',

@@ -95,27 +95,41 @@ FRESH_PUBLIC_API_MATRIX_SIX_SCOPE_PROGRAM = (
 FRESH_PUBLIC_API_MATRIX_SIX_BUDGET_PROGRAM = (
     'scripts/lib/fresh-public-request-budget.ts'
 )
-FRESH_PUBLIC_API_MATRIX_SIX_SCOPE_ID = 'run95-fresh-six-public-api-rows-20261016'
+FRESH_PUBLIC_API_MATRIX_SIX_SCOPE_ID = (
+    'run95-fresh-six-public-api-private-path-guard-v1-20261016'
+)
 FRESH_PUBLIC_API_MATRIX_SIX_MAX_PER_TOOL = 8
 FRESH_PUBLIC_API_MATRIX_SIX_MAX_TOTAL = 32
 FRESH_PUBLIC_API_MATRIX_SIX_INPUTS = {
     'bangumi.aggregate_subject_cohort': {
         'cohort': {
-            'query': {'media': 'anime', 'year': 2013, 'month': 2, 'resultMode': 'all'},
+            'query': {
+                'media': 'anime',
+                'year': 2025,
+                'month': 1,
+                'resultMode': 'all',
+                'limit': 1,
+            },
         },
         'maxSubjects': 1,
     },
     'bangumi.compare_subject_cohorts': {
         'cohorts': [{
-            'label': 'Run95 direct public 2014-03',
-            'query': {'media': 'anime', 'year': 2014, 'month': 3, 'resultMode': 'all'},
+            'label': 'Run95 private path guard 2025-02',
+            'query': {
+                'media': 'anime',
+                'year': 2025,
+                'month': 2,
+                'resultMode': 'all',
+                'limit': 1,
+            },
         }],
         'maxSubjects': 1,
     },
     'bangumi.query_subjects': {
         'media': 'anime',
-        'year': 2018,
-        'month': 6,
+        'year': 2025,
+        'month': 3,
         'resultMode': 'top',
         'limit': 1,
         'sort': 'date',
@@ -124,21 +138,33 @@ FRESH_PUBLIC_API_MATRIX_SIX_INPUTS = {
     },
     'bangumi.render_query_subjects': {
         'media': 'anime',
-        'year': 2019,
-        'month': 7,
+        'year': 2025,
+        'month': 4,
         'resultMode': 'top',
         'limit': 1,
     },
     'bangumi.render_subject_cohort_aggregation': {
         'cohort': {
-            'query': {'media': 'anime', 'year': 2015, 'month': 4, 'resultMode': 'all'},
+            'query': {
+                'media': 'anime',
+                'year': 2025,
+                'month': 5,
+                'resultMode': 'all',
+                'limit': 1,
+            },
         },
         'maxSubjects': 1,
     },
     'bangumi.render_subject_cohort_comparison': {
         'cohorts': [{
-            'label': 'Run95 direct public 2016-05',
-            'query': {'media': 'anime', 'year': 2016, 'month': 5, 'resultMode': 'all'},
+            'label': 'Run95 private path guard 2025-06',
+            'query': {
+                'media': 'anime',
+                'year': 2025,
+                'month': 6,
+                'resultMode': 'all',
+                'limit': 1,
+            },
         }],
         'maxSubjects': 1,
     },
@@ -151,6 +177,7 @@ FRESH_PUBLIC_API_MATRIX_SIX_REQUIRED_ASSERTIONS = {
     'apiRetryAttemptsIncluded',
     'apiRedirectHopsIncluded',
     'rendererAssetRedirectHopsIncluded',
+    'apiRedirectPrivatePathBlocked',
     'nonEmptySummary',
     'noErrorResult',
     'nonNegativeCounts',
@@ -186,6 +213,7 @@ FRESH_PUBLIC_API_MATRIX_SIX_LIMITS = [
     'at most eight combined API and renderer asset requests per tool and 32 total',
     'every API attempt/retry, API redirect hop, asset request, and asset redirect hop is counted',
     'API redirects remain on HTTPS api.bgm.tv and anonymous POST stays on /v0/search/subjects',
+    'private /p1 paths are rejected before dispatch, including same-origin redirects',
     'stop before dispatch after any request budget breach',
     'no OAuth, account, community, HTML, writes, QQ, or TIM',
     'sanitized summaries only; no raw result rows or image bytes',
@@ -280,6 +308,7 @@ FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_LIMITS = [
     'at most eight combined API and renderer asset requests per tool and 32 total',
     'anonymous JSON POST is limited to https://api.bgm.tv/v0/search/subjects',
     'every API attempt/retry, same-host API redirect hop, asset request, and asset redirect hop is counted',
+    'private /p1 paths are rejected before dispatch, including same-origin redirects',
     'stop before dispatch after any request budget breach',
     'no OAuth, account, community, HTML, writes, QQ, or TIM',
     'sanitized summaries only; no raw result rows or image bytes',
@@ -321,6 +350,7 @@ FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_LIMITS = [
     'exactly one fixed anonymous public/read ToolRegistry call',
     'at most eight combined API and renderer asset requests total',
     'API requests and redirects remain on HTTPS api.bgm.tv; anonymous POST is restricted to /v0/search/subjects',
+    'private /p1 paths are rejected before dispatch, including same-origin redirects',
     'every API retry, API redirect hop, asset request, and asset redirect hop is counted',
     'stop before dispatch after any request budget breach',
     'no OAuth, account, community, HTML, writes, QQ, or TIM',
@@ -874,7 +904,7 @@ def fresh_public_api_matrix_six_report_is_valid(
             'searchPostPathRestricted': True,
             'apiRedirectOrigin': 'https://api.bgm.tv',
             'apiRedirectOriginRestricted': True,
-            'publicPostPath': '/v0/search/subjects',
+            'apiRedirectPrivatePathBlocked': True,
         },
         result_accounting_metadata={
             'apiRetryAttemptsIncluded': True,
@@ -883,6 +913,7 @@ def fresh_public_api_matrix_six_report_is_valid(
             'anonymousSearchPostAllowed': True,
             'searchPostPathRestricted': True,
             'apiRedirectOriginRestricted': True,
+            'apiRedirectPrivatePathBlocked': True,
         },
         redactions=[
             'result row values, titles, names, identifiers, and image bytes are not persisted',
@@ -920,6 +951,7 @@ def fresh_public_query_subjects_origin_guard_v3_report_is_valid(
             'searchPostPathRestricted': True,
             'apiRedirectOrigin': 'https://api.bgm.tv',
             'apiRedirectOriginRestricted': True,
+            'apiRedirectPrivatePathBlocked': True,
             'publicPostPath': '/v0/search/subjects',
         },
         result_accounting_metadata={
@@ -929,6 +961,7 @@ def fresh_public_query_subjects_origin_guard_v3_report_is_valid(
             'anonymousSearchPostAllowed': True,
             'searchPostPathRestricted': True,
             'apiRedirectOriginRestricted': True,
+            'apiRedirectPrivatePathBlocked': True,
         },
         redactions=[
             'result row values, titles, names, identifiers, request bodies, and image bytes are not persisted',
@@ -964,6 +997,7 @@ def fresh_public_api_matrix_five_post_v2_report_is_valid(
             'rendererAssetRedirectHopsIncluded': True,
             'anonymousSearchPostAllowed': True,
             'searchPostPathRestricted': True,
+            'apiRedirectPrivatePathBlocked': True,
             'publicPostPath': '/v0/search/subjects',
         },
         result_accounting_metadata={
@@ -972,6 +1006,7 @@ def fresh_public_api_matrix_five_post_v2_report_is_valid(
             'rendererAssetRedirectHopsIncluded': True,
             'anonymousSearchPostAllowed': True,
             'searchPostPathRestricted': True,
+            'apiRedirectPrivatePathBlocked': True,
         },
         redactions=[
             'result row values, titles, names, identifiers, request bodies, and image bytes are not persisted',
