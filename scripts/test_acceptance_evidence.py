@@ -39,11 +39,14 @@ class PublicApiEvidenceTests(unittest.TestCase):
         self.catalog = [
             {'name': 'bangumi.get_subject', 'auth': 'none'},
             {'name': 'bangumi.get_episode', 'auth': 'none'},
+            {'name': 'bangumi.get_person_profile', 'auth': 'none'},
             {'name': 'bangumi.auth_status', 'auth': 'none'},
         ]
         self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
         self.probe_path = self.root / 'scripts/smoke-public-tools-online.ts'
         self.probe_path.write_text('// fixture probe source\n', encoding='utf-8')
+        self.p02_probe_path = self.root / 'scripts/smoke-person-profile-chronology-online.ts'
+        self.p02_probe_path.write_text('// fixture P02 probe source\n', encoding='utf-8')
         self.original_root = GENERATOR.ROOT
         self.original_catalog = GENERATOR.CATALOG
         self.original_probe_dir = GENERATOR.LIVE_PROBE_DIR
@@ -99,6 +102,64 @@ class PublicApiEvidenceTests(unittest.TestCase):
             GENERATOR.public_api_smoke_sources(self.catalog),
             {'bangumi.get_subject': {'docs/live-probes/public-tools-fixture.json'}},
         )
+
+    def write_p02_chronology_report(self, *, http_requests=4, max_per_tool=4, max_total=4):
+        assertions = {
+            'httpRequestObserved': True,
+            'nonEmptySummary': True,
+            'noErrorResult': True,
+            'nonNegativeCounts': True,
+            'countConsistency': True,
+            'noBlockedRequestAttempt': True,
+            'profileIsBound': True,
+            'passed': True,
+        }
+        result = {
+            'tool': GENERATOR.P02_PUBLIC_CHRONOLOGY_TOOL,
+            'input': GENERATOR.P02_PUBLIC_CHRONOLOGY_INPUT,
+            'httpRequests': http_requests,
+            'result': {'state': 'partial', 'chronologyState': 'partial'},
+            'assertions': assertions,
+        }
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'bangumi_public_api_tool_registry_smoke',
+            'mode': 'read_only_public_api_smoke',
+            'sourceProgram': 'scripts/smoke-person-profile-chronology-online.ts',
+            'catalogSha256': hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
+            'probeScriptSha256': hashlib.sha256(self.p02_probe_path.read_bytes()).hexdigest(),
+            'requestBudget': {'maxPerTool': max_per_tool, 'maxTotal': max_total},
+            'httpRequests': http_requests,
+            'selectedTools': [GENERATOR.P02_PUBLIC_CHRONOLOGY_TOOL],
+            'probeCount': 1,
+            'results': [result],
+        }
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        path.write_text(json.dumps(report), encoding='utf-8')
+        return path
+
+    def test_counts_hash_bound_profile_specific_report_within_budget(self):
+        path = self.write_p02_chronology_report()
+        self.assertEqual(
+            GENERATOR.public_api_smoke_sources(self.catalog),
+            {GENERATOR.P02_PUBLIC_CHRONOLOGY_TOOL: {f'docs/live-probes/{path.name}'}},
+        )
+
+    def test_excludes_profile_specific_report_over_budget(self):
+        self.write_p02_chronology_report(http_requests=5)
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_a_different_input(self):
+        self.write_p02_chronology_report()
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        report['results'][0]['input']['personId'] += 1
+        path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_a_different_budget(self):
+        self.write_p02_chronology_report(max_total=5)
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
 
     def test_combines_successful_partial_reports_per_tool(self):
         self.write_report()

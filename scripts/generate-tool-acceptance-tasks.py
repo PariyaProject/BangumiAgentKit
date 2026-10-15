@@ -53,6 +53,21 @@ PUBLIC_API_REQUIRED_ASSERTIONS = {
     'countConsistency',
     'passed',
 }
+PUBLIC_API_PROBE_PROGRAMS = {
+    'scripts/smoke-public-tools-online.ts',
+    'scripts/smoke-person-profile-chronology-online.ts',
+}
+P02_PUBLIC_CHRONOLOGY_TOOL = 'bangumi.get_person_profile'
+P02_PUBLIC_CHRONOLOGY_INPUT = {
+    'personId': 13684,
+    'includeCredits': False,
+    'maxSubjects': 500,
+    'maxCharacters': 1,
+    'includeChronology': True,
+    'maxChronologySubjects': 1,
+}
+
+
 def test_source() -> str:
     chunks = []
     for path in (ROOT / 'tests').rglob('*'):
@@ -122,9 +137,11 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
     catalog_bytes = CATALOG.read_bytes()
     catalog_sha256 = hashlib.sha256(catalog_bytes).hexdigest()
     current_by_name = {item['name']: item for item in catalog}
-    probe_source_sha256 = hashlib.sha256(
-        (ROOT / 'scripts/smoke-public-tools-online.ts').read_bytes()
-    ).hexdigest()
+    probe_source_sha256_by_program = {
+        program: hashlib.sha256((ROOT / program).read_bytes()).hexdigest()
+        for program in PUBLIC_API_PROBE_PROGRAMS
+        if (ROOT / program).is_file()
+    }
     current_names = {item['name'] for item in catalog}
     public_candidates = {
         item['name'] for item in catalog
@@ -136,13 +153,15 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
             report = json.loads(path.read_text(encoding='utf-8'))
         except (OSError, ValueError):
             continue
+        source_program = report.get('sourceProgram') if isinstance(report, dict) else None
         if (
             not isinstance(report, dict)
             or report.get('schemaVersion') != 1
             or report.get('evidenceKind') != 'bangumi_public_api_tool_registry_smoke'
             or report.get('mode') != 'read_only_public_api_smoke'
-            or report.get('sourceProgram') != 'scripts/smoke-public-tools-online.ts'
-            or report.get('probeScriptSha256') != probe_source_sha256
+            or not isinstance(source_program, str)
+            or source_program not in probe_source_sha256_by_program
+            or report.get('probeScriptSha256') != probe_source_sha256_by_program.get(source_program)
         ):
             continue
         evidence_catalog_sha256 = report.get('catalogSha256')
@@ -183,6 +202,29 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
         }
         if set(result_by_name) != set(selected):
             continue
+        request_budget = report.get('requestBudget')
+        if source_program == 'scripts/smoke-person-profile-chronology-online.ts':
+            if (
+                selected != [P02_PUBLIC_CHRONOLOGY_TOOL]
+                or request_budget != {'maxPerTool': 4, 'maxTotal': 4}
+                or result_by_name[P02_PUBLIC_CHRONOLOGY_TOOL].get('input')
+                != P02_PUBLIC_CHRONOLOGY_INPUT
+            ):
+                continue
+        if request_budget is not None:
+            per_tool_limit = request_budget.get('maxPerTool') if isinstance(request_budget, dict) else None
+            total_limit = request_budget.get('maxTotal') if isinstance(request_budget, dict) else None
+            reported_total = report.get('httpRequests')
+            request_counts = [result_by_name[name].get('httpRequests') for name in selected]
+            if (
+                type(per_tool_limit) is not int
+                or type(total_limit) is not int
+                or type(reported_total) is not int
+                or reported_total > total_limit
+                or not all(type(count) is int and 1 <= count <= per_tool_limit for count in request_counts)
+                or sum(request_counts) != reported_total
+            ):
+                continue
         for name in selected:
             evidence_tool = evidence_by_name.get(name)
             current_tool = current_by_name.get(name)
