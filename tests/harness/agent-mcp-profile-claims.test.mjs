@@ -34,8 +34,18 @@ test('C03 profile registry is closed, immutable, and binds two exact calls', () 
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 1);
-  assert.match(agentMcpProfileRegistrySha256(), /^[0-9a-f]{64}$/u);
+  assert.equal(listAgentMcpProfiles().length, 2);
+  const p03 = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
+  assert.ok(p03);
+  assert.equal(p03.frontierId, 'P03');
+  assert.equal(p03.calls.length, 1);
+  assert.equal(getAgentMcpProfile('bangumi.get_person_profile', p03.argumentProfile), p03);
+  assert.equal(
+    agentMcpProfileRegistrySha256(),
+    '7e3bfd3c5f7815faf5f279759739572e86f62308e81faff518d775aa1eaa9e92',
+  );
+  assert.match(agentMcpProfileRegistrySha256(p03.id), /^[0-9a-f]{64}$/u);
+  assert.notEqual(agentMcpProfileRegistrySha256(p03.id), agentMcpProfileRegistrySha256());
   assert.match(agentMcpProfileArgumentsSha256(PROFILE), /^[0-9a-f]{64}$/u);
   assert.throws(() => {
     PROFILE.calls[0].arguments.personId = 1;

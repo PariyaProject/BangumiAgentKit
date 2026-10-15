@@ -83,8 +83,8 @@ import {
   claimAgentMcpProfileAtomically,
   classifyAgentMcpProfileInconclusiveReport,
   getAgentMcpProfileById,
+  listAgentMcpProfiles,
 } from './lib/agent-mcp-profile-claims.mjs';
-import { isC03ProfileEvidenceRefreshPaths } from './lib/c03-profile-evidence.mjs';
 import {
   acquireG04OneShotGitHubLatch,
   claimG04OneShotAtomically,
@@ -145,6 +145,7 @@ import {
 import { g16RunnerPublicKeySha256 } from './acceptance/g16-agent-mcp-runner-receipt.mjs';
 import { validateG16SanitizedReportFile } from './acceptance/write-g16-agent-mcp-report.mjs';
 import { validateC03SanitizedReportFile } from './acceptance/write-c03-profile-report.mjs';
+import { validateP03SanitizedReportFile } from './acceptance/write-p03-person-name-cn-report.mjs';
 import {
   G06_MODEL,
   G06_REASONING_EFFORT,
@@ -1338,7 +1339,7 @@ function commandCandidateCheck(options) {
       );
     }
   }
-  assertC03ReportCandidateRefresh(epoch, head);
+  assertAgentMcpProfileReportCandidateRefresh(epoch, head);
   if (refreshingPassedCandidate) {
     if (epoch.review_pass_sha !== epoch.candidate_sha) {
       throw new HarnessInvariantError(
@@ -3285,8 +3286,9 @@ function agentMcpProfileClaims(epoch) {
 function agentMcpProfileBundleMatches(candidateSha, bundleSha256, allowReportWorktree = false) {
   if (process.env.HARNESS_MOCK_STATE) {
     const status = git('status', '--porcelain', '--untracked-files=all');
-    const reportOnly =
-      status === `?? ${getAgentMcpProfileById('c03-voice-actor-comparison-v1').reportPath}`;
+    const reportOnly = listAgentMcpProfiles().some(
+      (profile) => status === `?? ${profile.reportPath}`,
+    );
     return (
       bundleSha256 === process.env.HARNESS_G04_BUNDLE_SHA256 &&
       currentHead() === candidateSha &&
@@ -3296,8 +3298,9 @@ function agentMcpProfileBundleMatches(candidateSha, bundleSha256, allowReportWor
   try {
     const status = git('status', '--porcelain', '--untracked-files=all');
     const clean = status === '';
-    const reportOnly =
-      status === `?? ${getAgentMcpProfileById('c03-voice-actor-comparison-v1').reportPath}`;
+    const reportOnly = listAgentMcpProfiles().some(
+      (profile) => status === `?? ${profile.reportPath}`,
+    );
     return (
       (clean || (allowReportWorktree && reportOnly)) &&
       git('rev-parse', 'HEAD') === candidateSha &&
@@ -3309,32 +3312,40 @@ function agentMcpProfileBundleMatches(candidateSha, bundleSha256, allowReportWor
   }
 }
 
-function assertC03ReportCandidateRefresh(epoch, candidateSha) {
-  const profile = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
-  const disposition = agentMcpProfileClaims(epoch)[profile.id];
-  if (disposition?.state !== 'REPORT_WRITTEN') return;
-  const sourceCandidateSha = disposition.sourceCandidateSha;
-  if (
-    !isAncestor(sourceCandidateSha, candidateSha) ||
-    (epoch.candidate_sha && !isAncestor(epoch.candidate_sha, candidateSha))
-  ) {
-    throw new HarnessInvariantError(
-      'AGENT_MCP_PROFILE_REFRESH_SOURCE_INVALID',
-      'A C03 report refresh must descend from the exact Candidate that authorized its query.',
-    );
-  }
-  const changedSinceReport = git('diff', '--name-only', `${sourceCandidateSha}...${candidateSha}`)
-    .split('\n')
-    .filter(Boolean);
-  if (
-    !isC03ProfileEvidenceRefreshPaths(changedSinceReport) ||
-    !agentMcpProfileBundleMatches(candidateSha, disposition.bundleSha256)
-  ) {
-    throw new HarnessInvariantError(
-      'AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID',
-      'A C03 report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
-      { changedPaths: changedSinceReport },
-    );
+function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
+  for (const profile of listAgentMcpProfiles()) {
+    const disposition = agentMcpProfileClaims(epoch)[profile.id];
+    if (disposition?.state !== 'REPORT_WRITTEN') continue;
+    const sourceCandidateSha = disposition.sourceCandidateSha;
+    if (
+      !isAncestor(sourceCandidateSha, candidateSha) ||
+      (epoch.candidate_sha && !isAncestor(epoch.candidate_sha, candidateSha))
+    ) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_REFRESH_SOURCE_INVALID',
+        'A report refresh must descend from the exact Candidate that authorized its query.',
+        { profileId: profile.id },
+      );
+    }
+    const changedSinceReport = git('diff', '--name-only', `${sourceCandidateSha}...${candidateSha}`)
+      .split('\n')
+      .filter(Boolean);
+    const allowedPaths = new Set([
+      profile.reportPath,
+      'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+      'docs/product/frontier-ledger.json',
+    ]);
+    if (
+      !changedSinceReport.includes(profile.reportPath) ||
+      changedSinceReport.some((changedPath) => !allowedPaths.has(changedPath)) ||
+      !agentMcpProfileBundleMatches(candidateSha, disposition.bundleSha256)
+    ) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID',
+        'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
+        { profileId: profile.id, changedPaths: changedSinceReport },
+      );
+    }
   }
 }
 
@@ -3478,7 +3489,7 @@ function commandEpochAgentMcpProfileStatus(options) {
       disposition.toolName !== profile.toolName ||
       disposition.argumentProfile !== profile.argumentProfile ||
       disposition.expectedArgumentsSha256 !== agentMcpProfileArgumentsSha256(profile) ||
-      disposition.registrySha256 !== agentMcpProfileRegistrySha256() ||
+      disposition.registrySha256 !== agentMcpProfileRegistrySha256(profile.id) ||
       disposition.retryAllowed !== false
     )
       state = 'CLAIM_MISMATCH';
@@ -3529,7 +3540,7 @@ function commandEpochAgentMcpProfileStatus(options) {
     tool_name: profile.toolName,
     argument_profile: profile.argumentProfile,
     expected_arguments_sha256: agentMcpProfileArgumentsSha256(profile),
-    registry_sha256: agentMcpProfileRegistrySha256(),
+    registry_sha256: agentMcpProfileRegistrySha256(profile.id),
     call_count: profile.calls.length,
     retry_allowed: false,
     claim_label_present: claimLabel !== null,
@@ -3588,7 +3599,7 @@ function commandEpochAgentMcpProfileClaim(options) {
     argumentProfile: profile.argumentProfile,
     expectedArguments: profile.calls.map((call) => structuredClone(call.arguments)),
     expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
-    registrySha256: agentMcpProfileRegistrySha256(),
+    registrySha256: agentMcpProfileRegistrySha256(profile.id),
     sourceCandidateSha: ready.candidateSha,
     baseSha: ready.baseSha,
     ciSha: ready.candidateSha,
@@ -3700,6 +3711,13 @@ function assertAgentMcpProfileClaimCurrent(profile, claim) {
   return { run, epoch, pr, latestReview };
 }
 
+function validateAgentMcpProfileReport(profile, claim, reportPath) {
+  if (profile.id === 'p03-person-name-cn-agent-mcp-v1') {
+    return validateP03SanitizedReportFile(claim, root, reportPath);
+  }
+  return validateC03SanitizedReportFile(claim, root, reportPath);
+}
+
 function commandEpochAgentMcpProfileResult(options) {
   ensureControlPlane();
   const runNumber = required(options, 'run');
@@ -3743,7 +3761,7 @@ function commandEpochAgentMcpProfileResult(options) {
     canonicalHash(current.expectedArguments) ===
       canonicalHash(profile.calls.map((call) => call.arguments)) &&
     current.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(profile) &&
-    current.registrySha256 === agentMcpProfileRegistrySha256() &&
+    current.registrySha256 === agentMcpProfileRegistrySha256(profile.id) &&
     current.sourceCandidateSha === current.ciSha &&
     current.ciStatus === 'SUCCESS' &&
     current.reviewerId &&
@@ -3784,9 +3802,9 @@ function commandEpochAgentMcpProfileResult(options) {
       );
     }
     if (resultState === 'REPORT_WRITTEN') {
-      const validation = validateC03SanitizedReportFile(
+      const validation = validateAgentMcpProfileReport(
+        profile,
         current,
-        root,
         path.join(root, profile.reportPath),
       );
       if (
@@ -3833,13 +3851,13 @@ function commandEpochAgentMcpProfileResult(options) {
     if (status !== `?? ${profile.reportPath}`) {
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_WORKTREE_UNEXPECTED',
-        'Only the claim-bound sanitized C03 report may be untracked while recording REPORT_WRITTEN.',
+        'Only the claim-bound profile report may be untracked while recording REPORT_WRITTEN.',
         { status: status.split('\n') },
       );
     }
-    acceptedReport = validateC03SanitizedReportFile(
+    acceptedReport = validateAgentMcpProfileReport(
+      profile,
       current,
-      root,
       path.join(root, profile.reportPath),
     );
     if (
@@ -3849,7 +3867,7 @@ function commandEpochAgentMcpProfileResult(options) {
     ) {
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_REPORT_INVALID',
-        acceptedReport.reason ?? 'C03 sanitized report does not match the exact claim.',
+        acceptedReport.reason ?? 'Sanitized profile report does not match the exact claim.',
       );
     }
   } else {
@@ -3861,10 +3879,10 @@ function commandEpochAgentMcpProfileResult(options) {
       if (reportSha256 !== observedSha256) {
         throw new HarnessInvariantError(
           'AGENT_MCP_PROFILE_INCONCLUSIVE_REPORT_HASH',
-          'An unaccepted report digest must match the exact retained C03 artifact.',
+          'An unaccepted report digest must match the exact retained profile artifact.',
         );
       }
-      const validation = validateC03SanitizedReportFile(current, root, reportPath);
+      const validation = validateAgentMcpProfileReport(profile, current, reportPath);
       if (validation.passed) {
         let claimCurrent = true;
         try {
@@ -3901,7 +3919,7 @@ function commandEpochAgentMcpProfileResult(options) {
     if (status !== (reportExists ? `?? ${profile.reportPath}` : '')) {
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_WORKTREE_UNEXPECTED',
-        'An INCONCLUSIVE result may retain only its exact unaccepted C03 report.',
+        'An INCONCLUSIVE result may retain only its exact unaccepted profile report.',
         { status: status.split('\n') },
       );
     }

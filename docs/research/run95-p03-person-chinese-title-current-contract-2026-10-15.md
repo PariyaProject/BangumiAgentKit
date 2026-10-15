@@ -1,6 +1,6 @@
 # Run #95 P03: person Chinese-title evidence and source coverage
 
-Checked 2026-10-15 against BangumiAgentKit Base `03d73411fac51bbe35734295ee42358863b34ed9`. This is source-contract and implementation evidence only. No P03 live person lookup or Agent/MCP query was run; no scenario answer is credited.
+Reverified 2026-10-15 on current BangumiAgentKit `master` at `2884aff638512652cfe99e4b496dd915332ad052` after PR #166 merged. This records source-contract and implementation semantics; it does not by itself credit a scenario answer.
 
 ## Official source contract
 
@@ -13,8 +13,12 @@ The local first-party schema is `openapi/upstream/v0.yaml` at `/v0/persons/{pers
 ## Bounded product behavior
 
 - Person-work rows preserve the existing display `nameCn` fallback and carry `nameCnSource` separately. The source field is the raw string, including an explicit empty string; `null` represents an absent or invalid runtime field.
-- `get_person_profile` reports `coverage.subjects.sourceCompleteness = "undocumented"`. Its local `complete` state means only that the received rows were not locally capped and selected identity fields were present; it does not establish that the endpoint returned every person-work relation.
+- `get_person_profile` reports `coverage.subjects.sourceCompleteness = "undocumented"`. Its local `complete` state means only that the received rows were not locally capped and selected identity fields were present; it does not establish that the endpoint returned every person-work relation. The P03 fixed profile leaves `includeChronology` at its default false, so it does not request subject-detail dates.
 - MCP text reports counts for present, empty (including whitespace-only), and unavailable `nameCnSource` values among included credit rows. An unavailable value combines an absent field with an invalid non-string value; when credit rows are excluded, these counts and row metrics are unavailable. It lists up to six positive rows within a 3600-byte UTF-8 limit and counts any additional positive rows omitted from text; the full returned result remains in `structuredContent`.
 - The rendered profile card labels the returned scope and shows whether each displayed row has a source title value, an empty field, or an unavailable field (absent or invalid).
 
-P03 advances only to `PARTIAL`. No career-wide list, negative conclusion, current-source Agent/MCP answer acceptance, or complete relation graph is claimed. C03 remains terminal INCONCLUSIVE and is not retried.
+This source contract supports only bounded positive `name_cn` evidence. It does not establish a career-wide list, negative conclusion, or complete relation graph; any current Agent/MCP answer must be accepted against its separate profile and report evidence. C03 remains terminal INCONCLUSIVE and is not retried.
+
+## P03 Epoch profile boundary
+
+The selected Run #95 Agent/MCP profile makes one anonymous `bangumi.get_person_profile` call for public person ID 4765, with `includeCredits=true`, `maxSubjects=500`, and `maxCharacters=1`. It lists at most six positive rows visible in compact MCP text, retains present/empty/unavailable counts and observed/returned/truncated subject coverage, and remains PARTIAL. A non-empty trimmed `nameCnSource` establishes that official `name_cn` was supplied; it does not establish that the value differs from the original name or prove a complete translation catalog.

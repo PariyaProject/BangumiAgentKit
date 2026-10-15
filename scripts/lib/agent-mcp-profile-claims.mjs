@@ -7,6 +7,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const REGISTRY_PATH = path.join(ROOT, 'scripts/acceptance/agent-mcp-profile-registry.json');
 const REGISTRY_BYTES = readFileSync(REGISTRY_PATH);
 const REGISTRY = JSON.parse(REGISTRY_BYTES.toString('utf8'));
+const LEGACY_C03_REGISTRY_SHA256 =
+  '7e3bfd3c5f7815faf5f279759739572e86f62308e81faff518d775aa1eaa9e92';
 
 export class AgentMcpProfileClaimError extends Error {
   constructor(code, message) {
@@ -89,8 +91,16 @@ export function listAgentMcpProfiles() {
   return [...REGISTRY.profiles];
 }
 
-export function agentMcpProfileRegistrySha256() {
-  return createHash('sha256').update(REGISTRY_BYTES).digest('hex');
+/**
+ * Bind each profile to its immutable registry definition. C03 already persisted the original
+ * C03-only registry snapshot hash, so preserve that exact legacy value for its terminal claim.
+ */
+export function agentMcpProfileRegistrySha256(profileId = 'c03-voice-actor-comparison-v1') {
+  if (profileId === 'c03-voice-actor-comparison-v1') return LEGACY_C03_REGISTRY_SHA256;
+  const profile = getAgentMcpProfileById(profileId);
+  if (!profile)
+    throw new AgentMcpProfileClaimError('PROFILE_NOT_REGISTERED', 'Unknown profile id.');
+  return createHash('sha256').update(canonicalAgentMcpProfileJson(profile)).digest('hex');
 }
 
 export function agentMcpProfileArgumentsSha256(profile) {

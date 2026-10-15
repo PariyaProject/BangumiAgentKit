@@ -722,7 +722,7 @@ function runC03Profile({ runNumber }) {
     claim.reviewerId !== currentGate.reviewerId ||
     claim.bundleSha256 !== bundleSha256 ||
     claim.expectedArgumentsSha256 !== agentMcpProfileArgumentsSha256(PROFILE) ||
-    claim.registrySha256 !== agentMcpProfileRegistrySha256() ||
+    claim.registrySha256 !== agentMcpProfileRegistrySha256(PROFILE.id) ||
     claim.runnerReceiptPublicKey !== publicKeyBase64
   )
     return recordInconclusive(

@@ -41,6 +41,32 @@
           }
         }
       ]
+    },
+    {
+      "id": "p03-person-name-cn-agent-mcp-v1",
+      "frontierId": "P03",
+      "epochId": "run95-p03-person-chinese-title-agent-mcp-20261015",
+      "toolName": "bangumi.get_person_profile",
+      "argumentProfile": "fixed-p03-person-name-cn-4765-500-subjects-1-character-v1",
+      "claimLabelName": "harness-r95-p03-person-name-cn-claimed",
+      "reportPath": "docs/live-probes/p03-person-name-cn-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-p03-person-chinese-title-current-contract-2026-10-15.md",
+      "evidenceKind": "codex_cli_p03_person_name_cn_agent_mcp",
+      "answerCheckMethod": "p03-positive-name-cn-source-rows-and-coverage-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 16384,
+      "calls": [
+        {
+          "toolName": "bangumi.get_person_profile",
+          "arguments": {
+            "personId": 4765,
+            "includeCredits": true,
+            "maxSubjects": 500,
+            "maxCharacters": 1
+          }
+        }
+      ]
     }
   ]
 }
