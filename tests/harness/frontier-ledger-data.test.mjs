@@ -36,12 +36,36 @@ test('consumed Run 95 S03 one-shot stays partial and cannot be retried', () => {
   assert.doesNotMatch(record.next_action, /then make the single .* call/u);
 });
 
-test('G04 frontier keeps stable query policy without Run 95 attempt state', () => {
+test('G04 terminal Run 95 one-shot remains partial and cannot be retried', () => {
   const record = ledger.records.find(({ id }) => id === 'G04');
   assert.ok(record, 'G04 must remain in the canonical frontier');
+  assert.equal(record.status, 'PARTIAL');
+  const dispositionPath =
+    'docs/research/run95-g04-terminal-disposition-reconciliation-2026-10-15.md';
+  assert.ok(record.source_refs.includes(dispositionPath));
+
   const serialized = JSON.stringify(record);
   assert.doesNotMatch(serialized, /NOT_ATTEMPTED|claim_state|acceptance_count_advanced/u);
-  assert.match(record.next_action, /assigned same-identity Luna Max PASS/u);
+  assert.match(record.next_action, /PR #136 claim is INCONCLUSIVE/u);
+  assert.match(record.next_action, /queryInvoked=false/u);
+  assert.match(record.next_action, /retry is prohibited/u);
+  assert.match(record.next_action, /permanent PR #139 latch is present/u);
+  assert.match(record.next_action, /Do not invoke or claim this profile again/u);
+  assert.match(record.next_action, /another safe unspent frontier/u);
+  assert.doesNotMatch(record.next_action, /one-shot query may run|Run the fixed query/iu);
+
+  const reportPath = 'docs/live-probes/g04-person-activity-run95.json';
+  assert.equal(existsSync(path.join(root, reportPath)), false, 'the terminal Run #95 claim wrote no report');
+  const disposition = readFileSync(path.join(root, dispositionPath), 'utf8');
+  assert.match(disposition, /06c1915e64e466dc3543b46d58801eb767e9a161/u);
+  assert.match(disposition, /51126320202c653d48e7d62461575a10988b1dbb/u);
+  assert.match(disposition, /INCONCLUSIVE/u);
+  assert.match(disposition, /queryInvoked=false/u);
+  assert.match(disposition, /reportWritten=false/u);
+  assert.match(disposition, /retryAllowed=false/u);
+  assert.match(disposition, /harness-r95-g04-person-activity-claimed/u);
+  assert.match(disposition, /one of 115 observed person\s+relation rows/u);
+  assert.doesNotMatch(disposition, /claimId|personId|13684|expectedArguments|bundleSha256/iu);
 });
 
 test('G16 frontier keeps stable source guidance separate from Harness runtime state', () => {
