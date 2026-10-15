@@ -57,8 +57,12 @@ PUBLIC_API_PROBE_PROGRAMS = {
     'scripts/smoke-public-tools-online.ts',
     'scripts/smoke-person-profile-chronology-online.ts',
     'scripts/smoke-fresh-render-person-profile-public.ts',
+    'scripts/smoke-fresh-render-person-profile-public-unbounded-v1.ts',
 }
 FRESH_RENDER_PERSON_PROFILE_PUBLIC_PROGRAM = 'scripts/smoke-fresh-render-person-profile-public.ts'
+FRESH_RENDER_PERSON_PROFILE_UNBOUNDED_PROGRAM = (
+    'scripts/smoke-fresh-render-person-profile-public-unbounded-v1.ts'
+)
 FRESH_RENDER_PERSON_PROFILE_PUBLIC_SCOPE_ID = 'run95-fresh-render-person-profile-13684-v1'
 FRESH_RENDER_PERSON_PROFILE_PUBLIC_TOOL = 'bangumi.render_person_profile'
 FRESH_RENDER_PERSON_PROFILE_PUBLIC_INPUT = {
@@ -354,6 +358,11 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
             or report.get('probeScriptSha256') != probe_source_sha256_by_program.get(source_program)
         ):
             continue
+        # This hash-bound historical report counted API fetches only. It did not
+        # observe renderer asset requests or each asset redirect hop, so it can
+        # remain auditable history but cannot establish the bounded total.
+        if source_program == FRESH_RENDER_PERSON_PROFILE_UNBOUNDED_PROGRAM:
+            continue
         evidence_catalog_sha256 = report.get('catalogSha256')
         if evidence_catalog_sha256 == catalog_sha256:
             evidence_by_name = current_by_name
@@ -395,12 +404,31 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
         if source_program == FRESH_RENDER_PERSON_PROFILE_PUBLIC_PROGRAM:
             fresh_result = result_by_name.get(FRESH_RENDER_PERSON_PROFILE_PUBLIC_TOOL)
             fresh_assertions = fresh_result.get('assertions') if isinstance(fresh_result, dict) else None
+            request_accounting = report.get('requestAccounting')
+            result_accounting = fresh_result.get('requestAccounting') if isinstance(fresh_result, dict) else None
+            accounting_counts = (
+                request_accounting.get('bangumiApi'),
+                request_accounting.get('rendererAsset'),
+                request_accounting.get('total'),
+            ) if isinstance(request_accounting, dict) else ()
             if (
                 selected != [FRESH_RENDER_PERSON_PROFILE_PUBLIC_TOOL]
                 or report.get('scopeId') != FRESH_RENDER_PERSON_PROFILE_PUBLIC_SCOPE_ID
                 or report.get('budgetBlocked') is not False
                 or report.get('requestBudget') != {'maxPerTool': 4, 'maxTotal': 4}
+                or not isinstance(request_accounting, dict)
+                or request_accounting.get('scope') != 'bangumi_api_and_renderer_assets'
+                or request_accounting.get('redirectsIncluded') is not True
+                or any(type(count) is not int or count < 0 for count in accounting_counts)
+                or request_accounting.get('total')
+                != request_accounting.get('bangumiApi') + request_accounting.get('rendererAsset')
+                or request_accounting.get('total') != report.get('httpRequests')
+                or not isinstance(result_accounting, dict)
+                or result_accounting.get('bangumiApi') != request_accounting.get('bangumiApi')
+                or result_accounting.get('rendererAsset') != request_accounting.get('rendererAsset')
+                or result_accounting.get('total') != request_accounting.get('total')
                 or not isinstance(fresh_result, dict)
+                or fresh_result.get('httpRequests') != request_accounting.get('total')
                 or fresh_result.get('input') != FRESH_RENDER_PERSON_PROFILE_PUBLIC_INPUT
                 or not isinstance(fresh_assertions, dict)
                 or fresh_assertions.get('scopeInputExact') is not True

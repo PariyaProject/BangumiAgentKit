@@ -5,13 +5,21 @@
   "mode": "read_only_public_api_smoke",
   "catalogSha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
   "probeScriptSha256": "471826d6331f6f473cdb8326c3c557544be1f1b60a0fa13b92525e3c087ef862",
-  "sourceProgram": "scripts/smoke-fresh-render-person-profile-public.ts",
+  "sourceProgram": "scripts/smoke-fresh-render-person-profile-public-unbounded-v1.ts",
+  "executedProgram": "scripts/smoke-fresh-render-person-profile-public.ts",
   "scopeId": "run95-fresh-render-person-profile-13684-v1",
   "requestBudget": {
     "maxPerTool": 4,
     "maxTotal": 4
   },
   "budgetBlocked": false,
+  "requestAccounting": {
+    "scope": "bangumi_api_fetch_only",
+    "redirectsIncluded": false,
+    "rendererAssetsIncluded": false,
+    "totalHttpRequests": null,
+    "creditDisposition": "superseded_unbounded_asset_request_count"
+  },
   "userAgent": "BangumiAgentKit/live-public-probe",
   "probeCount": 1,
   "httpRequests": 3,

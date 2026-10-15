@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-15T15:44:13.213Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
+  "probeScriptSha256": "428ecc9da51b757ca15bf1cec91eef685e2d5e618f1598493afc0cf890f1bd91",
+  "sourceProgram": "scripts/smoke-fresh-render-person-profile-public.ts",
+  "scopeId": "run95-fresh-render-person-profile-13684-v1",
+  "requestBudget": {
+    "maxPerTool": 4,
+    "maxTotal": 4
+  },
+  "requestAccounting": {
+    "scope": "bangumi_api_and_renderer_assets",
+    "redirectsIncluded": true,
+    "bangumiApi": 3,
+    "rendererAsset": 1,
+    "total": 4
+  },
+  "budgetBlocked": false,
+  "userAgent": "BangumiAgentKit/live-public-probe",
+  "probeCount": 1,
+  "httpRequests": 4,
+  "selectedTools": [
+    "bangumi.render_person_profile"
+  ],
+  "limits": [
+    "exactly one anonymous public/read ToolRegistry call",
+    "one fresh fixed person profile with one-row local caps",
+    "at most four combined Bangumi API and renderer asset HTTP requests; each redirect hop counts; no retries",
+    "no OAuth or account access",
+    "summary only; no raw rows or artifact bytes",
+    "temporary rendered artifacts removed after the single call"
+  ],
+  "redactions": [
+    "person relation rows, names, and image bytes are not persisted"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.render_person_profile",
+      "input": {
+        "personId": 13684,
+        "maxSubjects": 1,
+        "maxCharacters": 1,
+        "maxCredits": 1,
+        "includeChronology": false
+      },
+      "httpRequests": 4,
+      "requestAccounting": {
+        "bangumiApi": 3,
+        "rendererAsset": 1,
+        "total": 4
+      },
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    }
+  ]
+}

@@ -1,30 +1,51 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import {
+  AssetResolver,
+  LocalArtifactStore,
+  NodeAssetHttpTransport,
+  RenderService,
+} from '@bangumi-agent-kit/renderer';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
+import {
+  BudgetedAssetHttpTransport,
+  createBudgetedPublicFetch,
+  PublicRequestBudget,
+} from './lib/fresh-public-request-budget.js';
 import { FRESH_RENDER_PERSON_PROFILE_PUBLIC_SCOPE as scope } from './lib/fresh-render-person-profile-public-scope.js';
 
 const LIVE_FLAG = '--live';
 const SCRIPT_PATH = 'scripts/smoke-fresh-render-person-profile-public.ts';
 const USER_AGENT = process.env.BANGUMI_USER_AGENT ?? 'BangumiAgentKit/live-public-probe';
 const FAILURE_STATES = new Set([
-  'auth_required', 'error', 'not_computable', 'not_found', 'permission_denied',
-  'unavailable', 'unsupported', 'upstream_error',
+  'auth_required',
+  'error',
+  'not_computable',
+  'not_found',
+  'permission_denied',
+  'unavailable',
+  'unsupported',
+  'upstream_error',
 ]);
 
 function summarize(value: unknown): Record<string, unknown> {
   if (value && typeof value === 'object') {
     const record = value as Record<string, unknown>;
     if (record.ok === false) {
-      const error = record.error && typeof record.error === 'object'
-        ? record.error as Record<string, unknown>
-        : {};
+      const error =
+        record.error && typeof record.error === 'object'
+          ? (record.error as Record<string, unknown>)
+          : {};
       return {
         state: 'error',
         code: typeof error.code === 'string' ? error.code : 'UNKNOWN_ERROR',
-        ...(typeof error.upstreamStatus === 'number' ? { upstreamStatus: error.upstreamStatus } : {}),
+        ...(typeof error.upstreamStatus === 'number'
+          ? { upstreamStatus: error.upstreamStatus }
+          : {}),
         ...(typeof error.retryable === 'boolean' ? { retryable: error.retryable } : {}),
       };
     }
@@ -37,28 +58,31 @@ async function main(): Promise<void> {
   if (!process.argv.includes(LIVE_FLAG)) {
     throw new Error(`Refusing live requests without ${LIVE_FLAG}.`);
   }
-  const unexpectedArgs = process.argv.slice(2).filter((argument) => argument !== LIVE_FLAG && argument !== '--');
+  const unexpectedArgs = process.argv
+    .slice(2)
+    .filter((argument) => argument !== LIVE_FLAG && argument !== '--');
   if (unexpectedArgs.length > 0) {
     throw new Error('This fixed public probe accepts no arguments other than --live.');
   }
 
-  let httpRequests = 0;
-  let budgetBlocked = false;
+  const requestBudget = new PublicRequestBudget(scope.maxHttpRequests);
+  const assetTransport = new BudgetedAssetHttpTransport(
+    requestBudget,
+    new NodeAssetHttpTransport(),
+  );
+  const renderService = new RenderService(undefined, undefined, new AssetResolver(assetTransport));
+  const artifactDirectory = await mkdtemp(join(tmpdir(), 'bangumi-public-render-probe-'));
+  const artifactStore = new LocalArtifactStore({ artifactDir: artifactDirectory });
   const publicHttpClient = new HttpClient({
     userAgent: USER_AGENT,
-    fetchFn: async (input, init) => {
-      if (httpRequests >= scope.maxHttpRequests) {
-        budgetBlocked = true;
-        throw new Error('PUBLIC_PROBE_REQUEST_BUDGET_EXCEEDED');
-      }
-      httpRequests += 1;
-      return await fetch(input, init);
-    },
+    fetchFn: createBudgetedPublicFetch(requestBudget),
   });
   const storage = new MemoryStorage();
   const deps = createRuntimeDependenciesWithStorage(storage, {
     secretKey: 'live-probe-secret-key-012345678901234567890123',
     publicHttpClient,
+    renderService,
+    artifactStore,
   });
   const registry = new ToolRegistry(deps);
   const observedAt = new Date().toISOString();
@@ -74,38 +98,55 @@ async function main(): Promise<void> {
     rawResult = {
       ok: false,
       error: {
-        code: typeof detail.code === 'string'
-          ? detail.code
-          : error instanceof Error ? error.name : 'UNKNOWN_ERROR',
-        ...(typeof detail.upstreamStatus === 'number' ? { upstreamStatus: detail.upstreamStatus } : {}),
+        code:
+          typeof detail.code === 'string'
+            ? detail.code
+            : error instanceof Error
+              ? error.name
+              : 'UNKNOWN_ERROR',
+        ...(typeof detail.upstreamStatus === 'number'
+          ? { upstreamStatus: detail.upstreamStatus }
+          : {}),
         ...(typeof detail.retryable === 'boolean' ? { retryable: detail.retryable } : {}),
       },
     };
   } finally {
-    await registry.close();
+    try {
+      await registry.close();
+    } finally {
+      await rm(artifactDirectory, { recursive: true, force: true });
+    }
   }
 
+  const counts = requestBudget.snapshot();
   const result = summarize(rawResult);
   const state = result.state;
   const noErrorResult = typeof state !== 'string' || !FAILURE_STATES.has(state);
-  const nonEmptySummary = Object.keys(result).length > 0
-    && (state !== 'value' || (Array.isArray(result.keys) && result.keys.length > 0));
+  const nonEmptySummary =
+    Object.keys(result).length > 0 &&
+    (state !== 'value' || (Array.isArray(result.keys) && result.keys.length > 0));
+  const countConsistency = counts.total === counts.bangumiApi + counts.rendererAsset;
+  const scopeRequestCap = !counts.budgetBlocked && counts.total <= scope.maxHttpRequests;
   const assertions = {
-    httpRequestObserved: httpRequests > 0,
-    scopeInputExact: scope.input.personId === 13684
-      && scope.input.maxSubjects === 1
-      && scope.input.maxCharacters === 1
-      && scope.input.maxCredits === 1
-      && scope.input.includeChronology === false,
-    scopeRequestCap: !budgetBlocked && httpRequests <= scope.maxHttpRequests,
+    httpRequestObserved: counts.total > 0,
+    scopeInputExact:
+      scope.input.personId === 13684 &&
+      scope.input.maxSubjects === 1 &&
+      scope.input.maxCharacters === 1 &&
+      scope.input.maxCredits === 1 &&
+      scope.input.includeChronology === false,
+    scopeRequestCap,
     nonEmptySummary,
     noErrorResult,
-    nonNegativeCounts: true,
-    countConsistency: true,
-    passed: httpRequests > 0
-      && !budgetBlocked
-      && nonEmptySummary
-      && noErrorResult,
+    nonNegativeCounts: counts.bangumiApi >= 0 && counts.rendererAsset >= 0,
+    countConsistency,
+    passed:
+      counts.total > 0 &&
+      !counts.budgetBlocked &&
+      scopeRequestCap &&
+      countConsistency &&
+      nonEmptySummary &&
+      noErrorResult,
   };
   const report = {
     schemaVersion: 1,
@@ -121,30 +162,50 @@ async function main(): Promise<void> {
     sourceProgram: SCRIPT_PATH,
     scopeId: scope.id,
     requestBudget: { maxPerTool: scope.maxHttpRequests, maxTotal: scope.maxHttpRequests },
-    budgetBlocked,
+    requestAccounting: {
+      scope: 'bangumi_api_and_renderer_assets',
+      redirectsIncluded: true,
+      bangumiApi: counts.bangumiApi,
+      rendererAsset: counts.rendererAsset,
+      total: counts.total,
+    },
+    budgetBlocked: counts.budgetBlocked,
     userAgent: USER_AGENT,
     probeCount: 1,
-    httpRequests,
+    httpRequests: counts.total,
     selectedTools: [scope.tool],
     limits: [
       'exactly one anonymous public/read ToolRegistry call',
       'one fresh fixed person profile with one-row local caps',
-      'at most four HTTP requests; no retries',
+      'at most four combined Bangumi API and renderer asset HTTP requests; each redirect hop counts; no retries',
       'no OAuth or account access',
       'summary only; no raw rows or artifact bytes',
+      'temporary rendered artifacts removed after the single call',
     ],
     redactions: ['person relation rows, names, and image bytes are not persisted'],
-    results: [{
-      tool: scope.tool,
-      input: scope.input,
-      httpRequests,
-      result,
-      assertions,
-    }],
+    results: [
+      {
+        tool: scope.tool,
+        input: scope.input,
+        httpRequests: counts.total,
+        requestAccounting: {
+          bangumiApi: counts.bangumiApi,
+          rendererAsset: counts.rendererAsset,
+          total: counts.total,
+        },
+        result,
+        assertions,
+      },
+    ],
   };
   const date = observedAt.slice(0, 10);
   const time = observedAt.slice(11, 23).replaceAll(':', '').replaceAll('.', '');
-  const output = join(process.cwd(), 'docs', 'live-probes', `public-tools-${date}-${time}-${process.pid}.json`);
+  const output = join(
+    process.cwd(),
+    'docs',
+    'live-probes',
+    `public-tools-${date}-${time}-${process.pid}.json`,
+  );
   await mkdir(join(process.cwd(), 'docs', 'live-probes'), { recursive: true });
   await writeFile(output, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   await new Promise<void>((resolve, reject) => {
@@ -153,10 +214,10 @@ async function main(): Promise<void> {
       else resolve();
     });
   });
-  process.exit(0);
+  process.exitCode = assertions.passed ? 0 : 1;
 }
 
 main().catch((error: unknown) => {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-  process.exit(1);
+  process.exitCode = 1;
 });

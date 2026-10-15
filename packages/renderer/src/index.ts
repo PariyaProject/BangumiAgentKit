@@ -11,6 +11,14 @@ export {
   extractImageUrls,
 } from './render-service.js';
 export type { RenderResult, RenderOptions } from './render-service.js';
+export { AssetResolver } from './asset-resolver.js';
+export { NodeAssetHttpTransport } from './asset-transport.js';
+export type {
+  AssetHttpTransport,
+  AssetHttpTransportOptions,
+  AssetHttpTransportResponse,
+  ApprovedAddress,
+} from './asset-transport.js';
 export { renderHtmlTemplate } from './template-engine.js';
 
 export * from './artifact-store.js';

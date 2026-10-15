@@ -49,6 +49,9 @@ class PublicApiEvidenceTests(unittest.TestCase):
         self.p02_probe_path.write_text('// fixture P02 probe source\n', encoding='utf-8')
         self.fresh_profile_probe_path = self.root / 'scripts/smoke-fresh-render-person-profile-public.ts'
         self.fresh_profile_probe_path.write_text('// fixture fresh renderer probe source\n', encoding='utf-8')
+        self.unbounded_fresh_profile_probe_path = self.root / GENERATOR.FRESH_RENDER_PERSON_PROFILE_UNBOUNDED_PROGRAM
+        self.unbounded_fresh_profile_probe_path.parent.mkdir(parents=True, exist_ok=True)
+        self.unbounded_fresh_profile_probe_path.write_text('// fixture historical unbounded probe source\n', encoding='utf-8')
         self.original_root = GENERATOR.ROOT
         self.original_catalog = GENERATOR.CATALOG
         self.original_probe_dir = GENERATOR.LIVE_PROBE_DIR
@@ -125,6 +128,11 @@ class PublicApiEvidenceTests(unittest.TestCase):
             'tool': tool,
             'input': input_data,
             'httpRequests': 3,
+            'requestAccounting': {
+                'bangumiApi': 2,
+                'rendererAsset': 1,
+                'total': 3,
+            },
             'result': {'state': 'value', 'keys': ['artifact']},
             'assertions': assertions,
         }
@@ -138,6 +146,13 @@ class PublicApiEvidenceTests(unittest.TestCase):
             'probeScriptSha256': hashlib.sha256(self.fresh_profile_probe_path.read_bytes()).hexdigest(),
             'scopeId': GENERATOR.FRESH_RENDER_PERSON_PROFILE_PUBLIC_SCOPE_ID,
             'requestBudget': {'maxPerTool': 4, 'maxTotal': 4},
+            'requestAccounting': {
+                'scope': 'bangumi_api_and_renderer_assets',
+                'redirectsIncluded': True,
+                'bangumiApi': 2,
+                'rendererAsset': 1,
+                'total': 3,
+            },
             'budgetBlocked': False,
             'httpRequests': 3,
             'selectedTools': [tool],
@@ -152,6 +167,37 @@ class PublicApiEvidenceTests(unittest.TestCase):
             GENERATOR.public_api_smoke_names(self.catalog),
             {'bangumi.render_person_profile'},
         )
+
+    def test_rejects_fresh_person_profile_report_without_combined_request_accounting(self):
+        self.write_fresh_render_person_profile_report()
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report.pop('requestAccounting')
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_rejects_fresh_person_profile_report_with_inconsistent_combined_counts(self):
+        self.write_fresh_render_person_profile_report()
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report['requestAccounting']['rendererAsset'] = 2
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_hash_bound_historical_report_that_omitted_asset_requests(self):
+        self.write_fresh_render_person_profile_report()
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report['sourceProgram'] = GENERATOR.FRESH_RENDER_PERSON_PROFILE_UNBOUNDED_PROGRAM
+        report['probeScriptSha256'] = hashlib.sha256(
+            self.unbounded_fresh_profile_probe_path.read_bytes()
+        ).hexdigest()
+        report['requestAccounting'] = {
+            'scope': 'bangumi_api_fetch_only',
+            'redirectsIncluded': False,
+            'rendererAssetsIncluded': False,
+            'totalHttpRequests': None,
+            'creditDisposition': 'superseded_unbounded_asset_request_count',
+        }
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
 
     def test_rejects_fresh_person_profile_scope_with_old_input_or_budget_overrun(self):
         self.write_fresh_render_person_profile_report()

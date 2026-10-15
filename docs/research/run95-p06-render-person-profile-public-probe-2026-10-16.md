@@ -8,8 +8,9 @@ Checked 2026-10-16 JST on BangumiAgentKit Base `9375f1a221d1febc6a2058b8ab9b6abd
 - Tool: `bangumi.render_person_profile`.
 - Input: `personId=13684`, `maxSubjects=1`, `maxCharacters=1`, `maxCredits=1`, `includeChronology=false`.
 - Command: `pnpm smoke:public:person-profile:fresh`.
-- The ToolRegistry call made three anonymous HTTP requests, below the fixed four-request ceiling. The sanitized result summary was `state=value`, `keys=[artifact]`; all scope, request, and summary assertions passed.
-- Report: `docs/live-probes/public-tools-2026-10-15-151849327-87132.json`; SHA-256 `8e15739c8187b96a542bbec5d356da5382b8f845d9f79894a9bb6e99d16dbd14`. The report binds the current catalog SHA-256 `2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92` and the dedicated probe source SHA-256 `471826d6331f6f473cdb8326c3c557544be1f1b60a0fa13b92525e3c087ef862`.
+- The corrected replacement ToolRegistry call made four anonymous HTTP requests in total: three Bangumi API requests and one renderer asset request. Both API and asset redirect hops are counted under the same four-request ceiling. The sanitized result summary was `state=value`, `keys=[artifact]`; all scope, combined-request, and summary assertions passed.
+- Report: `docs/live-probes/public-tools-2026-10-15-154413213-10706.json`; SHA-256 `3b08ab1d2214d8612d8cac27d6a435a92151b882652fdf518bf58efa3696d955`. The report binds the current catalog SHA-256 `2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92` and the corrected dedicated probe source SHA-256 `428ecc9da51b757ca15bf1cec91eef685e2d5e618f1598493afc0cf890f1bd91`.
+- The initial report `docs/live-probes/public-tools-2026-10-15-151849327-87132.json` recorded three API fetches but did not count renderer assets, so its total request count is unknown and it is explicitly excluded from acceptance credit. Its exact source bytes are preserved at `scripts/smoke-fresh-render-person-profile-public-unbounded-v1.ts`.
 
 ## Acceptance boundary
 
