@@ -20,10 +20,12 @@ Selection comparison and provenance:
   leverage while remaining bounded and source-reliable. Its independent V2
   review remained parked at the TIER_2 limit; it was later integrated by
   explicit human authorization without claiming an independent Freeze.
-- OP-003 Community Discussion Spike remains deferred. Its existing entry
-  requires S3 + S6 + S7; current policy does not broadly enable Structured Web,
-  HTML, or historical snapshot collection, so it is not an immediately safe
-  Epoch.
+- OP-003 Community Discussion Spike remains deferred from implementation and
+  is now CLOSED_NO_SAFE_SOURCE for the current evidence set. Its entry requires
+  S3 + S6 + S7; no verifiable public source contract or specifically reviewed
+  and allowlisted HTML path supports the claim. Reopen only when a supported,
+  versioned public discussion API or a current, capability-specific HTML
+  source review satisfies the source contract. G10, G11, and G21 remain PARTIAL.
 - OP-004 Staff Collaboration Graph remains deferred. A useful implementation
   needs cross-subject graph traversal and materially higher fan-out/resource
   risk than the selected subject journey; no graph foundation is authorized.
@@ -513,7 +515,12 @@ User question:
 Requires:
 S3 + S6 + S7
 
-...
+Current disposition: CLOSED_NO_SAFE_SOURCE for the evidence set reviewed on
+2026-10-15. The capability-specific source contract and reopen condition are
+recorded in
+[the OP-003 source-contract report](../research/run95-op003-community-source-contract-2026-10-15.md).
+This closes the opportunity's current source research, not the related G10,
+G11, or G21 answer-acceptance scenarios.
 
 ---
 

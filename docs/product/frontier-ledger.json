@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-15T02:28:12Z",
+  "updated_at": "2026-10-15T03:20:25Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -3266,11 +3266,17 @@
       "kind": "opportunity",
       "user_question": "Can BangumiAgentKit deliver the bounded user value described by Community Discussion Spike?",
       "lane": "recorded_product_opportunities",
-      "status": "RESEARCH_READY",
-      "source_refs": ["docs/product/opportunity-log.md"],
-      "next_action": "Complete the capability-specific public community source contract or close it with evidence.",
-      "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
-      "related_ids": []
+      "status": "CLOSED_NO_SAFE_SOURCE",
+      "source_refs": ["docs/product/opportunity-log.md", "docs/research/run95-op003-community-source-contract-2026-10-15.md"],
+      "next_action": "Reopen only when Bangumi publishes a third-party-supported, versioned public discussion API with subject-linked activity and explicit comparable-window semantics, or a specifically selected HTML source receives a current terms/robots, attribution, privacy/deletion, retention, rate, and coverage review and explicit allowlisting.",
+      "reopen_when": "A third-party-supported, versioned public discussion API documents subject-linked activity and comparable windows, or a specific HTML source passes a current capability-specific terms/robots, attribution, privacy/deletion, retention, rate, and coverage review and is explicitly allowlisted.",
+      "related_ids": [],
+      "research_closure": {
+        "completed_at": "2026-10-15T03:06:06Z",
+        "evidence_refs": ["docs/research/run95-op003-community-source-contract-2026-10-15.md", "docs/research/run95-community-public-source-contract-2026-10-13.md"],
+        "conclusion": "No current source contract safely supports the OP-003 claim. The official v0 schema has no subject discussion event/history route; the unversioned legacy API is documented as accessible for compatibility but stopped and undocumented, so its community capability cannot be verified; the new /p1 discussion schema is explicitly private and has no sudden-growth window/delta contract; and no specific HTML source has a current allowlist and complete terms/coverage review. No runtime request or community data collection occurred. This does not assert that the legacy API has no such capability or that all HTML use is prohibited. G10, G11, and G21 remain PARTIAL."
+      },
+      "closure_reason": "Closed for the current evidence set: no verifiable public community source satisfies OP-003; v0 does not document the required subject-linked discussion activity, legacy API documentation is hidden and its capabilities are unknown, /p1 is a private frontend API, and no specific HTML route has a current explicit allowlist plus terms and coverage review. This does not claim the legacy API lacks all community features or that HTML is universally unusable."
     },
     {
       "id": "OP-004",

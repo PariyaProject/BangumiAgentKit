@@ -91,7 +91,7 @@ test('D07, P01, and A01 keep stable scenario guidance and defer claim state to H
   }
 });
 
-test('community source closure is evidence-bound and keeps discussion scenarios unresolved', () => {
+test('community source and OP-003 closures are evidence-bound and keep discussion scenarios unresolved', () => {
   const source = ledger.records.find(({ id }) => id === 'SOURCE-COMMUNITY-STRUCTURED-WEB');
   assert.ok(source, 'the community source frontier must remain in the canonical ledger');
   assert.equal(source.status, 'CLOSED_NO_SAFE_SOURCE');
@@ -111,5 +111,23 @@ test('community source closure is evidence-bound and keeps discussion scenarios 
   for (const id of ['G10', 'G11', 'G21']) {
     assert.equal(ledger.records.find(({ id: current }) => current === id)?.status, 'PARTIAL');
   }
-  assert.equal(ledger.records.find(({ id }) => id === 'OP-003')?.status, 'RESEARCH_READY');
+  const opportunity = ledger.records.find(({ id }) => id === 'OP-003');
+  assert.ok(opportunity, 'OP-003 must remain in the canonical ledger');
+  assert.equal(opportunity.status, 'CLOSED_NO_SAFE_SOURCE');
+  assert.ok(
+    Date.parse(ledger.updated_at) >= Date.parse(opportunity.research_closure.completed_at),
+    'the frontier ledger timestamp must include the latest OP-003 closure',
+  );
+  assert.ok(
+    opportunity.source_refs.includes(
+      'docs/research/run95-op003-community-source-contract-2026-10-15.md',
+    ),
+  );
+  assert.ok(
+    opportunity.research_closure.evidence_refs.includes(
+      'docs/research/run95-op003-community-source-contract-2026-10-15.md',
+    ),
+  );
+  assert.match(opportunity.closure_reason, /no verifiable public community source/u);
+  assert.match(opportunity.reopen_when, /versioned public discussion API/u);
 });
