@@ -6,6 +6,7 @@ import {
   R05_PROFILE_ID,
   buildR05McpTextProjection,
   summarizeR05SubjectOverlapToolResult,
+  validateR05ResultSummary,
   validateR05SelectionEvidence,
   validateR05McpTextProjection,
   verifyR05Answer,
@@ -126,7 +127,11 @@ function toolResult() {
     source: {
       official: {
         class: 'official-v0',
-        operations: ['GET /v0/subjects/{subject_id}/characters'],
+        operations: [
+          'GET /v0/subjects/{subject_id}',
+          'GET /v0/subjects/{subject_id}/characters',
+          'GET /v0/subjects/{subject_id}/persons',
+        ],
         attemptedAt: '2026-10-15T07:39:00.000Z',
         retrievedAt: '2026-10-15T07:39:01.000Z',
       },
@@ -177,6 +182,9 @@ test('R05 positive preflight file is exact, anonymous, and bounded', () => {
     ),
   );
   assert.equal(validateR05SelectionEvidence(evidence), true);
+  const wrongCharacterEndpoint = structuredClone(evidence);
+  wrongCharacterEndpoint.characterRows[1].endpoint = 'https://api.bgm.tv/v0/subjects/3774/persons';
+  assert.equal(validateR05SelectionEvidence(wrongCharacterEndpoint), false);
   assert.equal(validateR05SelectionEvidence({ ...evidence, oauthAttempted: true }), false);
   assert.equal(
     validateR05SelectionEvidence({
@@ -185,6 +193,19 @@ test('R05 positive preflight file is exact, anonymous, and bounded', () => {
     }),
     false,
   );
+});
+
+test('R05 overlap summary accepts only its exact official and derived source operations', () => {
+  const wrongOfficialOperation = toolResult();
+  wrongOfficialOperation.source.official.operations = ['GET /community/topics'];
+  assert.throws(
+    () => summarizeR05SubjectOverlapToolResult(wrongOfficialOperation, arguments_),
+    /source provenance is incomplete/u,
+  );
+
+  const wrongDerivedOperation = summarizeR05SubjectOverlapToolResult(toolResult(), arguments_);
+  wrongDerivedOperation.source.derived.operations = ['unreviewed-composition'];
+  assert.equal(validateR05ResultSummary(wrongDerivedOperation), false);
 });
 
 test('R05 answer accepts only the exact positive person ID, both subjects, and bounded note', () => {

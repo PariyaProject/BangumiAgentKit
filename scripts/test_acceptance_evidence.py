@@ -6176,6 +6176,10 @@ class R05PreflightEvidenceTests(unittest.TestCase):
         no_shared_ids['sharedPersonIds'] = []
         self.assertFalse(GENERATOR.codex_r05_selection_evidence_is_valid(no_shared_ids))
 
+        wrong_endpoint = json.loads(json.dumps(self.evidence))
+        wrong_endpoint['characterRows'][0]['endpoint'] = 'https://api.bgm.tv/v0/subjects/1424/subjects'
+        self.assertFalse(GENERATOR.codex_r05_selection_evidence_is_valid(wrong_endpoint))
+
     def test_rejects_authentication_or_raw_person_data(self):
         authenticated = json.loads(json.dumps(self.evidence))
         authenticated['oauthAttempted'] = True
@@ -6351,7 +6355,20 @@ class R05ProfileReportValidationTests(unittest.TestCase):
                     'limits': {'maxCast': 80, 'maxPairs': 1, 'maxPeople': 8},
                     'truncated': True,
                 },
-                'source': {},
+                'source': {
+                    'official': {
+                        'class': 'official-v0',
+                        'operations': GENERATOR.CODEX_R05_OFFICIAL_OPERATIONS,
+                        'attemptedAt': '2026-10-15T07:39:00Z',
+                        'retrievedAt': '2026-10-15T07:39:01Z',
+                    },
+                    'derived': {
+                        'class': 'derived-s7',
+                        'operations': GENERATOR.CODEX_R05_DERIVED_OPERATIONS,
+                        'attemptedAt': '2026-10-15T07:39:00Z',
+                        'retrievedAt': '2026-10-15T07:39:01Z',
+                    },
+                },
                 'warnings': [],
             },
             'privacy': {field: False for field in GENERATOR.CODEX_R05_PRIVACY_FIELDS},
@@ -6400,6 +6417,12 @@ class R05ProfileReportValidationTests(unittest.TestCase):
         privacy_expansion = json.loads(json.dumps(self.report))
         privacy_expansion['privacy']['accountDataRead'] = True
         self.assertFalse(self.validate_report(privacy_expansion))
+
+        unbound_source_operation = json.loads(json.dumps(self.report))
+        unbound_source_operation['resultSummary']['source']['official']['operations'] = [
+            'GET /community/topics',
+        ]
+        self.assertFalse(self.validate_report(unbound_source_operation))
 
 
 class C03PersonSelectionEvidenceTests(unittest.TestCase):

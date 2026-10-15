@@ -107,7 +107,11 @@ export function makeR05OverlapToolResult() {
     source: {
       official: {
         class: 'official-v0',
-        operations: ['GET /v0/subjects/{subject_id}/characters'],
+        operations: [
+          'GET /v0/subjects/{subject_id}',
+          'GET /v0/subjects/{subject_id}/characters',
+          'GET /v0/subjects/{subject_id}/persons',
+        ],
         attemptedAt: '2026-10-15T07:39:00.000Z',
         retrievedAt: '2026-10-15T07:39:01.000Z',
       },

@@ -21,6 +21,12 @@ export const R05_PREFLIGHT_SHARED_PERSON_IDS = Object.freeze([
   3847, 4011, 4633, 5001, 5003, 5072, 5104, 5117, 5118, 5119, 5127, 5228, 23302, 58216, 58217,
   58222, 72254, 78942, 78943, 79084,
 ]);
+export const R05_OFFICIAL_OPERATIONS = Object.freeze([
+  'GET /v0/subjects/{subject_id}',
+  'GET /v0/subjects/{subject_id}/characters',
+  'GET /v0/subjects/{subject_id}/persons',
+]);
+export const R05_DERIVED_OPERATIONS = Object.freeze(['subject-overlap-composition']);
 
 const PROFILE = getAgentMcpProfileById(R05_PROFILE_ID);
 const STATES = new Set(['complete', 'partial', 'unavailable', 'not_found', 'not_computable']);
@@ -114,8 +120,20 @@ export function validateR05SelectionEvidence(value) {
     { id: 3774, name: 'けいおん！！', nameCn: '轻音少女 第二季', type: 2, date: '2010-04-06' },
   ];
   const expectedRows = [
-    { subjectId: 1424, rowsReceived: 37, distinctActorIdsReturned: 38 },
-    { subjectId: 3774, rowsReceived: 64, distinctActorIdsReturned: 42 },
+    {
+      subjectId: 1424,
+      endpoint: 'https://api.bgm.tv/v0/subjects/1424/characters',
+      method: 'GET',
+      rowsReceived: 37,
+      distinctActorIdsReturned: 38,
+    },
+    {
+      subjectId: 3774,
+      endpoint: 'https://api.bgm.tv/v0/subjects/3774/characters',
+      method: 'GET',
+      rowsReceived: 64,
+      distinctActorIdsReturned: 42,
+    },
   ];
   return (
     value.selectedSubjects.length === expectedSubjects.length &&
@@ -128,7 +146,13 @@ export function validateR05SelectionEvidence(value) {
     value.characterRows.length === expectedRows.length &&
     value.characterRows.every(
       (row, index) =>
-        exactKeys(row, ['subjectId', 'rowsReceived', 'distinctActorIdsReturned']) &&
+        exactKeys(row, [
+          'subjectId',
+          'endpoint',
+          'method',
+          'rowsReceived',
+          'distinctActorIdsReturned',
+        ]) &&
         canonicalAgentMcpProfileJson(row) === canonicalAgentMcpProfileJson(expectedRows[index]),
     )
   );
@@ -273,27 +297,19 @@ export function summarizeR05SubjectOverlapToolResult(result, expectedArguments) 
 
   const official = result.source?.official;
   const derived = result.source?.derived;
-  const officialOperations = Array.isArray(official?.operations)
-    ? official.operations.filter(
-        (operation) =>
-          typeof operation === 'string' && /^[A-Za-z0-9_ ./:{}-]{1,100}$/u.test(operation),
-      )
-    : [];
-  const derivedOperations = Array.isArray(derived?.operations)
-    ? derived.operations.filter(
-        (operation) =>
-          typeof operation === 'string' && /^[A-Za-z0-9_ ./:{}-]{1,100}$/u.test(operation),
-      )
-    : [];
+  const officialOperations = Array.isArray(official?.operations) ? official.operations : [];
+  const derivedOperations = Array.isArray(derived?.operations) ? derived.operations : [];
   if (
     !isRecord(official) ||
     official.class !== 'official-v0' ||
-    officialOperations.length === 0 ||
+    canonicalAgentMcpProfileJson(officialOperations) !==
+      canonicalAgentMcpProfileJson(R05_OFFICIAL_OPERATIONS) ||
     !sourceTimestamp(official.attemptedAt) ||
     (official.retrievedAt !== undefined && !sourceTimestamp(official.retrievedAt)) ||
     !isRecord(derived) ||
     derived.class !== 'derived-s7' ||
-    derivedOperations.length === 0 ||
+    canonicalAgentMcpProfileJson(derivedOperations) !==
+      canonicalAgentMcpProfileJson(R05_DERIVED_OPERATIONS) ||
     !sourceTimestamp(derived.attemptedAt) ||
     !sourceTimestamp(derived.retrievedAt) ||
     !Array.isArray(result.warnings)
@@ -529,22 +545,16 @@ export function validateR05ResultSummary(value) {
     !exactKeys(value.source.official, ['class', 'operations', 'attemptedAt', 'retrievedAt']) ||
     value.source.official.class !== 'official-v0' ||
     !Array.isArray(value.source.official.operations) ||
-    value.source.official.operations.length === 0 ||
-    !value.source.official.operations.every(
-      (operation) =>
-        typeof operation === 'string' && /^[A-Za-z0-9_ ./:{}-]{1,100}$/u.test(operation),
-    ) ||
+    canonicalAgentMcpProfileJson(value.source.official.operations) !==
+      canonicalAgentMcpProfileJson(R05_OFFICIAL_OPERATIONS) ||
     !sourceTimestamp(value.source.official.attemptedAt) ||
     (value.source.official.retrievedAt !== null &&
       !sourceTimestamp(value.source.official.retrievedAt)) ||
     !exactKeys(value.source.derived, ['class', 'operations', 'attemptedAt', 'retrievedAt']) ||
     value.source.derived.class !== 'derived-s7' ||
     !Array.isArray(value.source.derived.operations) ||
-    value.source.derived.operations.length === 0 ||
-    !value.source.derived.operations.every(
-      (operation) =>
-        typeof operation === 'string' && /^[A-Za-z0-9_ ./:{}-]{1,100}$/u.test(operation),
-    ) ||
+    canonicalAgentMcpProfileJson(value.source.derived.operations) !==
+      canonicalAgentMcpProfileJson(R05_DERIVED_OPERATIONS) ||
     !sourceTimestamp(value.source.derived.attemptedAt) ||
     !sourceTimestamp(value.source.derived.retrievedAt) ||
     !Array.isArray(value.warnings) ||

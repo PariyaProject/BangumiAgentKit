@@ -1,6 +1,14 @@
 import { Buffer } from 'node:buffer';
-import { createHash, createPublicKey, sign, verify } from 'node:crypto';
-import { closeSync, openSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash, createPublicKey, randomUUID, sign, verify } from 'node:crypto';
+import {
+  closeSync,
+  fsyncSync,
+  linkSync,
+  openSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -544,10 +552,24 @@ export function writeR05SharedPersonOverlapReport(input, { privateKey } = {}) {
   const bytes = Buffer.from(`${JSON.stringify(report, null, 2)}\n`, 'utf8');
   if (bytes.length > 64 * 1024) return { passed: false, reason: 'R05_REPORT_TOO_LARGE' };
   let descriptor;
+  const temporaryPath = path.join(
+    path.dirname(reportPath),
+    `.${path.basename(reportPath)}.${randomUUID()}.tmp`,
+  );
+  let published = false;
   try {
-    descriptor = openSync(reportPath, 'wx', 0o600);
+    descriptor = openSync(temporaryPath, 'wx', 0o600);
     writeFileSync(descriptor, bytes);
+    fsyncSync(descriptor);
     closeSync(descriptor);
+    descriptor = undefined;
+    linkSync(temporaryPath, reportPath);
+    published = true;
+    try {
+      unlinkSync(temporaryPath);
+    } catch {
+      /* The final path is already a complete, create-only hard link. */
+    }
   } catch {
     if (descriptor !== undefined) {
       try {
@@ -556,7 +578,14 @@ export function writeR05SharedPersonOverlapReport(input, { privateKey } = {}) {
         /* Preserve create-only refusal. */
       }
     }
-    return { passed: false, reason: 'R05_REPORT_ALREADY_EXISTS_OR_UNWRITABLE' };
+    if (!published) {
+      try {
+        unlinkSync(temporaryPath);
+      } catch {
+        /* Ignore absent temp files and preserve the create-only refusal. */
+      }
+      return { passed: false, reason: 'R05_REPORT_ALREADY_EXISTS_OR_UNWRITABLE' };
+    }
   }
   return {
     passed: true,

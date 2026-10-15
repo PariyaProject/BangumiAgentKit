@@ -642,6 +642,12 @@ CODEX_R05_SHARED_PERSON_IDS = [
     3847, 4011, 4633, 5001, 5003, 5072, 5104, 5117, 5118, 5119,
     5127, 5228, 23302, 58216, 58217, 58222, 72254, 78942, 78943, 79084,
 ]
+CODEX_R05_OFFICIAL_OPERATIONS = [
+    'GET /v0/subjects/{subject_id}',
+    'GET /v0/subjects/{subject_id}/characters',
+    'GET /v0/subjects/{subject_id}/persons',
+]
+CODEX_R05_DERIVED_OPERATIONS = ['subject-overlap-composition']
 CODEX_R05_RECEIPT_FIELDS = {
     'schemaVersion', 'kind', 'publicKeyBase64', 'publicKeySha256', 'payload', 'signature',
 }
@@ -4314,8 +4320,20 @@ def codex_r05_selection_evidence_is_valid(evidence: object) -> bool:
         {'id': 3774, 'name': 'けいおん！！', 'nameCn': '轻音少女 第二季', 'type': 2, 'date': '2010-04-06'},
     ]
     expected_rows = [
-        {'subjectId': 1424, 'rowsReceived': 37, 'distinctActorIdsReturned': 38},
-        {'subjectId': 3774, 'rowsReceived': 64, 'distinctActorIdsReturned': 42},
+        {
+            'subjectId': 1424,
+            'endpoint': 'https://api.bgm.tv/v0/subjects/1424/characters',
+            'method': 'GET',
+            'rowsReceived': 37,
+            'distinctActorIdsReturned': 38,
+        },
+        {
+            'subjectId': 3774,
+            'endpoint': 'https://api.bgm.tv/v0/subjects/3774/characters',
+            'method': 'GET',
+            'rowsReceived': 64,
+            'distinctActorIdsReturned': 42,
+        },
     ]
     return (
         type(evidence.get('schemaVersion')) is int
@@ -4346,8 +4364,13 @@ def codex_r05_selection_evidence_is_valid(evidence: object) -> bool:
         and len(rows) == 2
         and all(
             isinstance(item, dict)
-            and set(item) == {'subjectId', 'rowsReceived', 'distinctActorIdsReturned'}
-            and all(type(item.get(key)) is int for key in item)
+            and set(item) == {
+                'subjectId', 'endpoint', 'method', 'rowsReceived', 'distinctActorIdsReturned',
+            }
+            and all(
+                type(item.get(key)) is int
+                for key in ('subjectId', 'rowsReceived', 'distinctActorIdsReturned')
+            )
             and item == expected_rows[index]
             for index, item in enumerate(rows)
         )
@@ -6507,6 +6530,13 @@ def codex_r05_profile_report_is_valid(
         or summary['coverage'].get('omittedPairs') != 0
         or summary['coverage'].get('limits') != {'maxCast': 80, 'maxPairs': 1, 'maxPeople': 8}
         or not isinstance(summary['coverage'].get('truncated'), bool)
+        or not isinstance(summary.get('source'), dict)
+        or not isinstance(summary['source'].get('official'), dict)
+        or summary['source']['official'].get('class') != 'official-v0'
+        or summary['source']['official'].get('operations') != CODEX_R05_OFFICIAL_OPERATIONS
+        or not isinstance(summary['source'].get('derived'), dict)
+        or summary['source']['derived'].get('class') != 'derived-s7'
+        or summary['source']['derived'].get('operations') != CODEX_R05_DERIVED_OPERATIONS
     ):
         return False
     for index, expected_subject_id in enumerate((1424, 3774)):

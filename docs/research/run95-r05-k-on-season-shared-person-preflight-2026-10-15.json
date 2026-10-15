@@ -30,11 +30,15 @@
   "characterRows": [
     {
       "subjectId": 1424,
+      "endpoint": "https://api.bgm.tv/v0/subjects/1424/characters",
+      "method": "GET",
       "rowsReceived": 37,
       "distinctActorIdsReturned": 38
     },
     {
       "subjectId": 3774,
+      "endpoint": "https://api.bgm.tv/v0/subjects/3774/characters",
+      "method": "GET",
       "rowsReceived": 64,
       "distinctActorIdsReturned": 42
     }
