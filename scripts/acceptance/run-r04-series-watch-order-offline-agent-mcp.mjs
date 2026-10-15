@@ -59,6 +59,36 @@ export function validateR04RunnerArgs(args) {
   );
 }
 
+export function r04ClaimBelongsToRunner(status, { claimId = null, runnerReceiptPublicKey } = {}) {
+  const disposition = status?.disposition;
+  if (
+    status?.state !== 'CLAIMED' ||
+    typeof disposition?.claimId !== 'string' ||
+    typeof runnerReceiptPublicKey !== 'string' ||
+    runnerReceiptPublicKey.length === 0 ||
+    disposition.runnerReceiptPublicKey !== runnerReceiptPublicKey
+  ) {
+    return false;
+  }
+  if (claimId !== null && typeof claimId !== 'string') return false;
+  return typeof claimId !== 'string' || disposition.claimId === claimId;
+}
+
+export function recoverR04RunnerFailure(
+  status,
+  { claimId = null, runnerReceiptPublicKey, recordInconclusive },
+) {
+  if (status?.state === 'REPORT_WRITTEN') return { state: 'REPORT_WRITTEN', recovered: true };
+  if (status?.state === 'INCONCLUSIVE') return { state: 'INCONCLUSIVE', recovered: true };
+  if (status?.state !== 'CLAIMED') return { state: 'R04_PREFLIGHT_FAILED' };
+  if (!r04ClaimBelongsToRunner(status, { claimId, runnerReceiptPublicKey })) {
+    return { state: 'R04_CLAIM_OWNERSHIP_MISMATCH' };
+  }
+  const ownedClaimId = status.disposition.claimId;
+  recordInconclusive(ownedClaimId);
+  return { state: 'INCONCLUSIVE_RECORDED', claimId: ownedClaimId };
+}
+
 function environment(source = process.env, allowGitHub = false) {
   const result = sanitizeGitRepositoryEnvironment(source);
   for (const key of Object.keys(result)) {
@@ -563,6 +593,8 @@ function runR04({ runNumber }) {
   const publicKeyBase64 = keyPair.publicKey
     .export({ type: 'spki', format: 'der' })
     .toString('base64');
+  let observedClaimId = null;
+  let ownedClaimId = null;
   let temporaryDirectory = null;
   try {
     const claimResult = runHarness([
@@ -580,12 +612,30 @@ function runR04({ runNumber }) {
       '--runner-public-key',
       publicKeyBase64,
     ]);
+    if (typeof claimResult.output?.claimId === 'string') {
+      observedClaimId = claimResult.output.claimId;
+    }
     if (claimResult.exitCode !== 0 || claimResult.output?.state !== 'AGENT_MCP_PROFILE_CLAIMED') {
       throw new Error('Harness did not confirm the permanent R04 one-shot claim.');
     }
     const claim = readProfileDisposition(prNumber);
     if (
-      claim.claimId !== claimResult.output.claimId ||
+      typeof claim.claimId === 'string' &&
+      typeof claimResult.output.claimId === 'string' &&
+      claim.claimId === claimResult.output.claimId &&
+      claim.runnerReceiptPublicKey === publicKeyBase64
+    ) {
+      ownedClaimId = claim.claimId;
+    }
+    if (ownedClaimId === null) {
+      printSafe({
+        state: 'R04_CLAIM_OWNERSHIP_MISMATCH',
+        profileId: PROFILE.id,
+        retryAllowed: false,
+      });
+      return 1;
+    }
+    if (
       claim.sourceCandidateSha !== sourceRevision ||
       claim.baseSha !== currentGate.baseSha ||
       claim.reviewerId !== currentGate.reviewerId ||
@@ -594,17 +644,17 @@ function runR04({ runNumber }) {
       claim.registrySha256 !== agentMcpProfileRegistrySha256(PROFILE.id) ||
       claim.runnerReceiptPublicKey !== publicKeyBase64
     ) {
-      recordInconclusive(prNumber, claim.claimId, 'R04_CLAIM_READBACK_MISMATCH');
+      recordInconclusive(prNumber, ownedClaimId, 'R04_CLAIM_READBACK_MISMATCH');
       return 1;
     }
 
     const beforeInvoke = readProfileStatus(prNumber);
     if (
       beforeInvoke.state !== 'CLAIMED' ||
-      beforeInvoke.disposition?.claimId !== claim.claimId ||
+      beforeInvoke.disposition?.claimId !== ownedClaimId ||
       !assertCurrentCandidateBundle(sourceRevision, bundleSha256)
     ) {
-      recordInconclusive(prNumber, claim.claimId, 'R04_PREINVOKE_GATE_MISMATCH');
+      recordInconclusive(prNumber, ownedClaimId, 'R04_PREINVOKE_GATE_MISMATCH');
       return 1;
     }
     temporaryDirectory = mkdtempSync(path.join(path.resolve(os.tmpdir()), 'bgk-r04-run95-'));
@@ -785,7 +835,13 @@ function runR04({ runNumber }) {
       });
       return 1;
     }
-    if (currentStatus.state === 'REPORT_WRITTEN') {
+    const recovery = recoverR04RunnerFailure(currentStatus, {
+      claimId: ownedClaimId ?? observedClaimId,
+      runnerReceiptPublicKey: publicKeyBase64,
+      recordInconclusive: (claimId) =>
+        recordInconclusive(prNumber, claimId, 'R04_RUNNER_FAILED_AFTER_CLAIM'),
+    });
+    if (recovery.state === 'REPORT_WRITTEN') {
       printSafe({
         state: 'REPORT_WRITTEN',
         profileId: PROFILE.id,
@@ -794,24 +850,25 @@ function runR04({ runNumber }) {
       });
       return 0;
     }
-    if (
-      currentStatus.state === 'CLAIMED' &&
-      typeof currentStatus.disposition?.claimId === 'string'
-    ) {
-      recordInconclusive(
-        prNumber,
-        currentStatus.disposition.claimId,
-        'R04_RUNNER_FAILED_AFTER_CLAIM',
-      );
-    } else if (currentStatus.state === 'INCONCLUSIVE') {
+    if (recovery.state === 'INCONCLUSIVE') {
       printSafe({
         state: 'INCONCLUSIVE',
         profileId: PROFILE.id,
         retryAllowed: false,
         recovered: true,
       });
-    } else {
-      printSafe({ state: 'R04_PREFLIGHT_FAILED', profileId: PROFILE.id, retryAllowed: false });
+    } else if (recovery.state === 'R04_CLAIM_OWNERSHIP_MISMATCH') {
+      printSafe({
+        state: recovery.state,
+        profileId: PROFILE.id,
+        retryAllowed: false,
+      });
+    } else if (recovery.state !== 'INCONCLUSIVE_RECORDED') {
+      printSafe({
+        state: recovery.state,
+        profileId: PROFILE.id,
+        retryAllowed: false,
+      });
     }
     return 1;
   } finally {

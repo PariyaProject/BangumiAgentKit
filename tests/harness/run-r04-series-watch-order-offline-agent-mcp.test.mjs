@@ -12,6 +12,8 @@ import {
 import {
   buildR04CodexExecArgs,
   classifyR04AssertionFailure,
+  recoverR04RunnerFailure,
+  r04ClaimBelongsToRunner,
   validateR04RunnerArgs,
   validateR04ServerSummary,
 } from '../../scripts/acceptance/run-r04-series-watch-order-offline-agent-mcp.mjs';
@@ -175,4 +177,82 @@ test('R04 assertion failure classification emits only fixed safe codes', () => {
     'MCP_CALL_ARGUMENT_MISMATCH',
   );
   assert.equal(JSON.stringify(classifyR04AssertionFailure(base)).includes('PRIVATE OUTPUT'), false);
+});
+
+test('R04 losing runner leaves the winner claim untouched', () => {
+  const winnerStatus = {
+    state: 'CLAIMED',
+    disposition: {
+      claimId: 'winner-claim',
+      runnerReceiptPublicKey: 'winner-public-key',
+    },
+  };
+  const terminalizedClaims = [];
+  const recovery = recoverR04RunnerFailure(winnerStatus, {
+    claimId: null,
+    runnerReceiptPublicKey: 'loser-public-key',
+    recordInconclusive: (claimId) => terminalizedClaims.push(claimId),
+  });
+
+  assert.equal(
+    r04ClaimBelongsToRunner(winnerStatus, {
+      claimId: null,
+      runnerReceiptPublicKey: 'loser-public-key',
+    }),
+    false,
+  );
+  assert.deepEqual(recovery, { state: 'R04_CLAIM_OWNERSHIP_MISMATCH' });
+  assert.deepEqual(terminalizedClaims, []);
+});
+
+test('R04 runner terminalizes only its locally owned claim after failure', () => {
+  const ownedStatus = {
+    state: 'CLAIMED',
+    disposition: {
+      claimId: 'owned-claim',
+      runnerReceiptPublicKey: 'runner-public-key',
+    },
+  };
+  const terminalizedClaims = [];
+  const recovery = recoverR04RunnerFailure(ownedStatus, {
+    claimId: 'owned-claim',
+    runnerReceiptPublicKey: 'runner-public-key',
+    recordInconclusive: (claimId) => terminalizedClaims.push(claimId),
+  });
+
+  assert.equal(
+    r04ClaimBelongsToRunner(ownedStatus, {
+      claimId: 'owned-claim',
+      runnerReceiptPublicKey: 'runner-public-key',
+    }),
+    true,
+  );
+  assert.equal(
+    r04ClaimBelongsToRunner(ownedStatus, {
+      claimId: 'another-claim',
+      runnerReceiptPublicKey: 'runner-public-key',
+    }),
+    false,
+  );
+  assert.deepEqual(recovery, { state: 'INCONCLUSIVE_RECORDED', claimId: 'owned-claim' });
+  assert.deepEqual(terminalizedClaims, ['owned-claim']);
+});
+
+test('R04 runner can recover its claim by its unique key after lost claim acknowledgement', () => {
+  const ownedStatus = {
+    state: 'CLAIMED',
+    disposition: {
+      claimId: 'ack-lost-claim',
+      runnerReceiptPublicKey: 'runner-public-key',
+    },
+  };
+  const terminalizedClaims = [];
+  const recovery = recoverR04RunnerFailure(ownedStatus, {
+    claimId: null,
+    runnerReceiptPublicKey: 'runner-public-key',
+    recordInconclusive: (claimId) => terminalizedClaims.push(claimId),
+  });
+
+  assert.deepEqual(recovery, { state: 'INCONCLUSIVE_RECORDED', claimId: 'ack-lost-claim' });
+  assert.deepEqual(terminalizedClaims, ['ack-lost-claim']);
 });

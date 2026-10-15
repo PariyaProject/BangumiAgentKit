@@ -3662,6 +3662,8 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/acceptance/run-r04-series-watch-order-offline-agent-mcp.mjs': (
         'export function validateR04RunnerArgs(',
+        'export function r04ClaimBelongsToRunner(',
+        'export function recoverR04RunnerFailure(',
         'export function assertR04CandidateReviewGate(',
         'export function buildR04CodexExecArgs(',
         'export function validateR04ServerSummary(',
@@ -3697,6 +3699,9 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
     'tests/harness/run-r04-series-watch-order-offline-agent-mcp.test.mjs': (
         'R04 Codex invocation is ephemeral, read-only, and exposes only its fixed tool',
         'R04 assertion failure classification emits only fixed safe codes',
+        'R04 losing runner leaves the winner claim untouched',
+        'R04 runner terminalizes only its locally owned claim after failure',
+        'R04 runner can recover its claim by its unique key after lost claim acknowledgement',
     ),
     'tests/harness/write-r04-series-watch-order-offline-agent-mcp-report.test.mjs': (
         'R04 report builder signs only sanitized matrix evidence without scenario credit',
