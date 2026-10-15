@@ -59,6 +59,6 @@ test('G09 direct-public watch-order evidence stays separate from its consumed Ag
     .filter((line) => line.split('|')[7]?.includes('◐')).length;
   assert.ok(publicEvidenceSummary);
   assert.equal(Number(publicEvidenceSummary[1]), publicEvidenceRows);
-  assert.equal(Number(publicEvidenceSummary[1]), 55);
+  assert.equal(Number(publicEvidenceSummary[1]), 57);
   assert.match(acceptance, /Agent→MCP 模型调用证据：81\/96/);
 });

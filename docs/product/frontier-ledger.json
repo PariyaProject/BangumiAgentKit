@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-15T09:29:05Z",
+  "updated_at": "2026-10-15T09:51:02Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -847,6 +847,7 @@
         "docs/live-probes/g09-series-watch-order-2026-10-03-165502090-96642.json",
         "docs/live-probes/public-tools-2026-10-13-100900784-55053.json",
         "docs/live-probes/public-tools-2026-10-13-103028094-43541.json",
+        "docs/live-probes/public-tools-2026-10-15-094954394-75684.json",
         "scripts/smoke-series-watch-order-g09-online.ts",
         "tests/render/series-watch-order-g09.test.ts",
         "packages/bangumi-core/src/services/series-service.ts",
@@ -861,7 +862,7 @@
         "scripts/acceptance/g09-series-watch-order-answer-check.mjs",
         "tests/unit/g09-series-watch-order-answer-check.test.ts"
       ],
-      "next_action": "Run #95 has two separate bounded direct-public ToolRegistry observations for G09: bangumi.get_series_watch_order on {subjectId:41529,depth:0,maxNodes:1} in docs/live-probes/public-tools-2026-10-13-100900784-55053.json, and the candidate-only bangumi.render_series_watch_order smoke with the same fixed profile in docs/live-probes/public-tools-2026-10-13-103028094-43541.json. The second report records two anonymous public HTTP requests and summary state=value/keys=[artifact] only; it does not validate PNG bytes or visual quality. Direct-public tool observations are not Agent/MCP answer acceptance, do not replay the spent G09 one-shot/canary or subjectId=218707 scenario profile, and do not establish an exhaustive franchise graph or a unique official order. Keep G09 PARTIAL and never retry its consumed one-shot.",
+      "next_action": "The earlier Run #95 direct-public G09 reports from 2026-10-13 were bound to stale catalog SHA 2e3d216a282022fd01a2d1fac0cd0e8831c21461a28d304e41b20d3d4fc39c3. A current-catalog refresh is recorded in docs/live-probes/public-tools-2026-10-15-094954394-75684.json: bangumi.get_series_watch_order and bangumi.render_series_watch_order each used {subjectId:41529,depth:0,maxNodes:1}, with two anonymous HTTP requests per tool and passing bounded assertions. The renderer summary stores only the artifact key, not PNG bytes, and does not establish visual quality. These direct-public observations are not Agent/MCP answer acceptance, do not replay the spent G09 one-shot/canary or subjectId=218707 scenario profile, and do not establish an exhaustive franchise graph or a unique official order. Keep G09 PARTIAL and never retry its consumed one-shot.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -912,6 +913,33 @@
           "catalog_sha256": "2e3d216a282022fd01a2d1fac0cd0e8831c21461a28d304e41b20d3d4fc39c3e",
           "probe_script_sha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
           "acceptance_boundary": "Direct ToolRegistry response evidence only. The sanitized report stores an artifact key, not image bytes; PNG contents, image correctness, and visual quality were not verified. No Agent/MCP, canary replay, exhaustive graph, or official-order claim."
+        },
+        "direct_public_watch_order_current_catalog_2026_10_15": {
+          "report": "docs/live-probes/public-tools-2026-10-15-094954394-75684.json",
+          "report_sha256": "1dda0ff566e34dd8fa5c64ab5cce420b35a479d8e63e81ba23083edaab7556dc",
+          "observed_at": "2026-10-15T09:49:54.394Z",
+          "mode": "read_only_public_api_smoke",
+          "catalog_sha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
+          "probe_script_sha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
+          "probe_count": 2,
+          "http_requests": 4,
+          "tools": [
+            {
+              "tool": "bangumi.get_series_watch_order",
+              "input": { "subjectId": 41529, "depth": 0, "maxNodes": 1 },
+              "http_requests": 2,
+              "result_summary": { "state": "complete", "subjectId": 41529, "warningsCount": 2 },
+              "assertions_passed": true
+            },
+            {
+              "tool": "bangumi.render_series_watch_order",
+              "input": { "subjectId": 41529, "depth": 0, "maxNodes": 1 },
+              "http_requests": 2,
+              "result_summary": { "state": "value", "keys": ["artifact"] },
+              "assertions_passed": true
+            }
+          ],
+          "acceptance_boundary": "Current-catalog direct public API evidence for these exact tools only. It does not add Agent/MCP evidence, prove visual quality, establish complete graph coverage, or specify an official order; keep G09 PARTIAL."
         },
         "mcp_text_projection_run95": {
           "implementation": "apps/mcp/src/result-presenter.ts",
