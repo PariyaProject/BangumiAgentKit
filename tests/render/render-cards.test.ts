@@ -629,4 +629,22 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(mobileResult.height).toBeLessThanOrEqual(8192);
     expect(mobileResult.buffer.length).toBeLessThan(5_000_000);
   });
+
+  it('keeps version-1 person profile coverage compatible with existing fields', () => {
+    const coverage: PersonProfileViewModel['coverage'] = {
+      state: 'complete',
+      observed: 4,
+      returned: 4,
+      rendered: 4,
+      unobserved: 0,
+    };
+
+    expect(coverage).toEqual({
+      state: 'complete',
+      observed: 4,
+      returned: 4,
+      rendered: 4,
+      unobserved: 0,
+    });
+  });
 });
