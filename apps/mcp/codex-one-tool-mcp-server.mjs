@@ -35,6 +35,11 @@ import {
   createP06RenderPersonProfileOfflineFetch,
   P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
 } from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
+import {
+  assertP02PersonProfileOfflineProfile,
+  createP02PersonProfileOfflineFetch,
+  P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+} from '../../scripts/lib/p02-person-profile-offline-fixture.mjs';
 import { inspectC07PngArtifact } from '../../scripts/lib/c07-png-artifact-validation.mjs';
 import { buildG06PrivacySummary } from '../../scripts/lib/g06-privacy-summary.mjs';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
@@ -163,6 +168,9 @@ async function main(argv = process.argv.slice(2)) {
       expectedArguments: config.expectedArguments,
     });
   }
+  if (config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE) {
+    assertP02PersonProfileOfflineProfile(config.profile);
+  }
   const serverInstanceId = randomUUID();
   for (const key of Object.keys(process.env)) {
     if (/(?:BANGUMI|BGM_|OAUTH|TOKEN|SECRET|CREDENTIAL|API[_-]?KEY)/iu.test(key)) {
@@ -196,7 +204,9 @@ async function main(argv = process.argv.slice(2)) {
       ? createC07CohortRenderOfflineFixtureFetch()
       : config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
         ? createP06RenderPersonProfileOfflineFetch()
-        : null;
+        : config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE
+          ? createP02PersonProfileOfflineFetch()
+          : null;
   const p06AssetGuard =
     config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
       ? createP06RenderPersonProfileAssetGuard()

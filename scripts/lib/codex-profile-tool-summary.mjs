@@ -6,6 +6,7 @@ import {
   R05_PROFILE_ID,
   summarizeR05SubjectOverlapToolResult,
 } from './r05-shared-person-overlap-evidence.mjs';
+import { P02_PERSON_PROFILE_OFFLINE_PROFILE_ID } from './p02-person-profile-offline-fixture.mjs';
 
 export function summarizeProfileToolResult(
   result,
@@ -29,6 +30,15 @@ export function summarizeProfileToolResult(
         ...(artifact.decoded === true ? { decoded: true } : {}),
         ...(artifact.dimensionsMatch === true ? { dimensionsMatch: true } : {}),
       },
+    };
+  }
+  if (profileId === P02_PERSON_PROFILE_OFFLINE_PROFILE_ID) {
+    return {
+      personId:
+        Number.isSafeInteger(result?.person?.id) && result.person.id > 0
+          ? result.person.id
+          : null,
+      state: typeof result?.state === 'string' ? result.state : 'unknown',
     };
   }
   if (profileId === P03_PROFILE_ID) {

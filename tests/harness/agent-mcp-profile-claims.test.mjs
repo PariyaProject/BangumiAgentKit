@@ -34,7 +34,7 @@ test('C03 profile registry is closed, immutable, and binds two exact calls', () 
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 5);
+  assert.equal(listAgentMcpProfiles().length, 6);
   const c01 = getAgentMcpProfileById('c01-rating-count-gap-v1');
   assert.ok(c01);
   assert.equal(c01.frontierId, 'C01');
@@ -78,10 +78,7 @@ test('C03 profile registry is closed, immutable, and binds two exact calls', () 
       },
     },
   ]);
-  assert.equal(
-    getAgentMcpProfile('bangumi.get_subject_overlap', r05.argumentProfile),
-    r05,
-  );
+  assert.equal(getAgentMcpProfile('bangumi.get_subject_overlap', r05.argumentProfile), r05);
   assert.equal(
     agentMcpProfileClaimLabelDescription(r05),
     'Run 95 R05 profile r05-k-on-season-shared-person-v1; permanent one-shot latch.',
@@ -109,6 +106,30 @@ test('C03 profile registry is closed, immutable, and binds two exact calls', () 
   );
   assert.match(agentMcpProfileArgumentsSha256(p06), /^[0-9a-f]{64}$/u);
   assert.match(agentMcpProfileRegistrySha256(p06.id), /^[0-9a-f]{64}$/u);
+  const p02 = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
+  assert.ok(p02);
+  assert.equal(p02.frontierId, 'P02');
+  assert.equal(p02.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(p02.networkMode, 'run95-p02-person-profile-offline-v1');
+  assert.equal(getAgentMcpProfile('bangumi.get_person_profile', p02.argumentProfile), p02);
+  assert.deepEqual(p02.calls, [
+    {
+      toolName: 'bangumi.get_person_profile',
+      arguments: {
+        personId: 990701,
+        includeCredits: true,
+        maxSubjects: 1,
+        maxCharacters: 1,
+        includeChronology: false,
+      },
+    },
+  ]);
+  assert.equal(
+    agentMcpProfileClaimLabelDescription(p02),
+    'Run 95 P02 profile p02-person-profile-offline-agent-mcp-v1; permanent one-shot latch.',
+  );
+  assert.match(agentMcpProfileArgumentsSha256(p02), /^[0-9a-f]{64}$/u);
+  assert.match(agentMcpProfileRegistrySha256(p02.id), /^[0-9a-f]{64}$/u);
   assert.equal(
     agentMcpProfileRegistrySha256(),
     '7e3bfd3c5f7815faf5f279759739572e86f62308e81faff518d775aa1eaa9e92',

@@ -6,6 +6,7 @@ import {
 import { assertC07CohortRenderOfflineProfile } from './c07-cohort-render-offline-fixture.mjs';
 import { canonicalJson } from './codex-one-tool-evidence.mjs';
 import { assertP06RenderPersonProfileOfflineProfile } from './p06-render-person-profile-offline-fixture.mjs';
+import { assertP02PersonProfileOfflineProfile } from './p02-person-profile-offline-fixture.mjs';
 
 export function parseCodexOneToolMcpArguments(argv) {
   const values = new Map();
@@ -51,7 +52,10 @@ export function parseCodexOneToolMcpArguments(argv) {
     if (!profile) throw new Error('Unknown closed Agent/MCP profile id.');
     let registeredNetworkMode;
     if (profile.networkMode !== undefined) {
-      if (!assertP06RenderPersonProfileOfflineProfile(profile)) {
+      const approved =
+        assertP06RenderPersonProfileOfflineProfile(profile) ||
+        assertP02PersonProfileOfflineProfile(profile);
+      if (!approved) {
         throw new Error('Registered profile network mode is not supported.');
       }
       registeredNetworkMode = profile.networkMode;
