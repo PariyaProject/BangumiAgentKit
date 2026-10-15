@@ -2113,12 +2113,17 @@ CODEX_C03_PROBE_IMPLEMENTATION_MARKERS = {
         'export function createProfileCallQueue(',
         'export function claimProfileSequenceCall(',
     ),
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        'export function summarizeProfileToolResult(',
+        'outputTruncated:',
+        'staffRoleUnknownRows:',
+        'truncated:',
+    ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
         'closed-profile-sequence-anonymous-public-v1',
         'authorizeToolCallSequence(',
         'createProfileCallQueue(',
         'summarizeProfileToolResult(',
-        'staffRoleUnknownRows:',
     ),
     'scripts/acceptance/write-c03-profile-report.mjs': (
         'export function buildC03RunnerReceiptPayload(',

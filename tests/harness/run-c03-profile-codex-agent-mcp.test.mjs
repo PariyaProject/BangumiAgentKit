@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { summarizeProfileToolResult } from '../../apps/mcp/codex-one-tool-mcp-server.mjs';
+import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 import {
   buildC03CodexExecArgs,
   classifyC03ProfileAttempt,
