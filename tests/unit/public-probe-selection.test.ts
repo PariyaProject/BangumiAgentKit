@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { selectPublicProbeNames } from '../../scripts/public-probe-selection.js';
+import {
+  projectPublicPersonProfileSummary,
+  publicPersonProfileSummaryIsConsistent,
+  selectPublicProbeNames,
+} from '../../scripts/public-probe-selection.js';
 
 describe('selectPublicProbeNames', () => {
   const available = [
@@ -38,5 +42,45 @@ describe('selectPublicProbeNames', () => {
       .toThrow('Only --live and repeated --tool <exact-tool-name> options are supported.');
     expect(() => selectPublicProbeNames(['--tool'], available))
       .toThrow('Only --live and repeated --tool <exact-tool-name> options are supported.');
+  });
+});
+
+describe('public person profile probe summary', () => {
+  const source = {
+    state: 'partial',
+    person: { id: 3474, name: 'Private source name', images: { large: 'private-image-url' } },
+    summary: {
+      subjectCredits: 3,
+      uniqueSubjects: 2,
+      subjectMedia: [
+        { key: 'anime', label: 'anime', count: 2, uniqueSubjects: 1, rawCodes: [2], title: 'private title' },
+        { key: 'music', label: 'music', count: 1, uniqueSubjects: 1, rawCodes: [3], name: 'private name' },
+      ],
+    },
+    coverage: { subjects: { observed: 4, returned: 3, truncated: true, sourceCompleteness: 'undocumented' } },
+    credits: { subjects: [{ id: 100, name: 'private relation title' }] },
+  };
+
+  it('projects only aggregate subject type counts and local coverage', () => {
+    const summary = projectPublicPersonProfileSummary(source);
+    expect(summary).toEqual({
+      state: 'partial', personId: 3474, subjectCredits: 3, uniqueSubjects: 2,
+      subjectRowsObserved: 4, subjectRowsReturned: 3, subjectRowsTruncated: true,
+      sourceCompleteness: 'undocumented',
+      subjectMedia: [
+        { key: 'anime', label: 'anime', count: 2, uniqueSubjects: 1, rawCodes: [2] },
+        { key: 'music', label: 'music', count: 1, uniqueSubjects: 1, rawCodes: [3] },
+      ],
+    });
+    expect(JSON.stringify(summary)).not.toMatch(/private source name|private-image-url|private title|private name|private relation title/u);
+    expect(publicPersonProfileSummaryIsConsistent(summary!, 3474, 500)).toBe(true);
+  });
+
+  it('rejects inconsistent totals, completeness claims, and missing type buckets', () => {
+    const summary = projectPublicPersonProfileSummary(source)!;
+    expect(publicPersonProfileSummaryIsConsistent({ ...summary, subjectCredits: 4 }, 3474, 500)).toBe(false);
+    expect(publicPersonProfileSummaryIsConsistent({ ...summary, sourceCompleteness: 'complete' }, 3474, 500)).toBe(false);
+    expect(publicPersonProfileSummaryIsConsistent({ ...summary, subjectMedia: [] }, 3474, 500)).toBe(false);
+    expect(projectPublicPersonProfileSummary({ person: {}, summary: {}, coverage: {} })).toBeNull();
   });
 });
