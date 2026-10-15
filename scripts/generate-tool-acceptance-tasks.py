@@ -3683,12 +3683,12 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'docs/research/run95-r04-series-watch-order-offline-matrix-contract-2026-10-16.md': (
         'R04 remains `UNASSESSED`',
-        'only two local GET responses',
+        'The local fixture permits only',
         'no scenario credit',
     ),
     'docs/product/frontier-ledger.json': (
         'R04 stays UNASSESSED',
-        'only a valid signed REPORT_WRITTEN report may credit this one Agent/MCP cell',
+        'Only a valid signed REPORT_WRITTEN report may credit this one Agent/MCP cell',
     ),
     'tests/harness/r04-series-watch-order-offline-fixture.test.mjs': (
         'R04 profile binds one exact synthetic offline watch-order matrix call',
