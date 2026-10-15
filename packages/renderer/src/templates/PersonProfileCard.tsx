@@ -187,6 +187,15 @@ function CreditList({
                   {item.name}
                 </div>
               )}
+              {item.nameCnSource !== undefined && (
+                <div style={{ color: theme.textMuted, fontSize: '11px', overflowWrap: 'anywhere' }}>
+                  {item.nameCnSource === null
+                    ? '本次没有可用的中文名字段（缺失或值无效）'
+                    : item.nameCnSource.trim().length === 0
+                      ? '上游中文名字段为空'
+                      : `上游已提供中文名${item.nameCnSource === item.name ? '（与原名相同）' : ''}`}
+                </div>
+              )}
               {(item.role || item.subjectNameCn || item.subjectName || item.eps) && (
                 <div
                   style={{
@@ -249,7 +258,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
     .join(' · ');
   const stateLabel =
     viewModel.state === 'complete'
-      ? '完整'
+      ? '本次返回范围未截断'
       : viewModel.state === 'unavailable'
         ? '不可用'
         : viewModel.state === 'not_computable'
@@ -413,9 +422,11 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
         }}
       >
         <div style={{ fontWeight: 700 }}>
-          状态：{stateLabel} · 覆盖：{coverage.state === 'partial' ? '部分' : '完整'} · 已观察{' '}
+          状态：{stateLabel} · 覆盖：
+          {coverage.state === 'partial' ? '部分' : '本次返回范围未截断'} · 已观察{' '}
           {coverage.observed} 条，返回 {coverage.returned} 条，展示 {coverage.rendered} 条
           {coverage.unobserved > 0 ? `，未读取 ${coverage.unobserved} 条` : ''}
+          {' · 上游未说明作品关系是否完整'}
         </div>
         {viewModel.limitations.map((limitation) => (
           <div key={limitation}>• {limitation}</div>

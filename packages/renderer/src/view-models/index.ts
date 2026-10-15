@@ -642,6 +642,7 @@ export interface PersonProfileCreditViewModel {
   id: number;
   name: string;
   nameCn?: string;
+  nameCnSource?: string | null;
   role?: string;
   subjectName?: string;
   subjectNameCn?: string;

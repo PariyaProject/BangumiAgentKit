@@ -814,7 +814,16 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       characterSubjects: 2,
     });
     expect(profile.coverage.state).toBe('partial');
-    expect(profile.coverage.subjects).toMatchObject({ observed: 2, returned: 1, truncated: true });
+    expect(profile.coverage.subjects).toMatchObject({
+      observed: 2,
+      returned: 1,
+      truncated: true,
+      sourceCompleteness: 'undocumented',
+      nameCnSourceSemantics: expect.stringContaining('nameCnSource'),
+    });
+    expect(profile.limitations).toEqual(
+      expect.arrayContaining([expect.stringContaining('不代表完整人物作品表')]),
+    );
     expect(profile.evidence).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ operation: 'GET /v0/persons/{person_id}/subjects' }),

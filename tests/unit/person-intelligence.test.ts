@@ -152,6 +152,25 @@ describe('PR-7D person intelligence aggregation', () => {
     });
   });
 
+  it('preserves official person-work name_cn separately from its display fallback', () => {
+    expect(
+      mapPersonRelationSubject({ id: 11, name: 'Original', name_cn: '中文译名' }),
+    ).toMatchObject({ name: 'Original', nameCn: '中文译名', nameCnSource: '中文译名' });
+    expect(
+      mapPersonRelationSubject({ id: 12, name: 'Same title', name_cn: 'Same title' }),
+    ).toMatchObject({ name: 'Same title', nameCn: 'Same title', nameCnSource: 'Same title' });
+    expect(mapPersonRelationSubject({ id: 13, name: 'Original', name_cn: '' })).toMatchObject({
+      name: 'Original',
+      nameCn: 'Original',
+      nameCnSource: '',
+    });
+    expect(mapPersonRelationSubject({ id: 14, name: 'Original' })).toMatchObject({
+      name: 'Original',
+      nameCn: 'Original',
+      nameCnSource: null,
+    });
+  });
+
   it('fetches person profile relations with bounded, explicit partial coverage', async () => {
     const mockFetch = vi.fn().mockImplementation(async (url: string) => {
       if (url.endsWith('/persons/20')) {
