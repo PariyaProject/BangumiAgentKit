@@ -612,6 +612,61 @@ def p02_public_chronology_summary_is_valid(summary: object) -> bool:
     return True
 
 
+def public_api_evidence_exclusion_paths() -> set[str]:
+    """Load exact-hash public-report exclusions without mutating archived reports."""
+    exclusions_path = ROOT / 'docs/product/public-api-evidence-exclusions.json'
+    if not exclusions_path.exists():
+        return set()
+    try:
+        manifest = json.loads(exclusions_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as error:
+        raise ValueError('Public API evidence exclusion manifest is unreadable.') from error
+    if (
+        not isinstance(manifest, dict)
+        or set(manifest) != {'schemaVersion', 'excludedReports'}
+        or type(manifest.get('schemaVersion')) is not int
+        or manifest['schemaVersion'] != 1
+        or not isinstance(manifest.get('excludedReports'), list)
+    ):
+        raise ValueError('Public API evidence exclusion manifest has an invalid schema.')
+
+    excluded_paths: set[str] = set()
+    for entry in manifest['excludedReports']:
+        if (
+            not isinstance(entry, dict)
+            or set(entry) != {'path', 'sha256', 'selectedTools', 'reason'}
+            or not isinstance(entry.get('path'), str)
+            or not entry['path'].startswith('docs/live-probes/')
+            or not entry['path'].endswith('.json')
+            or not isinstance(entry.get('sha256'), str)
+            or re.fullmatch(r'[0-9a-f]{64}', entry['sha256']) is None
+            or not isinstance(entry.get('selectedTools'), list)
+            or not entry['selectedTools']
+            or not all(isinstance(name, str) for name in entry['selectedTools'])
+            or len(set(entry['selectedTools'])) != len(entry['selectedTools'])
+            or not isinstance(entry.get('reason'), str)
+            or not entry['reason'].strip()
+            or len(entry['reason'].strip()) > 500
+            or entry['path'] in excluded_paths
+        ):
+            raise ValueError('Public API evidence exclusion entry is invalid.')
+        report_path = ROOT / entry['path']
+        try:
+            report_path.resolve().relative_to(ROOT.resolve())
+            report_bytes = report_path.read_bytes()
+            report = json.loads(report_bytes)
+        except (OSError, ValueError) as error:
+            raise ValueError('An excluded public report is missing or unreadable.') from error
+        if (
+            hashlib.sha256(report_bytes).hexdigest() != entry['sha256']
+            or not isinstance(report, dict)
+            or report.get('selectedTools') != entry['selectedTools']
+        ):
+            raise ValueError('An excluded public report no longer matches its recorded hash and tool set.')
+        excluded_paths.add(entry['path'])
+    return excluded_paths
+
+
 def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
     """Trust hash-bound public probes per tool, not per unrelated catalog entry."""
     catalog_bytes = CATALOG.read_bytes()
@@ -627,8 +682,15 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
         item['name'] for item in catalog
         if item.get('auth') != 'required' and item['name'] not in NON_PUBLIC_API_TOOLS
     }
+    excluded_report_paths = public_api_evidence_exclusion_paths()
     sources: dict[str, set[str]] = {}
     for path in LIVE_PROBE_DIR.glob('public-tools-*.json'):
+        try:
+            relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+        except ValueError:
+            continue
+        if relative_path in excluded_report_paths:
+            continue
         try:
             report = json.loads(path.read_text(encoding='utf-8'))
         except (OSError, ValueError):
@@ -642,6 +704,7 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
             or not isinstance(source_program, str)
             or source_program not in probe_source_sha256_by_program
             or report.get('probeScriptSha256') != probe_source_sha256_by_program.get(source_program)
+            or report.get('acceptanceEligible') is False
         ):
             continue
         # This hash-bound historical report counted API fetches only. It did not

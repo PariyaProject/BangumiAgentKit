@@ -135,6 +135,58 @@ class PublicApiEvidenceTests(unittest.TestCase):
             {'bangumi.get_subject': {'docs/live-probes/public-tools-fixture.json'}},
         )
 
+    def test_explicitly_excluded_public_report_does_not_count(self):
+        self.write_report()
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report['acceptanceEligible'] = False
+        report['acceptanceExclusionReason'] = 'The user-directed matrix disposition keeps this row pending.'
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+        self.assertEqual(GENERATOR.public_api_smoke_sources(self.catalog), {})
+
+    def test_hash_bound_exclusion_keeps_report_bytes_but_removes_its_credit(self):
+        self.write_report()
+        report_bytes = self.report_path.read_bytes()
+        exclusions_path = self.root / 'docs/product/public-api-evidence-exclusions.json'
+        exclusions_path.parent.mkdir(parents=True, exist_ok=True)
+        exclusions_path.write_text(
+            json.dumps({
+                'schemaVersion': 1,
+                'excludedReports': [{
+                    'path': 'docs/live-probes/public-tools-fixture.json',
+                    'sha256': hashlib.sha256(report_bytes).hexdigest(),
+                    'selectedTools': ['bangumi.get_subject'],
+                    'reason': 'The requested matrix scope leaves this row pending.',
+                }],
+            }),
+            encoding='utf-8',
+        )
+
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+        self.assertEqual(GENERATOR.public_api_smoke_sources(self.catalog), {})
+        self.assertEqual(self.report_path.read_bytes(), report_bytes)
+
+    def test_hash_bound_exclusion_fails_closed_when_the_report_changes(self):
+        self.write_report()
+        exclusions_path = self.root / 'docs/product/public-api-evidence-exclusions.json'
+        exclusions_path.parent.mkdir(parents=True, exist_ok=True)
+        exclusions_path.write_text(
+            json.dumps({
+                'schemaVersion': 1,
+                'excludedReports': [{
+                    'path': 'docs/live-probes/public-tools-fixture.json',
+                    'sha256': 'f' * 64,
+                    'selectedTools': ['bangumi.get_subject'],
+                    'reason': 'The requested matrix scope leaves this row pending.',
+                }],
+            }),
+            encoding='utf-8',
+        )
+
+        with self.assertRaises(ValueError):
+            GENERATOR.public_api_smoke_sources(self.catalog)
+
     def write_fresh_render_person_profile_report(self):
         tool = GENERATOR.FRESH_RENDER_PERSON_PROFILE_PUBLIC_TOOL
         input_data = GENERATOR.FRESH_RENDER_PERSON_PROFILE_PUBLIC_INPUT

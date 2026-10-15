@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "excludedReports": [
+    {
+      "path": "docs/live-probes/public-tools-2026-10-15-151849327-87132.json",
+      "sha256": "66c29d16552325690dd1775a384521d5bd926238925c8d0fffb3e3b69c22dca1",
+      "selectedTools": ["bangumi.render_person_profile"],
+      "reason": "User-directed disposition: preserve the 65/65 public target with these eight tools pending. Keep this report for audit, but do not credit its row or repeat the old PR #173 probe."
+    },
+    {
+      "path": "docs/live-probes/public-tools-2026-10-15-154413213-10706.json",
+      "sha256": "a8df54997370c724c0a3e252e2455b6c02064bf51caf50aa4af71a0dfe9281bf",
+      "selectedTools": ["bangumi.render_person_profile"],
+      "reason": "User-directed disposition: preserve the 65/65 public target with these eight tools pending. Keep this report for audit, but do not credit its row or repeat the old PR #173 probe."
+    },
+    {
+      "path": "docs/live-probes/public-tools-2026-10-15-174045481-99856.json",
+      "sha256": "a37a49b8e517ebf33dd1c4b71fece33271ab98ac3adcbf48bb5af13bf76ea001",
+      "selectedTools": [
+        "bangumi.aggregate_subject_cohort",
+        "bangumi.compare_subject_cohorts",
+        "bangumi.render_query_subjects",
+        "bangumi.render_subject_cohort_aggregation",
+        "bangumi.render_subject_cohort_comparison"
+      ],
+      "reason": "User-directed disposition: preserve the 65/65 public target with these eight tools pending. Keep this report for audit, but do not credit its rows or repeat the old PR #173 probe."
+    },
+    {
+      "path": "docs/live-probes/public-tools-2026-10-15-182145883-4567.json",
+      "sha256": "c2518d0f2b35bd40c6a24f4fb984347d97f0dbd5d80b206ab9dcec8c1bde0b26",
+      "selectedTools": ["bangumi.query_subjects"],
+      "reason": "User-directed disposition: preserve the 65/65 public target with these eight tools pending. Keep this report for audit, but do not credit its row or repeat the old PR #173 probe."
+    },
+    {
+      "path": "docs/live-probes/public-tools-2026-10-15-185150132-91752.json",
+      "sha256": "abec5dc6c987f21c52fbcca45e8b460102b1bd362d584d5fd1e8ffaf92baa6a9",
+      "selectedTools": [
+        "bangumi.aggregate_subject_cohort",
+        "bangumi.compare_subject_cohorts",
+        "bangumi.query_subjects",
+        "bangumi.render_query_subjects",
+        "bangumi.render_subject_cohort_aggregation",
+        "bangumi.render_subject_cohort_comparison"
+      ],
+      "reason": "User-directed disposition: preserve the 65/65 public target with these eight tools pending. Keep this report for audit, but do not credit its rows or repeat the old PR #173 probe."
+    },
+    {
+      "path": "docs/live-probes/public-tools-p02-person-profile-chronology-2026-10-15.json",
+      "sha256": "25427dbf513bb3f74b51920e7ec11f763a808584c85c8e6fb3079f7e0182490b",
+      "selectedTools": ["bangumi.get_person_profile"],
+      "reason": "User-directed disposition: preserve the 65/65 public target with these eight tools pending. Keep this report for audit, but do not credit its row or repeat the old PR #173 probe."
+    }
+  ]
+}
