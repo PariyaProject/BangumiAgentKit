@@ -2024,9 +2024,29 @@
       "user_question": "某人物参与的作品里，哪些拥有中文译名？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
-      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-p03-person-chinese-title-current-contract-2026-10-15.md", "packages/bangumi-core/src/services/person-service.ts", "packages/tools/src/definitions/read-tools.ts", "apps/mcp/src/result-presenter.ts", "packages/renderer/src/templates/PersonProfileCard.tsx", "tests/unit/person-intelligence.test.ts", "tests/semantic/semantic-tools.test.ts", "tests/integration/mcp-result-presenter.test.ts", "tests/render/render-cards.test.ts"],
-      "next_action": "For returned person-work rows, treat a raw nameCnSource that remains non-empty after trimming as explicit name_cn evidence, including when it equals name. Empty (including whitespace-only), absent, or invalid values do not prove absence. Source completeness is undocumented; compact MCP text reports present/empty/unavailable counts and omitted rows only when credit rows are included, while structuredContent retains the returned result. Keep PARTIAL until current Agent/MCP answer evidence or an upstream completeness contract justifies a stronger claim.",
+      "source_refs": ["docs/research/user-scenario-catalog.md","docs/research/run95-p03-person-chinese-title-current-contract-2026-10-15.md","packages/bangumi-core/src/services/person-service.ts","packages/tools/src/definitions/read-tools.ts","apps/mcp/src/result-presenter.ts","packages/renderer/src/templates/PersonProfileCard.tsx","tests/unit/person-intelligence.test.ts","tests/semantic/semantic-tools.test.ts","tests/integration/mcp-result-presenter.test.ts","tests/render/render-cards.test.ts","scripts/acceptance/agent-mcp-profile-registry.json","scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs","scripts/acceptance/write-p03-person-name-cn-report.mjs","scripts/lib/p03-person-name-cn-evidence.mjs","scripts/agent-harness.mjs","docs/product/g26-mcp-bundle-attestation.json","tests/harness/p03-person-name-cn-evidence.test.mjs","tests/harness/run-p03-person-name-cn-agent-mcp.test.mjs","tests/harness/write-p03-person-name-cn-report.test.mjs"],
+      "next_action": "P03 remains PARTIAL. The selected Run #95 profile makes one anonymous bangumi.get_person_profile call for public personId 4765 with includeCredits=true, maxSubjects=500, and maxCharacters=1. It accepts only returned rows whose raw nameCnSource string remains non-empty after trimming; answers list only exact positive compact-text rows and report present/empty/unavailable plus observed/returned/truncated coverage and omitted positive rows. Upstream completeness is undocumented; empty, whitespace-only, absent, invalid, unreturned, or text-omitted rows do not prove absence. A populated name_cn matching the original does not prove a translation. Execute only after exact Candidate/Base 7/7 CI, Harness profile readiness, and same-identity GPT-6 Luna Max PASS; then record the signed sanitized report and durable terminal claim. Do not claim career-wide completeness.",
       "reopen_when": "A current-source Agent/MCP answer profile is accepted for a named person, or official v0 adds pagination/total/completeness semantics for person-work relations.",
+      "evidence": {
+        "p03_agent_mcp_profile_preflight": {
+          "epoch_id": "run95-p03-person-chinese-title-agent-mcp-20261015",
+          "profile_id": "p03-person-name-cn-agent-mcp-v1",
+          "tool": "bangumi.get_person_profile",
+          "arguments": {"personId": 4765, "includeCredits": true, "maxSubjects": 500, "maxCharacters": 1},
+          "calls": 1,
+          "auth": "none",
+          "claim_state": "UNCLAIMED",
+          "live_query_run": false,
+          "source_completeness": "undocumented",
+          "status_boundary": "PARTIAL until the reviewed current Agent/MCP answer and signed report are accepted.",
+          "checks": [
+            "P03 focused summary, compact-text projection, answer, runner, report, and claim tests passed 27/27.",
+            "Targeted Harness profile CLI checks passed 2/2; C03 remains terminal INCONCLUSIVE with retryAllowed=false.",
+            "Full Harness suite passed 276/276; typecheck, lint, build, legacy-path guard, acceptance:check, and frontier:check passed.",
+            "Two builds reproduced MCP bundle SHA-256 60e10980dd2a42158721a1565ee878f833726f56164b8d8376d02a0dc636e76b; the current attestation matches."
+          ]
+        }
+      },
       "related_ids": []
     },
     {

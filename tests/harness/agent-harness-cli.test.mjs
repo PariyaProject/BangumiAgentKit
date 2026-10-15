@@ -95,6 +95,7 @@ const mockBin = path.join(root, 'tests/harness/mock-harness-bin.mjs');
 const sha = (digit) => digit.repeat(40);
 const D07_EPOCH_ID = 'run95-d07-current-rank-by-release-year';
 const C03_PROFILE = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
+const P03_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
 const mandatoryChecks = [
   'harness-control',
   'sqlite-default',
@@ -1458,15 +1459,15 @@ function run95P05ClaimFixture() {
   return { run, epoch, candidateSha, baseSha, reviewerId, branch };
 }
 
-function c03ReviewReadyEnvironment(overrides = {}) {
+function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
   const { run, epoch } = passedCandidateFixture();
-  const branch = 'codex/epoch-run95-c03-profile-aware-agent-mcp-20261014';
+  const branch = `codex/epoch-${profile.epochId}`;
   const reviewerId = 'gpt-6-luna-max-run95-pr42-round1';
   run.state = 'EPOCH_ACTIVE';
   run.profile = 'AUTONOMOUS_EVOLUTION';
   run.active_epoch_pr = 42;
   run.pending_epoch = null;
-  epoch.epoch_id = C03_PROFILE.epochId;
+  epoch.epoch_id = profile.epochId;
   epoch.branch = branch;
   epoch.base_branch = 'master';
   epoch.pr_number = 42;
@@ -1475,16 +1476,16 @@ function c03ReviewReadyEnvironment(overrides = {}) {
   epoch.reviewed_base_sha = sha('a');
   epoch.review_pass_sha = sha('b');
   epoch.state = 'REVIEW_PASSED';
-  epoch.advances_frontier_ids = ['C03'];
+  epoch.advances_frontier_ids = [profile.frontierId];
   epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
   epoch.scope_closure = {
-    why_not_review_earlier: 'The C03 claim path and runner are one coherent profile slice.',
+    why_not_review_earlier: 'The registered profile and claim path form one coherent slice.',
     why_not_extend_further: 'Other scenarios need separate profiles and evidence.',
     related_work_remaining: false,
   };
   epoch.adversarial_preflight = {
     completed: true,
-    summary: 'The exact two-call profile was checked.',
+    summary: 'The exact registered profile was checked.',
   };
   epoch.review_history = [
     {
@@ -1511,6 +1512,10 @@ function c03ReviewReadyEnvironment(overrides = {}) {
     ...overrides,
   });
   return { environment, reviewerId, branch, run, epoch };
+}
+
+function c03ReviewReadyEnvironment(overrides = {}) {
+  return agentMcpProfileReviewReadyEnvironment(C03_PROFILE, overrides);
 }
 
 test('C03 Harness profile status, create-once claim, and terminal result are durable and fail closed', () => {
@@ -1585,6 +1590,53 @@ test('C03 Harness profile status, create-once claim, and terminal result are dur
       environment.readState().repositoryLabels['harness-r95-c03-activity-terminal'].description,
       'Run95 C03 INCONCLUSIVE no-report',
     );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('P03 Harness profile status, create-once claim, and no-retry result use its immutable profile digest', () => {
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(P03_PROFILE);
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', P03_PROFILE.id];
+  try {
+    const initial = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(initial.status, 0, initial.stderr);
+    const initialState = JSON.parse(initial.stdout);
+    assert.equal(initialState.state, 'UNCLAIMED');
+    assert.equal(initialState.frontier_id, 'P03');
+    assert.equal(initialState.call_count, 1);
+    assert.equal(initialState.review_gate.eligible, true);
+
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    assert.equal(claimResult.state, 'AGENT_MCP_PROFILE_CLAIMED');
+    assert.equal(claimResult.retryAllowed, false);
+
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'INCONCLUSIVE',
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    assert.equal(JSON.parse(terminal.stdout).state, 'AGENT_MCP_PROFILE_RESULT_RECORDED');
+    const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(status.status, 0, status.stderr);
+    assert.equal(JSON.parse(status.stdout).state, 'INCONCLUSIVE');
+    assert.equal(JSON.parse(status.stdout).retry_allowed, false);
   } finally {
     environment.cleanup();
   }
@@ -2955,8 +3007,8 @@ test('CLI P05 claim is repository-global and read back from the active PR before
     assert.equal(acquiredResult.expectedArgumentsSha256, P05_ARGUMENTS_SHA256);
 
     const firstState = firstClone.readState();
-    const disposition = parseControlBlock(firstState.prBody, EPOCH_MARKER)
-      .adversarial_preflight.p05_one_shot_disposition;
+    const disposition = parseControlBlock(firstState.prBody, EPOCH_MARKER).adversarial_preflight
+      .p05_one_shot_disposition;
     assert.equal(disposition.claimId, acquiredResult.claimId);
     assert.equal(disposition.frontierId, 'P05');
     assert.equal(disposition.epochId, P05_EPOCH_ID);
@@ -3043,9 +3095,7 @@ test('CLI refuses P05 integration until the global one-shot claim has a terminal
     assert.match(result.stderr, /^P05_ONESHOT_RECONCILIATION_REQUIRED:/u);
     assert.equal(environment.readState().prState, 'OPEN');
     assert.equal(
-      environment.readState().calls.some(
-        ({ args }) => args[0] === 'pr' && args[1] === 'merge',
-      ),
+      environment.readState().calls.some(({ args }) => args[0] === 'pr' && args[1] === 'merge'),
       false,
     );
   } finally {

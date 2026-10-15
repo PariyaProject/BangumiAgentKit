@@ -1,4 +1,12 @@
-export function summarizeProfileToolResult(result, expectedArguments) {
+import {
+  P03_PROFILE_ID,
+  summarizeP03PersonProfileToolResult,
+} from './p03-person-name-cn-evidence.mjs';
+
+export function summarizeProfileToolResult(result, expectedArguments, profileId = null) {
+  if (profileId === P03_PROFILE_ID) {
+    return summarizeP03PersonProfileToolResult(result, expectedArguments);
+  }
   const summary = result?.summary;
   const coverage = result?.coverage;
   const rows = Array.isArray(result?.rows) ? result.rows : [];

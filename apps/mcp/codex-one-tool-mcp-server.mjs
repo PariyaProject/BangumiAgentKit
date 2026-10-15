@@ -419,7 +419,11 @@ async function main(argv = process.argv.slice(2)) {
           };
         }
         if (config.profile) {
-          const resultSummary = summarizeProfileToolResult(result, expectedArguments);
+          const resultSummary = summarizeProfileToolResult(
+            result,
+            expectedArguments,
+            config.profile.id,
+          );
           const results = [...summary.results];
           results[sequenceIndex] = {
             sequenceIndex,

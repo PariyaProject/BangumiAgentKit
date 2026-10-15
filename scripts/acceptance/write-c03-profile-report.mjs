@@ -458,7 +458,7 @@ export function validateC03ProfileReport(report, claim, reportBytes = null) {
     report.prNumber < 1 ||
     !/^profile-run-95-pr-\d+-[0-9a-f]{12}-\d+$/u.test(report.claimId ?? '') ||
     !/^[0-9a-f]{64}$/u.test(report.mcpBundleSha256 ?? '') ||
-    report.registrySha256 !== agentMcpProfileRegistrySha256() ||
+    report.registrySha256 !== agentMcpProfileRegistrySha256(PROFILE.id) ||
     report.toolName !== PROFILE.toolName ||
     report.argumentProfile !== PROFILE.argumentProfile ||
     report.expectedArgumentsSha256 !== agentMcpProfileArgumentsSha256(PROFILE) ||
