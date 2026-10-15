@@ -110,8 +110,8 @@ class PublicApiEvidenceTests(unittest.TestCase):
             'noErrorResult': True,
             'nonNegativeCounts': True,
             'countConsistency': True,
-            'noBlockedRequestAttempt': True,
             'profileIsBound': True,
+            'profileReturnedPartial': True,
             'passed': True,
         }
         result = {
@@ -130,8 +130,10 @@ class PublicApiEvidenceTests(unittest.TestCase):
             'probeScriptSha256': hashlib.sha256(self.p02_probe_path.read_bytes()).hexdigest(),
             'requestBudget': {'maxPerTool': max_per_tool, 'maxTotal': max_total},
             'httpRequests': http_requests,
+            'budgetBlocked': False,
             'selectedTools': [GENERATOR.P02_PUBLIC_CHRONOLOGY_TOOL],
             'probeCount': 1,
+            'input': GENERATOR.P02_PUBLIC_CHRONOLOGY_INPUT,
             'results': [result],
         }
         path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
@@ -159,6 +161,22 @@ class PublicApiEvidenceTests(unittest.TestCase):
 
     def test_excludes_profile_specific_report_with_a_different_budget(self):
         self.write_p02_chronology_report(max_total=5)
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_after_request_guard_blocks(self):
+        self.write_p02_chronology_report()
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        report['budgetBlocked'] = True
+        path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_excludes_profile_specific_report_with_a_different_top_level_input(self):
+        self.write_p02_chronology_report()
+        path = self.report_path.with_name('public-tools-p02-chronology-fixture.json')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        report['input']['personId'] += 1
+        path.write_text(json.dumps(report), encoding='utf-8')
         self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
 
     def test_combines_successful_partial_reports_per_tool(self):

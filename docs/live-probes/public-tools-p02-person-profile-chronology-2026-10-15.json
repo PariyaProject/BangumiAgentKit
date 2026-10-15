@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-15T11:06:39.385Z",
+  "mode": "read_only_public_api_smoke",
+  "sourceProgram": "scripts/smoke-person-profile-chronology-online.ts",
+  "catalogSha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
+  "probeScriptSha256": "5818670a06c2909846832be7f6900cd329fd3ebfee95e3f4032b73f1e999fca8",
+  "requestBudget": {
+    "maxPerTool": 4,
+    "maxTotal": 4
+  },
+  "httpRequests": 4,
+  "budgetBlocked": false,
+  "selectedTools": [
+    "bangumi.get_person_profile"
+  ],
+  "probeCount": 1,
+  "input": {
+    "personId": 13684,
+    "includeCredits": false,
+    "maxSubjects": 500,
+    "maxCharacters": 1,
+    "includeChronology": true,
+    "maxChronologySubjects": 1
+  },
+  "result": {
+    "state": "partial",
+    "subjectCoverage": {
+      "observed": 107,
+      "returned": 107,
+      "truncated": false
+    },
+    "releaseChronology": {
+      "state": "partial",
+      "sourceCompleteness": "undocumented",
+      "dateSemantics": "official-subject-air-release-date",
+      "selectedSubjectDetails": 1,
+      "succeededSubjectDetails": 1,
+      "failedSubjectDetails": 0,
+      "validDateSubjects": 1,
+      "missingDateSubjects": 0,
+      "invalidDateSubjects": 0,
+      "omittedAnimeSubjects": 19,
+      "earliestObserved": {
+        "date": "2016-03-28",
+        "tiedSubjectCount": 1
+      },
+      "latestObserved": {
+        "date": "2016-03-28",
+        "tiedSubjectCount": 1
+      }
+    }
+  },
+  "results": [
+    {
+      "tool": "bangumi.get_person_profile",
+      "input": {
+        "personId": 13684,
+        "includeCredits": false,
+        "maxSubjects": 500,
+        "maxCharacters": 1,
+        "includeChronology": true,
+        "maxChronologySubjects": 1
+      },
+      "httpRequests": 4,
+      "result": {
+        "state": "partial",
+        "subjectCoverage": {
+          "observed": 107,
+          "returned": 107,
+          "truncated": false
+        },
+        "releaseChronology": {
+          "state": "partial",
+          "sourceCompleteness": "undocumented",
+          "dateSemantics": "official-subject-air-release-date",
+          "selectedSubjectDetails": 1,
+          "succeededSubjectDetails": 1,
+          "failedSubjectDetails": 0,
+          "validDateSubjects": 1,
+          "missingDateSubjects": 0,
+          "invalidDateSubjects": 0,
+          "omittedAnimeSubjects": 19,
+          "earliestObserved": {
+            "date": "2016-03-28",
+            "tiedSubjectCount": 1
+          },
+          "latestObserved": {
+            "date": "2016-03-28",
+            "tiedSubjectCount": 1
+          }
+        }
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "httpRequestBudget": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "nonErrorResult": true,
+        "correctPerson": true,
+        "chronologyReturned": true,
+        "chronologyBounded": true,
+        "chronologyCountsConsistent": true,
+        "relationCoverageConsistent": true,
+        "passed": true
+      }
+    }
+  ],
+  "limits": [
+    "one anonymous public ToolRegistry call",
+    "hard maximum of four outgoing HTTP requests",
+    "one returned anime subject detail at most",
+    "summary only; no names, relation/subject IDs, full payloads, or image bytes",
+    "observed sample only; no career-wide chronology claim"
+  ]
+}

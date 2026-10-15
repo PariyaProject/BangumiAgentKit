@@ -207,6 +207,8 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
             if (
                 selected != [P02_PUBLIC_CHRONOLOGY_TOOL]
                 or request_budget != {'maxPerTool': 4, 'maxTotal': 4}
+                or report.get('budgetBlocked') is not False
+                or report.get('input') != P02_PUBLIC_CHRONOLOGY_INPUT
                 or result_by_name[P02_PUBLIC_CHRONOLOGY_TOOL].get('input')
                 != P02_PUBLIC_CHRONOLOGY_INPUT
             ):
