@@ -105,4 +105,29 @@ describe('fresh public search POST fetch v2', () => {
       total: 1,
     });
   });
+
+  it('rejects an HTTP downgrade redirect to api.bgm.tv before dispatching it', async () => {
+    const budget = new PublicRequestBudget(4, 2);
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(null, {
+          status: 307,
+          headers: { location: 'http://api.bgm.tv/v0/search/subjects' },
+        }),
+    );
+    const fetchFn = createBudgetedPublicSearchFetchV2(budget, fetchImpl);
+
+    await expect(
+      budget.withScope('bangumi.query_subjects', async () =>
+        fetchFn(SEARCH_URL, { method: 'POST', headers: SEARCH_HEADERS, body: '{}' }),
+      ),
+    ).rejects.toThrow('refused an unsupported API redirect');
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(budget.snapshotScope('bangumi.query_subjects')).toEqual({
+      bangumiApi: 1,
+      rendererAsset: 0,
+      total: 1,
+    });
+  });
 });

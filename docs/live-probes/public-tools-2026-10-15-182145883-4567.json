@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-15T18:21:45.883Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
+  "probeScriptSha256": "c3f83f85e0b3e059c6e316c2554b2114e72737817013ea0dcad335c9ec2600af",
+  "sourceProgram": "scripts/smoke-fresh-query-subjects-origin-guard-v3-20261016.ts",
+  "supportingSourceSha256": {
+    "scripts/lib/fresh-public-query-subjects-origin-guard-v3-scope.ts": "302937de70e0ba32d4a55421d5fbc3e568d2151c9434f6c7c1570e6b0aa00019",
+    "scripts/lib/fresh-public-request-budget.ts": "e855abe79b11eaf9360fac207316d1cb3a539fda5e7bac47a29aa66cdc68059c",
+    "scripts/lib/fresh-public-request-search-fetch-v2.ts": "81a19ee1aa4704ebcdf8318e2cfac55c43bf4653bd42180bf4fb52d5813e7df3"
+  },
+  "scopeId": "run95-query-subjects-origin-guard-v3-20261016",
+  "requestBudget": {
+    "maxPerTool": 8,
+    "maxTotal": 8
+  },
+  "requestAccounting": {
+    "scope": "bangumi_api_and_renderer_assets",
+    "redirectsIncluded": true,
+    "apiRetryAttemptsIncluded": true,
+    "apiRedirectHopsIncluded": true,
+    "rendererAssetRedirectHopsIncluded": true,
+    "anonymousSearchPostAllowed": true,
+    "searchPostPathRestricted": true,
+    "apiRedirectOrigin": "https://api.bgm.tv",
+    "apiRedirectOriginRestricted": true,
+    "publicPostPath": "/v0/search/subjects",
+    "bangumiApi": 2,
+    "rendererAsset": 0,
+    "total": 2,
+    "perTool": {
+      "bangumi.query_subjects": {
+        "bangumiApi": 2,
+        "rendererAsset": 0,
+        "total": 2
+      }
+    }
+  },
+  "budgetBlocked": false,
+  "httpRequests": 2,
+  "selectedTools": [
+    "bangumi.query_subjects"
+  ],
+  "probeCount": 1,
+  "limits": [
+    "exactly one fixed anonymous public/read ToolRegistry call",
+    "at most eight combined API and renderer asset requests total",
+    "API requests and redirects remain on HTTPS api.bgm.tv; anonymous POST is restricted to /v0/search/subjects",
+    "every API retry, API redirect hop, asset request, and asset redirect hop is counted",
+    "stop before dispatch after any request budget breach",
+    "no OAuth, account, community, HTML, writes, QQ, or TIM",
+    "sanitized summaries only; no raw result rows or image bytes",
+    "temporary rendered artifacts are removed after the run",
+    "a failed or budget-blocked report receives no matrix credit"
+  ],
+  "redactions": [
+    "result row values, titles, names, identifiers, request bodies, and image bytes are not persisted"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.query_subjects",
+      "input": {
+        "media": "anime",
+        "year": 2017,
+        "month": 9,
+        "resultMode": "top",
+        "limit": 1,
+        "sort": "date",
+        "order": "asc",
+        "explain": "none"
+      },
+      "attempted": true,
+      "httpRequests": 2,
+      "requestAccounting": {
+        "bangumiApi": 2,
+        "rendererAsset": 0,
+        "total": 2,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true
+      },
+      "result": {
+        "state": "ok",
+        "keys": [
+          "state",
+          "items",
+          "plan",
+          "coverage",
+          "warnings",
+          "evidence"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    }
+  ]
+}

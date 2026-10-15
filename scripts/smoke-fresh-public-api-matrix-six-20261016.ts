@@ -13,15 +13,16 @@ import {
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
 import {
   BudgetedAssetHttpTransport,
-  createBudgetedPublicFetch,
   PublicRequestBudget,
 } from './lib/fresh-public-request-budget.js';
+import { createBudgetedPublicSearchFetchV2 } from './lib/fresh-public-request-search-fetch-v2.js';
 import { FRESH_PUBLIC_API_MATRIX_SIX_SCOPE as scope } from './lib/fresh-public-api-matrix-six-scope.js';
 
 const LIVE_FLAG = '--live';
 const SCRIPT_PATH = 'scripts/smoke-fresh-public-api-matrix-six-20261016.ts';
 const SCOPE_SOURCE_PATH = 'scripts/lib/fresh-public-api-matrix-six-scope.ts';
 const BUDGET_SOURCE_PATH = 'scripts/lib/fresh-public-request-budget.ts';
+const SEARCH_FETCH_SOURCE_PATH = 'scripts/lib/fresh-public-request-search-fetch-v2.ts';
 const USER_AGENT = 'BangumiAgentKit/live-public-probe';
 const FAILURE_STATES = new Set([
   'auth_required',
@@ -86,6 +87,9 @@ function notAttemptedResult(probe: Probe) {
       apiRetryAttemptsIncluded: true,
       apiRedirectHopsIncluded: true,
       rendererAssetRedirectHopsIncluded: true,
+      anonymousSearchPostAllowed: true,
+      searchPostPathRestricted: true,
+      apiRedirectOriginRestricted: true,
     },
     result: { state: 'not_attempted' },
     assertions: {
@@ -95,6 +99,9 @@ function notAttemptedResult(probe: Probe) {
       apiRetryAttemptsIncluded: true,
       apiRedirectHopsIncluded: true,
       rendererAssetRedirectHopsIncluded: true,
+      anonymousSearchPostAllowed: true,
+      searchPostPathRestricted: true,
+      apiRedirectOriginRestricted: true,
       nonEmptySummary: false,
       noErrorResult: false,
       nonNegativeCounts: true,
@@ -129,6 +136,7 @@ function makeResult(
   const nonNegativeCounts = scopedCounts.bangumiApi >= 0 && scopedCounts.rendererAsset >= 0;
   const countConsistency =
     scopedCounts.total === scopedCounts.bangumiApi + scopedCounts.rendererAsset;
+  const apiRedirectOriginRestricted = true;
   const assertions = {
     httpRequestObserved,
     scopeInputExact,
@@ -136,6 +144,9 @@ function makeResult(
     apiRetryAttemptsIncluded: true,
     apiRedirectHopsIncluded: true,
     rendererAssetRedirectHopsIncluded: true,
+    anonymousSearchPostAllowed: true,
+    searchPostPathRestricted: true,
+    apiRedirectOriginRestricted,
     nonEmptySummary,
     noErrorResult,
     nonNegativeCounts,
@@ -145,6 +156,7 @@ function makeResult(
       httpRequestObserved &&
       scopeInputExact &&
       scopeRequestCap &&
+      apiRedirectOriginRestricted &&
       nonEmptySummary &&
       noErrorResult &&
       nonNegativeCounts &&
@@ -161,6 +173,9 @@ function makeResult(
       apiRetryAttemptsIncluded: true,
       apiRedirectHopsIncluded: true,
       rendererAssetRedirectHopsIncluded: true,
+      anonymousSearchPostAllowed: true,
+      searchPostPathRestricted: true,
+      apiRedirectOriginRestricted: true,
     },
     result,
     assertions,
@@ -194,7 +209,7 @@ async function main(): Promise<void> {
   const artifactStore = new LocalArtifactStore({ artifactDir: artifactDirectory });
   const publicHttpClient = new HttpClient({
     userAgent: USER_AGENT,
-    fetchFn: createBudgetedPublicFetch(requestBudget),
+    fetchFn: createBudgetedPublicSearchFetchV2(requestBudget),
   });
   const storage = new MemoryStorage();
   const deps = createRuntimeDependenciesWithStorage(storage, {
@@ -270,6 +285,7 @@ async function main(): Promise<void> {
     supportingSourceSha256: {
       [SCOPE_SOURCE_PATH]: await sha256(SCOPE_SOURCE_PATH),
       [BUDGET_SOURCE_PATH]: await sha256(BUDGET_SOURCE_PATH),
+      [SEARCH_FETCH_SOURCE_PATH]: await sha256(SEARCH_FETCH_SOURCE_PATH),
     },
     scopeId: scope.id,
     requestBudget: {
@@ -282,6 +298,10 @@ async function main(): Promise<void> {
       apiRetryAttemptsIncluded: true,
       apiRedirectHopsIncluded: true,
       rendererAssetRedirectHopsIncluded: true,
+      anonymousSearchPostAllowed: true,
+      searchPostPathRestricted: true,
+      apiRedirectOrigin: 'https://api.bgm.tv',
+      apiRedirectOriginRestricted: true,
       bangumiApi: totalAccounting.bangumiApi,
       rendererAsset: totalAccounting.rendererAsset,
       total: totalAccounting.total,
@@ -295,6 +315,7 @@ async function main(): Promise<void> {
       'exactly six fixed anonymous public/read ToolRegistry calls in selected order',
       'at most eight combined API and renderer asset requests per tool and 32 total',
       'every API attempt/retry, API redirect hop, asset request, and asset redirect hop is counted',
+      'API redirects remain on HTTPS api.bgm.tv and anonymous POST stays on /v0/search/subjects',
       'stop before dispatch after any request budget breach',
       'no OAuth, account, community, HTML, writes, QQ, or TIM',
       'sanitized summaries only; no raw result rows or image bytes',

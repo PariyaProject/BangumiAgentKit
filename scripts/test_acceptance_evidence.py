@@ -73,6 +73,12 @@ class PublicApiEvidenceTests(unittest.TestCase):
         self.five_post_v2_fetch_path = self.root / GENERATOR.FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM
         self.five_post_v2_fetch_path.parent.mkdir(parents=True, exist_ok=True)
         self.five_post_v2_fetch_path.write_text('// fixture restricted public search POST transport\n', encoding='utf-8')
+        self.origin_guard_v3_probe_path = self.root / GENERATOR.FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_PROGRAM
+        self.origin_guard_v3_probe_path.parent.mkdir(parents=True, exist_ok=True)
+        self.origin_guard_v3_probe_path.write_text('// fixture origin-guard v3 probe source\n', encoding='utf-8')
+        self.origin_guard_v3_scope_path = self.root / GENERATOR.FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_SCOPE_PROGRAM
+        self.origin_guard_v3_scope_path.parent.mkdir(parents=True, exist_ok=True)
+        self.origin_guard_v3_scope_path.write_text('// fixture exact query profile source\n', encoding='utf-8')
         self.original_root = GENERATOR.ROOT
         self.original_catalog = GENERATOR.CATALOG
         self.original_probe_dir = GENERATOR.LIVE_PROBE_DIR
@@ -297,11 +303,14 @@ class PublicApiEvidenceTests(unittest.TestCase):
                     'apiRetryAttemptsIncluded': True,
                     'apiRedirectHopsIncluded': True,
                     'rendererAssetRedirectHopsIncluded': True,
+                    'anonymousSearchPostAllowed': True,
+                    'searchPostPathRestricted': True,
+                    'apiRedirectOriginRestricted': True,
                 },
                 'result': {'state': 'partial', 'keys': ['state', 'items']},
                 'assertions': {
                     key: True
-                    for key in GENERATOR.FRESH_PUBLIC_API_MATRIX_SIX_REQUIRED_ASSERTIONS
+                    for key in GENERATOR.FRESH_PUBLIC_API_MATRIX_SIX_ORIGIN_GUARD_REQUIRED_ASSERTIONS
                 },
             })
 
@@ -323,6 +332,9 @@ class PublicApiEvidenceTests(unittest.TestCase):
                 GENERATOR.FRESH_PUBLIC_API_MATRIX_SIX_BUDGET_PROGRAM: hashlib.sha256(
                     self.six_matrix_budget_path.read_bytes()
                 ).hexdigest(),
+                GENERATOR.FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM: hashlib.sha256(
+                    self.five_post_v2_fetch_path.read_bytes()
+                ).hexdigest(),
             },
             'scopeId': GENERATOR.FRESH_PUBLIC_API_MATRIX_SIX_SCOPE_ID,
             'requestBudget': {
@@ -335,6 +347,11 @@ class PublicApiEvidenceTests(unittest.TestCase):
                 'apiRetryAttemptsIncluded': True,
                 'apiRedirectHopsIncluded': True,
                 'rendererAssetRedirectHopsIncluded': True,
+                'anonymousSearchPostAllowed': True,
+                'searchPostPathRestricted': True,
+                'apiRedirectOrigin': 'https://api.bgm.tv',
+                'apiRedirectOriginRestricted': True,
+                'publicPostPath': '/v0/search/subjects',
                 'bangumiApi': total_api,
                 'rendererAsset': total_assets,
                 'total': total_requests,
@@ -400,6 +417,9 @@ class PublicApiEvidenceTests(unittest.TestCase):
                 'apiRetryAttemptsIncluded': True,
                 'apiRedirectHopsIncluded': True,
                 'rendererAssetRedirectHopsIncluded': True,
+                'anonymousSearchPostAllowed': True,
+                'searchPostPathRestricted': True,
+                'apiRedirectOriginRestricted': True,
             })
             report['requestAccounting']['perTool'][result['tool']] = counts
             for key in aggregate:
@@ -422,6 +442,10 @@ class PublicApiEvidenceTests(unittest.TestCase):
             ),
             lambda report: report['requestBudget'].__setitem__('maxTotal', 33),
             lambda report: report['requestAccounting'].__setitem__('apiRetryAttemptsIncluded', False),
+            lambda report: report['requestAccounting'].__setitem__('apiRedirectOriginRestricted', False),
+            lambda report: report['supportingSourceSha256'].pop(
+                GENERATOR.FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM,
+            ),
             lambda report: report['requestAccounting']['perTool'][
                 GENERATOR.FRESH_PUBLIC_API_MATRIX_SIX_TOOLS[0]
             ].__setitem__('total', 9),
@@ -431,6 +455,111 @@ class PublicApiEvidenceTests(unittest.TestCase):
         for mutate in mutations:
             with self.subTest(mutate=mutate):
                 self.write_fresh_public_api_matrix_six_report()
+                report = json.loads(self.report_path.read_text(encoding='utf-8'))
+                mutate(report)
+                self.report_path.write_text(json.dumps(report), encoding='utf-8')
+                self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def write_fresh_public_query_subjects_origin_guard_v3_report(self):
+        tool = 'bangumi.query_subjects'
+        if not any(item['name'] == tool for item in self.catalog):
+            self.catalog.append({'name': tool, 'auth': 'none', 'risk': 'read'})
+        self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
+        counts = {'bangumiApi': 3, 'rendererAsset': 0, 'total': 3}
+        result = {
+            'tool': tool,
+            'input': GENERATOR.FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_INPUTS[tool],
+            'attempted': True,
+            'httpRequests': counts['total'],
+            'requestAccounting': {
+                **counts,
+                'apiRetryAttemptsIncluded': True,
+                'apiRedirectHopsIncluded': True,
+                'rendererAssetRedirectHopsIncluded': True,
+                'anonymousSearchPostAllowed': True,
+                'searchPostPathRestricted': True,
+                'apiRedirectOriginRestricted': True,
+            },
+            'result': {'state': 'partial', 'keys': ['state', 'items']},
+            'assertions': {
+                key: True
+                for key in GENERATOR.FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_REQUIRED_ASSERTIONS
+            },
+        }
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'bangumi_public_api_tool_registry_smoke',
+            'observedAt': '2026-10-16T00:00:00Z',
+            'mode': 'read_only_public_api_smoke',
+            'catalogSha256': hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
+            'probeScriptSha256': hashlib.sha256(self.origin_guard_v3_probe_path.read_bytes()).hexdigest(),
+            'sourceProgram': GENERATOR.FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_PROGRAM,
+            'supportingSourceSha256': {
+                GENERATOR.FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_SCOPE_PROGRAM: hashlib.sha256(
+                    self.origin_guard_v3_scope_path.read_bytes()
+                ).hexdigest(),
+                GENERATOR.FRESH_PUBLIC_API_MATRIX_SIX_BUDGET_PROGRAM: hashlib.sha256(
+                    self.six_matrix_budget_path.read_bytes()
+                ).hexdigest(),
+                GENERATOR.FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM: hashlib.sha256(
+                    self.five_post_v2_fetch_path.read_bytes()
+                ).hexdigest(),
+            },
+            'scopeId': GENERATOR.FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_SCOPE_ID,
+            'requestBudget': {
+                'maxPerTool': GENERATOR.FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_MAX_PER_TOOL,
+                'maxTotal': GENERATOR.FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_MAX_TOTAL,
+            },
+            'requestAccounting': {
+                'scope': 'bangumi_api_and_renderer_assets',
+                'redirectsIncluded': True,
+                'apiRetryAttemptsIncluded': True,
+                'apiRedirectHopsIncluded': True,
+                'rendererAssetRedirectHopsIncluded': True,
+                'anonymousSearchPostAllowed': True,
+                'searchPostPathRestricted': True,
+                'apiRedirectOrigin': 'https://api.bgm.tv',
+                'apiRedirectOriginRestricted': True,
+                'publicPostPath': '/v0/search/subjects',
+                **counts,
+                'perTool': {tool: counts},
+            },
+            'budgetBlocked': False,
+            'httpRequests': counts['total'],
+            'selectedTools': [tool],
+            'probeCount': 1,
+            'limits': GENERATOR.FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_LIMITS,
+            'redactions': [
+                'result row values, titles, names, identifiers, request bodies, and image bytes are not persisted',
+            ],
+            'results': [result],
+        }
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+
+    def test_counts_only_origin_guarded_replacement_query_subjects_profile(self):
+        self.write_fresh_public_query_subjects_origin_guard_v3_report()
+        self.assertEqual(
+            GENERATOR.public_api_smoke_names(self.catalog),
+            {'bangumi.query_subjects'},
+        )
+        sources = GENERATOR.public_api_smoke_sources(self.catalog)
+        self.assertEqual(
+            sources,
+            {'bangumi.query_subjects': {'docs/live-probes/public-tools-fixture.json'}},
+        )
+
+        mutations = (
+            lambda report: report['results'][0]['input'].__setitem__('year', 2018),
+            lambda report: report['requestAccounting'].__setitem__('apiRedirectOriginRestricted', False),
+            lambda report: report['requestAccounting'].__setitem__('apiRedirectOrigin', 'http://api.bgm.tv'),
+            lambda report: report['supportingSourceSha256'].pop(
+                GENERATOR.FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM,
+            ),
+            lambda report: report['requestBudget'].__setitem__('maxTotal', 9),
+        )
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                self.write_fresh_public_query_subjects_origin_guard_v3_report()
                 report = json.loads(self.report_path.read_text(encoding='utf-8'))
                 mutate(report)
                 self.report_path.write_text(json.dumps(report), encoding='utf-8')

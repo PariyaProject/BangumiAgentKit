@@ -64,6 +64,7 @@ PUBLIC_API_PROBE_PROGRAMS = {
     'scripts/smoke-fresh-render-person-profile-public-retry-accounted-v1.ts',
     'scripts/smoke-fresh-public-api-matrix-six-20261016.ts',
     'scripts/smoke-fresh-public-api-matrix-five-post-v2-20261016.ts',
+    'scripts/smoke-fresh-query-subjects-origin-guard-v3-20261016.ts',
 }
 FRESH_RENDER_PERSON_PROFILE_PUBLIC_PROGRAM = 'scripts/smoke-fresh-render-person-profile-public.ts'
 FRESH_RENDER_PERSON_PROFILE_UNBOUNDED_PROGRAM = (
@@ -156,6 +157,10 @@ FRESH_PUBLIC_API_MATRIX_SIX_REQUIRED_ASSERTIONS = {
     'countConsistency',
     'passed',
 }
+FRESH_PUBLIC_API_MATRIX_SIX_ORIGIN_GUARD_REQUIRED_ASSERTIONS = (
+    FRESH_PUBLIC_API_MATRIX_SIX_REQUIRED_ASSERTIONS
+    | {'anonymousSearchPostAllowed', 'searchPostPathRestricted', 'apiRedirectOriginRestricted'}
+)
 FRESH_PUBLIC_API_MATRIX_SIX_REPORT_KEYS = {
     'schemaVersion',
     'evidenceKind',
@@ -180,6 +185,7 @@ FRESH_PUBLIC_API_MATRIX_SIX_LIMITS = [
     'exactly six fixed anonymous public/read ToolRegistry calls in selected order',
     'at most eight combined API and renderer asset requests per tool and 32 total',
     'every API attempt/retry, API redirect hop, asset request, and asset redirect hop is counted',
+    'API redirects remain on HTTPS api.bgm.tv and anonymous POST stays on /v0/search/subjects',
     'stop before dispatch after any request budget breach',
     'no OAuth, account, community, HTML, writes, QQ, or TIM',
     'sanitized summaries only; no raw result rows or image bytes',
@@ -283,7 +289,45 @@ FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_LIMITS = [
 FRESH_PUBLIC_API_MATRIX_SCOPED_PROGRAMS = {
     FRESH_PUBLIC_API_MATRIX_SIX_PROGRAM,
     FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_PROGRAM,
+    'scripts/smoke-fresh-query-subjects-origin-guard-v3-20261016.ts',
 }
+FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_PROGRAM = (
+    'scripts/smoke-fresh-query-subjects-origin-guard-v3-20261016.ts'
+)
+FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_SCOPE_PROGRAM = (
+    'scripts/lib/fresh-public-query-subjects-origin-guard-v3-scope.ts'
+)
+FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_SCOPE_ID = (
+    'run95-query-subjects-origin-guard-v3-20261016'
+)
+FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_INPUTS = {
+    'bangumi.query_subjects': {
+        'media': 'anime',
+        'year': 2017,
+        'month': 9,
+        'resultMode': 'top',
+        'limit': 1,
+        'sort': 'date',
+        'order': 'asc',
+        'explain': 'none',
+    },
+}
+FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_MAX_PER_TOOL = 8
+FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_MAX_TOTAL = 8
+FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_REQUIRED_ASSERTIONS = (
+    FRESH_PUBLIC_API_MATRIX_SIX_ORIGIN_GUARD_REQUIRED_ASSERTIONS
+)
+FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_LIMITS = [
+    'exactly one fixed anonymous public/read ToolRegistry call',
+    'at most eight combined API and renderer asset requests total',
+    'API requests and redirects remain on HTTPS api.bgm.tv; anonymous POST is restricted to /v0/search/subjects',
+    'every API retry, API redirect hop, asset request, and asset redirect hop is counted',
+    'stop before dispatch after any request budget breach',
+    'no OAuth, account, community, HTML, writes, QQ, or TIM',
+    'sanitized summaries only; no raw result rows or image bytes',
+    'temporary rendered artifacts are removed after the run',
+    'a failed or budget-blocked report receives no matrix credit',
+]
 P02_PUBLIC_CHRONOLOGY_TOOL = 'bangumi.get_person_profile'
 P02_PUBLIC_CHRONOLOGY_INPUT = {
     'personId': 13684,
@@ -656,11 +700,16 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
                     report, result_by_name,
                 )
                 scoped_tools = FRESH_PUBLIC_API_MATRIX_SIX_TOOLS
-            else:
+            elif source_program == FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_PROGRAM:
                 scope_valid = fresh_public_api_matrix_five_post_v2_report_is_valid(
                     report, result_by_name,
                 )
                 scoped_tools = FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_TOOLS
+            else:
+                scope_valid = fresh_public_query_subjects_origin_guard_v3_report_is_valid(
+                    report, result_by_name,
+                )
+                scoped_tools = list(FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_INPUTS)
             if not scope_valid or any(
                 not isinstance(current_by_name.get(name), dict)
                 or current_by_name[name].get('auth') != 'none'
@@ -810,8 +859,9 @@ def fresh_public_api_matrix_six_report_is_valid(
         supporting_sources={
             FRESH_PUBLIC_API_MATRIX_SIX_SCOPE_PROGRAM,
             FRESH_PUBLIC_API_MATRIX_SIX_BUDGET_PROGRAM,
+            FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM,
         },
-        required_assertions=FRESH_PUBLIC_API_MATRIX_SIX_REQUIRED_ASSERTIONS,
+        required_assertions=FRESH_PUBLIC_API_MATRIX_SIX_ORIGIN_GUARD_REQUIRED_ASSERTIONS,
         limits=FRESH_PUBLIC_API_MATRIX_SIX_LIMITS,
         report_keys=FRESH_PUBLIC_API_MATRIX_SIX_REPORT_KEYS,
         accounting_metadata={
@@ -820,14 +870,68 @@ def fresh_public_api_matrix_six_report_is_valid(
             'apiRetryAttemptsIncluded': True,
             'apiRedirectHopsIncluded': True,
             'rendererAssetRedirectHopsIncluded': True,
+            'anonymousSearchPostAllowed': True,
+            'searchPostPathRestricted': True,
+            'apiRedirectOrigin': 'https://api.bgm.tv',
+            'apiRedirectOriginRestricted': True,
+            'publicPostPath': '/v0/search/subjects',
         },
         result_accounting_metadata={
             'apiRetryAttemptsIncluded': True,
             'apiRedirectHopsIncluded': True,
             'rendererAssetRedirectHopsIncluded': True,
+            'anonymousSearchPostAllowed': True,
+            'searchPostPathRestricted': True,
+            'apiRedirectOriginRestricted': True,
         },
         redactions=[
             'result row values, titles, names, identifiers, and image bytes are not persisted',
+        ],
+    )
+
+
+def fresh_public_query_subjects_origin_guard_v3_report_is_valid(
+    report: dict,
+    result_by_name: dict[str, dict],
+) -> bool:
+    """Validate the replacement query profile with HTTPS same-origin redirects."""
+    return fresh_public_api_matrix_scoped_report_is_valid(
+        report,
+        result_by_name,
+        scope_id=FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_SCOPE_ID,
+        inputs=FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_INPUTS,
+        max_per_tool=FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_MAX_PER_TOOL,
+        max_total=FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_MAX_TOTAL,
+        supporting_sources={
+            FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_SCOPE_PROGRAM,
+            FRESH_PUBLIC_API_MATRIX_SIX_BUDGET_PROGRAM,
+            FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM,
+        },
+        required_assertions=FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_REQUIRED_ASSERTIONS,
+        limits=FRESH_PUBLIC_QUERY_SUBJECTS_ORIGIN_GUARD_V3_LIMITS,
+        report_keys=FRESH_PUBLIC_API_MATRIX_SIX_REPORT_KEYS,
+        accounting_metadata={
+            'scope': 'bangumi_api_and_renderer_assets',
+            'redirectsIncluded': True,
+            'apiRetryAttemptsIncluded': True,
+            'apiRedirectHopsIncluded': True,
+            'rendererAssetRedirectHopsIncluded': True,
+            'anonymousSearchPostAllowed': True,
+            'searchPostPathRestricted': True,
+            'apiRedirectOrigin': 'https://api.bgm.tv',
+            'apiRedirectOriginRestricted': True,
+            'publicPostPath': '/v0/search/subjects',
+        },
+        result_accounting_metadata={
+            'apiRetryAttemptsIncluded': True,
+            'apiRedirectHopsIncluded': True,
+            'rendererAssetRedirectHopsIncluded': True,
+            'anonymousSearchPostAllowed': True,
+            'searchPostPathRestricted': True,
+            'apiRedirectOriginRestricted': True,
+        },
+        redactions=[
+            'result row values, titles, names, identifiers, request bodies, and image bytes are not persisted',
         ],
     )
 
