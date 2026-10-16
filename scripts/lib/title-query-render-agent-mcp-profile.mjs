@@ -42,6 +42,27 @@ export function assertTitleQueryRenderPublicProfile(profile) {
   );
 }
 
+function hasBoundedSearchPagination(url, maxRequests) {
+  const entries = [...url.searchParams.entries()];
+  const limits = url.searchParams.getAll('limit');
+  const offsets = url.searchParams.getAll('offset');
+  if (entries.length !== 2 || limits.length !== 1 || offsets.length !== 1) return false;
+  if (!/^[1-9]\d*$/u.test(limits[0] ?? '') || !/^(0|[1-9]\d*)$/u.test(offsets[0] ?? '')) {
+    return false;
+  }
+
+  const limit = Number(limits[0]);
+  const offset = Number(offsets[0]);
+  // The registered limit=1 query compiles to 20-row official search pages.
+  // Keep pagination within the profile's aggregate request cap.
+  return (
+    limit === 20 &&
+    Number.isSafeInteger(offset) &&
+    offset % limit === 0 &&
+    offset / limit < maxRequests
+  );
+}
+
 export function createTitleQueryRenderPublicFetch({
   fetchImpl = globalThis.fetch,
   maxRequests = TITLE_QUERY_RENDER_MAX_REQUESTS,
@@ -76,10 +97,13 @@ export function createTitleQueryRenderPublicFetch({
         /(?:authorization|cookie|token|secret|credential|api[_-]?key)/iu.test(name),
       ) || Boolean(url.username || url.password) || credentialedMode;
     const allowedRoute =
-      url.search === '' &&
       url.hash === '' &&
-      ((method === 'POST' && url.pathname === '/v0/search/subjects') ||
-        (method === 'GET' && /^\/v0\/subjects\/[1-9]\d*$/u.test(url.pathname)));
+      ((method === 'POST' &&
+        url.pathname === '/v0/search/subjects' &&
+        hasBoundedSearchPagination(url, maxRequests)) ||
+        (method === 'GET' &&
+          url.search === '' &&
+          /^\/v0\/subjects\/[1-9]\d*$/u.test(url.pathname)));
 
     if (hasCredentials) counters.credentialAttemptCount += 1;
     if (url.origin !== 'https://api.bgm.tv' || !allowedRoute || hasCredentials) {

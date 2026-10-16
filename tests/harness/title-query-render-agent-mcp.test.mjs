@@ -283,7 +283,7 @@ test('title query/render public fetch allows only bounded anonymous official v0 
       return new Response('{}', { status: 200 });
     },
   });
-  await guard.fetchFn('https://api.bgm.tv/v0/search/subjects', {
+  await guard.fetchFn('https://api.bgm.tv/v0/search/subjects?limit=20&offset=0', {
     method: 'POST',
     body: '{}',
   });
@@ -292,6 +292,7 @@ test('title query/render public fetch allows only bounded anonymous official v0 
     { method: 'POST', redirect: 'error' },
     { method: 'GET', redirect: 'error' },
   ]);
+  assert.equal(observed[0].url, 'https://api.bgm.tv/v0/search/subjects?limit=20&offset=0');
   assert.deepEqual(observed.map(({ credentials }) => credentials), ['omit', 'omit']);
   assert.equal(guard.snapshot().requestCount, 2);
   assert.equal(guard.snapshot().anonymousOnly, true);
@@ -322,8 +323,38 @@ test('title query/render public fetch allows only bounded anonymous official v0 
     })),
     /denied/u,
   );
+  await assert.rejects(
+    guard.fetchFn('https://api.bgm.tv/v0/search/subjects?limit=20&offset=0&unexpected=true', {
+      method: 'POST',
+    }),
+    /denied/u,
+  );
+  await assert.rejects(
+    guard.fetchFn('https://api.bgm.tv/v0/search/subjects?limit=20&limit=20&offset=0', {
+      method: 'POST',
+    }),
+    /denied/u,
+  );
+  await assert.rejects(
+    guard.fetchFn('https://api.bgm.tv/v0/search/subjects?limit=100&offset=0', {
+      method: 'POST',
+    }),
+    /denied/u,
+  );
+  await assert.rejects(
+    guard.fetchFn('https://api.bgm.tv/v0/search/subjects?limit=20&offset=10', {
+      method: 'POST',
+    }),
+    /denied/u,
+  );
+  await assert.rejects(
+    guard.fetchFn('https://api.bgm.tv/v0/search/subjects?limit=20&offset=160', {
+      method: 'POST',
+    }),
+    /denied/u,
+  );
   assert.equal(guard.snapshot().credentialAttemptCount, 3);
-  assert.equal(guard.snapshot().deniedRequestCount, 4);
+  assert.equal(guard.snapshot().deniedRequestCount, 9);
 
   let calls = 0;
   const capped = createTitleQueryRenderPublicFetch({
@@ -333,9 +364,9 @@ test('title query/render public fetch allows only bounded anonymous official v0 
       return new Response('{}', { status: 200 });
     },
   });
-  await capped.fetchFn('https://api.bgm.tv/v0/search/subjects', { method: 'POST' });
+  await capped.fetchFn('https://api.bgm.tv/v0/search/subjects?limit=20&offset=0', { method: 'POST' });
   await assert.rejects(
-    capped.fetchFn('https://api.bgm.tv/v0/search/subjects', { method: 'POST' }),
+    capped.fetchFn('https://api.bgm.tv/v0/search/subjects?limit=20&offset=0', { method: 'POST' }),
     /budget exceeded/u,
   );
   assert.equal(calls, 1);
