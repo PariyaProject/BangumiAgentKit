@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const reportPath = 'docs/live-probes/public-tools-2026-10-13-110542656-20614.json';
+const currentMatrixReportPath = 'docs/live-probes/public-tools-2026-10-16-003414160-29605.json';
 const readRepoFile = (path) => readFileSync(new URL(`../../${path}`, import.meta.url));
 const readRepoJson = (path) => JSON.parse(readRepoFile(path).toString('utf8'));
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -54,8 +55,9 @@ test('G01 direct-public query renderer evidence stays separate from its spent ca
     /does not accept the G01 scenario/,
   );
   assert.match(g01.next_action, /never retry the consumed one-shot/);
-  assert.match(g01.next_action, /does not replay the consumed G01 Agent\/MCP canary/);
-  assert.ok(toolRow?.includes('⬜'));
+  assert.match(g01.next_action, /do not replay the consumed G01 Agent\/MCP canary/);
+  assert.ok(toolRow?.includes('◐'));
+  assert.ok(toolRow?.includes(currentMatrixReportPath));
   assert.ok(!toolRow?.includes(reportPath));
   const publicEvidenceSummary = acceptance.match(/匿名可用的公开 API 工具有逐项实测：(\d+)\/65/);
   const publicEvidenceRows = acceptance
@@ -64,7 +66,7 @@ test('G01 direct-public query renderer evidence stays separate from its spent ca
     .filter((line) => line.split('|')[7]?.includes('◐')).length;
   assert.ok(publicEvidenceSummary);
   assert.equal(Number(publicEvidenceSummary[1]), publicEvidenceRows);
-  assert.equal(Number(publicEvidenceSummary[1]), 57);
-  assert.match(acceptance, /匿名可用的公开 API 工具有逐项实测：57\/65；待补 8/u);
+  assert.equal(Number(publicEvidenceSummary[1]), 65);
+  assert.match(acceptance, /匿名可用的公开 API 工具有逐项实测：65\/65；待补 0/u);
   assert.match(acceptance, /Agent→MCP 模型调用证据：81\/96/);
 });

@@ -150,6 +150,100 @@ test('A01 public matrix evidence remains direct-only and does not promote the sc
   assert.match(evidence.acceptance_boundary, /add Agent\/MCP or one-shot credit/u);
 });
 
+test('Run 95 public matrix rows remain hash-bound and separate from scenario evidence', () => {
+  const readBoundReport = (record, evidence) => {
+    assert.ok(record.source_refs.includes(evidence.report));
+    const reportText = readFileSync(path.join(root, evidence.report), 'utf8');
+    assert.equal(
+      evidence.report_sha256,
+      createHash('sha256').update(reportText).digest('hex'),
+    );
+    const report = JSON.parse(reportText);
+    assert.equal(report.scopeId, evidence.scope_id);
+    return report;
+  };
+
+  const a01 = ledger.records.find(({ id }) => id === 'A01');
+  assert.ok(a01, 'A01 must remain in the canonical frontier');
+  assert.equal(a01.status, 'UNASSESSED');
+  const a01Evidence = a01.evidence?.direct_public_api_matrix_rows_2026_10_16;
+  assert.ok(a01Evidence, 'A01 must retain the contract-valid cohort report');
+  const a01Report = readBoundReport(a01, a01Evidence);
+  assert.equal(a01Evidence.request_count, 13);
+  assert.equal(a01Report.httpRequests, 13);
+  assert.equal(a01Report.budgetBlocked, false);
+  assert.deepEqual(Object.keys(a01Evidence.tools).sort(), [
+    'bangumi.aggregate_subject_cohort',
+    'bangumi.compare_subject_cohorts',
+    'bangumi.render_subject_cohort_aggregation',
+    'bangumi.render_subject_cohort_comparison',
+  ]);
+  for (const [tool, expected] of Object.entries(a01Evidence.tools)) {
+    const result = a01Report.results.find((item) => item.tool === tool);
+    assert.ok(result, `${tool} must be present in the hash-bound report`);
+    assert.equal(result.httpRequests, expected.requests);
+    assert.equal(result.result.state, expected.result_state);
+    assert.equal(result.assertions.passed, expected.assertions_passed);
+  }
+  assert.match(a01Evidence.acceptance_boundary, /do not answer the A01 cohort-analysis question/u);
+  assert.match(a01Evidence.acceptance_boundary, /add Agent\/MCP or one-shot credit/u);
+
+  const g01 = ledger.records.find(({ id }) => id === 'G01');
+  assert.ok(g01, 'G01 must remain in the canonical frontier');
+  assert.equal(g01.status, 'PARTIAL');
+  const g01Evidence = g01.evidence?.direct_public_matrix_rows_2026_10_16;
+  assert.ok(g01Evidence, 'G01 must retain the two passing direct public observations');
+  const g01Report = readBoundReport(g01, g01Evidence);
+  assert.equal(g01Evidence.request_count, 4);
+  assert.equal(g01Report.httpRequests, 4);
+  for (const [tool, expected] of Object.entries(g01Evidence.tools)) {
+    const result = g01Report.results.find((item) => item.tool === tool);
+    assert.ok(result, `${tool} must be present in the hash-bound report`);
+    assert.equal(result.httpRequests, expected.requests);
+    assert.equal(result.result.state, expected.result_state);
+    assert.equal(result.assertions.passed, expected.assertions_passed);
+  }
+  const rejectedCohortRows = g01Report.results.filter(({ tool }) => tool.includes('cohort'));
+  assert.equal(rejectedCohortRows.length, 4);
+  assert.equal(
+    rejectedCohortRows.every(
+      ({ httpRequests, assertions }) => httpRequests === 0 && assertions.passed === false,
+    ),
+    true,
+    'the rejected top-mode cohort calls must remain uncredited',
+  );
+  assert.match(g01Evidence.acceptance_boundary, /No G01 July 2026 harem scenario/u);
+  assert.match(g01Evidence.acceptance_boundary, /Agent\/MCP evidence is inferred/u);
+
+  const p02 = ledger.records.find(({ id }) => id === 'P02');
+  assert.ok(p02, 'P02 must remain in the canonical frontier');
+  assert.equal(p02.status, 'PARTIAL');
+  const p02Evidence = p02.evidence?.direct_public_api_matrix_rows_2026_10_16;
+  assert.ok(p02Evidence, 'P02 must retain the two direct public profile reports');
+  assert.equal(p02Evidence.profiles.length, 2);
+  for (const profile of p02Evidence.profiles) {
+    const report = readBoundReport(p02, profile);
+    const [result] = report.results;
+    assert.equal(report.results.length, 1);
+    assert.equal(result.tool, profile.tool);
+    assert.equal(result.input.personId, 13684);
+    assert.equal(result.httpRequests, profile.requests);
+    assert.equal(result.result.state, profile.result_state);
+    assert.equal(result.assertions.passed, profile.assertions_passed);
+    assert.ok(Array.isArray(result.result.keys), 'reports retain summary keys only');
+  }
+  assert.match(p02Evidence.privacy_clarification, /fixed public query input personId=13684/u);
+  assert.match(p02Evidence.privacy_clarification, /response-derived identifiers/u);
+  assert.match(p02Evidence.acceptance_boundary, /do not establish career-wide first\/latest participation/u);
+  assert.match(p02Evidence.acceptance_boundary, /change P02 from PARTIAL/u);
+
+  const r04 = ledger.records.find(({ id }) => id === 'R04');
+  assert.ok(r04, 'R04 must remain in the canonical frontier');
+  assert.equal(r04.status, 'UNASSESSED');
+  assert.match(r04.next_action, /public matrix refresh.*65\/65.*57\/65 master baseline/u);
+  assert.match(r04.next_action, /does not grant R04 scenario or Agent\/MCP credit/u);
+});
+
 test('C03 terminal no-report profile stays unassessed and cannot be retried', () => {
   const record = ledger.records.find(({ id }) => id === 'C03');
   assert.ok(record, 'C03 must remain in the canonical frontier');
@@ -312,7 +406,10 @@ test('P02 offline person-profile matrix evidence cannot close first/latest parti
   assert.equal(record.status, 'PARTIAL');
   assert.match(record.next_action, /Keep P02 PARTIAL/u);
   assert.match(record.next_action, /no P02 scenario credit/u);
-  assert.match(record.next_action, /57\/65 with eight rows pending/u);
+  assert.match(
+    record.next_action,
+    /public matrix refresh in this Run #95 Epoch records 65\/65, compared with the 57\/65 master baseline at Epoch start/u,
+  );
   assert.ok(
     record.source_refs.includes(
       'docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-contract-2026-10-16.md',
@@ -565,7 +662,7 @@ test('G06 current-catalog cast probe is public-only, hash-bound, and does not im
   assert.match(evidence.acceptance_boundary, /does not add Agent\/MCP evidence/u);
 
   const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
-  assert.match(table, /公开 API 工具有逐项实测：57\/65；待补 8/u);
+  assert.match(table, /公开 API 工具有逐项实测：65\/65；待补 0/u);
   assert.ok(
     table.includes(`\`bangumi.get_subject_cast\` | \`none\` | \`read\` | `) &&
       table.includes(reportPath),
@@ -629,7 +726,7 @@ test('G09 current-catalog watch-order reports remain direct-public and hash-boun
   assert.match(evidence.acceptance_boundary, /establish complete graph coverage/u);
 
   const table = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
-  assert.match(table, /公开 API 工具有逐项实测：57\/65；待补 8/u);
+  assert.match(table, /公开 API 工具有逐项实测：65\/65；待补 0/u);
   for (const tool of ['bangumi.get_series_watch_order', 'bangumi.render_series_watch_order']) {
     const row = table.split('\n').find((line) => line.includes(`\`${tool}\``));
     assert.ok(row?.includes(reportPath), `${tool} row must cite the current report`);

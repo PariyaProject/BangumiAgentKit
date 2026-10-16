@@ -1,5 +1,5 @@
 export const FRESH_RENDER_PERSON_PROFILE_PUBLIC_SCOPE = Object.freeze({
-  id: 'run95-fresh-render-person-profile-13684-v1',
+  id: 'run95-fresh-render-person-profile-13684-origin-guard-v2',
   tool: 'bangumi.render_person_profile',
   input: Object.freeze({
     personId: 13684,

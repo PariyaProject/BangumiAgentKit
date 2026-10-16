@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-16T01:05:01.333Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
+  "probeScriptSha256": "db3996dd718c621b7a2a34c5cd618b629618f979a445330e501a49a324ec57cf",
+  "sourceProgram": "scripts/smoke-fresh-public-cohort-four-v2-20261016.ts",
+  "supportingSourceSha256": {
+    "scripts/lib/fresh-public-cohort-four-v2-scope.ts": "ba7c71df4faf6a48ee8202aaaeb194cc59d63d86108545cea7317a5536a93832",
+    "scripts/lib/fresh-public-request-budget.ts": "e855abe79b11eaf9360fac207316d1cb3a539fda5e7bac47a29aa66cdc68059c",
+    "scripts/lib/fresh-public-request-search-fetch-v2.ts": "f36e0daec9738a84fb0766ee8e678d449d0f4e1e1840bd14eb3f2056462e8fe8"
+  },
+  "scopeId": "run95-fresh-public-cohort-four-v2-20261016",
+  "requestBudget": {
+    "maxPerTool": 8,
+    "maxTotal": 32
+  },
+  "requestAccounting": {
+    "scope": "bangumi_api_and_renderer_assets",
+    "redirectsIncluded": true,
+    "apiRetryAttemptsIncluded": true,
+    "apiRedirectHopsIncluded": true,
+    "rendererAssetRedirectHopsIncluded": true,
+    "anonymousSearchPostAllowed": true,
+    "searchPostPathRestricted": true,
+    "apiRedirectOrigin": "https://api.bgm.tv",
+    "apiRedirectOriginRestricted": true,
+    "apiRedirectPrivatePathBlocked": true,
+    "bangumiApi": 13,
+    "rendererAsset": 0,
+    "total": 13,
+    "perTool": {
+      "bangumi.aggregate_subject_cohort": {
+        "bangumiApi": 2,
+        "rendererAsset": 0,
+        "total": 2
+      },
+      "bangumi.compare_subject_cohorts": {
+        "bangumiApi": 2,
+        "rendererAsset": 0,
+        "total": 2
+      },
+      "bangumi.render_subject_cohort_aggregation": {
+        "bangumiApi": 2,
+        "rendererAsset": 0,
+        "total": 2
+      },
+      "bangumi.render_subject_cohort_comparison": {
+        "bangumiApi": 7,
+        "rendererAsset": 0,
+        "total": 7
+      }
+    }
+  },
+  "budgetBlocked": false,
+  "httpRequests": 13,
+  "selectedTools": [
+    "bangumi.aggregate_subject_cohort",
+    "bangumi.compare_subject_cohorts",
+    "bangumi.render_subject_cohort_aggregation",
+    "bangumi.render_subject_cohort_comparison"
+  ],
+  "probeCount": 4,
+  "limits": [
+    "exactly four fixed anonymous public/read ToolRegistry calls in selected order",
+    "at most eight combined API and renderer asset requests per tool and 32 total",
+    "every API attempt/retry, API redirect hop, asset request, and asset redirect hop is counted",
+    "API redirects remain on HTTPS api.bgm.tv and anonymous POST stays on /v0/search/subjects",
+    "private /p1 paths are rejected before dispatch, including same-origin redirects",
+    "stop before dispatch after any request budget breach",
+    "no OAuth, account, community, HTML, writes, QQ, or TIM",
+    "sanitized summaries only; no raw result rows or image bytes",
+    "temporary rendered artifacts are removed after the run",
+    "a failed or budget-blocked report receives no matrix credit"
+  ],
+  "redactions": [
+    "result row values, titles, names, identifiers, and image bytes are not persisted"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.aggregate_subject_cohort",
+      "input": {
+        "cohort": {
+          "query": {
+            "keyword": "葬送のフリーレン",
+            "media": "anime",
+            "resultMode": "all",
+            "limit": 1
+          }
+        },
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 2,
+      "requestAccounting": {
+        "bangumiApi": 2,
+        "rendererAsset": 0,
+        "total": 2,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true
+      },
+      "result": {
+        "state": "conflict",
+        "keys": [
+          "state",
+          "cohorts",
+          "metrics",
+          "formulaVersion",
+          "coverage",
+          "source",
+          "evidence",
+          "warnings",
+          "limitations",
+          "retrievedAt"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.compare_subject_cohorts",
+      "input": {
+        "cohorts": [
+          {
+            "label": "Run95 fresh cohort comparison v2",
+            "query": {
+              "keyword": "薬屋のひとりごと",
+              "media": "anime",
+              "resultMode": "all",
+              "limit": 1
+            }
+          }
+        ],
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 2,
+      "requestAccounting": {
+        "bangumiApi": 2,
+        "rendererAsset": 0,
+        "total": 2,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true
+      },
+      "result": {
+        "state": "conflict",
+        "keys": [
+          "state",
+          "cohorts",
+          "metrics",
+          "formulaVersion",
+          "coverage",
+          "source",
+          "evidence",
+          "warnings",
+          "limitations",
+          "retrievedAt"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_aggregation",
+      "input": {
+        "cohort": {
+          "query": {
+            "keyword": "呪術廻戦",
+            "media": "anime",
+            "resultMode": "all",
+            "limit": 1
+          }
+        },
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 2,
+      "requestAccounting": {
+        "bangumiApi": 2,
+        "rendererAsset": 0,
+        "total": 2,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true
+      },
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_comparison",
+      "input": {
+        "cohorts": [
+          {
+            "label": "Run95 fresh cohort render v2",
+            "query": {
+              "keyword": "鬼滅の刃",
+              "media": "anime",
+              "resultMode": "all",
+              "limit": 1
+            }
+          }
+        ],
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 7,
+      "requestAccounting": {
+        "bangumiApi": 7,
+        "rendererAsset": 0,
+        "total": 7,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true
+      },
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    }
+  ]
+}

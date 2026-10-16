@@ -50,7 +50,8 @@ test('G09 public render evidence records only the artifact key and no canary res
   );
   assert.match(g09.next_action, /never retry its consumed one-shot/);
   assert.match(g09.next_action, /do not replay the spent G09 one-shot\/canary/);
-  assert.ok(toolRow?.includes('⬜'));
+  assert.ok(toolRow?.includes('◐'));
+  assert.ok(toolRow?.includes('docs/live-probes/public-tools-2026-10-15-094954394-75684.json'));
   assert.ok(!toolRow?.includes(reportPath));
   const publicEvidenceSummary = acceptance.match(/匿名可用的公开 API 工具有逐项实测：(\d+)\/65/);
   const publicEvidenceRows = acceptance
@@ -59,7 +60,7 @@ test('G09 public render evidence records only the artifact key and no canary res
     .filter((line) => line.split('|')[7]?.includes('◐')).length;
   assert.ok(publicEvidenceSummary);
   assert.equal(Number(publicEvidenceSummary[1]), publicEvidenceRows);
-  assert.equal(Number(publicEvidenceSummary[1]), 57);
-  assert.match(acceptance, /匿名可用的公开 API 工具有逐项实测：57\/65；待补 8/u);
+  assert.equal(Number(publicEvidenceSummary[1]), 65);
+  assert.match(acceptance, /匿名可用的公开 API 工具有逐项实测：65\/65；待补 0/u);
   assert.match(acceptance, /Agent→MCP 模型调用证据：81\/96/);
 });
