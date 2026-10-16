@@ -2,11 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { BangumiError, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import {
-  ToolRegistry,
-  createPendingAction,
-  createRuntimeDependencies,
-} from '@bangumi-agent-kit/tools';
+import { ToolRegistry, createRuntimeDependencies } from '@bangumi-agent-kit/tools';
 import { encryptToken } from '@bangumi-agent-kit/auth';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
@@ -77,6 +73,23 @@ describe('Safe Error Policy & Control-Flow Regression Tests', () => {
     expect(publicErr.retryable).toBe(true);
   });
 
+  it('CONFIRMATION_PREVIEW_UNAVAILABLE stops safely without exposing private preview details', () => {
+    const err = new BangumiError(
+      'CONFIRMATION_PREVIEW_UNAVAILABLE',
+      'private collection preview failed for account fixture_a',
+      false,
+      409,
+      '重新读取当前状态后再发起写入。',
+    );
+    const publicErr = toPublicError(err);
+
+    expect(publicErr.code).toBe('CONFIRMATION_PREVIEW_UNAVAILABLE');
+    expect(publicErr.message).toBe('无法安全核对当前账号状态，操作已停止且没有写入。');
+    expect(publicErr.message).not.toContain('fixture_a');
+    expect(publicErr.nextAction).toBe('重新读取当前状态后再发起写入。');
+    expect(publicErr.retryable).toBe(false);
+  });
+
   it('6. KEY_VERSION_UNAVAILABLE -> safe auth/rebind guidance, no key/version secret details', () => {
     const secretDetail = 'Secret key v2 decrypt failed: bad hmac key_hex=0x9f821...';
     const err = new BangumiError('KEY_VERSION_UNAVAILABLE', secretDetail, false);
@@ -140,28 +153,42 @@ describe('Safe Error Policy & Control-Flow Regression Tests', () => {
     });
     const registry = new ToolRegistry(deps);
 
-    const pending = await createPendingAction(
-      storage,
-      { principalId: principal.id, botInstanceId: 'bot_1', conversationId: 'conv_1' },
-      'manageCharacterCollection',
-      '取消收藏角色 1001',
-      { characterId: 1001, action: 'uncollect' },
-    );
-
-    // Mock tool execution to throw WRITE_RESULT_UNKNOWN with internal diagnostic message
+    // The two preview reads succeed; only the confirmed DELETE has an unknown result.
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
-        if (init?.method === 'DELETE' || String(url).includes('/characters/1001')) {
+        if (init?.method === 'DELETE') {
           throw new BangumiError(
             'WRITE_RESULT_UNKNOWN',
             'Socket closed prematurely by peer',
             false,
           );
         }
-        return new Response(JSON.stringify({}), { status: 200 });
+        return new Response(
+          JSON.stringify({
+            id: 1001,
+            name: 'Synthetic Character',
+            type: 1,
+            created_at: '2026-01-01',
+          }),
+          { status: 200 },
+        );
       }),
     );
+
+    let previewError: (Error & { code?: string }) | undefined;
+    try {
+      await registry.executeTool(
+        'bangumi.manage_character_collection',
+        { characterId: 1001, action: 'uncollect' },
+        { principalId: principal.id, botInstanceId: 'bot_1', conversationId: 'conv_1' },
+      );
+    } catch (error) {
+      previewError = error as Error & { code?: string };
+    }
+    expect(previewError?.code).toBe('CONFIRMATION_REQUIRED');
+    const confirmationId = previewError?.message.match(/Confirmation ID: (\S+)/u)?.[1];
+    expect(confirmationId).toMatch(/^cfm_/u);
 
     await expect(
       registry.executeTool(
@@ -171,13 +198,13 @@ describe('Safe Error Policy & Control-Flow Regression Tests', () => {
           principalId: principal.id,
           botInstanceId: 'bot_1',
           conversationId: 'conv_1',
-          confirmationId: pending.confirmationId,
+          confirmationId,
         },
       ),
     ).rejects.toThrow('WRITE_RESULT_UNKNOWN');
 
     const actions = storage.getPendingActions();
-    const action = actions.find((a) => a.id === pending.pendingAction.id);
+    const action = actions.find((a) => a.id === confirmationId);
     expect(action?.status).toBe('unknown');
     expect(action?.failureMessageSafe).toBe('写入结果未知，请先查询当前状态，不要自动重试。');
     expect(action?.failureMessageSafe).not.toBe('内部服务发生错误');

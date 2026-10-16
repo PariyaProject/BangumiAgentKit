@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-16T16:11:13Z",
+  "updated_at": "2026-10-16T18:36:50Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -3915,8 +3915,8 @@
       "user_question": "Can BangumiAgentKit deliver the bounded user value described by Collection Intelligence?",
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
-      "source_refs": ["docs/product/opportunity-log.md", "docs/research/run95-oauth-personalization-user-collection-contract-2026-10-13.md", "docs/research/run95-l04-collection-intelligence-agent-mcp-synthetic-2026-10-13-natural-v3.json", "docs/research/run95-dependency-security-remediation-2026-10-13.md", "tests/unit/writes.test.ts", "tests/unit/capability-policy.test.ts", "tests/unit/manage-index-actions.test.ts"],
-      "next_action": "A bounded same-Run dependency-security Epoch is addressing seven current GitHub Dependabot alerts in the MCP OAuth client, renderer runtime, and transitive toolchain; its advisory inventory is docs/research/run95-dependency-security-remediation-2026-10-13.md. This hardens the path but adds no live OAuth/account evidence. Keep PARTIAL: current-user collection behavior and personalized answers still need separately authorized real account evidence, and public v0 has no profile metadata editing route. Never infer successful OAuth from dependency tests.",
+      "source_refs": ["docs/product/opportunity-log.md", "docs/research/run95-oauth-personalization-user-collection-contract-2026-10-13.md", "docs/research/run95-l04-collection-intelligence-agent-mcp-synthetic-2026-10-13-natural-v3.json", "docs/research/run95-dependency-security-remediation-2026-10-13.md", "tests/unit/writes.test.ts", "tests/unit/capability-policy.test.ts", "tests/unit/manage-index-actions.test.ts", "packages/tools/src/definitions/write-tools.ts", "packages/tools/src/registry.ts", "tests/unit/write-confirmation-preview.test.ts"],
+      "next_action": "Current-user collection behavior and personalized answers still need separately authorized real-account evidence, and public v0 has no profile metadata editing route. The five user-facing semantic collection/index write tools now require a current-state preview and a second confirmation bound to the Bangumi account ID, operation, exact request, and current-state fingerprint; synthetic tests prove no write before confirmation and rejection after account, request, or state changes. This is safety behavior only, not live account evidence. Keep PARTIAL and never infer successful OAuth from fixture tests.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },

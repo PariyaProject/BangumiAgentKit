@@ -399,6 +399,16 @@ export class UserService {
     };
   }
 
+  async getUserEpisodeCollection(episodeId: number): Promise<UserEpisodeCollectionItem> {
+    const item = await this.api.getUserEpisodeCollection(episodeId);
+    return {
+      type: item.type,
+      status: mapUserEpisodeCollectionStatus(item.type),
+      updatedAt:
+        Number.isInteger(item.updated_at) && item.updated_at > 0 ? item.updated_at : undefined,
+    };
+  }
+
   async getUserCharacterCollections(
     username: string,
     options: { maxItems?: number; signal?: AbortSignal; maxResponseBytes?: number } = {},

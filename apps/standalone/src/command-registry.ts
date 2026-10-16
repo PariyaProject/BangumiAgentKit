@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ToolDefinition } from '@bangumi-agent-kit/tools';
+import { getUserFacingToolDescription, ToolDefinition } from '@bangumi-agent-kit/tools';
 import { StandaloneHost } from './standalone-host.js';
 import { CliFlags } from './command-parser.js';
 import { StandaloneCliError } from './errors.js';
@@ -937,7 +937,7 @@ function describeTool(tool: ToolDefinition): Record<string, unknown> {
   delete schema.$schema;
   return {
     name: tool.name,
-    description: tool.description,
+    description: getUserFacingToolDescription(tool),
     auth: tool.auth,
     scopes: tool.scopes,
     risk: tool.risk,
@@ -1611,7 +1611,7 @@ export class StandaloneCommandRegistry {
         .getTools()
         .map((tool) => ({
           name: tool.name,
-          description: tool.description,
+          description: getUserFacingToolDescription(tool),
           auth: tool.auth,
           risk: tool.risk,
         }));

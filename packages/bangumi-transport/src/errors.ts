@@ -13,6 +13,7 @@ export type BangumiErrorCode =
   | 'CONFIRMATION_REQUIRED'
   | 'CONFIRMATION_INVALID'
   | 'CONFIRMATION_EXPIRED'
+  | 'CONFIRMATION_PREVIEW_UNAVAILABLE'
   | 'RAW_WRITE_OPERATION_DISABLED'
   | 'WRITE_RESULT_UNKNOWN'
   | 'STORAGE_ERROR'
@@ -65,6 +66,7 @@ export const BANGUMI_ERROR_CODES = new Set<BangumiErrorCode>([
   'CONFIRMATION_REQUIRED',
   'CONFIRMATION_INVALID',
   'CONFIRMATION_EXPIRED',
+  'CONFIRMATION_PREVIEW_UNAVAILABLE',
   'RAW_WRITE_OPERATION_DISABLED',
   'WRITE_RESULT_UNKNOWN',
   'STORAGE_ERROR',
@@ -112,6 +114,10 @@ const PUBLIC_ERROR_POLICY: Partial<
   },
   CONFIRMATION_EXPIRED: {
     message: '确认已过期，请重新发起操作。',
+  },
+  CONFIRMATION_PREVIEW_UNAVAILABLE: {
+    message: '无法安全核对当前账号状态，操作已停止且没有写入。',
+    preserveNextAction: true,
   },
   RAW_WRITE_OPERATION_DISABLED: {
     message: 'Raw 写操作当前未启用，请使用语义写工具。',

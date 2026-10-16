@@ -185,6 +185,18 @@ surface](https://bangumi.github.io/api/). The current public Bangumi experience
 and ecosystem also expose collection progress and collection-oriented analysis,
 which supports the user-value hypothesis without authorizing broader crawling.
 
+Run #95's UX-001 Epoch strengthens the existing user-facing semantic write path:
+collection, progress, character/person collection, and index operations receive
+a read-only current-state preview and a second confirmation bound to the account,
+operation, request, and preview fingerprint. The confirmation re-reads that
+state and fails closed if it changed. Developer-only raw operations retain their
+separate environment gate. This implementation is verified with synthetic
+fixtures only; it adds no real-account or live-write evidence, so OP-009 remains
+PARTIAL. MCP and Standalone client catalog descriptions append the uniform
+confirmation rule; the report-bound `docs/tool-catalog.json` snapshot remains
+unchanged to preserve the existing 65/65 public evidence without replaying old
+probes.
+
 ---
 
 ## OP-010 Collection Weekly Schedule

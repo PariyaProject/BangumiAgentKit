@@ -43,7 +43,7 @@ export class PolicyManager {
         const pending = await createPendingAction(storage, context, actionType, summary, payload);
         throw new BangumiError(
           'CONFIRMATION_REQUIRED',
-          `该操作具有破坏性或包含大批量变更 (${summary})，需要确认后才能继续。Confirmation ID: ${pending.confirmationId}`,
+          `该操作需要二次确认 (${summary})，确认后才能继续。Confirmation ID: ${pending.confirmationId}`,
           false,
           400,
           `在 ToolContext 中传入 confirmationId: "${pending.confirmationId}" 并重新发起请求`,

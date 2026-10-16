@@ -1291,6 +1291,33 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
   it('S15: >20 through progress -> confirmation required via ToolRegistry', async () => {
     const storage = new MemoryStorage();
     const secretKey = 'test-secret-key-123456789012345678901234';
+    const requests: Array<{ pathname: string; method: string }> = [];
+    const fetchFn: typeof fetch = async (input, init) => {
+      const url = new URL(String(input));
+      const method = init?.method || 'GET';
+      requests.push({ pathname: url.pathname, method });
+      if (url.pathname === '/v0/episodes') {
+        return new Response(
+          JSON.stringify({
+            data: Array.from({ length: 25 }, (_, index) => ({
+              id: index + 1,
+              type: 0,
+              sort: index + 1,
+              ep: index + 1,
+              name: `Synthetic episode ${index + 1}`,
+            })),
+            total: 25,
+            limit: 100,
+            offset: 0,
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.pathname.startsWith('/v0/users/-/collections/-/episodes/')) {
+        return new Response(JSON.stringify({ type: 0 }), { status: 200 });
+      }
+      return new Response('{}', { status: 404 });
+    };
     const principal = await storage.findOrCreatePrincipal({
       provider: 'test',
       botInstanceId: 'bot-s',
@@ -1316,7 +1343,11 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       updatedAt: new Date(),
     });
 
-    const deps = createRuntimeDependencies({ storage, secretKey });
+    const deps = createRuntimeDependencies({
+      storage,
+      secretKey,
+      publicHttpClient: new HttpClient({ fetchFn }),
+    });
     const registry = new ToolRegistry(deps);
 
     await expect(
@@ -1329,6 +1360,8 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
         { ...context, principalId: principal.id },
       ),
     ).rejects.toThrow('CONFIRMATION_REQUIRED');
+    expect(requests).toHaveLength(26);
+    expect(requests.every((request) => request.method === 'GET')).toBe(true);
   });
 
   it('S16 - S19: collection status labels per subject type', () => {
