@@ -206,7 +206,13 @@ test('C04 signed report binds one claim to both tool events without retaining so
   assert.equal(built.report.codexRunCount, 2);
   assert.equal(built.report.publicRequestScope.requestCount, 16);
   assert.equal(built.report.publicRequestScope.maxRequests, 32);
+  assert.equal(built.report.ciRunId, claim.ciRunId);
+  assert.deepEqual(built.report.ciChecks, claim.ciChecks);
   assert.equal(validateC04ProfileReport(built.report, claim).passed, true);
+  const claimWithoutCiIdentity = structuredClone(claim);
+  delete claimWithoutCiIdentity.ciRunId;
+  delete claimWithoutCiIdentity.ciChecks;
+  assert.equal(validateC04ProfileReport(built.report, claimWithoutCiIdentity).passed, false);
   const encoded = JSON.stringify(built.report);
   assert.doesNotMatch(encoded, /public season label|private-to-report|do-not-retain/u);
   assert.doesNotMatch(encoded, /"subjectId"|"title"/u);

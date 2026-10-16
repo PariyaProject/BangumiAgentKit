@@ -107,6 +107,7 @@ const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const P06_PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
 const P02_PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
 const R04_PROFILE = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v1');
+const C04_PROFILE = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
 const mandatoryChecks = [
   'harness-control',
   'sqlite-default',
@@ -1641,16 +1642,15 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
   run.outer_sol.product.consumed = 1;
   const ciRunId = '38806371672';
   const ciRunUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
-  const checks =
-    [P06_PROFILE.id, P02_PROFILE.id].includes(profile.id)
-      ? mandatoryChecks.map((name, index) => ({
-          name,
-          status: 'COMPLETED',
-          conclusion: 'SUCCESS',
-          detailsUrl: `${ciRunUrl}/job/${116668186145 + index}`,
-        }))
-      : mandatoryChecks.map((name) => ({ name, conclusion: 'SUCCESS' }));
-  if ([P06_PROFILE.id, P02_PROFILE.id].includes(profile.id)) {
+  const checks = [P06_PROFILE.id, P02_PROFILE.id, C04_PROFILE.id].includes(profile.id)
+    ? mandatoryChecks.map((name, index) => ({
+        name,
+        status: 'COMPLETED',
+        conclusion: 'SUCCESS',
+        detailsUrl: `${ciRunUrl}/job/${116668186145 + index}`,
+      }))
+    : mandatoryChecks.map((name) => ({ name, conclusion: 'SUCCESS' }));
+  if ([P06_PROFILE.id, P02_PROFILE.id, C04_PROFILE.id].includes(profile.id)) {
     epoch.ci.url = ciRunUrl;
   }
   const environment = createMockEnvironment({
@@ -1855,6 +1855,52 @@ test('P02 Harness profile claim persists the exact successful CI run and check i
     const disposition = stored.adversarial_preflight.agent_mcp_profile_dispositions[P02_PROFILE.id];
     assert.equal(disposition.ciRunId, '38806371672');
     assert.deepEqual(disposition.ciChecks, claimResult.ciChecks);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C04 Harness claim persists exact CI identity required by its signed report', () => {
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(C04_PROFILE);
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', C04_PROFILE.id];
+  try {
+    const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(status.status, 0, status.stderr);
+    assert.equal(JSON.parse(status.stdout).review_gate.eligible, true);
+
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    assert.equal(claimResult.profileId, C04_PROFILE.id);
+    assert.equal(claimResult.ciRunId, '38806371672');
+    assert.deepEqual(
+      claimResult.ciChecks.map(({ name, status: checkStatus, conclusion }) => ({
+        name,
+        status: checkStatus,
+        conclusion,
+      })),
+      mandatoryChecks.map((name) => ({
+        name,
+        status: 'COMPLETED',
+        conclusion: 'SUCCESS',
+      })),
+    );
+
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    const disposition = stored.adversarial_preflight.agent_mcp_profile_dispositions[C04_PROFILE.id];
+    assert.equal(disposition.ciRunId, claimResult.ciRunId);
+    assert.deepEqual(disposition.ciChecks, claimResult.ciChecks);
+    assert.equal(disposition.retryAllowed, false);
   } finally {
     environment.cleanup();
   }

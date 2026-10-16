@@ -230,6 +230,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'p06-render-person-profile-offline-agent-mcp-v1',
   'p02-person-profile-offline-agent-mcp-v1',
   'r04-series-watch-order-offline-agent-mcp-v1',
+  'c04-cohort-comparison-agent-mcp-matrix-v1',
 ]);
 const profileRequiresExactCiRunEvidence = (profileId) => PROFILE_CI_RUN_EVIDENCE_IDS.has(profileId);
 const P01_MODEL = 'gpt-6-luna';
