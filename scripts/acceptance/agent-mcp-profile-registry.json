@@ -418,6 +418,40 @@
           }
         }
       ]
+    },
+    {
+      "id": "a01-render-cohort-aggregation-agent-mcp-offline-v1",
+      "frontierId": "A01",
+      "epochId": "run95-a01-render-cohort-aggregation-agent-mcp-offline-20261016",
+      "toolName": "bangumi.render_subject_cohort_aggregation",
+      "argumentProfile": "fixed-a01-synthetic-cohort-aggregation-one-subject-v1",
+      "claimLabelName": "harness-r95-a01-render-cohort-agg-claimed",
+      "reportPath": "docs/live-probes/a01-render-cohort-aggregation-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-a01-render-cohort-aggregation-agent-mcp-contract-2026-10-16.md",
+      "evidenceKind": "codex_cli_a01_render_cohort_aggregation_agent_mcp",
+      "answerCheckMethod": "a01-fixed-offline-cohort-render-artifact-summary-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-a01-render-cohort-aggregation-offline-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 768,
+      "calls": [
+        {
+          "toolName": "bangumi.render_subject_cohort_aggregation",
+          "arguments": {
+            "cohort": {
+              "label": "Run95 synthetic aggregation sample",
+              "query": {
+                "keyword": "run95 synthetic cohort aggregation",
+                "media": "anime",
+                "resultMode": "all",
+                "limit": 1
+              }
+            },
+            "maxSubjects": 1
+          }
+        }
+      ]
     }
   ]
 }
