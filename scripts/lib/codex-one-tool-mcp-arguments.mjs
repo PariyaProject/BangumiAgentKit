@@ -8,6 +8,7 @@ import { canonicalJson } from './codex-one-tool-evidence.mjs';
 import { assertP06RenderPersonProfileOfflineProfile } from './p06-render-person-profile-offline-fixture.mjs';
 import { assertP02PersonProfileOfflineProfile } from './p02-person-profile-offline-fixture.mjs';
 import { assertR04SeriesWatchOrderOfflineProfile } from './r04-series-watch-order-offline-fixture.mjs';
+import { assertR01RelationsOfflineProfile } from './r01-relations-offline-profile.mjs';
 import {
   assertC04CohortComparisonPublicProfile,
   C04_COHORT_COMPARISON_PROFILE_ID,
@@ -92,7 +93,8 @@ export function parseCodexOneToolMcpArguments(argv) {
         assertC04CohortComparisonPublicProfile(profile) ||
         assertP06RenderPersonProfileOfflineProfile(profile) ||
         assertP02PersonProfileOfflineProfile(profile) ||
-        assertR04SeriesWatchOrderOfflineProfile(profile);
+        assertR04SeriesWatchOrderOfflineProfile(profile) ||
+        assertR01RelationsOfflineProfile(profile);
       if (!approved) {
         throw new Error('Registered profile network mode is not supported.');
       }

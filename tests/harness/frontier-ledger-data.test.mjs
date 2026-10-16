@@ -83,6 +83,33 @@ test('R01 frontier keeps source limits separate from Harness runtime state', () 
   assert.equal(record.status, 'PARTIAL');
   assert.match(record.next_action, /reverse\/transitive edges/u);
   assert.match(record.next_action, /official viewing order/u);
+  assert.match(record.next_action, /only one Agent\/MCP matrix cell/u);
+  for (const source of [
+    'docs/research/run95-r01-subject-relations-offline-agent-mcp-matrix-2026-10-16.md',
+    'apps/mcp/codex-one-tool-mcp-server.mjs',
+    'scripts/acceptance/agent-mcp-profile-registry.json',
+    'scripts/agent-harness.mjs',
+    'scripts/lib/codex-one-tool-mcp-arguments.mjs',
+    'scripts/lib/codex-profile-tool-summary.mjs',
+    'scripts/lib/r01-relations-offline-profile.mjs',
+    'scripts/lib/r01-relations-offline-fixture.mjs',
+    'scripts/acceptance/run-r01-relations-offline-agent-mcp.mjs',
+    'scripts/acceptance/write-r01-relations-offline-agent-mcp-report.mjs',
+    'scripts/acceptance/validate-r01-relations-offline-agent-mcp-report.mjs',
+    'tests/harness/agent-mcp-profile-claims.test.mjs',
+    'tests/harness/codex-mcp-approval-config.test.mjs',
+    'tests/harness/r01-relations-offline-fixture.test.mjs',
+    'tests/harness/run-r01-relations-offline-agent-mcp.test.mjs',
+    'tests/harness/write-r01-relations-offline-agent-mcp-report.test.mjs',
+  ]) {
+    assert.ok(record.source_refs.includes(source), `R01 source reference missing: ${source}`);
+    assert.equal(existsSync(path.join(root, source)), true, `R01 source reference is missing: ${source}`);
+  }
+  const matrixReport = 'docs/live-probes/r01-relations-offline-agent-mcp-run95.json';
+  if (record.source_refs.includes(matrixReport)) {
+    assert.equal(existsSync(path.join(root, matrixReport)), true);
+    assert.match(record.next_action, /synthetic offline profile/u);
+  }
   assertOneShotRuntimeIsHarnessOwned(record);
 });
 

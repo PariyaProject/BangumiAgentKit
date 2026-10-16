@@ -7397,6 +7397,101 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         error = TABLE_CHECKER.evidence_reference_error('bangumi.auth_status', cell, 'agent_mcp')
         self.assertIn('does not contain evidence for bangumi.auth_status', error)
 
+    def write_r01_offline_report(
+        self, relative_path=TABLE_CHECKER.R01_OFFLINE_REPORT_PATH, **overrides,
+    ):
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': TABLE_CHECKER.R01_OFFLINE_REPORT_KIND,
+            'runNumber': 95,
+            'frontierId': 'R01',
+            'scenarioId': None,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+            'epochId': TABLE_CHECKER.R01_OFFLINE_EPOCH_ID,
+            'profileId': TABLE_CHECKER.R01_OFFLINE_PROFILE_ID,
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'toolName': TABLE_CHECKER.R01_OFFLINE_TOOL_NAME,
+            'argumentProfile': TABLE_CHECKER.R01_OFFLINE_ARGUMENT_PROFILE,
+            'serverToolNames': [TABLE_CHECKER.R01_OFFLINE_TOOL_NAME],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_r01_relations'],
+            'resultStatus': 'SUCCESS',
+            'processExitCode': 0,
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 2,
+            'blockedWebSearchErrorItemCount': 2,
+            'unexpectedCodexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'networkMode': TABLE_CHECKER.R01_OFFLINE_NETWORK_MODE,
+            'answerCheckMethod': TABLE_CHECKER.R01_OFFLINE_ANSWER_CHECK_METHOD,
+            'resultSummary': TABLE_CHECKER.R01_OFFLINE_RESULT_SUMMARY,
+            'offlineFixture': TABLE_CHECKER.R01_OFFLINE_FIXTURE,
+            'networkBoundary': TABLE_CHECKER.R01_OFFLINE_NETWORK_BOUNDARY,
+            'privacy': TABLE_CHECKER.R01_OFFLINE_PRIVACY,
+            'answerChecks': {
+                field: True for field in TABLE_CHECKER.R01_OFFLINE_ANSWER_CHECK_FIELDS
+            },
+        }
+        report.update(overrides)
+        path = self.root / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(report), encoding='utf-8')
+        return relative_path
+
+    def test_r01_offline_matrix_report_maps_only_subject_relations_agent_mcp(self):
+        relative_path = self.write_r01_offline_report()
+        cell = f'✅<br>`{relative_path}`'
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_relations', cell, 'agent_mcp',
+        ))
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject', cell, 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject', error)
+
+        public_error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_relations',
+            f'◐<br>`{relative_path}`', 'public',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_relations', public_error)
+
+    def test_r01_offline_matrix_report_requires_its_exact_path_and_tool_contract(self):
+        wrong_path = self.write_r01_offline_report('docs/live-probes/copied-r01-report.json')
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_relations', f'✅<br>`{wrong_path}`', 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_relations', error)
+
+        relative_path = self.write_r01_offline_report(toolName='bangumi.get_subject')
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_relations', f'✅<br>`{relative_path}`', 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_relations', error)
+
+        relative_path = self.write_r01_offline_report(
+            evidenceKind='unrelated_agent_mcp_report',
+        )
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_relations', f'✅<br>`{relative_path}`', 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_relations', error)
+
+        relative_path = self.write_r01_offline_report(
+            offlineFixture={**TABLE_CHECKER.R01_OFFLINE_FIXTURE, 'requestCount': 2},
+        )
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_relations', f'✅<br>`{relative_path}`', 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_relations', error)
+
     def test_accepts_auth_denial_report_reference_for_the_same_tool(self):
         self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
             'bangumi.get_my_profile',
@@ -8399,6 +8494,212 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
             sources,
             {
                 GENERATOR.CODEX_R04_TOOL_NAME: {GENERATOR.CODEX_R04_REPORT_RELATIVE_PATH},
+            },
+        )
+
+
+class R01OfflineRelationsProfileReportValidationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='r01-offline-profile-evidence-test-')
+        self.root = Path(self.temp_dir.name)
+        self.report_path = self.root / GENERATOR.CODEX_R01_OFFLINE_REPORT_RELATIVE_PATH
+        self.report_path.parent.mkdir(parents=True)
+        selection_path = self.root / GENERATOR.CODEX_R01_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH
+        selection_path.parent.mkdir(parents=True)
+        selection_path.write_text('R01 scenario remains PARTIAL; matrix-only fixture.\n', encoding='utf-8')
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier_path.parent.mkdir(parents=True)
+        frontier_path.write_text(json.dumps({
+            'records': [{
+                'id': 'R01',
+                'status': 'PARTIAL',
+                'source_refs': [
+                    GENERATOR.CODEX_R01_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH,
+                    GENERATOR.CODEX_R01_OFFLINE_REPORT_RELATIVE_PATH,
+                ],
+            }],
+        }), encoding='utf-8')
+        self.catalog_path = self.root / 'docs/tool-catalog.json'
+        self.catalog_path.parent.mkdir(parents=True, exist_ok=True)
+        self.catalog = [{
+            'name': GENERATOR.CODEX_R01_OFFLINE_TOOL_NAME,
+            'auth': 'none',
+            'risk': 'read',
+            'description': 'Synthetic direct relations test tool.',
+            'inputSchema': {'type': 'object', 'required': ['subjectId']},
+        }]
+        self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
+        self.report = self.build_report()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def build_report(self):
+        catalog_bytes = self.catalog_path.read_bytes()
+        selection_bytes = (self.root / GENERATOR.CODEX_R01_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
+        tool = self.catalog[0]
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': GENERATOR.CODEX_R01_OFFLINE_EVIDENCE_KIND,
+            'runNumber': 95,
+            'frontierId': 'R01',
+            'scenarioId': None,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+            'epochId': GENERATOR.CODEX_R01_OFFLINE_EPOCH_ID,
+            'profileId': GENERATOR.CODEX_R01_OFFLINE_PROFILE_ID,
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
+            'codexCliVersion': '0.162.0',
+            'observedAt': '2026-10-16T05:00:00.000Z',
+            'sourceRevision': 'a' * 40,
+            'baseSha': 'b' * 40,
+            'ciSha': 'a' * 40,
+            'ciStatus': 'SUCCESS',
+            'ciRunId': '38812509760',
+            'ciChecks': [
+                {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+                for name in GENERATOR.CODEX_R01_OFFLINE_REQUIRED_CI_CHECKS
+            ],
+            'prNumber': 222,
+            'claimId': 'profile-run-95-pr-222-aaaaaaaaaaaa-1792100000000',
+            'mcpBundleSha256': 'c' * 64,
+            'registrySha256': GENERATOR.CODEX_R01_OFFLINE_PROFILE_REGISTRY_SHA256,
+            'selectionEvidenceSha256': hashlib.sha256(selection_bytes).hexdigest(),
+            'toolName': GENERATOR.CODEX_R01_OFFLINE_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_R01_OFFLINE_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_R01_OFFLINE_EXPECTED_ARGUMENTS_SHA256,
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode()).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': [GENERATOR.CODEX_R01_OFFLINE_TOOL_NAME],
+            'serverToolCount': 1,
+            'networkMode': GENERATOR.CODEX_R01_OFFLINE_NETWORK_MODE,
+            'mcpServerNames': ['bgk_r01_relations'],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 2,
+            'blockedWebSearchErrorItemCount': 2,
+            'unexpectedCodexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'answerCheckMethod': GENERATOR.CODEX_R01_OFFLINE_ANSWER_CHECK_METHOD,
+            'answerSha256': hashlib.sha256(b'R01_SYNTHETIC_SUBJECT_RELATIONS_READ').hexdigest(),
+            'answerUtf8Bytes': len(b'R01_SYNTHETIC_SUBJECT_RELATIONS_READ'),
+            'answerChecks': {key: True for key in GENERATOR.CODEX_R01_OFFLINE_ANSWER_CHECK_FIELDS},
+            'resultSummary': {
+                'state': 'observed',
+                'sourceDirection': 'source_subject_to_returned_target',
+                'responseRowsObserved': 1,
+                'rowsReturned': 1,
+                'schemaDriftRows': 0,
+                'truncated': False,
+                'paginationAvailable': False,
+                'totalCountAvailable': False,
+                'completeness': 'not_provided_by_source',
+                'relationLabels': ['改编'],
+            },
+            'offlineFixture': {
+                'profile': GENERATOR.CODEX_R01_OFFLINE_NETWORK_MODE,
+                'requestCount': 1,
+                'relationRequestCount': 1,
+                'duplicateRequestCount': 0,
+                'unexpectedRequestCount': 0,
+                'authorizationHeaderCount': 0,
+                'expectedOperationsComplete': True,
+            },
+            'networkBoundary': {
+                'liveBangumiApiRequestCount': 0,
+                'rendererAssetRequestCount': 0,
+                'fullCodexHarnessNetworkSandboxed': False,
+            },
+            'privacy': {
+                'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+                'writesAttempted': False, 'communityRead': False, 'qqPipelineTested': False,
+                'timClientTested': False, 'promptStored': False, 'answerStored': False,
+                'rawFixtureRowsStored': False, 'rawToolResultStored': False,
+                'artifactImageBytesStored': False, 'credentialsStored': False,
+            },
+            'runnerReceipt': {
+                'schemaVersion': 1,
+                'kind': 'r01-relations-offline-agent-mcp-runner-receipt-v1',
+                'publicKeyBase64': 'AQ==',
+                'publicKeySha256': 'd' * 64,
+                'payload': {field: None for field in GENERATOR.CODEX_R01_OFFLINE_RECEIPT_PAYLOAD_FIELDS},
+                'signature': 'AA==',
+            },
+        }
+
+    def validate_report(self, report):
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        report_bytes = self.report_path.read_bytes()
+
+        def validate_embedded_report(args, **kwargs):
+            payload = json.loads(kwargs['input'])
+            embedded = base64.b64decode(payload['reportBytesBase64'])
+            return subprocess.CompletedProcess(
+                args, 0,
+                json.dumps({'passed': True, 'reportSha256': hashlib.sha256(embedded).hexdigest()}),
+                '',
+            )
+
+        with (
+            patch.object(GENERATOR, 'ROOT', self.root),
+            patch.object(GENERATOR, 'LIVE_PROBE_DIR', self.root / 'docs/live-probes'),
+            patch.object(GENERATOR, 'CATALOG', self.catalog_path),
+            patch.object(GENERATOR, 'codex_r01_offline_profile_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
+            patch.object(GENERATOR, 'codex_r01_offline_profile_report_candidate_binding_is_current', return_value=True),
+            patch.object(GENERATOR, 'codex_r01_offline_profile_disposition_matches_report', return_value={'state': 'REPORT_WRITTEN'}),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+        ):
+            return GENERATOR.codex_r01_offline_profile_report_is_valid(
+                report, harness_status={'fixture': True}, report_path=self.report_path,
+                epoch_status={'fixture': True},
+            )
+
+    def test_accepts_matrix_report_while_R01_remains_partial(self):
+        with patch.object(GENERATOR, 'ROOT', self.root):
+            self.assertTrue(GENERATOR.codex_r01_offline_frontier_is_partial(require_report_ref=True))
+        self.assertTrue(self.validate_report(self.report))
+
+    def test_rejects_scenario_credit_expanded_fixture_and_unclassified_errors(self):
+        scenario_credit = json.loads(json.dumps(self.report))
+        scenario_credit['scenarioId'] = 'R01'
+        self.assertFalse(self.validate_report(scenario_credit))
+
+        expanded_fixture = json.loads(json.dumps(self.report))
+        expanded_fixture['offlineFixture']['requestCount'] = 2
+        self.assertFalse(self.validate_report(expanded_fixture))
+
+        unexpected_error = json.loads(json.dumps(self.report))
+        unexpected_error['unexpectedCodexErrorItemCount'] = 1
+        self.assertFalse(self.validate_report(unexpected_error))
+
+    def test_routes_the_report_to_only_subject_relations_agent_mcp(self):
+        self.report_path.write_text(json.dumps(self.report), encoding='utf-8')
+        with (
+            patch.object(GENERATOR, 'ROOT', self.root),
+            patch.object(GENERATOR, 'LIVE_PROBE_DIR', self.root / 'docs/live-probes'),
+            patch.object(GENERATOR, 'codex_r01_offline_profile_harness_status', return_value={'fixture': True}),
+            patch.object(GENERATOR, 'codex_r01_offline_profile_epoch_harness_status', return_value={'fixture': True}),
+            patch.object(GENERATOR, 'codex_r01_offline_profile_report_is_valid', return_value=True),
+            patch.object(GENERATOR, 'codex_r01_offline_profile_report_matches_candidate_revision', return_value=True),
+        ):
+            sources = GENERATOR.model_mcp_e2e_sources(self.catalog)
+        self.assertEqual(
+            sources,
+            {
+                GENERATOR.CODEX_R01_OFFLINE_TOOL_NAME: {
+                    GENERATOR.CODEX_R01_OFFLINE_REPORT_RELATIVE_PATH,
+                },
             },
         )
 

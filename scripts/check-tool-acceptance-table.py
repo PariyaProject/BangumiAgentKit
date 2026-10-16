@@ -19,6 +19,60 @@ SOURCE_REFERENCE = re.compile(r'`(?P<path>tests/[^`|:]+):(?P<line>[1-9][0-9]*)`'
 LIVE_EVIDENCE_REFERENCE = re.compile(r'`(?P<path>docs/live-probes/[^`|]+\.json)`')
 VALID_LIVE = {'◐', '—', '⬜'}
 VALID_MARK = {'✅', '⬜', '—'}
+R01_OFFLINE_TOOL_NAME = 'bangumi.get_subject_relations'
+R01_OFFLINE_REPORT_PATH = 'docs/live-probes/r01-relations-offline-agent-mcp-run95.json'
+R01_OFFLINE_REPORT_KIND = 'codex_cli_r01_subject_relations_offline_agent_mcp_matrix'
+R01_OFFLINE_PROFILE_ID = 'r01-subject-relations-offline-agent-mcp-v1'
+R01_OFFLINE_EPOCH_ID = 'run95-r01-subject-relations-matrix-offline-20261016'
+R01_OFFLINE_ARGUMENT_PROFILE = 'fixed-r01-offline-relations-990902-one-row-v1'
+R01_OFFLINE_ANSWER_CHECK_METHOD = 'r01-synthetic-direct-relation-execution-only-v1'
+R01_OFFLINE_NETWORK_MODE = 'run95-r01-relations-offline-v1'
+R01_OFFLINE_RESULT_SUMMARY = {
+    'state': 'observed',
+    'sourceDirection': 'source_subject_to_returned_target',
+    'responseRowsObserved': 1,
+    'rowsReturned': 1,
+    'schemaDriftRows': 0,
+    'truncated': False,
+    'paginationAvailable': False,
+    'totalCountAvailable': False,
+    'completeness': 'not_provided_by_source',
+    'relationLabels': ['改编'],
+}
+R01_OFFLINE_FIXTURE = {
+    'profile': R01_OFFLINE_NETWORK_MODE,
+    'requestCount': 1,
+    'relationRequestCount': 1,
+    'duplicateRequestCount': 0,
+    'unexpectedRequestCount': 0,
+    'authorizationHeaderCount': 0,
+    'expectedOperationsComplete': True,
+}
+R01_OFFLINE_NETWORK_BOUNDARY = {
+    'liveBangumiApiRequestCount': 0,
+    'rendererAssetRequestCount': 0,
+    'fullCodexHarnessNetworkSandboxed': False,
+}
+R01_OFFLINE_PRIVACY = {
+    'authProfile': 'anonymous',
+    'oauthAttempted': False,
+    'accountDataRead': False,
+    'writesAttempted': False,
+    'communityRead': False,
+    'qqPipelineTested': False,
+    'timClientTested': False,
+    'promptStored': False,
+    'answerStored': False,
+    'rawFixtureRowsStored': False,
+    'rawToolResultStored': False,
+    'artifactImageBytesStored': False,
+    'credentialsStored': False,
+}
+R01_OFFLINE_ANSWER_CHECK_FIELDS = {
+    'exactRegisteredProfile', 'oneAllowedMcpTool', 'fixedArguments',
+    'exactCandidateBundle', 'offlineFixtureOnly', 'oneExpectedLocalResponse',
+    'noAssetRequests', 'exactAcknowledgement', 'privacyPreserved',
+}
 
 
 def source_reference_error(name: str, cell: str) -> str | None:
@@ -53,6 +107,73 @@ def catalog_schema_reference_error(name: str, cell: str, expected_index: int) ->
 
 def status_mark(cell: str) -> str:
     return cell.split('<br>', 1)[0]
+
+
+def r01_offline_agent_mcp_matches(name: str, relative_path: str, report: object) -> bool:
+    """Accept only the matrix-only R01 report for its single fixed tool.
+
+    The generator performs the full candidate, Harness, report-signature, and
+    receipt validation. This table-level check independently prevents the
+    artifact from crediting another tool or evidence column.
+    """
+    if not isinstance(report, dict):
+        return False
+    error_count = report.get('codexErrorItemCount')
+    answer_checks = report.get('answerChecks')
+    return (
+        name == R01_OFFLINE_TOOL_NAME
+        and relative_path == R01_OFFLINE_REPORT_PATH
+        and type(report.get('schemaVersion')) is int
+        and report.get('schemaVersion') == 1
+        and report.get('evidenceKind') == R01_OFFLINE_REPORT_KIND
+        and type(report.get('runNumber')) is int
+        and report.get('runNumber') == 95
+        and report.get('frontierId') == 'R01'
+        and report.get('scenarioId') is None
+        and report.get('acceptanceScope') == 'agent-mcp-matrix-only'
+        and report.get('epochId') == R01_OFFLINE_EPOCH_ID
+        and report.get('profileId') == R01_OFFLINE_PROFILE_ID
+        and report.get('profile') == 'codex-luna-max-offline-agent-mcp-matrix-v1'
+        and report.get('model') == 'gpt-6-luna'
+        and report.get('reasoningEffort') == 'max'
+        and report.get('toolName') == R01_OFFLINE_TOOL_NAME
+        and report.get('argumentProfile') == R01_OFFLINE_ARGUMENT_PROFILE
+        and report.get('serverToolNames') == [R01_OFFLINE_TOOL_NAME]
+        and type(report.get('serverToolCount')) is int
+        and report.get('serverToolCount') == 1
+        and report.get('mcpServerNames') == ['bgk_r01_relations']
+        and report.get('resultStatus') == 'SUCCESS'
+        and type(report.get('processExitCode')) is int
+        and report.get('processExitCode') == 0
+        and report.get('eventStreamParsed') is True
+        and report.get('turnCompleted') is True
+        and type(report.get('codexMcpToolEventCount')) is int
+        and report.get('codexMcpToolEventCount') == 1
+        and type(error_count) is int
+        and 0 <= error_count <= 3
+        and type(report.get('blockedWebSearchErrorItemCount')) is int
+        and report.get('blockedWebSearchErrorItemCount') == error_count
+        and type(report.get('unexpectedCodexErrorItemCount')) is int
+        and report.get('unexpectedCodexErrorItemCount') == 0
+        and type(report.get('nonMcpToolEventCount')) is int
+        and report.get('nonMcpToolEventCount') == 0
+        and report.get('nonMcpToolTypes') == []
+        and type(report.get('shellToolCallCount')) is int
+        and report.get('shellToolCallCount') == 0
+        and type(report.get('allowedCallCount')) is int
+        and report.get('allowedCallCount') == 1
+        and type(report.get('deniedCallCount')) is int
+        and report.get('deniedCallCount') == 0
+        and report.get('networkMode') == R01_OFFLINE_NETWORK_MODE
+        and report.get('answerCheckMethod') == R01_OFFLINE_ANSWER_CHECK_METHOD
+        and report.get('resultSummary') == R01_OFFLINE_RESULT_SUMMARY
+        and report.get('offlineFixture') == R01_OFFLINE_FIXTURE
+        and report.get('networkBoundary') == R01_OFFLINE_NETWORK_BOUNDARY
+        and report.get('privacy') == R01_OFFLINE_PRIVACY
+        and isinstance(answer_checks, dict)
+        and set(answer_checks) == R01_OFFLINE_ANSWER_CHECK_FIELDS
+        and all(value is True for value in answer_checks.values())
+    )
 
 
 def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
@@ -152,7 +273,10 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                 ] == c04_tool_names
                 and name in c04_tool_names
             )
-            matches = scenario_matches or c04_matches
+            r01_offline_matches = r01_offline_agent_mcp_matches(
+                name, relative_path, report,
+            )
+            matches = scenario_matches or c04_matches or r01_offline_matches
         else:
             try:
                 catalog = json.loads(CATALOG.read_text(encoding='utf-8'))

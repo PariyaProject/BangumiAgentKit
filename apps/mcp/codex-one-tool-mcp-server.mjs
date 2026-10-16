@@ -46,6 +46,14 @@ import {
   R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE,
 } from '../../scripts/lib/r04-series-watch-order-offline-fixture.mjs';
 import {
+  assertR01RelationsOfflineFixture,
+  createR01RelationsOfflineFetch,
+} from '../../scripts/lib/r01-relations-offline-fixture.mjs';
+import {
+  R01_RELATIONS_OFFLINE_NETWORK_MODE,
+  R01_RELATIONS_OFFLINE_PROFILE_ID,
+} from '../../scripts/lib/r01-relations-offline-profile.mjs';
+import {
   assertC04CohortComparisonPublicProfile,
   createC04CohortComparisonPublicFetch,
   C04_COHORT_COMPARISON_PROFILE_ID,
@@ -186,6 +194,9 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE) {
     assertR04SeriesWatchOrderOfflineProfile(config.profile);
   }
+  if (config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE) {
+    assertR01RelationsOfflineFixture(config.profile);
+  }
   const serverInstanceId = randomUUID();
   for (const key of Object.keys(process.env)) {
     if (/(?:BANGUMI|BGM_|OAUTH|TOKEN|SECRET|CREDENTIAL|API[_-]?KEY)/iu.test(key)) {
@@ -232,7 +243,9 @@ async function main(argv = process.argv.slice(2)) {
           ? createP02PersonProfileOfflineFetch()
           : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
             ? createR04SeriesWatchOrderOfflineFetch()
-            : null;
+            : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
+              ? createR01RelationsOfflineFetch()
+              : null;
   const p06AssetGuard =
     config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
       ? createP06RenderPersonProfileAssetGuard()
@@ -495,6 +508,26 @@ async function main(argv = process.argv.slice(2)) {
             persistSummary();
             return {
               content: [{ type: 'text', text: 'P07 bounded date summary is unavailable.' }],
+              isError: true,
+            };
+          }
+          const text = JSON.stringify(safeProjection);
+          return {
+            content: [{ type: 'text', text }],
+            structuredContent: safeProjection,
+          };
+        }
+        if (config.profile?.id === R01_RELATIONS_OFFLINE_PROFILE_ID) {
+          const safeProjection = summary.results[sequenceIndex]?.resultSummary;
+          if (!safeProjection) {
+            summary = {
+              ...summary,
+              serverResultStatus: 'ERROR',
+              results: [{ sequenceIndex, status: 'ERROR', errorCode: 'R01_SUMMARY_UNAVAILABLE' }],
+            };
+            persistSummary();
+            return {
+              content: [{ type: 'text', text: 'R01 offline relation summary is unavailable.' }],
               isError: true,
             };
           }
