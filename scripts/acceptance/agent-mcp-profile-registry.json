@@ -480,6 +480,53 @@
           }
         }
       ]
+    },
+    {
+      "id": "query-render-title-agent-mcp-v1",
+      "frontierId": "G01",
+      "epochId": "run95-title-query-render-agent-mcp-matrix-20261017",
+      "toolName": "bangumi.query_subjects",
+      "toolNames": [
+        "bangumi.query_subjects",
+        "bangumi.render_query_subjects"
+      ],
+      "argumentProfile": "harness-r95-title-query-render-20261017-v1",
+      "claimLabelName": "harness-r95-title-query-render-agent-mcp-claimed",
+      "reportPath": "docs/live-probes/title-query-render-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-title-query-render-agent-mcp-matrix-contract-2026-10-17.md",
+      "evidenceKind": "codex_cli_title_query_render_agent_mcp_matrix",
+      "answerCheckMethod": "query-render-bounded-observation-v1",
+      "networkMode": "run95-title-query-render-matrix-public-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 4096,
+      "calls": [
+        {
+          "toolName": "bangumi.query_subjects",
+          "arguments": {
+            "keyword": "葬送的芙莉莲",
+            "media": "anime",
+            "resultMode": "all",
+            "limit": 1,
+            "sort": "relevance",
+            "explain": "compact",
+            "nsfw": false
+          }
+        },
+        {
+          "toolName": "bangumi.render_query_subjects",
+          "arguments": {
+            "keyword": "葬送的芙莉莲",
+            "media": "anime",
+            "resultMode": "all",
+            "limit": 1,
+            "sort": "relevance",
+            "explain": "compact",
+            "nsfw": false
+          }
+        }
+      ]
     }
   ]
 }

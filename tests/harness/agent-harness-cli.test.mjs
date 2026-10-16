@@ -112,6 +112,7 @@ const R04_RENDER_PROFILE = getAgentMcpProfileById(
   'r04-render-series-watch-order-offline-agent-mcp-v1',
 );
 const C04_PROFILE = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
+const TITLE_QUERY_RENDER_PROFILE = getAgentMcpProfileById('query-render-title-agent-mcp-v1');
 const mandatoryChecks = [
   'harness-control',
   'sqlite-default',
@@ -1648,7 +1649,13 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
   run.outer_sol.product.consumed = 1;
   const ciRunId = '38806371672';
   const ciRunUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
-  const checks = [P06_PROFILE.id, P02_PROFILE.id, C04_PROFILE.id].includes(profile.id)
+  const exactCiProfileIds = [
+    P06_PROFILE.id,
+    P02_PROFILE.id,
+    C04_PROFILE.id,
+    TITLE_QUERY_RENDER_PROFILE.id,
+  ];
+  const checks = exactCiProfileIds.includes(profile.id)
     ? mandatoryChecks.map((name, index) => ({
         name,
         status: 'COMPLETED',
@@ -1656,7 +1663,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
         detailsUrl: `${ciRunUrl}/job/${116668186145 + index}`,
       }))
     : mandatoryChecks.map((name) => ({ name, conclusion: 'SUCCESS' }));
-  if ([P06_PROFILE.id, P02_PROFILE.id, C04_PROFILE.id].includes(profile.id)) {
+  if (exactCiProfileIds.includes(profile.id)) {
     epoch.ci.url = ciRunUrl;
   }
   const environment = createMockEnvironment({
@@ -1956,6 +1963,62 @@ test('C04 Harness claim persists exact CI identity required by its signed report
   }
 });
 
+test('title query/render Harness claim persists exact CI identity required by its signed report', () => {
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(
+    TITLE_QUERY_RENDER_PROFILE,
+  );
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const runArgs = [
+    '--run',
+    '95',
+    '--pr',
+    '42',
+    '--profile-id',
+    TITLE_QUERY_RENDER_PROFILE.id,
+  ];
+  try {
+    const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(status.status, 0, status.stderr);
+    assert.equal(JSON.parse(status.stdout).review_gate.eligible, true);
+
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    assert.equal(claimResult.profileId, TITLE_QUERY_RENDER_PROFILE.id);
+    assert.equal(claimResult.ciRunId, '38806371672');
+    assert.deepEqual(
+      claimResult.ciChecks.map(({ name, status: checkStatus, conclusion }) => ({
+        name,
+        status: checkStatus,
+        conclusion,
+      })),
+      mandatoryChecks.map((name) => ({
+        name,
+        status: 'COMPLETED',
+        conclusion: 'SUCCESS',
+      })),
+    );
+
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    const disposition =
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[TITLE_QUERY_RENDER_PROFILE.id];
+    assert.equal(disposition.ciRunId, claimResult.ciRunId);
+    assert.deepEqual(disposition.ciChecks, claimResult.ciChecks);
+    assert.equal(disposition.retryAllowed, false);
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('P06 Harness claim rejects required checks attached to a different Actions run', () => {
   const ciRunId = '38806371672';
   const runUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
@@ -2040,6 +2103,12 @@ test('R05 Harness profile uses its own permanent claim label and terminal no-ret
     ]);
     assert.equal(duplicate.status, 2);
 
+    const failureDiagnostics = {
+      schemaVersion: 1,
+      reasonCode: 'TITLE_QUERY_RENDER_AGENT_MCP_ASSERTION_FAILED',
+      checks: { eventStreamParsed: true, serverSummaryValid: false },
+      counters: { httpRequests: 1 },
+    };
     const terminal = environment.execute([
       'epoch:agent-mcp-profile-result',
       ...runArgs,
@@ -2047,12 +2116,40 @@ test('R05 Harness profile uses its own permanent claim label and terminal no-ret
       claimResult.claimId,
       '--state',
       'INCONCLUSIVE',
+      '--diagnostics-json',
+      JSON.stringify(failureDiagnostics),
     ]);
     assert.equal(terminal.status, 0, terminal.stderr);
+    assert.deepEqual(JSON.parse(terminal.stdout).failureDiagnostics, failureDiagnostics);
     const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
     assert.equal(status.status, 0, status.stderr);
-    assert.equal(JSON.parse(status.stdout).state, 'INCONCLUSIVE');
-    assert.equal(JSON.parse(status.stdout).retry_allowed, false);
+    const profileStatus = JSON.parse(status.stdout);
+    assert.equal(profileStatus.state, 'INCONCLUSIVE');
+    assert.equal(profileStatus.retry_allowed, false);
+    assert.deepEqual(profileStatus.disposition.failureDiagnostics, failureDiagnostics);
+
+    const changedDiagnostics = {
+      ...failureDiagnostics,
+      checks: { ...failureDiagnostics.checks, serverSummaryValid: true },
+    };
+    const conflicting = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--diagnostics-json',
+      JSON.stringify(changedDiagnostics),
+    ]);
+    assert.equal(conflicting.status, 2);
+    assert.match(conflicting.stderr, /^AGENT_MCP_PROFILE_TERMINAL_DIAGNOSTICS_MISMATCH:/u);
+    const afterConflict = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(afterConflict.status, 0, afterConflict.stderr);
+    assert.deepEqual(
+      JSON.parse(afterConflict.stdout).disposition.failureDiagnostics,
+      failureDiagnostics,
+    );
     assert.equal(
       environment.readState().repositoryLabels['harness-r95-r05-subject-overlap-claimed'].name,
       'harness-r95-r05-subject-overlap-claimed',
@@ -2314,6 +2411,33 @@ test('C01 Harness terminalizes an invalid retained report as INCONCLUSIVE with i
     assert.equal(disposition.state, 'INCONCLUSIVE');
     assert.equal(disposition.unacceptedReportSha256, reportSha256);
     assert.equal(disposition.retryAllowed, false);
+
+    const replay = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--report-sha256',
+      reportSha256,
+    ]);
+    assert.equal(replay.status, 0, replay.stderr);
+    const replayResult = JSON.parse(replay.stdout);
+    assert.equal(replayResult.state, 'AGENT_MCP_PROFILE_RESULT_ALREADY_RECORDED');
+    assert.equal(replayResult.unacceptedReportSha256, reportSha256);
+
+    const conflictingReplay = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--report-sha256',
+      'f'.repeat(64),
+    ]);
+    assert.notEqual(conflictingReplay.status, 0, conflictingReplay.stderr);
   } finally {
     environment.cleanup();
     fs.rmSync(harnessRoot, { recursive: true, force: true });

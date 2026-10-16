@@ -73,6 +73,12 @@ import {
   C04_COHORT_COMPARISON_NETWORK_MODE,
 } from '../../scripts/lib/c04-cohort-comparison-public-profile.mjs';
 import {
+  assertTitleQueryRenderPublicProfile,
+  createTitleQueryRenderPublicFetch,
+  TITLE_QUERY_RENDER_NETWORK_MODE,
+  TITLE_QUERY_RENDER_PROFILE_ID,
+} from '../../scripts/lib/title-query-render-agent-mcp-profile.mjs';
+import {
   assertR02PositiveDirectRelationsProfile,
   createR02PositiveDirectRelationsPublicFetch,
   R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE,
@@ -89,6 +95,16 @@ import { toMcpTool } from './dist/catalog.js';
 import { presentMcpToolResult } from './dist/result-presenter.js';
 
 const PRODUCT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const TITLE_QUERY_RENDER_PLACEHOLDER_DATA_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+function createTitleQueryRenderOfflineAssetResolver() {
+  return {
+    async resolveAsset() {
+      return { dataUrl: TITLE_QUERY_RENDER_PLACEHOLDER_DATA_URL };
+    },
+  };
+}
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const P07_PERSON_SEASON_PROFILE_ID = 'p07-person-season-distribution-agent-mcp-v1';
 
@@ -225,6 +241,11 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE) {
     assertR02PositiveDirectRelationsProfile(config.profile);
   }
+  if (config.networkMode === TITLE_QUERY_RENDER_NETWORK_MODE) {
+    if (!assertTitleQueryRenderPublicProfile(config.profile)) {
+      throw new Error('The registered title query/render profile does not match its fixed contract.');
+    }
+  }
   const serverInstanceId = randomUUID();
   for (const key of Object.keys(process.env)) {
     if (/(?:BANGUMI|BGM_|OAUTH|TOKEN|SECRET|CREDENTIAL|API[_-]?KEY)/iu.test(key)) {
@@ -266,6 +287,10 @@ async function main(argv = process.argv.slice(2)) {
     config.networkMode === R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE
       ? createR02PositiveDirectRelationsPublicFetch()
       : null;
+  const titleQueryRenderPublicFetch =
+    config.networkMode === TITLE_QUERY_RENDER_NETWORK_MODE
+      ? createTitleQueryRenderPublicFetch()
+      : null;
   const offlineFixture =
     config.networkMode === A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE
       ? createA01RenderCohortAggregationOfflineFetch()
@@ -290,11 +315,17 @@ async function main(argv = process.argv.slice(2)) {
     config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
       ? createP06RenderPersonProfileAssetGuard()
       : null;
+  const titleQueryRenderAssetResolver =
+    config.profile?.id === TITLE_QUERY_RENDER_PROFILE_ID
+      ? createTitleQueryRenderOfflineAssetResolver()
+      : null;
   const renderService = p06AssetGuard
     ? new RenderService(undefined, undefined, p06AssetGuard.assetResolver)
     : r04RenderAssetFence
       ? new RenderService(undefined, undefined, r04RenderAssetFence.assetResolver)
-      : undefined;
+      : titleQueryRenderAssetResolver
+        ? new RenderService(undefined, undefined, titleQueryRenderAssetResolver)
+        : undefined;
   const publicHttpClient = new HttpClient({
     baseUrl: 'https://api.bgm.tv',
     timeoutMs: 10000,
@@ -302,6 +333,8 @@ async function main(argv = process.argv.slice(2)) {
       ? { fetchFn: offlineFixture.fetchFn }
       : c04PublicFetch
         ? { fetchFn: c04PublicFetch.fetchFn }
+        : titleQueryRenderPublicFetch
+          ? { fetchFn: titleQueryRenderPublicFetch.fetchFn }
         : r02PublicFetch
           ? { fetchFn: r02PublicFetch.fetchFn }
           : {}),
@@ -350,6 +383,7 @@ async function main(argv = process.argv.slice(2)) {
       ? {
           serverProfile: config.networkMode
             ? config.networkMode === C04_COHORT_COMPARISON_NETWORK_MODE ||
+              config.networkMode === TITLE_QUERY_RENDER_NETWORK_MODE ||
               config.networkMode === R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE
               ? 'closed-profile-sequence-anonymous-public-v1'
               : 'closed-profile-sequence-anonymous-offline-v1'
@@ -391,9 +425,20 @@ async function main(argv = process.argv.slice(2)) {
     ...(r04RenderAssetFence ? { rendererAssetBoundary: r04RenderAssetFence.snapshot() } : {}),
     ...(c04PublicFetch ? { publicRequestScope: c04PublicFetch.snapshot() } : {}),
     ...(r02PublicFetch ? { publicRequestScope: r02PublicFetch.snapshot() } : {}),
+    ...(titleQueryRenderPublicFetch
+      ? { publicRequestScope: titleQueryRenderPublicFetch.snapshot() }
+      : {}),
+    ...(titleQueryRenderAssetResolver
+      ? {
+          rendererAssetBoundary: {
+            assetNetworkRequestCount: 0,
+            remoteAssetResolutionDisabled: true,
+          },
+        }
+      : {}),
     privacy: buildG06PrivacySummary(),
   };
-  const publicRequestFetch = c04PublicFetch || r02PublicFetch;
+  const publicRequestFetch = c04PublicFetch || r02PublicFetch || titleQueryRenderPublicFetch;
   const persistSummary = () =>
     writeSanitizedSummary(
       config.summaryPath,
@@ -513,6 +558,9 @@ async function main(argv = process.argv.slice(2)) {
                   : config.profile.id === C04_COHORT_COMPARISON_PROFILE_ID &&
                       expectedToolName === 'bangumi.render_subject_cohort_comparison'
                     ? artifactStore.summarize(result?.artifact?.id)
+                : config.profile.id === TITLE_QUERY_RENDER_PROFILE_ID &&
+                    expectedToolName === 'bangumi.render_query_subjects'
+                  ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
                     : null;
           const resultSummary = summarizeProfileToolResult(
             result,

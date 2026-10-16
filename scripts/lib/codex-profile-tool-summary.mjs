@@ -23,6 +23,7 @@ import {
 } from './r02-positive-direct-relations-profile.mjs';
 import { A01_RENDER_COHORT_AGGREGATION_PROFILE_ID } from './a01-render-cohort-aggregation-offline-fixture.mjs';
 import { R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID } from './r04-render-series-watch-order-offline-fixture.mjs';
+import { TITLE_QUERY_RENDER_PROFILE_ID } from './title-query-render-agent-mcp-profile.mjs';
 
 const C04_RESULT_STATES = new Set([
   'ok',
@@ -40,6 +41,76 @@ const C04_RESULT_STATES = new Set([
   'error',
 ]);
 const C04_METRIC_KEYS = new Set(['score', 'heat', 'episodesReported', 'ratingStandardDeviation']);
+const TITLE_QUERY_COVERAGE_STATES = new Set([
+  'complete',
+  'partial',
+  'unavailable',
+  'not_computable',
+  'unknown',
+]);
+const TITLE_QUERY_TOTAL_KINDS = new Set(['exact', 'estimated', 'unknown', 'unavailable']);
+const TITLE_QUERY_WARNING_CODES = new Set([
+  'EXPERIMENTAL_SOURCE',
+  'HYDRATION_FAILED',
+  'OUTPUT_TRUNCATED',
+  'OTHER',
+]);
+
+function boundedCounter(value) {
+  return Number.isSafeInteger(value) && value >= 0 && value <= 1_000_000 ? value : null;
+}
+
+function summarizeTitleQueryResult(result) {
+  const coverage = result?.coverage;
+  const items = Array.isArray(result?.items) ? result.items : [];
+  const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
+  const warningCodes = [
+    ...new Set(
+      warnings.map((warning) =>
+        TITLE_QUERY_WARNING_CODES.has(warning?.code) ? warning.code : 'OTHER',
+      ),
+    ),
+  ].slice(0, 4);
+  return {
+    resultState: ['ok', 'partial'].includes(result?.state) ? result.state : 'unknown',
+    returnedItems: Math.min(items.length, 2),
+    coverage: {
+      state: TITLE_QUERY_COVERAGE_STATES.has(coverage?.state) ? coverage.state : 'unknown',
+      requested: boundedCounter(coverage?.requested),
+      scanned: boundedCounter(coverage?.scanned),
+      matched: boundedCounter(coverage?.matched),
+      returned: boundedCounter(coverage?.returned),
+      pagesRequested: boundedCounter(coverage?.pagesRequested),
+      pagesScanned: boundedCounter(coverage?.pagesScanned),
+      upstreamExhausted:
+        typeof coverage?.upstreamExhausted === 'boolean' ? coverage.upstreamExhausted : null,
+      budgetExceeded: typeof coverage?.budgetExceeded === 'boolean' ? coverage.budgetExceeded : null,
+      totalKind: TITLE_QUERY_TOTAL_KINDS.has(coverage?.totalKind)
+        ? coverage.totalKind
+        : 'unknown',
+    },
+    warningCodes,
+  };
+}
+
+function summarizeTitleQueryRenderArtifact(result, artifactSummary) {
+  const artifact = artifactSummary && typeof artifactSummary === 'object' ? artifactSummary : {};
+  return {
+    resultState: result?.artifact?.id && artifact.returned === true ? 'artifact_returned' : 'artifact_missing',
+    artifact: {
+      returned: artifact.returned === true,
+      persisted: artifact.persisted === true,
+      mimeType: typeof artifact.mimeType === 'string' ? artifact.mimeType : null,
+      width: Number.isSafeInteger(artifact.width) ? artifact.width : null,
+      height: Number.isSafeInteger(artifact.height) ? artifact.height : null,
+      byteLength: Number.isSafeInteger(artifact.byteLength) ? artifact.byteLength : null,
+      sha256: typeof artifact.sha256 === 'string' ? artifact.sha256 : null,
+      pngSignatureValid: artifact.pngSignatureValid === true,
+      decoded: artifact.decoded === true,
+      dimensionsMatch: artifact.dimensionsMatch === true,
+    },
+  };
+}
 
 function summarizeC04CohortResult(result) {
   const cohorts = Array.isArray(result?.cohorts) ? result.cohorts.slice(0, 2) : [];
@@ -144,6 +215,11 @@ export function summarizeProfileToolResult(
   artifactSummary = null,
   toolName = null,
 ) {
+  if (profileId === TITLE_QUERY_RENDER_PROFILE_ID) {
+    return toolName === 'bangumi.render_query_subjects'
+      ? summarizeTitleQueryRenderArtifact(result, artifactSummary)
+      : summarizeTitleQueryResult(result);
+  }
   if (profileId === C04_COHORT_COMPARISON_PROFILE_ID) {
     return toolName === 'bangumi.render_subject_cohort_comparison'
       ? summarizeC04Artifact(artifactSummary)

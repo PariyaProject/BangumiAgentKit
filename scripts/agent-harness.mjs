@@ -84,6 +84,7 @@ import {
   classifyAgentMcpProfileInconclusiveReport,
   getAgentMcpProfileById,
   listAgentMcpProfiles,
+  normalizeAgentMcpProfileDiagnostics,
 } from './lib/agent-mcp-profile-claims.mjs';
 import { deriveP06CiRunEvidence, isValidP06CiRunEvidence } from './lib/p06-ci-run-evidence.mjs';
 import {
@@ -156,6 +157,7 @@ import { validateR04SanitizedReportFile } from './acceptance/write-r04-series-wa
 import { validateR04RenderSanitizedReportFile } from './acceptance/write-r04-render-series-watch-order-offline-agent-mcp-report.mjs';
 import { validateR01RelationsOfflineSanitizedReportFile } from './acceptance/write-r01-relations-offline-agent-mcp-report.mjs';
 import { validateC04SanitizedReportFile } from './acceptance/write-c04-cohort-comparison-agent-mcp-report.mjs';
+import { validateTitleQueryRenderSanitizedReportFile } from './acceptance/write-title-query-render-agent-mcp-report.mjs';
 import { validateR02SanitizedReportFile } from './acceptance/write-r02-positive-direct-relations-agent-mcp-report.mjs';
 import { validateC02SanitizedReportFile } from './acceptance/write-c02-tv-movie-comparison-report.mjs';
 import { validateM07SanitizedReportFile } from './acceptance/write-m07-manage-index-agent-mcp-report.mjs';
@@ -240,6 +242,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'r01-subject-relations-offline-agent-mcp-v1',
   'r02-positive-direct-relations-agent-mcp-v1',
   'c04-cohort-comparison-agent-mcp-matrix-v1',
+  'query-render-title-agent-mcp-v1',
 ]);
 const profileRequiresExactCiRunEvidence = (profileId) => PROFILE_CI_RUN_EVIDENCE_IDS.has(profileId);
 const P01_MODEL = 'gpt-6-luna';
@@ -3816,6 +3819,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateR02SanitizedReportFile(claim, root, reportPath);
     case 'c04-cohort-comparison-agent-mcp-matrix-v1':
       return validateC04SanitizedReportFile(claim, root, reportPath);
+    case 'query-render-title-agent-mcp-v1':
+      return validateTitleQueryRenderSanitizedReportFile(claim, root, reportPath);
     case 'm07-manage-index-unbound-agent-mcp-v1':
       return validateM07SanitizedReportFile(claim, root, reportPath);
     case 'a01-render-cohort-aggregation-agent-mcp-offline-v1':
@@ -3837,6 +3842,32 @@ function commandEpochAgentMcpProfileResult(options) {
   const claimId = required(options, 'claim-id');
   const resultState = required(options, 'state');
   const reportSha256 = options['report-sha256'] ?? null;
+  let failureDiagnostics = null;
+  if (options['diagnostics-json'] !== undefined) {
+    if (resultState !== 'INCONCLUSIVE' || typeof options['diagnostics-json'] !== 'string') {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_DIAGNOSTICS_INVALID',
+        'Allowlisted diagnostics may accompany only an INCONCLUSIVE result.',
+      );
+    }
+    let diagnosticsInput;
+    try {
+      diagnosticsInput = JSON.parse(options['diagnostics-json']);
+    } catch {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_DIAGNOSTICS_INVALID',
+        'Profile diagnostics must be valid JSON.',
+      );
+    }
+    try {
+      failureDiagnostics = normalizeAgentMcpProfileDiagnostics(diagnosticsInput);
+    } catch {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_DIAGNOSTICS_INVALID',
+        'Profile diagnostics must contain only bounded allowlisted checks and counters.',
+      );
+    }
+  }
   const profile = getAgentMcpProfileById(profileId);
   if (!profile) {
     throw new HarnessInvariantError(
@@ -3899,10 +3930,27 @@ function commandEpochAgentMcpProfileResult(options) {
     );
   }
   if (current.state === resultState) {
+    if (
+      failureDiagnostics &&
+      canonicalHash(current.failureDiagnostics ?? null) !== canonicalHash(failureDiagnostics)
+    ) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_TERMINAL_DIAGNOSTICS_MISMATCH',
+        'A terminal profile disposition is immutable; diagnostics cannot be added or replaced later.',
+        { profileId, claimId },
+      );
+    }
+    const terminalReportSha256 = current.reportSha256 ?? current.unacceptedReportSha256 ?? null;
+    if (resultState === 'INCONCLUSIVE' && reportSha256 !== terminalReportSha256) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_INCONCLUSIVE_REPORT_HASH',
+        'A replayed INCONCLUSIVE result must supply the exact digest from its terminal disposition.',
+      );
+    }
     const terminalDescription = agentMcpProfileTerminalLabelDescription(
       profile,
       resultState,
-      current.reportSha256 ?? null,
+      terminalReportSha256,
     );
     const terminalLabel = readAgentMcpProfileLabels().find(
       (label) => label.name === agentMcpProfileTerminalLabelName(profile),
@@ -3936,6 +3984,8 @@ function commandEpochAgentMcpProfileResult(options) {
       profileId,
       resultState,
       reportSha256: current.reportSha256 ?? null,
+      unacceptedReportSha256: current.unacceptedReportSha256 ?? null,
+      failureDiagnostics: current.failureDiagnostics ?? null,
       retryAllowed: false,
       issue_state: runResult.state.state,
     });
@@ -4057,6 +4107,7 @@ function commandEpochAgentMcpProfileResult(options) {
       : boundReportSha256
         ? { unacceptedReportSha256: boundReportSha256 }
         : {}),
+    ...(failureDiagnostics ? { failureDiagnostics } : {}),
     terminalLabel: terminalLabel.name,
     terminalLabelDescription: terminalLabel.description,
     retryAllowed: false,
@@ -4075,6 +4126,7 @@ function commandEpochAgentMcpProfileResult(options) {
     reportWritten: resultState === 'REPORT_WRITTEN',
     reportSha256: acceptedReport?.reportSha256 ?? null,
     unacceptedReportSha256: resultState === 'INCONCLUSIVE' ? boundReportSha256 : null,
+    failureDiagnostics,
     retryAllowed: false,
     terminalLabelCreated: terminalLabel.created,
     issue_state: runResult.state.state,

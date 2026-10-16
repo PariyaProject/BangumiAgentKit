@@ -6924,6 +6924,96 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         candidate_binding.assert_not_called()
         self.assertEqual(sources, {})
 
+    def test_title_query_render_signed_matrix_route_credits_only_its_two_tools(self):
+        relative_path = 'docs/live-probes/title-query-render-agent-mcp-run95.json'
+        report_path = self.root / relative_path
+        tool_names = [
+            'bangumi.query_subjects',
+            'bangumi.render_query_subjects',
+        ]
+        report = {
+            'evidenceKind': 'codex_cli_title_query_render_agent_mcp_matrix',
+            'profileId': 'query-render-title-agent-mcp-v1',
+            'runNumber': 95,
+            'frontierId': 'G01',
+            'scenarioId': None,
+            'toolNames': tool_names,
+        }
+        self.assertEqual(
+            GENERATOR.codex_title_query_render_profile_matrix_targets(report),
+            tuple(tool_names),
+        )
+        self.assertEqual(
+            GENERATOR.codex_title_query_render_profile_matrix_targets({
+                **report,
+                'toolNames': [*tool_names, 'bangumi.get_subject'],
+            }),
+            (),
+        )
+        self.assertEqual(
+            GENERATOR.codex_title_query_render_profile_matrix_targets({
+                **report,
+                'scenarioId': 'G01',
+            }),
+            (),
+        )
+        epoch_status = {'epoch': {'state': {}}}
+
+        def write_report(value):
+            report_path.write_text(json.dumps(value, ensure_ascii=False), encoding='utf-8')
+
+        with (
+            patch.object(
+                GENERATOR,
+                'codex_title_query_render_profile_harness_status',
+                return_value={'state': 'REPORT_WRITTEN'},
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_title_query_render_profile_epoch_harness_status',
+                return_value=epoch_status,
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_title_query_render_profile_report_is_valid',
+                return_value=True,
+            ),
+            patch.object(
+                GENERATOR,
+                '_codex_relations_report_matches_candidate_revision',
+                return_value=True,
+            ),
+        ):
+            write_report(report)
+            sources = GENERATOR.model_mcp_e2e_sources(self.catalog)
+        self.assertEqual(sources, {name: {relative_path} for name in tool_names})
+
+        with (
+            patch.object(
+                GENERATOR,
+                'codex_title_query_render_profile_harness_status',
+                return_value={'state': 'REPORT_WRITTEN'},
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_title_query_render_profile_epoch_harness_status',
+                return_value=epoch_status,
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_title_query_render_profile_report_is_valid',
+                return_value=True,
+            ),
+            patch.object(
+                GENERATOR,
+                '_codex_relations_report_matches_candidate_revision',
+                return_value=True,
+            ),
+        ):
+            write_report({**report, 'toolNames': [*tool_names, 'bangumi.get_subject']})
+            sources = GENERATOR.model_mcp_e2e_sources(self.catalog)
+        self.assertEqual(sources, {})
+
     def test_a01_report_remains_countable_after_candidate_child_evidence_commit(self):
         report = self._a01_report_fixture()
         self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-A01.json'
@@ -7595,6 +7685,85 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
             self.assertIsNone(TABLE_CHECKER.evidence_reference_error(name, cell, 'agent_mcp'))
         error = TABLE_CHECKER.evidence_reference_error('bangumi.auth_status', cell, 'agent_mcp')
         self.assertIn('does not contain evidence for bangumi.auth_status', error)
+
+    def test_title_query_render_report_reference_maps_only_its_two_agent_mcp_tools(self):
+        relative_path = 'docs/live-probes/title-query-render-agent-mcp-run95.json'
+        tool_names = [
+            'bangumi.query_subjects',
+            'bangumi.render_query_subjects',
+        ]
+        query = {
+            'resultState': 'partial',
+            'returnedItems': 1,
+            'coverage': {},
+            'warningCodes': ['EXPERIMENTAL_SOURCE'],
+        }
+        artifact = {
+            'resultState': 'artifact_returned',
+            'artifact': {
+                'returned': True,
+                'persisted': False,
+                'mimeType': 'image/png',
+                'width': 360,
+                'height': 720,
+                'byteLength': 4096,
+                'pngSignatureValid': True,
+                'decoded': True,
+                'dimensionsMatch': True,
+            },
+        }
+        scope = {
+            'requestCount': 2,
+            'allowedRequestCount': 2,
+            'deniedRequestCount': 0,
+            'credentialAttemptCount': 0,
+            'unexpectedRouteCount': 0,
+            'budgetExceeded': False,
+            'maxRequests': 8,
+            'anonymousOnly': True,
+            'officialV0Only': True,
+            'redirectPolicy': 'error',
+        }
+        (self.root / relative_path).write_text(json.dumps({
+            'evidenceKind': 'codex_cli_title_query_render_agent_mcp_matrix',
+            'profileId': 'query-render-title-agent-mcp-v1',
+            'runNumber': 95,
+            'frontierId': 'G01',
+            'scenarioId': None,
+            'resultStatus': 'SUCCESS',
+            'codexRunCount': 1,
+            'codexMcpToolEventCount': 2,
+            'allowedCallCount': 2,
+            'deniedCallCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'toolNames': tool_names,
+            'serverToolNames': tool_names,
+            'resultSummaries': [
+                {'toolName': tool_names[0], 'summary': query},
+                {'toolName': tool_names[1], 'summary': artifact},
+            ],
+            'rendererAssetBoundary': {
+                'assetNetworkRequestCount': 0,
+                'remoteAssetResolutionDisabled': True,
+            },
+            'publicRequestScope': scope,
+            'answerChecks': {f'check{index}': True for index in range(10)},
+        }), encoding='utf-8')
+        cell = f'✅<br>`{relative_path}`'
+        for name in tool_names:
+            self.assertIsNone(TABLE_CHECKER.evidence_reference_error(name, cell, 'agent_mcp'))
+        error = TABLE_CHECKER.evidence_reference_error('bangumi.get_subject', cell, 'agent_mcp')
+        self.assertIn('does not contain evidence for bangumi.get_subject', error)
+
+        invalid = json.loads((self.root / relative_path).read_text(encoding='utf-8'))
+        invalid['resultSummaries'][1]['summary']['artifact']['decoded'] = False
+        (self.root / relative_path).write_text(json.dumps(invalid), encoding='utf-8')
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.render_query_subjects', cell, 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.render_query_subjects', error)
 
     def write_r01_offline_report(
         self, relative_path=TABLE_CHECKER.R01_OFFLINE_REPORT_PATH, **overrides,
