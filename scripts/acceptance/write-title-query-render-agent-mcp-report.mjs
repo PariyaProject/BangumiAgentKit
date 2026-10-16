@@ -18,6 +18,7 @@ import {
   TITLE_QUERY_RENDER_SERVER_ID,
   TITLE_QUERY_RENDER_TOOL_NAMES,
 } from '../lib/title-query-render-agent-mcp-profile.mjs';
+import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PROFILE = getAgentMcpProfileById(TITLE_QUERY_RENDER_PROFILE_ID);
@@ -228,6 +229,8 @@ function validArtifactSummary(summary) {
     'byteLength',
     'sha256',
     'pngSignatureValid',
+    'decoded',
+    'dimensionsMatch',
   ]);
   const artifact = summary?.artifact;
   return (
@@ -247,7 +250,9 @@ function validArtifactSummary(summary) {
     safeCount(artifact.byteLength, 5_000_000) &&
     artifact.byteLength > 0 &&
     /^[0-9a-f]{64}$/u.test(artifact.sha256 ?? '') &&
-    artifact.pngSignatureValid === true
+    artifact.pngSignatureValid === true &&
+    artifact.decoded === true &&
+    artifact.dimensionsMatch === true
   );
 }
 
@@ -507,6 +512,7 @@ export function validateTitleQueryRenderProfileReport(report, claim, reportBytes
     /^[0-9a-f]{40}$/u.test(report.baseSha ?? '') &&
     report.ciSha === report.sourceRevision &&
     report.ciStatus === 'SUCCESS' &&
+    isValidP06CiRunEvidence({ ciRunId: report.ciRunId, ciChecks: report.ciChecks }) &&
     Number.isSafeInteger(report.prNumber) &&
     report.prNumber > 0 &&
     new RegExp(`^profile-run-95-pr-${report.prNumber}-${report.sourceRevision.slice(0, 12)}-\\d+$`, 'u').test(

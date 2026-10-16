@@ -513,6 +513,8 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                 and type(title_query_render_artifact.get('byteLength')) is int
                 and 0 < title_query_render_artifact['byteLength'] <= 5_000_000
                 and title_query_render_artifact.get('pngSignatureValid') is True
+                and title_query_render_artifact.get('decoded') is True
+                and title_query_render_artifact.get('dimensionsMatch') is True
                 and report.get('rendererAssetBoundary') == {
                     'assetNetworkRequestCount': 0,
                     'remoteAssetResolutionDisabled': True,

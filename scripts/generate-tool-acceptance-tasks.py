@@ -5243,10 +5243,13 @@ CODEX_TITLE_QUERY_RENDER_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function assertTitleQueryRenderPublicProfile(',
         'export function createTitleQueryRenderPublicFetch(',
         'export const TITLE_QUERY_RENDER_MAX_REQUESTS = 8;',
+        "credentials: 'omit'",
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
         'function summarizeTitleQueryResult(result)',
         'function summarizeTitleQueryRenderArtifact(result, artifactSummary)',
+        'decoded: artifact.decoded === true',
+        'dimensionsMatch: artifact.dimensionsMatch === true',
         'profileId === TITLE_QUERY_RENDER_PROFILE_ID',
     ),
     'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
@@ -5267,6 +5270,7 @@ CODEX_TITLE_QUERY_RENDER_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function validateTitleQueryRenderServerSummary(',
         'export function buildTitleQueryRenderProfileReport(',
         'export function validateTitleQueryRenderSanitizedReportFile(',
+        'isValidP06CiRunEvidence({ ciRunId: report.ciRunId, ciChecks: report.ciChecks })',
         'runnerReceipt',
     ),
     'scripts/acceptance/validate-title-query-render-agent-mcp-report.mjs': (
@@ -5275,6 +5279,7 @@ CODEX_TITLE_QUERY_RENDER_PROFILE_IMPLEMENTATION_MARKERS = {
     'scripts/agent-harness.mjs': (
         "case 'query-render-title-agent-mcp-v1'",
         'validateTitleQueryRenderSanitizedReportFile(',
+        "  'query-render-title-agent-mcp-v1',",
         "options['diagnostics-json']",
     ),
     'scripts/lib/agent-mcp-profile-claims.mjs': (

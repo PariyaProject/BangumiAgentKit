@@ -69,10 +69,12 @@ export function createTitleQueryRenderPublicFetch({
     const url = new URL(rawUrl);
     const method = String(init.method ?? (requestObject ? input.method : 'GET')).toUpperCase();
     const headers = new Headers(init.headers ?? (requestObject ? input.headers : undefined));
+    const credentialsMode = init.credentials ?? (requestObject ? input.credentials : undefined);
+    const credentialedMode = credentialsMode !== undefined && credentialsMode !== 'omit';
     const hasCredentials =
       [...headers.keys()].some((name) =>
         /(?:authorization|cookie|token|secret|credential|api[_-]?key)/iu.test(name),
-      ) || Boolean(url.username || url.password);
+      ) || Boolean(url.username || url.password) || credentialedMode;
     const allowedRoute =
       url.search === '' &&
       url.hash === '' &&
@@ -94,7 +96,7 @@ export function createTitleQueryRenderPublicFetch({
 
     counters.requestCount += 1;
     counters.allowedRequestCount += 1;
-    return fetchImpl(input, { ...init, method, headers, redirect: 'error' });
+    return fetchImpl(input, { ...init, method, headers, credentials: 'omit', redirect: 'error' });
   };
 
   return {

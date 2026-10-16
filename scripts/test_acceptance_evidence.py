@@ -7708,6 +7708,8 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
                 'height': 720,
                 'byteLength': 4096,
                 'pngSignatureValid': True,
+                'decoded': True,
+                'dimensionsMatch': True,
             },
         }
         scope = {
@@ -7754,6 +7756,14 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
             self.assertIsNone(TABLE_CHECKER.evidence_reference_error(name, cell, 'agent_mcp'))
         error = TABLE_CHECKER.evidence_reference_error('bangumi.get_subject', cell, 'agent_mcp')
         self.assertIn('does not contain evidence for bangumi.get_subject', error)
+
+        invalid = json.loads((self.root / relative_path).read_text(encoding='utf-8'))
+        invalid['resultSummaries'][1]['summary']['artifact']['decoded'] = False
+        (self.root / relative_path).write_text(json.dumps(invalid), encoding='utf-8')
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.render_query_subjects', cell, 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.render_query_subjects', error)
 
     def write_r01_offline_report(
         self, relative_path=TABLE_CHECKER.R01_OFFLINE_REPORT_PATH, **overrides,

@@ -641,7 +641,11 @@ function runTitleQueryRenderProfile({ runNumber }) {
     );
     diagnostics.candidateBundleCurrent = assertCurrentCandidateBundle(sourceRevision, bundleSha256);
     diagnostics.requestBudgetSatisfied = serverSummaryValidRequestBudget(serverSummary);
-    diagnostics.artifactValid = serverSummary?.results?.[1]?.resultSummary?.artifact?.pngSignatureValid === true;
+    const artifact = serverSummary?.results?.[1]?.resultSummary?.artifact;
+    diagnostics.artifactValid =
+      artifact?.pngSignatureValid === true &&
+      artifact?.decoded === true &&
+      artifact?.dimensionsMatch === true;
     diagnostics.privacyPreserved = diagnostics.serverSummaryValid && diagnostics.answerValid;
     const safeEvents = {
       processExitCode: execution.exitCode,

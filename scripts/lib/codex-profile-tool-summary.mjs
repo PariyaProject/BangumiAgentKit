@@ -106,6 +106,8 @@ function summarizeTitleQueryRenderArtifact(result, artifactSummary) {
       byteLength: Number.isSafeInteger(artifact.byteLength) ? artifact.byteLength : null,
       sha256: typeof artifact.sha256 === 'string' ? artifact.sha256 : null,
       pngSignatureValid: artifact.pngSignatureValid === true,
+      decoded: artifact.decoded === true,
+      dimensionsMatch: artifact.dimensionsMatch === true,
     },
   };
 }

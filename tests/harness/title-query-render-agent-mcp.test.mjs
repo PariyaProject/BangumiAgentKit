@@ -28,8 +28,10 @@ import {
 import {
   buildTitleQueryRenderProfileReport,
   isTitleQueryRenderAnswerValid,
+  validateTitleQueryRenderServerSummary,
   validateTitleQueryRenderProfileReport,
 } from '../../scripts/acceptance/write-title-query-render-agent-mcp-report.mjs';
+import { P06_REQUIRED_CI_CHECKS } from '../../scripts/lib/p06-ci-run-evidence.mjs';
 
 const PROFILE = getAgentMcpProfileById(TITLE_QUERY_RENDER_PROFILE_ID);
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
@@ -81,6 +83,8 @@ function artifactSummary() {
       byteLength: 4096,
       sha256: 'e'.repeat(64),
       pngSignatureValid: true,
+      decoded: true,
+      dimensionsMatch: true,
     },
   };
 }
@@ -135,7 +139,12 @@ test('title query/render public fetch allows only bounded anonymous official v0 
   const observed = [];
   const guard = createTitleQueryRenderPublicFetch({
     fetchImpl: async (input, init) => {
-      observed.push({ url: String(input), method: init.method, redirect: init.redirect });
+      observed.push({
+        url: String(input),
+        method: init.method,
+        redirect: init.redirect,
+        credentials: init.credentials,
+      });
       return new Response('{}', { status: 200 });
     },
   });
@@ -148,6 +157,7 @@ test('title query/render public fetch allows only bounded anonymous official v0 
     { method: 'POST', redirect: 'error' },
     { method: 'GET', redirect: 'error' },
   ]);
+  assert.deepEqual(observed.map(({ credentials }) => credentials), ['omit', 'omit']);
   assert.equal(guard.snapshot().requestCount, 2);
   assert.equal(guard.snapshot().anonymousOnly, true);
   assert.equal(guard.snapshot().officialV0Only, true);
@@ -163,8 +173,22 @@ test('title query/render public fetch allows only bounded anonymous official v0 
     }),
     /denied/u,
   );
-  assert.equal(guard.snapshot().credentialAttemptCount, 1);
-  assert.equal(guard.snapshot().deniedRequestCount, 2);
+  await assert.rejects(
+    guard.fetchFn('https://api.bgm.tv/v0/search/subjects', {
+      method: 'POST',
+      credentials: 'include',
+    }),
+    /denied/u,
+  );
+  await assert.rejects(
+    guard.fetchFn(new Request('https://api.bgm.tv/v0/search/subjects', {
+      method: 'POST',
+      credentials: 'include',
+    })),
+    /denied/u,
+  );
+  assert.equal(guard.snapshot().credentialAttemptCount, 3);
+  assert.equal(guard.snapshot().deniedRequestCount, 4);
 
   let calls = 0;
   const capped = createTitleQueryRenderPublicFetch({
@@ -224,6 +248,8 @@ test('query and renderer summaries retain only bounded counts, warning codes, an
       byteLength: 4096,
       sha256: 'e'.repeat(64),
       pngSignatureValid: true,
+      decoded: true,
+      dimensionsMatch: true,
     },
     PROFILE.calls[1].toolName,
   );
@@ -303,7 +329,11 @@ test('title query/render runner uses one restricted Luna Max turn and signed rep
     ciSha: sourceRevision,
     ciStatus: 'SUCCESS',
     ciRunId: '38900000000',
-    ciChecks: [],
+    ciChecks: P06_REQUIRED_CI_CHECKS.map((name) => ({
+      name,
+      status: 'COMPLETED',
+      conclusion: 'SUCCESS',
+    })),
     reviewerId: 'gpt-6-luna-max-run95-pr17-round1',
     bundleSha256,
     registrySha256: agentMcpProfileRegistrySha256(PROFILE.id),
@@ -347,6 +377,25 @@ test('title query/render runner uses one restricted Luna Max turn and signed rep
     catalogSha256: sha256(catalogBytes),
     serverInstanceId: '11111111-1111-4111-8111-111111111111',
   };
+  assert.equal(
+    validateTitleQueryRenderServerSummary(serverSummary, sourceRevision, bundleSha256),
+    true,
+  );
+  for (const changedArtifact of [
+    { ...artifact, artifact: { ...artifact.artifact, decoded: false } },
+    { ...artifact, artifact: { ...artifact.artifact, dimensionsMatch: false } },
+  ]) {
+    const changedSummary = {
+      ...serverSummary,
+      results: serverSummary.results.map((result, index) =>
+        index === 1 ? { ...result, resultSummary: changedArtifact } : result,
+      ),
+    };
+    assert.equal(
+      validateTitleQueryRenderServerSummary(changedSummary, sourceRevision, bundleSha256),
+      false,
+    );
+  }
   const answer = JSON.stringify({
     queryState: query.resultState,
     returnedItems: query.returnedItems,
