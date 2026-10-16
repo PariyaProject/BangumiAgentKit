@@ -13,6 +13,10 @@ import {
 import { P02_PERSON_PROFILE_OFFLINE_PROFILE_ID } from './p02-person-profile-offline-fixture.mjs';
 import { R04_SERIES_WATCH_ORDER_OFFLINE_PROFILE_ID } from './r04-series-watch-order-offline-fixture.mjs';
 import { C04_COHORT_COMPARISON_PROFILE_ID } from './c04-cohort-comparison-public-profile.mjs';
+import {
+  R01_RELATIONS_OFFLINE_PROFILE_ID,
+  summarizeR01RelationsOfflineToolResult,
+} from './r01-relations-offline-profile.mjs';
 
 const C04_RESULT_STATES = new Set([
   'ok',
@@ -163,6 +167,9 @@ export function summarizeProfileToolResult(
         Number.isSafeInteger(result?.person?.id) && result.person.id > 0 ? result.person.id : null,
       state: typeof result?.state === 'string' ? result.state : 'unknown',
     };
+  }
+  if (profileId === R01_RELATIONS_OFFLINE_PROFILE_ID) {
+    return summarizeR01RelationsOfflineToolResult(result, expectedArguments);
   }
   if (profileId === R04_SERIES_WATCH_ORDER_OFFLINE_PROFILE_ID) {
     const coverage = result?.coverage;
