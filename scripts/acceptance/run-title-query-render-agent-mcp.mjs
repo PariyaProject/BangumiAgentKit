@@ -60,6 +60,14 @@ const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const tomlString = (value) => JSON.stringify(value);
 const tomlStringArray = (values) => `[${values.map(tomlString).join(', ')}]`;
 
+export function hashRetainedTitleQueryRenderReport(reportPath) {
+  try {
+    return existsSync(reportPath) ? sha256(readFileSync(reportPath)) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function validateTitleQueryRenderRunnerArgs(args) {
   if (args.length === 1 && args[0] === '--help') return 'help';
   if (args.length === 2 && args[0] === '--run' && args[1] === String(RUN_NUMBER)) return 'run';
@@ -444,11 +452,12 @@ function recordInconclusive(prNumber, claimId, reasonCode, diagnostics = {}) {
   const failureDiagnostics = Object.keys(checks).length
     ? { schemaVersion: 1, reasonCode, checks, counters }
     : null;
+  const reportSha256 = hashRetainedTitleQueryRenderReport(path.join(ROOT, PROFILE.reportPath));
   const result = persistProfileResult(
     prNumber,
     claimId,
     'INCONCLUSIVE',
-    null,
+    reportSha256,
     failureDiagnostics,
   );
   if (result.exitCode !== 0 || result.output?.state !== 'AGENT_MCP_PROFILE_RESULT_RECORDED') {

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
@@ -23,6 +25,7 @@ import {
 } from '../../scripts/lib/title-query-render-agent-mcp-profile.mjs';
 import {
   buildTitleQueryRenderCodexExecArgs,
+  hashRetainedTitleQueryRenderReport,
   validateTitleQueryRenderRunnerArgs,
 } from '../../scripts/acceptance/run-title-query-render-agent-mcp.mjs';
 import {
@@ -35,6 +38,19 @@ import { P06_REQUIRED_CI_CHECKS } from '../../scripts/lib/p06-ci-run-evidence.mj
 
 const PROFILE = getAgentMcpProfileById(TITLE_QUERY_RENDER_PROFILE_ID);
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
+
+test('claimed-attempt recovery hashes a retained report without retaining report contents', () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'title-query-render-recovery-test-'));
+  const reportPath = path.join(directory, 'report.json');
+  const reportBytes = Buffer.from('{"invalid":"retained report"}');
+  try {
+    assert.equal(hashRetainedTitleQueryRenderReport(reportPath), null);
+    writeFileSync(reportPath, reportBytes);
+    assert.equal(hashRetainedTitleQueryRenderReport(reportPath), sha256(reportBytes));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 function requestScope(requestCount = 2) {
   return {
