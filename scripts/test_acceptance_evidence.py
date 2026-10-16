@@ -9518,6 +9518,111 @@ class A01RenderCohortAggregationMatrixProfileTests(unittest.TestCase):
                 {self.tool_name: self.current_tool},
             ))
 
+    def test_routes_validated_report_to_only_the_exact_agent_mcp_cell(self):
+        catalog = [self.current_tool]
+        catalog_bytes = json.dumps(catalog, ensure_ascii=False).encode('utf-8')
+        base_report = {
+            'evidenceKind': GENERATOR.CODEX_A01_RENDER_AGGREGATION_EVIDENCE_KIND,
+            'frontierId': 'A01',
+            'scenarioId': None,
+            'toolName': self.tool_name,
+            'argumentProfile': GENERATOR.CODEX_A01_RENDER_AGGREGATION_ARGUMENT_PROFILE,
+            'profileId': GENERATOR.CODEX_A01_RENDER_AGGREGATION_PROFILE_ID,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+        }
+        expected_path = GENERATOR.CODEX_A01_RENDER_AGGREGATION_REPORT_RELATIVE_PATH
+
+        def collect_sources(report, report_relative_path=expected_path, current_catalog=catalog):
+            with tempfile.TemporaryDirectory(prefix='a01-render-aggregation-report-routing-') as temp:
+                root = Path(temp)
+                report_path = root / report_relative_path
+                live_probe_dir = root / 'docs/live-probes'
+                live_probe_dir.mkdir(parents=True)
+                report_path.parent.mkdir(parents=True, exist_ok=True)
+                report_path.write_text(json.dumps(report), encoding='utf-8')
+                catalog_path = root / 'docs/tool-catalog.json'
+                catalog_path.parent.mkdir(parents=True, exist_ok=True)
+                current_catalog_bytes = json.dumps(
+                    current_catalog, ensure_ascii=False,
+                ).encode('utf-8')
+                catalog_path.write_bytes(current_catalog_bytes)
+                frontier_path = root / 'docs/product/frontier-ledger.json'
+                frontier_path.parent.mkdir(parents=True, exist_ok=True)
+                frontier_path.write_text(json.dumps({
+                    'records': [{
+                        'id': 'A01',
+                        'status': 'UNASSESSED',
+                        'source_refs': [
+                            GENERATOR.CODEX_A01_RENDER_AGGREGATION_SELECTION_EVIDENCE_RELATIVE_PATH,
+                        ],
+                    }],
+                }), encoding='utf-8')
+                with (
+                    patch.object(GENERATOR, 'ROOT', root),
+                    patch.object(GENERATOR, 'LIVE_PROBE_DIR', live_probe_dir),
+                    patch.object(GENERATOR, 'CATALOG', catalog_path),
+                    patch.object(
+                        GENERATOR,
+                        'codex_a01_render_aggregation_profile_report_is_valid',
+                        return_value=True,
+                    ) as report_validator,
+                ):
+                    sources = GENERATOR.model_mcp_e2e_sources(current_catalog)
+                    frontier_is_unassessed = GENERATOR.codex_a01_render_aggregation_frontier_is_unassessed()
+                return sources, report_validator.call_args_list, frontier_is_unassessed
+
+        sources, validation_calls, frontier_is_unassessed = collect_sources(base_report)
+        self.assertEqual(sources, {self.tool_name: {expected_path}})
+        self.assertNotIn('bangumi.compare_subject_cohorts', sources)
+        self.assertTrue(frontier_is_unassessed)
+        self.assertEqual(len(validation_calls), 1)
+        validated_path = validation_calls[0].kwargs['report_path']
+        expected_parts = Path(expected_path).parts
+        self.assertEqual(validated_path.parts[-len(expected_parts):], expected_parts)
+
+        rejected_reports = [
+            (
+                'wrong tool',
+                dict(base_report, toolName='bangumi.render_subject_cohort_comparison'),
+                expected_path,
+                catalog,
+            ),
+            (
+                'scenario scope',
+                dict(base_report, acceptanceScope='frontier-scenario-only'),
+                expected_path,
+                catalog,
+            ),
+            (
+                'wrong profile',
+                dict(base_report, profileId='consumed-profile'),
+                expected_path,
+                catalog,
+            ),
+            ('scenario report', dict(base_report, scenarioId='A01'), expected_path, catalog),
+            (
+                'stale catalog',
+                dict(base_report, catalogSha256='0' * 64),
+                expected_path,
+                catalog,
+            ),
+            (
+                'wrong path',
+                base_report,
+                'docs/live-probes/pariya-agent-a01-e2e-redirect.json',
+                catalog,
+            ),
+        ]
+        for label, report, report_path, report_catalog in rejected_reports:
+            with self.subTest(route=label):
+                sources, validation_calls, frontier_is_unassessed = collect_sources(
+                    report, report_path, report_catalog,
+                )
+                self.assertEqual(sources, {})
+                self.assertEqual(validation_calls, [])
+                self.assertTrue(frontier_is_unassessed)
+
     def test_allows_only_a_report_and_generated_table_candidate_refresh(self):
         source_candidate = 'a' * 40
         refreshed_candidate = 'd' * 40

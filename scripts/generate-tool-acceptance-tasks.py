@@ -4726,10 +4726,12 @@ CODEX_A01_RENDER_AGGREGATION_PROFILE_IMPLEMENTATION_MARKERS = {
     'scripts/test_acceptance_evidence.py': (
         'class A01RenderCohortAggregationMatrixProfileTests(unittest.TestCase):',
         'test_allows_only_a_report_and_generated_table_candidate_refresh',
+        'test_routes_validated_report_to_only_the_exact_agent_mcp_cell',
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_a01_render_aggregation_profile_report_is_valid(',
         'CODEX_A01_RENDER_AGGREGATION_REPORT_RELATIVE_PATH',
+        "if report.get('evidenceKind') == CODEX_A01_RENDER_AGGREGATION_EVIDENCE_KIND:",
     ),
 }
 CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
@@ -16072,6 +16074,35 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
         except (OSError, ValueError):
             continue
         if not isinstance(report, dict):
+            continue
+        if report.get('evidenceKind') == CODEX_A01_RENDER_AGGREGATION_EVIDENCE_KIND:
+            try:
+                report_relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+            except ValueError:
+                continue
+            evidence_by_name = catalog_for_hash(report.get('catalogSha256'))
+            current_tool = current_by_name.get(CODEX_A01_RENDER_AGGREGATION_TOOL_NAME)
+            if (
+                report_relative_path != CODEX_A01_RENDER_AGGREGATION_REPORT_RELATIVE_PATH
+                or report.get('frontierId') != 'A01'
+                or report.get('scenarioId') is not None
+                or report.get('toolName') != CODEX_A01_RENDER_AGGREGATION_TOOL_NAME
+                or report.get('argumentProfile') != CODEX_A01_RENDER_AGGREGATION_ARGUMENT_PROFILE
+                or report.get('profileId') != CODEX_A01_RENDER_AGGREGATION_PROFILE_ID
+                or report.get('acceptanceScope') != 'agent-mcp-matrix-only'
+                or evidence_by_name is None
+                or current_tool is None
+                or evidence_by_name.get(CODEX_A01_RENDER_AGGREGATION_TOOL_NAME) != current_tool
+                or current_tool.get('auth') != 'none'
+                or current_tool.get('risk') != 'read'
+                or not codex_a01_render_aggregation_profile_report_is_valid(
+                    report, report_path=path,
+                )
+            ):
+                continue
+            sources.setdefault(CODEX_A01_RENDER_AGGREGATION_TOOL_NAME, set()).add(
+                report_source_ref(path),
+            )
             continue
         if report.get('evidenceKind') == 'codex_cli_a01_agent_mcp':
             if (
