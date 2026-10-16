@@ -15,6 +15,21 @@ export const C02_LIMITATIONS = Object.freeze([
 const PROFILE = getAgentMcpProfileById(C02_PROFILE_ID);
 const SUBJECT_IDS = [1940, 1941];
 const METRIC_KEYS = ['episodesReported', 'score', 'collectionTotal'];
+const COMPARISON_METRIC_KEYS = [
+  'episodesReported',
+  'totalEpisodesReported',
+  'score',
+  'rank',
+  'ratingTotal',
+  'collectionTotal',
+  'ratingPopulation',
+  'ratingMean',
+  'ratingStandardDeviation',
+  'collectionPopulation',
+  'collectionCompletionRate',
+];
+const METRIC_STATES = ['complete', 'unknown', 'conflict'];
+const OVERLAP_STATES = ['complete', 'partial', 'unavailable', 'not_computable'];
 const DELTA_PRECISION = { episodesReported: 0, score: 1, collectionTotal: 0 };
 
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -74,6 +89,11 @@ export function projectC02ComparisonResult(result) {
     result.subjects.length !== 2 ||
     !Array.isArray(result.metrics) ||
     !isRecord(result.coverage) ||
+    !isRecord(result.overlaps) ||
+    !isRecord(result.overlaps.cast) ||
+    !OVERLAP_STATES.includes(result.overlaps.cast.state) ||
+    !isRecord(result.overlaps.staff) ||
+    !OVERLAP_STATES.includes(result.overlaps.staff.state) ||
     !isRecord(result.source) ||
     !isRecord(result.source.official) ||
     result.source.official.class !== 'official-v0' ||
@@ -107,6 +127,26 @@ export function projectC02ComparisonResult(result) {
   });
   if (subjects.some((subject) => subject === null)) return null;
 
+  const metricKeys = result.metrics.map((metric) => metric?.key);
+  if (
+    result.metrics.length !== COMPARISON_METRIC_KEYS.length ||
+    metricKeys.some((key) => !COMPARISON_METRIC_KEYS.includes(key)) ||
+    new Set(metricKeys).size !== COMPARISON_METRIC_KEYS.length ||
+    result.metrics.some((metric) => !isRecord(metric) || !METRIC_STATES.includes(metric.state))
+  ) return null;
+
+  const metricStateCounts = {
+    complete: result.metrics.filter((metric) => metric.state === 'complete').length,
+    unknown: result.metrics.filter((metric) => metric.state === 'unknown').length,
+    conflict: result.metrics.filter((metric) => metric.state === 'conflict').length,
+  };
+  const subjectStateCounts = {
+    complete: result.subjects.filter((row) => row.state === 'complete').length,
+    partial: result.subjects.filter((row) => row.state === 'partial').length,
+    unavailable: result.subjects.filter((row) => row.state === 'unavailable').length,
+    notFound: result.subjects.filter((row) => row.state === 'not_found').length,
+  };
+
   const metrics = METRIC_KEYS.map((key) => {
     const matches = result.metrics.filter((metric) => metric?.key === key);
     return matches.length === 1 ? projectMetric(matches[0], key) : null;
@@ -129,6 +169,13 @@ export function projectC02ComparisonResult(result) {
   if (
     coverage.requestedSubjects !== 2 ||
     coverage.returnedSubjects !== 2 ||
+    coverage.subjectsComplete !== subjectStateCounts.complete ||
+    coverage.subjectsPartial !== subjectStateCounts.partial ||
+    coverage.subjectsUnavailable !== subjectStateCounts.unavailable ||
+    coverage.subjectsNotFound !== subjectStateCounts.notFound ||
+    coverage.metricsComplete !== metricStateCounts.complete ||
+    coverage.metricsUnknown !== metricStateCounts.unknown ||
+    coverage.metricsConflict !== metricStateCounts.conflict ||
     !isRecord(coverage.limits) ||
     coverage.limits.maxSubjects !== 2 ||
     coverage.limits.maxCast !== expectedArguments.maxCast ||
@@ -136,6 +183,14 @@ export function projectC02ComparisonResult(result) {
     coverage.limits.maxRelations !== expectedArguments.maxRelations ||
     !isNonNegativeInteger(coverage.limits.maxOverlapItems)
   ) return null;
+
+  const completeStateIsConsistent =
+    subjectStateCounts.complete === 2 &&
+    metricStateCounts.unknown === 0 &&
+    metricStateCounts.conflict === 0 &&
+    result.overlaps.cast.state === 'complete' &&
+    result.overlaps.staff.state === 'complete';
+  if ((result.state === 'complete') !== completeStateIsConsistent) return null;
 
   if (metrics.every((metric) => metric.state !== 'complete')) return null;
 

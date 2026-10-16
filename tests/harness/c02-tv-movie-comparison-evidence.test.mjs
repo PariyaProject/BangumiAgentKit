@@ -47,6 +47,40 @@ test('C02 projection rejects wrong pair order and a metric delta that does not m
   assert.equal(projectC02ComparisonResult(wrongDelta), null);
 });
 
+test('C02 projection reconciles all metric counts and complete/partial state', () => {
+  const unknownButClaimedComplete = clone(C02_COMPARISON_RESULT);
+  const unknownMetric = unknownButClaimedComplete.metrics.find((metric) => metric.key === 'rank');
+  unknownMetric.values = [null, null];
+  unknownMetric.delta = null;
+  unknownMetric.state = 'unknown';
+  assert.equal(projectC02ComparisonResult(unknownButClaimedComplete), null);
+
+  const validPartial = clone(unknownButClaimedComplete);
+  validPartial.state = 'partial';
+  validPartial.coverage.metricsComplete = 10;
+  validPartial.coverage.metricsUnknown = 1;
+  const partialProjection = projectC02ComparisonResult(validPartial);
+  assert.equal(partialProjection.state, 'partial');
+  assert.equal(partialProjection.coverage.metricsUnknown, 1);
+
+  const conflicted = clone(C02_COMPARISON_RESULT);
+  const conflictMetric = conflicted.metrics.find((metric) => metric.key === 'rank');
+  conflictMetric.values = [null, null];
+  conflictMetric.delta = null;
+  conflictMetric.state = 'conflict';
+  conflicted.state = 'partial';
+  conflicted.coverage.metricsComplete = 10;
+  conflicted.coverage.metricsConflict = 1;
+  const conflictProjection = projectC02ComparisonResult(conflicted);
+  assert.equal(conflictProjection.state, 'partial');
+  assert.equal(conflictProjection.coverage.metricsConflict, 1);
+
+  const wrongSubjectCoverage = clone(C02_COMPARISON_RESULT);
+  wrongSubjectCoverage.coverage.subjectsComplete = 1;
+  wrongSubjectCoverage.coverage.subjectsPartial = 1;
+  assert.equal(projectC02ComparisonResult(wrongSubjectCoverage), null);
+});
+
 test('C02 answer accepts exact names, metric values, states, delta direction, and fixed limitations', () => {
   const source = projectC02ComparisonResult(C02_COMPARISON_RESULT);
   const verified = verifyC02Answer(C02_ANSWER, source);
@@ -75,9 +109,13 @@ test('C02 answer rejects invented values, reversed deltas, extra claims, and omi
 
 test('C02 answer preserves unknown/conflict state instead of replacing it with a number', () => {
   const result = clone(C02_COMPARISON_RESULT);
-  result.metrics[1] = {
-    key: 'score', values: [null, null], delta: null, deltaPrecision: 1, state: 'unknown',
-  };
+  result.state = 'partial';
+  const scoreMetric = result.metrics.find((metric) => metric.key === 'score');
+  scoreMetric.values = [null, null];
+  scoreMetric.delta = null;
+  scoreMetric.state = 'unknown';
+  result.coverage.metricsComplete = 10;
+  result.coverage.metricsUnknown = 1;
   const source = projectC02ComparisonResult(result);
   const answer = JSON.parse(C02_ANSWER);
   answer.metrics[1] = { key: 'score', values: [null, null], delta: null, state: 'unknown' };
