@@ -794,11 +794,23 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
       returned: 20,
       expectedDays: 7,
       missingWeekdays: [],
+      duplicateWeekdays: [1, 2, 3, 4, 5, 6, 7],
       extraDayEnvelopes: 13,
     });
+    expect(result.days.map((day) => day.items.map((item) => item.id))).toEqual([
+      [1, 8, 15],
+      [2, 9, 16],
+      [3, 10, 17],
+      [4, 11, 18],
+      [5, 12, 19],
+      [6, 13, 20],
+      [7, 14],
+    ]);
     expect(result.state).toBe('partial');
     expect(result.warnings).toEqual(
-      expect.arrayContaining([expect.objectContaining({ code: 'SOURCE_DAY_COVERAGE' })]),
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'SOURCE_DAY_COVERAGE', state: 'partial' }),
+      ]),
     );
   });
 
