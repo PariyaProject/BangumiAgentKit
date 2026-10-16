@@ -16,7 +16,7 @@ function fixture() {
     state: 'partial',
     window: {
       months: 36,
-      start: '2023-10-01',
+      start: '2023-11-01',
       end: '2026-10-15',
       asOfSemantics: 'calendar_months_ending_on_as_of_date',
     },
@@ -156,6 +156,9 @@ describe('P07 observed calendar-quarter activity evidence', () => {
     const outsideWindow = fixture();
     outsideWindow.rows[0]!.firstAirDate = '2023-09-30';
     expect(summarizeP07PersonActivityToolResult(outsideWindow)).toBeNull();
+    const wrongWindow = fixture();
+    wrongWindow.window.start = '2023-10-01';
+    expect(summarizeP07PersonActivityToolResult(wrongWindow)).toBeNull();
     expect(summarizeP07PersonActivityToolResult({ ...fixture(), state: 'unavailable' })).toBeNull();
   });
 

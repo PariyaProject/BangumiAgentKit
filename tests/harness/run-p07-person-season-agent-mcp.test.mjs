@@ -29,7 +29,7 @@ function resultFixture() {
     state: 'partial',
     window: {
       months: 36,
-      start: '2023-10-01',
+      start: '2023-11-01',
       end: '2026-10-15',
       asOfSemantics: 'calendar_months_ending_on_as_of_date',
     },

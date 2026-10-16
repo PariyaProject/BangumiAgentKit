@@ -81,6 +81,14 @@ function calendarQuarter(date) {
   return `${date.slice(0, 4)}-Q${Math.floor((month - 1) / 3) + 1}`;
 }
 
+function calendarWindowStart(end, months) {
+  const year = Number(end.slice(0, 4));
+  const monthIndex = year * 12 + Number(end.slice(5, 7)) - 1 - (months - 1);
+  const startYear = Math.floor(monthIndex / 12);
+  const startMonth = monthIndex - startYear * 12 + 1;
+  return `${startYear}-${String(startMonth).padStart(2, '0')}-01`;
+}
+
 function summarizeCoverage(coverage, rowsReturned) {
   if (!coverage || typeof coverage !== 'object' || Array.isArray(coverage)) return null;
   const value = {
@@ -165,6 +173,7 @@ export function summarizeP07PersonActivityToolResult(
     !validDateOnly(window.start) ||
     !validDateOnly(window.end) ||
     window.start > window.end ||
+    window.start !== calendarWindowStart(window.end, window.months) ||
     window.asOfSemantics !== 'calendar_months_ending_on_as_of_date'
   ) {
     return null;
@@ -236,6 +245,7 @@ export function validateP07PersonSeasonSummary(summary) {
     !validDateOnly(summary.window.start) ||
     !validDateOnly(summary.window.end) ||
     summary.window.start > summary.window.end ||
+    summary.window.start !== calendarWindowStart(summary.window.end, summary.window.months) ||
     summary.window.asOfSemantics !== 'calendar_months_ending_on_as_of_date' ||
     !nonnegativeInteger(summary.datedRowsObserved) ||
     summary.datedRowsObserved === 0 ||
