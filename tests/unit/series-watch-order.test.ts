@@ -142,6 +142,13 @@ describe('SeriesService bounded watch-order intelligence', () => {
 
     const result = await service.getSeriesWatchOrder(100, { depth: 0, media: 'all' });
 
+    expect(result.capabilityStates.watchOrder).toBe('bounded_recommendation');
+    expect(result.limitations).toContain(
+      'Bangumi 的关系接口没有发布统一的官方观看顺序；本结果是有限深度、有限节点的确定性推荐。',
+    );
+    expect(result.limitations).toContain(
+      '日期、关系标签和源覆盖可能不完整；本结果不等同于唯一正确或官方 canonical 顺序。',
+    );
     expect(ids(result)).toEqual([101, 100, 102, 103, 106]);
     expect(result.watchOrder.find((item) => item.id === 101)?.relationLabels).toEqual(['前传']);
     expect(result.watchOrder.find((item) => item.id === 101)?.relationPaths[0]).toMatchObject({
