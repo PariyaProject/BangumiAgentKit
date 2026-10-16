@@ -167,7 +167,9 @@ export function assertC02CandidateReviewGate(status, pr, { sourceRevision, curre
   const run = status?.run?.state;
   const latestReview = epoch?.review_history?.at(-1);
   const reviewerId = latestReview?.reviewer_id;
+  const assignedReviewerId = epoch?.review_history?.[0]?.reviewer_id;
   const reviewIdMatches = Number.isSafeInteger(epochView?.number) &&
+    reviewerId === assignedReviewerId &&
     new RegExp(`^gpt-6-luna-max-run95-pr${epochView.number}-round[1-9]\\d*$`, 'u').test(reviewerId ?? '');
   const valid = [
     Boolean(PROFILE),

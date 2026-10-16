@@ -90,6 +90,16 @@ test('C02 one-shot review gate requires exact Candidate, current Base, clean PR,
   assert.equal(result.prNumber, 201);
   assert.equal(result.reviewerId, reviewerId);
 
+  const differentRound = structuredClone(fixture.status);
+  differentRound.epoch.state.review_history.push({
+    ...differentRound.epoch.state.review_history[0],
+    review_number: 2,
+    reviewer_id: 'gpt-6-luna-max-run95-pr201-round2',
+  });
+  assert.throws(() => assertC02CandidateReviewGate(differentRound, fixture.pr, {
+    sourceRevision: candidateSha, currentBaseSha: baseSha, gitTextFn: (...args) => args[0] === 'rev-parse' ? candidateSha : '',
+  }));
+
   const wrongReview = structuredClone(fixture.status);
   wrongReview.epoch.state.review_history[0].reviewer_id = 'gpt-6-sol-run95-pr201-round1';
   assert.throws(() => assertC02CandidateReviewGate(wrongReview, fixture.pr, {
