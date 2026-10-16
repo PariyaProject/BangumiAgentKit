@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-16T01:23:01Z",
+  "updated_at": "2026-10-16T02:57:56Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -3280,7 +3280,7 @@
         "docs/research/run95-r04-series-watch-order-offline-matrix-contract-2026-10-16.md",
         "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md"
       ],
-      "next_action": "Run #95 selected a distinct synthetic offline get_series_watch_order Agent/MCP matrix-only profile. The fixed fixture contains no real series or film IDs and makes no public API call. It grants no R04 scenario credit: R04 stays UNASSESSED and the question whether a theatrical film is mandatory remains unanswered. Only a valid signed REPORT_WRITTEN report may credit this one Agent/MCP cell; an INCONCLUSIVE result is permanent/no-retry. The public matrix refresh in this Run #95 Epoch records 65/65, compared with the 57/65 master baseline at Epoch start. This public matrix evidence does not grant R04 scenario or Agent/MCP credit. Preserve the spent P02/C03/P03/P06 claims and PR #173 probe.",
+      "next_action": "Run #95 selected the registered synthetic offline profile in Epoch run95-r04-series-watch-order-offline-matrix-20261016. This Candidate adds a regression for CODEX_ERROR_EVENT before any accepted MCP call and verifies an owned claim becomes terminal/no-retry. The profile is matrix-only: only a valid signed REPORT_WRITTEN may credit bangumi.get_series_watch_order Agent/MCP; R04 remains UNASSESSED. The public matrix refresh for Run #95 is 65/65, compared with the 57/65 master baseline at Epoch start; this R04 work does not change those public rows and does not grant R04 scenario or Agent/MCP credit. Do not invoke until exact Candidate/Base/seven-check CI/Harness Candidate/same-identity PASS and live UNCLAIMED status; any INCONCLUSIVE result receives no credit and no retry. See docs/research/run95-r04-series-watch-order-offline-matrix-contract-2026-10-16.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
