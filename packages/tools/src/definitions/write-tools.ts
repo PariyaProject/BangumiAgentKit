@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { defineTool, ResolvedToolPolicy } from '../define-tool.js';
+import {
+  defineTool,
+  ResolvedToolPolicy,
+  ToolConfirmationPreview,
+  ToolExecutionDependencies,
+} from '../define-tool.js';
 import {
   BangumiClientProvider,
   DefaultBangumiClientProvider,
@@ -8,11 +13,64 @@ import {
 import {
   CollectionService,
   EpisodeService,
+  IndexReadService,
   IndexWriteService,
   UserService,
 } from '@bangumi-agent-kit/bangumi-core';
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { Storage, MemoryStorage } from '@bangumi-agent-kit/db';
+
+const MAX_CONFIRMATION_SUMMARY_BYTES = 4096;
+const MAX_CONFIRMATION_EPISODES = 100;
+
+function requireConfirmationAccount(deps: ToolExecutionDependencies) {
+  const session = deps.executionSession;
+  if (!session?.account) {
+    throw new BangumiError('AUTH_REQUIRED', '需要先绑定 Bangumi 账号才能预览此写入。', false, 401);
+  }
+  return { account: session.account, client: session.client };
+}
+
+function confirmationPreview(
+  summary: string,
+  snapshot: unknown,
+  executionData?: unknown,
+): ToolConfirmationPreview {
+  if (Buffer.byteLength(summary, 'utf8') > MAX_CONFIRMATION_SUMMARY_BYTES) {
+    throw new BangumiError(
+      'CONFIRMATION_PREVIEW_UNAVAILABLE',
+      '写入确认摘要超出安全显示范围；没有执行写入。',
+      false,
+      413,
+    );
+  }
+  return { summary, snapshot, executionData };
+}
+
+const display = (value: unknown): string => JSON.stringify(value ?? null);
+
+async function mapWithConcurrency<T, U>(
+  values: readonly T[],
+  concurrency: number,
+  map: (value: T, index: number) => Promise<U>,
+): Promise<U[]> {
+  const results = new Array<U>(values.length);
+  let nextIndex = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, values.length) }, async () => {
+      while (nextIndex < values.length) {
+        const index = nextIndex++;
+        results[index] = await map(values[index]!, index);
+      }
+    }),
+  );
+  return results;
+}
+
+function isNotFound(error: unknown): boolean {
+  const value = error as { code?: string; status?: number; statusCode?: number } | null;
+  return value?.code === 'NOT_FOUND' || value?.status === 404 || value?.statusCode === 404;
+}
 
 export function createWriteTools(
   clientProviderOrHttpClient?: BangumiClientProvider | HttpClient,
@@ -52,6 +110,48 @@ export function createWriteTools(
     auth: 'required',
     scopes: ['write:collection'],
     risk: 'write',
+    resolvePolicy: (): ResolvedToolPolicy => ({
+      auth: 'required',
+      requiredCapabilities: ['write:collection'],
+      risk: 'write',
+      requiresConfirmation: true,
+      actionType: 'updateCollection',
+      summary: '更新当前账号的条目收藏',
+    }),
+    prepareConfirmation: async (input, _context, deps) => {
+      const { account, client } = requireConfirmationAccount(deps);
+      const userService = new UserService(client);
+      const current = await userService.getUserSubjectCollection(account.username, input.subjectId);
+      const currentState =
+        current.found && current.collection
+          ? {
+              status: current.collection.status,
+              rating: current.collection.rating ?? null,
+              tags: current.collection.tags ?? [],
+              comment: current.collection.comment ?? null,
+            }
+          : { collection: 'not_collected' };
+      const requestedState = Object.fromEntries(
+        Object.entries({
+          status: input.status,
+          rating: input.rating,
+          tags: input.tags,
+          comment: input.comment,
+        }).filter(([, value]) => value !== undefined),
+      );
+      const title = current.collection?.subjectNameCn || current.collection?.subjectName;
+      const summary = [
+        `Bangumi 账号 ${display(account.username)}`,
+        `条目 ${display(title || `#${input.subjectId}`)}（ID ${input.subjectId}）`,
+        `当前状态 ${display(currentState)}`,
+        `请求变化 ${display(requestedState)}`,
+      ].join('；');
+      return confirmationPreview(summary, {
+        subjectId: input.subjectId,
+        subjectLabel: title ?? null,
+        currentState,
+      });
+    },
     execute: async (input, context, deps) => {
       const activeProvider: BangumiClientProvider = deps?.clientProvider || provider;
       const client =
@@ -113,13 +213,11 @@ export function createWriteTools(
     scopes: ['write:collection'],
     risk: 'write',
     resolvePolicy: (input): ResolvedToolPolicy => {
-      let isBulk = false;
       let count = 0;
       let summaryStr = `更新条目 ${input.subjectId} 的章节进度`;
 
       if (input.target?.kind === 'through') {
         const epNum = input.target.episodeNumber;
-        isBulk = epNum > 20;
         count = epNum;
         const catMap: Record<string, string> = { main: '正篇', sp: 'SP', op: 'OP', ed: 'ED' };
         const catLabel = catMap[input.target.category || 'main'] || '正篇';
@@ -127,7 +225,6 @@ export function createWriteTools(
       } else {
         const ids = input.target?.kind === 'ids' ? input.target.episodeIds : input.episodeIds || [];
         count = ids.length;
-        isBulk = count > 20;
         summaryStr = `更新条目 ${input.subjectId} 的 ${count} 个章节进度`;
       }
 
@@ -135,11 +232,86 @@ export function createWriteTools(
         auth: 'required',
         requiredCapabilities: ['write:collection'],
         risk: 'write',
-        requiresConfirmation: isBulk,
+        requiresConfirmation: true,
         affectedCount: count,
         actionType: 'updateEpisodeProgress',
         summary: summaryStr,
       };
+    },
+    prepareConfirmation: async (input, _context, deps) => {
+      const { account, client } = requireConfirmationAccount(deps);
+      const episodeService = new EpisodeService(client);
+      const userService = new UserService(client);
+      let episodeIds: number[];
+      let episodeNumbers: number[] | undefined;
+      let throughResolution:
+        Awaited<ReturnType<EpisodeService['resolveThroughEpisodes']>> | undefined;
+
+      if (input.target?.kind === 'through') {
+        throughResolution = await episodeService.resolveThroughEpisodes(
+          input.subjectId,
+          input.target.episodeNumber,
+          input.target.category || 'main',
+        );
+        episodeIds = throughResolution.resolvedEpisodeIds;
+        episodeNumbers = throughResolution.resolvedEpisodeNumbers;
+      } else {
+        episodeIds =
+          input.target?.kind === 'ids' ? input.target.episodeIds : input.episodeIds || [];
+      }
+      if (episodeIds.length === 0) {
+        throw new BangumiError(
+          'VALIDATION_ERROR',
+          '没有解析出可更新的章节；没有执行写入。',
+          false,
+          400,
+        );
+      }
+      if (episodeIds.length > MAX_CONFIRMATION_EPISODES) {
+        throw new BangumiError(
+          'CONFIRMATION_PREVIEW_UNAVAILABLE',
+          `一次确认最多预览 ${MAX_CONFIRMATION_EPISODES} 个章节；没有执行写入。`,
+          false,
+          413,
+        );
+      }
+
+      const currentStates = await mapWithConcurrency(episodeIds, 4, async (episodeId) => {
+        try {
+          const current = await userService.getUserEpisodeCollection(episodeId);
+          return { episodeId, status: current.status };
+        } catch (error) {
+          if (isNotFound(error)) return { episodeId, status: 'uncollected' as const };
+          throw error;
+        }
+      });
+      let requestedStatus = 'watched';
+      if (input.status === 'wish' || input.type === 1) requestedStatus = 'wish';
+      else if (input.status === 'dropped' || input.type === 3) requestedStatus = 'dropped';
+      const requestedTarget =
+        input.target?.kind === 'through'
+          ? {
+              throughEpisode: input.target.episodeNumber,
+              category: input.target.category || 'main',
+            }
+          : { episodeIds };
+      const summary = [
+        `Bangumi 账号 ${display(account.username)}`,
+        `条目 #${input.subjectId}，章节 ${display(requestedTarget)}`,
+        `当前章节状态 ${display(currentStates)}`,
+        `请求状态 ${display(requestedStatus)}`,
+      ].join('；');
+      return confirmationPreview(
+        summary,
+        {
+          subjectId: input.subjectId,
+          requestedTarget,
+          currentStates,
+          requestedStatus,
+          resolvedEpisodeNumbers: episodeNumbers,
+        },
+        throughResolution,
+      );
     },
     execute: async (input, context, deps) => {
       const activeProvider: BangumiClientProvider = deps?.clientProvider || provider;
@@ -161,11 +333,14 @@ export function createWriteTools(
       const epService = new EpisodeService(client);
 
       if (input.target?.kind === 'through') {
-        const resolution = await epService.resolveThroughEpisodes(
-          input.subjectId,
-          input.target.episodeNumber,
-          input.target.category || 'main',
-        );
+        const resolution =
+          (deps?.preparedConfirmation?.executionData as
+            Awaited<ReturnType<EpisodeService['resolveThroughEpisodes']>> | undefined) ??
+          (await epService.resolveThroughEpisodes(
+            input.subjectId,
+            input.target.episodeNumber,
+            input.target.category || 'main',
+          ));
 
         if (resolution.resolvedEpisodeIds.length > 0) {
           await collectionService.updateEpisodeProgress(
@@ -232,9 +407,33 @@ export function createWriteTools(
         auth: 'required',
         requiredCapabilities: ['write:collection'],
         risk,
+        requiresConfirmation: true,
         actionType: 'manageCharacterCollection',
         summary: `${input.action === 'uncollect' ? '取消收藏' : '收藏'}角色 ${input.characterId}`,
       };
+    },
+    prepareConfirmation: async (input, _context, deps) => {
+      const { account, client } = requireConfirmationAccount(deps);
+      const current = await new UserService(client).getUserCharacterCollection(
+        account.username,
+        input.characterId,
+      );
+      const currentState =
+        current.found && current.item
+          ? { collected: true, name: current.item.name }
+          : { collected: false };
+      const requestedState = input.action === 'collect' ? 'collected' : 'not_collected';
+      const summary = [
+        `Bangumi 账号 ${display(account.username)}`,
+        `角色 ${display(current.item?.name || `#${input.characterId}`)}（ID ${input.characterId}）`,
+        `当前状态 ${display(currentState)}`,
+        `请求状态 ${display(requestedState)}`,
+      ].join('；');
+      return confirmationPreview(summary, {
+        characterId: input.characterId,
+        currentState,
+        requestedState,
+      });
     },
     execute: async (input, context, deps) => {
       const activeProvider: BangumiClientProvider = deps?.clientProvider || provider;
@@ -270,9 +469,33 @@ export function createWriteTools(
         auth: 'required',
         requiredCapabilities: ['write:collection'],
         risk,
+        requiresConfirmation: true,
         actionType: 'managePersonCollection',
         summary: `${input.action === 'uncollect' ? '取消收藏' : '收藏'}现实人物 ${input.personId}`,
       };
+    },
+    prepareConfirmation: async (input, _context, deps) => {
+      const { account, client } = requireConfirmationAccount(deps);
+      const current = await new UserService(client).getUserPersonCollection(
+        account.username,
+        input.personId,
+      );
+      const currentState =
+        current.found && current.item
+          ? { collected: true, name: current.item.name }
+          : { collected: false };
+      const requestedState = input.action === 'collect' ? 'collected' : 'not_collected';
+      const summary = [
+        `Bangumi 账号 ${display(account.username)}`,
+        `人物 ${display(current.item?.name || `#${input.personId}`)}（ID ${input.personId}）`,
+        `当前状态 ${display(currentState)}`,
+        `请求状态 ${display(requestedState)}`,
+      ].join('；');
+      return confirmationPreview(summary, {
+        personId: input.personId,
+        currentState,
+        requestedState,
+      });
     },
     execute: async (input, context, deps) => {
       const activeProvider: BangumiClientProvider = deps?.clientProvider || provider;
@@ -336,9 +559,157 @@ export function createWriteTools(
         auth: 'required',
         requiredCapabilities: ['write:indices'],
         risk,
+        requiresConfirmation: true,
         actionType: 'manageIndex',
         summary,
       };
+    },
+    prepareConfirmation: async (input, _context, deps) => {
+      const { account, client } = requireConfirmationAccount(deps);
+      const indexReadService = new IndexReadService(client);
+      if (input.action === 'create') {
+        const requestedState = { title: input.title, description: input.description ?? '' };
+        return confirmationPreview(
+          [
+            `Bangumi 账号 ${display(account.username)}`,
+            '新目录（当前不存在）',
+            `请求创建 ${display(requestedState)}`,
+          ].join('；'),
+          { action: 'create', currentState: null, requestedState },
+        );
+      }
+
+      const index = await indexReadService.getIndexById(input.indexId);
+      if (input.action === 'edit') {
+        const currentState = { title: index.title, description: index.desc };
+        const requestedState = {
+          title: input.title ?? index.title,
+          description: input.description ?? index.desc,
+        };
+        return confirmationPreview(
+          [
+            `Bangumi 账号 ${display(account.username)}`,
+            `目录 ${display(index.title)}（ID ${input.indexId}）`,
+            `当前状态 ${display(currentState)}`,
+            `请求状态 ${display(requestedState)}`,
+          ].join('；'),
+          { action: 'edit', indexId: input.indexId, currentState },
+        );
+      }
+
+      let offset = 0;
+      let membership: { id: number; nameCn: string; comment?: string } | undefined;
+      let complete = false;
+      let expectedTotal: number | undefined;
+      for (let pageNumber = 0; pageNumber < 50; pageNumber += 1) {
+        const page = await client.getIndexSubjectsByIndexId(input.indexId, {
+          limit: 100,
+          offset,
+        });
+        if (!Array.isArray(page.data)) {
+          throw new BangumiError(
+            'CONFIRMATION_PREVIEW_UNAVAILABLE',
+            '无法完整核对目录成员状态；没有执行写入。',
+            false,
+            409,
+          );
+        }
+        const items = page.data as Array<{
+          id: number;
+          name?: string;
+          name_cn?: string;
+          comment?: string;
+        }>;
+        if (items.length > 100) {
+          throw new BangumiError(
+            'CONFIRMATION_PREVIEW_UNAVAILABLE',
+            '目录成员响应超出确认预览页大小；没有执行写入。',
+            false,
+            409,
+          );
+        }
+        const sourceTotal =
+          typeof page.total === 'number' && Number.isSafeInteger(page.total) && page.total >= 0
+            ? page.total
+            : undefined;
+        if (page.total !== undefined && sourceTotal === undefined) {
+          throw new BangumiError(
+            'CONFIRMATION_PREVIEW_UNAVAILABLE',
+            '目录成员总数无法安全核对；没有执行写入。',
+            false,
+            409,
+          );
+        }
+        if (sourceTotal !== undefined) {
+          if (
+            (expectedTotal !== undefined && sourceTotal !== expectedTotal) ||
+            offset > sourceTotal ||
+            offset + items.length > sourceTotal ||
+            (items.length === 0 && offset < sourceTotal)
+          ) {
+            throw new BangumiError(
+              'CONFIRMATION_PREVIEW_UNAVAILABLE',
+              '目录成员分页总数前后不一致；没有执行写入。',
+              false,
+              409,
+            );
+          }
+          expectedTotal = sourceTotal;
+        }
+        const found = items.find((item) => item.id === input.subjectId);
+        membership = found
+          ? {
+              id: found.id,
+              nameCn: found.name_cn || found.name || '',
+              comment: found.comment,
+            }
+          : undefined;
+        if (membership) {
+          complete = true;
+          break;
+        }
+        if (
+          items.length === 0 ||
+          (sourceTotal !== undefined && offset + items.length >= sourceTotal)
+        ) {
+          complete = true;
+          break;
+        }
+        offset += items.length;
+      }
+      if (!complete) {
+        throw new BangumiError(
+          'CONFIRMATION_PREVIEW_UNAVAILABLE',
+          '目录成员状态超出确认预览上限；没有执行写入。',
+          false,
+          409,
+        );
+      }
+
+      const currentState = membership
+        ? { present: true, comment: membership.comment ?? null }
+        : { present: false };
+      const requestedState =
+        input.action === 'add_subject'
+          ? { present: true, comment: input.comment ?? null }
+          : { present: false };
+      const subjectLabel = membership?.nameCn || `#${input.subjectId}`;
+      const summary = [
+        `Bangumi 账号 ${display(account.username)}`,
+        `目录 ${display(index.title)}（ID ${input.indexId}）`,
+        `条目 ${display(subjectLabel)}（ID ${input.subjectId}）`,
+        `当前状态 ${display(currentState)}`,
+        `请求状态 ${display(requestedState)}`,
+      ].join('；');
+      return confirmationPreview(summary, {
+        action: input.action,
+        indexId: input.indexId,
+        subjectId: input.subjectId,
+        indexTitle: index.title,
+        subjectLabel,
+        currentState,
+        requestedState,
+      });
     },
     execute: async (input, context, deps) => {
       const activeProvider: BangumiClientProvider = deps?.clientProvider || provider;

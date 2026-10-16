@@ -1,4 +1,9 @@
-import { ToolDefinition, ToolContext, AuthenticatedExecutionSession } from './define-tool.js';
+import {
+  ToolDefinition,
+  ToolContext,
+  AuthenticatedExecutionSession,
+  ToolExecutionDependencies,
+} from './define-tool.js';
 import {
   HttpClient,
   BangumiError,
@@ -16,6 +21,7 @@ import {
   resolveTokenEncryptionConfig,
 } from '@bangumi-agent-kit/auth';
 import { PolicyManager } from './policy.js';
+import { computeCanonicalPayloadHash } from './confirmation.js';
 import { createReadTools } from './definitions/read-tools.js';
 import { createRawOperationTools } from './definitions/raw-operation-tools.js';
 import { createWriteTools } from './definitions/write-tools.js';
@@ -38,6 +44,8 @@ import {
 } from './profiles.js';
 
 export type { ToolMode } from './profiles.js';
+
+const RAW_DEVELOPER_OPERATION_TOOL = 'bangumi.call_operation';
 
 export interface RuntimeDependencies {
   storage: Storage;
@@ -315,6 +323,55 @@ export class ToolRegistry {
       executionSession = { client };
     }
 
+    const accountContentWrite =
+      name !== RAW_DEVELOPER_OPERATION_TOOL &&
+      policy.auth === 'required' &&
+      policy.risk !== 'read' &&
+      policy.requiredCapabilities.some(
+        (scope) => scope === 'write:collection' || scope === 'write:indices',
+      );
+    const effectivePolicy = accountContentWrite
+      ? { ...policy, requiresConfirmation: true }
+      : policy;
+    let preparedConfirmation: ToolExecutionDependencies['preparedConfirmation'];
+    if (accountContentWrite) {
+      if (!executionSession?.account?.id || !tool.prepareConfirmation) {
+        throw new BangumiError(
+          'CONFIRMATION_PREVIEW_UNAVAILABLE',
+          '无法安全展示并绑定当前账号写入状态，操作已停止。',
+          false,
+          409,
+        );
+      }
+      preparedConfirmation = await tool.prepareConfirmation(parseResult.data, context, {
+        ...this.deps,
+        executionSession,
+      });
+      if (
+        !preparedConfirmation ||
+        typeof preparedConfirmation.summary !== 'string' ||
+        !preparedConfirmation.summary.trim() ||
+        preparedConfirmation.snapshot === undefined ||
+        Buffer.byteLength(preparedConfirmation.summary, 'utf8') > 4096
+      ) {
+        throw new BangumiError(
+          'CONFIRMATION_PREVIEW_UNAVAILABLE',
+          '无法生成完整的当前状态确认摘要，操作已停止。',
+          false,
+          409,
+        );
+      }
+    }
+    const confirmationPayload = preparedConfirmation
+      ? {
+          operation: effectivePolicy.actionType || name,
+          bangumiAccountId: executionSession?.account?.id,
+          bangumiAccountUsername: executionSession?.account?.username,
+          request: parseResult.data,
+          currentStateSha256: computeCanonicalPayloadHash(preparedConfirmation.snapshot),
+        }
+      : parseResult.data;
+
     // 4. Confirmation Evaluation & Execution Gate
     let confirmationId: string | undefined;
     let pendingActionId: string | undefined;
@@ -323,10 +380,10 @@ export class ToolRegistry {
       const claimResult = await PolicyManager.assertAndClaimWritePolicy({
         storage: this.deps.storage,
         context,
-        actionType: policy.actionType || name,
-        summary: policy.summary || `${name} execution`,
-        policy,
-        payload: parseResult.data,
+        actionType: effectivePolicy.actionType || name,
+        summary: preparedConfirmation?.summary || effectivePolicy.summary || `${name} execution`,
+        policy: effectivePolicy,
+        payload: confirmationPayload,
       });
 
       confirmationId = claimResult.confirmationId;
@@ -336,6 +393,7 @@ export class ToolRegistry {
       const result = await tool.execute(parseResult.data, context, {
         ...this.deps,
         executionSession,
+        preparedConfirmation,
       });
 
       // 6. Success handling
@@ -343,12 +401,12 @@ export class ToolRegistry {
         await this.deps.storage.markPendingActionSucceeded(pendingActionId);
       }
 
-      if (policy.risk !== 'read') {
+      if (effectivePolicy.risk !== 'read') {
         await this.deps.auditService.recordWrite({
           principalId: context.principalId,
           bangumiAccountId: executionSession?.account?.id,
           operationId: name,
-          riskLevel: policy.risk,
+          riskLevel: effectivePolicy.risk,
           resourceType: name.split('.')[1] || 'resource',
           resourceId: String(
             (parseResult.data as Record<string, unknown>)?.subjectId ||
@@ -371,6 +429,8 @@ export class ToolRegistry {
       }
       const isNetworkUnknown =
         isBangumiError(err) && (err as BangumiError).code === 'WRITE_RESULT_UNKNOWN';
+      const isConfirmationPrompt =
+        isBangumiError(err) && (err as BangumiError).code === 'CONFIRMATION_REQUIRED';
       const publicErr = toPublicError(err);
 
       if (pendingActionId) {
@@ -385,12 +445,12 @@ export class ToolRegistry {
         }
       }
 
-      if (policy.risk !== 'read') {
+      if (effectivePolicy.risk !== 'read' && !isConfirmationPrompt) {
         await this.deps.auditService.recordWrite({
           principalId: context.principalId,
           bangumiAccountId: executionSession?.account?.id,
           operationId: name,
-          riskLevel: policy.risk,
+          riskLevel: effectivePolicy.risk,
           resourceType: name.split('.')[1] || 'resource',
           resourceId: String(
             (parseResult.data as Record<string, unknown>)?.subjectId ||

@@ -38,6 +38,16 @@ export interface ToolExecutionDependencies {
   providerRegistry?: ProviderRegistry;
 
   executionSession?: AuthenticatedExecutionSession;
+  preparedConfirmation?: ToolConfirmationPreview;
+}
+
+export interface ToolConfirmationPreview {
+  /** A bounded user-visible summary of the current state and requested change. */
+  summary: string;
+  /** Current state used only to bind this preview to the confirmation claim. */
+  snapshot: unknown;
+  /** Optional deterministic data that execution must reuse after confirmation. */
+  executionData?: unknown;
 }
 
 export interface ResolvedToolPolicy {
@@ -58,6 +68,11 @@ export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
   scopes: string[];
   risk: OperationRisk;
   resolvePolicy?: (input: z.infer<TSchema>, context: ToolContext) => ResolvedToolPolicy;
+  prepareConfirmation?: (
+    input: z.infer<TSchema>,
+    context: ToolContext,
+    deps: ToolExecutionDependencies,
+  ) => Promise<ToolConfirmationPreview>;
   execute: (
     input: z.infer<TSchema>,
     context: ToolContext,

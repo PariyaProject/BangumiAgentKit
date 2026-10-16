@@ -2,11 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { CollectionService } from '@bangumi-agent-kit/bangumi-core';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import {
-  ToolRegistry,
-  createPendingAction,
-  createRuntimeDependencies,
-} from '@bangumi-agent-kit/tools';
+import { ToolRegistry, createRuntimeDependencies } from '@bangumi-agent-kit/tools';
 import { encryptToken } from '@bangumi-agent-kit/auth';
 
 describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
@@ -43,6 +39,7 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
       body?: unknown;
       authorization: string | null;
     }> = [];
+    let writeApplied = false;
     const mockFetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
       requests.push({
         url,
@@ -51,14 +48,16 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
         authorization: new Headers(init?.headers).get('authorization'),
       });
       if (init?.method === 'POST') {
+        writeApplied = true;
         return new Response(null, { status: 204 });
       }
       return new Response(
         JSON.stringify({
           subject_id: 226998,
-          type: 3,
-          rate: 8,
-          comment: '神作收藏',
+          type: writeApplied ? 3 : 2,
+          rate: writeApplied ? 8 : 7,
+          comment: writeApplied ? '神作收藏' : '旧评价',
+          tags: writeApplied ? ['new'] : ['old'],
           updated_at: '2026-08-06T23:00:00Z',
           subject: { name: '少女終末旅行', type: 2 },
         }),
@@ -102,29 +101,50 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
       secretKey: SECRET_KEY,
     });
     const registry = new ToolRegistry(deps);
+    const input = { subjectId: 226998, status: 'doing' as const, rating: 8, comment: '神作收藏' };
+    const context = {
+      principalId: principal.id,
+      botInstanceId: 'bot_1',
+      conversationId: 'conv_1',
+    };
+    let previewError: (Error & { code?: string }) | undefined;
+    try {
+      await registry.executeTool('bangumi.update_collection', input, context);
+    } catch (error) {
+      previewError = error as Error & { code?: string };
+    }
+    expect(previewError?.code).toBe('CONFIRMATION_REQUIRED');
+    expect(previewError?.message).toContain('test_user');
+    expect(previewError?.message).toContain('旧评价');
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.method).toBe('GET');
+    expect(requests.some((request) => request.method === 'POST')).toBe(false);
+    const confirmationId = previewError?.message.match(/Confirmation ID: (\S+)/u)?.[1];
+    expect(confirmationId).toMatch(/^cfm_/u);
 
-    const res = (await registry.executeTool(
-      'bangumi.update_collection',
-      { subjectId: 226998, status: 'doing', rating: 8, comment: '神作收藏' },
-      {
-        principalId: principal.id,
-        botInstanceId: 'bot_1',
-        conversationId: 'conv_1',
-      },
-    )) as any;
+    const res = (await registry.executeTool('bangumi.update_collection', input, {
+      ...context,
+      confirmationId,
+    })) as any;
 
     expect(res.collection.subjectId).toBe(226998);
     expect(res.collection.status).toBe('doing');
     expect(res.collection.rating).toBe(8);
-    expect(requests).toHaveLength(2);
-    expect(new URL(requests[0]!.url).pathname).toBe('/v0/users/-/collections/226998');
-    expect(requests[0]).toMatchObject({
+    expect(requests).toHaveLength(4);
+    expect(requests[0]?.method).toBe('GET');
+    expect(requests[1]?.method).toBe('GET');
+    expect(requests[2]?.method).toBe('POST');
+    expect(requests[3]?.method).toBe('GET');
+    expect(new URL(requests[2]!.url).pathname).toBe('/v0/users/-/collections/226998');
+    expect(requests[2]).toMatchObject({
       method: 'POST',
       body: { type: 3, rate: 8, comment: '神作收藏' },
       authorization: 'Bearer valid_access_token',
     });
+    expect(new URL(requests[0]!.url).pathname).toBe('/v0/users/test_user/collections/226998');
     expect(new URL(requests[1]!.url).pathname).toBe('/v0/users/test_user/collections/226998');
-    expect(requests[1]).toMatchObject({
+    expect(new URL(requests[3]!.url).pathname).toBe('/v0/users/test_user/collections/226998');
+    expect(requests[3]).toMatchObject({
       method: 'GET',
       authorization: 'Bearer valid_access_token',
     });
@@ -135,6 +155,7 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
     expect(events[0]?.operationId).toBe('bangumi.update_collection');
     expect(events[0]?.riskLevel).toBe('write');
     expect(events[0]?.principalId).toBe(principal.id);
+    expect(events[0]?.confirmationId).toBe(confirmationId);
   });
 
   it('reports a successful write as unverified when canonical collection refresh fails', async () => {
@@ -200,47 +221,39 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
     });
     const registry = new ToolRegistry(deps);
     const episodeIds = Array.from({ length: 25 }, (_, i) => i + 1);
-
-    // Initial attempt without confirmationId -> Throws CONFIRMATION_REQUIRED
-    await expect(
-      registry.executeTool(
-        'bangumi.update_episode_progress',
-        { subjectId: 226998, episodeIds },
-        {
-          principalId: principal.id,
-          botInstanceId: 'bot_1',
-          conversationId: 'conv_1',
-        },
-      ),
-    ).rejects.toThrow('CONFIRMATION_REQUIRED');
-
-    // Create valid Pending Action
-    const pending = await createPendingAction(
-      storage,
-      { principalId: principal.id, botInstanceId: 'bot_1', conversationId: 'conv_1' },
-      'updateEpisodeProgress',
-      '更新 25 集进度',
-      { subjectId: 226998, episodeIds },
-    );
-
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValue(new Response(JSON.stringify({ message: 'ok' }), { status: 200 }));
+    const calls: Array<{ url: string; method: string }> = [];
+    const mockFetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      calls.push({ url, method: init?.method || 'GET' });
+      return new Response(JSON.stringify({ type: 0, message: 'ok' }), { status: 200 });
+    });
     vi.stubGlobal('fetch', mockFetch);
+    const input = { subjectId: 226998, episodeIds };
+    const context = {
+      principalId: principal.id,
+      botInstanceId: 'bot_1',
+      conversationId: 'conv_1',
+    };
 
-    // Attempt with confirmationId -> Succeeds
-    const res = (await registry.executeTool(
-      'bangumi.update_episode_progress',
-      { subjectId: 226998, episodeIds },
-      {
-        principalId: principal.id,
-        botInstanceId: 'bot_1',
-        conversationId: 'conv_1',
-        confirmationId: pending.confirmationId,
-      },
-    )) as any;
+    let previewError: (Error & { code?: string }) | undefined;
+    try {
+      await registry.executeTool('bangumi.update_episode_progress', input, context);
+    } catch (error) {
+      previewError = error as Error & { code?: string };
+    }
+    expect(previewError?.code).toBe('CONFIRMATION_REQUIRED');
+    expect(calls).toHaveLength(25);
+    expect(calls.every((call) => call.method === 'GET')).toBe(true);
+    const confirmationId = previewError?.message.match(/Confirmation ID: (\S+)/u)?.[1];
+    expect(confirmationId).toMatch(/^cfm_/u);
+
+    const res = (await registry.executeTool('bangumi.update_episode_progress', input, {
+      ...context,
+      confirmationId,
+    })) as any;
 
     expect(res.count).toBe(25);
+    expect(calls.filter((call) => call.method === 'PATCH')).toHaveLength(1);
+    expect(calls).toHaveLength(51);
     expect(storage.getAuditEvents().length).toBeGreaterThanOrEqual(1);
   });
 
@@ -279,45 +292,48 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
       secretKey: SECRET_KEY,
     });
     const registry = new ToolRegistry(deps);
-
-    // Attempt uncollect without confirmationId -> Throws CONFIRMATION_REQUIRED
-    await expect(
-      registry.executeTool(
-        'bangumi.manage_character_collection',
-        { characterId: 1001, action: 'uncollect' },
-        {
-          principalId: principal.id,
-          botInstanceId: 'bot_1',
-          conversationId: 'conv_1',
-        },
-      ),
-    ).rejects.toThrow('CONFIRMATION_REQUIRED');
-
-    // Pending Action
-    const pending = await createPendingAction(
-      storage,
-      { principalId: principal.id, botInstanceId: 'bot_1', conversationId: 'conv_1' },
-      'manageCharacterCollection',
-      '取消收藏角色 1001',
-      { characterId: 1001, action: 'uncollect' },
-    );
-
-    const mockFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
+    const calls: Array<{ url: string; method: string }> = [];
+    const mockFetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      calls.push({ url, method: init?.method || 'GET' });
+      if (init?.method === 'DELETE') return new Response(null, { status: 204 });
+      return new Response(
+        JSON.stringify({
+          id: 1001,
+          name: 'Synthetic Character',
+          type: 1,
+          created_at: '2026-01-01',
+        }),
+        { status: 200 },
+      );
+    });
     vi.stubGlobal('fetch', mockFetch);
+    const input = { characterId: 1001, action: 'uncollect' as const };
+    const context = {
+      principalId: principal.id,
+      botInstanceId: 'bot_1',
+      conversationId: 'conv_1',
+    };
+    let previewError: (Error & { code?: string }) | undefined;
+    try {
+      await registry.executeTool('bangumi.manage_character_collection', input, context);
+    } catch (error) {
+      previewError = error as Error & { code?: string };
+    }
+    expect(previewError?.code).toBe('CONFIRMATION_REQUIRED');
+    expect(previewError?.message).toContain('Synthetic Character');
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.method).toBe('GET');
+    const confirmationId = previewError?.message.match(/Confirmation ID: (\S+)/u)?.[1];
+    expect(confirmationId).toMatch(/^cfm_/u);
 
-    const res = (await registry.executeTool(
-      'bangumi.manage_character_collection',
-      { characterId: 1001, action: 'uncollect' },
-      {
-        principalId: principal.id,
-        botInstanceId: 'bot_1',
-        conversationId: 'conv_1',
-        confirmationId: pending.confirmationId,
-      },
-    )) as any;
+    const res = (await registry.executeTool('bangumi.manage_character_collection', input, {
+      ...context,
+      confirmationId,
+    })) as any;
 
     expect(res.success).toBe(true);
     expect(res.action).toBe('uncollect');
+    expect(calls.map((call) => call.method)).toEqual(['GET', 'GET', 'DELETE']);
   });
 
   it('PendingAction unknown failure sets failureMessageSafe to generic message', async () => {
@@ -354,36 +370,52 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
       secretKey: SECRET_KEY,
     });
     const registry = new ToolRegistry(deps);
-
-    const pending = await createPendingAction(
-      storage,
-      { principalId: principal.id, botInstanceId: 'bot_1', conversationId: 'conv_1' },
-      'manageCharacterCollection',
-      '取消收藏角色 1001',
-      { characterId: 1001, action: 'uncollect' },
-    );
-
+    let callCount = 0;
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockRejectedValue(new Error('relation access_credentials does not exist')),
+      vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+        callCount += 1;
+        if (init?.method === 'DELETE') {
+          throw new Error('relation access_credentials does not exist');
+        }
+        return new Response(
+          JSON.stringify({
+            id: 1001,
+            name: 'Synthetic Character',
+            type: 1,
+            created_at: '2026-01-01',
+          }),
+          { status: 200 },
+        );
+      }),
     );
+    const input = { characterId: 1001, action: 'uncollect' as const };
+    const context = {
+      principalId: principal.id,
+      botInstanceId: 'bot_1',
+      conversationId: 'conv_1',
+    };
+    let previewError: (Error & { code?: string }) | undefined;
+    try {
+      await registry.executeTool('bangumi.manage_character_collection', input, context);
+    } catch (error) {
+      previewError = error as Error & { code?: string };
+    }
+    expect(previewError?.code).toBe('CONFIRMATION_REQUIRED');
+    const confirmationId = previewError?.message.match(/Confirmation ID: (\S+)/u)?.[1];
+    expect(confirmationId).toMatch(/^cfm_/u);
 
     await expect(
-      registry.executeTool(
-        'bangumi.manage_character_collection',
-        { characterId: 1001, action: 'uncollect' },
-        {
-          principalId: principal.id,
-          botInstanceId: 'bot_1',
-          conversationId: 'conv_1',
-          confirmationId: pending.confirmationId,
-        },
-      ),
+      registry.executeTool('bangumi.manage_character_collection', input, {
+        ...context,
+        confirmationId,
+      }),
     ).rejects.toThrow();
 
-    const action = (storage as any).pendingActions.get(pending.pendingAction.id);
+    const action = (storage as any).pendingActions.get(confirmationId);
     expect(action?.status).toBe('failed');
     expect(action?.failureMessageSafe).toBe('网络请求失败，请稍后重试。');
     expect(action?.failureMessageSafe).not.toContain('access_credentials');
+    expect(callCount).toBe(3);
   });
 });

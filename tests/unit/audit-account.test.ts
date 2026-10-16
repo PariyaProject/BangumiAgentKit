@@ -9,10 +9,34 @@ describe('I. Audit Account ID Test', () => {
 
   it('records bangumiAccountId in audit events for both semantic writes and raw developer writes', async () => {
     const storage = new MemoryStorage();
+    let writeApplied = false;
 
     // Mock public client that returns success for API calls
     const mockHttpClient = new HttpClient({
-      fetchFn: async () => new Response(JSON.stringify({ success: true }), { status: 200 }),
+      fetchFn: async (_input, init) => {
+        if (init?.method === 'POST') {
+          writeApplied = true;
+          return new Response(null, { status: 204 });
+        }
+        return new Response(
+          JSON.stringify(
+            writeApplied
+              ? {
+                  subject_id: 1001,
+                  type: 3,
+                  rate: 8,
+                  subject: { name: 'Fixture Subject', name_cn: '测试条目', type: 2 },
+                }
+              : {
+                  subject_id: 1001,
+                  type: 2,
+                  rate: 7,
+                  subject: { name: 'Fixture Subject', name_cn: '测试条目', type: 2 },
+                },
+          ),
+          { status: 200 },
+        );
+      },
     });
 
     const deps = createRuntimeDependencies({
@@ -58,11 +82,26 @@ describe('I. Audit Account ID Test', () => {
       conversationId: 'c-audit',
     };
 
-    // 1. Semantic write execution: bangumi.update_collection
+    // 1. Preview is read-only; the same account confirms the exact request before the write.
+    let confirmationError: (Error & { code?: string }) | undefined;
+    try {
+      await registry.executeTool(
+        'bangumi.update_collection',
+        { subjectId: 1001, status: 'doing' },
+        context,
+      );
+    } catch (error) {
+      confirmationError = error as Error & { code?: string };
+    }
+    expect(confirmationError?.code).toBe('CONFIRMATION_REQUIRED');
+    const confirmationId = confirmationError?.message.match(/Confirmation ID: (\S+)/u)?.[1];
+    expect(confirmationId).toMatch(/^cfm_/u);
+    expect(storage.getAuditEvents()).toHaveLength(0);
+
     await registry.executeTool(
       'bangumi.update_collection',
       { subjectId: 1001, status: 'doing' },
-      context,
+      { ...context, confirmationId },
     );
 
     const auditEventsAfterSemantic = storage.getAuditEvents();
