@@ -9,6 +9,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const ledger = JSON.parse(
   readFileSync(path.join(root, 'docs/product/frontier-ledger.json'), 'utf8'),
 );
+const agentMcpProfiles = JSON.parse(
+  readFileSync(path.join(root, 'scripts/acceptance/agent-mcp-profile-registry.json'), 'utf8'),
+).profiles;
 
 function assertOneShotRuntimeIsHarnessOwned(record) {
   const guidance = [record.next_action, record.evidence?.source_contract]
@@ -208,6 +211,30 @@ test('A01 public matrix evidence remains direct-only and does not promote the sc
   );
   assert.match(evidence.acceptance_boundary, /change A01 from UNASSESSED/u);
   assert.match(evidence.acceptance_boundary, /add Agent\/MCP or one-shot credit/u);
+});
+
+test('A01 render aggregation profile is matrix-only and must run before integration', () => {
+  const record = ledger.records.find(({ id }) => id === 'A01');
+  const profile = agentMcpProfiles.find(
+    ({ id }) => id === 'a01-render-cohort-aggregation-agent-mcp-offline-v1',
+  );
+  assert.ok(record);
+  assert.ok(profile);
+  assert.equal(record.status, 'UNASSESSED');
+  assert.equal(profile.epochId, 'run95-a01-render-cohort-aggregation-exec-20261017');
+  assert.equal(profile.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(profile.toolName, 'bangumi.render_subject_cohort_aggregation');
+  assert.ok(record.source_refs.includes('tests/harness/frontier-ledger-data.test.mjs'));
+  assert.match(
+    record.next_action,
+    /one-shot only after its unique Epoch is an open active PR/u,
+  );
+  assert.match(
+    record.next_action,
+    /keep the PR active until a signed report or terminal no-retry disposition is recorded/u,
+  );
+  assert.match(record.next_action, /no public or scenario evidence is added/u);
+  assertOneShotRuntimeIsHarnessOwned(record);
 });
 
 test('Run 95 public matrix rows remain hash-bound and separate from scenario evidence', () => {

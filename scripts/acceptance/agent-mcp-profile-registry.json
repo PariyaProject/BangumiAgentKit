@@ -422,7 +422,7 @@
     {
       "id": "a01-render-cohort-aggregation-agent-mcp-offline-v1",
       "frontierId": "A01",
-      "epochId": "run95-a01-render-cohort-aggregation-agent-mcp-offline-20261016",
+      "epochId": "run95-a01-render-cohort-aggregation-exec-20261017",
       "toolName": "bangumi.render_subject_cohort_aggregation",
       "argumentProfile": "fixed-a01-synthetic-cohort-aggregation-one-subject-v1",
       "claimLabelName": "harness-r95-a01-render-cohort-agg-claimed",
