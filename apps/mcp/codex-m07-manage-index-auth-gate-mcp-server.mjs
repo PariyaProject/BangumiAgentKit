@@ -10,7 +10,6 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
-import { toMcpTool } from './dist/catalog.js';
 import {
   computeMcpBundleSha256,
   gitRepositoryText,
@@ -212,6 +211,7 @@ async function main(argv = process.argv.slice(2)) {
     throw new Error('M07 server is not running the clean, exact Candidate bundle.');
   }
 
+  const { toMcpTool } = await import('./dist/catalog.js');
   const catalogBytes = fs.readFileSync(path.join(PRODUCT_ROOT, 'docs/tool-catalog.json'));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
   const catalogTool = catalog.find((item) => item?.name === M07_MANAGE_INDEX_TOOL);
