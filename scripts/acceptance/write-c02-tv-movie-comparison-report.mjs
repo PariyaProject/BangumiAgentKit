@@ -68,18 +68,6 @@ const EVENT_KEYS = [
   'allowedCallCount',
   'deniedCallCount',
 ];
-const PRIVACY_KEYS = [
-  'authProfile',
-  'oauthAttempted',
-  'accountDataRead',
-  'writesAttempted',
-  'communityRead',
-  'qqPipelineTested',
-  'timClientTested',
-  'rawAnswerStored',
-  'rawResultStored',
-  'credentialsStored',
-];
 const RECEIPT_KEYS = ['schemaVersion', 'kind', 'publicKeyBase64', 'publicKeySha256', 'payload', 'signature'];
 const RECEIPT_PAYLOAD_KEYS = [
   'schemaVersion',
