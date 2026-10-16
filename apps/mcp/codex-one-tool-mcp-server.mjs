@@ -57,6 +57,7 @@ import { presentMcpToolResult } from './dist/result-presenter.js';
 
 const PRODUCT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const P07_PERSON_SEASON_PROFILE_ID = 'p07-person-season-distribution-agent-mcp-v1';
 
 class MemoryArtifactStore {
   constructor() {
@@ -422,6 +423,26 @@ async function main(argv = process.argv.slice(2)) {
         if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
         if (p06AssetGuard) summary = { ...summary, offlineAssetBoundary: p06AssetGuard.snapshot() };
         writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+        if (config.profile?.id === P07_PERSON_SEASON_PROFILE_ID) {
+          const safeProjection = summary.results[sequenceIndex]?.resultSummary;
+          if (!safeProjection) {
+            summary = {
+              ...summary,
+              serverResultStatus: 'ERROR',
+              results: [{ sequenceIndex, status: 'ERROR', errorCode: 'P07_SUMMARY_UNAVAILABLE' }],
+            };
+            writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+            return {
+              content: [{ type: 'text', text: 'P07 bounded date summary is unavailable.' }],
+              isError: true,
+            };
+          }
+          const text = JSON.stringify(safeProjection);
+          return {
+            content: [{ type: 'text', text }],
+            structuredContent: safeProjection,
+          };
+        }
         const presentation = presentMcpToolResult(config.toolName, result);
         return {
           content: [{ type: 'text', text: presentation.text }],

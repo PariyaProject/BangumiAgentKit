@@ -207,6 +207,35 @@
           }
         }
       ]
+    },
+    {
+      "id": "p07-person-season-distribution-agent-mcp-v1",
+      "frontierId": "P07",
+      "epochId": "run95-p07-observed-season-distribution-20261016",
+      "toolName": "bangumi.get_person_activity",
+      "argumentProfile": "fixed-p07-person-3474-staff-anime-36m-48r-16d-8rows-v1",
+      "claimLabelName": "harness-r95-p07-person-season-claimed",
+      "reportPath": "docs/live-probes/p07-person-season-distribution-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-p07-person-season-distribution-agent-mcp-source-contract-2026-10-16.md",
+      "evidenceKind": "codex_cli_p07_person_season_distribution_agent_mcp",
+      "answerCheckMethod": "p07-calendar-quarter-sample-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 4096,
+      "calls": [
+        {
+          "toolName": "bangumi.get_person_activity",
+          "arguments": {
+            "personId": 3474,
+            "kind": "staff",
+            "media": "anime",
+            "windowMonths": 36,
+            "maxRelations": 48,
+            "maxSubjectDetails": 16,
+            "maxRows": 8
+          }
+        }
+      ]
     }
   ]
 }
