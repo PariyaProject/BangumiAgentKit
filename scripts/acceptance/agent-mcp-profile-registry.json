@@ -365,6 +365,33 @@
           }
         }
       ]
+    },
+    {
+      "id": "c02-cardcaptor-tv-movie-v1",
+      "frontierId": "C02",
+      "epochId": "run95-c02-cardcaptor-tv-movie-comparison",
+      "toolName": "bangumi.get_subject_comparison",
+      "argumentProfile": "fixed-c02-cardcaptor-1940-tv-1941-movie-v1",
+      "claimLabelName": "harness-r95-c02-cardcaptor-tv-movie-claimed",
+      "reportPath": "docs/live-probes/c02-tv-movie-comparison-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-c02-cardcaptor-tv-movie-source-contract-2026-10-16.md",
+      "evidenceKind": "codex_cli_c02_tv_movie_comparison_agent_mcp_v1",
+      "answerCheckMethod": "c02-cardcaptor-tv-movie-current-metrics-v1",
+      "acceptanceScope": "frontier-scenario-only",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 2048,
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_comparison",
+          "arguments": {
+            "subjectIds": [1940, 1941],
+            "maxCast": 1,
+            "maxStaff": 1,
+            "maxRelations": 1
+          }
+        }
+      ]
     }
   ]
 }
