@@ -22,6 +22,42 @@ import { Storage, MemoryStorage } from '@bangumi-agent-kit/db';
 
 const MAX_CONFIRMATION_SUMMARY_BYTES = 4096;
 const MAX_CONFIRMATION_EPISODES = 100;
+const INDEX_CONFIRMATION_PAGE_SIZE = 100;
+const INDEX_CONFIRMATION_MAX_PAGES = 50;
+const KNOWN_COLLECTION_STATUSES = new Set(['wish', 'doing', 'done', 'on_hold', 'dropped']);
+
+type EpisodeProgressStatus = 'wish' | 'watched' | 'dropped';
+
+function resolveEpisodeProgressRequest(input: { status?: EpisodeProgressStatus; type?: number }): {
+  typeNum: number;
+  status: EpisodeProgressStatus;
+} {
+  if (input.status) {
+    const typeByStatus: Record<EpisodeProgressStatus, number> = {
+      wish: 1,
+      watched: 2,
+      dropped: 3,
+    };
+    return { status: input.status, typeNum: typeByStatus[input.status] };
+  }
+
+  const statusByType: Record<number, EpisodeProgressStatus> = {
+    1: 'wish',
+    2: 'watched',
+    3: 'dropped',
+  };
+  const typeNum = input.type ?? 2;
+  const status = statusByType[typeNum];
+  if (!status) {
+    throw new BangumiError(
+      'VALIDATION_ERROR',
+      '章节状态 type 只能是 1 (wish)、2 (watched) 或 3 (dropped)。',
+      false,
+      400,
+    );
+  }
+  return { status, typeNum };
+}
 
 function requireConfirmationAccount(deps: ToolExecutionDependencies) {
   const session = deps.executionSession;
@@ -122,6 +158,20 @@ export function createWriteTools(
       const { account, client } = requireConfirmationAccount(deps);
       const userService = new UserService(client);
       const current = await userService.getUserSubjectCollection(account.username, input.subjectId);
+      if (
+        (current.found &&
+          (!current.collection ||
+            current.collection.subjectId !== input.subjectId ||
+            !KNOWN_COLLECTION_STATUSES.has(current.collection.status))) ||
+        (!current.found && current.collection !== undefined)
+      ) {
+        throw new BangumiError(
+          'CONFIRMATION_PREVIEW_UNAVAILABLE',
+          '条目收藏状态未知或与目标不匹配；没有执行写入。',
+          false,
+          409,
+        );
+      }
       const currentState =
         current.found && current.collection
           ? {
@@ -246,6 +296,7 @@ export function createWriteTools(
       let episodeNumbers: number[] | undefined;
       let throughResolution:
         Awaited<ReturnType<EpisodeService['resolveThroughEpisodes']>> | undefined;
+      const progressRequest = resolveEpisodeProgressRequest(input);
 
       if (input.target?.kind === 'through') {
         throughResolution = await episodeService.resolveThroughEpisodes(
@@ -255,6 +306,18 @@ export function createWriteTools(
         );
         episodeIds = throughResolution.resolvedEpisodeIds;
         episodeNumbers = throughResolution.resolvedEpisodeNumbers;
+        if (
+          throughResolution.warning ||
+          !episodeNumbers.includes(input.target.episodeNumber) ||
+          episodeNumbers.length !== episodeIds.length
+        ) {
+          throw new BangumiError(
+            'CONFIRMATION_PREVIEW_UNAVAILABLE',
+            '无法准确解析到请求的章节范围；没有执行写入。',
+            false,
+            409,
+          );
+        }
       } else {
         episodeIds =
           input.target?.kind === 'ids' ? input.target.episodeIds : input.episodeIds || [];
@@ -279,20 +342,27 @@ export function createWriteTools(
       const currentStates = await mapWithConcurrency(episodeIds, 4, async (episodeId) => {
         try {
           const current = await userService.getUserEpisodeCollection(episodeId);
+          if (current.status === 'unknown') {
+            throw new BangumiError(
+              'CONFIRMATION_PREVIEW_UNAVAILABLE',
+              '章节当前收藏状态未知；没有执行写入。',
+              false,
+              409,
+            );
+          }
           return { episodeId, status: current.status };
         } catch (error) {
           if (isNotFound(error)) return { episodeId, status: 'uncollected' as const };
           throw error;
         }
       });
-      let requestedStatus = 'watched';
-      if (input.status === 'wish' || input.type === 1) requestedStatus = 'wish';
-      else if (input.status === 'dropped' || input.type === 3) requestedStatus = 'dropped';
+      const requestedStatus = progressRequest.status;
       const requestedTarget =
         input.target?.kind === 'through'
           ? {
               throughEpisode: input.target.episodeNumber,
               category: input.target.category || 'main',
+              resolvedEpisodeNumbers: episodeNumbers,
             }
           : { episodeIds };
       const summary = [
@@ -321,14 +391,7 @@ export function createWriteTools(
           .client;
       const collectionService = new CollectionService(client);
 
-      let typeNum = 2;
-      if (input.status) {
-        if (input.status === 'wish') typeNum = 1;
-        else if (input.status === 'watched') typeNum = 2;
-        else if (input.status === 'dropped') typeNum = 3;
-      } else if (input.type !== undefined) {
-        typeNum = input.type;
-      }
+      const { typeNum } = resolveEpisodeProgressRequest(input);
 
       const epService = new EpisodeService(client);
 
@@ -418,6 +481,17 @@ export function createWriteTools(
         account.username,
         input.characterId,
       );
+      if (
+        (current.found && (!current.item || current.item.id !== input.characterId)) ||
+        (!current.found && current.item !== undefined)
+      ) {
+        throw new BangumiError(
+          'CONFIRMATION_PREVIEW_UNAVAILABLE',
+          '角色收藏状态未知或与目标不匹配；没有执行写入。',
+          false,
+          409,
+        );
+      }
       const currentState =
         current.found && current.item
           ? { collected: true, name: current.item.name }
@@ -480,6 +554,17 @@ export function createWriteTools(
         account.username,
         input.personId,
       );
+      if (
+        (current.found && (!current.item || current.item.id !== input.personId)) ||
+        (!current.found && current.item !== undefined)
+      ) {
+        throw new BangumiError(
+          'CONFIRMATION_PREVIEW_UNAVAILABLE',
+          '人物收藏状态未知或与目标不匹配；没有执行写入。',
+          false,
+          409,
+        );
+      }
       const currentState =
         current.found && current.item
           ? { collected: true, name: current.item.name }
@@ -580,6 +665,20 @@ export function createWriteTools(
       }
 
       const index = await indexReadService.getIndexById(input.indexId);
+      if (
+        !Number.isSafeInteger(index.id) ||
+        index.id !== input.indexId ||
+        typeof index.title !== 'string' ||
+        !index.title.trim() ||
+        typeof index.desc !== 'string'
+      ) {
+        throw new BangumiError(
+          'CONFIRMATION_PREVIEW_UNAVAILABLE',
+          '目录当前信息未知或与目标不匹配；没有执行写入。',
+          false,
+          409,
+        );
+      }
       if (input.action === 'edit') {
         const currentState = { title: index.title, description: index.desc };
         const requestedState = {
@@ -601,9 +700,10 @@ export function createWriteTools(
       let membership: { id: number; nameCn: string; comment?: string } | undefined;
       let complete = false;
       let expectedTotal: number | undefined;
-      for (let pageNumber = 0; pageNumber < 50; pageNumber += 1) {
+      const seenSubjectIds = new Set<number>();
+      for (let pageNumber = 0; pageNumber < INDEX_CONFIRMATION_MAX_PAGES; pageNumber += 1) {
         const page = await client.getIndexSubjectsByIndexId(input.indexId, {
-          limit: 100,
+          limit: INDEX_CONFIRMATION_PAGE_SIZE,
           offset,
         });
         if (!Array.isArray(page.data)) {
@@ -620,13 +720,36 @@ export function createWriteTools(
           name_cn?: string;
           comment?: string;
         }>;
-        if (items.length > 100) {
+        if (items.length > INDEX_CONFIRMATION_PAGE_SIZE) {
           throw new BangumiError(
             'CONFIRMATION_PREVIEW_UNAVAILABLE',
             '目录成员响应超出确认预览页大小；没有执行写入。',
             false,
             409,
           );
+        }
+        for (const item of items) {
+          if (
+            !item ||
+            !Number.isSafeInteger(item.id) ||
+            item.id <= 0 ||
+            (item.name !== undefined && typeof item.name !== 'string') ||
+            (item.name_cn !== undefined &&
+              item.name_cn !== null &&
+              typeof item.name_cn !== 'string') ||
+            (item.comment !== undefined &&
+              item.comment !== null &&
+              typeof item.comment !== 'string') ||
+            seenSubjectIds.has(item.id)
+          ) {
+            throw new BangumiError(
+              'CONFIRMATION_PREVIEW_UNAVAILABLE',
+              '目录成员响应含有未知或重复条目；没有执行写入。',
+              false,
+              409,
+            );
+          }
+          seenSubjectIds.add(item.id);
         }
         const sourceTotal =
           typeof page.total === 'number' && Number.isSafeInteger(page.total) && page.total >= 0

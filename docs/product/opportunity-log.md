@@ -192,7 +192,10 @@ operation, request, and preview fingerprint. The confirmation re-reads that
 state and fails closed if it changed. Developer-only raw operations retain their
 separate environment gate. This implementation is verified with synthetic
 fixtures only; it adds no real-account or live-write evidence, so OP-009 remains
-PARTIAL.
+PARTIAL. MCP and Standalone client catalog descriptions append the uniform
+confirmation rule; the report-bound `docs/tool-catalog.json` snapshot remains
+unchanged to preserve the existing 65/65 public evidence without replaying old
+probes.
 
 ---
 

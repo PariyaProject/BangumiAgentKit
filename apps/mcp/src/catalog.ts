@@ -1,5 +1,9 @@
 import { MemoryStorage } from '@bangumi-agent-kit/db';
-import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
+import {
+  createRuntimeDependenciesWithStorage,
+  getUserFacingToolDescription,
+  ToolRegistry,
+} from '@bangumi-agent-kit/tools';
 import { z } from 'zod';
 
 const CONFIRMATION_ID_PATTERN = '^cfm_[A-Za-z0-9_-]+$';
@@ -36,7 +40,7 @@ export function toMcpTool(tool: ReturnType<ToolRegistry['getTools']>[number]) {
 
   return {
     name: tool.name,
-    description: tool.description,
+    description: getUserFacingToolDescription(tool),
     inputSchema: confirmationSchema(tool, inputSchema),
   };
 }

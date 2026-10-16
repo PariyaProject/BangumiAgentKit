@@ -18,6 +18,7 @@
    - `read`: 搜索、查询等只读操作，直接执行。
    - `write`: 用户可调用的语义账号内容写入工具（收藏、评分、章节进度、角色/人物收藏和目录操作）一律先读取受影响项目的当前状态，展示绑定账号、当前状态和请求变化，再由服务端生成 `PendingAction` 要求二次确认。开发者专用 raw operation 仍由下方独立环境门禁控制。
    - `destructive`: 取消收藏、删除目录条目、解绑账号或涉及超 20 集的批量进度修改仍按破坏性操作记录；其风险等级不会绕过统一的写入确认。
+   - MCP 和 Standalone 实际提供给客户端的写工具描述会附加上述统一确认要求。`docs/tool-catalog.json` 保持为与现有验收报告绑定的目录快照；本次不改其描述，以保留当前 public 65/65 证据且不重放旧探测。该快照中的旧确认文案不代表运行时策略。
 2. **PendingAction 状态机与 Canonical Payload Hashing**
    - 二次确认基于 `confirmationId` 与 recursive key-sorted JSON canonical payload hash (`computeCanonicalPayloadHash`)；账号内容写入还绑定 Bangumi account ID、操作、规范化请求和当前状态指纹。
    - 用户确认时重新读取预览状态；账号、请求或当前状态变化都会使旧确认失效。严格验证 `principalId`、`botInstanceId`、`conversationKey` 匹配且在有效期内（10 分钟），防止越权与重放。

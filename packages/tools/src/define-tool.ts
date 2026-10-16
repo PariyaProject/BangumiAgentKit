@@ -80,6 +80,24 @@ export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
   ) => Promise<unknown>;
 }
 
+/** Adds runtime write-policy guidance to client catalogs without changing the evidence-bound catalog text. */
+export function getUserFacingToolDescription(
+  tool: Pick<ToolDefinition, 'name' | 'description' | 'auth' | 'risk' | 'scopes'>,
+): string {
+  const isAccountContentWrite =
+    tool.name !== 'bangumi.call_operation' &&
+    tool.auth === 'required' &&
+    tool.risk !== 'read' &&
+    tool.scopes.some((scope) => scope === 'write:collection' || scope === 'write:indices');
+
+  if (!isAccountContentWrite) return tool.description;
+  const description =
+    tool.name === 'bangumi.update_episode_progress'
+      ? tool.description.replace('超过 20 集的大批量变更将自动要求二次确认。', '')
+      : tool.description;
+  return `${description.trim()} 每次账户内容写入都必须先展示绑定账号、当前状态和请求变化，并通过服务端二次确认；确认前不会执行写入。`;
+}
+
 export function defineTool<TSchema extends z.ZodType>(
   def: ToolDefinition<TSchema>,
 ): ToolDefinition<TSchema> {

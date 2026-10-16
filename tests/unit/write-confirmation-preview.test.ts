@@ -2,7 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { encryptToken } from '@bangumi-agent-kit/auth';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { ToolRegistry, createRuntimeDependencies } from '@bangumi-agent-kit/tools';
+import {
+  getUserFacingToolDescription,
+  ToolRegistry,
+  createRuntimeDependencies,
+} from '@bangumi-agent-kit/tools';
+import { toMcpTool } from '../../apps/mcp/src/catalog.js';
 
 const SECRET_KEY = 'write-confirmation-preview-test-secret';
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -99,6 +104,20 @@ describe('account write confirmation previews', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it('exposes confirmation policy in client tool descriptions without changing read/raw tools', async () => {
+    const { registry } = await setup(async () => new Response('{}', { status: 200 }));
+    const updateEpisode = registry.getTool('bangumi.update_episode_progress')!;
+    const rawOperation = registry.getTool('bangumi.call_operation')!;
+    const readTool = registry.getTool('bangumi.get_subject')!;
+
+    const userFacing = getUserFacingToolDescription(updateEpisode);
+    expect(userFacing).toContain('每次账户内容写入都必须');
+    expect(userFacing).not.toContain('超过 20 集的大批量变更将自动要求二次确认');
+    expect(toMcpTool(updateEpisode).description).toBe(userFacing);
+    expect(getUserFacingToolDescription(rawOperation)).toBe(rawOperation.description);
+    expect(getUserFacingToolDescription(readTool)).toBe(readTool.description);
   });
 
   it('requires a preview-bound confirmation before every account-content write action', async () => {
@@ -299,6 +318,162 @@ describe('account write confirmation previews', () => {
     expect(calls.filter((call) => WRITE_METHODS.has(call.method))).toEqual([]);
   });
 
+  it('fails closed when the current collection status is unknown', async () => {
+    const calls: Array<{ pathname: string; method: string }> = [];
+    const fetchFn: typeof fetch = async (input, init) => {
+      const url = new URL(String(input));
+      const method = init?.method || 'GET';
+      calls.push({ pathname: url.pathname, method });
+      return new Response(
+        JSON.stringify({
+          subject_id: 10,
+          type: 99,
+          subject: { name: 'Fixture Subject', name_cn: '测试条目', type: 2 },
+        }),
+        { status: 200 },
+      );
+    };
+    const { registry, storage, principal } = await setup(fetchFn);
+
+    await expect(
+      registry.executeTool(
+        'bangumi.update_collection',
+        { subjectId: 10, status: 'doing' },
+        {
+          principalId: principal.id,
+          botInstanceId: 'fixture-bot',
+          conversationId: 'unknown-collection-state',
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'CONFIRMATION_PREVIEW_UNAVAILABLE' });
+    expect(storage.getPendingActions()).toHaveLength(0);
+    expect(calls.filter((call) => WRITE_METHODS.has(call.method))).toEqual([]);
+  });
+
+  it('fails closed when any episode current status is unknown', async () => {
+    const calls: Array<{ pathname: string; method: string }> = [];
+    const fetchFn: typeof fetch = async (input, init) => {
+      const url = new URL(String(input));
+      const method = init?.method || 'GET';
+      calls.push({ pathname: url.pathname, method });
+      if (url.pathname.includes('/episodes/')) {
+        return new Response(JSON.stringify({ type: 99 }), { status: 200 });
+      }
+      return new Response(JSON.stringify(readResponse(url.pathname)), { status: 200 });
+    };
+    const { registry, storage, principal } = await setup(fetchFn);
+
+    await expect(
+      registry.executeTool(
+        'bangumi.update_episode_progress',
+        { subjectId: 10, episodeIds: [1] },
+        {
+          principalId: principal.id,
+          botInstanceId: 'fixture-bot',
+          conversationId: 'unknown-episode-state',
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'CONFIRMATION_PREVIEW_UNAVAILABLE' });
+    expect(storage.getPendingActions()).toHaveLength(0);
+    expect(calls.filter((call) => WRITE_METHODS.has(call.method))).toEqual([]);
+  });
+
+  it('rejects an unsupported legacy episode status before reading a preview', async () => {
+    const calls: Array<{ pathname: string; method: string }> = [];
+    const fetchFn: typeof fetch = async (input, init) => {
+      const url = new URL(String(input));
+      calls.push({ pathname: url.pathname, method: init?.method || 'GET' });
+      return new Response(JSON.stringify(readResponse(url.pathname)), { status: 200 });
+    };
+    const { registry, storage, principal } = await setup(fetchFn);
+
+    await expect(
+      registry.executeTool(
+        'bangumi.update_episode_progress',
+        { subjectId: 10, episodeIds: [1], type: 9 },
+        {
+          principalId: principal.id,
+          botInstanceId: 'fixture-bot',
+          conversationId: 'invalid-legacy-episode-status',
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect(calls).toEqual([]);
+    expect(storage.getPendingActions()).toHaveLength(0);
+  });
+
+  it('uses the explicit episode status when deprecated type conflicts', async () => {
+    const calls: Array<{ pathname: string; method: string }> = [];
+    const fetchFn: typeof fetch = async (input, init) => {
+      const url = new URL(String(input));
+      calls.push({ pathname: url.pathname, method: init?.method || 'GET' });
+      if (url.pathname.includes('/episodes/')) {
+        return new Response(JSON.stringify({ type: 0 }), { status: 200 });
+      }
+      return new Response(JSON.stringify(readResponse(url.pathname)), { status: 200 });
+    };
+    const { registry, principal } = await setup(fetchFn);
+
+    const error = await registry
+      .executeTool(
+        'bangumi.update_episode_progress',
+        { subjectId: 10, episodeIds: [1], status: 'watched', type: 3 },
+        {
+          principalId: principal.id,
+          botInstanceId: 'fixture-bot',
+          conversationId: 'status-overrides-deprecated-type',
+        },
+      )
+      .then(
+        () => undefined,
+        (caught: unknown) => caught as { code?: string; message?: string },
+      );
+
+    expect(error?.code).toBe('CONFIRMATION_REQUIRED');
+    expect(error?.message).toContain('请求状态 "watched"');
+    expect(calls.filter((call) => WRITE_METHODS.has(call.method))).toEqual([]);
+  });
+
+  it('fails closed before confirmation when a through-N target resolves only a prefix', async () => {
+    const calls: Array<{ pathname: string; method: string }> = [];
+    const fetchFn: typeof fetch = async (input, init) => {
+      const url = new URL(String(input));
+      const method = init?.method || 'GET';
+      calls.push({ pathname: url.pathname, method });
+      if (url.pathname === '/v0/episodes') {
+        return new Response(
+          JSON.stringify({
+            data: [
+              { id: 1, type: 0, sort: 1, ep: 1, name: 'Episode 1' },
+              { id: 2, type: 0, sort: 2, ep: 2, name: 'Episode 2' },
+            ],
+            total: 2,
+            limit: 100,
+            offset: 0,
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify(readResponse(url.pathname)), { status: 200 });
+    };
+    const { registry, storage, principal } = await setup(fetchFn);
+
+    await expect(
+      registry.executeTool(
+        'bangumi.update_episode_progress',
+        { subjectId: 10, target: { kind: 'through', episodeNumber: 3 } },
+        {
+          principalId: principal.id,
+          botInstanceId: 'fixture-bot',
+          conversationId: 'partial-through-target',
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'CONFIRMATION_PREVIEW_UNAVAILABLE' });
+    expect(calls.some((call) => call.pathname.includes('/episodes/'))).toBe(false);
+    expect(storage.getPendingActions()).toHaveLength(0);
+    expect(calls.filter((call) => WRITE_METHODS.has(call.method))).toEqual([]);
+  });
+
   it('scans directory membership until an authoritative empty page before previewing absence', async () => {
     const subjectPages: number[] = [];
     const calls: Array<{ pathname: string; method: string }> = [];
@@ -401,6 +576,36 @@ describe('account write confirmation previews', () => {
           principalId: principal.id,
           botInstanceId: 'fixture-bot',
           conversationId: 'contradictory-index-total',
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'CONFIRMATION_PREVIEW_UNAVAILABLE' });
+    expect(storage.getPendingActions()).toHaveLength(0);
+    expect(calls.filter((call) => WRITE_METHODS.has(call.method))).toEqual([]);
+  });
+
+  it('fails closed when a directory row has no valid resource identity', async () => {
+    const calls: Array<{ pathname: string; method: string }> = [];
+    const fetchFn: typeof fetch = async (input, init) => {
+      const url = new URL(String(input));
+      const method = init?.method || 'GET';
+      calls.push({ pathname: url.pathname, method });
+      if (url.pathname === '/v0/indices/30/subjects') {
+        return new Response(JSON.stringify({ data: [{ id: 'unknown' }], total: 1 }), {
+          status: 200,
+        });
+      }
+      return new Response(JSON.stringify(readResponse(url.pathname)), { status: 200 });
+    };
+    const { registry, principal, storage } = await setup(fetchFn);
+
+    await expect(
+      registry.executeTool(
+        'bangumi.manage_index',
+        { action: 'add_subject', indexId: 30, subjectId: 999 },
+        {
+          principalId: principal.id,
+          botInstanceId: 'fixture-bot',
+          conversationId: 'invalid-index-row',
         },
       ),
     ).rejects.toMatchObject({ code: 'CONFIRMATION_PREVIEW_UNAVAILABLE' });
