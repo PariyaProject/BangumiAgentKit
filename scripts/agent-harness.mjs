@@ -153,6 +153,7 @@ import { validateR05SanitizedReportFile } from './acceptance/write-r05-shared-pe
 import { validateP06SanitizedReportFile } from './acceptance/write-p06-render-person-profile-agent-mcp-report.mjs';
 import { validateP02SanitizedReportFile } from './acceptance/write-p02-person-profile-agent-mcp-report.mjs';
 import { validateR04SanitizedReportFile } from './acceptance/write-r04-series-watch-order-offline-agent-mcp-report.mjs';
+import { validateC04SanitizedReportFile } from './acceptance/write-c04-cohort-comparison-agent-mcp-report.mjs';
 import {
   G06_MODEL,
   G06_REASONING_EFFORT,
@@ -3793,6 +3794,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateP02SanitizedReportFile(claim, root, reportPath);
     case 'r04-series-watch-order-offline-agent-mcp-v1':
       return validateR04SanitizedReportFile(claim, root, reportPath);
+    case 'c04-cohort-comparison-agent-mcp-matrix-v1':
+      return validateC04SanitizedReportFile(claim, root, reportPath);
     default:
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_REPORT_VALIDATOR_MISSING',

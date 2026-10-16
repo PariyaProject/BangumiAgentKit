@@ -44,13 +44,26 @@ function assertRegistry(registry) {
   const keys = new Set();
   const ids = new Set();
   for (const profile of registry.profiles) {
-    const key = `${profile?.toolName}\0${profile?.argumentProfile}`;
+    const toolNames = profile?.toolNames ?? [profile?.toolName];
+    const callToolNames = Array.isArray(profile?.calls)
+      ? [...new Set(profile.calls.map((call) => call?.toolName))]
+      : [];
+    const validToolNames =
+      Array.isArray(toolNames) &&
+      toolNames.length >= 1 &&
+      toolNames[0] === profile?.toolName &&
+      toolNames.every(
+        (toolName) => typeof toolName === 'string' && /^bangumi\.[a-z][a-z0-9_]*$/u.test(toolName),
+      ) &&
+      new Set(toolNames).size === toolNames.length &&
+      canonicalAgentMcpProfileJson(callToolNames) === canonicalAgentMcpProfileJson(toolNames) &&
+      (profile?.toolNames === undefined || toolNames.length > 1);
     if (
       typeof profile?.id !== 'string' ||
       !/^[a-z0-9-]{3,80}$/u.test(profile.id) ||
       ids.has(profile.id) ||
-      keys.has(key) ||
       !/^bangumi\.[a-z][a-z0-9_]*$/u.test(profile?.toolName ?? '') ||
+      !validToolNames ||
       typeof profile?.argumentProfile !== 'string' ||
       !/^harness-r95-[a-z0-9-]{1,44}$/u.test(profile?.claimLabelName ?? '') ||
       !Array.isArray(profile?.calls) ||
@@ -58,15 +71,16 @@ function assertRegistry(registry) {
       profile.calls.length > 8 ||
       profile.calls.some(
         (call) =>
-          call?.toolName !== profile.toolName ||
+          !toolNames.includes(call?.toolName) ||
           !call.arguments ||
           typeof call.arguments !== 'object' ||
           Array.isArray(call.arguments),
-      )
+      ) ||
+      toolNames.some((toolName) => keys.has(`${toolName}\0${profile?.argumentProfile}`))
     ) {
       throw new Error('Agent/MCP profile registry contains a duplicate or invalid profile.');
     }
-    keys.add(key);
+    for (const toolName of toolNames) keys.add(`${toolName}\0${profile.argumentProfile}`);
     ids.add(profile.id);
   }
 }
@@ -75,7 +89,12 @@ assertRegistry(REGISTRY);
 deepFreeze(REGISTRY);
 
 const PROFILES_BY_KEY = new Map(
-  REGISTRY.profiles.map((profile) => [`${profile.toolName}\0${profile.argumentProfile}`, profile]),
+  REGISTRY.profiles.flatMap((profile) =>
+    (profile.toolNames ?? [profile.toolName]).map((toolName) => [
+      `${toolName}\0${profile.argumentProfile}`,
+      profile,
+    ]),
+  ),
 );
 const PROFILES_BY_ID = new Map(REGISTRY.profiles.map((profile) => [profile.id, profile]));
 

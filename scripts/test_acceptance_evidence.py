@@ -6687,6 +6687,44 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.assertEqual(GENERATOR.public_api_smoke_sources(self.catalog), expected)
         self.assertEqual(GENERATOR.model_mcp_e2e_sources(self.catalog), expected)
 
+    def test_c04_signed_matrix_report_credits_only_its_two_registered_tools(self):
+        relative_path = 'docs/live-probes/c04-cohort-comparison-agent-mcp-run95.json'
+        report_path = self.root / relative_path
+        report_path.write_text(json.dumps({
+            'evidenceKind': 'codex_cli_c04_cohort_comparison_agent_mcp_matrix',
+            'prNumber': 191,
+            'toolNames': [
+                'bangumi.compare_subject_cohorts',
+                'bangumi.render_subject_cohort_comparison',
+            ],
+        }), encoding='utf-8')
+        epoch_status = {'epoch': {'state': {}}}
+        with (
+            patch.object(GENERATOR, 'codex_c04_profile_harness_status', return_value={'state': 'REPORT_WRITTEN'}) as harness_status,
+            patch.object(GENERATOR, 'codex_c04_profile_epoch_harness_status', return_value=epoch_status) as epoch_harness_status,
+            patch.object(GENERATOR, 'codex_c04_profile_report_is_valid', return_value=True) as report_validator,
+            patch.object(GENERATOR, 'codex_c04_profile_report_matches_candidate_revision', return_value=True) as candidate_binding,
+        ):
+            sources = GENERATOR.model_mcp_e2e_sources(self.catalog)
+        harness_status.assert_called_once_with(191)
+        epoch_harness_status.assert_called_once_with(191)
+        report_validator.assert_called_once()
+        candidate_binding.assert_called_once_with(report_path, None)
+        self.assertEqual(sources, {
+            'bangumi.compare_subject_cohorts': {relative_path},
+            'bangumi.render_subject_cohort_comparison': {relative_path},
+        })
+
+        with (
+            patch.object(GENERATOR, 'codex_c04_profile_harness_status', return_value={'state': 'REPORT_WRITTEN'}),
+            patch.object(GENERATOR, 'codex_c04_profile_epoch_harness_status', return_value=epoch_status),
+            patch.object(GENERATOR, 'codex_c04_profile_report_is_valid', return_value=False),
+            patch.object(GENERATOR, 'codex_c04_profile_report_matches_candidate_revision', return_value=True) as candidate_binding,
+        ):
+            sources = GENERATOR.model_mcp_e2e_sources(self.catalog)
+        candidate_binding.assert_not_called()
+        self.assertEqual(sources, {})
+
     def test_a01_report_remains_countable_after_candidate_child_evidence_commit(self):
         report = self._a01_report_fixture()
         self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-A01.json'
@@ -7325,6 +7363,39 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
             'bangumi.get_subject', '✅<br>`docs/live-probes/agent-mcp-fixture.json`', 'agent_mcp'
         ))
+
+    def test_c04_report_reference_maps_only_its_two_agent_mcp_tools(self):
+        relative_path = 'docs/live-probes/c04-cohort-comparison-agent-mcp-run95.json'
+        tool_names = [
+            'bangumi.compare_subject_cohorts',
+            'bangumi.render_subject_cohort_comparison',
+        ]
+        (self.root / relative_path).write_text(json.dumps({
+            'evidenceKind': 'codex_cli_c04_cohort_comparison_agent_mcp_matrix',
+            'profileId': 'c04-cohort-comparison-agent-mcp-matrix-v1',
+            'runNumber': 95,
+            'frontierId': 'A01',
+            'scenarioId': None,
+            'resultStatus': 'SUCCESS',
+            'codexRunCount': 2,
+            'codexMcpToolEventCount': 2,
+            'allowedCallCount': 2,
+            'deniedCallCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'toolNames': tool_names,
+            'serverToolNames': tool_names,
+            'resultSummaries': [
+                {'toolName': name, 'summary': {}}
+                for name in tool_names
+            ],
+        }), encoding='utf-8')
+        cell = f'✅<br>`{relative_path}`'
+        for name in tool_names:
+            self.assertIsNone(TABLE_CHECKER.evidence_reference_error(name, cell, 'agent_mcp'))
+        error = TABLE_CHECKER.evidence_reference_error('bangumi.auth_status', cell, 'agent_mcp')
+        self.assertIn('does not contain evidence for bangumi.auth_status', error)
 
     def test_accepts_auth_denial_report_reference_for_the_same_tool(self):
         self.assertIsNone(TABLE_CHECKER.evidence_reference_error(

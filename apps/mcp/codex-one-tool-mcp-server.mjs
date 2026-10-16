@@ -45,6 +45,12 @@ import {
   createR04SeriesWatchOrderOfflineFetch,
   R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE,
 } from '../../scripts/lib/r04-series-watch-order-offline-fixture.mjs';
+import {
+  assertC04CohortComparisonPublicProfile,
+  createC04CohortComparisonPublicFetch,
+  C04_COHORT_COMPARISON_PROFILE_ID,
+  C04_COHORT_COMPARISON_NETWORK_MODE,
+} from '../../scripts/lib/c04-cohort-comparison-public-profile.mjs';
 import { inspectC07PngArtifact } from '../../scripts/lib/c07-png-artifact-validation.mjs';
 import { buildG06PrivacySummary } from '../../scripts/lib/g06-privacy-summary.mjs';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
@@ -189,10 +195,15 @@ async function main(argv = process.argv.slice(2)) {
 
   const catalogBytes = fs.readFileSync(path.join(PRODUCT_ROOT, 'docs/tool-catalog.json'));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
-  const catalogTool = catalog.find((item) => item?.name === config.toolName);
-  if (!catalogTool || catalogTool.auth !== 'none' || catalogTool.risk !== 'read') {
+  const catalogTools = config.toolNames.map((toolName) =>
+    catalog.find((item) => item?.name === toolName),
+  );
+  if (
+    catalogTools.some((tool) => !tool || tool.auth !== 'none' || tool.risk !== 'read') ||
+    new Set(config.toolNames).size !== config.toolNames.length
+  ) {
     throw new Error(
-      'Only catalogued auth=none, risk=read tools may be exposed by this probe server.',
+      'Only exact catalogued auth=none, risk=read tools may be exposed by this probe server.',
     );
   }
   const sourceRevision = gitRepositoryText(PRODUCT_ROOT, ['rev-parse', 'HEAD']);
@@ -208,6 +219,10 @@ async function main(argv = process.argv.slice(2)) {
   const storage = new MemoryStorage();
   const artifactStore = new MemoryArtifactStore();
   const identityProvider = new StdioMcpExecutionIdentityProvider(storage);
+  const c04PublicFetch =
+    config.networkMode === C04_COHORT_COMPARISON_NETWORK_MODE
+      ? createC04CohortComparisonPublicFetch()
+      : null;
   const offlineFixture =
     config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
       ? createC07CohortRenderOfflineFixtureFetch()
@@ -228,7 +243,11 @@ async function main(argv = process.argv.slice(2)) {
   const publicHttpClient = new HttpClient({
     baseUrl: 'https://api.bgm.tv',
     timeoutMs: 10000,
-    ...(offlineFixture ? { fetchFn: offlineFixture.fetchFn } : {}),
+    ...(offlineFixture
+      ? { fetchFn: offlineFixture.fetchFn }
+      : c04PublicFetch
+        ? { fetchFn: c04PublicFetch.fetchFn }
+        : {}),
   });
   const dependencies = createRuntimeDependenciesWithStorage(storage, {
     publicHttpClient,
@@ -236,15 +255,30 @@ async function main(argv = process.argv.slice(2)) {
     ...(renderService ? { renderService } : {}),
   });
   const registry = new ToolRegistry(dependencies, { profile: 'full', renderTarget: 'chat' });
-  const [tool] = filterAllowedTools(registry.getTools(), config.toolName);
-  const mcpTool = {
+  if (
+    config.profile?.id === C04_COHORT_COMPARISON_PROFILE_ID &&
+    !assertC04CohortComparisonPublicProfile(config.profile)
+  ) {
+    throw new Error(
+      'The registered C04 multi-tool profile does not match its fixed public contract.',
+    );
+  }
+  const tools =
+    config.toolNames.length === 1
+      ? filterAllowedTools(registry.getTools(), config.toolName)
+      : filterAllowedTools(registry.getTools(), config.toolNames);
+  const mcpTools = tools.map((tool) => ({
     ...toMcpTool(tool),
     annotations: publicReadOnlyToolAnnotations(tool),
-  };
-  const descriptionSha256 = createHash('sha256').update(mcpTool.description, 'utf8').digest('hex');
-  const inputSchemaSha256 = createHash('sha256')
-    .update(canonicalJson(mcpTool.inputSchema), 'utf8')
-    .digest('hex');
+  }));
+  const toolDescriptors = mcpTools.map((mcpTool) => ({
+    toolName: mcpTool.name,
+    descriptionSha256: createHash('sha256').update(mcpTool.description, 'utf8').digest('hex'),
+    inputSchemaSha256: createHash('sha256')
+      .update(canonicalJson(mcpTool.inputSchema), 'utf8')
+      .digest('hex'),
+  }));
+  const primaryToolDescriptor = toolDescriptors[0];
   const server = new Server(
     { name: 'bangumi-codex-one-tool-qa', version: '1.0.0' },
     { capabilities: { tools: {} } },
@@ -258,7 +292,9 @@ async function main(argv = process.argv.slice(2)) {
     ...(config.profile
       ? {
           serverProfile: config.networkMode
-            ? 'closed-profile-sequence-anonymous-offline-v1'
+            ? config.networkMode === C04_COHORT_COMPARISON_NETWORK_MODE
+              ? 'closed-profile-sequence-anonymous-public-v1'
+              : 'closed-profile-sequence-anonymous-offline-v1'
             : 'closed-profile-sequence-anonymous-public-v1',
         }
       : { serverProfile: 'one-tool-anonymous-public-v1' }),
@@ -266,7 +302,10 @@ async function main(argv = process.argv.slice(2)) {
       ? {
           profileId: config.profile.id,
           argumentProfile: config.profile.argumentProfile,
-          expectedCallCount: config.profile.calls.length,
+          expectedCallCount: config.expectedArgumentSequence.length,
+          ...(config.profileCallIndex === undefined
+            ? {}
+            : { profileCallIndex: config.profileCallIndex }),
           ...(config.networkMode ? { networkMode: config.networkMode } : {}),
         }
       : {}),
@@ -274,31 +313,42 @@ async function main(argv = process.argv.slice(2)) {
     bundleSha256,
     catalogSha256: createHash('sha256').update(catalogBytes).digest('hex'),
     toolName: config.toolName,
-    toolDescriptionSha256: descriptionSha256,
-    inputSchemaSha256,
-    serverToolNames: [config.toolName],
-    serverToolCount: 1,
+    toolDescriptionSha256: primaryToolDescriptor.descriptionSha256,
+    inputSchemaSha256: primaryToolDescriptor.inputSchemaSha256,
+    serverToolNames: config.toolNames,
+    serverToolCount: mcpTools.length,
+    ...(toolDescriptors.length > 1 || config.profile?.id === C04_COHORT_COMPARISON_PROFILE_ID
+      ? { toolNames: config.toolNames, toolDescriptors }
+      : {}),
     expectedArgumentsSha256: config.expectedArgumentsSha256,
     serverResultStatus: 'NOT_RUN',
     allowedCallCount: 0,
     deniedCallCount: 0,
     argumentMatch: false,
     ...(config.profile
-      ? { results: Array(config.profile.calls.length).fill(null) }
+      ? { results: Array(config.expectedArgumentSequence.length).fill(null) }
       : { result: null }),
     ...(offlineFixture ? { offlineFixture: offlineFixture.snapshot() } : {}),
     ...(p06AssetGuard ? { offlineAssetBoundary: p06AssetGuard.snapshot() } : {}),
+    ...(c04PublicFetch ? { publicRequestScope: c04PublicFetch.snapshot() } : {}),
     privacy: buildG06PrivacySummary(),
   };
-  writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+  const persistSummary = () =>
+    writeSanitizedSummary(
+      config.summaryPath,
+      c04PublicFetch ? { ...summary, publicRequestScope: c04PublicFetch.snapshot() } : summary,
+      serverInstanceId,
+    );
+  persistSummary();
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [mcpTool] }));
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: mcpTools }));
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const call = config.profile
       ? authorizeToolCallSequence({
           name: request.params.name,
           args: request.params.arguments || {},
           expectedTool: config.toolName,
+          expectedToolSequence: config.expectedToolSequence,
           expectedArgumentSequence: config.expectedArgumentSequence,
           completedCalls: allowedCalls,
         })
@@ -312,7 +362,7 @@ async function main(argv = process.argv.slice(2)) {
     if (!call.allowed) {
       deniedCalls += 1;
       summary = { ...summary, deniedCallCount: deniedCalls };
-      writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+      persistSummary();
       return {
         content: [{ type: 'text', text: `Rejected by one-tool QA server: ${call.code}.` }],
         isError: true,
@@ -325,7 +375,7 @@ async function main(argv = process.argv.slice(2)) {
     if (!callClaimed) {
       deniedCalls += 1;
       summary = { ...summary, deniedCallCount: deniedCalls };
-      writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+      persistSummary();
       return {
         content: [{ type: 'text', text: 'Rejected by one-tool QA server: CALL_LIMIT_REACHED.' }],
         isError: true,
@@ -334,7 +384,7 @@ async function main(argv = process.argv.slice(2)) {
     if (!runtimeCandidateMatches(sourceRevision, bundleSha256)) {
       deniedCalls += 1;
       summary = { ...summary, deniedCallCount: deniedCalls };
-      writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+      persistSummary();
       return {
         content: [{ type: 'text', text: 'Rejected by one-tool QA server: CANDIDATE_DRIFT.' }],
         isError: true,
@@ -342,13 +392,13 @@ async function main(argv = process.argv.slice(2)) {
     }
     allowedCalls += 1;
     summary = { ...summary, allowedCallCount: allowedCalls, argumentMatch: true };
-    writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+    persistSummary();
     const runAcceptedCall = async () => {
       try {
         if (config.profile && profileSequenceFailed) {
           deniedCalls += 1;
           summary = { ...summary, deniedCallCount: deniedCalls };
-          writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+          persistSummary();
           return {
             content: [
               {
@@ -360,10 +410,13 @@ async function main(argv = process.argv.slice(2)) {
           };
         }
         const identity = await identityProvider.resolveContext(request);
+        const expectedToolName = config.profile
+          ? config.expectedToolSequence[sequenceIndex]
+          : config.toolName;
         const expectedArguments = config.profile
           ? config.expectedArgumentSequence[sequenceIndex]
           : config.expectedArguments;
-        const result = await registry.executeTool(config.toolName, expectedArguments, {
+        const result = await registry.executeTool(expectedToolName, expectedArguments, {
           ...identity,
           requestId: `req_${randomUUID()}`,
           confirmationId: undefined,
@@ -375,7 +428,7 @@ async function main(argv = process.argv.slice(2)) {
             serverResultStatus: 'ERROR',
             errorCode: 'CANDIDATE_DRIFT',
           };
-          writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+          persistSummary();
           return {
             content: [
               {
@@ -390,16 +443,24 @@ async function main(argv = process.argv.slice(2)) {
           const artifactSummary =
             config.profile.id === 'p06-render-person-profile-offline-agent-mcp-v1'
               ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
-              : null;
+              : config.profile.id === C04_COHORT_COMPARISON_PROFILE_ID &&
+                  expectedToolName === 'bangumi.render_subject_cohort_comparison'
+                ? artifactStore.summarize(result?.artifact?.id)
+                : null;
           const resultSummary = summarizeProfileToolResult(
             result,
             expectedArguments,
             config.profile.id,
             artifactSummary,
+            expectedToolName,
           );
           const results = [...summary.results];
           results[sequenceIndex] = {
             sequenceIndex,
+            ...(config.toolNames.length > 1 ||
+            config.profile?.id === C04_COHORT_COMPARISON_PROFILE_ID
+              ? { toolName: expectedToolName }
+              : {}),
             status: 'SUCCESS',
             resultSummary,
           };
@@ -410,7 +471,7 @@ async function main(argv = process.argv.slice(2)) {
           };
         } else {
           const resultSummary = summarizeToolResult(
-            config.toolName,
+            expectedToolName,
             result,
             artifactStore.summarize(result?.artifact?.id, { verifyPng: Boolean(offlineFixture) }),
           );
@@ -422,7 +483,7 @@ async function main(argv = process.argv.slice(2)) {
         }
         if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
         if (p06AssetGuard) summary = { ...summary, offlineAssetBoundary: p06AssetGuard.snapshot() };
-        writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+        persistSummary();
         if (config.profile?.id === P07_PERSON_SEASON_PROFILE_ID) {
           const safeProjection = summary.results[sequenceIndex]?.resultSummary;
           if (!safeProjection) {
@@ -431,7 +492,7 @@ async function main(argv = process.argv.slice(2)) {
               serverResultStatus: 'ERROR',
               results: [{ sequenceIndex, status: 'ERROR', errorCode: 'P07_SUMMARY_UNAVAILABLE' }],
             };
-            writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+            persistSummary();
             return {
               content: [{ type: 'text', text: 'P07 bounded date summary is unavailable.' }],
               isError: true,
@@ -443,11 +504,11 @@ async function main(argv = process.argv.slice(2)) {
             structuredContent: safeProjection,
           };
         }
-        const presentation = presentMcpToolResult(config.toolName, result);
+        const toolPresentation = presentMcpToolResult(expectedToolName, result);
         return {
-          content: [{ type: 'text', text: presentation.text }],
-          ...(presentation.structuredContent
-            ? { structuredContent: presentation.structuredContent }
+          content: [{ type: 'text', text: toolPresentation.text }],
+          ...(toolPresentation.structuredContent
+            ? { structuredContent: toolPresentation.structuredContent }
             : {}),
         };
       } catch (error) {
@@ -463,7 +524,7 @@ async function main(argv = process.argv.slice(2)) {
         }
         if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
         if (p06AssetGuard) summary = { ...summary, offlineAssetBoundary: p06AssetGuard.snapshot() };
-        writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+        persistSummary();
         return {
           content: [
             {

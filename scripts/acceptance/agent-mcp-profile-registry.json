@@ -236,6 +236,78 @@
           }
         }
       ]
+    },
+    {
+      "id": "c04-cohort-comparison-agent-mcp-matrix-v1",
+      "frontierId": "A01",
+      "epochId": "run95-c04-cohort-comparison-agent-mcp-matrix-20261016",
+      "toolName": "bangumi.compare_subject_cohorts",
+      "toolNames": ["bangumi.compare_subject_cohorts", "bangumi.render_subject_cohort_comparison"],
+      "argumentProfile": "fixed-c04-2025-winter-spring-original-anime-max1-v1",
+      "claimLabelName": "harness-r95-c04-cohort-comparison-claimed",
+      "reportPath": "docs/live-probes/c04-cohort-comparison-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-c04-cohort-comparison-agent-mcp-matrix-contract-2026-10-16.md",
+      "evidenceKind": "codex_cli_c04_cohort_comparison_agent_mcp_matrix",
+      "answerCheckMethod": "c04-fixed-two-season-cohort-tool-matrix-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-c04-cohort-comparison-matrix-public-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 1024,
+      "calls": [
+        {
+          "toolName": "bangumi.compare_subject_cohorts",
+          "arguments": {
+            "cohorts": [
+              {
+                "label": "Run95 C04 2025 winter original anime sample",
+                "query": {
+                  "media": "anime",
+                  "season": "2025-winter",
+                  "metaTags": ["原创"],
+                  "resultMode": "all"
+                }
+              },
+              {
+                "label": "Run95 C04 2025 spring original anime sample",
+                "query": {
+                  "media": "anime",
+                  "season": "2025-spring",
+                  "metaTags": ["原创"],
+                  "resultMode": "all"
+                }
+              }
+            ],
+            "maxSubjects": 1
+          }
+        },
+        {
+          "toolName": "bangumi.render_subject_cohort_comparison",
+          "arguments": {
+            "cohorts": [
+              {
+                "label": "Run95 C04 2025 winter original anime sample",
+                "query": {
+                  "media": "anime",
+                  "season": "2025-winter",
+                  "metaTags": ["原创"],
+                  "resultMode": "all"
+                }
+              },
+              {
+                "label": "Run95 C04 2025 spring original anime sample",
+                "query": {
+                  "media": "anime",
+                  "season": "2025-spring",
+                  "metaTags": ["原创"],
+                  "resultMode": "all"
+                }
+              }
+            ],
+            "maxSubjects": 1
+          }
+        }
+      ]
     }
   ]
 }

@@ -22,6 +22,7 @@ import {
 import { buildG06PrivacySummary, G06_PRIVACY } from '../../scripts/lib/g06-privacy-summary.mjs';
 import { g06ServerPrivacyMatches } from '../../scripts/acceptance/write-g06-agent-mcp-report.mjs';
 import { getAgentMcpProfileById } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
+import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 
 const target = 'bangumi.get_subject_stats_intelligence';
 const expectedArguments = { subjectId: 218707 };
@@ -40,6 +41,25 @@ test('one-tool profile only exposes the exact anonymous read tool', () => {
   assert.deepEqual(filterAllowedTools(tools, target), [tools[0]]);
   assert.throws(() => filterAllowedTools(tools, 'bangumi.update_collection'), /auth=none, risk=read/);
   assert.throws(() => filterAllowedTools([...tools, { ...tools[0] }], target), /exactly one/);
+});
+
+test('multi-tool profile exposes only its exact anonymous read tool set', () => {
+  const compare = { name: 'bangumi.compare_subject_cohorts', auth: 'none', risk: 'read' };
+  const render = { name: 'bangumi.render_subject_cohort_comparison', auth: 'none', risk: 'read' };
+  const auth = { name: 'bangumi.auth_status', auth: 'none', risk: 'read' };
+  const write = { name: 'bangumi.update_collection', auth: 'required', risk: 'write' };
+  assert.deepEqual(filterAllowedTools([compare, render, auth, write], [compare.name, render.name]), [
+    compare,
+    render,
+  ]);
+  assert.throws(
+    () => filterAllowedTools([compare, render, auth, write], [compare.name, write.name]),
+    /auth=none, risk=read/u,
+  );
+  assert.throws(
+    () => filterAllowedTools([compare, render, render], [compare.name, render.name]),
+    /once/u,
+  );
 });
 
 test('the G06 server emits the exact privacy summary required by its report validator', () => {
@@ -99,6 +119,127 @@ test('profile sequence gate permits only the next exact argument object for its 
   assert.deepEqual(authorizeToolCallSequence({
     ...base, name: 'bangumi.get_person_activity', args: expectedArgumentSequence[1], completedCalls: 2,
   }), { allowed: false, code: 'CALL_LIMIT_REACHED' });
+});
+
+test('multi-tool profile sequence requires the exact next tool and its fixed arguments', () => {
+  const profile = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
+  const expectedToolSequence = profile.calls.map((call) => call.toolName);
+  const expectedArgumentSequence = profile.calls.map((call) => call.arguments);
+  const base = { expectedToolSequence, expectedArgumentSequence };
+  assert.deepEqual(authorizeToolCallSequence({
+    ...base,
+    name: expectedToolSequence[1],
+    args: expectedArgumentSequence[1],
+    completedCalls: 0,
+  }), { allowed: false, code: 'TOOL_NOT_ALLOWLISTED' });
+  assert.deepEqual(authorizeToolCallSequence({
+    ...base,
+    name: expectedToolSequence[0],
+    args: expectedArgumentSequence[0],
+    completedCalls: 0,
+  }), { allowed: true, code: 'ALLOWLISTED_PROFILE_QUERY', sequenceIndex: 0 });
+  assert.deepEqual(authorizeToolCallSequence({
+    ...base,
+    name: expectedToolSequence[1],
+    args: { ...expectedArgumentSequence[1], maxSubjects: 2 },
+    completedCalls: 1,
+  }), { allowed: false, code: 'ARGUMENTS_DO_NOT_MATCH_PROFILE_SEQUENCE' });
+  assert.deepEqual(authorizeToolCallSequence({
+    ...base,
+    name: expectedToolSequence[1],
+    args: expectedArgumentSequence[1],
+    completedCalls: 1,
+  }), { allowed: true, code: 'ALLOWLISTED_PROFILE_QUERY', sequenceIndex: 1 });
+  assert.deepEqual(authorizeToolCallSequence({
+    ...base,
+    name: expectedToolSequence[1],
+    args: expectedArgumentSequence[1],
+    completedCalls: 2,
+  }), { allowed: false, code: 'CALL_LIMIT_REACHED' });
+  assert.deepEqual(authorizeToolCallSequence({
+    ...base,
+    name: 'bangumi.auth_status',
+    args: {},
+    completedCalls: 2,
+  }), { allowed: false, code: 'TOOL_NOT_ALLOWLISTED' });
+});
+
+test('C04 profile summaries retain bounded coverage and artifact metadata without source rows', () => {
+  const profile = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
+  const raw = {
+    state: 'partial',
+    cohorts: [
+      {
+        label: 'public season label',
+        subjects: [{ id: 123456, name: 'private-to-report title', score: 9.1 }],
+        coverage: {
+          query: { state: 'ok' },
+          detailHydrationsAttempted: 1,
+          detailHydrationsSucceeded: 1,
+          detailHydrationsFailed: 0,
+        },
+      },
+      {
+        label: 'second season label',
+        subjects: [],
+        coverage: {
+          query: { state: 'partial' },
+          detailHydrationsAttempted: 0,
+          detailHydrationsSucceeded: 0,
+          detailHydrationsFailed: 0,
+        },
+      },
+    ],
+    metrics: [
+      {
+        key: 'score', state: 'partial', averages: [9.1, 0],
+        validCounts: [1, 0], partialCounts: [0, 0], missingCounts: [0, 0],
+        conflictCounts: [0, 0], notComputableCounts: [0, 0],
+      },
+    ],
+    coverage: {
+      maxSubjectsPerCohort: 1,
+      totalSubjectsReturned: 1,
+      cohortsComplete: 0,
+      cohortsPartial: 2,
+      detailHydrationsAttempted: 1,
+      detailHydrationsSucceeded: 1,
+      detailHydrationsFailed: 0,
+      truncated: false,
+    },
+  };
+  const summary = summarizeProfileToolResult(
+    raw,
+    profile.calls[0].arguments,
+    profile.id,
+    null,
+    'bangumi.compare_subject_cohorts',
+  );
+  const encoded = JSON.stringify(summary);
+  assert.equal(summary.resultState, 'partial');
+  assert.equal(summary.cohortCount, 2);
+  assert.equal(summary.coverage.totalSubjectsReturned, 1);
+  assert.doesNotMatch(encoded, /private-to-report|123456|9\.1|public season label/u);
+
+  const artifactSummary = summarizeProfileToolResult(
+    { artifact: { id: 'do-not-retain' } },
+    profile.calls[1].arguments,
+    profile.id,
+    {
+      returned: true,
+      persisted: false,
+      mimeType: 'image/png',
+      width: 1200,
+      height: 900,
+      byteLength: 2048,
+      sha256: 'a'.repeat(64),
+      pngSignatureValid: true,
+    },
+    'bangumi.render_subject_cohort_comparison',
+  );
+  assert.equal(artifactSummary.resultState, 'artifact_returned');
+  assert.equal(artifactSummary.artifact.persisted, false);
+  assert.doesNotMatch(JSON.stringify(artifactSummary), /do-not-retain/u);
 });
 
 test('profile call queue serializes overlapping requests and releases after failure', async () => {

@@ -110,7 +110,7 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                         for scenario in report.get('scenarios', []))
             )
         elif kind == 'agent_mcp':
-            matches = (
+            scenario_matches = (
                 isinstance(report, dict)
                 and any(
                     isinstance(scenario, dict)
@@ -123,6 +123,36 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                     for scenario in report.get('scenarios', [])
                 )
             )
+            c04_tool_names = [
+                'bangumi.compare_subject_cohorts',
+                'bangumi.render_subject_cohort_comparison',
+            ]
+            c04_results = report.get('resultSummaries') if isinstance(report, dict) else None
+            c04_matches = (
+                isinstance(report, dict)
+                and report.get('evidenceKind') == 'codex_cli_c04_cohort_comparison_agent_mcp_matrix'
+                and report.get('profileId') == 'c04-cohort-comparison-agent-mcp-matrix-v1'
+                and report.get('runNumber') == 95
+                and report.get('frontierId') == 'A01'
+                and report.get('scenarioId') is None
+                and report.get('resultStatus') == 'SUCCESS'
+                and report.get('codexRunCount') == 2
+                and report.get('codexMcpToolEventCount') == 2
+                and report.get('allowedCallCount') == 2
+                and report.get('deniedCallCount') == 0
+                and report.get('nonMcpToolEventCount') == 0
+                and report.get('nonMcpToolTypes') == []
+                and report.get('shellToolCallCount') == 0
+                and report.get('toolNames') == c04_tool_names
+                and report.get('serverToolNames') == c04_tool_names
+                and isinstance(c04_results, list)
+                and [
+                    item.get('toolName') if isinstance(item, dict) else None
+                    for item in c04_results
+                ] == c04_tool_names
+                and name in c04_tool_names
+            )
+            matches = scenario_matches or c04_matches
         else:
             try:
                 catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
