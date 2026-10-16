@@ -179,6 +179,34 @@
           }
         }
       ]
+    },
+    {
+      "id": "r04-series-watch-order-offline-agent-mcp-v1",
+      "frontierId": "R04",
+      "epochId": "run95-r04-series-watch-order-offline-matrix-20261016",
+      "toolName": "bangumi.get_series_watch_order",
+      "argumentProfile": "fixed-r04-synthetic-watch-order-990801-depth0-max1-anime-v1",
+      "claimLabelName": "harness-r95-r04-watch-order-offline-claimed",
+      "reportPath": "docs/live-probes/r04-series-watch-order-offline-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-r04-series-watch-order-offline-matrix-contract-2026-10-16.md",
+      "evidenceKind": "codex_cli_r04_series_watch_order_offline_agent_mcp",
+      "answerCheckMethod": "r04-exact-synthetic-watch-order-execution-only-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-r04-series-watch-order-offline-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 2048,
+      "calls": [
+        {
+          "toolName": "bangumi.get_series_watch_order",
+          "arguments": {
+            "subjectId": 990801,
+            "depth": 0,
+            "maxNodes": 1,
+            "media": "anime"
+          }
+        }
+      ]
     }
   ]
 }

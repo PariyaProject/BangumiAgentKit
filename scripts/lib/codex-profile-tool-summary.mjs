@@ -7,6 +7,7 @@ import {
   summarizeR05SubjectOverlapToolResult,
 } from './r05-shared-person-overlap-evidence.mjs';
 import { P02_PERSON_PROFILE_OFFLINE_PROFILE_ID } from './p02-person-profile-offline-fixture.mjs';
+import { R04_SERIES_WATCH_ORDER_OFFLINE_PROFILE_ID } from './r04-series-watch-order-offline-fixture.mjs';
 
 export function summarizeProfileToolResult(
   result,
@@ -39,6 +40,29 @@ export function summarizeProfileToolResult(
           ? result.person.id
           : null,
       state: typeof result?.state === 'string' ? result.state : 'unknown',
+    };
+  }
+  if (profileId === R04_SERIES_WATCH_ORDER_OFFLINE_PROFILE_ID) {
+    const coverage = result?.coverage;
+    return {
+      state: ['complete', 'partial', 'not_computable'].includes(result?.state)
+        ? result.state
+        : 'unknown',
+      subjectId:
+        Number.isSafeInteger(result?.subjectId) && result.subjectId > 0
+          ? result.subjectId
+          : null,
+      watchOrderCount: Array.isArray(result?.watchOrder) ? result.watchOrder.length : null,
+      relatedCount: Array.isArray(result?.related) ? result.related.length : null,
+      relationRequests: Number.isSafeInteger(coverage?.relationRequests)
+        ? coverage.relationRequests
+        : null,
+      relationRowsObserved: Number.isSafeInteger(coverage?.relationRowsObserved)
+        ? coverage.relationRowsObserved
+        : null,
+      detailsAttempted: Number.isSafeInteger(coverage?.detailsAttempted)
+        ? coverage.detailsAttempted
+        : null,
     };
   }
   if (profileId === P03_PROFILE_ID) {

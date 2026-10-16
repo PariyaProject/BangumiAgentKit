@@ -151,6 +151,7 @@ import { validateP03SanitizedReportFile } from './acceptance/write-p03-person-na
 import { validateR05SanitizedReportFile } from './acceptance/write-r05-shared-person-overlap-report.mjs';
 import { validateP06SanitizedReportFile } from './acceptance/write-p06-render-person-profile-agent-mcp-report.mjs';
 import { validateP02SanitizedReportFile } from './acceptance/write-p02-person-profile-agent-mcp-report.mjs';
+import { validateR04SanitizedReportFile } from './acceptance/write-r04-series-watch-order-offline-agent-mcp-report.mjs';
 import {
   G06_MODEL,
   G06_REASONING_EFFORT,
@@ -226,6 +227,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'p06-render-person-profile-offline-agent-mcp-v1',
   'p02-person-profile-offline-agent-mcp-v1',
+  'r04-series-watch-order-offline-agent-mcp-v1',
 ]);
 const profileRequiresExactCiRunEvidence = (profileId) => PROFILE_CI_RUN_EVIDENCE_IDS.has(profileId);
 const P01_MODEL = 'gpt-6-luna';
@@ -1503,10 +1505,26 @@ function commandCandidateCheck(options) {
   epoch.adversarial_preflight = evidence.adversarial_preflight;
   epoch.corrective_closure = evidence.corrective_closure ?? [];
   const checksOk = mandatoryChecksSuccessful(epochResult.view.statusCheckRollup);
+  const ciUrl = evidence.ci?.url ?? epochResult.view.url;
+  const exactCiProfiles = listAgentMcpProfiles().filter(
+    (profile) =>
+      profile.epochId === epoch.epoch_id && profileRequiresExactCiRunEvidence(profile.id),
+  );
+  if (
+    checksOk &&
+    exactCiProfiles.length > 0 &&
+    !deriveP06CiRunEvidence(ciUrl, epochResult.view.statusCheckRollup)
+  ) {
+    throw new HarnessInvariantError(
+      'CANDIDATE_EXACT_CI_RUN_EVIDENCE_REQUIRED',
+      'This one-shot profile Candidate must name the exact GitHub Actions run URL shared by all seven successful checks.',
+      { epochId: epoch.epoch_id, profileIds: exactCiProfiles.map((profile) => profile.id) },
+    );
+  }
   epoch.ci = {
     sha: epochResult.view.headRefOid,
     status: checksOk ? 'SUCCESS' : 'FAILED_OR_PENDING',
-    url: evidence.ci?.url ?? epochResult.view.url,
+    url: ciUrl,
   };
   if (epoch.base_sha !== baseSha) {
     if (!isAncestor(baseSha, head)) {
@@ -3770,6 +3788,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateP06SanitizedReportFile(claim, root, reportPath);
     case 'p02-person-profile-offline-agent-mcp-v1':
       return validateP02SanitizedReportFile(claim, root, reportPath);
+    case 'r04-series-watch-order-offline-agent-mcp-v1':
+      return validateR04SanitizedReportFile(claim, root, reportPath);
     default:
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_REPORT_VALIDATOR_MISSING',
