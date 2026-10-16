@@ -1225,6 +1225,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(rows.get(scenario.id)?.[7]).toBe(
           '✅<br>`docs/live-probes/tool-registry-no-account-auth-denial-manage-index.json`',
         );
+        expect(rows.get(scenario.id)?.[8]).toBe('⬜');
         expect(rows.get(scenario.id)?.[9]).toBe('⬜');
         continue;
       }
