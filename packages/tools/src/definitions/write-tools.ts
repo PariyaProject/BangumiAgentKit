@@ -145,14 +145,6 @@ export function createWriteTools(
     auth: 'required',
     scopes: ['write:collection'],
     risk: 'write',
-    resolvePolicy: (): ResolvedToolPolicy => ({
-      auth: 'required',
-      requiredCapabilities: ['write:collection'],
-      risk: 'write',
-      requiresConfirmation: true,
-      actionType: 'updateCollection',
-      summary: '更新当前账号的条目收藏',
-    }),
     prepareConfirmation: async (input, _context, deps) => {
       const { account, client } = requireConfirmationAccount(deps);
       const userService = new UserService(client);
