@@ -767,20 +767,24 @@ export function createWriteTools(
             409,
           );
         }
+        const observedTotal = sourceTotal ?? expectedTotal;
+        if (
+          (sourceTotal !== undefined &&
+            expectedTotal !== undefined &&
+            sourceTotal !== expectedTotal) ||
+          (observedTotal !== undefined &&
+            (offset > observedTotal ||
+              offset + items.length > observedTotal ||
+              (items.length === 0 && offset < observedTotal)))
+        ) {
+          throw new BangumiError(
+            'CONFIRMATION_PREVIEW_UNAVAILABLE',
+            '目录成员分页状态与已观察到的总数不一致；没有执行写入。',
+            false,
+            409,
+          );
+        }
         if (sourceTotal !== undefined) {
-          if (
-            (expectedTotal !== undefined && sourceTotal !== expectedTotal) ||
-            offset > sourceTotal ||
-            offset + items.length > sourceTotal ||
-            (items.length === 0 && offset < sourceTotal)
-          ) {
-            throw new BangumiError(
-              'CONFIRMATION_PREVIEW_UNAVAILABLE',
-              '目录成员分页总数前后不一致；没有执行写入。',
-              false,
-              409,
-            );
-          }
           expectedTotal = sourceTotal;
         }
         const found = items.find((item) => item.id === input.subjectId);

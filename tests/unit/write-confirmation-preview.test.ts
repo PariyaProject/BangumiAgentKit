@@ -519,6 +519,48 @@ describe('account write confirmation previews', () => {
     expect(calls.filter((call) => WRITE_METHODS.has(call.method))).toEqual([]);
   });
 
+  it('fails closed when an empty directory page omits a previously observed total', async () => {
+    const subjectPages: number[] = [];
+    const calls: Array<{ pathname: string; method: string }> = [];
+    const fetchFn: typeof fetch = async (input, init) => {
+      const url = new URL(String(input));
+      const method = init?.method || 'GET';
+      calls.push({ pathname: url.pathname, method });
+      if (url.pathname === '/v0/indices/30/subjects') {
+        const offset = Number(url.searchParams.get('offset') || 0);
+        subjectPages.push(offset);
+        if (offset === 0) {
+          return new Response(
+            JSON.stringify({
+              data: Array.from({ length: 100 }, (_, index) => ({ id: index + 100 })),
+              total: 200,
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response(JSON.stringify({ data: [] }), { status: 200 });
+      }
+      return new Response(JSON.stringify(readResponse(url.pathname)), { status: 200 });
+    };
+    const { registry, principal, storage } = await setup(fetchFn);
+
+    await expect(
+      registry.executeTool(
+        'bangumi.manage_index',
+        { action: 'add_subject', indexId: 30, subjectId: 999 },
+        {
+          principalId: principal.id,
+          botInstanceId: 'fixture-bot',
+          conversationId: 'missing-total-before-known-end',
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'CONFIRMATION_PREVIEW_UNAVAILABLE' });
+
+    expect(subjectPages).toEqual([0, 100]);
+    expect(storage.getPendingActions()).toHaveLength(0);
+    expect(calls.filter((call) => WRITE_METHODS.has(call.method))).toEqual([]);
+  });
+
   it('rejects confirmation when a displayed directory title changes', async () => {
     let indexTitle = 'Fixture Index';
     const calls: Array<{ pathname: string; method: string }> = [];
