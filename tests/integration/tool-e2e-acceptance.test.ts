@@ -1222,7 +1222,10 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(catalogForHash(report.catalogSha256)).toBeDefined();
       if (scenario.id === 'bangumi.manage_index') {
         expect(toolContractMatchesCurrent(report, scenario.id)).toBe(false);
-        expect(rows.get(scenario.id)?.[7]).toBe('⬜');
+        expect(rows.get(scenario.id)?.[7]).toBe(
+          '✅<br>`docs/live-probes/tool-registry-no-account-auth-denial-manage-index.json`',
+        );
+        expect(rows.get(scenario.id)?.[8]).toBe('⬜');
         expect(rows.get(scenario.id)?.[9]).toBe('⬜');
         continue;
       }

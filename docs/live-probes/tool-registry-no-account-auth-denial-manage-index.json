@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "tool_registry_no_account_auth_denial_test",
+  "profile": "bangumi-tool-registry-no-account-auth-denial-v1",
+  "catalogSha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
+  "tool": "bangumi.manage_index",
+  "testSourcePath": "tests/unit/manage-index-actions.test.ts",
+  "testSourceSha256": "d351ebd55d4ce420a6651f642ce415f96674c53cb93ebb17f48cbe8c8e8bd0ef",
+  "testCommand": "pnpm exec vitest run tests/unit/manage-index-actions.test.ts",
+  "testName": "rejects an unbound principal before issuing any index request",
+  "testResult": "PASS",
+  "accountBound": false,
+  "observedErrorCode": "AUTH_REQUIRED",
+  "assertions": {
+    "authRequiredGateObserved": true,
+    "operationExecuted": false,
+    "accountDataReturned": false,
+    "networkAccessBlocked": true,
+    "networkRequestAttempts": 0,
+    "externalApiCalled": false
+  }
+}

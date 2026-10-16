@@ -62,6 +62,57 @@ describe('Manage Index 6 Actions Unit Tests', () => {
     };
   }
 
+  async function setupUnauthenticatedEnvironment() {
+    const capturedRequests: { url: string; method: string; body: any }[] = [];
+    const mockFetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      capturedRequests.push({
+        url,
+        method: init?.method || 'GET',
+        body: init?.body ? JSON.parse(init.body as string) : undefined,
+      });
+      return new Response(JSON.stringify({ id: 50, title: 'My Index' }), { status: 200 });
+    });
+
+    const storage = new MemoryStorage();
+    const principal = await storage.findOrCreatePrincipal({
+      provider: 'test',
+      botInstanceId: 'bot-1',
+      externalUserId: 'user-without-account',
+    });
+    const publicHttpClient = new HttpClient({ fetchFn: mockFetch });
+    const tokenBroker = new TokenBroker(
+      storage,
+      { secretKey: 'test-secret-key-123456789012345678901234' },
+      publicHttpClient,
+    );
+    const manageIndexTool = createWriteTools(tokenBroker).find(
+      (tool) => tool.name === 'bangumi.manage_index',
+    )!;
+    const context = {
+      principalId: principal.id,
+      botInstanceId: 'bot-1',
+      conversationId: 'unauthenticated-index-create',
+    };
+
+    return { manageIndexTool, context, tokenBroker, mockFetch, capturedRequests };
+  }
+
+  it('rejects an unbound principal before issuing any index request', async () => {
+    const { manageIndexTool, context, tokenBroker, mockFetch, capturedRequests } =
+      await setupUnauthenticatedEnvironment();
+
+    await expect(
+      (manageIndexTool.execute as any)(
+        { action: 'create', title: 'Unauthenticated index' },
+        context,
+        { clientProvider: tokenBroker } as any,
+      ),
+    ).rejects.toMatchObject({ code: 'AUTH_REQUIRED' });
+
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(capturedRequests).toHaveLength(0);
+  });
+
   it('uses and enforces the official write:indices provider scope', async () => {
     const { manageIndexTool, context, tokenBroker, capturedRequests } = await setupTestEnvironment([
       'write:collection',

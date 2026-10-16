@@ -15540,6 +15540,65 @@ def auth_gate_denial_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 or assertions.get('externalApiCalled') is not False):
             continue
         sources.setdefault(name, set()).add(report_source_ref(path))
+
+    local_gate_tests = {
+        'bangumi.manage_index': {
+            'source_path': 'tests/unit/manage-index-actions.test.ts',
+            'test_name': 'rejects an unbound principal before issuing any index request',
+            'test_command': 'pnpm exec vitest run tests/unit/manage-index-actions.test.ts',
+            'source_fragments': (
+                "externalUserId: 'user-without-account'",
+                "rejects.toMatchObject({ code: 'AUTH_REQUIRED' })",
+                'expect(mockFetch).not.toHaveBeenCalled()',
+                'expect(capturedRequests).toHaveLength(0)',
+            ),
+        },
+    }
+    for path in LIVE_PROBE_DIR.glob('tool-registry-no-account-auth-denial-*.json'):
+        try:
+            report = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(report, dict):
+            continue
+        name = report.get('tool')
+        tool = current_by_name.get(name)
+        expected_test = local_gate_tests.get(name)
+        if not tool or not expected_test or tool.get('auth') != 'required':
+            continue
+        source_path = (ROOT / expected_test['source_path']).resolve()
+        try:
+            source_path.relative_to((ROOT / 'tests').resolve())
+            source_bytes = source_path.read_bytes()
+            source_text = source_bytes.decode('utf-8')
+            source_sha256 = hashlib.sha256(source_bytes).hexdigest()
+        except (OSError, UnicodeError, ValueError):
+            continue
+        assertions = report.get('assertions')
+        if (
+            tool.get('risk') not in {'read', 'write', 'destructive'}
+            or report.get('schemaVersion') != 1
+            or report.get('evidenceKind') != 'tool_registry_no_account_auth_denial_test'
+            or report.get('profile') != 'bangumi-tool-registry-no-account-auth-denial-v1'
+            or report.get('catalogSha256') != catalog_sha256
+            or report.get('testSourcePath') != expected_test['source_path']
+            or report.get('testSourceSha256') != source_sha256
+            or any(fragment not in source_text for fragment in expected_test['source_fragments'])
+            or report.get('testCommand') != expected_test['test_command']
+            or report.get('testName') != expected_test['test_name']
+            or report.get('testResult') != 'PASS'
+            or report.get('accountBound') is not False
+            or report.get('observedErrorCode') != 'AUTH_REQUIRED'
+            or not isinstance(assertions, dict)
+            or assertions.get('authRequiredGateObserved') is not True
+            or assertions.get('operationExecuted') is not False
+            or assertions.get('accountDataReturned') is not False
+            or assertions.get('networkAccessBlocked') is not True
+            or assertions.get('networkRequestAttempts') != 0
+            or assertions.get('externalApiCalled') is not False
+        ):
+            continue
+        sources.setdefault(name, set()).add(report_source_ref(path))
     return sources
 
 

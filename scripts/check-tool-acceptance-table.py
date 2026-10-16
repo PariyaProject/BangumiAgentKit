@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -139,6 +140,20 @@ R01_OFFLINE_ANSWER_CHECK_FIELDS = {
     'exactCandidateBundle', 'offlineFixtureOnly', 'oneExpectedLocalResponse',
     'noAssetRequests', 'exactAcknowledgement', 'privacyPreserved',
 }
+LOCAL_AUTH_DENIAL_TEST_PROFILE = 'bangumi-tool-registry-no-account-auth-denial-v1'
+LOCAL_AUTH_DENIAL_TESTS = {
+    'bangumi.manage_index': {
+        'sourcePath': 'tests/unit/manage-index-actions.test.ts',
+        'testName': 'rejects an unbound principal before issuing any index request',
+        'testCommand': 'pnpm exec vitest run tests/unit/manage-index-actions.test.ts',
+        'sourceFragments': (
+            "externalUserId: 'user-without-account'",
+            "rejects.toMatchObject({ code: 'AUTH_REQUIRED' })",
+            'expect(mockFetch).not.toHaveBeenCalled()',
+            'expect(capturedRequests).toHaveLength(0)',
+        ),
+    },
+}
 
 
 def source_reference_error(name: str, cell: str) -> str | None:
@@ -162,6 +177,49 @@ def source_reference_error(name: str, cell: str) -> str | None:
         if line > line_count:
             return f'{name}: test source line {line} is out of range'
     return None
+
+
+def local_tool_auth_denial_report_matches(name: str, report: dict) -> bool:
+    expected = LOCAL_AUTH_DENIAL_TESTS.get(name)
+    if expected is None:
+        return False
+    try:
+        catalog_bytes = CATALOG.read_bytes()
+        source_path = (ROOT / expected['sourcePath']).resolve()
+        source_path.relative_to((ROOT / 'tests').resolve())
+        source_bytes = source_path.read_bytes()
+        source_text = source_bytes.decode('utf-8')
+        source_sha256 = hashlib.sha256(source_bytes).hexdigest()
+        catalog = json.loads(catalog_bytes)
+    except (OSError, UnicodeError, ValueError):
+        return False
+    tool = next((item for item in catalog if item.get('name') == name), None)
+    assertions = report.get('assertions')
+    return bool(
+        tool
+        and tool.get('auth') == 'required'
+        and tool.get('risk') in {'read', 'write', 'destructive'}
+        and report.get('schemaVersion') == 1
+        and report.get('evidenceKind') == 'tool_registry_no_account_auth_denial_test'
+        and report.get('profile') == LOCAL_AUTH_DENIAL_TEST_PROFILE
+        and report.get('catalogSha256') == hashlib.sha256(catalog_bytes).hexdigest()
+        and report.get('tool') == name
+        and report.get('testSourcePath') == expected['sourcePath']
+        and report.get('testSourceSha256') == source_sha256
+        and all(fragment in source_text for fragment in expected['sourceFragments'])
+        and report.get('testCommand') == expected['testCommand']
+        and report.get('testName') == expected['testName']
+        and report.get('testResult') == 'PASS'
+        and report.get('accountBound') is False
+        and report.get('observedErrorCode') == 'AUTH_REQUIRED'
+        and isinstance(assertions, dict)
+        and assertions.get('authRequiredGateObserved') is True
+        and assertions.get('operationExecuted') is False
+        and assertions.get('accountDataReturned') is False
+        and assertions.get('networkAccessBlocked') is True
+        and assertions.get('networkRequestAttempts') == 0
+        and assertions.get('externalApiCalled') is False
+    )
 
 
 def catalog_schema_reference_error(name: str, cell: str, expected_index: int) -> str | None:
@@ -329,7 +387,7 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                         for result in report.get('results', []))
             )
         elif kind == 'auth_denial':
-            matches = (
+            legacy_agent_matches = (
                 isinstance(report, dict)
                 and report.get('profile') == 'bangumi-full-auth-denial-qa-v1'
                 and any(isinstance(scenario, dict)
@@ -345,6 +403,7 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                         and scenario['assertions'].get('externalApiCalled') is False
                         for scenario in report.get('scenarios', []))
             )
+            matches = legacy_agent_matches or local_tool_auth_denial_report_matches(name, report)
         elif kind == 'agent_mcp':
             scenario_matches = (
                 isinstance(report, dict)
