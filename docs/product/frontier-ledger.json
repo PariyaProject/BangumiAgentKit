@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-15T23:20:34Z",
+  "updated_at": "2026-10-16T01:23:01Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -95,9 +95,10 @@
         "tests/unit/g01-agent-answer-check.test.ts",
         "tests/unit/g01-agent-canary-report.test.ts",
         "docs/research/run95-g01-agent-mcp-canary-2026-10-05.json",
-        "docs/live-probes/public-tools-2026-10-13-110542656-20614.json"
+        "docs/live-probes/public-tools-2026-10-13-110542656-20614.json",
+        "docs/live-probes/public-tools-2026-10-16-003414160-29605.json"
       ],
-      "next_action": "Run #95 added one separate anonymous direct ToolRegistry observation for bangumi.render_query_subjects with {media:anime,year:2012,resultMode:top,limit:1}; the sanitized report records one public HTTP request and summary state=value/keys=[artifact] only. This does not replay the consumed G01 Agent/MCP canary (year=2026, month=7, concepts=[后宫], resultMode=all, limit=100, explain=full), does not accept the user scenario or add Agent/MCP evidence, and does not establish complete Bangumi search coverage. Keep G01 PARTIAL and never retry the consumed one-shot.",
+      "next_action": "Run #95 also added two anonymous direct ToolRegistry observations for bangumi.query_subjects and bangumi.render_query_subjects in the 2026-10-16 report, alongside the earlier fixed year=2012 render observation. These observations support only their public API matrix rows; the top-profile cohort tools were rejected before HTTP and receive no credit. They do not replay the consumed G01 Agent/MCP canary (year=2026, month=7, concepts=[后宫], resultMode=all, limit=100, explain=full), accept the July harem scenario, or establish complete Bangumi search coverage. Keep G01 PARTIAL and never retry the consumed one-shot.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -122,6 +123,25 @@
           "catalog_sha256": "2e3d216a282022fd01a2d1fac0cd0e8831c21461a28d304e41b20d3d4fc39c3e",
           "probe_script_sha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
           "acceptance_boundary": "Direct public ToolRegistry evidence only. This fixed year=2012 profile is distinct from the consumed G01 Agent/MCP one-shot (year=2026, month=7, concepts=[后宫], resultMode=all, limit=100, explain=full); it does not accept the G01 scenario, establish complete catalog/search coverage, or add Agent/MCP evidence. The report stores the artifact key only, not subject rows or image bytes. Keep G01 PARTIAL; never retry the consumed one-shot."
+        },
+        "direct_public_matrix_rows_2026_10_16": {
+          "report": "docs/live-probes/public-tools-2026-10-16-003414160-29605.json",
+          "report_sha256": "bf18fe500b586c69273fec8c9b3c86206729c72ff2bb71881e1d1ef380f09c62",
+          "scope_id": "run95-fresh-six-public-api-private-path-guard-top-v2-20261016",
+          "request_count": 4,
+          "tools": {
+            "bangumi.query_subjects": {
+              "requests": 2,
+              "result_state": "ok",
+              "assertions_passed": true
+            },
+            "bangumi.render_query_subjects": {
+              "requests": 2,
+              "result_state": "value",
+              "assertions_passed": true
+            }
+          },
+          "acceptance_boundary": "These two anonymous direct ToolRegistry observations support only their current public API matrix rows. The four cohort tools in this top-profile report were rejected before HTTP and receive no credit from it. No G01 July 2026 harem scenario or Agent/MCP evidence is inferred; keep G01 PARTIAL and never retry its consumed one-shot."
         }
       }
     },
@@ -2029,8 +2049,8 @@
       "user_question": "某人物首次参与动画和最近参与动画分别是什么？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
-      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-p02-observed-animation-release-chronology-2026-10-15.md", "packages/bangumi-core/src/models/person.ts", "packages/bangumi-core/src/services/person-service.ts", "packages/tools/src/definitions/read-tools.ts", "packages/tools/src/definitions/render-presentation-tools.ts", "apps/mcp/src/result-presenter.ts", "packages/renderer/src/view-models/index.ts", "packages/renderer/src/view-model-builders/index.ts", "packages/renderer/src/templates/PersonProfileCard.tsx", "docs/tool-catalog.json", "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md", "tests/unit/person-intelligence.test.ts", "tests/integration/mcp-result-presenter.test.ts", "tests/integration/mcp-schema.test.ts", "tests/integration/tool-direct-execute-read.test.ts", "tests/render/render-cards.test.ts", "docs/live-probes/public-tools-p02-person-profile-chronology-2026-10-15.json", "docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-contract-2026-10-16.md"],
-      "next_action": "Keep P02 PARTIAL. The existing anonymous public observation used four HTTP requests, returned 107 subject relations, sampled one official air/release date, omitted 19 anime relations, and cannot establish career-wide first/latest participation or actual work dates; never rerun it. Run #95 selected a separate synthetic offline get_person_profile Agent/MCP profile for the tool matrix only; it gives no P02 scenario credit. The user-directed public matrix remains 57/65 with eight rows pending and 31 N/A; PR #173 stays parked and its spent 37-request probe must not be repeated. Agent/MCP is 81/96 until a valid P02 matrix report is accepted; QQ/TIM remains 0/96. Reopen the scenario only if an authoritative completeness/order contract or a separately selected bounded scope supports a stronger claim.",
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-p02-observed-animation-release-chronology-2026-10-15.md", "packages/bangumi-core/src/models/person.ts", "packages/bangumi-core/src/services/person-service.ts", "packages/tools/src/definitions/read-tools.ts", "packages/tools/src/definitions/render-presentation-tools.ts", "apps/mcp/src/result-presenter.ts", "packages/renderer/src/view-models/index.ts", "packages/renderer/src/view-model-builders/index.ts", "packages/renderer/src/templates/PersonProfileCard.tsx", "docs/tool-catalog.json", "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md", "tests/unit/person-intelligence.test.ts", "tests/integration/mcp-result-presenter.test.ts", "tests/integration/mcp-schema.test.ts", "tests/integration/tool-direct-execute-read.test.ts", "tests/render/render-cards.test.ts", "docs/live-probes/public-tools-p02-person-profile-chronology-2026-10-15.json", "docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-contract-2026-10-16.md", "docs/live-probes/public-tools-2026-10-16-004829462-60733.json", "docs/live-probes/public-tools-2026-10-16-004904286-61569.json"],
+      "next_action": "Keep P02 PARTIAL. The existing anonymous chronology observation used four HTTP requests, returned 107 subject relations, sampled one official air/release date, omitted 19 anime relations, and cannot establish career-wide first/latest participation or actual work dates; never rerun it. The 2026-10-16 get_person_profile and render_person_profile reports add only the corresponding public API matrix rows and no P02 scenario credit. The public matrix refresh in this Run #95 Epoch records 65/65, compared with the 57/65 master baseline at Epoch start; Agent/MCP remains 81/96, and QQ/TIM remains 0/96. PR #173 stays parked and its spent 37-request probe must not be repeated. Reopen the scenario only if an authoritative completeness/order contract or a separately selected bounded scope supports a stronger claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2094,6 +2114,30 @@
             "latest_observed_sample_date": "2016-03-28"
           },
           "acceptance_boundary": "One fixed profile and one selected detail only. The release date describes the sampled subject; it is not an actual participation date or career-wide first/latest result. Relation completeness and ordering remain undocumented; P02 stays PARTIAL."
+        },
+        "direct_public_api_matrix_rows_2026_10_16": {
+          "profiles": [
+            {
+              "report": "docs/live-probes/public-tools-2026-10-16-004829462-60733.json",
+              "report_sha256": "45f2dc0727676d76a8259566679a65eedbf11b147c13a44a61efe7e7ff6f4145",
+              "scope_id": "run95-fresh-get-person-profile-13684-origin-guard-v1",
+              "tool": "bangumi.get_person_profile",
+              "requests": 3,
+              "result_state": "partial",
+              "assertions_passed": true
+            },
+            {
+              "report": "docs/live-probes/public-tools-2026-10-16-004904286-61569.json",
+              "report_sha256": "ad611cf54e71f3a7ea411bcdf7970e941540bd5da57bb93c8d2bc168d3de5b8d",
+              "scope_id": "run95-fresh-render-person-profile-13684-origin-guard-v2",
+              "tool": "bangumi.render_person_profile",
+              "requests": 4,
+              "result_state": "value",
+              "assertions_passed": true
+            }
+          ],
+          "acceptance_boundary": "These anonymous direct ToolRegistry observations support only the matching public API matrix rows. They do not establish career-wide first/latest participation, add Agent/MCP evidence, or change P02 from PARTIAL.",
+          "privacy_clarification": "The fixed public query input personId=13684 is retained in the get_person_profile report. Its generic no-identifiers redaction statement applies to response-derived identifiers: no person or subject IDs from returned rows are persisted."
         }
       }
     },
@@ -2768,9 +2812,12 @@
         "scripts/lib/fresh-public-request-search-fetch-v2.ts",
         "scripts/lib/fresh-public-request-budget.ts",
         "tests/unit/fresh-public-api-matrix-five-post-v2-scope.test.ts",
-        "tests/unit/fresh-public-request-search-fetch-v2.test.ts"
+        "tests/unit/fresh-public-request-search-fetch-v2.test.ts",
+        "docs/live-probes/public-tools-2026-10-16-010501333-13723.json",
+        "scripts/smoke-fresh-public-cohort-four-v2-20261016.ts",
+        "scripts/lib/fresh-public-cohort-four-v2-scope.ts"
       ],
-      "next_action": "Keep A01 UNASSESSED. Direct-public observations for compare_subject_cohorts, aggregate_subject_cohort, render_subject_cohort_comparison, and render_subject_cohort_aggregation may support only their respective public-matrix rows; they do not answer the cohort-analysis scenario or grant Agent/MCP credit. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim.",
+      "next_action": "Keep A01 UNASSESSED. The 2026-10-16 contract-valid all-mode public report covers aggregate_subject_cohort, compare_subject_cohorts, render_subject_cohort_aggregation, and render_subject_cohort_comparison for their corresponding public-matrix rows; it does not answer the cohort-analysis scenario or grant Agent/MCP credit. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2862,6 +2909,35 @@
           },
           "assertions_passed": true,
           "acceptance_boundary": "This exact current-catalog direct ToolRegistry observation supports only the four corresponding anonymous public/API matrix rows. It does not answer the A01 cohort-analysis question, change A01 from UNASSESSED, add Agent/MCP or one-shot credit, or establish population completeness, significance, trends, causality, or stability. The report stores summaries and counters only, not subject rows, names, identifiers, request bodies, or image bytes."
+        },
+        "direct_public_api_matrix_rows_2026_10_16": {
+          "report": "docs/live-probes/public-tools-2026-10-16-010501333-13723.json",
+          "report_sha256": "9a5d508dd0b37767bdbcfbd46c34bbf19c541c102773ef28b38272ded11ae29c",
+          "scope_id": "run95-fresh-public-cohort-four-v2-20261016",
+          "request_count": 13,
+          "tools": {
+            "bangumi.aggregate_subject_cohort": {
+              "requests": 2,
+              "result_state": "conflict",
+              "assertions_passed": true
+            },
+            "bangumi.compare_subject_cohorts": {
+              "requests": 2,
+              "result_state": "conflict",
+              "assertions_passed": true
+            },
+            "bangumi.render_subject_cohort_aggregation": {
+              "requests": 2,
+              "result_state": "value",
+              "assertions_passed": true
+            },
+            "bangumi.render_subject_cohort_comparison": {
+              "requests": 7,
+              "result_state": "value",
+              "assertions_passed": true
+            }
+          },
+          "acceptance_boundary": "These four current-catalog anonymous direct ToolRegistry observations support only their matching public API matrix rows. They do not answer the A01 cohort-analysis question, change A01 from UNASSESSED, add Agent/MCP or one-shot credit, or establish population completeness, significance, trends, causality, or stability. The report retains fixed public query inputs and sanitized summaries only; raw result rows, response-derived names/identifiers, request bodies, and image bytes are not persisted."
         }
       }
     },
@@ -3185,9 +3261,10 @@
         "tests/harness/run-r04-series-watch-order-offline-agent-mcp.test.mjs",
         "tests/harness/write-r04-series-watch-order-offline-agent-mcp-report.test.mjs",
         "scripts/test_acceptance_evidence.py",
-        "docs/research/run95-r04-series-watch-order-offline-matrix-contract-2026-10-16.md"
+        "docs/research/run95-r04-series-watch-order-offline-matrix-contract-2026-10-16.md",
+        "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md"
       ],
-      "next_action": "Run #95 selected a distinct synthetic offline get_series_watch_order Agent/MCP matrix-only profile. The fixed fixture contains no real series or film IDs and makes no public API call. It grants no R04 scenario credit: R04 stays UNASSESSED and the question whether a theatrical film is mandatory remains unanswered. Only a valid signed REPORT_WRITTEN report may credit this one Agent/MCP cell; an INCONCLUSIVE result is permanent/no-retry. The public matrix remains 57/65 with eight rows pending and 31 N/A. Preserve the spent P02/C03/P03/P06 claims and PR #173 probe.",
+      "next_action": "Run #95 selected a distinct synthetic offline get_series_watch_order Agent/MCP matrix-only profile. The fixed fixture contains no real series or film IDs and makes no public API call. It grants no R04 scenario credit: R04 stays UNASSESSED and the question whether a theatrical film is mandatory remains unanswered. Only a valid signed REPORT_WRITTEN report may credit this one Agent/MCP cell; an INCONCLUSIVE result is permanent/no-retry. The public matrix refresh in this Run #95 Epoch records 65/65, compared with the 57/65 master baseline at Epoch start. This public matrix evidence does not grant R04 scenario or Agent/MCP credit. Preserve the spent P02/C03/P03/P06 claims and PR #173 probe.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

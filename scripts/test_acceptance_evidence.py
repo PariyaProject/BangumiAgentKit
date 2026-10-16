@@ -49,6 +49,15 @@ class PublicApiEvidenceTests(unittest.TestCase):
         self.p02_probe_path.write_text('// fixture P02 probe source\n', encoding='utf-8')
         self.fresh_profile_probe_path = self.root / 'scripts/smoke-fresh-render-person-profile-public.ts'
         self.fresh_profile_probe_path.write_text('// fixture fresh renderer probe source\n', encoding='utf-8')
+        self.fresh_profile_scope_path = self.root / GENERATOR.FRESH_RENDER_PERSON_PROFILE_PUBLIC_SCOPE_PROGRAM
+        self.fresh_profile_scope_path.parent.mkdir(parents=True, exist_ok=True)
+        self.fresh_profile_scope_path.write_text('// fixture fresh renderer scope source\n', encoding='utf-8')
+        self.get_profile_probe_path = self.root / GENERATOR.FRESH_GET_PERSON_PROFILE_PUBLIC_PROGRAM
+        self.get_profile_probe_path.parent.mkdir(parents=True, exist_ok=True)
+        self.get_profile_probe_path.write_text('// fixture direct person profile probe source\n', encoding='utf-8')
+        self.get_profile_scope_path = self.root / GENERATOR.FRESH_GET_PERSON_PROFILE_PUBLIC_SCOPE_PROGRAM
+        self.get_profile_scope_path.parent.mkdir(parents=True, exist_ok=True)
+        self.get_profile_scope_path.write_text('// fixture direct person profile scope source\n', encoding='utf-8')
         self.unbounded_fresh_profile_probe_path = self.root / GENERATOR.FRESH_RENDER_PERSON_PROFILE_UNBOUNDED_PROGRAM
         self.unbounded_fresh_profile_probe_path.parent.mkdir(parents=True, exist_ok=True)
         self.unbounded_fresh_profile_probe_path.write_text('// fixture historical unbounded probe source\n', encoding='utf-8')
@@ -61,6 +70,18 @@ class PublicApiEvidenceTests(unittest.TestCase):
         self.six_matrix_scope_path = self.root / GENERATOR.FRESH_PUBLIC_API_MATRIX_SIX_SCOPE_PROGRAM
         self.six_matrix_scope_path.parent.mkdir(parents=True, exist_ok=True)
         self.six_matrix_scope_path.write_text('// fixture exact six-row scope source\n', encoding='utf-8')
+        self.cohort_four_probe_path = self.root / GENERATOR.FRESH_PUBLIC_COHORT_FOUR_PROGRAM
+        self.cohort_four_probe_path.parent.mkdir(parents=True, exist_ok=True)
+        self.cohort_four_probe_path.write_text('// fixture bounded cohort-four probe source\n', encoding='utf-8')
+        self.cohort_four_scope_path = self.root / GENERATOR.FRESH_PUBLIC_COHORT_FOUR_SCOPE_PROGRAM
+        self.cohort_four_scope_path.parent.mkdir(parents=True, exist_ok=True)
+        self.cohort_four_scope_path.write_text('// fixture exact all-mode cohort scope source\n', encoding='utf-8')
+        self.cohort_four_v2_probe_path = self.root / GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_PROGRAM
+        self.cohort_four_v2_probe_path.parent.mkdir(parents=True, exist_ok=True)
+        self.cohort_four_v2_probe_path.write_text('// fixture distinct all-mode cohort v2 probe source\n', encoding='utf-8')
+        self.cohort_four_v2_scope_path = self.root / GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_SCOPE_PROGRAM
+        self.cohort_four_v2_scope_path.parent.mkdir(parents=True, exist_ok=True)
+        self.cohort_four_v2_scope_path.write_text('// fixture distinct cohort v2 scope source\n', encoding='utf-8')
         self.six_matrix_budget_path = self.root / GENERATOR.FRESH_PUBLIC_API_MATRIX_SIX_BUDGET_PROGRAM
         self.six_matrix_budget_path.parent.mkdir(parents=True, exist_ok=True)
         self.six_matrix_budget_path.write_text('// fixture scoped request budget source\n', encoding='utf-8')
@@ -82,15 +103,20 @@ class PublicApiEvidenceTests(unittest.TestCase):
         self.original_root = GENERATOR.ROOT
         self.original_catalog = GENERATOR.CATALOG
         self.original_probe_dir = GENERATOR.LIVE_PROBE_DIR
+        self.original_epoch_reports = GENERATOR.FRESH_PUBLIC_EPOCH_RETAINED_REPORTS
+        self.original_epoch_cap = GENERATOR.FRESH_PUBLIC_EPOCH_REQUEST_CAP
         GENERATOR.ROOT = self.root
         GENERATOR.CATALOG = self.catalog_path
         GENERATOR.LIVE_PROBE_DIR = self.root / 'docs/live-probes'
+        GENERATOR.FRESH_PUBLIC_EPOCH_RETAINED_REPORTS = {}
         self.report_path = GENERATOR.LIVE_PROBE_DIR / 'public-tools-fixture.json'
 
     def tearDown(self):
         GENERATOR.ROOT = self.original_root
         GENERATOR.CATALOG = self.original_catalog
         GENERATOR.LIVE_PROBE_DIR = self.original_probe_dir
+        GENERATOR.FRESH_PUBLIC_EPOCH_RETAINED_REPORTS = self.original_epoch_reports
+        GENERATOR.FRESH_PUBLIC_EPOCH_REQUEST_CAP = self.original_epoch_cap
         self.temp_dir.cleanup()
 
     def write_report(self, **overrides):
@@ -198,6 +224,12 @@ class PublicApiEvidenceTests(unittest.TestCase):
             'scopeInputExact': True,
             'scopeRequestCap': True,
             'apiRetryAttemptsIncluded': True,
+            'apiRedirectHopsIncluded': True,
+            'rendererAssetRedirectHopsIncluded': True,
+            'anonymousSearchPostAllowed': True,
+            'searchPostPathRestricted': True,
+            'apiRedirectOriginRestricted': True,
+            'apiRedirectPrivatePathBlocked': True,
             'nonEmptySummary': True,
             'noErrorResult': True,
             'nonNegativeCounts': True,
@@ -213,6 +245,12 @@ class PublicApiEvidenceTests(unittest.TestCase):
                 'rendererAsset': 1,
                 'total': 3,
                 'apiRetryAttemptsIncluded': True,
+                'apiRedirectHopsIncluded': True,
+                'rendererAssetRedirectHopsIncluded': True,
+                'anonymousSearchPostAllowed': True,
+                'searchPostPathRestricted': True,
+                'apiRedirectOriginRestricted': True,
+                'apiRedirectPrivatePathBlocked': True,
             },
             'result': {'state': 'value', 'keys': ['artifact']},
             'assertions': assertions,
@@ -225,12 +263,30 @@ class PublicApiEvidenceTests(unittest.TestCase):
             'sourceProgram': GENERATOR.FRESH_RENDER_PERSON_PROFILE_PUBLIC_PROGRAM,
             'catalogSha256': hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
             'probeScriptSha256': hashlib.sha256(self.fresh_profile_probe_path.read_bytes()).hexdigest(),
+            'supportingSourceSha256': {
+                GENERATOR.FRESH_RENDER_PERSON_PROFILE_PUBLIC_SCOPE_PROGRAM: hashlib.sha256(
+                    self.fresh_profile_scope_path.read_bytes()
+                ).hexdigest(),
+                GENERATOR.FRESH_RENDER_PERSON_PROFILE_PUBLIC_BUDGET_PROGRAM: hashlib.sha256(
+                    self.six_matrix_budget_path.read_bytes()
+                ).hexdigest(),
+                GENERATOR.FRESH_RENDER_PERSON_PROFILE_PUBLIC_FETCH_PROGRAM: hashlib.sha256(
+                    self.five_post_v2_fetch_path.read_bytes()
+                ).hexdigest(),
+            },
             'scopeId': GENERATOR.FRESH_RENDER_PERSON_PROFILE_PUBLIC_SCOPE_ID,
             'requestBudget': {'maxPerTool': 4, 'maxTotal': 4},
             'requestAccounting': {
                 'scope': 'bangumi_api_and_renderer_assets',
                 'redirectsIncluded': True,
                 'apiRetryAttemptsIncluded': True,
+                'apiRedirectHopsIncluded': True,
+                'rendererAssetRedirectHopsIncluded': True,
+                'anonymousSearchPostAllowed': True,
+                'searchPostPathRestricted': True,
+                'apiRedirectOrigin': 'https://api.bgm.tv',
+                'apiRedirectOriginRestricted': True,
+                'apiRedirectPrivatePathBlocked': True,
                 'bangumiApi': 2,
                 'rendererAsset': 1,
                 'total': 3,
@@ -268,10 +324,17 @@ class PublicApiEvidenceTests(unittest.TestCase):
         mutations = (
             lambda report: report['requestAccounting'].pop('apiRetryAttemptsIncluded'),
             lambda report: report['requestAccounting'].__setitem__('apiRetryAttemptsIncluded', False),
+            lambda report: report['requestAccounting'].__setitem__('apiRedirectPrivatePathBlocked', False),
+            lambda report: report['requestAccounting'].__setitem__('apiRedirectOriginRestricted', False),
             lambda report: report['results'][0]['requestAccounting'].pop('apiRetryAttemptsIncluded'),
             lambda report: report['results'][0]['requestAccounting'].__setitem__('apiRetryAttemptsIncluded', False),
+            lambda report: report['results'][0]['requestAccounting'].__setitem__('apiRedirectPrivatePathBlocked', False),
             lambda report: report['results'][0]['assertions'].pop('apiRetryAttemptsIncluded'),
             lambda report: report['results'][0]['assertions'].__setitem__('apiRetryAttemptsIncluded', False),
+            lambda report: report['results'][0]['assertions'].__setitem__('apiRedirectPrivatePathBlocked', False),
+            lambda report: report['supportingSourceSha256'].pop(
+                GENERATOR.FRESH_RENDER_PERSON_PROFILE_PUBLIC_FETCH_PROGRAM,
+            ),
         )
         for mutate in mutations:
             with self.subTest(mutate=mutate):
@@ -281,7 +344,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
                 self.report_path.write_text(json.dumps(report), encoding='utf-8')
                 self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
 
-    def test_accepts_hash_bound_retry_accounted_archive_of_executed_source(self):
+    def test_excludes_retry_accounted_profile_report_without_current_origin_guard(self):
         self.write_fresh_render_person_profile_report()
         report = json.loads(self.report_path.read_text(encoding='utf-8'))
         report['sourceProgram'] = GENERATOR.FRESH_RENDER_PERSON_PROFILE_RETRY_ACCOUNTED_PROGRAM
@@ -289,10 +352,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
             self.retry_accounted_fresh_profile_probe_path.read_bytes()
         ).hexdigest()
         self.report_path.write_text(json.dumps(report), encoding='utf-8')
-        self.assertEqual(
-            GENERATOR.public_api_smoke_names(self.catalog),
-            {'bangumi.render_person_profile'},
-        )
+        self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
 
     def test_excludes_hash_bound_historical_report_that_omitted_asset_requests(self):
         self.write_fresh_render_person_profile_report()
@@ -328,6 +388,380 @@ class PublicApiEvidenceTests(unittest.TestCase):
         report['requestBudget'] = {'maxPerTool': 5, 'maxTotal': 5}
         self.report_path.write_text(json.dumps(report), encoding='utf-8')
         self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def write_fresh_get_person_profile_report(self):
+        tool = 'bangumi.get_person_profile'
+        for item in self.catalog:
+            if item.get('name') == tool:
+                item['auth'] = 'none'
+                item['risk'] = 'read'
+        self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
+        counts = {'bangumiApi': 3, 'rendererAsset': 0, 'total': 3}
+        result_accounting_metadata = {
+            'apiRetryAttemptsIncluded': True,
+            'apiRedirectHopsIncluded': True,
+            'rendererAssetRedirectHopsIncluded': True,
+            'anonymousSearchPostAllowed': True,
+            'searchPostPathRestricted': True,
+            'apiRedirectOriginRestricted': True,
+            'apiRedirectPrivatePathBlocked': True,
+        }
+        result = {
+            'tool': tool,
+            'input': GENERATOR.FRESH_GET_PERSON_PROFILE_PUBLIC_INPUT,
+            'attempted': True,
+            'httpRequests': counts['total'],
+            'requestAccounting': {**counts, **result_accounting_metadata},
+            'result': {
+                'state': 'partial',
+                'keys': ['state', 'person', 'relatedSubjects', 'relatedCharacters'],
+            },
+            'assertions': {
+                key: True for key in GENERATOR.FRESH_GET_PERSON_PROFILE_PUBLIC_REQUIRED_ASSERTIONS
+            },
+        }
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'bangumi_public_api_tool_registry_smoke',
+            'observedAt': '2026-10-16T00:00:00Z',
+            'mode': 'read_only_public_api_smoke',
+            'catalogSha256': hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
+            'probeScriptSha256': hashlib.sha256(self.get_profile_probe_path.read_bytes()).hexdigest(),
+            'sourceProgram': GENERATOR.FRESH_GET_PERSON_PROFILE_PUBLIC_PROGRAM,
+            'supportingSourceSha256': {
+                GENERATOR.FRESH_GET_PERSON_PROFILE_PUBLIC_SCOPE_PROGRAM: hashlib.sha256(
+                    self.get_profile_scope_path.read_bytes()
+                ).hexdigest(),
+                GENERATOR.FRESH_PUBLIC_API_MATRIX_SIX_BUDGET_PROGRAM: hashlib.sha256(
+                    self.six_matrix_budget_path.read_bytes()
+                ).hexdigest(),
+                GENERATOR.FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM: hashlib.sha256(
+                    self.five_post_v2_fetch_path.read_bytes()
+                ).hexdigest(),
+            },
+            'scopeId': GENERATOR.FRESH_GET_PERSON_PROFILE_PUBLIC_SCOPE_ID,
+            'requestBudget': {
+                'maxPerTool': GENERATOR.FRESH_GET_PERSON_PROFILE_PUBLIC_MAX_PER_TOOL,
+                'maxTotal': GENERATOR.FRESH_GET_PERSON_PROFILE_PUBLIC_MAX_TOTAL,
+            },
+            'requestAccounting': {
+                'scope': 'bangumi_api_and_renderer_assets',
+                'redirectsIncluded': True,
+                **result_accounting_metadata,
+                'apiRedirectOrigin': 'https://api.bgm.tv',
+                **counts,
+                'perTool': {tool: counts},
+            },
+            'budgetBlocked': False,
+            'httpRequests': counts['total'],
+            'selectedTools': [tool],
+            'probeCount': 1,
+            'limits': GENERATOR.FRESH_GET_PERSON_PROFILE_PUBLIC_LIMITS,
+            'redactions': ['person relation rows, names, and image bytes are not persisted'],
+            'results': [result],
+        }
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+
+    def test_counts_only_bounded_origin_guarded_get_person_profile_row(self):
+        self.write_fresh_get_person_profile_report()
+        self.assertEqual(
+            GENERATOR.public_api_smoke_names(self.catalog),
+            {'bangumi.get_person_profile'},
+        )
+
+    def test_rejects_get_person_profile_reports_with_changed_scope_or_missing_guards(self):
+        mutations = (
+            lambda report: report['results'][0]['input'].__setitem__('personId', 3474),
+            lambda report: report['requestAccounting'].__setitem__('apiRedirectPrivatePathBlocked', False),
+            lambda report: report['results'][0]['requestAccounting'].__setitem__(
+                'apiRedirectPrivatePathBlocked', False,
+            ),
+            lambda report: report['results'][0]['assertions'].__setitem__(
+                'apiRedirectOriginRestricted', False,
+            ),
+            lambda report: report.__setitem__('requestBudget', {'maxPerTool': 5, 'maxTotal': 5}),
+            lambda report: report['supportingSourceSha256'].pop(
+                GENERATOR.FRESH_GET_PERSON_PROFILE_PUBLIC_SCOPE_PROGRAM,
+            ),
+            lambda report: report.__setitem__('budgetBlocked', True),
+        )
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                self.write_fresh_get_person_profile_report()
+                report = json.loads(self.report_path.read_text(encoding='utf-8'))
+                mutate(report)
+                self.report_path.write_text(json.dumps(report), encoding='utf-8')
+                self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def write_fresh_public_cohort_four_report(self):
+        tools = list(GENERATOR.FRESH_PUBLIC_COHORT_FOUR_INPUTS)
+        for name in tools:
+            entry = next((item for item in self.catalog if item.get('name') == name), None)
+            if entry is None:
+                self.catalog.append({'name': name, 'auth': 'none', 'risk': 'read'})
+            else:
+                entry['auth'] = 'none'
+                entry['risk'] = 'read'
+        self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
+        result_accounting_metadata = {
+            'apiRetryAttemptsIncluded': True,
+            'apiRedirectHopsIncluded': True,
+            'rendererAssetRedirectHopsIncluded': True,
+            'anonymousSearchPostAllowed': True,
+            'searchPostPathRestricted': True,
+            'apiRedirectOriginRestricted': True,
+            'apiRedirectPrivatePathBlocked': True,
+        }
+        per_tool = {}
+        results = []
+        for name, input_data in GENERATOR.FRESH_PUBLIC_COHORT_FOUR_INPUTS.items():
+            assets = 1 if name.startswith('bangumi.render_') else 0
+            counts = {'bangumiApi': 1, 'rendererAsset': assets, 'total': 1 + assets}
+            per_tool[name] = counts
+            results.append({
+                'tool': name,
+                'input': input_data,
+                'attempted': True,
+                'httpRequests': counts['total'],
+                'requestAccounting': {**counts, **result_accounting_metadata},
+                'result': {'state': 'partial', 'keys': ['state', 'items', 'coverage']},
+                'assertions': {
+                    key: True for key in GENERATOR.FRESH_PUBLIC_COHORT_FOUR_REQUIRED_ASSERTIONS
+                },
+            })
+        totals = {
+            key: sum(counts[key] for counts in per_tool.values())
+            for key in ('bangumiApi', 'rendererAsset', 'total')
+        }
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'bangumi_public_api_tool_registry_smoke',
+            'observedAt': '2026-10-16T00:00:00Z',
+            'mode': 'read_only_public_api_smoke',
+            'catalogSha256': hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
+            'probeScriptSha256': hashlib.sha256(self.cohort_four_probe_path.read_bytes()).hexdigest(),
+            'sourceProgram': GENERATOR.FRESH_PUBLIC_COHORT_FOUR_PROGRAM,
+            'supportingSourceSha256': {
+                GENERATOR.FRESH_PUBLIC_COHORT_FOUR_SCOPE_PROGRAM: hashlib.sha256(
+                    self.cohort_four_scope_path.read_bytes()
+                ).hexdigest(),
+                GENERATOR.FRESH_PUBLIC_API_MATRIX_SIX_BUDGET_PROGRAM: hashlib.sha256(
+                    self.six_matrix_budget_path.read_bytes()
+                ).hexdigest(),
+                GENERATOR.FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM: hashlib.sha256(
+                    self.five_post_v2_fetch_path.read_bytes()
+                ).hexdigest(),
+            },
+            'scopeId': GENERATOR.FRESH_PUBLIC_COHORT_FOUR_SCOPE_ID,
+            'requestBudget': {
+                'maxPerTool': GENERATOR.FRESH_PUBLIC_COHORT_FOUR_MAX_PER_TOOL,
+                'maxTotal': GENERATOR.FRESH_PUBLIC_COHORT_FOUR_MAX_TOTAL,
+            },
+            'requestAccounting': {
+                'scope': 'bangumi_api_and_renderer_assets',
+                'redirectsIncluded': True,
+                **result_accounting_metadata,
+                'apiRedirectOrigin': 'https://api.bgm.tv',
+                **totals,
+                'perTool': per_tool,
+            },
+            'budgetBlocked': False,
+            'httpRequests': totals['total'],
+            'selectedTools': tools,
+            'probeCount': len(tools),
+            'limits': GENERATOR.FRESH_PUBLIC_COHORT_FOUR_LIMITS,
+            'redactions': [
+                'result row values, titles, names, identifiers, and image bytes are not persisted',
+            ],
+            'results': results,
+        }
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+
+    def test_counts_only_exact_all_mode_cohort_public_rows(self):
+        self.write_fresh_public_cohort_four_report()
+        self.assertEqual(
+            GENERATOR.public_api_smoke_names(self.catalog),
+            set(GENERATOR.FRESH_PUBLIC_COHORT_FOUR_INPUTS),
+        )
+
+    def test_rejects_cohort_four_report_with_changed_input_budget_or_private_path_guard(self):
+        mutations = (
+            lambda report: report['results'][0]['input']['cohort']['query'].__setitem__(
+                'resultMode', 'top',
+            ),
+            lambda report: report['requestAccounting'].__setitem__('apiRedirectPrivatePathBlocked', False),
+            lambda report: report['requestBudget'].__setitem__('maxTotal', 21),
+            lambda report: report['supportingSourceSha256'].pop(
+                GENERATOR.FRESH_PUBLIC_COHORT_FOUR_SCOPE_PROGRAM,
+            ),
+            lambda report: report.__setitem__('budgetBlocked', True),
+        )
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                self.write_fresh_public_cohort_four_report()
+                report = json.loads(self.report_path.read_text(encoding='utf-8'))
+                mutate(report)
+                self.report_path.write_text(json.dumps(report), encoding='utf-8')
+                self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def write_fresh_public_cohort_four_v2_report(self, request_counts=None, budget_blocked=False):
+        tools = list(GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_INPUTS)
+        for name in tools:
+            entry = next((item for item in self.catalog if item.get('name') == name), None)
+            if entry is None:
+                self.catalog.append({'name': name, 'auth': 'none', 'risk': 'read'})
+            else:
+                entry['auth'] = 'none'
+                entry['risk'] = 'read'
+        self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
+        result_accounting_metadata = {
+            'apiRetryAttemptsIncluded': True,
+            'apiRedirectHopsIncluded': True,
+            'rendererAssetRedirectHopsIncluded': True,
+            'anonymousSearchPostAllowed': True,
+            'searchPostPathRestricted': True,
+            'apiRedirectOriginRestricted': True,
+            'apiRedirectPrivatePathBlocked': True,
+        }
+        per_tool = {}
+        results = []
+        for name, input_data in GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_INPUTS.items():
+            count = (request_counts or {}).get(name, 1)
+            counts = {'bangumiApi': count, 'rendererAsset': 0, 'total': count}
+            per_tool[name] = counts
+            results.append({
+                'tool': name,
+                'input': input_data,
+                'attempted': count > 0,
+                'httpRequests': count,
+                'requestAccounting': {**counts, **result_accounting_metadata},
+                'result': {'state': 'partial', 'keys': ['state', 'coverage']},
+                'assertions': {
+                    key: True for key in GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_REQUIRED_ASSERTIONS
+                },
+            })
+        totals = {
+            key: sum(counts[key] for counts in per_tool.values())
+            for key in ('bangumiApi', 'rendererAsset', 'total')
+        }
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'bangumi_public_api_tool_registry_smoke',
+            'observedAt': '2026-10-16T00:00:00Z',
+            'mode': 'read_only_public_api_smoke',
+            'catalogSha256': hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
+            'probeScriptSha256': hashlib.sha256(self.cohort_four_v2_probe_path.read_bytes()).hexdigest(),
+            'sourceProgram': GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_PROGRAM,
+            'supportingSourceSha256': {
+                GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_SCOPE_PROGRAM: hashlib.sha256(
+                    self.cohort_four_v2_scope_path.read_bytes()
+                ).hexdigest(),
+                GENERATOR.FRESH_PUBLIC_API_MATRIX_SIX_BUDGET_PROGRAM: hashlib.sha256(
+                    self.six_matrix_budget_path.read_bytes()
+                ).hexdigest(),
+                GENERATOR.FRESH_PUBLIC_API_MATRIX_FIVE_POST_V2_SEARCH_FETCH_PROGRAM: hashlib.sha256(
+                    self.five_post_v2_fetch_path.read_bytes()
+                ).hexdigest(),
+            },
+            'scopeId': GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_SCOPE_ID,
+            'requestBudget': {
+                'maxPerTool': GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_MAX_PER_TOOL,
+                'maxTotal': GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_MAX_TOTAL,
+            },
+            'requestAccounting': {
+                'scope': 'bangumi_api_and_renderer_assets',
+                'redirectsIncluded': True,
+                'apiRetryAttemptsIncluded': True,
+                'apiRedirectHopsIncluded': True,
+                'rendererAssetRedirectHopsIncluded': True,
+                'anonymousSearchPostAllowed': True,
+                'searchPostPathRestricted': True,
+                'apiRedirectOrigin': 'https://api.bgm.tv',
+                'apiRedirectOriginRestricted': True,
+                'apiRedirectPrivatePathBlocked': True,
+                **totals,
+                'perTool': per_tool,
+            },
+            'budgetBlocked': budget_blocked,
+            'httpRequests': totals['total'],
+            'selectedTools': tools,
+            'probeCount': len(tools),
+            'limits': GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_LIMITS,
+            'redactions': GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_REDACTIONS,
+            'results': results,
+        }
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+
+    def test_counts_only_exact_fresh_all_mode_cohort_v2_rows(self):
+        self.write_fresh_public_cohort_four_v2_report()
+        self.assertEqual(
+            GENERATOR.public_api_smoke_names(self.catalog),
+            set(GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_INPUTS),
+        )
+
+    def test_rejects_cohort_v2_input_budget_guard_or_source_mutations(self):
+        mutations = (
+            lambda report: report['results'][0]['input']['cohort']['query'].__setitem__(
+                'resultMode', 'top',
+            ),
+            lambda report: report['requestAccounting'].__setitem__('apiRedirectPrivatePathBlocked', False),
+            lambda report: report['requestBudget'].__setitem__('maxTotal', 33),
+            lambda report: report['supportingSourceSha256'].pop(
+                GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_SCOPE_PROGRAM,
+            ),
+            lambda report: report.__setitem__('budgetBlocked', True),
+        )
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                self.write_fresh_public_cohort_four_v2_report()
+                report = json.loads(self.report_path.read_text(encoding='utf-8'))
+                mutate(report)
+                self.report_path.write_text(json.dumps(report), encoding='utf-8')
+                self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+    def test_enforces_hash_bound_cumulative_epoch_request_cap(self):
+        retained_reports = {}
+        retained_values = [
+            (GENERATOR.FRESH_PUBLIC_API_MATRIX_SIX_SCOPE_ID, 4, False),
+            (GENERATOR.FRESH_PUBLIC_COHORT_FOUR_SCOPE_ID, 20, True),
+            (GENERATOR.FRESH_GET_PERSON_PROFILE_PUBLIC_SCOPE_ID, 3, False),
+            (GENERATOR.FRESH_RENDER_PERSON_PROFILE_PUBLIC_SCOPE_ID, 4, False),
+        ]
+        for index, (scope_id, requests, blocked) in enumerate(retained_values):
+            relative_path = f'docs/live-probes/retained-{index}.json'
+            report_path = self.root / relative_path
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            report_bytes = json.dumps({
+                'scopeId': scope_id,
+                'httpRequests': requests,
+                'budgetBlocked': blocked,
+                'requestAccounting': {'total': requests},
+            }, separators=(',', ':')).encode()
+            report_path.write_bytes(report_bytes)
+            retained_reports[relative_path] = {
+                'scope_id': scope_id,
+                'sha256': hashlib.sha256(report_bytes).hexdigest(),
+                'requests': requests,
+                'budget_blocked': blocked,
+            }
+
+        with patch.object(GENERATOR, 'FRESH_PUBLIC_EPOCH_RETAINED_REPORTS', retained_reports):
+            self.write_fresh_public_cohort_four_v2_report({
+                name: GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_MAX_PER_TOOL
+                for name in GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_TOOLS
+            })
+            self.assertEqual(GENERATOR.fresh_public_epoch_request_total(), 63)
+
+            with patch.object(GENERATOR, 'FRESH_PUBLIC_EPOCH_REQUEST_CAP', 62):
+                self.assertIsNone(GENERATOR.fresh_public_epoch_request_total())
+
+            over_tool_cap = {
+                name: GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_MAX_PER_TOOL
+                for name in GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_TOOLS
+            }
+            over_tool_cap[GENERATOR.FRESH_PUBLIC_COHORT_FOUR_V2_TOOLS[0]] += 1
+            self.write_fresh_public_cohort_four_v2_report(over_tool_cap)
+            self.assertIsNone(GENERATOR.fresh_public_epoch_request_total())
 
     def write_fresh_public_api_matrix_six_report(self):
         for name in GENERATOR.FRESH_PUBLIC_API_MATRIX_SIX_TOOLS:

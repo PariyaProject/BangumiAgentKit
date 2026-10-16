@@ -1,0 +1,422 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-16T00:34:14.160Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
+  "probeScriptSha256": "5ecfa874b9e20e2fb9f3b3748ec25899fb64bfc0a50f9d21b499596b69ca9831",
+  "sourceProgram": "scripts/smoke-fresh-public-api-matrix-six-20261016.ts",
+  "supportingSourceSha256": {
+    "scripts/lib/fresh-public-api-matrix-six-scope.ts": "5522f30e8acd2510a9d73a4e39c211b2148c9de7c8c4deed1dad08a57035134d",
+    "scripts/lib/fresh-public-request-budget.ts": "e855abe79b11eaf9360fac207316d1cb3a539fda5e7bac47a29aa66cdc68059c",
+    "scripts/lib/fresh-public-request-search-fetch-v2.ts": "f36e0daec9738a84fb0766ee8e678d449d0f4e1e1840bd14eb3f2056462e8fe8"
+  },
+  "scopeId": "run95-fresh-six-public-api-private-path-guard-top-v2-20261016",
+  "requestBudget": {
+    "maxPerTool": 8,
+    "maxTotal": 24
+  },
+  "requestAccounting": {
+    "scope": "bangumi_api_and_renderer_assets",
+    "redirectsIncluded": true,
+    "apiRetryAttemptsIncluded": true,
+    "apiRedirectHopsIncluded": true,
+    "rendererAssetRedirectHopsIncluded": true,
+    "anonymousSearchPostAllowed": true,
+    "searchPostPathRestricted": true,
+    "apiRedirectOrigin": "https://api.bgm.tv",
+    "apiRedirectOriginRestricted": true,
+    "apiRedirectPrivatePathBlocked": true,
+    "bangumiApi": 3,
+    "rendererAsset": 1,
+    "total": 4,
+    "perTool": {
+      "bangumi.aggregate_subject_cohort": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0
+      },
+      "bangumi.compare_subject_cohorts": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0
+      },
+      "bangumi.query_subjects": {
+        "bangumiApi": 2,
+        "rendererAsset": 0,
+        "total": 2
+      },
+      "bangumi.render_query_subjects": {
+        "bangumiApi": 1,
+        "rendererAsset": 1,
+        "total": 2
+      },
+      "bangumi.render_subject_cohort_aggregation": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0
+      },
+      "bangumi.render_subject_cohort_comparison": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0
+      }
+    }
+  },
+  "budgetBlocked": false,
+  "httpRequests": 4,
+  "selectedTools": [
+    "bangumi.aggregate_subject_cohort",
+    "bangumi.compare_subject_cohorts",
+    "bangumi.query_subjects",
+    "bangumi.render_query_subjects",
+    "bangumi.render_subject_cohort_aggregation",
+    "bangumi.render_subject_cohort_comparison"
+  ],
+  "probeCount": 6,
+  "limits": [
+    "exactly six fixed anonymous public/read ToolRegistry calls in selected order",
+    "at most eight combined API and renderer asset requests per tool and 32 total",
+    "every API attempt/retry, API redirect hop, asset request, and asset redirect hop is counted",
+    "API redirects remain on HTTPS api.bgm.tv and anonymous POST stays on /v0/search/subjects",
+    "private /p1 paths are rejected before dispatch, including same-origin redirects",
+    "stop before dispatch after any request budget breach",
+    "no OAuth, account, community, HTML, writes, QQ, or TIM",
+    "sanitized summaries only; no raw result rows or image bytes",
+    "temporary rendered artifacts are removed after the run",
+    "a failed or budget-blocked report receives no matrix credit"
+  ],
+  "redactions": [
+    "result row values, titles, names, identifiers, and image bytes are not persisted"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.aggregate_subject_cohort",
+      "input": {
+        "cohort": {
+          "query": {
+            "media": "anime",
+            "year": 2025,
+            "month": 1,
+            "resultMode": "top",
+            "limit": 1
+          }
+        },
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 0,
+      "requestAccounting": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true
+      },
+      "result": {
+        "state": "error",
+        "keys": [
+          "state",
+          "code",
+          "upstreamStatus",
+          "retryable"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": false,
+        "scopeInputExact": true,
+        "scopeRequestCap": false,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true,
+        "nonEmptySummary": true,
+        "noErrorResult": false,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": false
+      }
+    },
+    {
+      "tool": "bangumi.compare_subject_cohorts",
+      "input": {
+        "cohorts": [
+          {
+            "label": "Run95 private path guard 2025-02",
+            "query": {
+              "media": "anime",
+              "year": 2025,
+              "month": 2,
+              "resultMode": "top",
+              "limit": 1
+            }
+          }
+        ],
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 0,
+      "requestAccounting": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true
+      },
+      "result": {
+        "state": "error",
+        "keys": [
+          "state",
+          "code",
+          "upstreamStatus",
+          "retryable"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": false,
+        "scopeInputExact": true,
+        "scopeRequestCap": false,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true,
+        "nonEmptySummary": true,
+        "noErrorResult": false,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": false
+      }
+    },
+    {
+      "tool": "bangumi.query_subjects",
+      "input": {
+        "media": "anime",
+        "year": 2025,
+        "month": 3,
+        "resultMode": "top",
+        "limit": 1,
+        "sort": "date",
+        "order": "asc",
+        "explain": "none"
+      },
+      "attempted": true,
+      "httpRequests": 2,
+      "requestAccounting": {
+        "bangumiApi": 2,
+        "rendererAsset": 0,
+        "total": 2,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true
+      },
+      "result": {
+        "state": "ok",
+        "keys": [
+          "state",
+          "items",
+          "plan",
+          "coverage",
+          "warnings",
+          "evidence"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_query_subjects",
+      "input": {
+        "media": "anime",
+        "year": 2025,
+        "month": 4,
+        "resultMode": "top",
+        "limit": 1
+      },
+      "attempted": true,
+      "httpRequests": 2,
+      "requestAccounting": {
+        "bangumiApi": 1,
+        "rendererAsset": 1,
+        "total": 2,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true
+      },
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_aggregation",
+      "input": {
+        "cohort": {
+          "query": {
+            "media": "anime",
+            "year": 2025,
+            "month": 5,
+            "resultMode": "top",
+            "limit": 1
+          }
+        },
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 0,
+      "requestAccounting": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true
+      },
+      "result": {
+        "state": "error",
+        "keys": [
+          "state",
+          "code",
+          "upstreamStatus",
+          "retryable"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": false,
+        "scopeInputExact": true,
+        "scopeRequestCap": false,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true,
+        "nonEmptySummary": true,
+        "noErrorResult": false,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": false
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_comparison",
+      "input": {
+        "cohorts": [
+          {
+            "label": "Run95 private path guard 2025-06",
+            "query": {
+              "media": "anime",
+              "year": 2025,
+              "month": 6,
+              "resultMode": "top",
+              "limit": 1
+            }
+          }
+        ],
+        "maxSubjects": 1
+      },
+      "attempted": true,
+      "httpRequests": 0,
+      "requestAccounting": {
+        "bangumiApi": 0,
+        "rendererAsset": 0,
+        "total": 0,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true
+      },
+      "result": {
+        "state": "error",
+        "keys": [
+          "state",
+          "code",
+          "upstreamStatus",
+          "retryable"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": false,
+        "scopeInputExact": true,
+        "scopeRequestCap": false,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true,
+        "nonEmptySummary": true,
+        "noErrorResult": false,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": false
+      }
+    }
+  ]
+}

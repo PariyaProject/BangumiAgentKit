@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-16T00:48:29.462Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
+  "probeScriptSha256": "bdcf5565eb52d9d9475208abedbc1b620b2e6b984d4e04dde87226ea0cc4f6dd",
+  "sourceProgram": "scripts/smoke-fresh-get-person-profile-public.ts",
+  "supportingSourceSha256": {
+    "scripts/lib/fresh-get-person-profile-public-scope.ts": "85d3eda2ba3e39482a68e42bd192d7ff68785c6ee227ea12344b322663bbb3b5",
+    "scripts/lib/fresh-public-request-budget.ts": "e855abe79b11eaf9360fac207316d1cb3a539fda5e7bac47a29aa66cdc68059c",
+    "scripts/lib/fresh-public-request-search-fetch-v2.ts": "f36e0daec9738a84fb0766ee8e678d449d0f4e1e1840bd14eb3f2056462e8fe8"
+  },
+  "scopeId": "run95-fresh-get-person-profile-13684-origin-guard-v1",
+  "requestBudget": {
+    "maxPerTool": 4,
+    "maxTotal": 4
+  },
+  "requestAccounting": {
+    "scope": "bangumi_api_and_renderer_assets",
+    "redirectsIncluded": true,
+    "apiRetryAttemptsIncluded": true,
+    "apiRedirectHopsIncluded": true,
+    "rendererAssetRedirectHopsIncluded": true,
+    "anonymousSearchPostAllowed": true,
+    "searchPostPathRestricted": true,
+    "apiRedirectOriginRestricted": true,
+    "apiRedirectPrivatePathBlocked": true,
+    "apiRedirectOrigin": "https://api.bgm.tv",
+    "bangumiApi": 3,
+    "rendererAsset": 0,
+    "total": 3,
+    "perTool": {
+      "bangumi.get_person_profile": {
+        "bangumiApi": 3,
+        "rendererAsset": 0,
+        "total": 3
+      }
+    }
+  },
+  "budgetBlocked": false,
+  "httpRequests": 3,
+  "selectedTools": [
+    "bangumi.get_person_profile"
+  ],
+  "probeCount": 1,
+  "limits": [
+    "exactly one anonymous public/read ToolRegistry call",
+    "personId=13684 with one-row subject and character caps; chronology disabled",
+    "at most four API requests including retries and every redirect hop",
+    "HTTPS api.bgm.tv only; private /p1 paths are rejected before dispatch",
+    "no OAuth, account, community, HTML, write, QQ, or TIM operation",
+    "summary only; no raw rows, names, or identifiers are persisted"
+  ],
+  "redactions": [
+    "person relation rows, names, and image bytes are not persisted"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.get_person_profile",
+      "input": {
+        "personId": 13684,
+        "maxSubjects": 1,
+        "maxCharacters": 1,
+        "includeChronology": false
+      },
+      "attempted": true,
+      "httpRequests": 3,
+      "requestAccounting": {
+        "bangumiApi": 3,
+        "rendererAsset": 0,
+        "total": 3,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true
+      },
+      "result": {
+        "state": "partial",
+        "keys": [
+          "state",
+          "person",
+          "summary",
+          "credits",
+          "coverage",
+          "evidence",
+          "limitations",
+          "notComputable",
+          "warnings",
+          "capabilityStates"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "scopeInputExact": true,
+        "scopeRequestCap": true,
+        "apiRetryAttemptsIncluded": true,
+        "apiRedirectHopsIncluded": true,
+        "rendererAssetRedirectHopsIncluded": true,
+        "anonymousSearchPostAllowed": true,
+        "searchPostPathRestricted": true,
+        "apiRedirectOriginRestricted": true,
+        "apiRedirectPrivatePathBlocked": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    }
+  ]
+}

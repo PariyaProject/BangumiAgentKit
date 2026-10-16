@@ -29,3 +29,7 @@ The six-tool PR #182 report contains 26 requests against its recorded 32-request
 - PR #182 remains merged; its reports are not edited or deleted.
 - No scenario, Agent/MCP, authentication, account, community, HTML, write, QQ, or TIM evidence is inferred from these public reports.
 - The target remains 65/65; the current accepted count is 57/65 until future separately authorized evidence changes the row disposition.
+
+## Later Run #95 Epoch update — 2026-10-16
+
+The preceding decision records the state when PR #173 was parked. In a later bounded Run #95 Epoch, a distinct set of hash-bound reports refreshed all eight public matrix rows without repeating PR #173's spent 37-request probe or claiming its report. The candidate acceptance table now records 65/65 public rows, zero pending, and 31 N/A; the master baseline at this Epoch's Base was 57/65. The user-directed target remains 65/65 and PR #173 remains parked. These reports add no scenario, Agent/MCP, authentication, account, community, HTML, write, QQ, or TIM credit. The candidate report paths are recorded in `docs/product/frontier-ledger.json` and the generated table at `docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md`.

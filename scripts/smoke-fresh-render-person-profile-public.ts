@@ -13,13 +13,16 @@ import {
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
 import {
   BudgetedAssetHttpTransport,
-  createBudgetedPublicFetch,
   PublicRequestBudget,
 } from './lib/fresh-public-request-budget.js';
+import { createBudgetedPublicSearchFetchV2 } from './lib/fresh-public-request-search-fetch-v2.js';
 import { FRESH_RENDER_PERSON_PROFILE_PUBLIC_SCOPE as scope } from './lib/fresh-render-person-profile-public-scope.js';
 
 const LIVE_FLAG = '--live';
 const SCRIPT_PATH = 'scripts/smoke-fresh-render-person-profile-public.ts';
+const SCOPE_SOURCE_PATH = 'scripts/lib/fresh-render-person-profile-public-scope.ts';
+const BUDGET_SOURCE_PATH = 'scripts/lib/fresh-public-request-budget.ts';
+const SEARCH_FETCH_SOURCE_PATH = 'scripts/lib/fresh-public-request-search-fetch-v2.ts';
 const USER_AGENT = process.env.BANGUMI_USER_AGENT ?? 'BangumiAgentKit/live-public-probe';
 const FAILURE_STATES = new Set([
   'auth_required',
@@ -54,6 +57,12 @@ function summarize(value: unknown): Record<string, unknown> {
   return { state: 'value', type: typeof value };
 }
 
+async function sha256(path: string): Promise<string> {
+  return createHash('sha256')
+    .update(await readFile(join(process.cwd(), path)))
+    .digest('hex');
+}
+
 async function main(): Promise<void> {
   if (!process.argv.includes(LIVE_FLAG)) {
     throw new Error(`Refusing live requests without ${LIVE_FLAG}.`);
@@ -75,7 +84,7 @@ async function main(): Promise<void> {
   const artifactStore = new LocalArtifactStore({ artifactDir: artifactDirectory });
   const publicHttpClient = new HttpClient({
     userAgent: USER_AGENT,
-    fetchFn: createBudgetedPublicFetch(requestBudget),
+    fetchFn: createBudgetedPublicSearchFetchV2(requestBudget),
   });
   const storage = new MemoryStorage();
   const deps = createRuntimeDependenciesWithStorage(storage, {
@@ -129,6 +138,14 @@ async function main(): Promise<void> {
   const scopeRequestCap = !counts.budgetBlocked && counts.total <= scope.maxHttpRequests;
   // HttpClient invokes the injected fetchFn for every request attempt, including retries.
   const apiRetryAttemptsIncluded = true;
+  const passed =
+    counts.total > 0 &&
+    !counts.budgetBlocked &&
+    scopeRequestCap &&
+    apiRetryAttemptsIncluded &&
+    countConsistency &&
+    nonEmptySummary &&
+    noErrorResult;
   const assertions = {
     httpRequestObserved: counts.total > 0,
     scopeInputExact:
@@ -139,18 +156,17 @@ async function main(): Promise<void> {
       scope.input.includeChronology === false,
     scopeRequestCap,
     apiRetryAttemptsIncluded,
+    apiRedirectHopsIncluded: true,
+    rendererAssetRedirectHopsIncluded: true,
+    anonymousSearchPostAllowed: true,
+    searchPostPathRestricted: true,
+    apiRedirectOriginRestricted: true,
+    apiRedirectPrivatePathBlocked: true,
     nonEmptySummary,
     noErrorResult,
     nonNegativeCounts: counts.bangumiApi >= 0 && counts.rendererAsset >= 0,
     countConsistency,
-    passed:
-      counts.total > 0 &&
-      !counts.budgetBlocked &&
-      scopeRequestCap &&
-      apiRetryAttemptsIncluded &&
-      countConsistency &&
-      nonEmptySummary &&
-      noErrorResult,
+    passed,
   };
   const report = {
     schemaVersion: 1,
@@ -164,12 +180,24 @@ async function main(): Promise<void> {
       .update(await readFile(join(process.cwd(), SCRIPT_PATH)))
       .digest('hex'),
     sourceProgram: SCRIPT_PATH,
+    supportingSourceSha256: {
+      [SCOPE_SOURCE_PATH]: await sha256(SCOPE_SOURCE_PATH),
+      [BUDGET_SOURCE_PATH]: await sha256(BUDGET_SOURCE_PATH),
+      [SEARCH_FETCH_SOURCE_PATH]: await sha256(SEARCH_FETCH_SOURCE_PATH),
+    },
     scopeId: scope.id,
     requestBudget: { maxPerTool: scope.maxHttpRequests, maxTotal: scope.maxHttpRequests },
     requestAccounting: {
       scope: 'bangumi_api_and_renderer_assets',
       redirectsIncluded: true,
       apiRetryAttemptsIncluded: true,
+      apiRedirectHopsIncluded: true,
+      rendererAssetRedirectHopsIncluded: true,
+      anonymousSearchPostAllowed: true,
+      searchPostPathRestricted: true,
+      apiRedirectOrigin: 'https://api.bgm.tv',
+      apiRedirectOriginRestricted: true,
+      apiRedirectPrivatePathBlocked: true,
       bangumiApi: counts.bangumiApi,
       rendererAsset: counts.rendererAsset,
       total: counts.total,
@@ -183,6 +211,7 @@ async function main(): Promise<void> {
       'exactly one anonymous public/read ToolRegistry call',
       'one fresh fixed person profile with one-row local caps',
       'at most four combined Bangumi API and renderer asset HTTP requests; any API retry attempt and every redirect hop counts against the cap',
+      'API requests and redirects remain on HTTPS api.bgm.tv; private /p1 paths are rejected before dispatch',
       'no OAuth or account access',
       'summary only; no raw rows or artifact bytes',
       'temporary rendered artifacts removed after the single call',
@@ -198,6 +227,12 @@ async function main(): Promise<void> {
           rendererAsset: counts.rendererAsset,
           total: counts.total,
           apiRetryAttemptsIncluded: true,
+          apiRedirectHopsIncluded: true,
+          rendererAssetRedirectHopsIncluded: true,
+          anonymousSearchPostAllowed: true,
+          searchPostPathRestricted: true,
+          apiRedirectOriginRestricted: true,
+          apiRedirectPrivatePathBlocked: true,
         },
         result,
         assertions,
