@@ -2413,6 +2413,198 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.assertNotIn("acceptanceText.includes('offline fixture')", markers)
         self.assertNotIn('const PR_NUMBER = 140;', markers)
 
+    def test_m07_matrix_cell_requires_exact_auth_denial_profile_and_write_policy(self):
+        tool_name = GENERATOR.CODEX_M07_TOOL_NAME
+        tool = {
+            'name': tool_name,
+            'auth': 'required',
+            'risk': 'write',
+            'description': 'Manage the current user index.',
+            'inputSchema': {'type': 'object'},
+        }
+        report = {
+            'toolName': tool_name,
+            'argumentProfile': GENERATOR.CODEX_M07_ARGUMENT_PROFILE,
+            'profileId': GENERATOR.CODEX_M07_PROFILE_ID,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+        }
+        with patch.object(GENERATOR, 'codex_m07_profile_report_is_valid', return_value=True):
+            self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
+                report, {tool_name: tool}, {tool_name: tool},
+            ))
+            for invalid_tool in (
+                {**tool, 'auth': 'none'},
+                {**tool, 'risk': 'read'},
+            ):
+                self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+                    report, {tool_name: invalid_tool}, {tool_name: invalid_tool},
+                ))
+            for invalid_report in (
+                {**report, 'acceptanceScope': 'scenario-answer'},
+                {**report, 'toolName': 'bangumi.auth_start'},
+                {**report, 'profileId': 'other-profile'},
+            ):
+                self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+                    invalid_report, {tool_name: tool}, {tool_name: tool},
+                ))
+
+    def test_m07_report_requires_the_exact_harness_terminal_disposition(self):
+        receipt = {'publicKeyBase64': 'synthetic-public-key', 'publicKeySha256': 'a' * 64}
+        report = {
+            'claimId': 'profile-run-95-pr177-0123456789ab-1792155200000',
+            'profileId': GENERATOR.CODEX_M07_PROFILE_ID,
+            'frontierId': 'M07',
+            'epochId': GENERATOR.CODEX_M07_EPOCH_ID,
+            'runNumber': 95,
+            'prNumber': 177,
+            'sourceRevision': '0' * 40,
+            'baseSha': '1' * 40,
+            'ciStatus': 'SUCCESS',
+            'reviewerId': 'gpt-6-luna-max-run95-pr177-round1',
+            'mcpBundleSha256': '2' * 64,
+            'toolName': GENERATOR.CODEX_M07_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_M07_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_M07_EXPECTED_ARGUMENTS_SHA256,
+            'registrySha256': GENERATOR.CODEX_M07_PROFILE_REGISTRY_SHA256,
+            'runnerReceipt': receipt,
+        }
+        report_sha256 = '3' * 64
+        disposition = {
+            'claimId': report['claimId'],
+            'profileId': report['profileId'],
+            'frontierId': 'M07',
+            'epochId': report['epochId'],
+            'runNumber': 95,
+            'prNumber': 177,
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'reviewerId': report['reviewerId'],
+            'bundleSha256': report['mcpBundleSha256'],
+            'registrySha256': report['registrySha256'],
+            'toolName': report['toolName'],
+            'argumentProfile': report['argumentProfile'],
+            'expectedArgumentsSha256': report['expectedArgumentsSha256'],
+            'reportWritten': True,
+            'reportPath': GENERATOR.CODEX_M07_REPORT_RELATIVE_PATH,
+            'reportSha256': report_sha256,
+            'retryAllowed': False,
+            'runnerReceiptPublicKey': receipt['publicKeyBase64'],
+            'runnerReceiptPublicKeySha256': receipt['publicKeySha256'],
+            'runnerReceiptSha256': GENERATOR._canonical_json_sha256(receipt),
+        }
+        status = {
+            'state': 'REPORT_WRITTEN',
+            'profile_id': report['profileId'],
+            'pr': report['prNumber'],
+            'tool_name': report['toolName'],
+            'argument_profile': report['argumentProfile'],
+            'expected_arguments_sha256': report['expectedArgumentsSha256'],
+            'registry_sha256': report['registrySha256'],
+            'claim_label_present': True,
+            'terminal_label_present': True,
+            'disposition': disposition,
+        }
+        self.assertIsNotNone(GENERATOR.codex_m07_profile_disposition_matches_report(
+            report, status, report_sha256,
+        ))
+        wrong_sha = dict(status, disposition={**disposition, 'reportSha256': 'f' * 64})
+        self.assertIsNone(GENERATOR.codex_m07_profile_disposition_matches_report(
+            report, wrong_sha, report_sha256,
+        ))
+        inconclusive = dict(status, state='INCONCLUSIVE')
+        self.assertIsNone(GENERATOR.codex_m07_profile_disposition_matches_report(
+            report, inconclusive, report_sha256,
+        ))
+
+    def test_m07_report_candidate_refresh_is_limited_to_report_matrix_and_frontier(self):
+        report = {
+            'prNumber': 177,
+            'sourceRevision': '0' * 40,
+            'baseSha': '1' * 40,
+            'reviewerId': 'gpt-6-luna-max-run95-pr177-round1',
+            'mcpBundleSha256': 'c' * 64,
+        }
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 177},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_M07_EPOCH_ID,
+                    'pr_number': 177,
+                    'base_branch': 'master',
+                    'base_sha': report['baseSha'],
+                    'reviewed_base_sha': report['baseSha'],
+                    'candidate_sha': '2' * 40,
+                    'branch': 'codex/m07-profile',
+                    'review_history': [{
+                        'candidate_sha': report['sourceRevision'],
+                        'reviewed_base_sha': report['baseSha'],
+                        'reviewer_id': report['reviewerId'],
+                        'verdict': 'PASS',
+                    }],
+                },
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': report['baseSha'],
+                'pr_head_ref_name': 'codex/m07-profile',
+                'pr_is_draft': False,
+                'pr_head_sha': '2' * 40,
+            },
+        }
+        allowed_paths = {
+            GENERATOR.CODEX_M07_REPORT_RELATIVE_PATH,
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+        }
+        with (
+            patch.object(
+                GENERATOR, '_codex_p02_profile_report_candidate_paths',
+                return_value=allowed_paths,
+            ),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
+        ):
+            self.assertTrue(GENERATOR.codex_m07_profile_candidate_binding_is_current(
+                report, epoch_status, 'c' * 64,
+            ))
+            self.assertFalse(GENERATOR.codex_m07_profile_candidate_binding_is_current(
+                report, epoch_status, 'd' * 64,
+            ))
+            disallowed_paths = allowed_paths | {'scripts/agent-harness.mjs'}
+            with patch.object(
+                GENERATOR, '_codex_p02_profile_report_candidate_paths',
+                return_value=disallowed_paths,
+            ):
+                self.assertFalse(GENERATOR.codex_m07_profile_candidate_binding_is_current(
+                    report, epoch_status, 'c' * 64,
+                ))
+
+    def test_m07_matrix_report_requires_an_unassessed_frontier_record(self):
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier_path.parent.mkdir(parents=True, exist_ok=True)
+        source_refs = [
+            GENERATOR.CODEX_M07_SELECTION_EVIDENCE_RELATIVE_PATH,
+            GENERATOR.CODEX_M07_REPORT_RELATIVE_PATH,
+        ]
+        frontier = {'records': [{'id': 'M07', 'status': 'UNASSESSED', 'source_refs': source_refs}]}
+        frontier_path.write_text(json.dumps(frontier), encoding='utf-8')
+        with patch.object(GENERATOR, 'ROOT', self.root):
+            self.assertTrue(GENERATOR.codex_m07_frontier_is_unassessed())
+            promoted = json.loads(json.dumps(frontier))
+            promoted['records'][0]['status'] = 'PARTIAL'
+            frontier_path.write_text(json.dumps(promoted), encoding='utf-8')
+            self.assertFalse(GENERATOR.codex_m07_frontier_is_unassessed())
+            missing_report = json.loads(json.dumps(frontier))
+            missing_report['records'][0]['source_refs'].remove(
+                GENERATOR.CODEX_M07_REPORT_RELATIVE_PATH,
+            )
+            frontier_path.write_text(json.dumps(missing_report), encoding='utf-8')
+            self.assertFalse(GENERATOR.codex_m07_frontier_is_unassessed())
+
     def test_accepts_only_bounded_renderer_report_without_changing_frontier_status(self):
         report = self.write_c07_renderer_report()
         current_by_name = {item['name']: item for item in self.catalog}

@@ -392,6 +392,32 @@
           }
         }
       ]
+    },
+    {
+      "id": "m07-manage-index-unbound-agent-mcp-v1",
+      "frontierId": "M07",
+      "epochId": "run95-m07-manage-index-agent-mcp-unbound-denial-20261016",
+      "toolName": "bangumi.manage_index",
+      "argumentProfile": "fixed-m07-manage-index-create-unbound-no-http-v1",
+      "claimLabelName": "harness-r95-m07-manage-index-unbound-claimed",
+      "reportPath": "docs/live-probes/m07-manage-index-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-m07-manage-index-agent-mcp-no-account-source-contract-2026-10-16.md",
+      "evidenceKind": "codex_cli_m07_manage_index_unbound_auth_gate_agent_mcp",
+      "answerCheckMethod": "m07-manage-index-unbound-auth-required-no-http-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-m07-manage-index-unbound-auth-required-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 512,
+      "calls": [
+        {
+          "toolName": "bangumi.manage_index",
+          "arguments": {
+            "action": "create",
+            "title": "Run95 no-account gate check"
+          }
+        }
+      ]
     }
   ]
 }

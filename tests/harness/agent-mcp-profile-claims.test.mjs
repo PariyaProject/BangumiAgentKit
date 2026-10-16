@@ -67,7 +67,7 @@ test('C04 matrix profile binds its two exact read-only tools in order', () => {
   );
 });
 
-test('C03 profile registry is closed, immutable, and binds two exact calls', () => {
+test('Agent/MCP profile registry is closed and immutable, including C03 exact calls', () => {
   assert.ok(PROFILE);
   assert.equal(PROFILE.id, 'c03-voice-actor-comparison-v1');
   assert.equal(PROFILE.frontierId, 'C03');
@@ -80,7 +80,17 @@ test('C03 profile registry is closed, immutable, and binds two exact calls', () 
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 12);
+  assert.equal(listAgentMcpProfiles().length, 13);
+  const m07 = getAgentMcpProfileById('m07-manage-index-unbound-agent-mcp-v1');
+  assert.ok(m07);
+  assert.equal(m07.frontierId, 'M07');
+  assert.equal(m07.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.deepEqual(m07.calls, [
+    {
+      toolName: 'bangumi.manage_index',
+      arguments: { action: 'create', title: 'Run95 no-account gate check' },
+    },
+  ]);
   const c01 = getAgentMcpProfileById('c01-rating-count-gap-v1');
   assert.ok(c01);
   assert.equal(c01.frontierId, 'C01');
