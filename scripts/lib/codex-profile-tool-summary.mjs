@@ -22,6 +22,7 @@ import {
   summarizeR02PositiveDirectRelationsToolResult,
 } from './r02-positive-direct-relations-profile.mjs';
 import { A01_RENDER_COHORT_AGGREGATION_PROFILE_ID } from './a01-render-cohort-aggregation-offline-fixture.mjs';
+import { R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID } from './r04-render-series-watch-order-offline-fixture.mjs';
 
 const C04_RESULT_STATES = new Set([
   'ok',
@@ -150,7 +151,8 @@ export function summarizeProfileToolResult(
   }
   if (
     profileId === 'p06-render-person-profile-offline-agent-mcp-v1' ||
-    profileId === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID
+    profileId === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID ||
+    profileId === R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID
   ) {
     const artifact = artifactSummary && typeof artifactSummary === 'object' ? artifactSummary : {};
     return {
