@@ -80,7 +80,7 @@ test('C03 profile registry is closed, immutable, and binds two exact calls', () 
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 11);
+  assert.equal(listAgentMcpProfiles().length, 12);
   const c01 = getAgentMcpProfileById('c01-rating-count-gap-v1');
   assert.ok(c01);
   assert.equal(c01.frontierId, 'C01');

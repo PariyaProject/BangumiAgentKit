@@ -101,6 +101,7 @@ const mockBin = path.join(root, 'tests/harness/mock-harness-bin.mjs');
 const sha = (digit) => digit.repeat(40);
 const D07_EPOCH_ID = 'run95-d07-current-rank-by-release-year';
 const C03_PROFILE = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
+const C02_PROFILE = getAgentMcpProfileById('c02-cardcaptor-tv-movie-v1');
 const C01_PROFILE = getAgentMcpProfileById('c01-rating-count-gap-v1');
 const P03_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
 const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
@@ -1744,6 +1745,50 @@ test('C03 Harness profile status, create-once claim, and terminal result are dur
       environment.readState().repositoryLabels['harness-r95-c03-activity-terminal'].description,
       'Run95 C03 INCONCLUSIVE no-report',
     );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C02 Harness claim rejects reviewer substitution before creating the permanent latch', () => {
+  const { environment, epoch, reviewerId } =
+    agentMcpProfileReviewReadyEnvironment(C02_PROFILE);
+  const laterReviewerId = 'gpt-6-luna-max-run95-pr42-round2';
+  epoch.review_history.push({
+    ...epoch.review_history[0],
+    review_number: 2,
+    reviewer_id: laterReviewerId,
+  });
+  const state = environment.readState();
+  state.prBody = renderEpochBody(epoch);
+  fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', C02_PROFILE.id];
+  try {
+    const rejected = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      laterReviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(rejected.status, 2);
+    assert.match(rejected.stderr, /^AGENT_MCP_PROFILE_CLAIM_GATE_FAILED:/u);
+    const stateAfter = environment.readState();
+    assert.equal(
+      Object.hasOwn(stateAfter.repositoryLabels ?? {}, C02_PROFILE.claimLabelName),
+      false,
+    );
+    const stored = parseControlBlock(stateAfter.prBody, EPOCH_MARKER);
+    assert.equal(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions?.[C02_PROFILE.id],
+      undefined,
+    );
+    assert.equal(reviewerId, 'gpt-6-luna-max-run95-pr42-round1');
   } finally {
     environment.cleanup();
   }

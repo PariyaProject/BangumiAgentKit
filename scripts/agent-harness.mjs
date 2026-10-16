@@ -156,6 +156,7 @@ import { validateR04SanitizedReportFile } from './acceptance/write-r04-series-wa
 import { validateR01RelationsOfflineSanitizedReportFile } from './acceptance/write-r01-relations-offline-agent-mcp-report.mjs';
 import { validateC04SanitizedReportFile } from './acceptance/write-c04-cohort-comparison-agent-mcp-report.mjs';
 import { validateR02SanitizedReportFile } from './acceptance/write-r02-positive-direct-relations-agent-mcp-report.mjs';
+import { validateC02SanitizedReportFile } from './acceptance/write-c02-tv-movie-comparison-report.mjs';
 import {
   G06_MODEL,
   G06_REASONING_EFFORT,
@@ -3458,6 +3459,8 @@ function assertAgentMcpProfileReviewReadiness(
     latestReview.reviewed_base_sha !== baseSha ||
     latestReview.verdict !== 'PASS' ||
     !isG16LunaMaxReviewerId(latestReview.reviewer_id, Number(prNumber)) ||
+    (profile.id === 'c02-cardcaptor-tv-movie-v1' &&
+      latestReview.reviewer_id !== epoch.review_history?.[0]?.reviewer_id) ||
     (runnerReceiptPublicKey?.reviewerId !== undefined &&
       latestReview.reviewer_id !== runnerReceiptPublicKey.reviewerId) ||
     profile.model !== 'gpt-6-luna' ||
@@ -3785,6 +3788,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
   switch (profile.id) {
     case 'c01-rating-count-gap-v1':
       return validateC01SanitizedReportFile(claim, root, reportPath);
+    case 'c02-cardcaptor-tv-movie-v1':
+      return validateC02SanitizedReportFile(claim, root, reportPath);
     case 'p03-person-name-cn-agent-mcp-v1':
       return validateP03SanitizedReportFile(claim, root, reportPath);
     case 'p07-person-season-distribution-agent-mcp-v1':
