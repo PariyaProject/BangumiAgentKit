@@ -7397,6 +7397,101 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         error = TABLE_CHECKER.evidence_reference_error('bangumi.auth_status', cell, 'agent_mcp')
         self.assertIn('does not contain evidence for bangumi.auth_status', error)
 
+    def write_r01_offline_report(
+        self, relative_path=TABLE_CHECKER.R01_OFFLINE_REPORT_PATH, **overrides,
+    ):
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': TABLE_CHECKER.R01_OFFLINE_REPORT_KIND,
+            'runNumber': 95,
+            'frontierId': 'R01',
+            'scenarioId': None,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+            'epochId': TABLE_CHECKER.R01_OFFLINE_EPOCH_ID,
+            'profileId': TABLE_CHECKER.R01_OFFLINE_PROFILE_ID,
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'toolName': TABLE_CHECKER.R01_OFFLINE_TOOL_NAME,
+            'argumentProfile': TABLE_CHECKER.R01_OFFLINE_ARGUMENT_PROFILE,
+            'serverToolNames': [TABLE_CHECKER.R01_OFFLINE_TOOL_NAME],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_r01_relations'],
+            'resultStatus': 'SUCCESS',
+            'processExitCode': 0,
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 2,
+            'blockedWebSearchErrorItemCount': 2,
+            'unexpectedCodexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'networkMode': TABLE_CHECKER.R01_OFFLINE_NETWORK_MODE,
+            'answerCheckMethod': TABLE_CHECKER.R01_OFFLINE_ANSWER_CHECK_METHOD,
+            'resultSummary': TABLE_CHECKER.R01_OFFLINE_RESULT_SUMMARY,
+            'offlineFixture': TABLE_CHECKER.R01_OFFLINE_FIXTURE,
+            'networkBoundary': TABLE_CHECKER.R01_OFFLINE_NETWORK_BOUNDARY,
+            'privacy': TABLE_CHECKER.R01_OFFLINE_PRIVACY,
+            'answerChecks': {
+                field: True for field in TABLE_CHECKER.R01_OFFLINE_ANSWER_CHECK_FIELDS
+            },
+        }
+        report.update(overrides)
+        path = self.root / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(report), encoding='utf-8')
+        return relative_path
+
+    def test_r01_offline_matrix_report_maps_only_subject_relations_agent_mcp(self):
+        relative_path = self.write_r01_offline_report()
+        cell = f'✅<br>`{relative_path}`'
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_relations', cell, 'agent_mcp',
+        ))
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject', cell, 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject', error)
+
+        public_error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_relations',
+            f'◐<br>`{relative_path}`', 'public',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_relations', public_error)
+
+    def test_r01_offline_matrix_report_requires_its_exact_path_and_tool_contract(self):
+        wrong_path = self.write_r01_offline_report('docs/live-probes/copied-r01-report.json')
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_relations', f'✅<br>`{wrong_path}`', 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_relations', error)
+
+        relative_path = self.write_r01_offline_report(toolName='bangumi.get_subject')
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_relations', f'✅<br>`{relative_path}`', 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_relations', error)
+
+        relative_path = self.write_r01_offline_report(
+            evidenceKind='unrelated_agent_mcp_report',
+        )
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_relations', f'✅<br>`{relative_path}`', 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_relations', error)
+
+        relative_path = self.write_r01_offline_report(
+            offlineFixture={**TABLE_CHECKER.R01_OFFLINE_FIXTURE, 'requestCount': 2},
+        )
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_relations', f'✅<br>`{relative_path}`', 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_relations', error)
+
     def test_accepts_auth_denial_report_reference_for_the_same_tool(self):
         self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
             'bangumi.get_my_profile',
