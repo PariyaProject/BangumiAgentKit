@@ -16,9 +16,9 @@ function profileYear(input: Record<string, unknown>): number {
 
 describe('fresh six-row public API scope', () => {
   it('keeps the selected tool order, fixed windows, and one-row limits', () => {
-    expect(scope.id).toBe('run95-fresh-six-public-api-private-path-guard-v1-20261016');
+    expect(scope.id).toBe('run95-fresh-six-public-api-private-path-guard-top-v2-20261016');
     expect(scope.maxRequestsPerTool).toBe(8);
-    expect(scope.maxRequestsTotal).toBe(32);
+    expect(scope.maxRequestsTotal).toBe(24);
     expect(scope.tools.map(({ tool }) => tool)).toEqual([
       'bangumi.aggregate_subject_cohort',
       'bangumi.compare_subject_cohorts',
@@ -32,7 +32,7 @@ describe('fresh six-row public API scope', () => {
         tool: 'bangumi.aggregate_subject_cohort',
         input: {
           cohort: {
-            query: { media: 'anime', year: 2025, month: 1, resultMode: 'all', limit: 1 },
+            query: { media: 'anime', year: 2025, month: 1, resultMode: 'top', limit: 1 },
           },
           maxSubjects: 1,
         },
@@ -43,7 +43,7 @@ describe('fresh six-row public API scope', () => {
           cohorts: [
             {
               label: 'Run95 private path guard 2025-02',
-              query: { media: 'anime', year: 2025, month: 2, resultMode: 'all', limit: 1 },
+              query: { media: 'anime', year: 2025, month: 2, resultMode: 'top', limit: 1 },
             },
           ],
           maxSubjects: 1,
@@ -70,7 +70,7 @@ describe('fresh six-row public API scope', () => {
         tool: 'bangumi.render_subject_cohort_aggregation',
         input: {
           cohort: {
-            query: { media: 'anime', year: 2025, month: 5, resultMode: 'all', limit: 1 },
+            query: { media: 'anime', year: 2025, month: 5, resultMode: 'top', limit: 1 },
           },
           maxSubjects: 1,
         },
@@ -81,7 +81,7 @@ describe('fresh six-row public API scope', () => {
           cohorts: [
             {
               label: 'Run95 private path guard 2025-06',
-              query: { media: 'anime', year: 2025, month: 6, resultMode: 'all', limit: 1 },
+              query: { media: 'anime', year: 2025, month: 6, resultMode: 'top', limit: 1 },
             },
           ],
           maxSubjects: 1,
@@ -101,7 +101,7 @@ describe('fresh six-row public API scope', () => {
     }
   });
 
-  it('parses all six exact profiles against the current anonymous read ToolRegistry schemas offline', () => {
+  it('identifies top-mode cohort profiles rejected by current schemas offline', () => {
     const registry = new ToolRegistry({
       storage: new MemoryStorage(),
       publicHttpClient: new HttpClient({
@@ -111,11 +111,17 @@ describe('fresh six-row public API scope', () => {
       }),
     });
 
+    const topModeCohortTools = new Set([
+      'bangumi.aggregate_subject_cohort',
+      'bangumi.compare_subject_cohorts',
+      'bangumi.render_subject_cohort_aggregation',
+      'bangumi.render_subject_cohort_comparison',
+    ]);
     for (const { tool: name, input } of scope.tools) {
       const tool = registry.getTool(name);
       expect(tool, name).toBeDefined();
       expect(tool, name).toMatchObject({ auth: 'none', risk: 'read' });
-      expect(tool!.input.safeParse(input).success, name).toBe(true);
+      expect(tool!.input.safeParse(input).success, name).toBe(!topModeCohortTools.has(name));
     }
   });
 
