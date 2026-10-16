@@ -9465,6 +9465,132 @@ class R02PositiveDirectRelationsProfileReportValidationTests(unittest.TestCase):
         })
 
 
+class A01RenderCohortAggregationMatrixProfileTests(unittest.TestCase):
+    def setUp(self):
+        self.tool_name = GENERATOR.CODEX_A01_RENDER_AGGREGATION_TOOL_NAME
+        self.profile = GENERATOR.CODEX_A01_RENDER_AGGREGATION_PROFILE
+        self.current_tool = {
+            'name': self.tool_name,
+            'auth': 'none',
+            'risk': 'read',
+            'inputSchema': {'type': 'object'},
+        }
+        self.report = {
+            'toolName': self.tool_name,
+            'argumentProfile': GENERATOR.CODEX_A01_RENDER_AGGREGATION_ARGUMENT_PROFILE,
+            'profileId': GENERATOR.CODEX_A01_RENDER_AGGREGATION_PROFILE_ID,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+        }
+
+    def test_frontier_remains_unassessed_with_matrix_only_source_refs(self):
+        self.assertTrue(GENERATOR.codex_a01_render_aggregation_frontier_is_unassessed())
+
+    def test_routes_only_the_exact_render_aggregation_matrix_profile(self):
+        with patch.object(
+            GENERATOR,
+            'codex_a01_render_aggregation_profile_report_is_valid',
+            return_value=True,
+        ):
+            self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
+                self.report,
+                {self.tool_name: self.current_tool},
+                {self.tool_name: self.current_tool},
+            ))
+
+            wrong_tool = dict(self.report, toolName='bangumi.render_subject_cohort_comparison')
+            self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+                wrong_tool,
+                {self.tool_name: self.current_tool},
+                {self.tool_name: self.current_tool},
+            ))
+
+            scenario_scope = dict(self.report, acceptanceScope='frontier-scenario-only')
+            self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+                scenario_scope,
+                {self.tool_name: self.current_tool},
+                {self.tool_name: self.current_tool},
+            ))
+
+            wrong_profile = dict(self.report, profileId='consumed-profile')
+            self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+                wrong_profile,
+                {self.tool_name: self.current_tool},
+                {self.tool_name: self.current_tool},
+            ))
+
+    def test_allows_only_a_report_and_generated_table_candidate_refresh(self):
+        source_candidate = 'a' * 40
+        refreshed_candidate = 'd' * 40
+        base_sha = 'b' * 40
+        branch = 'codex/epoch-run95-a01-render-cohort-aggregation-agent-mcp-offline-20261016'
+        reviewer_id = 'gpt-6-luna-max-run95-pr123-round1'
+        report = {
+            'prNumber': 123,
+            'sourceRevision': source_candidate,
+            'baseSha': base_sha,
+            'reviewerId': reviewer_id,
+            'mcpBundleSha256': 'c' * 64,
+        }
+        epoch = {
+            'epoch_id': GENERATOR.CODEX_A01_RENDER_AGGREGATION_EPOCH_ID,
+            'pr_number': 123,
+            'state': 'REVIEW_READY',
+            'branch': branch,
+            'base_branch': 'master',
+            'base_sha': base_sha,
+            'reviewed_base_sha': base_sha,
+            'candidate_sha': refreshed_candidate,
+            'review_history': [{
+                'candidate_sha': source_candidate,
+                'reviewed_base_sha': base_sha,
+                'reviewer_id': reviewer_id,
+                'verdict': 'PASS',
+            }],
+        }
+        status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 123},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base_sha,
+                'pr_head_ref_name': branch,
+                'pr_head_sha': refreshed_candidate,
+                'pr_is_draft': False,
+                'state': epoch,
+            },
+        }
+
+        def git_results(changed_paths):
+            return [
+                subprocess.CompletedProcess(
+                    ['git'], 0, stdout=changed_paths, stderr='',
+                ),
+                subprocess.CompletedProcess(['git'], 0, stdout='', stderr=''),
+            ]
+
+        valid_paths = '\n'.join([
+            GENERATOR.CODEX_A01_RENDER_AGGREGATION_REPORT_RELATIVE_PATH,
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+        ]) + '\n'
+        with patch.object(GENERATOR, '_run_repository_git', side_effect=git_results(valid_paths)):
+            self.assertTrue(
+                GENERATOR.codex_a01_render_aggregation_profile_candidate_binding_is_current(
+                    report, status, report['mcpBundleSha256'],
+                )
+            )
+
+        unsafe_paths = valid_paths + 'scripts/unrelated-change.mjs\n'
+        with patch.object(GENERATOR, '_run_repository_git', side_effect=git_results(unsafe_paths)):
+            self.assertFalse(
+                GENERATOR.codex_a01_render_aggregation_profile_candidate_binding_is_current(
+                    report, status, report['mcpBundleSha256'],
+                )
+            )
+
+
 class LocalToolAuthDenialEvidenceTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='local-auth-denial-evidence-test-')

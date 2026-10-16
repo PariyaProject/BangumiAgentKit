@@ -31,6 +31,12 @@ import {
   createC07CohortRenderOfflineFixtureFetch,
 } from '../../scripts/lib/c07-cohort-render-offline-fixture.mjs';
 import {
+  A01_RENDER_COHORT_AGGREGATION_PROFILE_ID,
+  A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE,
+  assertA01RenderCohortAggregationOfflineProfile,
+  createA01RenderCohortAggregationOfflineFetch,
+} from '../../scripts/lib/a01-render-cohort-aggregation-offline-fixture.mjs';
+import {
   createP06RenderPersonProfileAssetGuard,
   createP06RenderPersonProfileOfflineFetch,
   P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
@@ -194,6 +200,9 @@ async function main(argv = process.argv.slice(2)) {
       expectedArguments: config.expectedArguments,
     });
   }
+  if (config.networkMode === A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE) {
+    assertA01RenderCohortAggregationOfflineProfile(config.profile);
+  }
   if (config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE) {
     assertP02PersonProfileOfflineProfile(config.profile);
   }
@@ -248,17 +257,19 @@ async function main(argv = process.argv.slice(2)) {
       ? createR02PositiveDirectRelationsPublicFetch()
       : null;
   const offlineFixture =
-    config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
-      ? createC07CohortRenderOfflineFixtureFetch()
-      : config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
-        ? createP06RenderPersonProfileOfflineFetch()
-        : config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE
-          ? createP02PersonProfileOfflineFetch()
-          : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
-            ? createR04SeriesWatchOrderOfflineFetch()
-            : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
-              ? createR01RelationsOfflineFetch()
-              : null;
+    config.networkMode === A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE
+      ? createA01RenderCohortAggregationOfflineFetch()
+      : config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
+        ? createC07CohortRenderOfflineFixtureFetch()
+        : config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
+          ? createP06RenderPersonProfileOfflineFetch()
+          : config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE
+            ? createP02PersonProfileOfflineFetch()
+            : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
+              ? createR04SeriesWatchOrderOfflineFetch()
+              : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
+                ? createR01RelationsOfflineFetch()
+                : null;
   const p06AssetGuard =
     config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
       ? createP06RenderPersonProfileAssetGuard()
@@ -476,10 +487,12 @@ async function main(argv = process.argv.slice(2)) {
           const artifactSummary =
             config.profile.id === 'p06-render-person-profile-offline-agent-mcp-v1'
               ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
-              : config.profile.id === C04_COHORT_COMPARISON_PROFILE_ID &&
-                  expectedToolName === 'bangumi.render_subject_cohort_comparison'
-                ? artifactStore.summarize(result?.artifact?.id)
-                : null;
+              : config.profile.id === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID
+                ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
+                : config.profile.id === C04_COHORT_COMPARISON_PROFILE_ID &&
+                    expectedToolName === 'bangumi.render_subject_cohort_comparison'
+                  ? artifactStore.summarize(result?.artifact?.id)
+                  : null;
           const resultSummary = summarizeProfileToolResult(
             result,
             expectedArguments,
@@ -534,6 +547,25 @@ async function main(argv = process.argv.slice(2)) {
           const text = JSON.stringify(safeProjection);
           return {
             content: [{ type: 'text', text }],
+            structuredContent: safeProjection,
+          };
+        }
+        if (config.profile?.id === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID) {
+          const safeProjection = summary.results[sequenceIndex]?.resultSummary;
+          if (!safeProjection) {
+            summary = {
+              ...summary,
+              serverResultStatus: 'ERROR',
+              results: [{ sequenceIndex, status: 'ERROR', errorCode: 'A01_SUMMARY_UNAVAILABLE' }],
+            };
+            persistSummary();
+            return {
+              content: [{ type: 'text', text: 'A01 artifact summary is unavailable.' }],
+              isError: true,
+            };
+          }
+          return {
+            content: [{ type: 'text', text: JSON.stringify(safeProjection) }],
             structuredContent: safeProjection,
           };
         }
