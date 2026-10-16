@@ -9266,5 +9266,119 @@ class R02PositiveDirectRelationsProfileReportValidationTests(unittest.TestCase):
         })
 
 
+class LocalToolAuthDenialEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='local-auth-denial-evidence-test-')
+        self.root = Path(self.temp_dir.name)
+        self.live_probe_dir = self.root / 'docs/live-probes'
+        self.live_probe_dir.mkdir(parents=True)
+        self.source_path = self.root / 'tests/unit/manage-index-actions.test.ts'
+        self.source_path.parent.mkdir(parents=True)
+        self.source_path.write_text(
+            "\n".join([
+                "externalUserId: 'user-without-account'",
+                "it('rejects an unbound principal before issuing any index request', async () => {",
+                "  await expect(execute()).rejects.toMatchObject({ code: 'AUTH_REQUIRED' });",
+                '  expect(mockFetch).not.toHaveBeenCalled();',
+                '  expect(capturedRequests).toHaveLength(0);',
+                '});',
+            ]) + '\n',
+            encoding='utf-8',
+        )
+        self.catalog = [{
+            'name': 'bangumi.manage_index',
+            'auth': 'required',
+            'risk': 'write',
+            'scopes': ['write:indices'],
+        }]
+        self.catalog_path = self.root / 'docs/tool-catalog.json'
+        self.catalog_path.parent.mkdir(parents=True, exist_ok=True)
+        self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
+        self.report_path = self.live_probe_dir / 'tool-registry-no-account-auth-denial-manage-index.json'
+        self.report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'tool_registry_no_account_auth_denial_test',
+            'profile': 'bangumi-tool-registry-no-account-auth-denial-v1',
+            'catalogSha256': hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
+            'tool': 'bangumi.manage_index',
+            'testSourcePath': 'tests/unit/manage-index-actions.test.ts',
+            'testSourceSha256': hashlib.sha256(self.source_path.read_bytes()).hexdigest(),
+            'testCommand': 'pnpm exec vitest run tests/unit/manage-index-actions.test.ts',
+            'testName': 'rejects an unbound principal before issuing any index request',
+            'testResult': 'PASS',
+            'accountBound': False,
+            'observedErrorCode': 'AUTH_REQUIRED',
+            'assertions': {
+                'authRequiredGateObserved': True,
+                'operationExecuted': False,
+                'accountDataReturned': False,
+                'networkAccessBlocked': True,
+                'networkRequestAttempts': 0,
+                'externalApiCalled': False,
+            },
+        }
+        self.write_report()
+        self.original_generator_root = GENERATOR.ROOT
+        self.original_generator_probe_dir = GENERATOR.LIVE_PROBE_DIR
+        self.original_generator_catalog = GENERATOR.CATALOG
+        self.original_checker_root = TABLE_CHECKER.ROOT
+        self.original_checker_catalog = TABLE_CHECKER.CATALOG
+        GENERATOR.ROOT = self.root
+        GENERATOR.LIVE_PROBE_DIR = self.live_probe_dir
+        GENERATOR.CATALOG = self.catalog_path
+        TABLE_CHECKER.ROOT = self.root
+        TABLE_CHECKER.CATALOG = self.catalog_path
+
+    def tearDown(self):
+        GENERATOR.ROOT = self.original_generator_root
+        GENERATOR.LIVE_PROBE_DIR = self.original_generator_probe_dir
+        GENERATOR.CATALOG = self.original_generator_catalog
+        TABLE_CHECKER.ROOT = self.original_checker_root
+        TABLE_CHECKER.CATALOG = self.original_checker_catalog
+        self.temp_dir.cleanup()
+
+    def write_report(self):
+        self.report_path.write_text(json.dumps(self.report), encoding='utf-8')
+
+    def test_accepts_current_catalog_source_bound_no_account_tool_gate(self):
+        sources = GENERATOR.auth_gate_denial_sources(self.catalog)
+        self.assertEqual(sources, {
+            'bangumi.manage_index': {
+                'docs/live-probes/tool-registry-no-account-auth-denial-manage-index.json'
+            }
+        })
+        cell = '✅<br>`docs/live-probes/tool-registry-no-account-auth-denial-manage-index.json`'
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error('bangumi.manage_index', cell, 'auth_denial'))
+        self.assertIn('bangumi.manage_index', GENERATOR.auth_gate_denial_names(self.catalog))
+
+    def test_rejects_stale_catalog_or_test_source_hash(self):
+        self.report['catalogSha256'] = '0' * 64
+        self.write_report()
+        self.assertNotIn('bangumi.manage_index', GENERATOR.auth_gate_denial_sources(self.catalog))
+        cell = '✅<br>`docs/live-probes/tool-registry-no-account-auth-denial-manage-index.json`'
+        error = TABLE_CHECKER.evidence_reference_error('bangumi.manage_index', cell, 'auth_denial')
+        self.assertIn('does not contain evidence for bangumi.manage_index', error)
+
+        self.report['catalogSha256'] = hashlib.sha256(self.catalog_path.read_bytes()).hexdigest()
+        self.report['testSourceSha256'] = '0' * 64
+        self.write_report()
+        self.assertNotIn('bangumi.manage_index', GENERATOR.auth_gate_denial_sources(self.catalog))
+
+        self.report['testSourceSha256'] = hashlib.sha256(self.source_path.read_bytes()).hexdigest()
+        self.write_report()
+        self.source_path.unlink()
+        self.assertNotIn('bangumi.manage_index', GENERATOR.auth_gate_denial_sources(self.catalog))
+
+    def test_rejects_any_account_data_or_network_attempt(self):
+        self.report['assertions']['networkRequestAttempts'] = 1
+        self.write_report()
+        self.assertNotIn('bangumi.manage_index', GENERATOR.auth_gate_denial_sources(self.catalog))
+
+        self.report['assertions']['networkRequestAttempts'] = 0
+        self.report['assertions']['accountDataReturned'] = True
+        self.write_report()
+        self.assertNotIn('bangumi.manage_index', GENERATOR.auth_gate_denial_sources(self.catalog))
+
+
 if __name__ == '__main__':
     unittest.main()
