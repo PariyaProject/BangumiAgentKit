@@ -4,6 +4,7 @@ import {
   P07_CANONICAL_CAVEAT,
   P07_EXPECTED_ARGUMENTS,
   summarizeP07PersonActivityToolResult,
+  validateP07PersonSeasonSummary,
   validateP07McpTextProjection,
   verifyP07PersonSeasonAnswer,
 } from '../../scripts/lib/p07-person-season-evidence.mjs';
@@ -143,6 +144,35 @@ describe('P07 observed calendar-quarter activity evidence', () => {
       truncated: true,
     });
     expect(verifyP07PersonSeasonAnswer(summary, summary).passed).toBe(true);
+  });
+
+  it('rejects complete state when coverage proves the result was sampled or truncated', () => {
+    const contradictory = fixture();
+    contradictory.state = 'complete';
+    contradictory.coverage.relationRowsObserved = 28;
+    contradictory.coverage.relationRowsDroppedAtLimit = 4;
+    contradictory.coverage.sampled = true;
+    contradictory.coverage.rowsEligible = 4;
+    contradictory.coverage.outputTruncated = true;
+    contradictory.coverage.truncated = true;
+    expect(summarizeP07PersonActivityToolResult(contradictory)).toBeNull();
+
+    const summary = summarizeP07PersonActivityToolResult(fixture());
+    if (!summary) throw new Error('Expected the fixed P07 fixture to produce a summary.');
+    const inconsistentSummary = {
+      ...summary,
+      state: 'complete',
+      coverage: {
+        ...summary.coverage,
+        relationRowsObserved: 28,
+        relationRowsDroppedAtLimit: 4,
+        sampled: true,
+        rowsEligible: 4,
+        outputTruncated: true,
+        truncated: true,
+      },
+    };
+    expect(validateP07PersonSeasonSummary(inconsistentSummary)).toBe(false);
   });
 
   it('fails closed for wrong arguments, source identity, or no usable dates', () => {

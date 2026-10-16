@@ -70,6 +70,19 @@ function nonnegativeInteger(value) {
   return Number.isSafeInteger(value) && value >= 0;
 }
 
+function coverageRequiresPartialState(coverage) {
+  return (
+    coverage.sampled ||
+    coverage.truncated ||
+    coverage.outputTruncated ||
+    coverage.relationRowsDroppedAtLimit > 0 ||
+    coverage.subjectDetailIdsDroppedAtLimit > 0 ||
+    coverage.subjectDetailsFailed > 0 ||
+    coverage.missingDateRows > 0 ||
+    coverage.invalidDateRows > 0
+  );
+}
+
 function validDateOnly(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return false;
   const parsed = new Date(`${value}T00:00:00.000Z`);
@@ -204,6 +217,7 @@ export function summarizeP07PersonActivityToolResult(
   const coverage = summarizeCoverage(result.coverage, result.rows.length);
   if (
     !coverage ||
+    (result.state === 'complete' && coverageRequiresPartialState(coverage)) ||
     datedRowsObserved !== result.rows.length ||
     datedRowsObserved === 0 ||
     quarterDistribution.length === 0
@@ -256,6 +270,7 @@ export function validateP07PersonSeasonSummary(summary) {
     summary.maxQuarterCount === 0 ||
     !hasExactKeys(summary.coverage, COVERAGE_KEYS) ||
     !checkedCoverage ||
+    (summary.state === 'complete' && coverageRequiresPartialState(checkedCoverage)) ||
     canonicalJson(summary.coverage) !== canonicalJson(checkedCoverage) ||
     summary.coverage.rowsReturned !== summary.datedRowsObserved ||
     summary.caveat !== P07_CANONICAL_CAVEAT

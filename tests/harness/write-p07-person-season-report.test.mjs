@@ -167,6 +167,21 @@ test('P07 report stores only a signed sanitized result summary bound to the one-
     tampered.resultSummary.quarterDistribution[0].count += 1;
     writeFileSync(result.absoluteReportPath, `${JSON.stringify(tampered, null, 2)}\n`);
     assert.equal(validateP07SanitizedReportFile(claim, root).passed, false);
+
+    const inconsistent = JSON.parse(reportBytes.toString('utf8'));
+    inconsistent.resultSummary.state = 'complete';
+    Object.assign(inconsistent.resultSummary.coverage, {
+      relationRowsObserved: 28,
+      relationRowsDroppedAtLimit: 4,
+      sampled: true,
+      rowsEligible: 4,
+      outputTruncated: true,
+      truncated: true,
+    });
+    writeFileSync(result.absoluteReportPath, `${JSON.stringify(inconsistent, null, 2)}\n`);
+    const inconsistentValidation = validateP07SanitizedReportFile(claim, root);
+    assert.equal(inconsistentValidation.passed, false);
+    assert.equal(inconsistentValidation.reason, 'P07_REPORT_RESULT_SUMMARY_INVALID');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
