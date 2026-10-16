@@ -430,7 +430,7 @@ function readDisposition(prNumber) {
   return result.disposition;
 }
 
-function persistProfileResult(prNumber, claimId, state, reportSha256 = null) {
+function persistProfileResult(prNumber, claimId, state, reportSha256 = null, diagnostics = null) {
   const args = [
     'epoch:agent-mcp-profile-result',
     '--run',
@@ -445,6 +445,7 @@ function persistProfileResult(prNumber, claimId, state, reportSha256 = null) {
     state,
   ];
   if (reportSha256) args.push('--report-sha256', reportSha256);
+  if (diagnostics) args.push('--diagnostics-json', JSON.stringify(diagnostics));
   return runHarness(args);
 }
 
@@ -459,7 +460,47 @@ function recordInconclusive(
   reasonCode = 'P03_RUN_INCONCLUSIVE',
   diagnostics = {},
 ) {
-  const result = persistProfileResult(prNumber, claimId, 'INCONCLUSIVE', reportSha256);
+  const checks = {};
+  const checkFields = {
+    eventStreamParsed: 'eventStreamParsed',
+    turnCompleted: 'turnCompleted',
+    exactCalls: 'exactCallSequence',
+    exactToolEvents: 'exactToolEvents',
+    structuredReadback: 'structuredReadback',
+    mcpTextProjectionValid: 'resultProjectionValid',
+    serverSummaryValid: 'serverSummaryValid',
+  };
+  for (const [source, target] of Object.entries(checkFields)) {
+    if (typeof diagnostics[source] === 'boolean') checks[target] = diagnostics[source];
+  }
+  if (diagnostics.answerChecks && typeof diagnostics.answerChecks === 'object') {
+    checks.answerValid = Object.values(diagnostics.answerChecks).every(
+      (value) => typeof value === 'boolean' && value,
+    );
+  }
+  const counterFields = {
+    codexMcpToolEventCount: 'codexMcpToolEvents',
+    codexErrorItemCount: 'codexErrorItems',
+    nonMcpToolEventCount: 'nonMcpToolEvents',
+    shellToolCallCount: 'shellCalls',
+    allowedCallCount: 'allowedToolCalls',
+    deniedCallCount: 'deniedToolCalls',
+  };
+  const counters = {};
+  for (const [source, target] of Object.entries(counterFields)) {
+    const value = diagnostics[source];
+    if (value === null || (Number.isSafeInteger(value) && value >= 0)) counters[target] = value;
+  }
+  const failureDiagnostics = Object.keys(checks).length
+    ? { schemaVersion: 1, reasonCode, checks, counters }
+    : null;
+  const result = persistProfileResult(
+    prNumber,
+    claimId,
+    'INCONCLUSIVE',
+    reportSha256,
+    failureDiagnostics,
+  );
   if (result.exitCode !== 0) {
     printSafe({
       state: 'INCONCLUSIVE_ACK_PENDING',

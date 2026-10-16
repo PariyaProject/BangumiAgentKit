@@ -539,7 +539,7 @@ function readProfileDisposition(status) {
   return result.disposition;
 }
 
-function persistProfileResult(prNumber, claimId, state, reportSha256 = null) {
+function persistProfileResult(prNumber, claimId, state, reportSha256 = null, diagnostics = null) {
   const args = [
     'epoch:agent-mcp-profile-result',
     '--run',
@@ -554,6 +554,7 @@ function persistProfileResult(prNumber, claimId, state, reportSha256 = null) {
     state,
   ];
   if (reportSha256) args.push('--report-sha256', reportSha256);
+  if (diagnostics) args.push('--diagnostics-json', JSON.stringify(diagnostics));
   return runHarness(args);
 }
 
@@ -566,8 +567,45 @@ function recordInconclusive(
   claimId,
   reportSha256 = null,
   reasonCode = 'C03_RUN_INCONCLUSIVE',
+  diagnostics = {},
 ) {
-  const result = persistProfileResult(prNumber, claimId, 'INCONCLUSIVE', reportSha256);
+  const checks = {};
+  const checkFields = {
+    eventStreamParsed: 'eventStreamParsed',
+    turnCompleted: 'turnCompleted',
+    exactCalls: 'exactCallSequence',
+    exactToolEvents: 'exactToolEvents',
+    structuredReadback: 'structuredReadback',
+    serverSummaryValid: 'serverSummaryValid',
+    answerValid: 'answerValid',
+    candidateBundleCurrent: 'candidateBundleCurrent',
+  };
+  for (const [source, target] of Object.entries(checkFields)) {
+    if (typeof diagnostics[source] === 'boolean') checks[target] = diagnostics[source];
+  }
+  const counterFields = {
+    codexMcpToolEventCount: 'codexMcpToolEvents',
+    codexErrorItemCount: 'codexErrorItems',
+    nonMcpToolEventCount: 'nonMcpToolEvents',
+    shellToolCallCount: 'shellCalls',
+    allowedCallCount: 'allowedToolCalls',
+    deniedCallCount: 'deniedToolCalls',
+  };
+  const counters = {};
+  for (const [source, target] of Object.entries(counterFields)) {
+    const value = diagnostics[source];
+    if (value === null || (Number.isSafeInteger(value) && value >= 0)) counters[target] = value;
+  }
+  const failureDiagnostics = Object.keys(checks).length
+    ? { schemaVersion: 1, reasonCode, checks, counters }
+    : null;
+  const result = persistProfileResult(
+    prNumber,
+    claimId,
+    'INCONCLUSIVE',
+    reportSha256,
+    failureDiagnostics,
+  );
   if (result.exitCode !== 0) {
     printSafe({ state: 'INCONCLUSIVE_ACK_PENDING', profileId: PROFILE.id, reasonCode });
     return false;
@@ -789,6 +827,8 @@ function runC03Profile({ runNumber }) {
       allowedCallCount: serverSummary?.allowedCallCount ?? 0,
       deniedCallCount: serverSummary?.deniedCallCount ?? null,
     };
+    const serverSummaryValid = validateC03ServerSummary(serverSummary, sourceRevision, bundleSha256);
+    const candidateBundleCurrent = assertCurrentCandidateBundle(sourceRevision, bundleSha256);
     const passed =
       !execution.failed &&
       safeEvents.eventStreamParsed &&
@@ -801,11 +841,26 @@ function runC03Profile({ runNumber }) {
       exactCalls &&
       exactToolEvents &&
       structuredReadback &&
-      validateC03ServerSummary(serverSummary, sourceRevision, bundleSha256) &&
+      serverSummaryValid &&
       typeof events.answer === 'string' &&
-      assertCurrentCandidateBundle(sourceRevision, bundleSha256);
+      candidateBundleCurrent;
     if (!passed) {
-      return recordInconclusive(prNumber, claim.claimId, null, 'C03_AGENT_MCP_ASSERTION_FAILED')
+      return recordInconclusive(prNumber, claim.claimId, null, 'C03_AGENT_MCP_ASSERTION_FAILED', {
+        eventStreamParsed: safeEvents.eventStreamParsed,
+        turnCompleted: safeEvents.turnCompleted,
+        exactCalls,
+        exactToolEvents,
+        structuredReadback,
+        serverSummaryValid,
+        answerValid: typeof events.answer === 'string',
+        candidateBundleCurrent,
+        codexMcpToolEventCount: safeEvents.codexMcpToolEventCount,
+        codexErrorItemCount: safeEvents.codexErrorItemCount,
+        nonMcpToolEventCount: safeEvents.nonMcpToolEventCount,
+        shellToolCallCount: safeEvents.shellToolCallCount,
+        allowedCallCount: safeEvents.allowedCallCount,
+        deniedCallCount: safeEvents.deniedCallCount,
+      })
         ? 1
         : 1;
     }

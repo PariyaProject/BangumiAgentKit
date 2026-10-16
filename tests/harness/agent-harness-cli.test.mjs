@@ -2040,6 +2040,12 @@ test('R05 Harness profile uses its own permanent claim label and terminal no-ret
     ]);
     assert.equal(duplicate.status, 2);
 
+    const failureDiagnostics = {
+      schemaVersion: 1,
+      reasonCode: 'TITLE_QUERY_RENDER_AGENT_MCP_ASSERTION_FAILED',
+      checks: { eventStreamParsed: true, serverSummaryValid: false },
+      counters: { httpRequests: 1 },
+    };
     const terminal = environment.execute([
       'epoch:agent-mcp-profile-result',
       ...runArgs,
@@ -2047,12 +2053,40 @@ test('R05 Harness profile uses its own permanent claim label and terminal no-ret
       claimResult.claimId,
       '--state',
       'INCONCLUSIVE',
+      '--diagnostics-json',
+      JSON.stringify(failureDiagnostics),
     ]);
     assert.equal(terminal.status, 0, terminal.stderr);
+    assert.deepEqual(JSON.parse(terminal.stdout).failureDiagnostics, failureDiagnostics);
     const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
     assert.equal(status.status, 0, status.stderr);
-    assert.equal(JSON.parse(status.stdout).state, 'INCONCLUSIVE');
-    assert.equal(JSON.parse(status.stdout).retry_allowed, false);
+    const profileStatus = JSON.parse(status.stdout);
+    assert.equal(profileStatus.state, 'INCONCLUSIVE');
+    assert.equal(profileStatus.retry_allowed, false);
+    assert.deepEqual(profileStatus.disposition.failureDiagnostics, failureDiagnostics);
+
+    const changedDiagnostics = {
+      ...failureDiagnostics,
+      checks: { ...failureDiagnostics.checks, serverSummaryValid: true },
+    };
+    const conflicting = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--diagnostics-json',
+      JSON.stringify(changedDiagnostics),
+    ]);
+    assert.equal(conflicting.status, 2);
+    assert.match(conflicting.stderr, /^AGENT_MCP_PROFILE_TERMINAL_DIAGNOSTICS_MISMATCH:/u);
+    const afterConflict = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(afterConflict.status, 0, afterConflict.stderr);
+    assert.deepEqual(
+      JSON.parse(afterConflict.stdout).disposition.failureDiagnostics,
+      failureDiagnostics,
+    );
     assert.equal(
       environment.readState().repositoryLabels['harness-r95-r05-subject-overlap-claimed'].name,
       'harness-r95-r05-subject-overlap-claimed',

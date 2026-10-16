@@ -16,6 +16,7 @@ import {
 import { assertR02PositiveDirectRelationsProfile } from './r02-positive-direct-relations-profile.mjs';
 import { assertA01RenderCohortAggregationOfflineProfile } from './a01-render-cohort-aggregation-offline-fixture.mjs';
 import { assertR04RenderSeriesWatchOrderOfflineProfile } from './r04-render-series-watch-order-offline-fixture.mjs';
+import { assertTitleQueryRenderPublicProfile } from './title-query-render-agent-mcp-profile.mjs';
 
 export function parseCodexOneToolMcpArguments(argv) {
   const values = new Map();
@@ -94,6 +95,7 @@ export function parseCodexOneToolMcpArguments(argv) {
     if (profile.networkMode !== undefined) {
       const approved =
         assertC04CohortComparisonPublicProfile(profile) ||
+        assertTitleQueryRenderPublicProfile(profile) ||
         assertP06RenderPersonProfileOfflineProfile(profile) ||
         assertP02PersonProfileOfflineProfile(profile) ||
         assertR04SeriesWatchOrderOfflineProfile(profile) ||

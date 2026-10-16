@@ -9,6 +9,103 @@ const REGISTRY_BYTES = readFileSync(REGISTRY_PATH);
 const REGISTRY = JSON.parse(REGISTRY_BYTES.toString('utf8'));
 const LEGACY_C03_REGISTRY_SHA256 =
   '7e3bfd3c5f7815faf5f279759739572e86f62308e81faff518d775aa1eaa9e92';
+const PROFILE_DIAGNOSTIC_CHECKS = new Set([
+  'eventStreamParsed',
+  'turnCompleted',
+  'exactCallSequence',
+  'exactToolEvents',
+  'structuredReadback',
+  'resultProjectionValid',
+  'serverSummaryValid',
+  'answerValid',
+  'candidateBundleCurrent',
+  'activeGateCurrent',
+  'claimReadbackValid',
+  'reportBuildValid',
+  'artifactValid',
+  'runnerReceiptValid',
+  'requestBudgetSatisfied',
+  'privacyPreserved',
+  'codexExecutionSucceeded',
+]);
+const PROFILE_DIAGNOSTIC_REASON_CODES = new Set([
+  'C03_ACTIVE_GATE_CHANGED_DURING_QUERY',
+  'C03_AGENT_MCP_ASSERTION_FAILED',
+  'C03_ACTOR_COUNT_INVALID',
+  'C03_ANSWER_CHECKS_INVALID',
+  'C03_CLAIM_EXISTS_WITHOUT_REPORT',
+  'C03_CLAIM_READBACK_MISMATCH',
+  'C03_COMPARISON_FIELDS_INVALID',
+  'C03_COMPARISON_INVALID',
+  'C03_COMPARISON_MISMATCH',
+  'C03_POSTRUN_GATE_OR_ACK_FAILED',
+  'C03_PREINVOKE_GATE_MISMATCH',
+  'C03_PRIVACY_FIELDS_INVALID',
+  'C03_RECEIPT_FIELDS_INVALID',
+  'C03_RECEIPT_SIGNATURE_INVALID',
+  'C03_REPORT_ACK_UNAVAILABLE_OR_STALE',
+  'C03_REPORT_ALREADY_EXISTS_OR_UNWRITABLE',
+  'C03_REPORT_BUILD_FAILED',
+  'C03_REPORT_BYTES_INVALID',
+  'C03_REPORT_CLAIM_MISMATCH',
+  'C03_REPORT_FIELDS_INVALID',
+  'C03_REPORT_GATE_FIELDS_INVALID',
+  'C03_REPORT_JSON_INVALID',
+  'C03_REPORT_PATH_INVALID',
+  'C03_REPORT_TOO_LARGE',
+  'C03_REPORT_UNAVAILABLE',
+  'C03_RUNNER_FAILED_AFTER_CLAIM',
+  'C03_RUNNER_GATE_INVALID',
+  'C03_RUNNER_KEY_MISMATCH',
+  'C03_RUN_INCONCLUSIVE',
+  'P03_ACTIVE_GATE_CHANGED_DURING_QUERY',
+  'P03_ANSWER_CHECKS_FAILED',
+  'P03_AGENT_MCP_ASSERTION_FAILED',
+  'P03_CLAIM_EXISTS_WITHOUT_REPORT',
+  'P03_CLAIM_READBACK_MISMATCH',
+  'P03_PREINVOKE_GATE_MISMATCH',
+  'P03_RECEIPT_FIELDS_INVALID',
+  'P03_RECEIPT_SIGNATURE_INVALID',
+  'P03_REPORT_ALREADY_EXISTS_OR_UNWRITABLE',
+  'P03_REPORT_BUILD_FAILED',
+  'P03_REPORT_BYTES_INVALID',
+  'P03_REPORT_CLAIM_MISMATCH',
+  'P03_REPORT_FIELDS_INVALID',
+  'P03_REPORT_JSON_INVALID',
+  'P03_REPORT_PATH_INVALID',
+  'P03_REPORT_TOO_LARGE',
+  'P03_REPORT_UNAVAILABLE',
+  'P03_RUNNER_FAILED_AFTER_CLAIM',
+  'P03_RUNNER_GATE_INVALID',
+  'P03_RUNNER_KEY_MISMATCH',
+  'P03_RUN_INCONCLUSIVE',
+  'P03_SERVER_SUMMARY_MISMATCH',
+  'P03_STRUCTURED_RESULT_INVALID',
+  'TITLE_QUERY_RENDER_ACTIVE_GATE_CHANGED_DURING_QUERY',
+  'TITLE_QUERY_RENDER_AGENT_MCP_ASSERTION_FAILED',
+  'TITLE_QUERY_RENDER_CLAIM_READBACK_MISMATCH',
+  'TITLE_QUERY_RENDER_CLAIM_WITHOUT_REPORT',
+  'TITLE_QUERY_RENDER_ORPHAN_REPORT',
+  'TITLE_QUERY_RENDER_PREINVOKE_GATE_MISMATCH',
+  'TITLE_QUERY_RENDER_REPORT_ALREADY_EXISTS',
+  'TITLE_QUERY_RENDER_REPORT_BUILD_FAILED',
+  'TITLE_QUERY_RENDER_REPORT_READBACK_INVALID',
+  'TITLE_QUERY_RENDER_RUNNER_FAILED_AFTER_CLAIM',
+]);
+const PROFILE_DIAGNOSTIC_COUNTERS = new Set([
+  'codexMcpToolEvents',
+  'codexErrorItems',
+  'nonMcpToolEvents',
+  'shellCalls',
+  'allowedToolCalls',
+  'deniedToolCalls',
+  'httpRequests',
+  'artifactBytes',
+  'artifactWidth',
+  'artifactHeight',
+  'answerUtf8Bytes',
+]);
+const PROFILE_DIAGNOSTICS_MAX_JSON_CHARS = 4096;
 
 export class AgentMcpProfileClaimError extends Error {
   constructor(code, message) {
@@ -29,6 +126,63 @@ export function canonicalAgentMcpProfileJson(value) {
       .join(',')}}`;
   }
   return JSON.stringify(value);
+}
+
+/**
+ * Keep terminal Agent/MCP failure diagnostics useful without retaining raw Codex events,
+ * answers, tool arguments, source rows, or artifacts in the durable GitHub control plane.
+ */
+export function normalizeAgentMcpProfileDiagnostics(value) {
+  const invalid = () =>
+    new AgentMcpProfileClaimError(
+      'PROFILE_DIAGNOSTICS_INVALID',
+      'Profile diagnostics must contain only bounded allowlisted checks and counters.',
+    );
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    Object.keys(value).length !== 4 ||
+    Object.keys(value).some(
+      (key) => !['schemaVersion', 'reasonCode', 'checks', 'counters'].includes(key),
+    ) ||
+    value.schemaVersion !== 1 ||
+    typeof value.reasonCode !== 'string' ||
+    !PROFILE_DIAGNOSTIC_REASON_CODES.has(value.reasonCode)
+  ) {
+    throw invalid();
+  }
+  const normalizeFields = (input, allowed, predicate, minimum) => {
+    if (
+      !input ||
+      typeof input !== 'object' ||
+      Array.isArray(input) ||
+      Object.keys(input).length < minimum ||
+      Object.keys(input).length > allowed.size ||
+      Object.keys(input).some((key) => !allowed.has(key)) ||
+      !Object.values(input).every(predicate)
+    ) {
+      throw invalid();
+    }
+    return Object.fromEntries(
+      Object.entries(input).sort(([left], [right]) => left.localeCompare(right)),
+    );
+  };
+  const checks = normalizeFields(
+    value.checks,
+    PROFILE_DIAGNOSTIC_CHECKS,
+    (field) => typeof field === 'boolean',
+    1,
+  );
+  const counters = normalizeFields(
+    value.counters,
+    PROFILE_DIAGNOSTIC_COUNTERS,
+    (field) => field === null || (Number.isSafeInteger(field) && field >= 0),
+    0,
+  );
+  const normalized = { schemaVersion: 1, reasonCode: value.reasonCode, checks, counters };
+  if (JSON.stringify(normalized).length > PROFILE_DIAGNOSTICS_MAX_JSON_CHARS) throw invalid();
+  return normalized;
 }
 
 function deepFreeze(value) {

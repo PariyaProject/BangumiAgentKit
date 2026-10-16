@@ -9,6 +9,7 @@ import {
   agentMcpProfileRegistrySha256,
   agentMcpProfileTerminalLabelDescription,
   agentMcpProfileTerminalLabelName,
+  normalizeAgentMcpProfileDiagnostics,
   classifyAgentMcpProfileInconclusiveReport,
   claimAgentMcpProfileAtomically,
   getAgentMcpProfile,
@@ -80,7 +81,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 15);
+  assert.equal(listAgentMcpProfiles().length, 16);
   const a01RenderAggregation = getAgentMcpProfileById(
     'a01-render-cohort-aggregation-agent-mcp-offline-v1',
   );
@@ -476,4 +477,50 @@ test('profile terminal latch binds one immutable result and rejects a conflictin
     () => acquireAgentMcpProfileTerminalGitHubLatch(gh, PROFILE, 'INCONCLUSIVE'),
     (error) => error.code === 'PROFILE_TERMINAL_LATCH_CONFLICT',
   );
+});
+
+test('profile failure diagnostics keep only bounded allowlisted checks and counters', () => {
+  const diagnostics = normalizeAgentMcpProfileDiagnostics({
+    schemaVersion: 1,
+    reasonCode: 'P03_AGENT_MCP_ASSERTION_FAILED',
+    checks: { eventStreamParsed: false, answerValid: true },
+    counters: { codexErrorItems: 0, nonMcpToolEvents: 3 },
+  });
+  assert.deepEqual(diagnostics, {
+    schemaVersion: 1,
+    reasonCode: 'P03_AGENT_MCP_ASSERTION_FAILED',
+    checks: { answerValid: true, eventStreamParsed: false },
+    counters: { codexErrorItems: 0, nonMcpToolEvents: 3 },
+  });
+  for (const value of [
+    {
+      schemaVersion: 1,
+      reasonCode: 'P03_FAILURE',
+      checks: { answer: 'raw answer text' },
+      counters: {},
+    },
+    {
+      schemaVersion: 1,
+      reasonCode: 'P03_FAILURE',
+      checks: { eventStreamParsed: 'false' },
+      counters: {},
+    },
+    {
+      schemaVersion: 1,
+      reasonCode: 'P03_FAILURE',
+      checks: { eventStreamParsed: false },
+      counters: { subjectId: 4765 },
+    },
+    {
+      schemaVersion: 1,
+      reasonCode: 'raw failure reason',
+      checks: { eventStreamParsed: false },
+      counters: {},
+    },
+  ]) {
+    assert.throws(
+      () => normalizeAgentMcpProfileDiagnostics(value),
+      (error) => error.code === 'PROFILE_DIAGNOSTICS_INVALID',
+    );
+  }
 });

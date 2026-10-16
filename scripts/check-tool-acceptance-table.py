@@ -447,13 +447,103 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                 ] == c04_tool_names
                 and name in c04_tool_names
             )
+            title_query_render_tool_names = [
+                'bangumi.query_subjects',
+                'bangumi.render_query_subjects',
+            ]
+            title_query_render_results = report.get('resultSummaries') if isinstance(report, dict) else None
+            title_query_render_scope = report.get('publicRequestScope') if isinstance(report, dict) else None
+            title_query_render_query = (
+                title_query_render_results[0].get('summary')
+                if isinstance(title_query_render_results, list)
+                and len(title_query_render_results) == 2
+                and isinstance(title_query_render_results[0], dict)
+                else None
+            )
+            title_query_render_artifact = (
+                title_query_render_results[1].get('summary', {}).get('artifact')
+                if isinstance(title_query_render_results, list)
+                and len(title_query_render_results) == 2
+                and isinstance(title_query_render_results[1], dict)
+                and isinstance(title_query_render_results[1].get('summary'), dict)
+                else None
+            )
+            title_query_render_checks = report.get('answerChecks') if isinstance(report, dict) else None
+            title_query_render_matches = (
+                isinstance(report, dict)
+                and relative_path == 'docs/live-probes/title-query-render-agent-mcp-run95.json'
+                and report.get('evidenceKind') == 'codex_cli_title_query_render_agent_mcp_matrix'
+                and report.get('profileId') == 'query-render-title-agent-mcp-v1'
+                and report.get('runNumber') == 95
+                and report.get('frontierId') == 'G01'
+                and report.get('scenarioId') is None
+                and report.get('resultStatus') == 'SUCCESS'
+                and report.get('codexRunCount') == 1
+                and report.get('codexMcpToolEventCount') == 2
+                and report.get('allowedCallCount') == 2
+                and report.get('deniedCallCount') == 0
+                and report.get('nonMcpToolEventCount') == 0
+                and report.get('nonMcpToolTypes') == []
+                and report.get('shellToolCallCount') == 0
+                and report.get('toolNames') == title_query_render_tool_names
+                and report.get('serverToolNames') == title_query_render_tool_names
+                and isinstance(title_query_render_results, list)
+                and [
+                    item.get('toolName') if isinstance(item, dict) else None
+                    for item in title_query_render_results
+                ] == title_query_render_tool_names
+                and isinstance(title_query_render_query, dict)
+                and set(title_query_render_query) == {
+                    'resultState', 'returnedItems', 'coverage', 'warningCodes',
+                }
+                and title_query_render_query.get('resultState') in {'ok', 'partial'}
+                and type(title_query_render_query.get('returnedItems')) is int
+                and 0 <= title_query_render_query['returnedItems'] <= 1
+                and isinstance(title_query_render_query.get('coverage'), dict)
+                and isinstance(title_query_render_query.get('warningCodes'), list)
+                and isinstance(title_query_render_artifact, dict)
+                and title_query_render_results[1].get('summary', {}).get('resultState') == 'artifact_returned'
+                and title_query_render_artifact.get('returned') is True
+                and title_query_render_artifact.get('persisted') is False
+                and title_query_render_artifact.get('mimeType') == 'image/png'
+                and type(title_query_render_artifact.get('width')) is int
+                and 0 < title_query_render_artifact['width'] <= 3000
+                and type(title_query_render_artifact.get('height')) is int
+                and 0 < title_query_render_artifact['height'] <= 5000
+                and type(title_query_render_artifact.get('byteLength')) is int
+                and 0 < title_query_render_artifact['byteLength'] <= 5_000_000
+                and title_query_render_artifact.get('pngSignatureValid') is True
+                and report.get('rendererAssetBoundary') == {
+                    'assetNetworkRequestCount': 0,
+                    'remoteAssetResolutionDisabled': True,
+                }
+                and isinstance(title_query_render_scope, dict)
+                and type(title_query_render_scope.get('requestCount')) is int
+                and 0 <= title_query_render_scope.get('requestCount', -1) <= 8
+                and title_query_render_scope.get('allowedRequestCount') == title_query_render_scope.get('requestCount')
+                and title_query_render_scope.get('deniedRequestCount') == 0
+                and title_query_render_scope.get('credentialAttemptCount') == 0
+                and title_query_render_scope.get('unexpectedRouteCount') == 0
+                and title_query_render_scope.get('budgetExceeded') is False
+                and title_query_render_scope.get('maxRequests') == 8
+                and title_query_render_scope.get('anonymousOnly') is True
+                and title_query_render_scope.get('officialV0Only') is True
+                and title_query_render_scope.get('redirectPolicy') == 'error'
+                and isinstance(title_query_render_checks, dict)
+                and len(title_query_render_checks) == 10
+                and all(value is True for value in title_query_render_checks.values())
+                and name in title_query_render_tool_names
+            )
             r01_offline_matches = r01_offline_agent_mcp_matches(
                 name, relative_path, report,
             )
             r02_positive_matches = r02_positive_agent_mcp_matches(
                 name, relative_path, report,
             )
-            matches = scenario_matches or c04_matches or r01_offline_matches or r02_positive_matches
+            matches = (
+                scenario_matches or c04_matches or title_query_render_matches
+                or r01_offline_matches or r02_positive_matches
+            )
         else:
             try:
                 catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
