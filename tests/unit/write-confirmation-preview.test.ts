@@ -612,4 +612,34 @@ describe('account write confirmation previews', () => {
     expect(storage.getPendingActions()).toHaveLength(0);
     expect(calls.filter((call) => WRITE_METHODS.has(call.method))).toEqual([]);
   });
+
+  it('fails closed when an index response omits its description', async () => {
+    const calls: Array<{ pathname: string; method: string }> = [];
+    const fetchFn: typeof fetch = async (input, init) => {
+      const url = new URL(String(input));
+      const method = init?.method || 'GET';
+      calls.push({ pathname: url.pathname, method });
+      if (url.pathname === '/v0/indices/30') {
+        return new Response(JSON.stringify({ id: 30, title: 'Synthetic index' }), {
+          status: 200,
+        });
+      }
+      return new Response(JSON.stringify(readResponse(url.pathname)), { status: 200 });
+    };
+    const { registry, principal, storage } = await setup(fetchFn);
+
+    await expect(
+      registry.executeTool(
+        'bangumi.manage_index',
+        { action: 'edit', indexId: 30, title: 'Updated title' },
+        {
+          principalId: principal.id,
+          botInstanceId: 'fixture-bot',
+          conversationId: 'missing-index-description',
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'CONFIRMATION_PREVIEW_UNAVAILABLE' });
+    expect(storage.getPendingActions()).toHaveLength(0);
+    expect(calls.filter((call) => WRITE_METHODS.has(call.method))).toEqual([]);
+  });
 });

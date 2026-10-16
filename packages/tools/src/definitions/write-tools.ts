@@ -13,7 +13,6 @@ import {
 import {
   CollectionService,
   EpisodeService,
-  IndexReadService,
   IndexWriteService,
   UserService,
 } from '@bangumi-agent-kit/bangumi-core';
@@ -651,7 +650,6 @@ export function createWriteTools(
     },
     prepareConfirmation: async (input, _context, deps) => {
       const { account, client } = requireConfirmationAccount(deps);
-      const indexReadService = new IndexReadService(client);
       if (input.action === 'create') {
         const requestedState = { title: input.title, description: input.description ?? '' };
         return confirmationPreview(
@@ -664,13 +662,26 @@ export function createWriteTools(
         );
       }
 
-      const index = await indexReadService.getIndexById(input.indexId);
+      const rawIndex: unknown = await client.getIndexById(input.indexId);
+      if (!rawIndex || typeof rawIndex !== 'object' || Array.isArray(rawIndex)) {
+        throw new BangumiError(
+          'CONFIRMATION_PREVIEW_UNAVAILABLE',
+          '目录当前信息未知或与目标不匹配；没有执行写入。',
+          false,
+          409,
+        );
+      }
+      const indexRecord = rawIndex as Record<string, unknown>;
+      const rawId = indexRecord.id;
+      const rawTitle = indexRecord.title;
+      const rawDescription = indexRecord.desc;
       if (
-        !Number.isSafeInteger(index.id) ||
-        index.id !== input.indexId ||
-        typeof index.title !== 'string' ||
-        !index.title.trim() ||
-        typeof index.desc !== 'string'
+        typeof rawId !== 'number' ||
+        !Number.isSafeInteger(rawId) ||
+        rawId !== input.indexId ||
+        typeof rawTitle !== 'string' ||
+        !rawTitle.trim() ||
+        typeof rawDescription !== 'string'
       ) {
         throw new BangumiError(
           'CONFIRMATION_PREVIEW_UNAVAILABLE',
@@ -679,6 +690,7 @@ export function createWriteTools(
           409,
         );
       }
+      const index = { id: rawId, title: rawTitle, desc: rawDescription };
       if (input.action === 'edit') {
         const currentState = { title: index.title, description: index.desc };
         const requestedState = {
