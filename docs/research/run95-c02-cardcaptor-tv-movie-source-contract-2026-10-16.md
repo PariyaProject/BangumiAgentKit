@@ -21,7 +21,7 @@ The current generated tool catalog describes `bangumi.get_subject_comparison` as
 }
 ```
 
-The comparison contract returns an ordered two-subject snapshot with metrics including `episodesReported`, `score`, and `collectionTotal`; each metric carries values, a second-minus-first delta, and a complete/unknown/conflict state. The response also carries request coverage, source operations, warnings, and limitations. The tool does not prove that a pair is related; the pair-selection evidence above is separate from the comparison result.
+The comparison contract returns an ordered two-subject snapshot with metrics including `episodesReported`, `score`, and `collectionTotal`; each metric carries values, a second-minus-first delta, and a complete/unknown/conflict state. The response also carries request coverage, source operations, warnings, and limitations. The bounded official-v0 operation set is subject detail, rating/collection fields, subject characters, subject persons, and subject relations. The tool does not prove that a pair is related; the pair-selection evidence above is separate from the comparison result.
 
 ## Acceptance limits
 

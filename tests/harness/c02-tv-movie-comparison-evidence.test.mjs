@@ -26,13 +26,17 @@ test('C02 profile is a unique fixed anonymous subject-comparison pair', () => {
 test('C02 projection keeps only ordered public metrics, coverage, source time, and warning count', () => {
   const projected = projectC02ComparisonResult(C02_COMPARISON_RESULT);
   assert.equal(projected.state, 'complete');
+  assert.equal(projected.formulaVersion, 'subject-comparison-v2');
   assert.equal(projected.deltaRule, 'second_minus_first');
   assert.deepEqual(projected.subjectIds, [1940, 1941]);
-  assert.deepEqual(projected.metrics.map(({ key, values, delta }) => ({ key, values, delta })), [
-    { key: 'episodesReported', values: [70, 1], delta: -69 },
-    { key: 'score', values: [7.2, 7.5], delta: 0.3 },
-    { key: 'collectionTotal', values: [10000, 2000], delta: -8000 },
-  ]);
+  assert.deepEqual(
+    projected.metrics.map(({ key, values, delta }) => ({ key, values, delta })),
+    [
+      { key: 'episodesReported', values: [70, 1], delta: -69 },
+      { key: 'score', values: [7.2, 7.5], delta: 0.3 },
+      { key: 'collectionTotal', values: [10000, 2000], delta: -8000 },
+    ],
+  );
   assert.equal(projected.warningCount, 0);
   assert.equal(Object.hasOwn(projected, 'subjectsRaw'), false);
 });
@@ -123,4 +127,58 @@ test('C02 answer preserves unknown/conflict state instead of replacing it with a
 
   answer.metrics[1] = { key: 'score', values: [7.2, 7.5], delta: 0.3, state: 'complete' };
   assert.equal(verifyC02Answer(JSON.stringify(answer), source).accepted, false);
+});
+
+test('C02 accepts an honest partial answer when all requested metrics are unknown or conflicted', () => {
+  const unknownResult = clone(C02_COMPARISON_RESULT);
+  unknownResult.state = 'partial';
+  for (const key of ['episodesReported', 'score', 'collectionTotal']) {
+    const metric = unknownResult.metrics.find((item) => item.key === key);
+    metric.values = [null, null];
+    metric.delta = null;
+    metric.state = 'unknown';
+  }
+  unknownResult.coverage.metricsComplete = 8;
+  unknownResult.coverage.metricsUnknown = 3;
+  const unknownSource = projectC02ComparisonResult(unknownResult);
+  assert.ok(unknownSource);
+  const unknownAnswer = JSON.parse(C02_ANSWER);
+  unknownAnswer.metrics = unknownSource.metrics.map(({ key, values, delta, state }) => ({
+    key,
+    values,
+    delta,
+    state,
+  }));
+  assert.equal(verifyC02Answer(JSON.stringify(unknownAnswer), unknownSource).accepted, true);
+
+  const conflictResult = clone(C02_COMPARISON_RESULT);
+  conflictResult.state = 'partial';
+  for (const [key, values] of [
+    ['score', [7.2, 7.5]],
+    ['collectionTotal', [10000, 2000]],
+  ]) {
+    const metric = conflictResult.metrics.find((item) => item.key === key);
+    metric.values = values;
+    metric.delta = null;
+    metric.state = 'conflict';
+    metric.conflicts = [{ side: 'A', reason: 'conflicting official candidates' }];
+  }
+  conflictResult.coverage.metricsComplete = 9;
+  conflictResult.coverage.metricsConflict = 2;
+  const conflictSource = projectC02ComparisonResult(conflictResult);
+  assert.ok(conflictSource);
+  const conflictAnswer = JSON.parse(C02_ANSWER);
+  conflictAnswer.metrics = conflictSource.metrics.map(({ key, values, delta, state }) => ({
+    key,
+    values,
+    delta,
+    state,
+  }));
+  assert.equal(verifyC02Answer(JSON.stringify(conflictAnswer), conflictSource).accepted, true);
+});
+
+test('C02 projection rejects official source operations outside its bounded comparison contract', () => {
+  const result = clone(C02_COMPARISON_RESULT);
+  result.source.official.operations.push('GET /v0/users/{username}');
+  assert.equal(projectC02ComparisonResult(result), null);
 });

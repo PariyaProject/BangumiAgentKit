@@ -8,11 +8,17 @@ import {
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
-import { C02_PROFILE_ID, projectC02ComparisonResult, verifyC02Answer } from '../lib/c02-tv-movie-comparison-evidence.mjs';
+import {
+  C02_OFFICIAL_V0_OPERATIONS,
+  C02_PROFILE_ID,
+  projectC02ComparisonResult,
+  verifyC02Answer,
+} from '../lib/c02-tv-movie-comparison-evidence.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PROFILE = getAgentMcpProfileById(C02_PROFILE_ID);
-const REPORT_RELATIVE_PATH = PROFILE?.reportPath ?? 'docs/live-probes/c02-tv-movie-comparison-agent-mcp-run95.json';
+const REPORT_RELATIVE_PATH =
+  PROFILE?.reportPath ?? 'docs/live-probes/c02-tv-movie-comparison-agent-mcp-run95.json';
 const RECEIPT_KIND = 'run95-c02-agent-mcp-runner-receipt-v1';
 const REPORT_KEYS = [
   'schemaVersion',
@@ -68,7 +74,14 @@ const EVENT_KEYS = [
   'allowedCallCount',
   'deniedCallCount',
 ];
-const RECEIPT_KEYS = ['schemaVersion', 'kind', 'publicKeyBase64', 'publicKeySha256', 'payload', 'signature'];
+const RECEIPT_KEYS = [
+  'schemaVersion',
+  'kind',
+  'publicKeyBase64',
+  'publicKeySha256',
+  'payload',
+  'signature',
+];
 const RECEIPT_PAYLOAD_KEYS = [
   'schemaVersion',
   'kind',
@@ -116,10 +129,22 @@ const isBase64Signature = (value) =>
 
 function validateProjectedSource(source) {
   if (
-    !exactKeys(source, ['state', 'deltaRule', 'subjectIds', 'subjects', 'metrics', 'coverage', 'officialSource', 'warningCount']) ||
-    source.state !== 'complete' && source.state !== 'partial' ||
+    !exactKeys(source, [
+      'state',
+      'formulaVersion',
+      'deltaRule',
+      'subjectIds',
+      'subjects',
+      'metrics',
+      'coverage',
+      'officialSource',
+      'warningCount',
+    ]) ||
+    (source.state !== 'complete' && source.state !== 'partial') ||
+    source.formulaVersion !== 'subject-comparison-v2' ||
     source.deltaRule !== 'second_minus_first' ||
-    canonicalAgentMcpProfileJson(source.subjectIds) !== canonicalAgentMcpProfileJson([1940, 1941]) ||
+    canonicalAgentMcpProfileJson(source.subjectIds) !==
+      canonicalAgentMcpProfileJson([1940, 1941]) ||
     !Array.isArray(source.subjects) ||
     source.subjects.length !== 2 ||
     !Array.isArray(source.metrics) ||
@@ -130,39 +155,71 @@ function validateProjectedSource(source) {
     !isRecord(source.officialSource) ||
     !Array.isArray(source.officialSource.operations) ||
     source.officialSource.operations.length === 0 ||
-    !Number.isSafeInteger(source.warningCount) || source.warningCount < 0
-  ) return false;
+    !Number.isSafeInteger(source.warningCount) ||
+    source.warningCount < 0
+  )
+    return false;
   const ids = [1940, 1941];
-  if (!source.subjects.every((subject, index) =>
-    (exactKeys(subject, ['subjectId', 'name']) || exactKeys(subject, ['subjectId', 'name', 'nameCn'])) &&
-    subject.subjectId === ids[index] &&
-    typeof subject.name === 'string' && subject.name.trim() &&
-    (subject.nameCn === undefined || typeof subject.nameCn === 'string'),
-  )) return false;
+  if (
+    !source.subjects.every(
+      (subject, index) =>
+        (exactKeys(subject, ['subjectId', 'name']) ||
+          exactKeys(subject, ['subjectId', 'name', 'nameCn'])) &&
+        subject.subjectId === ids[index] &&
+        typeof subject.name === 'string' &&
+        subject.name.trim() &&
+        (subject.nameCn === undefined || typeof subject.nameCn === 'string'),
+    )
+  )
+    return false;
   const keys = ['episodesReported', 'score', 'collectionTotal'];
-  const metricsValid = source.metrics.every((metric, index) =>
-    exactKeys(metric, ['key', 'values', 'delta', 'deltaPrecision', 'state', 'conflictCount']) &&
-    metric.key === keys[index] && Array.isArray(metric.values) && metric.values.length === 2 &&
-    metric.values.every((value) => value === null || (typeof value === 'number' && Number.isFinite(value))) &&
-    (metric.delta === null || (typeof metric.delta === 'number' && Number.isFinite(metric.delta))) &&
-    metric.deltaPrecision === (index === 1 ? 1 : 0) && ['complete', 'unknown', 'conflict'].includes(metric.state) &&
-    Number.isSafeInteger(metric.conflictCount) && metric.conflictCount >= 0 &&
-    (metric.state === 'complete'
-      ? metric.values.every((value) => typeof value === 'number') &&
-        metric.delta === Math.round(((metric.values[1] - metric.values[0]) * (10 ** metric.deltaPrecision)) + Number.EPSILON) / (10 ** metric.deltaPrecision)
-      : metric.delta === null),
+  const metricsValid = source.metrics.every(
+    (metric, index) =>
+      exactKeys(metric, ['key', 'values', 'delta', 'deltaPrecision', 'state', 'conflictCount']) &&
+      metric.key === keys[index] &&
+      Array.isArray(metric.values) &&
+      metric.values.length === 2 &&
+      metric.values.every(
+        (value) => value === null || (typeof value === 'number' && Number.isFinite(value)),
+      ) &&
+      (metric.delta === null ||
+        (typeof metric.delta === 'number' && Number.isFinite(metric.delta))) &&
+      metric.deltaPrecision === (index === 1 ? 1 : 0) &&
+      ['complete', 'unknown', 'conflict'].includes(metric.state) &&
+      Number.isSafeInteger(metric.conflictCount) &&
+      metric.conflictCount >= 0 &&
+      (metric.state === 'complete'
+        ? metric.values.every((value) => typeof value === 'number') &&
+          metric.delta ===
+            Math.round(
+              (metric.values[1] - metric.values[0]) * 10 ** metric.deltaPrecision + Number.EPSILON,
+            ) /
+              10 ** metric.deltaPrecision
+        : metric.delta === null),
   );
   const coverageKeys = [
-    'requestedSubjects', 'returnedSubjects', 'subjectsComplete', 'subjectsPartial',
-    'subjectsUnavailable', 'subjectsNotFound', 'metricsComplete', 'metricsUnknown', 'metricsConflict', 'limits',
+    'requestedSubjects',
+    'returnedSubjects',
+    'subjectsComplete',
+    'subjectsPartial',
+    'subjectsUnavailable',
+    'subjectsNotFound',
+    'metricsComplete',
+    'metricsUnknown',
+    'metricsConflict',
+    'limits',
   ];
   const limitKeys = ['maxSubjects', 'maxCast', 'maxStaff', 'maxRelations', 'maxOverlapItems'];
-  const sourceKeys = source.officialSource.retrievedAt === undefined
-    ? ['operations', 'attemptedAt']
-    : ['operations', 'attemptedAt', 'retrievedAt'];
-  return metricsValid &&
+  const sourceKeys =
+    source.officialSource.retrievedAt === undefined
+      ? ['operations', 'attemptedAt']
+      : ['operations', 'attemptedAt', 'retrievedAt'];
+  return (
+    metricsValid &&
     exactKeys(source.coverage, coverageKeys) &&
-    coverageKeys.slice(0, -1).every((key) => Number.isSafeInteger(source.coverage[key]) && source.coverage[key] >= 0) &&
+    coverageKeys
+      .slice(0, -1)
+      .every((key) => Number.isSafeInteger(source.coverage[key]) && source.coverage[key] >= 0) &&
     exactKeys(source.coverage.limits, limitKeys) &&
     source.coverage.limits.maxSubjects === 2 &&
     source.coverage.limits.maxCast === 1 &&
@@ -172,12 +229,17 @@ function validateProjectedSource(source) {
     exactKeys(source.officialSource, sourceKeys) &&
     Array.isArray(source.officialSource.operations) &&
     source.officialSource.operations.length > 0 &&
-    source.officialSource.operations.every((operation) => operation === 'GET /v0/subjects/{subject_id}') &&
+    source.officialSource.operations.every((operation) =>
+      C02_OFFICIAL_V0_OPERATIONS.includes(operation),
+    ) &&
     typeof source.officialSource.attemptedAt === 'string' &&
     Number.isFinite(Date.parse(source.officialSource.attemptedAt)) &&
     (source.officialSource.retrievedAt === undefined ||
-      (typeof source.officialSource.retrievedAt === 'string' && Number.isFinite(Date.parse(source.officialSource.retrievedAt)))) &&
-    Number.isSafeInteger(source.warningCount) && source.warningCount >= 0;
+      (typeof source.officialSource.retrievedAt === 'string' &&
+        Number.isFinite(Date.parse(source.officialSource.retrievedAt)))) &&
+    Number.isSafeInteger(source.warningCount) &&
+    source.warningCount >= 0
+  );
 }
 
 function buildRunnerReceiptPayload(report, { eventStreamSha256, serverSummarySha256 }) {
@@ -221,7 +283,11 @@ function buildRunnerReceiptPayload(report, { eventStreamSha256, serverSummarySha
 
 function createRunnerReceipt(payload, { publicKeyBase64, privateKey }) {
   if (!exactKeys(payload, RECEIPT_PAYLOAD_KEYS) || !publicKeyBase64 || !privateKey) return null;
-  const signature = sign(null, Buffer.from(canonicalAgentMcpProfileJson(payload)), privateKey).toString('base64');
+  const signature = sign(
+    null,
+    Buffer.from(canonicalAgentMcpProfileJson(payload)),
+    privateKey,
+  ).toString('base64');
   return {
     schemaVersion: 1,
     kind: RECEIPT_KIND,
@@ -233,7 +299,8 @@ function createRunnerReceipt(payload, { publicKeyBase64, privateKey }) {
 }
 
 function validateC02ProfileReport(report, claim) {
-  if (!PROFILE || !exactKeys(report, REPORT_KEYS)) return { passed: false, reason: 'C02_REPORT_FIELDS_INVALID' };
+  if (!PROFILE || !exactKeys(report, REPORT_KEYS))
+    return { passed: false, reason: 'C02_REPORT_FIELDS_INVALID' };
   const expectedArguments = PROFILE.calls.map((call) => call.arguments);
   if (
     report.schemaVersion !== 1 ||
@@ -258,7 +325,8 @@ function validateC02ProfileReport(report, claim) {
     report.toolName !== PROFILE.toolName ||
     report.argumentProfile !== PROFILE.argumentProfile ||
     report.acceptanceScope !== PROFILE.acceptanceScope ||
-    canonicalAgentMcpProfileJson(report.arguments) !== canonicalAgentMcpProfileJson(expectedArguments) ||
+    canonicalAgentMcpProfileJson(report.arguments) !==
+      canonicalAgentMcpProfileJson(expectedArguments) ||
     report.expectedArgumentsSha256 !== claim.expectedArgumentsSha256 ||
     claim.expectedArgumentsSha256 !== agentMcpProfileArgumentsSha256(PROFILE) ||
     report.bundleSha256 !== claim.bundleSha256 ||
@@ -269,14 +337,16 @@ function validateC02ProfileReport(report, claim) {
     !isSha256(report.eventStreamSha256) ||
     !isSha256(report.serverSummarySha256) ||
     !validateProjectedSource(report.source)
-  ) return { passed: false, reason: 'C02_REPORT_CLAIM_OR_SOURCE_MISMATCH' };
+  )
+    return { passed: false, reason: 'C02_REPORT_CLAIM_OR_SOURCE_MISMATCH' };
 
   if (
     !exactKeys(report.answer, ANSWER_KEYS) ||
     !isSha256(report.answer.sha256) ||
     !exactKeys(report.answer.checks, CHECK_KEYS) ||
     Object.values(report.answer.checks).some((value) => value !== true)
-  ) return { passed: false, reason: 'C02_ANSWER_CHECKS_INVALID' };
+  )
+    return { passed: false, reason: 'C02_ANSWER_CHECKS_INVALID' };
 
   if (
     !exactKeys(report.events, EVENT_KEYS) ||
@@ -289,10 +359,12 @@ function validateC02ProfileReport(report, claim) {
     !Array.isArray(report.events.nonMcpToolTypes) ||
     report.events.nonMcpToolTypes.length !== 0 ||
     report.events.shellToolCallCount !== 0 ||
-    canonicalAgentMcpProfileJson(report.events.mcpServerNames) !== canonicalAgentMcpProfileJson(['bgk_c02_one_tool']) ||
+    canonicalAgentMcpProfileJson(report.events.mcpServerNames) !==
+      canonicalAgentMcpProfileJson(['bgk_c02_one_tool']) ||
     report.events.allowedCallCount !== 1 ||
     report.events.deniedCallCount !== 0
-  ) return { passed: false, reason: 'C02_RUNTIME_EVENTS_INVALID' };
+  )
+    return { passed: false, reason: 'C02_RUNTIME_EVENTS_INVALID' };
 
   const expectedPrivacy = {
     authProfile: 'anonymous_public',
@@ -306,7 +378,9 @@ function validateC02ProfileReport(report, claim) {
     rawResultStored: false,
     credentialsStored: false,
   };
-  if (canonicalAgentMcpProfileJson(report.privacy) !== canonicalAgentMcpProfileJson(expectedPrivacy)) {
+  if (
+    canonicalAgentMcpProfileJson(report.privacy) !== canonicalAgentMcpProfileJson(expectedPrivacy)
+  ) {
     return { passed: false, reason: 'C02_PRIVACY_FIELDS_INVALID' };
   }
 
@@ -320,17 +394,31 @@ function validateC02ProfileReport(report, claim) {
     !exactKeys(receipt.payload, RECEIPT_PAYLOAD_KEYS) ||
     !isRecord(receipt.payload) ||
     !isBase64Signature(receipt.signature)
-  ) return { passed: false, reason: 'C02_RECEIPT_FIELDS_INVALID' };
+  )
+    return { passed: false, reason: 'C02_RECEIPT_FIELDS_INVALID' };
   const expectedPayload = buildRunnerReceiptPayload(report, {
     eventStreamSha256: report.eventStreamSha256,
     serverSummarySha256: report.serverSummarySha256,
   });
-  if (canonicalAgentMcpProfileJson(receipt.payload) !== canonicalAgentMcpProfileJson(expectedPayload)) {
+  if (
+    canonicalAgentMcpProfileJson(receipt.payload) !== canonicalAgentMcpProfileJson(expectedPayload)
+  ) {
     return { passed: false, reason: 'C02_RECEIPT_PAYLOAD_MISMATCH' };
   }
   try {
-    const publicKey = createPublicKey({ key: Buffer.from(receipt.publicKeyBase64, 'base64'), type: 'spki', format: 'der' });
-    if (!verify(null, Buffer.from(canonicalAgentMcpProfileJson(receipt.payload)), publicKey, Buffer.from(receipt.signature, 'base64'))) {
+    const publicKey = createPublicKey({
+      key: Buffer.from(receipt.publicKeyBase64, 'base64'),
+      type: 'spki',
+      format: 'der',
+    });
+    if (
+      !verify(
+        null,
+        Buffer.from(canonicalAgentMcpProfileJson(receipt.payload)),
+        publicKey,
+        Buffer.from(receipt.signature, 'base64'),
+      )
+    ) {
       return { passed: false, reason: 'C02_RECEIPT_SIGNATURE_INVALID' };
     }
   } catch {
@@ -349,7 +437,12 @@ export function buildC02ProfileReport(input, { privateKey } = {}) {
     !source ||
     !verifiedAnswer.accepted ||
     canonicalAgentMcpProfileJson(input.source) !== canonicalAgentMcpProfileJson(source)
-  ) return { passed: false, reason: 'C02_SOURCE_OR_ANSWER_INVALID', answerChecks: verifiedAnswer.checks };
+  )
+    return {
+      passed: false,
+      reason: 'C02_SOURCE_OR_ANSWER_INVALID',
+      answerChecks: verifiedAnswer.checks,
+    };
 
   const events = input.events;
   if (
@@ -365,7 +458,8 @@ export function buildC02ProfileReport(input, { privateKey } = {}) {
     events.shellToolCallCount !== 0 ||
     events.allowedCallCount !== 1 ||
     events.deniedCallCount !== 0
-  ) return { passed: false, reason: 'C02_RUNTIME_EVENTS_INVALID' };
+  )
+    return { passed: false, reason: 'C02_RUNTIME_EVENTS_INVALID' };
 
   const report = {
     schemaVersion: 1,
@@ -426,7 +520,8 @@ export function buildC02ProfileReport(input, { privateKey } = {}) {
 export function writeC02ProfileReport(input, { privateKey, root = ROOT } = {}) {
   const resolvedRoot = path.resolve(root);
   const outputPath = path.resolve(resolvedRoot, REPORT_RELATIVE_PATH);
-  if (!outputPath.startsWith(resolvedRoot + path.sep)) return { passed: false, reason: 'C02_REPORT_PATH_INVALID' };
+  if (!outputPath.startsWith(resolvedRoot + path.sep))
+    return { passed: false, reason: 'C02_REPORT_PATH_INVALID' };
   if (existsSync(outputPath)) return { passed: false, reason: 'C02_REPORT_ALREADY_EXISTS' };
   const built = buildC02ProfileReport(input, { privateKey });
   if (!built.passed) return built;
@@ -440,7 +535,12 @@ export function writeC02ProfileReport(input, { privateKey, root = ROOT } = {}) {
   } finally {
     if (descriptor !== undefined) closeSync(descriptor);
   }
-  return { passed: true, reason: null, reportPath: REPORT_RELATIVE_PATH, reportSha256: sha256(bytes) };
+  return {
+    passed: true,
+    reason: null,
+    reportPath: REPORT_RELATIVE_PATH,
+    reportSha256: sha256(bytes),
+  };
 }
 
 export function validateC02SanitizedReportFile(claim, root = ROOT, reportPath = null) {
@@ -452,7 +552,8 @@ export function validateC02SanitizedReportFile(claim, root = ROOT, reportPath = 
   }
   try {
     const metadata = lstatSync(suppliedPath);
-    if (!metadata.isFile() || metadata.isSymbolicLink()) return { passed: false, reason: 'C02_REPORT_FILE_TYPE_INVALID' };
+    if (!metadata.isFile() || metadata.isSymbolicLink())
+      return { passed: false, reason: 'C02_REPORT_FILE_TYPE_INVALID' };
     const bytes = readFileSync(suppliedPath);
     const report = JSON.parse(bytes.toString('utf8'));
     const validation = validateC02ProfileReport(report, claim);

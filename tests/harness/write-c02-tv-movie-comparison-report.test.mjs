@@ -9,7 +9,11 @@ import {
   agentMcpProfileRegistrySha256,
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
-import { C02_PROFILE_ID, projectC02ComparisonResult } from '../../scripts/lib/c02-tv-movie-comparison-evidence.mjs';
+import {
+  C02_OFFICIAL_V0_OPERATIONS,
+  C02_PROFILE_ID,
+  projectC02ComparisonResult,
+} from '../../scripts/lib/c02-tv-movie-comparison-evidence.mjs';
 import {
   buildC02ProfileReport,
   validateC02SanitizedReportFile,
@@ -21,7 +25,9 @@ const PROFILE = getAgentMcpProfileById(C02_PROFILE_ID);
 
 function makeClaim() {
   const pair = generateKeyPairSync('ed25519');
-  const runnerReceiptPublicKey = pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
+  const runnerReceiptPublicKey = pair.publicKey
+    .export({ type: 'spki', format: 'der' })
+    .toString('base64');
   return {
     claim: {
       claimId: 'c02-test-claim',
@@ -65,6 +71,11 @@ test('C02 report is signed and contains only the bounded public projection and c
   const built = buildC02ProfileReport(makeInput(claim), { privateKey });
   assert.equal(built.passed, true, built.reason);
   assert.equal(built.report.source.metrics[0].delta, -69);
+  assert.equal(built.report.source.formulaVersion, 'subject-comparison-v2');
+  assert.deepEqual(
+    built.report.source.officialSource.operations,
+    [...C02_OFFICIAL_V0_OPERATIONS].sort(),
+  );
   assert.equal(built.report.answer.checks.exactDeltas, true);
   assert.equal(built.report.privacy.rawAnswerStored, false);
   assert.equal(built.report.privacy.rawResultStored, false);
@@ -85,11 +96,19 @@ test('C02 Harness validator accepts a signed report and rejects changed report b
     const report = JSON.parse(readFileSync(reportPath, 'utf8'));
     const mutated = {
       ...report,
-      source: { ...report.source, metrics: report.source.metrics.map((metric, index) => index === 0 ? { ...metric, delta: 69 } : metric) },
+      source: {
+        ...report.source,
+        metrics: report.source.metrics.map((metric, index) =>
+          index === 0 ? { ...metric, delta: 69 } : metric,
+        ),
+      },
     };
     writeFileSync(reportPath, `${JSON.stringify(mutated, null, 2)}\n`);
     assert.equal(validateC02SanitizedReportFile(claim, root, reportPath).passed, false);
-    assert.equal(validateC02SanitizedReportFile(claim, root, path.join(root, 'other.json')).passed, false);
+    assert.equal(
+      validateC02SanitizedReportFile(claim, root, path.join(root, 'other.json')).passed,
+      false,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -104,6 +123,14 @@ test('C02 report writer refuses an answer not bound to the structured result and
   const wrongEvents = makeInput(claim);
   wrongEvents.events = { ...C02_EVENTS, nonMcpToolEventCount: 1 };
   assert.equal(buildC02ProfileReport(wrongEvents, { privateKey }).passed, false);
+
+  const unexpectedOfficialOperation = makeInput(claim);
+  unexpectedOfficialOperation.rawResult = structuredClone(C02_COMPARISON_RESULT);
+  unexpectedOfficialOperation.rawResult.source.official.operations.push('GET /v0/users/{username}');
+  unexpectedOfficialOperation.source = projectC02ComparisonResult(
+    unexpectedOfficialOperation.rawResult,
+  );
+  assert.equal(buildC02ProfileReport(unexpectedOfficialOperation, { privateKey }).passed, false);
 });
 
 test('C02 writer refuses a duplicate report path', () => {
@@ -113,7 +140,10 @@ test('C02 writer refuses a duplicate report path', () => {
   mkdirSync(path.dirname(reportPath), { recursive: true });
   try {
     assert.equal(writeC02ProfileReport(makeInput(claim), { privateKey, root }).passed, true);
-    assert.equal(writeC02ProfileReport(makeInput(claim), { privateKey, root }).reason, 'C02_REPORT_ALREADY_EXISTS');
+    assert.equal(
+      writeC02ProfileReport(makeInput(claim), { privateKey, root }).reason,
+      'C02_REPORT_ALREADY_EXISTS',
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -5,6 +5,13 @@ import {
 
 export const C02_PROFILE_ID = 'c02-cardcaptor-tv-movie-v1';
 export const C02_DELTA_RULE = 'second_minus_first';
+export const C02_OFFICIAL_V0_OPERATIONS = Object.freeze([
+  'GET /v0/subjects/{subject_id}',
+  'GET /v0/subjects/{subject_id} (rating/collection fields)',
+  'GET /v0/subjects/{subject_id}/characters',
+  'GET /v0/subjects/{subject_id}/persons',
+  'GET /v0/subjects/{subject_id}/subjects',
+]);
 export const C02_LIMITATIONS = Object.freeze([
   'episodesReported 是 Bangumi 报告话数，不是已播或已看话数。',
   '评分和收藏总数仅为当前公开快照。',
@@ -33,14 +40,15 @@ const OVERLAP_STATES = ['complete', 'partial', 'unavailable', 'not_computable'];
 const DELTA_PRECISION = { episodesReported: 0, score: 1, collectionTotal: 0 };
 
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
-const isFiniteNumberOrNull = (value) => value === null || (typeof value === 'number' && Number.isFinite(value));
+const isFiniteNumberOrNull = (value) =>
+  value === null || (typeof value === 'number' && Number.isFinite(value));
 const isNonNegativeInteger = (value) => Number.isSafeInteger(value) && value >= 0;
 const exactKeys = (value, keys) =>
   isRecord(value) && Object.keys(value).sort().join('\0') === [...keys].sort().join('\0');
 
 function roundedDelta(values, precision) {
   const factor = 10 ** precision;
-  return Math.round(((values[1] - values[0]) * factor) + Number.EPSILON) / factor;
+  return Math.round((values[1] - values[0]) * factor + Number.EPSILON) / factor;
 }
 
 function isIsoTimestamp(value) {
@@ -57,10 +65,14 @@ function projectMetric(metric, key) {
     !isFiniteNumberOrNull(metric.delta) ||
     metric.deltaPrecision !== DELTA_PRECISION[key] ||
     !['complete', 'unknown', 'conflict'].includes(metric.state)
-  ) return null;
+  )
+    return null;
 
   if (metric.state === 'complete') {
-    if (metric.values.some((value) => typeof value !== 'number') || typeof metric.delta !== 'number') {
+    if (
+      metric.values.some((value) => typeof value !== 'number') ||
+      typeof metric.delta !== 'number'
+    ) {
       return null;
     }
     if (metric.delta !== roundedDelta(metric.values, metric.deltaPrecision)) return null;
@@ -100,9 +112,12 @@ export function projectC02ComparisonResult(result) {
     !Array.isArray(result.source.official.operations) ||
     result.source.official.operations.length === 0 ||
     !result.source.official.operations.every((item) => typeof item === 'string' && item.trim()) ||
+    !result.source.official.operations.every((item) => C02_OFFICIAL_V0_OPERATIONS.includes(item)) ||
     !isIsoTimestamp(result.source.official.attemptedAt) ||
-    (result.source.official.retrievedAt !== undefined && !isIsoTimestamp(result.source.official.retrievedAt))
-  ) return null;
+    (result.source.official.retrievedAt !== undefined &&
+      !isIsoTimestamp(result.source.official.retrievedAt))
+  )
+    return null;
 
   const subjects = result.subjects.map((row, index) => {
     if (
@@ -115,8 +130,10 @@ export function projectC02ComparisonResult(result) {
       Buffer.byteLength(row.subject.name, 'utf8') > 256 ||
       !['complete', 'partial'].includes(row.state) ||
       (row.subject.nameCn !== undefined &&
-        (typeof row.subject.nameCn !== 'string' || Buffer.byteLength(row.subject.nameCn, 'utf8') > 256))
-    ) return null;
+        (typeof row.subject.nameCn !== 'string' ||
+          Buffer.byteLength(row.subject.nameCn, 'utf8') > 256))
+    )
+      return null;
     return {
       subjectId: row.subjectId,
       name: row.subject.name,
@@ -133,7 +150,8 @@ export function projectC02ComparisonResult(result) {
     metricKeys.some((key) => !COMPARISON_METRIC_KEYS.includes(key)) ||
     new Set(metricKeys).size !== COMPARISON_METRIC_KEYS.length ||
     result.metrics.some((metric) => !isRecord(metric) || !METRIC_STATES.includes(metric.state))
-  ) return null;
+  )
+    return null;
 
   const metricStateCounts = {
     complete: result.metrics.filter((metric) => metric.state === 'complete').length,
@@ -182,7 +200,8 @@ export function projectC02ComparisonResult(result) {
     coverage.limits.maxStaff !== expectedArguments.maxStaff ||
     coverage.limits.maxRelations !== expectedArguments.maxRelations ||
     !isNonNegativeInteger(coverage.limits.maxOverlapItems)
-  ) return null;
+  )
+    return null;
 
   const completeStateIsConsistent =
     subjectStateCounts.complete === 2 &&
@@ -192,10 +211,9 @@ export function projectC02ComparisonResult(result) {
     result.overlaps.staff.state === 'complete';
   if ((result.state === 'complete') !== completeStateIsConsistent) return null;
 
-  if (metrics.every((metric) => metric.state !== 'complete')) return null;
-
   return {
     state: result.state,
+    formulaVersion: result.formulaVersion,
     deltaRule: C02_DELTA_RULE,
     subjectIds: [...SUBJECT_IDS],
     subjects,
@@ -230,7 +248,8 @@ export function projectC02ComparisonResult(result) {
 }
 
 function parseAnswer(answer) {
-  if (typeof answer !== 'string' || Buffer.byteLength(answer, 'utf8') > PROFILE.maxAnswerBytes) return null;
+  if (typeof answer !== 'string' || Buffer.byteLength(answer, 'utf8') > PROFILE.maxAnswerBytes)
+    return null;
   try {
     return JSON.parse(answer);
   } catch {
@@ -241,31 +260,50 @@ function parseAnswer(answer) {
 export function verifyC02Answer(answer, source) {
   const parsed = parseAnswer(answer);
   const checks = {
-    exactSchema: exactKeys(parsed, ['schemaVersion', 'subjectIds', 'subjects', 'metrics', 'deltaRule', 'limitations']),
-    exactSubjectIds: canonicalAgentMcpProfileJson(parsed?.subjectIds) === canonicalAgentMcpProfileJson(SUBJECT_IDS),
+    exactSchema: exactKeys(parsed, [
+      'schemaVersion',
+      'subjectIds',
+      'subjects',
+      'metrics',
+      'deltaRule',
+      'limitations',
+    ]),
+    exactSubjectIds:
+      canonicalAgentMcpProfileJson(parsed?.subjectIds) ===
+      canonicalAgentMcpProfileJson(SUBJECT_IDS),
     exactSubjectNames: false,
     exactMetricsAndStates: false,
     exactDeltas: false,
     explicitSecondMinusFirstRule: parsed?.deltaRule === C02_DELTA_RULE,
-    exactLimitations: canonicalAgentMcpProfileJson(parsed?.limitations) === canonicalAgentMcpProfileJson(C02_LIMITATIONS),
+    exactLimitations:
+      canonicalAgentMcpProfileJson(parsed?.limitations) ===
+      canonicalAgentMcpProfileJson(C02_LIMITATIONS),
   };
-  if (parsed?.schemaVersion === 1 && Array.isArray(parsed.subjects) && parsed.subjects.length === 2) {
-    checks.exactSubjectNames = parsed.subjects.every((item, index) =>
-      exactKeys(item, ['subjectId', 'name']) &&
-      item.subjectId === source?.subjects?.[index]?.subjectId &&
-      item.name === source?.subjects?.[index]?.name,
+  if (
+    parsed?.schemaVersion === 1 &&
+    Array.isArray(parsed.subjects) &&
+    parsed.subjects.length === 2
+  ) {
+    checks.exactSubjectNames = parsed.subjects.every(
+      (item, index) =>
+        exactKeys(item, ['subjectId', 'name']) &&
+        item.subjectId === source?.subjects?.[index]?.subjectId &&
+        item.name === source?.subjects?.[index]?.name,
     );
   }
   if (parsed?.schemaVersion === 1 && Array.isArray(parsed.metrics) && parsed.metrics.length === 3) {
     checks.exactMetricsAndStates = parsed.metrics.every((item, index) => {
       const expected = source?.metrics?.[index];
-      return exactKeys(item, ['key', 'values', 'delta', 'state']) &&
+      return (
+        exactKeys(item, ['key', 'values', 'delta', 'state']) &&
         item.key === expected?.key &&
-        canonicalAgentMcpProfileJson(item.values) === canonicalAgentMcpProfileJson(expected?.values) &&
-        item.state === expected?.state;
+        canonicalAgentMcpProfileJson(item.values) ===
+          canonicalAgentMcpProfileJson(expected?.values) &&
+        item.state === expected?.state
+      );
     });
-    checks.exactDeltas = parsed.metrics.every((item, index) =>
-      item?.delta === source?.metrics?.[index]?.delta,
+    checks.exactDeltas = parsed.metrics.every(
+      (item, index) => item?.delta === source?.metrics?.[index]?.delta,
     );
   }
   return {
