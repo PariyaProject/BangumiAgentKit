@@ -4601,7 +4601,7 @@ CODEX_M07_PROFILE_IMPLEMENTATION_MARKERS = {
         'never retry a consumed claim',
     ),
     'tests/unit/m07-manage-index-unbound-agent-mcp.test.ts': (
-        'M07 registry fixes one create call and rejects argument changes',
+        'registers one exact create action for the matrix-only profile',
         'receives AUTH_REQUIRED from the real ToolRegistry before HTTP or write execution',
     ),
     'tests/harness/frontier-ledger-data.test.mjs': (

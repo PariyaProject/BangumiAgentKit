@@ -2448,6 +2448,13 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                     invalid_report, {tool_name: tool}, {tool_name: tool},
                 ))
 
+    def test_m07_revision_markers_are_present_in_their_exact_source_files(self):
+        for relative_path, markers in GENERATOR.CODEX_M07_PROFILE_IMPLEMENTATION_MARKERS.items():
+            source = (self.original_root / relative_path).read_text(encoding='utf-8')
+            for marker in markers:
+                with self.subTest(path=relative_path, marker=marker):
+                    self.assertIn(marker, source)
+
     def test_m07_report_requires_the_exact_harness_terminal_disposition(self):
         receipt = {'publicKeyBase64': 'synthetic-public-key', 'publicKeySha256': 'a' * 64}
         report = {
