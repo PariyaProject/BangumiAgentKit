@@ -3336,9 +3336,17 @@
         "tests/harness/write-r04-series-watch-order-offline-agent-mcp-report.test.mjs",
         "scripts/test_acceptance_evidence.py",
         "docs/research/run95-r04-series-watch-order-offline-matrix-contract-2026-10-16.md",
-        "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md"
+        "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md",
+        "scripts/lib/r04-render-series-watch-order-offline-fixture.mjs",
+        "scripts/acceptance/run-r04-render-series-watch-order-offline-agent-mcp.mjs",
+        "scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-report.mjs",
+        "scripts/acceptance/validate-r04-render-series-watch-order-offline-agent-mcp-report.mjs",
+        "tests/harness/r04-render-series-watch-order-offline-fixture.test.mjs",
+        "tests/harness/run-r04-render-series-watch-order-offline-agent-mcp.test.mjs",
+        "tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-report.test.mjs",
+        "docs/research/run95-r04-render-series-watch-order-offline-matrix-contract-2026-10-17.md"
       ],
-      "next_action": "The selected R04 one-shot is terminal INCONCLUSIVE with no report and retryAllowed=false. Keep R04 UNASSESSED and uncredited; do not rerun its synthetic profile or reconstruct a report. PR #173's stale branch remains at 57/65 with eight rows pending; current master acceptance is 65/65 based on later independent public reports. Keep PR #173 parked, preserve the user's 65/65 target, and never rerun its spent 37-request probe.",
+      "next_action": "The existing get_series_watch_order offline profile is terminal INCONCLUSIVE and retryAllowed=false; never rerun it. A distinct matrix-only render_series_watch_order profile uses only synthetic subjectId 990802 and local fixture responses. If its signed, exact-Candidate report is accepted, credit only that renderer Agent/MCP row; keep the R04 theatrical-film scenario UNASSESSED, do not claim canonical order or visual quality, and keep account/community/QQ/TIM paths out of scope.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

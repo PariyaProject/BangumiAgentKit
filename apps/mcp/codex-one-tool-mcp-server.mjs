@@ -52,6 +52,13 @@ import {
   R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE,
 } from '../../scripts/lib/r04-series-watch-order-offline-fixture.mjs';
 import {
+  assertR04RenderSeriesWatchOrderOfflineProfile,
+  createR04RenderSeriesWatchOrderAssetFence,
+  createR04RenderSeriesWatchOrderOfflineFetch,
+  R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE,
+  R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID,
+} from '../../scripts/lib/r04-render-series-watch-order-offline-fixture.mjs';
+import {
   assertR01RelationsOfflineFixture,
   createR01RelationsOfflineFetch,
 } from '../../scripts/lib/r01-relations-offline-fixture.mjs';
@@ -209,6 +216,9 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE) {
     assertR04SeriesWatchOrderOfflineProfile(config.profile);
   }
+  if (config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE) {
+    assertR04RenderSeriesWatchOrderOfflineProfile(config.profile);
+  }
   if (config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE) {
     assertR01RelationsOfflineFixture(config.profile);
   }
@@ -267,16 +277,24 @@ async function main(argv = process.argv.slice(2)) {
             ? createP02PersonProfileOfflineFetch()
             : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
               ? createR04SeriesWatchOrderOfflineFetch()
-              : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
-                ? createR01RelationsOfflineFetch()
-                : null;
+              : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
+                ? createR04RenderSeriesWatchOrderOfflineFetch()
+                : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
+                  ? createR01RelationsOfflineFetch()
+                  : null;
+  const r04RenderAssetFence =
+    config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
+      ? createR04RenderSeriesWatchOrderAssetFence()
+      : null;
   const p06AssetGuard =
     config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
       ? createP06RenderPersonProfileAssetGuard()
       : null;
   const renderService = p06AssetGuard
     ? new RenderService(undefined, undefined, p06AssetGuard.assetResolver)
-    : undefined;
+    : r04RenderAssetFence
+      ? new RenderService(undefined, undefined, r04RenderAssetFence.assetResolver)
+      : undefined;
   const publicHttpClient = new HttpClient({
     baseUrl: 'https://api.bgm.tv',
     timeoutMs: 10000,
@@ -370,6 +388,7 @@ async function main(argv = process.argv.slice(2)) {
       : { result: null }),
     ...(offlineFixture ? { offlineFixture: offlineFixture.snapshot() } : {}),
     ...(p06AssetGuard ? { offlineAssetBoundary: p06AssetGuard.snapshot() } : {}),
+    ...(r04RenderAssetFence ? { rendererAssetBoundary: r04RenderAssetFence.snapshot() } : {}),
     ...(c04PublicFetch ? { publicRequestScope: c04PublicFetch.snapshot() } : {}),
     ...(r02PublicFetch ? { publicRequestScope: r02PublicFetch.snapshot() } : {}),
     privacy: buildG06PrivacySummary(),
@@ -489,10 +508,12 @@ async function main(argv = process.argv.slice(2)) {
               ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
               : config.profile.id === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID
                 ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
-                : config.profile.id === C04_COHORT_COMPARISON_PROFILE_ID &&
-                    expectedToolName === 'bangumi.render_subject_cohort_comparison'
-                  ? artifactStore.summarize(result?.artifact?.id)
-                  : null;
+                : config.profile.id === R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID
+                  ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
+                  : config.profile.id === C04_COHORT_COMPARISON_PROFILE_ID &&
+                      expectedToolName === 'bangumi.render_subject_cohort_comparison'
+                    ? artifactStore.summarize(result?.artifact?.id)
+                    : null;
           const resultSummary = summarizeProfileToolResult(
             result,
             expectedArguments,
@@ -529,6 +550,9 @@ async function main(argv = process.argv.slice(2)) {
         }
         if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
         if (p06AssetGuard) summary = { ...summary, offlineAssetBoundary: p06AssetGuard.snapshot() };
+        if (r04RenderAssetFence) {
+          summary = { ...summary, rendererAssetBoundary: r04RenderAssetFence.snapshot() };
+        }
         persistSummary();
         if (config.profile?.id === P07_PERSON_SEASON_PROFILE_ID) {
           const safeProjection = summary.results[sequenceIndex]?.resultSummary;
@@ -561,6 +585,27 @@ async function main(argv = process.argv.slice(2)) {
             persistSummary();
             return {
               content: [{ type: 'text', text: 'A01 artifact summary is unavailable.' }],
+              isError: true,
+            };
+          }
+          return {
+            content: [{ type: 'text', text: JSON.stringify(safeProjection) }],
+            structuredContent: safeProjection,
+          };
+        }
+        if (config.profile?.id === R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID) {
+          const safeProjection = summary.results[sequenceIndex]?.resultSummary;
+          if (!safeProjection) {
+            summary = {
+              ...summary,
+              serverResultStatus: 'ERROR',
+              results: [
+                { sequenceIndex, status: 'ERROR', errorCode: 'R04_RENDER_SUMMARY_UNAVAILABLE' },
+              ],
+            };
+            persistSummary();
+            return {
+              content: [{ type: 'text', text: 'R04 render artifact summary is unavailable.' }],
               isError: true,
             };
           }
@@ -629,6 +674,9 @@ async function main(argv = process.argv.slice(2)) {
         }
         if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
         if (p06AssetGuard) summary = { ...summary, offlineAssetBoundary: p06AssetGuard.snapshot() };
+        if (r04RenderAssetFence) {
+          summary = { ...summary, rendererAssetBoundary: r04RenderAssetFence.snapshot() };
+        }
         if (publicRequestFetch) {
           summary = { ...summary, publicRequestScope: publicRequestFetch.snapshot() };
         }

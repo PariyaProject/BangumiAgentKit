@@ -108,6 +108,9 @@ const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const P06_PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
 const P02_PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
 const R04_PROFILE = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v1');
+const R04_RENDER_PROFILE = getAgentMcpProfileById(
+  'r04-render-series-watch-order-offline-agent-mcp-v1',
+);
 const C04_PROFILE = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
 const mandatoryChecks = [
   'harness-control',
@@ -451,12 +454,12 @@ function candidateEvidence(environment, overrides = {}) {
   return file;
 }
 
-function r04CandidateCheckEnvironment() {
+function r04CandidateCheckEnvironment(profile = R04_PROFILE) {
   const { run, epoch } = controlFixture();
-  const branch = 'codex/epoch-run95-r04-series-watch-order-offline-matrix-20261016';
+  const branch = `codex/epoch-${profile.epochId}`;
   const ciRunId = '38825409269';
   run.active_epoch_pr = 42;
-  epoch.epoch_id = R04_PROFILE.epochId;
+  epoch.epoch_id = profile.epochId;
   epoch.branch = branch;
   epoch.pr_number = 42;
   epoch.advances_frontier_ids = [];
@@ -1453,35 +1456,37 @@ test('CLI Candidate gate makes the Draft PR ready and refreshes its human-readab
 });
 
 test('CLI Candidate gate requires exact Actions-run evidence for R04 profiles', () => {
-  const { environment, ciRunUrl } = r04CandidateCheckEnvironment();
-  try {
-    const missingRunUrl = environment.execute([
-      'candidate:check',
-      '--pr',
-      '42',
-      '--evidence',
-      candidateEvidence(environment),
-    ]);
-    assert.equal(missingRunUrl.status, 2);
-    assert.match(missingRunUrl.stderr, /^CANDIDATE_EXACT_CI_RUN_EVIDENCE_REQUIRED:/u);
-    assert.equal(
-      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).state,
-      'IMPLEMENTING',
-    );
+  for (const profile of [R04_PROFILE, R04_RENDER_PROFILE]) {
+    const { environment, ciRunUrl } = r04CandidateCheckEnvironment(profile);
+    try {
+      const missingRunUrl = environment.execute([
+        'candidate:check',
+        '--pr',
+        '42',
+        '--evidence',
+        candidateEvidence(environment),
+      ]);
+      assert.equal(missingRunUrl.status, 2);
+      assert.match(missingRunUrl.stderr, /^CANDIDATE_EXACT_CI_RUN_EVIDENCE_REQUIRED:/u);
+      assert.equal(
+        parseControlBlock(environment.readState().prBody, EPOCH_MARKER).state,
+        'IMPLEMENTING',
+      );
 
-    const exactRunUrl = environment.execute([
-      'candidate:check',
-      '--pr',
-      '42',
-      '--evidence',
-      candidateEvidence(environment, { ci: { url: ciRunUrl } }),
-    ]);
-    assert.equal(exactRunUrl.status, 0, exactRunUrl.stderr);
-    const epoch = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
-    assert.equal(epoch.state, 'REVIEW_READY');
-    assert.equal(epoch.ci.url, ciRunUrl);
-  } finally {
-    environment.cleanup();
+      const exactRunUrl = environment.execute([
+        'candidate:check',
+        '--pr',
+        '42',
+        '--evidence',
+        candidateEvidence(environment, { ci: { url: ciRunUrl } }),
+      ]);
+      assert.equal(exactRunUrl.status, 0, exactRunUrl.stderr);
+      const epoch = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+      assert.equal(epoch.state, 'REVIEW_READY');
+      assert.equal(epoch.ci.url, ciRunUrl);
+    } finally {
+      environment.cleanup();
+    }
   }
 });
 

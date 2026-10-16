@@ -327,10 +327,28 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   const r04 = ledger.records.find(({ id }) => id === 'R04');
   assert.ok(r04, 'R04 must remain in the canonical frontier');
   assert.equal(r04.status, 'UNASSESSED');
-  assert.match(r04.next_action, /terminal INCONCLUSIVE with no report and retryAllowed=false/u);
-  assert.match(r04.next_action, /PR #173's stale branch remains at 57\/65 with eight rows pending/u);
-  assert.match(r04.next_action, /current master acceptance is 65\/65 based on later independent public reports/u);
-  assert.match(r04.next_action, /never rerun its spent 37-request probe/u);
+  assert.match(
+    r04.next_action,
+    /existing get_series_watch_order offline profile is terminal INCONCLUSIVE/u,
+  );
+  assert.match(
+    r04.next_action,
+    /distinct matrix-only render_series_watch_order profile/u,
+  );
+  assert.match(
+    r04.next_action,
+    /keep the R04 theatrical-film scenario UNASSESSED/u,
+  );
+  assert.match(r04.next_action, /do not claim canonical order or visual quality/u);
+  for (const source of [
+    'scripts/lib/r04-render-series-watch-order-offline-fixture.mjs',
+    'scripts/acceptance/run-r04-render-series-watch-order-offline-agent-mcp.mjs',
+    'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-report.mjs',
+    'scripts/acceptance/validate-r04-render-series-watch-order-offline-agent-mcp-report.mjs',
+    'docs/research/run95-r04-render-series-watch-order-offline-matrix-contract-2026-10-17.md',
+  ]) {
+    assert.ok(r04.source_refs.includes(source), `R04 source reference missing: ${source}`);
+  }
 
   const r02 = ledger.records.find(({ id }) => id === 'R02');
   assert.ok(r02, 'R02 must remain in the canonical frontier');

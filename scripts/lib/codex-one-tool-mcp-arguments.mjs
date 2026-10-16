@@ -15,6 +15,7 @@ import {
 } from './c04-cohort-comparison-public-profile.mjs';
 import { assertR02PositiveDirectRelationsProfile } from './r02-positive-direct-relations-profile.mjs';
 import { assertA01RenderCohortAggregationOfflineProfile } from './a01-render-cohort-aggregation-offline-fixture.mjs';
+import { assertR04RenderSeriesWatchOrderOfflineProfile } from './r04-render-series-watch-order-offline-fixture.mjs';
 
 export function parseCodexOneToolMcpArguments(argv) {
   const values = new Map();
@@ -98,7 +99,8 @@ export function parseCodexOneToolMcpArguments(argv) {
         assertR04SeriesWatchOrderOfflineProfile(profile) ||
         assertR01RelationsOfflineProfile(profile) ||
         assertR02PositiveDirectRelationsProfile(profile) ||
-        assertA01RenderCohortAggregationOfflineProfile(profile);
+        assertA01RenderCohortAggregationOfflineProfile(profile) ||
+        assertR04RenderSeriesWatchOrderOfflineProfile(profile);
       if (!approved) {
         throw new Error('Registered profile network mode is not supported.');
       }

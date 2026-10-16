@@ -80,7 +80,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 14);
+  assert.equal(listAgentMcpProfiles().length, 15);
   const a01RenderAggregation = getAgentMcpProfileById(
     'a01-render-cohort-aggregation-agent-mcp-offline-v1',
   );
@@ -98,6 +98,20 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
       arguments: { action: 'create', title: 'Run95 no-account gate check' },
     },
   ]);
+  const r04Render = getAgentMcpProfileById('r04-render-series-watch-order-offline-agent-mcp-v1');
+  const r04Get = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v1');
+  assert.ok(r04Render);
+  assert.equal(r04Render.frontierId, 'R04');
+  assert.equal(r04Render.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(r04Render.toolName, 'bangumi.render_series_watch_order');
+  assert.equal(getAgentMcpProfile(r04Render.toolName, r04Render.argumentProfile), r04Render);
+  assert.deepEqual(r04Render.calls[0].arguments, {
+    subjectId: 990802,
+    depth: 0,
+    maxNodes: 1,
+    media: 'anime',
+  });
+  assert.notDeepEqual(r04Render.calls[0].arguments, r04Get.calls[0].arguments);
   const c01 = getAgentMcpProfileById('c01-rating-count-gap-v1');
   assert.ok(c01);
   assert.equal(c01.frontierId, 'C01');
