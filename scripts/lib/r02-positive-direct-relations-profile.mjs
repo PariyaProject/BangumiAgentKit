@@ -18,6 +18,10 @@ export const R02_POSITIVE_DIRECT_RELATIONS_EXPECTED_CALLS = Object.freeze(
 );
 export const R02_POSITIVE_DIRECT_RELATIONS_SUBJECT_IDS = Object.freeze([4923, 315, 1428]);
 export const R02_POSITIVE_DIRECT_RELATIONS_MAX_REQUESTS = 3;
+const ALLOWED_R02_PUBLIC_HEADERS = Object.freeze({
+  accept: 'application/json',
+  'user-agent': 'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)',
+});
 export const R02_POSITIVE_DIRECT_RELATIONS_EXPECTED_RESULT_SUMMARIES = Object.freeze([
   Object.freeze({
     state: 'observed',
@@ -158,6 +162,8 @@ export function expectedR02PositiveDirectRelationsRequestScope() {
     allowedRequestCount: 3,
     deniedRequestCount: 0,
     credentialHeaderCount: 0,
+    credentialModeCount: 0,
+    forbiddenHeaderCount: 0,
     authorizationHeaderCount: 0,
     writeAttemptCount: 0,
     unexpectedRouteCount: 0,
@@ -181,7 +187,8 @@ function urlAndRequest(input, init) {
   const method = String(init?.method ?? (isRequest ? input.method : 'GET')).toUpperCase();
   const headers = new Headers(init?.headers ?? (isRequest ? input.headers : undefined));
   const body = init?.body ?? (isRequest ? input.body : undefined);
-  return { url, method, headers, body };
+  const credentials = init?.credentials ?? (isRequest ? input.credentials : 'omit');
+  return { url, method, headers, body, credentials };
 }
 
 export function createR02PositiveDirectRelationsPublicFetch({ fetchImpl = globalThis.fetch } = {}) {
@@ -191,6 +198,8 @@ export function createR02PositiveDirectRelationsPublicFetch({ fetchImpl = global
     allowedRequestCount: 0,
     deniedRequestCount: 0,
     credentialHeaderCount: 0,
+    credentialModeCount: 0,
+    forbiddenHeaderCount: 0,
     authorizationHeaderCount: 0,
     writeAttemptCount: 0,
     unexpectedRouteCount: 0,
@@ -207,21 +216,25 @@ export function createR02PositiveDirectRelationsPublicFetch({ fetchImpl = global
       counters.unexpectedRouteCount += 1;
       throw new Error('R02 public profile denied an invalid URL.');
     }
-    const { url, method, headers, body } = request;
+    const { url, method, headers, body, credentials } = request;
+    const headerEntries = [...headers.entries()];
+    const forbiddenHeaders = headerEntries.filter(
+      ([name, value]) =>
+        !Object.hasOwn(ALLOWED_R02_PUBLIC_HEADERS, name) ||
+        ALLOWED_R02_PUBLIC_HEADERS[name] !== value,
+    );
+    const hasUrlCredential = Boolean(url.username || url.password);
+    const hasCredentialHeader = headerEntries.some(([name]) =>
+      /(?:authorization|cookie|credential|auth|token|session|api[-_]?key|secret)/iu.test(name),
+    );
+    const hasCredentialMode = credentials !== 'omit';
     const hasCredential =
-      Boolean(url.username || url.password) ||
-      [...headers.keys()].some((name) =>
-        /(?:authorization|cookie|credential|token|api[-_]?key)/iu.test(name),
-      );
-    if (hasCredential) {
-      counters.credentialHeaderCount += 1;
-      if (
-        headers.has('authorization') ||
-        headers.has('proxy-authorization') ||
-        Boolean(url.username || url.password)
-      ) {
-        counters.authorizationHeaderCount += 1;
-      }
+      hasUrlCredential || hasCredentialHeader || hasCredentialMode || forbiddenHeaders.length > 0;
+    if (hasUrlCredential || hasCredentialHeader) counters.credentialHeaderCount += 1;
+    if (hasCredentialMode) counters.credentialModeCount += 1;
+    counters.forbiddenHeaderCount += forbiddenHeaders.length;
+    if (headers.has('authorization') || headers.has('proxy-authorization') || hasUrlCredential) {
+      counters.authorizationHeaderCount += 1;
     }
     if (method !== 'GET') counters.writeAttemptCount += 1;
     const expectedSubjectId =
@@ -253,7 +266,13 @@ export function createR02PositiveDirectRelationsPublicFetch({ fetchImpl = global
     }
     counters.allowedRequestCount += 1;
     counters.subjectIds.push(expectedSubjectId);
-    const response = await fetchImpl(input, { ...init, method, headers, redirect: 'error' });
+    const response = await fetchImpl(input, {
+      ...init,
+      method,
+      headers,
+      credentials: 'omit',
+      redirect: 'error',
+    });
     if (response.status >= 300 && response.status < 400) {
       throw new Error('R02 public profile rejected a redirect response.');
     }
@@ -272,7 +291,10 @@ export function createR02PositiveDirectRelationsPublicFetch({ fetchImpl = global
           counters.deniedRequestCount === 0 &&
           canonicalJson(counters.subjectIds) ===
             canonicalJson(R02_POSITIVE_DIRECT_RELATIONS_SUBJECT_IDS),
-        anonymousOnly: counters.credentialHeaderCount === 0,
+        anonymousOnly:
+          counters.credentialHeaderCount === 0 &&
+          counters.credentialModeCount === 0 &&
+          counters.forbiddenHeaderCount === 0,
         officialV0Only: counters.unexpectedRouteCount === 0,
         redirectPolicy: 'error',
       };

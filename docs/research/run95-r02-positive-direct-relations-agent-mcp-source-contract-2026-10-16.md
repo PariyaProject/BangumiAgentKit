@@ -18,3 +18,5 @@
 These observations support only the four direct source-to-target rows shown above for the three sampled subjects. They do not establish reverse or transitive relations, canonical adaptation-chain semantics, a complete series graph, or absence of unreturned rows. The API provides no pagination or total count, and anonymous visibility may omit sensitive entries. The R02 scenario therefore remains `UNASSESSED`; a valid signed report from the registered three-call Agent/MCP profile may credit only the `bangumi.get_subject_relations` Agent/MCP matrix cell.
 
 The R02 profile is limited to one ordered call each for source IDs `4923`, `315`, and `1428`. It makes no authenticated request and does not read account/community data or perform writes, OAuth, QQ, or TIM actions.
+
+The runtime fetch guard permits only `Accept: application/json` and the fixed project `User-Agent`; it rejects every other header or credential mode and sends the request with `credentials: omit`.

@@ -70,7 +70,8 @@ R02_POSITIVE_RESULT_SUMMARIES = [
 ]
 R02_POSITIVE_REQUEST_SCOPE = {
     'requestCount': 3, 'allowedRequestCount': 3, 'deniedRequestCount': 0,
-    'credentialHeaderCount': 0, 'authorizationHeaderCount': 0, 'writeAttemptCount': 0,
+    'credentialHeaderCount': 0, 'credentialModeCount': 0, 'forbiddenHeaderCount': 0,
+    'authorizationHeaderCount': 0, 'writeAttemptCount': 0,
     'unexpectedRouteCount': 0, 'sequenceMismatchCount': 0, 'subjectIds': [4923, 315, 1428],
     'maxRequests': 3, 'requestsComplete': True, 'anonymousOnly': True,
     'officialV0Only': True, 'redirectPolicy': 'error',

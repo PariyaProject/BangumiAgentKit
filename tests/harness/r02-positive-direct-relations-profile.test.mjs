@@ -141,12 +141,24 @@ test('R02 public fetch allows only three ordered anonymous official v0 GETs', as
   const requests = [];
   const guard = createR02PositiveDirectRelationsPublicFetch({
     fetchImpl: async (input, init) => {
-      requests.push({ url: String(input), method: init.method, redirect: init.redirect });
+      requests.push({
+        url: String(input),
+        method: init.method,
+        redirect: init.redirect,
+        credentials: init.credentials,
+        headers: Object.fromEntries(init.headers.entries()),
+      });
       return new Response('[]', { status: 200 });
     },
   });
   for (const subjectId of [4923, 315, 1428]) {
-    const response = await guard.fetchFn(`https://api.bgm.tv/v0/subjects/${subjectId}/subjects`);
+    const response = await guard.fetchFn(`https://api.bgm.tv/v0/subjects/${subjectId}/subjects`, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent':
+          'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)',
+      },
+    });
     assert.equal(response.status, 200);
   }
   assert.equal(requests.length, 3);
@@ -158,7 +170,17 @@ test('R02 public fetch allows only three ordered anonymous official v0 GETs', as
       'https://api.bgm.tv/v0/subjects/1428/subjects',
     ],
   );
-  assert.ok(requests.every(({ method, redirect }) => method === 'GET' && redirect === 'error'));
+  assert.ok(
+    requests.every(
+      ({ method, redirect, credentials, headers }) =>
+        method === 'GET' &&
+        redirect === 'error' &&
+        credentials === 'omit' &&
+        headers.accept === 'application/json' &&
+        headers['user-agent'] ===
+          'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)',
+    ),
+  );
   assert.deepEqual(guard.snapshot(), expectedR02PositiveDirectRelationsRequestScope());
   assert.equal(r02PositiveDirectRelationsRequestScopeIsValid(guard.snapshot()), true);
 });
@@ -168,6 +190,13 @@ test('R02 public fetch fails closed on credentials, writes, routes, order change
     [
       'https://api.bgm.tv/v0/subjects/4923/subjects',
       { headers: { Authorization: 'Bearer secret' } },
+    ],
+    ['https://api.bgm.tv/v0/subjects/4923/subjects', { headers: { 'X-Auth': 'secret' } }],
+    ['https://api.bgm.tv/v0/subjects/4923/subjects', { headers: { 'X-BGM-Session': 'secret' } }],
+    ['https://api.bgm.tv/v0/subjects/4923/subjects', { headers: { 'X-Unexpected': 'value' } }],
+    [
+      'https://api.bgm.tv/v0/subjects/4923/subjects',
+      { headers: { 'User-Agent': 'Bearer secret' } },
     ],
     ['https://api.bgm.tv/v0/subjects/4923/subjects', { method: 'POST', body: '{}' }],
     ['https://example.com/v0/subjects/4923/subjects', {}],
@@ -183,6 +212,26 @@ test('R02 public fetch fails closed on credentials, writes, routes, order change
     assert.equal(guard.snapshot().deniedRequestCount, 1);
     assert.equal(r02PositiveDirectRelationsRequestScopeIsValid(guard.snapshot()), false);
   }
+  for (const credentials of ['include', 'same-origin']) {
+    const guard = createR02PositiveDirectRelationsPublicFetch({
+      fetchImpl: async () => new Response('[]'),
+    });
+    await assert.rejects(
+      guard.fetchFn('https://api.bgm.tv/v0/subjects/4923/subjects', { credentials }),
+    );
+    assert.equal(guard.snapshot().credentialModeCount, 1);
+    assert.equal(guard.snapshot().anonymousOnly, false);
+  }
+  const requestGuard = createR02PositiveDirectRelationsPublicFetch({
+    fetchImpl: async () => new Response('[]'),
+  });
+  await assert.rejects(
+    requestGuard.fetchFn(
+      new Request('https://api.bgm.tv/v0/subjects/4923/subjects', { credentials: 'include' }),
+    ),
+  );
+  assert.equal(requestGuard.snapshot().credentialModeCount, 1);
+  assert.equal(requestGuard.snapshot().anonymousOnly, false);
   const redirectGuard = createR02PositiveDirectRelationsPublicFetch({
     fetchImpl: async () =>
       new Response(null, { status: 302, headers: { location: 'https://example.com' } }),

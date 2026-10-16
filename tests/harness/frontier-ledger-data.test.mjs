@@ -296,6 +296,19 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   }
   assert.match(r02.next_action, /Keep R02 UNASSESSED until an exact-Candidate signed report is accepted/u);
   assert.match(r02.next_action, /does not establish reverse\/transitive edges or graph completeness/u);
+
+  const s05 = ledger.records.find(({ id }) => id === 'S05');
+  assert.ok(s05, 'S05 must remain in the canonical frontier');
+  assert.deepEqual(s05.source_refs, ['docs/research/user-scenario-catalog.md']);
+  assert.equal(
+    s05.next_action,
+    'Assess current capability coverage, bounded scope salvage, and direct evidence.',
+  );
+  assert.doesNotMatch(s05.next_action, /R02/u);
+  assert.equal(
+    s05.source_refs.some((source) => source.includes('r02-positive-direct-relations')),
+    false,
+  );
 });
 
 test('C03 terminal no-report profile stays unassessed and cannot be retried', () => {
