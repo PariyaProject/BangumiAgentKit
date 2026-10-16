@@ -179,6 +179,50 @@ test('R04 assertion failure classification emits only fixed safe codes', () => {
   assert.equal(JSON.stringify(classifyR04AssertionFailure(base)).includes('PRIVATE OUTPUT'), false);
 });
 
+test('R04 Codex errors before the MCP call are classified safely and keep the claim terminal', () => {
+  const baseEvents = {
+    eventStreamComplete: true,
+    turnCompleted: true,
+    codexErrorItemCount: 3,
+    nonMcpToolEventCount: 0,
+    shellToolCallCount: 0,
+    mcpServerNames: [],
+    codexMcpToolEventCount: 0,
+    completedMcpCalls: [],
+    answer: null,
+  };
+  const reason = classifyR04AssertionFailure({
+    execution: { failed: false, spawnErrorCode: null },
+    parsed: { parsed: true },
+    events: baseEvents,
+    exactCall: false,
+    exactToolEvent: false,
+    serverSummary: null,
+    serverSummaryValid: false,
+    candidateBundleCurrent: true,
+  });
+  assert.equal(reason, 'CODEX_ERROR_EVENT');
+  assert.equal(JSON.stringify(reason).includes('PRIVATE OUTPUT'), false);
+
+  const terminalizedClaims = [];
+  const recovery = recoverR04RunnerFailure(
+    {
+      state: 'CLAIMED',
+      disposition: { claimId: 'codex-error-claim', runnerReceiptPublicKey: 'runner-key' },
+    },
+    {
+      claimId: 'codex-error-claim',
+      runnerReceiptPublicKey: 'runner-key',
+      recordInconclusive: (claimId) => terminalizedClaims.push(claimId),
+    },
+  );
+  assert.deepEqual(recovery, {
+    state: 'INCONCLUSIVE_RECORDED',
+    claimId: 'codex-error-claim',
+  });
+  assert.deepEqual(terminalizedClaims, ['codex-error-claim']);
+});
+
 test('R04 losing runner leaves the winner claim untouched', () => {
   const winnerStatus = {
     state: 'CLAIMED',
