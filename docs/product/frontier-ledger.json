@@ -2782,8 +2782,8 @@
       "user_question": "最近更新的用户目录里有哪些高质量专题？",
       "lane": "recorded_product_opportunities",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": ["docs/research/user-scenario-catalog.md", "tests/unit/manage-index-actions.test.ts"],
+      "next_action": "The local no-account manage_index guard is verified as a safety precondition: AUTH_REQUIRED is returned before any HTTP request. No user index was read or written, and this adds no M07 scenario result. Keep UNASSESSED; next assess current source coverage and a bounded read-only scope without binding an account.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
