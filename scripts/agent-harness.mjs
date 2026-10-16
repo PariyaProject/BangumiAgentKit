@@ -3459,6 +3459,8 @@ function assertAgentMcpProfileReviewReadiness(
     latestReview.reviewed_base_sha !== baseSha ||
     latestReview.verdict !== 'PASS' ||
     !isG16LunaMaxReviewerId(latestReview.reviewer_id, Number(prNumber)) ||
+    (profile.id === 'c02-cardcaptor-tv-movie-v1' &&
+      latestReview.reviewer_id !== epoch.review_history?.[0]?.reviewer_id) ||
     (runnerReceiptPublicKey?.reviewerId !== undefined &&
       latestReview.reviewer_id !== runnerReceiptPublicKey.reviewerId) ||
     profile.model !== 'gpt-6-luna' ||
