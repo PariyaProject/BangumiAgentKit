@@ -3940,10 +3940,17 @@ function commandEpochAgentMcpProfileResult(options) {
         { profileId, claimId },
       );
     }
+    const terminalReportSha256 = current.reportSha256 ?? current.unacceptedReportSha256 ?? null;
+    if (resultState === 'INCONCLUSIVE' && reportSha256 !== terminalReportSha256) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_INCONCLUSIVE_REPORT_HASH',
+        'A replayed INCONCLUSIVE result must supply the exact digest from its terminal disposition.',
+      );
+    }
     const terminalDescription = agentMcpProfileTerminalLabelDescription(
       profile,
       resultState,
-      current.reportSha256 ?? null,
+      terminalReportSha256,
     );
     const terminalLabel = readAgentMcpProfileLabels().find(
       (label) => label.name === agentMcpProfileTerminalLabelName(profile),
@@ -3977,6 +3984,7 @@ function commandEpochAgentMcpProfileResult(options) {
       profileId,
       resultState,
       reportSha256: current.reportSha256 ?? null,
+      unacceptedReportSha256: current.unacceptedReportSha256 ?? null,
       failureDiagnostics: current.failureDiagnostics ?? null,
       retryAllowed: false,
       issue_state: runResult.state.state,

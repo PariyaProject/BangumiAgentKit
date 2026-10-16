@@ -25,7 +25,9 @@ import {
 } from '../../scripts/lib/title-query-render-agent-mcp-profile.mjs';
 import {
   buildTitleQueryRenderCodexExecArgs,
+  finalizeTitleQueryRenderClaimedReport,
   hashRetainedTitleQueryRenderReport,
+  isTitleQueryRenderProfileResultAcknowledged,
   validateTitleQueryRenderRunnerArgs,
 } from '../../scripts/acceptance/run-title-query-render-agent-mcp.mjs';
 import {
@@ -50,6 +52,92 @@ test('claimed-attempt recovery hashes a retained report without retaining report
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('valid recovered reports fall back to digest-bound INCONCLUSIVE when Harness rejects REPORT_WRITTEN', () => {
+  const reportSha256 = 'a'.repeat(64);
+  const calls = [];
+  const recovered = finalizeTitleQueryRenderClaimedReport({
+    report: { passed: true, reportSha256 },
+    claimId: 'claim-test',
+    persistReportWritten(digest) {
+      calls.push({ state: 'REPORT_WRITTEN', digest });
+      return { exitCode: 1, output: null };
+    },
+    persistInconclusive(value) {
+      calls.push({ state: 'INCONCLUSIVE', ...value });
+      return true;
+    },
+  });
+  assert.deepEqual(recovered, { state: 'INCONCLUSIVE', reportSha256 });
+  assert.deepEqual(calls, [
+    { state: 'REPORT_WRITTEN', digest: reportSha256 },
+    {
+      state: 'INCONCLUSIVE',
+      reasonCode: 'TITLE_QUERY_RENDER_STALE_REPORT_RECOVERY',
+      diagnostics: { reportBuildValid: true, privacyPreserved: true },
+      reportSha256,
+    },
+  ]);
+
+  const accepted = finalizeTitleQueryRenderClaimedReport({
+    report: { passed: true, reportSha256 },
+    claimId: 'claim-test',
+    persistReportWritten(digest) {
+      return {
+        exitCode: 0,
+        output: {
+          state: 'AGENT_MCP_PROFILE_RESULT_RECORDED',
+          resultState: 'REPORT_WRITTEN',
+          claimId: 'claim-test',
+          profileId: PROFILE.id,
+          reportSha256: digest,
+        },
+      };
+    },
+    persistInconclusive() {
+      assert.fail('An accepted REPORT_WRITTEN result must not be replaced.');
+    },
+  });
+  assert.deepEqual(accepted, { state: 'REPORT_WRITTEN', reportSha256 });
+});
+
+test('runner acknowledges only matching created or replayed terminal Harness results', () => {
+  for (const state of [
+    'AGENT_MCP_PROFILE_RESULT_RECORDED',
+    'AGENT_MCP_PROFILE_RESULT_ALREADY_RECORDED',
+  ]) {
+    assert.equal(
+      isTitleQueryRenderProfileResultAcknowledged(
+        {
+          exitCode: 0,
+          output: {
+            state,
+            resultState: 'INCONCLUSIVE',
+            claimId: 'claim-test',
+            profileId: PROFILE.id,
+          },
+        },
+        { resultState: 'INCONCLUSIVE', claimId: 'claim-test' },
+      ),
+      true,
+    );
+  }
+  assert.equal(
+    isTitleQueryRenderProfileResultAcknowledged(
+      {
+        exitCode: 0,
+        output: {
+          state: 'AGENT_MCP_PROFILE_RESULT_ALREADY_RECORDED',
+          resultState: 'INCONCLUSIVE',
+          claimId: 'another-claim',
+          profileId: PROFILE.id,
+        },
+      },
+      { resultState: 'INCONCLUSIVE', claimId: 'claim-test' },
+    ),
+    false,
+  );
 });
 
 function requestScope(requestCount = 2) {

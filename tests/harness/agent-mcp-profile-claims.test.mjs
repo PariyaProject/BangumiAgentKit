@@ -492,6 +492,15 @@ test('profile failure diagnostics keep only bounded allowlisted checks and count
     checks: { answerValid: true, eventStreamParsed: false },
     counters: { codexErrorItems: 0, nonMcpToolEvents: 3 },
   });
+  assert.equal(
+    normalizeAgentMcpProfileDiagnostics({
+      schemaVersion: 1,
+      reasonCode: 'TITLE_QUERY_RENDER_STALE_REPORT_RECOVERY',
+      checks: { reportBuildValid: true },
+      counters: {},
+    }).reasonCode,
+    'TITLE_QUERY_RENDER_STALE_REPORT_RECOVERY',
+  );
   for (const value of [
     {
       schemaVersion: 1,

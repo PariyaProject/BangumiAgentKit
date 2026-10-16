@@ -2411,6 +2411,33 @@ test('C01 Harness terminalizes an invalid retained report as INCONCLUSIVE with i
     assert.equal(disposition.state, 'INCONCLUSIVE');
     assert.equal(disposition.unacceptedReportSha256, reportSha256);
     assert.equal(disposition.retryAllowed, false);
+
+    const replay = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--report-sha256',
+      reportSha256,
+    ]);
+    assert.equal(replay.status, 0, replay.stderr);
+    const replayResult = JSON.parse(replay.stdout);
+    assert.equal(replayResult.state, 'AGENT_MCP_PROFILE_RESULT_ALREADY_RECORDED');
+    assert.equal(replayResult.unacceptedReportSha256, reportSha256);
+
+    const conflictingReplay = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--report-sha256',
+      'f'.repeat(64),
+    ]);
+    assert.notEqual(conflictingReplay.status, 0, conflictingReplay.stderr);
   } finally {
     environment.cleanup();
     fs.rmSync(harnessRoot, { recursive: true, force: true });

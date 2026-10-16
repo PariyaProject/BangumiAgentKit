@@ -68,6 +68,59 @@ export function hashRetainedTitleQueryRenderReport(reportPath) {
   }
 }
 
+export function isTitleQueryRenderProfileResultAcknowledged(result, { resultState, claimId } = {}) {
+  return (
+    ['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(resultState) &&
+    typeof claimId === 'string' &&
+    result?.exitCode === 0 &&
+    ['AGENT_MCP_PROFILE_RESULT_RECORDED', 'AGENT_MCP_PROFILE_RESULT_ALREADY_RECORDED'].includes(
+      result.output?.state,
+    ) &&
+    result.output?.resultState === resultState &&
+    result.output?.claimId === claimId &&
+    result.output?.profileId === PROFILE.id
+  );
+}
+
+export function finalizeTitleQueryRenderClaimedReport({
+  report,
+  claimId,
+  persistReportWritten,
+  persistInconclusive,
+}) {
+  if (
+    typeof claimId !== 'string' ||
+    typeof persistReportWritten !== 'function' ||
+    typeof persistInconclusive !== 'function'
+  ) {
+    throw new TypeError('Claimed report recovery requires Harness result adapters.');
+  }
+  if (report?.passed === true && /^[0-9a-f]{64}$/u.test(report.reportSha256 ?? '')) {
+    const persisted = persistReportWritten(report.reportSha256);
+    const acknowledged = isTitleQueryRenderProfileResultAcknowledged(persisted, {
+      resultState: 'REPORT_WRITTEN',
+      claimId,
+    });
+    if (acknowledged) return { state: 'REPORT_WRITTEN', reportSha256: report.reportSha256 };
+
+    const terminalized = persistInconclusive({
+      reasonCode: 'TITLE_QUERY_RENDER_STALE_REPORT_RECOVERY',
+      diagnostics: { reportBuildValid: true, privacyPreserved: true },
+      reportSha256: report.reportSha256,
+    });
+    return {
+      state: terminalized ? 'INCONCLUSIVE' : 'INCONCLUSIVE_ACK_PENDING',
+      reportSha256: report.reportSha256,
+    };
+  }
+
+  const terminalized = persistInconclusive({
+    reasonCode: 'TITLE_QUERY_RENDER_ORPHAN_REPORT',
+    diagnostics: { reportBuildValid: false, privacyPreserved: true },
+  });
+  return { state: terminalized ? 'INCONCLUSIVE' : 'INCONCLUSIVE_ACK_PENDING' };
+}
+
 export function validateTitleQueryRenderRunnerArgs(args) {
   if (args.length === 1 && args[0] === '--help') return 'help';
   if (args.length === 2 && args[0] === '--run' && args[1] === String(RUN_NUMBER)) return 'run';
@@ -410,7 +463,13 @@ function printSafe(value) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
 }
 
-function recordInconclusive(prNumber, claimId, reasonCode, diagnostics = {}) {
+function recordInconclusive(
+  prNumber,
+  claimId,
+  reasonCode,
+  diagnostics = {},
+  expectedReportSha256 = null,
+) {
   const checkFields = [
     'eventStreamParsed',
     'turnCompleted',
@@ -453,6 +512,10 @@ function recordInconclusive(prNumber, claimId, reasonCode, diagnostics = {}) {
     ? { schemaVersion: 1, reasonCode, checks, counters }
     : null;
   const reportSha256 = hashRetainedTitleQueryRenderReport(path.join(ROOT, PROFILE.reportPath));
+  if (expectedReportSha256 !== null && reportSha256 !== expectedReportSha256) {
+    printSafe({ state: 'INCONCLUSIVE_ACK_PENDING', profileId: PROFILE.id, reasonCode });
+    return false;
+  }
   const result = persistProfileResult(
     prNumber,
     claimId,
@@ -460,7 +523,11 @@ function recordInconclusive(prNumber, claimId, reasonCode, diagnostics = {}) {
     reportSha256,
     failureDiagnostics,
   );
-  if (result.exitCode !== 0 || result.output?.state !== 'AGENT_MCP_PROFILE_RESULT_RECORDED') {
+  const acknowledged = isTitleQueryRenderProfileResultAcknowledged(result, {
+    resultState: 'INCONCLUSIVE',
+    claimId,
+  });
+  if (!acknowledged) {
     printSafe({ state: 'INCONCLUSIVE_ACK_PENDING', profileId: PROFILE.id, reasonCode });
     return false;
   }
@@ -474,28 +541,32 @@ function finalizeClaimedAttempt(prNumber, profileStatus) {
   if (profileStatus.state !== 'CLAIMED' || !disposition) return 1;
   if (existsSync(reportPath)) {
     const report = validateTitleQueryRenderSanitizedReportFile(disposition);
-    if (report.passed && report.reportSha256) {
-      const result = persistProfileResult(
-        prNumber,
-        disposition.claimId,
-        'REPORT_WRITTEN',
-        report.reportSha256,
-      );
+    const recovered = finalizeTitleQueryRenderClaimedReport({
+      report,
+      claimId: disposition.claimId,
+      persistReportWritten: (reportSha256) =>
+        persistProfileResult(prNumber, disposition.claimId, 'REPORT_WRITTEN', reportSha256),
+      persistInconclusive: ({ reasonCode, diagnostics, reportSha256 }) =>
+        recordInconclusive(
+          prNumber,
+          disposition.claimId,
+          reasonCode,
+          diagnostics,
+          reportSha256 ?? null,
+        ),
+    });
+    if (recovered.state === 'REPORT_WRITTEN') {
       printSafe({
-        state: result.exitCode === 0 ? 'REPORT_WRITTEN' : 'REPORT_WRITTEN_ACK_PENDING',
+        state: 'REPORT_WRITTEN',
         profileId: PROFILE.id,
         claimId: disposition.claimId,
         retryAllowed: false,
         recovered: true,
+        reportSha256: recovered.reportSha256,
       });
-      return result.exitCode === 0 ? 0 : 1;
+      return 0;
     }
-    return recordInconclusive(prNumber, disposition.claimId, 'TITLE_QUERY_RENDER_ORPHAN_REPORT', {
-      reportBuildValid: false,
-      privacyPreserved: true,
-    })
-      ? 1
-      : 1;
+    return 1;
   }
   recordInconclusive(prNumber, disposition.claimId, 'TITLE_QUERY_RENDER_CLAIM_WITHOUT_REPORT', {
     reportBuildValid: false,
