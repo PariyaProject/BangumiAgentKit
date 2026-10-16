@@ -2445,6 +2445,36 @@ CODEX_R04_OFFLINE_FIXTURE_FIELDS = {
 CODEX_R04_NETWORK_BOUNDARY_FIELDS = {
     'liveBangumiApiRequestCount', 'rendererAssetRequestCount', 'fullCodexHarnessNetworkSandboxed',
 }
+CODEX_C04_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'c04-cohort-comparison-agent-mcp-matrix-v1'
+)
+CODEX_C04_PROFILE_ID = CODEX_C04_PROFILE['id']
+CODEX_C04_EPOCH_ID = CODEX_C04_PROFILE['epochId']
+CODEX_C04_TOOL_NAME = CODEX_C04_PROFILE['toolName']
+CODEX_C04_TOOL_NAMES = CODEX_C04_PROFILE['toolNames']
+CODEX_C04_ARGUMENT_PROFILE = CODEX_C04_PROFILE['argumentProfile']
+CODEX_C04_EXPECTED_CALLS = CODEX_C04_PROFILE['calls']
+CODEX_C04_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_C04_EXPECTED_CALLS],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_C04_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_C04_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_C04_REPORT_RELATIVE_PATH = CODEX_C04_PROFILE['reportPath']
+CODEX_C04_EVIDENCE_KIND = CODEX_C04_PROFILE['evidenceKind']
+CODEX_C04_NETWORK_MODE = CODEX_C04_PROFILE['networkMode']
+CODEX_C04_EVIDENCE_REFRESH_PATHS = {
+    CODEX_C04_REPORT_RELATIVE_PATH,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+}
 CODEX_R04_RECEIPT_FIELDS = {
     'schemaVersion', 'kind', 'publicKeyBase64', 'publicKeySha256', 'payload', 'signature',
 }
@@ -4362,6 +4392,93 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
         'def codex_r04_profile_report_matches_candidate_revision(',
         'def codex_r04_profile_disposition_matches_report(',
         'CODEX_R04_REPORT_RELATIVE_PATH',
+    ),
+}
+CODEX_C04_PROFILE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "c04-cohort-comparison-agent-mcp-matrix-v1"',
+        '"toolNames": [',
+        '"networkMode": "run95-c04-cohort-comparison-matrix-public-v1"',
+    ),
+    'scripts/lib/c04-cohort-comparison-public-profile.mjs': (
+        'export function assertC04CohortComparisonPublicProfile(profile)',
+        'export function createC04CohortComparisonPublicFetch(',
+        "url.origin !== 'https://api.bgm.tv'",
+        'C04_COHORT_COMPARISON_MAX_REQUESTS = 32',
+        'C04_COHORT_COMPARISON_MAX_REQUESTS_PER_RUN = 16',
+    ),
+    'scripts/lib/agent-mcp-profile-claims.mjs': (
+        'profile?.toolNames ?? [profile?.toolName]',
+        'canonicalAgentMcpProfileJson(callToolNames)',
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        'filterAllowedTools(registry.getTools(), config.toolNames)',
+        'expectedToolSequence: config.expectedToolSequence',
+        'profileCallIndex: config.profileCallIndex',
+        'registry.executeTool(expectedToolName, expectedArguments',
+        'createC04CohortComparisonPublicFetch()',
+    ),
+    'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
+        'C04 requires a profile-call-index of 0 or 1 for a separate one-tool run.',
+        'toolNames: [call.toolName]',
+        'expectedToolSequence: [call.toolName]',
+    ),
+    'scripts/acceptance/run-c04-cohort-comparison-agent-mcp.mjs': (
+        'export function validateC04RunnerArgs(',
+        'export function assertC04CandidateReviewGate(',
+        'export function buildC04Prompt(',
+        'export function buildC04CodexExecArgs(',
+        "'--profile-call-index',",
+        'export function runC04CodexCalls(',
+        'export function classifyC04AssertionFailure(',
+        'function runC04(',
+    ),
+    'scripts/acceptance/write-c04-cohort-comparison-agent-mcp-report.mjs': (
+        'export function validateC04ServerSummary(summary, sourceRevision, bundleSha256, callIndex)',
+        'function combineC04ServerSummaries(serverSummaries, sourceRevision, bundleSha256)',
+        'coverage.totalSubjectsReturned === expectedTotalSubjects',
+        'coverage.detailHydrationsAttempted === expectedHydrationCounts[0]',
+        'export function validateC04ProfileReport(',
+        'export function validateC04SanitizedReportFile(',
+        'createRunnerReceipt(',
+    ),
+    'scripts/acceptance/validate-c04-cohort-comparison-agent-mcp-report.mjs': (
+        'validateC04ProfileReport(',
+    ),
+    'scripts/agent-harness.mjs': (
+        "case 'c04-cohort-comparison-agent-mcp-matrix-v1'",
+        'validateC04SanitizedReportFile(',
+    ),
+    'docs/research/run95-c04-cohort-comparison-agent-mcp-matrix-contract-2026-10-16.md': (
+        'two separate ephemeral Codex runs',
+        'Each run has a 16-request cap',
+        'A valid signed report can credit at most the Agent/MCP matrix cells',
+        'at most32 HTTP requests in total',
+    ),
+    'tests/harness/write-c04-cohort-comparison-report.test.mjs': (
+        'C04 signed report binds one claim to both tool events without retaining source data',
+        'validateC04ServerSummary(valid, SOURCE, BUNDLE, 0)',
+    ),
+    'tests/harness/run-c04-cohort-comparison-agent-mcp.test.mjs': (
+        'C04 stops after the first failed one-tool run and only then starts the second run',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_c04_profile_report_is_valid(',
+        "if report.get('evidenceKind') == CODEX_C04_EVIDENCE_KIND:",
+        'for tool_name in CODEX_C04_TOOL_NAMES:',
+        'CODEX_C04_REPORT_RELATIVE_PATH',
+    ),
+    'scripts/check-tool-acceptance-table.py': (
+        "report.get('evidenceKind') == 'codex_cli_c04_cohort_comparison_agent_mcp_matrix'",
+        'and name in c04_tool_names',
+    ),
+    'scripts/test_acceptance_evidence.py': (
+        'test_c04_signed_matrix_report_credits_only_its_two_registered_tools',
+        'test_c04_report_reference_maps_only_its_two_agent_mcp_tools',
+    ),
+    'docs/product/frontier-ledger.json': (
+        'C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks',
+        'Keep A01 UNASSESSED.',
     ),
 }
 CODEX_P07_PROFILE_IMPLEMENTATION_MARKERS = {
@@ -10081,6 +10198,331 @@ def codex_r04_profile_report_is_valid(
     return result.get('passed') is True and result.get('reportSha256') == report_sha256
 
 
+def codex_c04_profile_revision_has_implementation(revision: object) -> bool:
+    """Bind C04 matrix evidence to its exact registered multi-tool runner and public guard."""
+    if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(str(ROOT), revision, CODEX_C04_PROFILE_IMPLEMENTATION_MARKERS)
+    )
+
+
+def codex_c04_profile_report_matches_candidate_revision(
+    report_path: Path, revision: object,
+) -> bool:
+    """Bind a C04 report to the Candidate whose immutable profile authorized its calls."""
+    if not codex_c04_profile_revision_has_implementation(revision):
+        return False
+    return _codex_relations_report_matches_candidate_revision(
+        report_path, revision, CODEX_C04_REPORT_RELATIVE_PATH,
+    )
+
+
+def codex_c04_profile_evidence_refresh_paths_are_valid(paths: object) -> bool:
+    return (
+        isinstance(paths, (list, tuple, set, frozenset))
+        and CODEX_C04_REPORT_RELATIVE_PATH in paths
+        and all(isinstance(item, str) and item in CODEX_C04_EVIDENCE_REFRESH_PATHS for item in paths)
+    )
+
+
+def _codex_c04_profile_report_candidate_paths(
+    source_revision: object, candidate_sha: object,
+) -> set[str] | None:
+    if (
+        not isinstance(source_revision, str)
+        or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
+        or not isinstance(candidate_sha, str)
+        or re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is None
+        or _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', source_revision, candidate_sha,
+        ).returncode != 0
+    ):
+        return None
+    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
+    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
+    if diff.returncode != 0 or status.returncode != 0:
+        return None
+    paths = set(diff.stdout.splitlines())
+    for line in status.stdout.splitlines():
+        if len(line) < 4:
+            return None
+        paths.add(line[3:])
+    return paths
+
+
+def codex_c04_profile_candidate_binding_is_valid(
+    report: object,
+    epoch_status: object,
+    changed_paths: object,
+    current_bundle_sha256: object,
+) -> bool:
+    """Allow only the claim-bound report and generated acceptance/frontier refresh after a call."""
+    if not isinstance(report, dict) or not isinstance(epoch_status, dict):
+        return False
+    run = epoch_status.get('run')
+    epoch_result = epoch_status.get('epoch')
+    if not isinstance(run, dict) or not isinstance(epoch_result, dict):
+        return False
+    run_state = run.get('state')
+    epoch = epoch_result.get('state')
+    if not isinstance(run_state, dict) or not isinstance(epoch, dict):
+        return False
+    candidate_sha = epoch.get('candidate_sha')
+    pr_number = report.get('prNumber')
+    reviews = epoch.get('review_history', [])
+    latest_review = reviews[-1] if isinstance(reviews, list) and reviews else None
+    active_pr = (
+        run_state.get('state') == 'EPOCH_ACTIVE'
+        and run_state.get('active_epoch_pr') == pr_number
+        and epoch_result.get('github_state') == 'OPEN'
+        and epoch.get('state') != 'MERGED'
+    )
+    merged_pr = (
+        epoch.get('state') == 'MERGED'
+        and epoch_result.get('github_state') == 'MERGED'
+        and run_state.get('last_merged_epoch_pr') == pr_number
+        and isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == candidate_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+    )
+    return (
+        type(pr_number) is int
+        and pr_number > 0
+        and run.get('number') == 95
+        and (active_pr or merged_pr)
+        and epoch.get('epoch_id') == CODEX_C04_EPOCH_ID
+        and epoch.get('pr_number') == pr_number
+        and epoch.get('base_branch') == 'master'
+        and epoch.get('base_sha') == report.get('baseSha')
+        and epoch_result.get('pr_base_ref_name') == 'master'
+        and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
+        and isinstance(epoch.get('branch'), str)
+        and epoch_result.get('pr_head_ref_name') == epoch.get('branch')
+        and epoch_result.get('pr_is_draft') is False
+        and isinstance(candidate_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
+        and epoch_result.get('pr_head_sha') == candidate_sha
+        and isinstance(report.get('sourceRevision'), str)
+        and re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision']) is not None
+        and codex_c04_profile_evidence_refresh_paths_are_valid(changed_paths)
+        and current_bundle_sha256 == report.get('mcpBundleSha256')
+    )
+
+
+def codex_c04_profile_report_candidate_binding_is_current(
+    report: dict[str, object], epoch_status: object,
+) -> bool:
+    candidate = None
+    if isinstance(epoch_status, dict):
+        epoch_result = epoch_status.get('epoch')
+        epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
+        candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
+    paths = _codex_c04_profile_report_candidate_paths(report.get('sourceRevision'), candidate)
+    bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
+    return codex_c04_profile_candidate_binding_is_valid(
+        report, epoch_status, paths, bundle_sha256,
+    )
+
+
+def codex_c04_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
+    """Read the exact Run #95 C04 Epoch, current Candidate, and PR head."""
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            ['node', str(ROOT / 'scripts/agent-harness.mjs'), 'status', '--run', '95', '--pr', str(pr_number)],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_c04_profile_harness_status(pr_number: object) -> dict[str, object] | None:
+    """Read C04's durable two-tool disposition and permanent repository latches."""
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                'node', str(ROOT / 'scripts/agent-harness.mjs'),
+                'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
+                '--profile-id', CODEX_C04_PROFILE_ID,
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_c04_profile_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+) -> dict[str, object] | None:
+    """Require the exact durable two-tool REPORT_WRITTEN claim and permanent latches."""
+    if not isinstance(harness_status, dict):
+        return None
+    receipt = report.get('runnerReceipt')
+    disposition = harness_status.get('disposition')
+    if (
+        harness_status.get('state') != 'REPORT_WRITTEN'
+        or harness_status.get('profile_id') != CODEX_C04_PROFILE_ID
+        or harness_status.get('pr') != report.get('prNumber')
+        or harness_status.get('tool_name') != CODEX_C04_TOOL_NAME
+        or harness_status.get('argument_profile') != CODEX_C04_ARGUMENT_PROFILE
+        or harness_status.get('expected_arguments_sha256') != CODEX_C04_EXPECTED_ARGUMENTS_SHA256
+        or harness_status.get('registry_sha256') != CODEX_C04_PROFILE_REGISTRY_SHA256
+        or harness_status.get('claim_label_present') is not True
+        or harness_status.get('terminal_label_present') is not True
+        or not isinstance(disposition, dict)
+        or not isinstance(receipt, dict)
+        or not isinstance(report_sha256, str)
+        or re.fullmatch(r'[0-9a-f]{64}', report_sha256) is None
+    ):
+        return None
+    expected = {
+        'claimId': report.get('claimId'),
+        'profileId': CODEX_C04_PROFILE_ID,
+        'frontierId': 'A01',
+        'epochId': CODEX_C04_EPOCH_ID,
+        'runNumber': 95,
+        'prNumber': report.get('prNumber'),
+        'state': 'REPORT_WRITTEN',
+        'sourceCandidateSha': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'ciSha': report.get('sourceRevision'),
+        'ciStatus': 'SUCCESS',
+        'ciRunId': report.get('ciRunId'),
+        'ciChecks': report.get('ciChecks'),
+        'reviewerId': report.get('reviewerId'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'registrySha256': CODEX_C04_PROFILE_REGISTRY_SHA256,
+        'toolName': CODEX_C04_TOOL_NAME,
+        'argumentProfile': CODEX_C04_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': CODEX_C04_EXPECTED_ARGUMENTS_SHA256,
+        'reportWritten': True,
+        'reportPath': CODEX_C04_REPORT_RELATIVE_PATH,
+        'reportSha256': report_sha256,
+        'retryAllowed': False,
+        'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
+        'runnerReceiptPublicKeySha256': receipt.get('publicKeySha256'),
+        'runnerReceiptSha256': _canonical_json_sha256(receipt),
+    }
+    if any(disposition.get(key) != value for key, value in expected.items()):
+        return None
+    return disposition
+
+
+def codex_c04_frontier_is_matrix_only() -> bool:
+    """Keep A01 unassessed and do not promote the delivered C04 scenario from matrix evidence."""
+    try:
+        frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    records = frontier.get('records') if isinstance(frontier, dict) else None
+    statuses = {
+        item.get('id'): item.get('status')
+        for item in records or []
+        if isinstance(item, dict)
+    }
+    return (
+        statuses.get('A01') == 'UNASSESSED'
+        and statuses.get('C04') == 'DELIVERED'
+        and statuses.get('C07') == 'UNASSESSED'
+    )
+
+
+def codex_c04_profile_report_is_valid(
+    report: object,
+    harness_status: object = None,
+    report_path: Path | None = None,
+    epoch_status: object = None,
+) -> bool:
+    """Validate exact dual-tool C04 matrix evidence without crediting a scenario answer."""
+    if not isinstance(report, dict):
+        return False
+    path = report_path or (LIVE_PROBE_DIR / Path(CODEX_C04_REPORT_RELATIVE_PATH).name)
+    try:
+        relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+        report_bytes = path.read_bytes()
+    except (OSError, ValueError):
+        return False
+    report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+    pr_number = report.get('prNumber')
+    if (
+        relative_path != CODEX_C04_REPORT_RELATIVE_PATH
+        or len(report_bytes) > 64 * 1024
+        or report.get('evidenceKind') != CODEX_C04_EVIDENCE_KIND
+        or report.get('runNumber') != 95
+        or report.get('frontierId') != 'A01'
+        or report.get('scenarioId') is not None
+        or report.get('epochId') != CODEX_C04_EPOCH_ID
+        or report.get('profileId') != CODEX_C04_PROFILE_ID
+        or report.get('profile') != 'codex-luna-max-two-tool-public-agent-mcp-matrix-v1'
+        or report.get('model') != 'gpt-6-luna'
+        or report.get('reasoningEffort') != 'max'
+        or report.get('toolNames') != CODEX_C04_TOOL_NAMES
+        or report.get('argumentProfile') != CODEX_C04_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != CODEX_C04_EXPECTED_ARGUMENTS_SHA256
+        or report.get('registrySha256') != CODEX_C04_PROFILE_REGISTRY_SHA256
+        or report.get('networkMode') != CODEX_C04_NETWORK_MODE
+        or report.get('resultStatus') != 'SUCCESS'
+        or report.get('processExitCode') != 0
+        or report.get('eventStreamParsed') is not True
+        or report.get('turnCompleted') is not True
+        or report.get('codexMcpToolEventCount') != 2
+        or report.get('codexRunCount') != 2
+        or report.get('codexErrorItemCount') != 0
+        or report.get('nonMcpToolEventCount') != 0
+        or report.get('nonMcpToolTypes') != []
+        or report.get('shellToolCallCount') != 0
+        or report.get('allowedCallCount') != 2
+        or report.get('deniedCallCount') != 0
+        or not codex_c04_frontier_is_matrix_only()
+        or type(pr_number) is not int
+        or pr_number < 1
+        or not codex_c04_profile_revision_has_implementation(report.get('sourceRevision'))
+        or not codex_c04_profile_report_matches_candidate_revision(path, report.get('sourceRevision'))
+    ):
+        return False
+    current_epoch_status = epoch_status or codex_c04_profile_epoch_harness_status(pr_number)
+    if not codex_c04_profile_report_candidate_binding_is_current(report, current_epoch_status):
+        return False
+    status = harness_status or codex_c04_profile_harness_status(pr_number)
+    disposition = codex_c04_profile_disposition_matches_report(report, status, report_sha256)
+    if disposition is None:
+        return False
+    validator = ROOT / 'scripts/acceptance/validate-c04-cohort-comparison-agent-mcp-report.mjs'
+    validation = subprocess.run(
+        ['node', str(validator)],
+        cwd=ROOT,
+        input=json.dumps({
+            'claim': disposition,
+            'reportBytesBase64': base64.b64encode(report_bytes).decode('ascii'),
+        }),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if validation.returncode != 0:
+        return False
+    try:
+        result = json.loads(validation.stdout)
+    except (TypeError, ValueError):
+        return False
+    return result.get('passed') is True and result.get('reportSha256') == report_sha256
+
+
 def codex_p07_profile_revision_has_implementation(revision: object) -> bool:
     """Bind P07 evidence to the exact fixed profile, safe MCP projection, runner, and writer."""
     if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
@@ -13464,6 +13906,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(LIVE_PROBE_DIR / CODEX_P06_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_P02_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R04_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(LIVE_PROBE_DIR / CODEX_C04_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_P07_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_D07_REPORT_RELATIVE_PATH.split('/')[-1])
@@ -13625,6 +14068,23 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             ):
                 continue
             sources.setdefault(CODEX_R04_TOOL_NAME, set()).add(report_source_ref(path))
+            continue
+        if report.get('evidenceKind') == CODEX_C04_EVIDENCE_KIND:
+            current_status = codex_c04_profile_harness_status(report.get('prNumber'))
+            current_epoch_status = codex_c04_profile_epoch_harness_status(report.get('prNumber'))
+            if (
+                path.name != Path(CODEX_C04_REPORT_RELATIVE_PATH).name
+                or not codex_c04_profile_report_is_valid(
+                    report, current_status, path, current_epoch_status,
+                )
+                or not codex_c04_profile_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            source_ref = report_source_ref(path)
+            for tool_name in CODEX_C04_TOOL_NAMES:
+                sources.setdefault(tool_name, set()).add(source_ref)
             continue
         if report.get('evidenceKind') == CODEX_P07_EVIDENCE_KIND:
             current_status = codex_p07_profile_harness_status(report.get('prNumber'))

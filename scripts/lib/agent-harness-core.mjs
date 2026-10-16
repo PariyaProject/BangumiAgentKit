@@ -2458,6 +2458,16 @@ export function renderRunBody(state) {
   return `${renderControlBlock(RUN_MARKER, state)}\n\n## Outer Run\n\nRuntime state is edited in place. Polling creates no comments or body updates.`;
 }
 
+function formatListValue(value) {
+  if (Array.isArray(value)) return value.map(formatListValue).join(', ');
+  if (value && typeof value === 'object') {
+    return `{${Object.entries(value)
+      .map(([key, nested]) => `${key}: ${formatListValue(nested)}`)
+      .join('; ')}}`;
+  }
+  return String(value);
+}
+
 function list(items) {
   return items.length
     ? items
@@ -2465,7 +2475,7 @@ function list(items) {
           if (typeof item === 'string') return `- ${item}`;
           if (item && typeof item === 'object') {
             const summary = Object.entries(item)
-              .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+              .map(([key, value]) => `${key}: ${formatListValue(value)}`)
               .join('; ');
             return `- ${summary}`;
           }

@@ -120,6 +120,15 @@ test('A01 public matrix evidence remains direct-only and does not promote the sc
   const record = ledger.records.find(({ id }) => id === 'A01');
   assert.ok(record, 'A01 must remain in the canonical frontier');
   assert.equal(record.status, 'UNASSESSED');
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-c04-cohort-comparison-agent-mcp-matrix-contract-2026-10-16.md',
+    ),
+  );
+  assert.match(
+    record.next_action,
+    /C04 cohort-comparison matrix contract documents separate single-tool Agent\/MCP checks/u,
+  );
   const evidence = record.evidence?.direct_public_api_matrix_probe_2026_10_15;
   assert.ok(evidence, 'A01 must retain the bounded direct-public matrix observation');
   assert.ok(record.source_refs.includes(evidence.report));

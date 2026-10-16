@@ -20,6 +20,52 @@ const PROFILE = getAgentMcpProfile(
   'bangumi.get_person_activity',
   'fixed-c03-voice-pair-4765-17075-tv-36m-48r-16d-8rows-v1',
 );
+const C04_PROFILE = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
+
+test('C04 matrix profile binds its two exact read-only tools in order', () => {
+  assert.ok(C04_PROFILE);
+  assert.equal(C04_PROFILE.frontierId, 'A01');
+  assert.equal(C04_PROFILE.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.deepEqual(C04_PROFILE.toolNames, [
+    'bangumi.compare_subject_cohorts',
+    'bangumi.render_subject_cohort_comparison',
+  ]);
+  const expectedArguments = {
+    cohorts: [
+      {
+        label: 'Run95 C04 2025 winter original anime sample',
+        query: {
+          media: 'anime',
+          season: '2025-winter',
+          metaTags: ['原创'],
+          resultMode: 'all',
+        },
+      },
+      {
+        label: 'Run95 C04 2025 spring original anime sample',
+        query: {
+          media: 'anime',
+          season: '2025-spring',
+          metaTags: ['原创'],
+          resultMode: 'all',
+        },
+      },
+    ],
+    maxSubjects: 1,
+  };
+  assert.deepEqual(C04_PROFILE.calls, [
+    { toolName: 'bangumi.compare_subject_cohorts', arguments: expectedArguments },
+    { toolName: 'bangumi.render_subject_cohort_comparison', arguments: expectedArguments },
+  ]);
+  assert.equal(
+    getAgentMcpProfile('bangumi.compare_subject_cohorts', C04_PROFILE.argumentProfile),
+    C04_PROFILE,
+  );
+  assert.equal(
+    getAgentMcpProfile('bangumi.render_subject_cohort_comparison', C04_PROFILE.argumentProfile),
+    C04_PROFILE,
+  );
+});
 
 test('C03 profile registry is closed, immutable, and binds two exact calls', () => {
   assert.ok(PROFILE);
@@ -34,7 +80,7 @@ test('C03 profile registry is closed, immutable, and binds two exact calls', () 
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 8);
+  assert.equal(listAgentMcpProfiles().length, 9);
   const c01 = getAgentMcpProfileById('c01-rating-count-gap-v1');
   assert.ok(c01);
   assert.equal(c01.frontierId, 'C01');

@@ -238,10 +238,27 @@ test('frontier exhaustion rejects evidence that omits an actionable ledger recor
 test('Epoch human projection renders structured validation without object coercion', () => {
   const { epoch } = fixture();
   epoch.validation = [{ command: 'pnpm harness:test', status: 'PASS' }];
+  epoch.non_scope = [
+    {
+      description: 'Cohort scenario claims remain unanswered.',
+      mapping: { kind: 'frontier', id: 'A01' },
+    },
+    {
+      description: 'Authenticated behavior is outside this Epoch.',
+      mapping: { kind: 'boundary', id: 'PB-AUTH-TRUST' },
+    },
+    {
+      description: 'No public API matrix credit is produced.',
+      mapping: { kind: 'non_product', reason: 'Agent/MCP matrix-only profile.' },
+    },
+  ];
   const body = renderEpochBody(epoch);
   assert.doesNotMatch(body, /\[object Object\]/u);
   assert.match(body, /pnpm harness:test/u);
   assert.match(body, /PASS/u);
+  assert.match(body, /mapping: \{kind: frontier; id: A01\}/u);
+  assert.match(body, /mapping: \{kind: boundary; id: PB-AUTH-TRUST\}/u);
+  assert.match(body, /mapping: \{kind: non_product; reason: Agent\/MCP matrix-only profile\.\}/u);
 });
 
 test('outer review budget reserves three Product launches and one independent closure launch', () => {

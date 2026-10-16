@@ -2830,10 +2830,11 @@
         "tests/unit/fresh-public-api-matrix-five-post-v2-scope.test.ts",
         "tests/unit/fresh-public-request-search-fetch-v2.test.ts",
         "docs/live-probes/public-tools-2026-10-16-010501333-13723.json",
+        "docs/research/run95-c04-cohort-comparison-agent-mcp-matrix-contract-2026-10-16.md",
         "scripts/smoke-fresh-public-cohort-four-v2-20261016.ts",
         "scripts/lib/fresh-public-cohort-four-v2-scope.ts"
       ],
-      "next_action": "Keep A01 UNASSESSED. The 2026-10-16 contract-valid all-mode public report covers aggregate_subject_cohort, compare_subject_cohorts, render_subject_cohort_aggregation, and render_subject_cohort_comparison for their corresponding public-matrix rows; it does not answer the cohort-analysis scenario or grant Agent/MCP credit. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim.",
+      "next_action": "Keep A01 UNASSESSED. The 2026-10-16 contract-valid all-mode public report covers aggregate_subject_cohort, compare_subject_cohorts, render_subject_cohort_aggregation, and render_subject_cohort_comparison for their corresponding public-matrix rows; it does not answer the cohort-analysis scenario or grant Agent/MCP credit. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim. C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks for compare_subject_cohorts and render_subject_cohort_comparison; a valid signed report can credit only those tool rows and provides no A01 scenario evidence.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {

@@ -12,11 +12,31 @@ export function canonicalJson(value) {
 }
 
 export function filterAllowedTools(tools, targetTool) {
-  const matches = tools.filter((tool) =>
-    tool?.name === targetTool && tool?.auth === 'none' && tool?.risk === 'read');
-  if (matches.length !== 1) {
-    throw new Error('The one-tool profile requires exactly one catalogued auth=none, risk=read tool.');
+  const targetTools = Array.isArray(targetTool) ? targetTool : [targetTool];
+  const singleTool = targetTools.length === 1;
+  if (
+    !Array.isArray(tools) ||
+    targetTools.length < 1 ||
+    targetTools.some((name) => typeof name !== 'string') ||
+    new Set(targetTools).size !== targetTools.length
+  ) {
+    throw new Error('A tool profile requires a nonempty unique catalog allowlist.');
   }
+  const matches = targetTools.map((name) => {
+    const entries = tools.filter((tool) => tool?.name === name);
+    if (
+      entries.length !== 1 ||
+      entries[0]?.auth !== 'none' ||
+      entries[0]?.risk !== 'read'
+    ) {
+      throw new Error(
+        singleTool
+          ? 'The one-tool profile requires exactly one catalogued auth=none, risk=read tool.'
+          : 'The multi-tool profile requires each exact catalogued auth=none, risk=read tool once.',
+      );
+    }
+    return entries[0];
+  });
   return matches;
 }
 
@@ -36,14 +56,39 @@ export function authorizeToolCall({ name, args, expectedTool, expectedArguments,
   return { allowed: true, code: 'ALLOWLISTED_FIXED_PUBLIC_QUERY' };
 }
 
-export function authorizeToolCallSequence({ name, args, expectedTool, expectedArgumentSequence, completedCalls }) {
-  if (name !== expectedTool) return { allowed: false, code: 'TOOL_NOT_ALLOWLISTED' };
-  if (!Array.isArray(expectedArgumentSequence) || expectedArgumentSequence.length < 1 ||
-      !Number.isSafeInteger(completedCalls) || completedCalls < 0) {
+export function authorizeToolCallSequence({
+  name,
+  args,
+  expectedTool,
+  expectedToolSequence,
+  expectedArgumentSequence,
+  completedCalls,
+}) {
+  if (
+    !Array.isArray(expectedArgumentSequence) ||
+    expectedArgumentSequence.length < 1 ||
+    expectedArgumentSequence.length > 8 ||
+    !Number.isSafeInteger(completedCalls) ||
+    completedCalls < 0 ||
+    (expectedToolSequence !== undefined &&
+      (!Array.isArray(expectedToolSequence) ||
+        expectedToolSequence.length !== expectedArgumentSequence.length ||
+        expectedToolSequence.some(
+          (toolName) => typeof toolName !== 'string' || !/^bangumi\.[a-z][a-z0-9_]*$/u.test(toolName),
+        )))
+  ) {
     return { allowed: false, code: 'PROFILE_SEQUENCE_INVALID' };
+  }
+  const allowedToolNames = expectedToolSequence ?? [expectedTool];
+  if (!allowedToolNames.includes(name)) {
+    return { allowed: false, code: 'TOOL_NOT_ALLOWLISTED' };
   }
   if (completedCalls >= expectedArgumentSequence.length) {
     return { allowed: false, code: 'CALL_LIMIT_REACHED' };
+  }
+  const expectedToolName = expectedToolSequence?.[completedCalls] ?? expectedTool;
+  if (typeof expectedToolName !== 'string' || name !== expectedToolName) {
+    return { allowed: false, code: 'TOOL_NOT_ALLOWLISTED' };
   }
   if (canonicalJson(args || {}) !== canonicalJson(expectedArgumentSequence[completedCalls])) {
     return { allowed: false, code: 'ARGUMENTS_DO_NOT_MATCH_PROFILE_SEQUENCE' };

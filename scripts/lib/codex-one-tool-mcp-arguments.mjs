@@ -8,6 +8,10 @@ import { canonicalJson } from './codex-one-tool-evidence.mjs';
 import { assertP06RenderPersonProfileOfflineProfile } from './p06-render-person-profile-offline-fixture.mjs';
 import { assertP02PersonProfileOfflineProfile } from './p02-person-profile-offline-fixture.mjs';
 import { assertR04SeriesWatchOrderOfflineProfile } from './r04-series-watch-order-offline-fixture.mjs';
+import {
+  assertC04CohortComparisonPublicProfile,
+  C04_COHORT_COMPARISON_PROFILE_ID,
+} from './c04-cohort-comparison-public-profile.mjs';
 
 export function parseCodexOneToolMcpArguments(argv) {
   const values = new Map();
@@ -22,6 +26,7 @@ export function parseCodexOneToolMcpArguments(argv) {
         '--candidate-sha',
         '--bundle-sha256',
         '--network-mode',
+        '--profile-call-index',
       ].includes(key)
     ) {
       throw new Error(`Unknown argument: ${key}`);
@@ -37,6 +42,7 @@ export function parseCodexOneToolMcpArguments(argv) {
   const candidateSha = values.get('--candidate-sha');
   const bundleSha256 = values.get('--bundle-sha256');
   const networkMode = values.get('--network-mode');
+  const profileCallIndexValue = values.get('--profile-call-index');
   if (!summaryPath || !candidateSha || !bundleSha256) {
     throw new Error('--summary-file, --candidate-sha, and --bundle-sha256 are required.');
   }
@@ -51,9 +57,39 @@ export function parseCodexOneToolMcpArguments(argv) {
     }
     const profile = getAgentMcpProfileById(profileId);
     if (!profile) throw new Error('Unknown closed Agent/MCP profile id.');
+    if (profile.id === C04_COHORT_COMPARISON_PROFILE_ID) {
+      if (!/^(0|1)$/u.test(profileCallIndexValue ?? '')) {
+        throw new Error('C04 requires a profile-call-index of 0 or 1 for a separate one-tool run.');
+      }
+      const profileCallIndex = Number(profileCallIndexValue);
+      const call = profile.calls[profileCallIndex];
+      if (!call) throw new Error('C04 profile-call-index is outside the registered calls.');
+      let registeredNetworkMode;
+      if (!assertC04CohortComparisonPublicProfile(profile)) {
+        throw new Error('Registered C04 profile does not match its fixed public contract.');
+      }
+      registeredNetworkMode = profile.networkMode;
+      return {
+        profile,
+        profileCallIndex,
+        toolName: call.toolName,
+        toolNames: [call.toolName],
+        expectedToolSequence: [call.toolName],
+        expectedArgumentSequence: [call.arguments],
+        expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+        summaryPath,
+        candidateSha,
+        bundleSha256,
+        networkMode: registeredNetworkMode,
+      };
+    }
+    if (profileCallIndexValue !== undefined) {
+      throw new Error('--profile-call-index is reserved for the registered C04 profile.');
+    }
     let registeredNetworkMode;
     if (profile.networkMode !== undefined) {
       const approved =
+        assertC04CohortComparisonPublicProfile(profile) ||
         assertP06RenderPersonProfileOfflineProfile(profile) ||
         assertP02PersonProfileOfflineProfile(profile) ||
         assertR04SeriesWatchOrderOfflineProfile(profile);
@@ -65,6 +101,8 @@ export function parseCodexOneToolMcpArguments(argv) {
     return {
       profile,
       toolName: profile.toolName,
+      toolNames: profile.toolNames ?? [profile.toolName],
+      expectedToolSequence: profile.calls.map((call) => call.toolName),
       expectedArgumentSequence: profile.calls.map((call) => call.arguments),
       expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
       summaryPath,
@@ -74,6 +112,9 @@ export function parseCodexOneToolMcpArguments(argv) {
     };
   }
 
+  if (profileCallIndexValue !== undefined) {
+    throw new Error('--profile-call-index is reserved for the registered C04 profile.');
+  }
   if (!toolName || !/^bangumi\.[a-z][a-z0-9_]*$/u.test(toolName)) {
     throw new Error('A single exact Bangumi tool name is required.');
   }
@@ -93,6 +134,8 @@ export function parseCodexOneToolMcpArguments(argv) {
     profile: null,
     toolName,
     expectedArguments,
+    toolNames: [toolName],
+    expectedToolSequence: [toolName],
     expectedArgumentSequence: null,
     expectedArgumentsSha256: createHash('sha256')
       .update(canonicalJson(expectedArguments), 'utf8')
