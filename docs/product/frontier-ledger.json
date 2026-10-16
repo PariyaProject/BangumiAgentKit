@@ -3852,11 +3852,36 @@
       "kind": "opportunity",
       "user_question": "Can BangumiAgentKit deliver the bounded user value described by Calendar / Schedule Intelligence?",
       "lane": "recorded_product_opportunities",
-      "status": "PARTIAL",
-      "source_refs": ["docs/product/opportunity-log.md"],
-      "next_action": "Reconcile the opportunity against shipped capabilities and assess remaining user value.",
+      "status": "DELIVERED",
+      "source_refs": [
+        "docs/product/opportunity-log.md",
+        "packages/bangumi-core/src/services/calendar-service.ts",
+        "packages/tools/src/definitions/read-tools.ts",
+        "packages/tools/src/definitions/render-presentation-tools.ts",
+        "tests/unit/services.test.ts",
+        "docs/product/reviews/PR-7E/freeze-record.md",
+        "docs/product/reviews/PR-7E/product-review.md",
+        "docs/product/reviews/PR-7E/code-review.md",
+        "docs/product/cycles/PR-7E-calendar-schedule-intelligence.md",
+        "docs/research/op006-calendar-schedule-delivery-reconciliation-2026-10-17.md"
+      ],
+      "next_action": "Monitor the official legacy /calendar contract and coverage semantics. Keep OP-006 bounded to weekday/first-air-date intelligence; do not infer exact episode airing times, timezone, personal collection state, or completeness beyond observed source coverage. Reopen only if the official source contract, implementation, or a named bounded user journey changes.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered the bounded day-level official /calendar experience frozen in PR-7E, with weekday/first-air-date semantics, explicit coverage and partial/unavailable states, and bounded rendering. Exact episode airing times, timezone, personal collection state, and exhaustive source coverage remain unsupported.",
+      "evidence": {
+        "capabilities": [
+          "bangumi.get_calendar_intelligence",
+          "bangumi.render_calendar"
+        ],
+        "tests": [
+          "tests/unit/services.test.ts",
+          "tests/semantic/semantic-tools.test.ts",
+          "tests/render/render-cards.test.ts",
+          "tests/standalone/calendar-command.test.ts",
+          "tests/standalone/calendar-presenter.test.ts"
+        ]
+      }
     },
     {
       "id": "OP-007",
