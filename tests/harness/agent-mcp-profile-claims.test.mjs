@@ -34,7 +34,7 @@ test('C03 profile registry is closed, immutable, and binds two exact calls', () 
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 7);
+  assert.equal(listAgentMcpProfiles().length, 8);
   const c01 = getAgentMcpProfileById('c01-rating-count-gap-v1');
   assert.ok(c01);
   assert.equal(c01.frontierId, 'C01');
@@ -61,6 +61,14 @@ test('C03 profile registry is closed, immutable, and binds two exact calls', () 
   assert.equal(p03.frontierId, 'P03');
   assert.equal(p03.calls.length, 1);
   assert.equal(getAgentMcpProfile('bangumi.get_person_profile', p03.argumentProfile), p03);
+  const p07 = getAgentMcpProfileById('p07-person-season-distribution-agent-mcp-v1');
+  assert.ok(p07);
+  assert.equal(p07.frontierId, 'P07');
+  assert.equal(p07.calls.length, 1);
+  assert.equal(p07.calls[0].arguments.personId, 3474);
+  assert.equal(p07.calls[0].arguments.kind, 'staff');
+  assert.equal(p07.calls[0].arguments.media, 'anime');
+  assert.equal(p07.calls[0].arguments.maxRows, 8);
   const r05 = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
   assert.ok(r05);
   assert.equal(r05.frontierId, 'R05');

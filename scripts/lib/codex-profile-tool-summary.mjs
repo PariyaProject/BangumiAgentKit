@@ -3,6 +3,10 @@ import {
   summarizeP03PersonProfileToolResult,
 } from './p03-person-name-cn-evidence.mjs';
 import {
+  P07_PROFILE_ID,
+  summarizeP07PersonActivityToolResult,
+} from './p07-person-season-evidence.mjs';
+import {
   R05_PROFILE_ID,
   summarizeR05SubjectOverlapToolResult,
 } from './r05-shared-person-overlap-evidence.mjs';
@@ -67,6 +71,9 @@ export function summarizeProfileToolResult(
   }
   if (profileId === P03_PROFILE_ID) {
     return summarizeP03PersonProfileToolResult(result, expectedArguments);
+  }
+  if (profileId === P07_PROFILE_ID) {
+    return summarizeP07PersonActivityToolResult(result, expectedArguments);
   }
   if (profileId === R05_PROFILE_ID) {
     return summarizeR05SubjectOverlapToolResult(result, expectedArguments);

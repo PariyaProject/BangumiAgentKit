@@ -8669,5 +8669,57 @@ class C03ReportAcceptanceTests(unittest.TestCase):
         self.assertFalse(self.validate_report(report))
 
 
+class P07ProfileEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.original_root = GENERATOR.ROOT
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='p07-profile-evidence-test-')
+        GENERATOR.ROOT = Path(self.temp_dir.name)
+        self.frontier_path = GENERATOR.ROOT / 'docs/product/frontier-ledger.json'
+        self.frontier_path.parent.mkdir(parents=True, exist_ok=True)
+        self.frontier = {
+            'records': [{
+                'id': 'P07',
+                'status': 'PARTIAL',
+                'source_refs': [
+                    GENERATOR.CODEX_P07_SELECTION_EVIDENCE_RELATIVE_PATH,
+                    GENERATOR.CODEX_P07_REPORT_RELATIVE_PATH,
+                ],
+            }],
+        }
+        self.frontier_path.write_text(json.dumps(self.frontier), encoding='utf-8')
+
+    def tearDown(self):
+        GENERATOR.ROOT = self.original_root
+        self.temp_dir.cleanup()
+
+    def test_profile_is_one_fixed_anonymous_public_quarter_sample(self):
+        profile = GENERATOR.CODEX_P07_PROFILE
+
+        self.assertEqual(profile['id'], 'p07-person-season-distribution-agent-mcp-v1')
+        self.assertEqual(profile['frontierId'], 'P07')
+        self.assertEqual(profile['model'], 'gpt-6-luna')
+        self.assertEqual(profile['reasoningEffort'], 'max')
+        self.assertEqual(len(profile['calls']), 1)
+        self.assertEqual(profile['calls'][0]['arguments'], {
+            'personId': 3474,
+            'kind': 'staff',
+            'media': 'anime',
+            'windowMonths': 36,
+            'maxRelations': 48,
+            'maxSubjectDetails': 16,
+            'maxRows': 8,
+        })
+
+    def test_p07_scenario_credit_requires_partial_status_and_report_reference(self):
+        self.assertTrue(GENERATOR.codex_p07_frontier_is_partial(require_report_ref=True))
+        self.frontier['records'][0]['status'] = 'UNASSESSED'
+        self.frontier_path.write_text(json.dumps(self.frontier), encoding='utf-8')
+        self.assertFalse(GENERATOR.codex_p07_frontier_is_partial(require_report_ref=True))
+        self.frontier['records'][0]['status'] = 'PARTIAL'
+        self.frontier['records'][0]['source_refs'].remove(GENERATOR.CODEX_P07_REPORT_RELATIVE_PATH)
+        self.frontier_path.write_text(json.dumps(self.frontier), encoding='utf-8')
+        self.assertFalse(GENERATOR.codex_p07_frontier_is_partial(require_report_ref=True))
+
+
 if __name__ == '__main__':
     unittest.main()
