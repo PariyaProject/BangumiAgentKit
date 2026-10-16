@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-16T02:57:56Z",
+  "updated_at": "2026-10-16T16:11:13Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2868,9 +2868,10 @@
         "scripts/acceptance/run-a01-render-cohort-aggregation-agent-mcp.mjs",
         "scripts/acceptance/write-a01-render-cohort-aggregation-agent-mcp-report.mjs",
         "scripts/acceptance/validate-a01-render-cohort-aggregation-agent-mcp-report.mjs",
-        "tests/harness/a01-render-cohort-aggregation-agent-mcp.test.mjs"
+        "tests/harness/a01-render-cohort-aggregation-agent-mcp.test.mjs",
+        "tests/harness/frontier-ledger-data.test.mjs"
       ],
-      "next_action": "Keep A01 UNASSESSED. The 2026-10-16 contract-valid all-mode public report covers aggregate_subject_cohort, compare_subject_cohorts, render_subject_cohort_aggregation, and render_subject_cohort_comparison for their corresponding public-matrix rows; it does not answer the cohort-analysis scenario. The C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks; the A01 render-aggregation profile is another independent matrix-only check. A valid signed A01 report can credit only the bangumi.render_subject_cohort_aggregation matrix cell. This A01 profile uses a strict synthetic offline fixture and cannot provide public API or scenario evidence. Keep one-shot claim status and authorization in the active Harness Run/Epoch control state only; never retry a consumed claim. A valid report still does not assess the cohort-analysis question.",
+      "next_action": "Keep A01 UNASSESSED. The exact 2026-10-16 public report for aggregate_subject_cohort, compare_subject_cohorts, render_subject_cohort_aggregation, and render_subject_cohort_comparison supports only their corresponding public-matrix rows, not the cohort-analysis scenario. The C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks. For the A01 render-aggregation profile, run the one-shot only after its unique Epoch is an open active PR with a clean exact Candidate, current Base, seven-check CI, and same-identity Luna Max PASS; keep the PR active until a signed report or terminal no-retry disposition is recorded. A valid report may credit only bangumi.render_subject_cohort_aggregation; no public or scenario evidence is added. Keep one-shot claim status and authorization in the active Harness Run/Epoch control state only; never retry a consumed claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2905,6 +2906,7 @@
           "tests/unit/a01-aggregate-subject-cohort-answer-check.test.ts",
           "tests/unit/a01-aggregate-codex-agent-mcp-runner.test.ts",
           "tests/harness/a01-render-cohort-aggregation-agent-mcp.test.mjs",
+          "tests/harness/frontier-ledger-data.test.mjs",
           "scripts/test_acceptance_evidence.py"
         ],
         "acceptance_limit": "The consumed compare_subject_cohorts A01 claim remains INCONCLUSIVE and must never be retried. The distinct aggregate_subject_cohort one-shot was invoked once after exact-Candidate CI and normal Luna Max PASS, but is INCONCLUSIVE because the target call returned DONE/SUCCESS without structured result readback; its sanitized report records no raw answer and does not count as accepted tool evidence. The report is retained and the attempt is no-retry. An offline small-result regression reproduced the presenter branch that omits structuredContent below 3600 UTF-8 bytes; the fix preserves structuredContent. The A01 render-cohort-aggregation profile, if accepted, covers only that offline Agent/MCP matrix cell and provides no public API or A01 scenario evidence. Keep A01 UNASSESSED. Neither aggregate sample resolves the original comparative question.",
