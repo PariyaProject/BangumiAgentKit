@@ -106,6 +106,7 @@ const P03_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
 const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const P06_PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
 const P02_PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
+const R04_PROFILE = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v1');
 const mandatoryChecks = [
   'harness-control',
   'sqlite-default',
@@ -446,6 +447,41 @@ function candidateEvidence(environment, overrides = {}) {
     }),
   );
   return file;
+}
+
+function r04CandidateCheckEnvironment() {
+  const { run, epoch } = controlFixture();
+  const branch = 'codex/epoch-run95-r04-series-watch-order-offline-matrix-20261016';
+  const ciRunId = '38825409269';
+  run.active_epoch_pr = 42;
+  epoch.epoch_id = R04_PROFILE.epochId;
+  epoch.branch = branch;
+  epoch.pr_number = 42;
+  epoch.advances_frontier_ids = [];
+  const checks = mandatoryChecks.map((name, index) => ({
+    name,
+    status: 'COMPLETED',
+    conclusion: 'SUCCESS',
+    detailsUrl:
+      'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/' +
+      ciRunId +
+      '/job/' +
+      String(116731612067 + index),
+  }));
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch,
+    featureBranch: branch,
+    featureHeadSha: sha('b'),
+    baseSha: sha('a'),
+    draft: true,
+    checks,
+  });
+  return {
+    environment,
+    ciRunUrl: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/' + ciRunId,
+  };
 }
 
 function reconciledPostPassRefreshFixture() {
@@ -1409,6 +1445,39 @@ test('CLI Candidate gate makes the Draft PR ready and refreshes its human-readab
           call.args.includes('PATCH'),
       ),
     );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Candidate gate requires exact Actions-run evidence for R04 profiles', () => {
+  const { environment, ciRunUrl } = r04CandidateCheckEnvironment();
+  try {
+    const missingRunUrl = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment),
+    ]);
+    assert.equal(missingRunUrl.status, 2);
+    assert.match(missingRunUrl.stderr, /^CANDIDATE_EXACT_CI_RUN_EVIDENCE_REQUIRED:/u);
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).state,
+      'IMPLEMENTING',
+    );
+
+    const exactRunUrl = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, { ci: { url: ciRunUrl } }),
+    ]);
+    assert.equal(exactRunUrl.status, 0, exactRunUrl.stderr);
+    const epoch = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(epoch.state, 'REVIEW_READY');
+    assert.equal(epoch.ci.url, ciRunUrl);
   } finally {
     environment.cleanup();
   }

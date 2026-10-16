@@ -3682,6 +3682,10 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
     'scripts/agent-harness.mjs': (
         "case 'r04-series-watch-order-offline-agent-mcp-v1'",
         'validateR04SanitizedReportFile(',
+        'CANDIDATE_EXACT_CI_RUN_EVIDENCE_REQUIRED',
+    ),
+    'tests/harness/agent-harness-cli.test.mjs': (
+        'CLI Candidate gate requires exact Actions-run evidence for R04 profiles',
     ),
     'docs/research/run95-r04-series-watch-order-offline-matrix-contract-2026-10-16.md': (
         'R04 remains `UNASSESSED`',

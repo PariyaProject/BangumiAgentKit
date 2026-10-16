@@ -1505,10 +1505,26 @@ function commandCandidateCheck(options) {
   epoch.adversarial_preflight = evidence.adversarial_preflight;
   epoch.corrective_closure = evidence.corrective_closure ?? [];
   const checksOk = mandatoryChecksSuccessful(epochResult.view.statusCheckRollup);
+  const ciUrl = evidence.ci?.url ?? epochResult.view.url;
+  const exactCiProfiles = listAgentMcpProfiles().filter(
+    (profile) =>
+      profile.epochId === epoch.epoch_id && profileRequiresExactCiRunEvidence(profile.id),
+  );
+  if (
+    checksOk &&
+    exactCiProfiles.length > 0 &&
+    !deriveP06CiRunEvidence(ciUrl, epochResult.view.statusCheckRollup)
+  ) {
+    throw new HarnessInvariantError(
+      'CANDIDATE_EXACT_CI_RUN_EVIDENCE_REQUIRED',
+      'This one-shot profile Candidate must name the exact GitHub Actions run URL shared by all seven successful checks.',
+      { epochId: epoch.epoch_id, profileIds: exactCiProfiles.map((profile) => profile.id) },
+    );
+  }
   epoch.ci = {
     sha: epochResult.view.headRefOid,
     status: checksOk ? 'SUCCESS' : 'FAILED_OR_PENDING',
-    url: evidence.ci?.url ?? epochResult.view.url,
+    url: ciUrl,
   };
   if (epoch.base_sha !== baseSha) {
     if (!isAncestor(baseSha, head)) {
