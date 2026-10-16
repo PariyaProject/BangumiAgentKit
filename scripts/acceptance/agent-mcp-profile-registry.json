@@ -264,6 +264,37 @@
       ]
     },
     {
+      "id": "r02-positive-direct-relations-agent-mcp-v1",
+      "frontierId": "R02",
+      "epochId": "run95-r02-positive-direct-relations-agent-mcp-20261016",
+      "toolName": "bangumi.get_subject_relations",
+      "argumentProfile": "fixed-r02-positive-direct-relations-4923-315-1428-v1",
+      "claimLabelName": "harness-r95-r02-positive-direct-relations-claimed",
+      "reportPath": "docs/live-probes/r02-positive-direct-relations-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-r02-positive-direct-relations-agent-mcp-source-contract-2026-10-16.md",
+      "evidenceKind": "codex_cli_r02_positive_direct_relations_agent_mcp",
+      "answerCheckMethod": "r02-positive-direct-relations-observed-rows-only-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-r02-positive-direct-relations-public-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 2048,
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": { "subjectId": 4923, "includeEvidence": true }
+        },
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": { "subjectId": 315, "includeEvidence": true }
+        },
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": { "subjectId": 1428, "includeEvidence": true }
+        }
+      ]
+    },
+    {
       "id": "c04-cohort-comparison-agent-mcp-matrix-v1",
       "frontierId": "A01",
       "epochId": "run95-c04-cohort-comparison-agent-mcp-matrix-20261016",

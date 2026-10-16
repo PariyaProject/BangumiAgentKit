@@ -59,6 +59,12 @@ import {
   C04_COHORT_COMPARISON_PROFILE_ID,
   C04_COHORT_COMPARISON_NETWORK_MODE,
 } from '../../scripts/lib/c04-cohort-comparison-public-profile.mjs';
+import {
+  assertR02PositiveDirectRelationsProfile,
+  createR02PositiveDirectRelationsPublicFetch,
+  R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE,
+  R02_POSITIVE_DIRECT_RELATIONS_PROFILE_ID,
+} from '../../scripts/lib/r02-positive-direct-relations-profile.mjs';
 import { inspectC07PngArtifact } from '../../scripts/lib/c07-png-artifact-validation.mjs';
 import { buildG06PrivacySummary } from '../../scripts/lib/g06-privacy-summary.mjs';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
@@ -197,6 +203,9 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE) {
     assertR01RelationsOfflineFixture(config.profile);
   }
+  if (config.networkMode === R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE) {
+    assertR02PositiveDirectRelationsProfile(config.profile);
+  }
   const serverInstanceId = randomUUID();
   for (const key of Object.keys(process.env)) {
     if (/(?:BANGUMI|BGM_|OAUTH|TOKEN|SECRET|CREDENTIAL|API[_-]?KEY)/iu.test(key)) {
@@ -234,6 +243,10 @@ async function main(argv = process.argv.slice(2)) {
     config.networkMode === C04_COHORT_COMPARISON_NETWORK_MODE
       ? createC04CohortComparisonPublicFetch()
       : null;
+  const r02PublicFetch =
+    config.networkMode === R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE
+      ? createR02PositiveDirectRelationsPublicFetch()
+      : null;
   const offlineFixture =
     config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
       ? createC07CohortRenderOfflineFixtureFetch()
@@ -260,7 +273,9 @@ async function main(argv = process.argv.slice(2)) {
       ? { fetchFn: offlineFixture.fetchFn }
       : c04PublicFetch
         ? { fetchFn: c04PublicFetch.fetchFn }
-        : {}),
+        : r02PublicFetch
+          ? { fetchFn: r02PublicFetch.fetchFn }
+          : {}),
   });
   const dependencies = createRuntimeDependenciesWithStorage(storage, {
     publicHttpClient,
@@ -305,7 +320,8 @@ async function main(argv = process.argv.slice(2)) {
     ...(config.profile
       ? {
           serverProfile: config.networkMode
-            ? config.networkMode === C04_COHORT_COMPARISON_NETWORK_MODE
+            ? config.networkMode === C04_COHORT_COMPARISON_NETWORK_MODE ||
+              config.networkMode === R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE
               ? 'closed-profile-sequence-anonymous-public-v1'
               : 'closed-profile-sequence-anonymous-offline-v1'
             : 'closed-profile-sequence-anonymous-public-v1',
@@ -344,12 +360,16 @@ async function main(argv = process.argv.slice(2)) {
     ...(offlineFixture ? { offlineFixture: offlineFixture.snapshot() } : {}),
     ...(p06AssetGuard ? { offlineAssetBoundary: p06AssetGuard.snapshot() } : {}),
     ...(c04PublicFetch ? { publicRequestScope: c04PublicFetch.snapshot() } : {}),
+    ...(r02PublicFetch ? { publicRequestScope: r02PublicFetch.snapshot() } : {}),
     privacy: buildG06PrivacySummary(),
   };
+  const publicRequestFetch = c04PublicFetch || r02PublicFetch;
   const persistSummary = () =>
     writeSanitizedSummary(
       config.summaryPath,
-      c04PublicFetch ? { ...summary, publicRequestScope: c04PublicFetch.snapshot() } : summary,
+      publicRequestFetch
+        ? { ...summary, publicRequestScope: publicRequestFetch.snapshot() }
+        : summary,
       serverInstanceId,
     );
   persistSummary();
@@ -537,6 +557,26 @@ async function main(argv = process.argv.slice(2)) {
             structuredContent: safeProjection,
           };
         }
+        if (config.profile?.id === R02_POSITIVE_DIRECT_RELATIONS_PROFILE_ID) {
+          const safeProjection = summary.results[sequenceIndex]?.resultSummary;
+          if (!safeProjection) {
+            summary = {
+              ...summary,
+              serverResultStatus: 'ERROR',
+              results: [{ sequenceIndex, status: 'ERROR', errorCode: 'R02_SUMMARY_UNAVAILABLE' }],
+            };
+            persistSummary();
+            return {
+              content: [{ type: 'text', text: 'R02 bounded relation summary is unavailable.' }],
+              isError: true,
+            };
+          }
+          const text = JSON.stringify(safeProjection);
+          return {
+            content: [{ type: 'text', text }],
+            structuredContent: safeProjection,
+          };
+        }
         const toolPresentation = presentMcpToolResult(expectedToolName, result);
         return {
           content: [{ type: 'text', text: toolPresentation.text }],
@@ -557,6 +597,9 @@ async function main(argv = process.argv.slice(2)) {
         }
         if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
         if (p06AssetGuard) summary = { ...summary, offlineAssetBoundary: p06AssetGuard.snapshot() };
+        if (publicRequestFetch) {
+          summary = { ...summary, publicRequestScope: publicRequestFetch.snapshot() };
+        }
         persistSummary();
         return {
           content: [

@@ -9093,5 +9093,178 @@ class P07ProfileEvidenceTests(unittest.TestCase):
         self.assertFalse(GENERATOR.codex_p07_frontier_is_partial(require_report_ref=True))
 
 
+class R02PositiveDirectRelationsProfileReportValidationTests(unittest.TestCase):
+    def setUp(self):
+        self.original_root = GENERATOR.ROOT
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='r02-positive-profile-evidence-test-')
+        GENERATOR.ROOT = Path(self.temp_dir.name)
+        self.report_path = GENERATOR.ROOT / GENERATOR.CODEX_R02_REPORT_RELATIVE_PATH
+        self.report_path.parent.mkdir(parents=True, exist_ok=True)
+        self.selection_path = GENERATOR.ROOT / GENERATOR.CODEX_R02_SELECTION_EVIDENCE_RELATIVE_PATH
+        self.selection_path.parent.mkdir(parents=True, exist_ok=True)
+        self.selection_path.write_text('R02 remains partial; direct positive sample only.\n', encoding='utf-8')
+        self.frontier_path = GENERATOR.ROOT / 'docs/product/frontier-ledger.json'
+        self.frontier_path.parent.mkdir(parents=True, exist_ok=True)
+        self.frontier_path.write_text(json.dumps({
+            'records': [{
+                'id': 'R02', 'status': 'PARTIAL',
+                'source_refs': [
+                    GENERATOR.CODEX_R02_SELECTION_EVIDENCE_RELATIVE_PATH,
+                    GENERATOR.CODEX_R02_REPORT_RELATIVE_PATH,
+                ],
+            }],
+        }), encoding='utf-8')
+        self.catalog_path = GENERATOR.ROOT / 'docs/tool-catalog.json'
+        self.catalog_path.parent.mkdir(parents=True, exist_ok=True)
+        self.catalog = [{
+            'name': GENERATOR.CODEX_R02_TOOL_NAME,
+            'auth': 'none',
+            'risk': 'read',
+            'description': 'Bounded direct relation sample.',
+            'inputSchema': {'type': 'object', 'required': ['subjectId']},
+        }]
+        self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
+        self.report = self.build_report()
+
+    def tearDown(self):
+        GENERATOR.ROOT = self.original_root
+        self.temp_dir.cleanup()
+
+    def build_report(self):
+        catalog_bytes = self.catalog_path.read_bytes()
+        selection_bytes = self.selection_path.read_bytes()
+        tool = self.catalog[0]
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': GENERATOR.CODEX_R02_EVIDENCE_KIND,
+            'runNumber': 95,
+            'frontierId': 'R02',
+            'scenarioId': None,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+            'epochId': GENERATOR.CODEX_R02_EPOCH_ID,
+            'profileId': GENERATOR.CODEX_R02_PROFILE_ID,
+            'profile': 'codex-luna-max-public-agent-mcp-matrix-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
+            'codexCliVersion': '0.163.0',
+            'observedAt': '2026-10-16T05:00:00.000Z',
+            'sourceRevision': 'a' * 40,
+            'baseSha': 'b' * 40,
+            'ciSha': 'a' * 40,
+            'ciStatus': 'SUCCESS',
+            'ciRunId': '38812509760',
+            'ciChecks': [
+                {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+                for name in GENERATOR.CODEX_R02_REQUIRED_CI_CHECKS
+            ],
+            'prNumber': 222,
+            'claimId': 'profile-run-95-pr-222-aaaaaaaaaaaa-1792100000000',
+            'mcpBundleSha256': 'c' * 64,
+            'registrySha256': GENERATOR.CODEX_R02_PROFILE_REGISTRY_SHA256,
+            'selectionEvidenceSha256': hashlib.sha256(selection_bytes).hexdigest(),
+            'toolName': GENERATOR.CODEX_R02_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_R02_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_R02_EXPECTED_ARGUMENTS_SHA256,
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode()).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': [GENERATOR.CODEX_R02_TOOL_NAME],
+            'serverToolCount': 1,
+            'networkMode': GENERATOR.CODEX_R02_NETWORK_MODE,
+            'mcpServerNames': [GENERATOR.CODEX_R02_SERVER_ID],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 3,
+            'codexErrorItemCount': 2,
+            'blockedWebSearchErrorItemCount': 2,
+            'unexpectedCodexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 3,
+            'deniedCallCount': 0,
+            'answerCheckMethod': GENERATOR.CODEX_R02_ANSWER_CHECK_METHOD,
+            'answerSha256': hashlib.sha256(b'R02_POSITIVE_DIRECT_RELATIONS_READ').hexdigest(),
+            'answerUtf8Bytes': len(b'R02_POSITIVE_DIRECT_RELATIONS_READ'),
+            'answerChecks': {key: True for key in GENERATOR.CODEX_R02_ANSWER_CHECK_FIELDS},
+            'resultSummary': GENERATOR.CODEX_R02_RESULT_SUMMARIES,
+            'publicRequestScope': GENERATOR.CODEX_R02_PUBLIC_REQUEST_SCOPE,
+            'networkBoundary': GENERATOR.CODEX_R02_NETWORK_BOUNDARY,
+            'privacy': GENERATOR.CODEX_R02_PRIVACY,
+            'runnerReceipt': {
+                'schemaVersion': 1,
+                'kind': 'r02-positive-direct-relations-agent-mcp-runner-receipt-v1',
+                'publicKeyBase64': 'AQ==',
+                'publicKeySha256': 'd' * 64,
+                'payload': {field: None for field in GENERATOR.CODEX_R02_RECEIPT_PAYLOAD_FIELDS},
+                'signature': 'AA==',
+            },
+        }
+
+    def validate_report(self, report):
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        report_bytes = self.report_path.read_bytes()
+
+        def validate_embedded_report(args, **kwargs):
+            payload = json.loads(kwargs['input'])
+            embedded = base64.b64decode(payload['reportBytesBase64'])
+            return subprocess.CompletedProcess(
+                args, 0,
+                json.dumps({'passed': True, 'reportSha256': hashlib.sha256(embedded).hexdigest()}),
+                '',
+            )
+
+        with (
+            patch.object(GENERATOR, 'ROOT', Path(self.temp_dir.name)),
+            patch.object(GENERATOR, 'LIVE_PROBE_DIR', Path(self.temp_dir.name) / 'docs/live-probes'),
+            patch.object(GENERATOR, 'CATALOG', self.catalog_path),
+            patch.object(GENERATOR, 'codex_r02_profile_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
+            patch.object(GENERATOR, 'codex_r02_profile_report_candidate_binding_is_current', return_value=True),
+            patch.object(GENERATOR, 'codex_r02_profile_disposition_matches_report', return_value={'state': 'REPORT_WRITTEN'}),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+        ):
+            return GENERATOR.codex_r02_profile_report_is_valid(
+                report, harness_status={'fixture': True}, report_path=self.report_path,
+                epoch_status={'fixture': True},
+            )
+
+    def test_accepts_exact_three_call_report_for_only_the_agent_mcp_cell(self):
+        self.assertTrue(GENERATOR.codex_r02_frontier_is_partial(require_report_ref=True))
+        self.assertTrue(self.validate_report(self.report))
+
+    def test_rejects_scenario_credit_bad_request_counters_and_changed_positive_rows(self):
+        scenario_credit = json.loads(json.dumps(self.report))
+        scenario_credit['scenarioId'] = 'R02'
+        self.assertFalse(self.validate_report(scenario_credit))
+
+        credentialed = json.loads(json.dumps(self.report))
+        credentialed['publicRequestScope']['credentialHeaderCount'] = 1
+        self.assertFalse(self.validate_report(credentialed))
+
+        wrong_label = json.loads(json.dumps(self.report))
+        wrong_label['resultSummary'][0]['directRelations'][0]['relationLabel'] = '续集'
+        self.assertFalse(self.validate_report(wrong_label))
+
+    def test_routes_a_valid_report_to_only_subject_relations_agent_mcp(self):
+        self.report_path.write_text(json.dumps(self.report), encoding='utf-8')
+        with (
+            patch.object(GENERATOR, 'ROOT', Path(self.temp_dir.name)),
+            patch.object(GENERATOR, 'LIVE_PROBE_DIR', Path(self.temp_dir.name) / 'docs/live-probes'),
+            patch.object(GENERATOR, 'CATALOG', self.catalog_path),
+            patch.object(GENERATOR, 'codex_r02_profile_harness_status', return_value={'fixture': True}),
+            patch.object(GENERATOR, 'codex_r02_profile_epoch_harness_status', return_value={'fixture': True}),
+            patch.object(GENERATOR, 'codex_r02_profile_report_is_valid', return_value=True),
+            patch.object(GENERATOR, 'codex_r02_profile_report_matches_candidate_revision', return_value=True),
+        ):
+            sources = GENERATOR.model_mcp_e2e_sources(self.catalog)
+        self.assertEqual(sources, {
+            GENERATOR.CODEX_R02_TOOL_NAME: {GENERATOR.CODEX_R02_REPORT_RELATIVE_PATH},
+        })
+
+
 if __name__ == '__main__':
     unittest.main()

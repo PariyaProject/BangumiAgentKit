@@ -17,6 +17,10 @@ import {
   R01_RELATIONS_OFFLINE_PROFILE_ID,
   summarizeR01RelationsOfflineToolResult,
 } from './r01-relations-offline-profile.mjs';
+import {
+  R02_POSITIVE_DIRECT_RELATIONS_PROFILE_ID,
+  summarizeR02PositiveDirectRelationsToolResult,
+} from './r02-positive-direct-relations-profile.mjs';
 
 const C04_RESULT_STATES = new Set([
   'ok',
@@ -170,6 +174,9 @@ export function summarizeProfileToolResult(
   }
   if (profileId === R01_RELATIONS_OFFLINE_PROFILE_ID) {
     return summarizeR01RelationsOfflineToolResult(result, expectedArguments);
+  }
+  if (profileId === R02_POSITIVE_DIRECT_RELATIONS_PROFILE_ID) {
+    return summarizeR02PositiveDirectRelationsToolResult(result, expectedArguments);
   }
   if (profileId === R04_SERIES_WATCH_ORDER_OFFLINE_PROFILE_ID) {
     const coverage = result?.coverage;

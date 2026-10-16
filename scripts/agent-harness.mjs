@@ -155,6 +155,7 @@ import { validateP02SanitizedReportFile } from './acceptance/write-p02-person-pr
 import { validateR04SanitizedReportFile } from './acceptance/write-r04-series-watch-order-offline-agent-mcp-report.mjs';
 import { validateR01RelationsOfflineSanitizedReportFile } from './acceptance/write-r01-relations-offline-agent-mcp-report.mjs';
 import { validateC04SanitizedReportFile } from './acceptance/write-c04-cohort-comparison-agent-mcp-report.mjs';
+import { validateR02SanitizedReportFile } from './acceptance/write-r02-positive-direct-relations-agent-mcp-report.mjs';
 import {
   G06_MODEL,
   G06_REASONING_EFFORT,
@@ -232,6 +233,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'p02-person-profile-offline-agent-mcp-v1',
   'r04-series-watch-order-offline-agent-mcp-v1',
   'r01-subject-relations-offline-agent-mcp-v1',
+  'r02-positive-direct-relations-agent-mcp-v1',
   'c04-cohort-comparison-agent-mcp-matrix-v1',
 ]);
 const profileRequiresExactCiRunEvidence = (profileId) => PROFILE_CI_RUN_EVIDENCE_IDS.has(profileId);
@@ -3799,6 +3801,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateR04SanitizedReportFile(claim, root, reportPath);
     case 'r01-subject-relations-offline-agent-mcp-v1':
       return validateR01RelationsOfflineSanitizedReportFile(claim, root, reportPath);
+    case 'r02-positive-direct-relations-agent-mcp-v1':
+      return validateR02SanitizedReportFile(claim, root, reportPath);
     case 'c04-cohort-comparison-agent-mcp-matrix-v1':
       return validateC04SanitizedReportFile(claim, root, reportPath);
     default:

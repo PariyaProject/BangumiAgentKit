@@ -2384,7 +2384,7 @@
         "tests/harness/run-p07-person-season-agent-mcp.test.mjs",
         "tests/harness/write-p07-person-season-report.test.mjs"
       ],
-      "next_action": "Run #95 selected a distinct bounded P07 profile: one anonymous staff/anime get_person_activity call, grouped by calendar quarter from official firstAirDate values in the returned 36-month sample. Keep P07 UNASSESSED until a sanitized exact-Candidate report is accepted; then move it to PARTIAL for the observed seasonal sample. The profile does not answer the tag-frequency subquestion or establish complete career coverage. Before invocation, require exact Candidate/Base/CI/reviewer PASS and verify the exact profile is unclaimed through Harness; any inconclusive claim is terminal/no-retry.",
+      "next_action": "The selected P07 one-shot is terminal INCONCLUSIVE with no report and retryAllowed=false. Keep P07 UNASSESSED and uncredited; do not rerun the query or reconstruct a report. Its seasonal-sample profile would not answer the tag-frequency subquestion or establish complete career coverage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -2507,8 +2507,22 @@
       "user_question": "某声优最近半年有没有只参与非 TV 媒介？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-r02-positive-direct-relations-agent-mcp-source-contract-2026-10-16.md",
+        "scripts/acceptance/agent-mcp-profile-registry.json",
+        "scripts/lib/r02-positive-direct-relations-profile.mjs",
+        "scripts/lib/codex-one-tool-mcp-arguments.mjs",
+        "scripts/lib/codex-profile-tool-summary.mjs",
+        "apps/mcp/codex-one-tool-mcp-server.mjs",
+        "scripts/acceptance/run-r02-positive-direct-relations-agent-mcp.mjs",
+        "scripts/acceptance/write-r02-positive-direct-relations-agent-mcp-report.mjs",
+        "scripts/acceptance/validate-r02-positive-direct-relations-agent-mcp-report.mjs",
+        "tests/harness/r02-positive-direct-relations-profile.test.mjs",
+        "tests/harness/run-r02-positive-direct-relations-agent-mcp.test.mjs",
+        "tests/harness/write-r02-positive-direct-relations-agent-mcp-report.test.mjs"
+      ],
+      "next_action": "Run #95 selected the bounded positive direct-relations profile on master 616acc7. The 2026-10-16 source contract records four observed direct rows from source IDs 4923, 315, and 1428, with raw labels and response counts; it does not establish reverse/transitive edges or graph completeness. Keep R02 UNASSESSED until an exact-Candidate signed report is accepted; that report may credit only bangumi.get_subject_relations Agent/MCP. Require current Candidate/Base/seven-check CI/same-identity Luna Max PASS and fresh UNCLAIMED profile status before the one-shot call. Any inconclusive claim is terminal/no-retry.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -3240,8 +3254,22 @@
       "user_question": "哪些系列存在多条改编链？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-r02-positive-direct-relations-agent-mcp-source-contract-2026-10-16.md",
+        "scripts/acceptance/agent-mcp-profile-registry.json",
+        "scripts/lib/r02-positive-direct-relations-profile.mjs",
+        "scripts/lib/codex-one-tool-mcp-arguments.mjs",
+        "scripts/lib/codex-profile-tool-summary.mjs",
+        "apps/mcp/codex-one-tool-mcp-server.mjs",
+        "scripts/acceptance/run-r02-positive-direct-relations-agent-mcp.mjs",
+        "scripts/acceptance/write-r02-positive-direct-relations-agent-mcp-report.mjs",
+        "scripts/acceptance/validate-r02-positive-direct-relations-agent-mcp-report.mjs",
+        "tests/harness/r02-positive-direct-relations-profile.test.mjs",
+        "tests/harness/run-r02-positive-direct-relations-agent-mcp.test.mjs",
+        "tests/harness/write-r02-positive-direct-relations-agent-mcp-report.test.mjs"
+      ],
+      "next_action": "Run #95 selected the bounded positive direct-relations profile on master 616acc7. The 2026-10-16 source contract records four observed direct rows from source IDs 4923, 315, and 1428, with raw labels and response counts; it does not establish reverse/transitive edges or graph completeness. Keep R02 UNASSESSED until an exact-Candidate signed report is accepted; that report may credit only bangumi.get_subject_relations Agent/MCP. Require current Candidate/Base/seven-check CI/same-identity Luna Max PASS and fresh UNCLAIMED profile status before the one-shot call. Any inconclusive claim is terminal/no-retry.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -3281,7 +3309,7 @@
         "docs/research/run95-r04-series-watch-order-offline-matrix-contract-2026-10-16.md",
         "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md"
       ],
-      "next_action": "Run #95 selected the registered synthetic offline profile in Epoch run95-r04-series-watch-order-offline-matrix-20261016. This Candidate adds a regression for CODEX_ERROR_EVENT before any accepted MCP call and verifies an owned claim becomes terminal/no-retry. The profile is matrix-only: only a valid signed REPORT_WRITTEN may credit bangumi.get_series_watch_order Agent/MCP; R04 remains UNASSESSED. The public matrix refresh for Run #95 is 65/65, compared with the 57/65 master baseline at Epoch start; this R04 work does not change those public rows and does not grant R04 scenario or Agent/MCP credit. Do not invoke until exact Candidate/Base/seven-check CI/Harness Candidate/same-identity PASS and live UNCLAIMED status; any INCONCLUSIVE result receives no credit and no retry. See docs/research/run95-r04-series-watch-order-offline-matrix-contract-2026-10-16.md.",
+      "next_action": "The selected R04 one-shot is terminal INCONCLUSIVE with no report and retryAllowed=false. Keep R04 UNASSESSED and uncredited; do not rerun its synthetic profile or reconstruct a report. PR #173's stale branch remains at 57/65 with eight rows pending; current master acceptance is 65/65 based on later independent public reports. Keep PR #173 parked, preserve the user's 65/65 target, and never rerun its spent 37-request probe.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

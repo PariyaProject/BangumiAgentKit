@@ -276,8 +276,26 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   const r04 = ledger.records.find(({ id }) => id === 'R04');
   assert.ok(r04, 'R04 must remain in the canonical frontier');
   assert.equal(r04.status, 'UNASSESSED');
-  assert.match(r04.next_action, /public matrix refresh.*65\/65.*57\/65 master baseline/u);
-  assert.match(r04.next_action, /does not grant R04 scenario or Agent\/MCP credit/u);
+  assert.match(r04.next_action, /terminal INCONCLUSIVE with no report and retryAllowed=false/u);
+  assert.match(r04.next_action, /PR #173's stale branch remains at 57\/65 with eight rows pending/u);
+  assert.match(r04.next_action, /current master acceptance is 65\/65 based on later independent public reports/u);
+  assert.match(r04.next_action, /never rerun its spent 37-request probe/u);
+
+  const r02 = ledger.records.find(({ id }) => id === 'R02');
+  assert.ok(r02, 'R02 must remain in the canonical frontier');
+  assert.equal(r02.status, 'UNASSESSED');
+  for (const source of [
+    'docs/research/run95-r02-positive-direct-relations-agent-mcp-source-contract-2026-10-16.md',
+    'scripts/lib/r02-positive-direct-relations-profile.mjs',
+    'scripts/acceptance/run-r02-positive-direct-relations-agent-mcp.mjs',
+    'scripts/acceptance/write-r02-positive-direct-relations-agent-mcp-report.mjs',
+    'scripts/acceptance/validate-r02-positive-direct-relations-agent-mcp-report.mjs',
+  ]) {
+    assert.ok(r02.source_refs.includes(source), `R02 source reference missing: ${source}`);
+    assert.equal(existsSync(path.join(root, source)), true, `R02 source reference is missing: ${source}`);
+  }
+  assert.match(r02.next_action, /Keep R02 UNASSESSED until an exact-Candidate signed report is accepted/u);
+  assert.match(r02.next_action, /does not establish reverse\/transitive edges or graph completeness/u);
 });
 
 test('C03 terminal no-report profile stays unassessed and cannot be retried', () => {

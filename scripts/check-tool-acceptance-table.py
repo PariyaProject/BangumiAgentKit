@@ -27,6 +27,71 @@ R01_OFFLINE_EPOCH_ID = 'run95-r01-subject-relations-matrix-offline-20261016'
 R01_OFFLINE_ARGUMENT_PROFILE = 'fixed-r01-offline-relations-990902-one-row-v1'
 R01_OFFLINE_ANSWER_CHECK_METHOD = 'r01-synthetic-direct-relation-execution-only-v1'
 R01_OFFLINE_NETWORK_MODE = 'run95-r01-relations-offline-v1'
+R02_POSITIVE_TOOL_NAME = 'bangumi.get_subject_relations'
+R02_POSITIVE_REPORT_PATH = 'docs/live-probes/r02-positive-direct-relations-agent-mcp-run95.json'
+R02_POSITIVE_REPORT_KIND = 'codex_cli_r02_positive_direct_relations_agent_mcp'
+R02_POSITIVE_PROFILE_ID = 'r02-positive-direct-relations-agent-mcp-v1'
+R02_POSITIVE_EPOCH_ID = 'run95-r02-positive-direct-relations-agent-mcp-20261016'
+R02_POSITIVE_ARGUMENT_PROFILE = 'fixed-r02-positive-direct-relations-4923-315-1428-v1'
+R02_POSITIVE_ANSWER_CHECK_METHOD = 'r02-positive-direct-relations-observed-rows-only-v1'
+R02_POSITIVE_NETWORK_MODE = 'run95-r02-positive-direct-relations-public-v1'
+R02_POSITIVE_RESULT_SUMMARIES = [
+    {
+        'state': 'observed', 'subjectId': 4923,
+        'sourceDirection': 'source_subject_to_returned_target',
+        'responseRowsObserved': 53, 'rowsReturned': 53, 'schemaDriftRows': 0,
+        'truncated': False, 'paginationAvailable': False, 'totalCountAvailable': False,
+        'completeness': 'not_provided_by_source',
+        'directRelations': [
+            {'sourceSubjectId': 4923, 'targetSubjectId': 315, 'relationLabel': '动画'},
+            {'sourceSubjectId': 4923, 'targetSubjectId': 1428, 'relationLabel': '动画'},
+        ],
+    },
+    {
+        'state': 'observed', 'subjectId': 315,
+        'sourceDirection': 'source_subject_to_returned_target',
+        'responseRowsObserved': 33, 'rowsReturned': 33, 'schemaDriftRows': 0,
+        'truncated': False, 'paginationAvailable': False, 'totalCountAvailable': False,
+        'completeness': 'not_provided_by_source',
+        'directRelations': [
+            {'sourceSubjectId': 315, 'targetSubjectId': 1935, 'relationLabel': '续集'},
+        ],
+    },
+    {
+        'state': 'observed', 'subjectId': 1428,
+        'sourceDirection': 'source_subject_to_returned_target',
+        'responseRowsObserved': 41, 'rowsReturned': 41, 'schemaDriftRows': 0,
+        'truncated': False, 'paginationAvailable': False, 'totalCountAvailable': False,
+        'completeness': 'not_provided_by_source',
+        'directRelations': [
+            {'sourceSubjectId': 1428, 'targetSubjectId': 10799, 'relationLabel': '衍生'},
+        ],
+    },
+]
+R02_POSITIVE_REQUEST_SCOPE = {
+    'requestCount': 3, 'allowedRequestCount': 3, 'deniedRequestCount': 0,
+    'credentialHeaderCount': 0, 'authorizationHeaderCount': 0, 'writeAttemptCount': 0,
+    'unexpectedRouteCount': 0, 'sequenceMismatchCount': 0, 'subjectIds': [4923, 315, 1428],
+    'maxRequests': 3, 'requestsComplete': True, 'anonymousOnly': True,
+    'officialV0Only': True, 'redirectPolicy': 'error',
+}
+R02_POSITIVE_NETWORK_BOUNDARY = {
+    'liveBangumiApiRequestCount': 3,
+    'rendererAssetRequestCount': 0,
+    'fullCodexHarnessNetworkSandboxed': False,
+}
+R02_POSITIVE_PRIVACY = {
+    'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+    'writesAttempted': False, 'communityRead': False, 'qqPipelineTested': False,
+    'timClientTested': False, 'promptStored': False, 'answerStored': False,
+    'rawRelationRowsStored': False, 'rawToolResultStored': False,
+    'artifactImageBytesStored': False, 'credentialsStored': False,
+}
+R02_POSITIVE_ANSWER_CHECK_FIELDS = {
+    'exactRegisteredProfile', 'orderedThreeCalls', 'exactCandidateBundle',
+    'exactAnonymousRequestScope', 'positiveRowsMatchSourceContract', 'boundedClaimsOnly',
+    'exactAcknowledgement', 'privacyPreserved',
+}
 R01_OFFLINE_RESULT_SUMMARY = {
     'state': 'observed',
     'sourceDirection': 'source_subject_to_returned_target',
@@ -176,6 +241,55 @@ def r01_offline_agent_mcp_matches(name: str, relative_path: str, report: object)
     )
 
 
+def r02_positive_agent_mcp_matches(name: str, relative_path: str, report: object) -> bool:
+    """Accept the exact bounded R02 report only for get_subject_relations Agent/MCP."""
+    if not isinstance(report, dict):
+        return False
+    error_count = report.get('codexErrorItemCount')
+    answer_checks = report.get('answerChecks')
+    return (
+        name == R02_POSITIVE_TOOL_NAME
+        and relative_path == R02_POSITIVE_REPORT_PATH
+        and type(report.get('schemaVersion')) is int and report.get('schemaVersion') == 1
+        and report.get('evidenceKind') == R02_POSITIVE_REPORT_KIND
+        and type(report.get('runNumber')) is int and report.get('runNumber') == 95
+        and report.get('frontierId') == 'R02' and report.get('scenarioId') is None
+        and report.get('acceptanceScope') == 'agent-mcp-matrix-only'
+        and report.get('epochId') == R02_POSITIVE_EPOCH_ID
+        and report.get('profileId') == R02_POSITIVE_PROFILE_ID
+        and report.get('profile') == 'codex-luna-max-public-agent-mcp-matrix-v1'
+        and report.get('model') == 'gpt-6-luna' and report.get('reasoningEffort') == 'max'
+        and report.get('toolName') == R02_POSITIVE_TOOL_NAME
+        and report.get('argumentProfile') == R02_POSITIVE_ARGUMENT_PROFILE
+        and report.get('serverToolNames') == [R02_POSITIVE_TOOL_NAME]
+        and type(report.get('serverToolCount')) is int and report.get('serverToolCount') == 1
+        and report.get('mcpServerNames') == ['bgk_r02_direct_relations']
+        and report.get('resultStatus') == 'SUCCESS'
+        and type(report.get('processExitCode')) is int and report.get('processExitCode') == 0
+        and report.get('eventStreamParsed') is True and report.get('turnCompleted') is True
+        and type(report.get('codexMcpToolEventCount')) is int and report.get('codexMcpToolEventCount') == 3
+        and type(error_count) is int and 0 <= error_count <= 3
+        and type(report.get('blockedWebSearchErrorItemCount')) is int
+        and report.get('blockedWebSearchErrorItemCount') == error_count
+        and type(report.get('unexpectedCodexErrorItemCount')) is int
+        and report.get('unexpectedCodexErrorItemCount') == 0
+        and type(report.get('nonMcpToolEventCount')) is int and report.get('nonMcpToolEventCount') == 0
+        and report.get('nonMcpToolTypes') == []
+        and type(report.get('shellToolCallCount')) is int and report.get('shellToolCallCount') == 0
+        and type(report.get('allowedCallCount')) is int and report.get('allowedCallCount') == 3
+        and type(report.get('deniedCallCount')) is int and report.get('deniedCallCount') == 0
+        and report.get('networkMode') == R02_POSITIVE_NETWORK_MODE
+        and report.get('answerCheckMethod') == R02_POSITIVE_ANSWER_CHECK_METHOD
+        and report.get('resultSummary') == R02_POSITIVE_RESULT_SUMMARIES
+        and report.get('publicRequestScope') == R02_POSITIVE_REQUEST_SCOPE
+        and report.get('networkBoundary') == R02_POSITIVE_NETWORK_BOUNDARY
+        and report.get('privacy') == R02_POSITIVE_PRIVACY
+        and isinstance(answer_checks, dict)
+        and set(answer_checks) == R02_POSITIVE_ANSWER_CHECK_FIELDS
+        and all(value is True for value in answer_checks.values())
+    )
+
+
 def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
     mark = status_mark(cell)
     expected_mark = {
@@ -276,7 +390,10 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
             r01_offline_matches = r01_offline_agent_mcp_matches(
                 name, relative_path, report,
             )
-            matches = scenario_matches or c04_matches or r01_offline_matches
+            r02_positive_matches = r02_positive_agent_mcp_matches(
+                name, relative_path, report,
+            )
+            matches = scenario_matches or c04_matches or r01_offline_matches or r02_positive_matches
         else:
             try:
                 catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
