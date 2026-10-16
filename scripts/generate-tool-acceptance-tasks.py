@@ -4476,6 +4476,10 @@ CODEX_C04_PROFILE_IMPLEMENTATION_MARKERS = {
         'test_c04_signed_matrix_report_credits_only_its_two_registered_tools',
         'test_c04_report_reference_maps_only_its_two_agent_mcp_tools',
     ),
+    'docs/product/frontier-ledger.json': (
+        'C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks',
+        'Keep A01 UNASSESSED.',
+    ),
 }
 CODEX_P07_PROFILE_IMPLEMENTATION_MARKERS = {
     'docs/research/run95-p07-person-season-distribution-agent-mcp-source-contract-2026-10-16.md': (
