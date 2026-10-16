@@ -140,6 +140,37 @@ test('runner acknowledges only matching created or replayed terminal Harness res
   );
 });
 
+test('valid recovered reports reject REPORT_WRITTEN acknowledgements without the exact digest', () => {
+  const reportSha256 = 'a'.repeat(64);
+  for (const acknowledgedDigest of [null, 'b'.repeat(64)]) {
+    let inconclusive = null;
+    const recovered = finalizeTitleQueryRenderClaimedReport({
+      report: { passed: true, reportSha256 },
+      claimId: 'claim-test',
+      persistReportWritten() {
+        return {
+          exitCode: 0,
+          output: {
+            state: 'AGENT_MCP_PROFILE_RESULT_RECORDED',
+            resultState: 'REPORT_WRITTEN',
+            claimId: 'claim-test',
+            profileId: PROFILE.id,
+            ...(acknowledgedDigest === null ? {} : { reportSha256: acknowledgedDigest }),
+          },
+        };
+      },
+      persistInconclusive(value) {
+        inconclusive = value;
+        return true;
+      },
+    });
+
+    assert.deepEqual(recovered, { state: 'INCONCLUSIVE', reportSha256 });
+    assert.equal(inconclusive?.reasonCode, 'TITLE_QUERY_RENDER_STALE_REPORT_RECOVERY');
+    assert.equal(inconclusive?.reportSha256, reportSha256);
+  }
+});
+
 function requestScope(requestCount = 2) {
   return {
     requestCount,

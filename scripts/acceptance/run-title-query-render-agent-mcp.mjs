@@ -68,7 +68,10 @@ export function hashRetainedTitleQueryRenderReport(reportPath) {
   }
 }
 
-export function isTitleQueryRenderProfileResultAcknowledged(result, { resultState, claimId } = {}) {
+export function isTitleQueryRenderProfileResultAcknowledged(
+  result,
+  { resultState, claimId, expectedReportSha256 = null } = {},
+) {
   return (
     ['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(resultState) &&
     typeof claimId === 'string' &&
@@ -78,7 +81,10 @@ export function isTitleQueryRenderProfileResultAcknowledged(result, { resultStat
     ) &&
     result.output?.resultState === resultState &&
     result.output?.claimId === claimId &&
-    result.output?.profileId === PROFILE.id
+    result.output?.profileId === PROFILE.id &&
+    (resultState !== 'REPORT_WRITTEN' ||
+      (/^[0-9a-f]{64}$/u.test(expectedReportSha256 ?? '') &&
+        result.output?.reportSha256 === expectedReportSha256))
   );
 }
 
@@ -100,6 +106,7 @@ export function finalizeTitleQueryRenderClaimedReport({
     const acknowledged = isTitleQueryRenderProfileResultAcknowledged(persisted, {
       resultState: 'REPORT_WRITTEN',
       claimId,
+      expectedReportSha256: report.reportSha256,
     });
     if (acknowledged) return { state: 'REPORT_WRITTEN', reportSha256: report.reportSha256 };
 
