@@ -77,6 +77,30 @@ test('G16 frontier keeps stable source guidance separate from Harness runtime st
   assertOneShotRuntimeIsHarnessOwned(record);
 });
 
+test('M07 matrix-only account-denial evidence does not assess the index scenario', () => {
+  const record = ledger.records.find(({ id }) => id === 'M07');
+  assert.ok(record, 'M07 must remain in the canonical frontier');
+  assert.equal(record.status, 'UNASSESSED');
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-m07-manage-index-agent-mcp-no-account-source-contract-2026-10-16.md',
+    ),
+  );
+  assert.match(record.next_action, /matrix-only Agent\/MCP manage_index profile/u);
+  assert.match(record.next_action, /AUTH_REQUIRED/u);
+  assert.match(record.next_action, /does not answer the M07 scenario/u);
+  assertOneShotRuntimeIsHarnessOwned(record);
+
+  const matrixReport = 'docs/live-probes/m07-manage-index-agent-mcp-run95.json';
+  if (existsSync(path.join(root, matrixReport))) {
+    assert.ok(record.source_refs.includes(matrixReport));
+    const report = JSON.parse(readFileSync(path.join(root, matrixReport), 'utf8'));
+    assert.equal(report.acceptanceScope, 'agent-mcp-matrix-only');
+    assert.equal(report.scenarioId, null);
+    assert.equal(report.resultStatus, 'AUTH_REQUIRED');
+  }
+});
+
 test('R01 frontier keeps source limits separate from Harness runtime state', () => {
   const record = ledger.records.find(({ id }) => id === 'R01');
   assert.ok(record, 'R01 must remain in the canonical frontier');
