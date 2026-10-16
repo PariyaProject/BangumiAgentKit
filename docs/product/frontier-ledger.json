@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-16T18:36:50Z",
+  "updated_at": "2026-10-16T20:15:13Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -3713,8 +3713,16 @@
       "user_question": "Can BangumiAgentKit deliver the bounded user value described by Franchise Watch Order?",
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
-      "source_refs": ["docs/product/opportunity-log.md"],
-      "next_action": "Reconcile the opportunity against shipped capabilities and assess remaining user value.",
+      "source_refs": [
+        "docs/product/opportunity-log.md",
+        "packages/bangumi-core/src/services/series-service.ts",
+        "packages/tools/src/definitions/read-tools.ts",
+        "tests/unit/series-watch-order.test.ts",
+        "tests/render/series-watch-order-g09.test.ts",
+        "tests/integration/mcp-result-presenter.test.ts",
+        "docs/research/op002-watch-order-reconciliation-2026-10-17.md"
+      ],
+      "next_action": "Keep OP-002 PARTIAL: the shipped implementation delivers a bounded deterministic recommendation around one selected anime root, but the official relation source does not establish an exhaustive or canonical franchise order or whether a film is mandatory. The source reconciliation is recorded in docs/research/op002-watch-order-reconciliation-2026-10-17.md. The registered Run #95 R04 Agent/MCP profiles are terminal INCONCLUSIVE/no-report and must not be replayed; this report adds no tool-matrix credit. Reopen only for a distinct supported unspent profile on a bounded user journey, or a source contract that supplies explicit canonical/completeness/order semantics.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },
