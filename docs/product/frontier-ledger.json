@@ -97,9 +97,13 @@
         "docs/research/run95-g01-agent-mcp-canary-2026-10-05.json",
         "docs/live-probes/public-tools-2026-10-13-110542656-20614.json",
         "docs/live-probes/public-tools-2026-10-16-003414160-29605.json",
-        "docs/research/run95-g01-render-query-subjects-offline-matrix-contract-2026-10-17.md"
+        "docs/research/run95-g01-render-query-subjects-offline-matrix-contract-2026-10-17.md",
+        "docs/research/run95-g01-query-subjects-offline-agent-mcp-contract-2026-10-17.md",
+        "scripts/acceptance/agent-mcp-profile-registry.json",
+        "scripts/lib/g01-query-subjects-offline-matrix-fixture.mjs",
+        "tests/integration/tool-direct-execute-discovery.test.ts"
       ],
-      "next_action": "Run #95 added two anonymous direct ToolRegistry observations for bangumi.query_subjects and bangumi.render_query_subjects in the 2026-10-16 report, alongside the earlier fixed year=2012 render observation; these support only their public API matrix rows and do not answer the July 2026 harem scenario or establish complete Bangumi search coverage. The eight rows that were pending after PR #173's over-budget attempt have since been covered by separate bounded reports already in current master. pnpm acceptance:check now validates public API evidence at 65/65 with 0 pending, including docs/live-probes/public-tools-2026-10-16-003414160-29605.json for query_subjects/render_query_subjects, docs/live-probes/public-tools-2026-10-16-004829462-60733.json for get_person_profile, docs/live-probes/public-tools-2026-10-16-004904286-61569.json for render_person_profile, and docs/live-probes/public-tools-2026-10-16-010501333-13723.json for the four cohort tools. PR #173 remains parked/closed as superseded; its excluded 37-request report is not reused and its old probe is not rerun. The fresh title-query/render Agent/MCP profile on Candidate 909f0a257c6b5e173e3324ac61ee80a9976dd3f0 ran once and Harness terminalized it INCONCLUSIVE with no report, retryAllowed=false, and no Agent/MCP matrix credit. Sanitized diagnostics showed zero HTTP requests. Source tracing confirmed that the public fetch guard rejected the official POST pagination query limit=20&offset=0 before HTTP; the same-PR fix permits only limit=20 and bounded page-aligned offsets under the eight-request cap, while rejecting extra/duplicate parameters. The consumed attempt is final: never retry the consumed one-shot profile; do not replay the consumed G01 Agent/MCP canary (year=2026, month=7, concepts=[后宫], resultMode=all, limit=100, explain=full). Keep G01 PARTIAL and OAuth/account/community/QQ/TIM passive. A separate Run #95 Epoch may use its exact registered synthetic render-query profile once; it credits only the Agent/MCP matrix cell, uses a unique offline fixture, and does not answer the July 2026 harem scenario or establish global search coverage. Keep G01 PARTIAL.",
+      "next_action": "A distinct synthetic offline Agent/MCP profile now targets bangumi.query_subjects once against an exact local fixture with a new keyword and synthetic subject. It can credit only the Agent/MCP matrix row; it does not answer the July 2026 harem question, establish search completeness, or add public API evidence. The direct ToolRegistry integration test checks one local search request. Code and fixture tests alone are not Agent/MCP runtime evidence; any matrix credit requires the separate claim-bound signed report accepted through Harness. Keep G01 PARTIAL and preserve the public API target at 65/65.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -143,6 +147,14 @@
             }
           },
           "acceptance_boundary": "These two anonymous direct ToolRegistry observations support only their current public API matrix rows. The four cohort tools in this top-profile report were rejected before HTTP and receive no credit from it. No G01 July 2026 harem scenario or Agent/MCP evidence is inferred; keep G01 PARTIAL and never retry its consumed one-shot."
+        },
+        "synthetic_offline_agent_mcp_implementation_2026_10_17": {
+          "contract": "docs/research/run95-g01-query-subjects-offline-agent-mcp-contract-2026-10-17.md",
+          "profile_registry": "scripts/acceptance/agent-mcp-profile-registry.json",
+          "offline_fixture": "scripts/lib/g01-query-subjects-offline-matrix-fixture.mjs",
+          "direct_tool_test": "tests/integration/tool-direct-execute-discovery.test.ts",
+          "fixture_boundary": "One exact anonymous local search request returns one synthetic row; duplicates, credentialed requests, other URLs, and detail hydration are denied. The fixture never calls native fetch.",
+          "acceptance_boundary": "This is implementation and local direct-ToolRegistry fixture evidence only. It is not a Codex Agent/MCP runtime result and adds no matrix credit by itself. A later accepted signed report may credit only bangumi.query_subjects Agent/MCP; it cannot change the G01 scenario status or the 65/65 public API target. Keep G01 PARTIAL."
         }
       }
     },

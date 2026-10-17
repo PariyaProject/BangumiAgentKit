@@ -8829,6 +8829,24 @@ class G01OfflineProfileStaticMarkerTests(unittest.TestCase):
             ),
         )
 
+    def test_synthetic_query_subjects_implementation_keeps_g01_partial_without_matrix_credit(self):
+        frontier = json.loads(
+            (GENERATOR.ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'),
+        )
+        record = next(item for item in frontier['records'] if item['id'] == 'G01')
+        evidence = record['evidence']['synthetic_offline_agent_mcp_implementation_2026_10_17']
+
+        self.assertEqual(record['status'], 'PARTIAL')
+        self.assertIn(evidence['contract'], record['source_refs'])
+        self.assertIn(evidence['offline_fixture'], record['source_refs'])
+        self.assertIn(evidence['direct_tool_test'], record['source_refs'])
+        self.assertIn(
+            'implementation and local direct-ToolRegistry fixture evidence only',
+            evidence['acceptance_boundary'],
+        )
+        self.assertIn('adds no matrix credit by itself', evidence['acceptance_boundary'])
+        self.assertIn('65/65', record['next_action'])
+
 
 class C07RenderComparisonOfflineProfileReportValidationTests(unittest.TestCase):
     def setUp(self):
