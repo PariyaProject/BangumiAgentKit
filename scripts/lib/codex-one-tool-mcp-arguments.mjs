@@ -7,6 +7,7 @@ import { assertC07CohortRenderOfflineProfile } from './c07-cohort-render-offline
 import { canonicalJson } from './codex-one-tool-evidence.mjs';
 import { assertP06RenderPersonProfileOfflineProfile } from './p06-render-person-profile-offline-fixture.mjs';
 import { assertC07RenderComparisonOfflineProfile } from './c07-render-comparison-offline-profile.mjs';
+import { assertG01RenderQueryOfflineProfile } from './g01-render-query-subjects-offline-profile.mjs';
 import { assertP02PersonProfileOfflineProfile } from './p02-person-profile-offline-fixture.mjs';
 import { assertR04SeriesWatchOrderOfflineProfile } from './r04-series-watch-order-offline-fixture.mjs';
 import { assertR01RelationsOfflineProfile } from './r01-relations-offline-profile.mjs';
@@ -135,6 +136,7 @@ export function parseCodexOneToolMcpArguments(argv) {
         assertTitleQueryRenderPublicProfile(profile) ||
         assertS05PersonActivityProfile(profile) ||
         assertC07RenderComparisonOfflineProfile(profile) ||
+        assertG01RenderQueryOfflineProfile(profile) ||
         assertP06RenderPersonProfileOfflineProfile(profile) ||
         assertP02PersonProfileOfflineProfile(profile) ||
         assertR04SeriesWatchOrderOfflineProfile(profile) ||

@@ -723,6 +723,41 @@
           }
         }
       ]
+    },
+    {
+      "id": "g01-render-query-subjects-offline-agent-mcp-v1",
+      "frontierId": "G01",
+      "epochId": "run95-g01-render-query-subjects-offline-matrix-20261017",
+      "toolName": "bangumi.render_query_subjects",
+      "argumentProfile": "fixed-g01-synthetic-render-query-990920-one-result-v1",
+      "claimLabelName": "harness-r95-g01-render-query-offline-claimed",
+      "reportPath": "docs/live-probes/g01-render-query-subjects-offline-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-g01-render-query-subjects-offline-matrix-contract-2026-10-17.md",
+      "evidenceKind": "codex_cli_g01_render_query_subjects_offline_agent_mcp",
+      "answerCheckMethod": "g01-exact-synthetic-render-query-execution-only-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-g01-render-query-subjects-synthetic-offline-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 1024,
+      "calls": [
+        {
+          "toolName": "bangumi.render_query_subjects",
+          "arguments": {
+            "keyword": "run95 g01 synthetic render query offline 20261017",
+            "media": "anime",
+            "reportedEpisodeCount": {
+              "min": 1,
+              "max": 1
+            },
+            "resultMode": "top",
+            "limit": 1,
+            "sort": "relevance",
+            "explain": "none",
+            "nsfw": "include"
+          }
+        }
+      ]
     }
   ]
 }

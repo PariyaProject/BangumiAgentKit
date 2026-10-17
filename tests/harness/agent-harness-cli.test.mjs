@@ -108,6 +108,11 @@ import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 import {
+  G01_RENDER_QUERY_OFFLINE_ARGUMENT_PROFILE,
+  G01_RENDER_QUERY_OFFLINE_EPOCH_ID,
+  G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
+} from '../../scripts/lib/g01-render-query-subjects-offline-profile.mjs';
+import {
   C01_SAFE_SCOPE_NOTE,
   projectC01ComparisonResult,
 } from '../../scripts/lib/c01-rating-count-evidence.mjs';
@@ -6451,6 +6456,204 @@ test('C07 REPORT_WRITTEN with a null unaccepted digest reaches signed report val
     const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);
     assert.equal(result.status, 2);
     assert.match(result.stderr, /^C07_RENDER_COMPARISON_OFFLINE_REPORT_INVALID:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+function g01RenderQueryOfflineMergeEnvironment({
+  terminal = false,
+  unacceptedReportSha256 = null,
+  reportWritten = false,
+} = {}) {
+  const { run, epoch } = controlFixture();
+  const prNumber = 223;
+  const reviewerId = `gpt-6-luna-max-run95-pr${prNumber}-round1`;
+  const profile = getAgentMcpProfileById(G01_RENDER_QUERY_OFFLINE_PROFILE_ID);
+  run.state = 'EPOCH_ACTIVE';
+  run.active_epoch_pr = prNumber;
+  run.outer_sol.consumed = 1;
+  run.outer_sol.product.consumed = 1;
+  epoch.epoch_id = G01_RENDER_QUERY_OFFLINE_EPOCH_ID;
+  epoch.base_sha = sha('a');
+  epoch.base_branch = 'master';
+  epoch.branch = 'codex/epoch-run95-g01-render-query-subjects-offline-agent-mcp-20261017';
+  epoch.pr_number = prNumber;
+  epoch.state = 'REVIEW_PASSED';
+  epoch.candidate_sha = sha('b');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.review_pass_sha = sha('b');
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.advances_frontier_ids = ['G01'];
+  epoch.scope_closure = {
+    why_not_review_earlier: 'This is a distinct synthetic matrix-only profile.',
+    why_not_extend_further: 'No G01 scenario answer or search-completeness claim is made.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'Closed fixture and exact report policy verified.',
+    ...(terminal
+      ? {
+          agent_mcp_profile_dispositions: {
+            [profile.id]: {
+              state: reportWritten ? 'REPORT_WRITTEN' : 'INCONCLUSIVE',
+              reportWritten,
+              retryAllowed: false,
+              profileId: profile.id,
+              frontierId: 'G01',
+              epochId: G01_RENDER_QUERY_OFFLINE_EPOCH_ID,
+              runNumber: 95,
+              prNumber,
+              toolName: profile.toolName,
+              argumentProfile: G01_RENDER_QUERY_OFFLINE_ARGUMENT_PROFILE,
+              expectedArguments: profile.calls.map((call) => call.arguments),
+              expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+              registrySha256: agentMcpProfileRegistrySha256(profile.id),
+              claimId: `profile-run-95-pr-${prNumber}-${sha('b').slice(0, 12)}-1792200000000`,
+              sourceCandidateSha: sha('b'),
+              ...(reportWritten
+                ? {
+                    reportPath: profile.reportPath,
+                    reportSha256: 'e'.repeat(64),
+                    unacceptedReportSha256: null,
+                  }
+                : { unacceptedReportSha256: null }),
+              ...(unacceptedReportSha256 ? { unacceptedReportSha256 } : {}),
+              baseSha: sha('a'),
+              ciSha: sha('b'),
+              ciStatus: 'SUCCESS',
+              ciRunId: '38900001234',
+              ciChecks: mandatoryChecks.map((name) => ({
+                name,
+                status: 'COMPLETED',
+                conclusion: 'SUCCESS',
+              })),
+              reviewerId,
+              bundleSha256: 'c'.repeat(64),
+              runnerReceiptPublicKey:
+                'MCowBQYDK2VwAyEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+              runnerReceiptPublicKeySha256: 'd'.repeat(64),
+            },
+          },
+        }
+      : {}),
+  };
+  epoch.review.consumed = 1;
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: reviewerId,
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  const repositoryLabels = terminal
+    ? {
+        [profile.claimLabelName]: {
+          name: profile.claimLabelName,
+          color: 'b60205',
+          description: agentMcpProfileClaimLabelDescription(profile),
+        },
+        [profile.claimLabelName.replace(/-claimed$/u, '-terminal')]: {
+          name: profile.claimLabelName.replace(/-claimed$/u, '-terminal'),
+          color: '0e8a16',
+          description: agentMcpProfileTerminalLabelDescription(
+            profile,
+            reportWritten ? 'REPORT_WRITTEN' : 'INCONCLUSIVE',
+            reportWritten ? 'e'.repeat(64) : unacceptedReportSha256,
+          ),
+        },
+      }
+    : {};
+  const frontierLedger = JSON.parse(
+    fs.readFileSync(path.join(root, 'docs/product/frontier-ledger.json'), 'utf8'),
+  );
+  if (reportWritten) {
+    const g01 = frontierLedger.records.find((item) => item.id === 'G01');
+    g01.source_refs.push(profile.reportPath);
+  }
+  return createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    frontierLedger,
+    runIssueNumber: 95,
+    draft: false,
+    branch: epoch.branch,
+    baseBranch: 'master',
+    featureBranch: epoch.branch,
+    baseSha: sha('a'),
+    featureHeadSha: sha('b'),
+    mergeSha: sha('c'),
+    changedPaths: reportWritten
+      ? [
+          profile.reportPath,
+          'docs/product/frontier-ledger.json',
+          'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+        ]
+      : [],
+    dirty: '',
+    repositoryLabels,
+  });
+}
+
+test('G01 render-query matrix Epoch cannot merge without a durable terminal profile result', () => {
+  const environment = g01RenderQueryOfflineMergeEnvironment();
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G01_RENDER_QUERY_OFFLINE_RECONCILIATION_REQUIRED:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
+    assert.equal(
+      environment
+        .readState()
+        .calls.some(
+          (call) => call.tool === 'gh' && call.args[0] === 'pr' && call.args[1] === 'merge',
+        ),
+      false,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('G01 render-query matrix Epoch can merge terminal inconclusive without matrix credit', () => {
+  const environment = g01RenderQueryOfflineMergeEnvironment({ terminal: true });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(parseControlBlock(environment.readState().prBody, EPOCH_MARKER).state, 'MERGED');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('G01 render-query matrix Epoch accepts a removed, hash-bound inconclusive report only as no-credit', () => {
+  const environment = g01RenderQueryOfflineMergeEnvironment({
+    terminal: true,
+    unacceptedReportSha256: 'e'.repeat(64),
+  });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(parseControlBlock(environment.readState().prBody, EPOCH_MARKER).state, 'MERGED');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('G01 REPORT_WRITTEN with a null unaccepted digest reaches signed report validation', () => {
+  const environment = g01RenderQueryOfflineMergeEnvironment({
+    terminal: true,
+    reportWritten: true,
+  });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G01_RENDER_QUERY_OFFLINE_REPORT_INVALID:/u);
     assert.equal(environment.readState().prState, 'OPEN');
   } finally {
     environment.cleanup();

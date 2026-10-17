@@ -564,6 +564,65 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                 and all(value is True for value in title_query_render_checks.values())
                 and name in title_query_render_tool_names
             )
+            g01_render_query_fixture = report.get('offlineFixture') if isinstance(report, dict) else None
+            g01_render_query_asset = report.get('offlineAssetBoundary') if isinstance(report, dict) else None
+            g01_render_query_network = report.get('networkBoundary') if isinstance(report, dict) else None
+            g01_render_query_artifact = report.get('artifact') if isinstance(report, dict) else None
+            g01_render_query_checks = report.get('answerChecks') if isinstance(report, dict) else None
+            g01_render_query_matches = (
+                isinstance(report, dict)
+                and relative_path == 'docs/live-probes/g01-render-query-subjects-offline-agent-mcp-run95.json'
+                and report.get('evidenceKind') == 'codex_cli_g01_render_query_subjects_offline_agent_mcp'
+                and report.get('profileId') == 'g01-render-query-subjects-offline-agent-mcp-v1'
+                and report.get('runNumber') == 95
+                and report.get('frontierId') == 'G01'
+                and report.get('scenarioId') is None
+                and report.get('resultStatus') == 'SUCCESS'
+                and report.get('codexMcpToolEventCount') == 1
+                and report.get('allowedCallCount') == 1
+                and report.get('deniedCallCount') == 0
+                and report.get('nonMcpToolEventCount') == 0
+                and report.get('nonMcpToolTypes') == []
+                and report.get('shellToolCallCount') == 0
+                and report.get('toolName') == 'bangumi.render_query_subjects'
+                and report.get('serverToolNames') == ['bangumi.render_query_subjects']
+                and report.get('mcpServerNames') == ['bgk_g01_render_query']
+                and report.get('networkMode') == 'run95-g01-render-query-subjects-synthetic-offline-v1'
+                and g01_render_query_fixture == {
+                    'profile': 'run95-g01-render-query-subjects-synthetic-offline-v1',
+                    'requestCount': 2,
+                    'searchRequestCount': 1,
+                    'subjectDetailRequestCount': 1,
+                    'duplicateRequestCount': 0,
+                    'unexpectedRequestCount': 0,
+                    'authorizationHeaderCount': 0,
+                    'expectedOperationsComplete': True,
+                    'rawFixturePayloadStored': False,
+                }
+                and g01_render_query_asset == {
+                    'assetResolutionCallCount': 0,
+                    'nonEmptyAssetUrlCount': 0,
+                    'blockedAssetRequestCount': 0,
+                }
+                and isinstance(g01_render_query_network, dict)
+                and g01_render_query_network.get('liveBangumiApiRequestCount') == 0
+                and g01_render_query_network.get('rendererAssetRequestCount') == 0
+                and isinstance(g01_render_query_artifact, dict)
+                and g01_render_query_artifact.get('returned') is True
+                and g01_render_query_artifact.get('persisted') is False
+                and g01_render_query_artifact.get('mimeType') == 'image/png'
+                and type(g01_render_query_artifact.get('width')) is int
+                and 0 < g01_render_query_artifact['width'] <= 3000
+                and type(g01_render_query_artifact.get('height')) is int
+                and 0 < g01_render_query_artifact['height'] <= 5000
+                and type(g01_render_query_artifact.get('byteLength')) is int
+                and 0 < g01_render_query_artifact['byteLength'] <= 5_000_000
+                and g01_render_query_artifact.get('pngSignatureValid') is True
+                and isinstance(g01_render_query_checks, dict)
+                and len(g01_render_query_checks) == 10
+                and all(value is True for value in g01_render_query_checks.values())
+                and name == 'bangumi.render_query_subjects'
+            )
             r01_offline_matches = r01_offline_agent_mcp_matches(
                 name, relative_path, report,
             )
@@ -572,7 +631,7 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
             )
             matches = (
                 scenario_matches or c04_matches or title_query_render_matches
-                or r01_offline_matches or r02_positive_matches
+                or g01_render_query_matches or r01_offline_matches or r02_positive_matches
             )
         else:
             try:
