@@ -336,15 +336,24 @@ function invokeCodex({ summaryPath, candidateSha, bundleSha256 }) {
   );
   const stdout = typeof result.stdout === 'string' ? result.stdout : '';
   const stderr = typeof result.stderr === 'string' ? result.stderr : '';
+  const processFacts = a01CodexSpawnFacts(result);
   return {
     stdout,
     exitCode: Number.isInteger(result.status) && result.status >= 0 ? result.status : null,
-    processSpawned: !result.error || result.error?.code === 'ETIMEDOUT',
-    processTimedOut: result.error?.code === 'ETIMEDOUT',
+    ...processFacts,
     failed: Boolean(result.error) || result.status !== 0,
     stdoutBytes: Buffer.byteLength(stdout, 'utf8'),
     stderrBytes: Buffer.byteLength(stderr, 'utf8'),
     spawnErrorCode: typeof result.error?.code === 'string' ? result.error.code : null,
+  };
+}
+
+export function a01CodexSpawnFacts(result) {
+  return {
+    invocationAttempted: true,
+    processSpawned: Number.isSafeInteger(result?.pid) && result.pid > 0,
+    processTimedOut: result?.error?.code === 'ETIMEDOUT',
+    outputLimitExceeded: result?.error?.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
   };
 }
 
@@ -415,9 +424,32 @@ function claimProfile(gate, bundleSha256, keyPair) {
     typeof response.claimId !== 'string'
   )
     throw new Error('A01 aggregate Harness claim did not bind to its exact ready profile.');
-  const claim = recoverClaim(gate, bundleSha256, keyPair, response.claimId);
-  if (!claim) throw new Error('A01 aggregate durable claim readback failed.');
-  return claim;
+  return readA01ClaimOrThrowConfirmedId(response.claimId, () =>
+    recoverClaim(gate, bundleSha256, keyPair, response.claimId),
+  );
+}
+
+export function readA01ClaimOrThrowConfirmedId(claimId, readback) {
+  let claim = null;
+  try {
+    claim = readback();
+  } catch {
+    claim = null;
+  }
+  if (claim) return claim;
+  const error = new Error('A01 aggregate durable claim readback failed.');
+  error.confirmedClaimId = claimId;
+  throw error;
+}
+
+function confirmedClaimIdFromError(error, prNumber, candidateSha) {
+  const claimId = error?.confirmedClaimId;
+  if (typeof claimId !== 'string') return null;
+  const expected = new RegExp(
+    `^profile-run-95-pr-${prNumber}-${candidateSha.slice(0, 12)}-\\d+$`,
+    'u',
+  );
+  return expected.test(claimId) ? claimId : null;
 }
 
 function persistResult(claim, state, { reportSha256 = null, diagnostics = null } = {}) {
@@ -445,6 +477,10 @@ function persistResult(claim, state, { reportSha256 = null, diagnostics = null }
 
 export function classifyA01AggregateFailure(execution, parsed, events, validation, gateCurrent) {
   if (execution.processTimedOut) return 'A01_AGGREGATE_MATRIX_CLI_TIMED_OUT';
+  if (execution.outputLimitExceeded) return 'A01_AGGREGATE_MATRIX_CLI_OUTPUT_LIMIT_EXCEEDED';
+  if (!execution?.invocationAttempted) {
+    return 'A01_AGGREGATE_MATRIX_PREINVOCATION_GATE_FAILED';
+  }
   if (!execution?.processSpawned) return 'A01_AGGREGATE_MATRIX_CLI_SPAWN_FAILED';
   if (execution.exitCode !== 0) return 'A01_AGGREGATE_MATRIX_CLI_EXITED_NONZERO';
   if (!parsed?.parsed || !events?.eventStreamComplete) {
@@ -465,6 +501,8 @@ function diagnostics(execution, parsed, events, checks, reasonCode) {
     schemaVersion: 1,
     reasonCode,
     checks: {
+      invocationAttempted: execution.invocationAttempted === true,
+      outputLimitExceeded: execution.outputLimitExceeded === true,
       processSpawned: execution.processSpawned,
       processTimedOut: execution.processTimedOut,
       codexExecutionSucceeded: execution.processSpawned && !execution.failed,
@@ -515,8 +553,10 @@ function sanitizedResult(
   return {
     codexCliVersion: execution.codexCliVersion ?? codexVersion(),
     codexExitCode: execution.exitCode,
+    invocationAttempted: execution.invocationAttempted,
     processSpawned: execution.processSpawned,
     processTimedOut: execution.processTimedOut,
+    outputLimitExceeded: execution.outputLimitExceeded,
     stdoutBytes: execution.stdoutBytes,
     stderrBytes: execution.stderrBytes,
     eventStreamParsed: parsed.parsed && events.eventStreamComplete,
@@ -580,24 +620,46 @@ function terminalResult(claim, state, diag, unacceptedReportSha256 = null) {
   }
 }
 
-export function runA01AggregateCohortOfflineAgentMcp({ prNumber } = {}) {
+function runA01AggregateCohortOfflineAgentMcpWithDependencies({
+  prNumber,
+  dependencies = {},
+} = {}) {
   if (!Number.isSafeInteger(prNumber) || prNumber < 1) {
     throw new Error('A01 aggregate matrix runner requires an active Harness PR.');
   }
-  if (gitText(['status', '--porcelain', '--untracked-files=all']) !== '') {
+  const deps = {
+    gitText,
+    reportExists: existsSync,
+    assertCurrentGate,
+    codexVersion,
+    buildExactCandidateBundle,
+    currentCandidateBundleMatches,
+    createTempDirectory: (prefix) => mkdtempSync(path.join(path.resolve(os.tmpdir()), prefix)),
+    removeTempDirectory: (directory) => rmSync(directory, { recursive: true, force: true }),
+    generateKeyPair: generateKeyPairSync,
+    claimProfile,
+    recoverClaim,
+    durableClaimStatus,
+    invokeCodex,
+    persistResult,
+    terminalResult,
+    writeOutput: (value) => process.stdout.write(value),
+    ...dependencies,
+  };
+  if (deps.gitText(['status', '--porcelain', '--untracked-files=all']) !== '') {
     throw new Error('A01 aggregate matrix runner requires a clean Candidate checkout.');
   }
-  const candidateSha = gitText(['rev-parse', 'HEAD']);
-  if (!/^[0-9a-f]{40}$/u.test(candidateSha) || existsSync(REPORT_PATH)) {
+  const candidateSha = deps.gitText(['rev-parse', 'HEAD']);
+  if (!/^[0-9a-f]{40}$/u.test(candidateSha) || deps.reportExists(REPORT_PATH)) {
     throw new Error('A01 aggregate matrix Candidate/report is invalid; refusing to run or retry.');
   }
-  const initialGate = assertCurrentGate(prNumber, candidateSha);
-  const codexCliVersion = codexVersion();
-  const bundleSha256 = buildExactCandidateBundle(candidateSha);
-  if (!currentCandidateBundleMatches(candidateSha, bundleSha256)) {
+  const initialGate = deps.assertCurrentGate(prNumber, candidateSha);
+  const codexCliVersion = deps.codexVersion();
+  const bundleSha256 = deps.buildExactCandidateBundle(candidateSha);
+  if (!deps.currentCandidateBundleMatches(candidateSha, bundleSha256)) {
     throw new Error('A01 aggregate Candidate or bundle changed before the durable claim.');
   }
-  const currentGate = assertCurrentGate(prNumber, candidateSha);
+  const currentGate = deps.assertCurrentGate(prNumber, candidateSha);
   if (
     initialGate.baseSha !== currentGate.baseSha ||
     initialGate.reviewerId !== currentGate.reviewerId
@@ -605,17 +667,17 @@ export function runA01AggregateCohortOfflineAgentMcp({ prNumber } = {}) {
     throw new Error('A01 aggregate review gate changed before the durable claim.');
   }
 
-  const tempDir = mkdtempSync(
-    path.join(path.resolve(os.tmpdir()), `bgk-a01-aggregate-run95-${process.pid}-`),
-  );
+  const tempDir = deps.createTempDirectory(`bgk-a01-aggregate-run95-${process.pid}-`);
   const summaryPath = path.join(tempDir, 'server-summary.json');
-  const keyPair = generateKeyPairSync('ed25519');
+  const keyPair = deps.generateKeyPair('ed25519');
   let claim = null;
   let execution = {
     codexCliVersion,
     exitCode: null,
+    invocationAttempted: false,
     processSpawned: false,
     processTimedOut: false,
+    outputLimitExceeded: false,
     failed: true,
     stdoutBytes: 0,
     stderrBytes: 0,
@@ -636,26 +698,77 @@ export function runA01AggregateCohortOfflineAgentMcp({ prNumber } = {}) {
   let reportSha256 = null;
   let resultPersisted = false;
   let postrunGate = false;
+  let terminalReasonCode = null;
 
   try {
     const publicKeyBytes = keyPair.publicKey.export({ format: 'der', type: 'spki' });
     try {
-      claim = claimProfile(currentGate, bundleSha256, keyPair);
-    } catch {
-      claim = recoverClaim(currentGate, bundleSha256, keyPair);
+      claim = deps.claimProfile(currentGate, bundleSha256, keyPair);
+    } catch (error) {
+      const confirmedClaimId = confirmedClaimIdFromError(error, prNumber, candidateSha);
+      try {
+        claim = deps.recoverClaim(currentGate, bundleSha256, keyPair, confirmedClaimId);
+      } catch {
+        claim = null;
+      }
+      if (!claim && confirmedClaimId) {
+        let candidateBundleCurrent = false;
+        try {
+          candidateBundleCurrent = deps.currentCandidateBundleMatches(candidateSha, bundleSha256);
+        } catch {
+          candidateBundleCurrent = false;
+        }
+        const checks = {
+          ...validation,
+          answerUtf8Bytes: null,
+          candidateBundleCurrent,
+          activeGateCurrent: false,
+          claimReadbackValid: false,
+          reportBuildValid: false,
+          runnerReceiptValid: false,
+          privacyPreserved: true,
+        };
+        const reasonCode = 'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED';
+        const diag = diagnostics(execution, parsed, events, checks, reasonCode);
+        try {
+          resultPersisted = deps.terminalResult(
+            { claimId: confirmedClaimId, prNumber },
+            'INCONCLUSIVE',
+            diag,
+          );
+        } catch {
+          resultPersisted = false;
+        }
+        deps.writeOutput(
+          `${JSON.stringify({
+            passed: false,
+            state: resultPersisted ? 'INCONCLUSIVE' : 'RESULT_PERSISTENCE_UNCERTAIN',
+            profileId: PROFILE.id,
+            reasonCode,
+            invocationAttempted: false,
+            processSpawned: false,
+            processTimedOut: false,
+            processExitCode: null,
+            stdoutBytes: 0,
+            stderrBytes: 0,
+            retryAllowed: false,
+          })}\n`,
+        );
+        return resultPersisted ? 1 : 2;
+      }
       if (!claim) throw new Error('A01 aggregate durable claim was not established.');
     }
-    const claimedGate = assertCurrentGate(prNumber, candidateSha, { allowClaimed: true });
+    const claimedGate = deps.assertCurrentGate(prNumber, candidateSha, { allowClaimed: true });
     const claimReadbackValid =
       claimedGate.baseSha === claim.baseSha &&
       claimedGate.reviewerId === claim.reviewerId &&
-      durableClaimStatus(prNumber)?.disposition?.claimId === claim.claimId;
+      deps.durableClaimStatus(prNumber)?.disposition?.claimId === claim.claimId;
     if (!claimReadbackValid || publicKeyBytes.toString('base64') !== claim.runnerReceiptPublicKey) {
       throw new Error('A01 aggregate claim/gate changed before Codex invocation.');
     }
 
     execution = {
-      ...invokeCodex({ summaryPath, candidateSha, bundleSha256 }),
+      ...deps.invokeCodex({ summaryPath, candidateSha, bundleSha256 }),
       codexCliVersion,
     };
     parsed = parseCodexJsonl(execution.stdout);
@@ -677,13 +790,13 @@ export function runA01AggregateCohortOfflineAgentMcp({ prNumber } = {}) {
       eventStreamParsed,
     });
     try {
-      const after = assertCurrentGate(prNumber, candidateSha, { allowClaimed: true });
+      const after = deps.assertCurrentGate(prNumber, candidateSha, { allowClaimed: true });
       postrunGate = after.baseSha === claim.baseSha && after.reviewerId === claim.reviewerId;
     } catch {
       postrunGate = false;
     }
-    const candidateBundleCurrent = currentCandidateBundleMatches(candidateSha, bundleSha256);
-    const claimCurrent = durableClaimStatus(prNumber)?.disposition?.claimId === claim.claimId;
+    const candidateBundleCurrent = deps.currentCandidateBundleMatches(candidateSha, bundleSha256);
+    const claimCurrent = deps.durableClaimStatus(prNumber)?.disposition?.claimId === claim.claimId;
     if (!validation.passed || !postrunGate || !candidateBundleCurrent || !claimCurrent) {
       const checks = {
         ...validation,
@@ -701,7 +814,7 @@ export function runA01AggregateCohortOfflineAgentMcp({ prNumber } = {}) {
           ? 'A01_AGGREGATE_MATRIX_POSTRUN_GATE_CHANGED'
           : classifyA01AggregateFailure(execution, parsed, events, validation, true);
       const diag = diagnostics(execution, parsed, events, checks, reasonCode);
-      resultPersisted = terminalResult(claim, 'INCONCLUSIVE', diag);
+      resultPersisted = deps.terminalResult(claim, 'INCONCLUSIVE', diag);
       const safe = sanitizedResult(
         execution,
         parsed,
@@ -712,7 +825,7 @@ export function runA01AggregateCohortOfflineAgentMcp({ prNumber } = {}) {
         bundleSha256,
         claim,
       );
-      process.stdout.write(
+      deps.writeOutput(
         `${JSON.stringify({
           passed: false,
           state: resultPersisted ? 'INCONCLUSIVE' : 'RESULT_PERSISTENCE_UNCERTAIN',
@@ -755,9 +868,9 @@ export function runA01AggregateCohortOfflineAgentMcp({ prNumber } = {}) {
       throw new Error('A01 aggregate signed report readback failed.');
     }
     runnerReceiptValid = true;
-    resultPersisted = persistResult(claim, 'REPORT_WRITTEN', { reportSha256 });
+    resultPersisted = deps.persistResult(claim, 'REPORT_WRITTEN', { reportSha256 });
     if (!resultPersisted) throw new Error('A01 aggregate report acknowledgement was unavailable.');
-    process.stdout.write(
+    deps.writeOutput(
       `${JSON.stringify({
         passed: true,
         state: 'REPORT_WRITTEN',
@@ -777,12 +890,17 @@ export function runA01AggregateCohortOfflineAgentMcp({ prNumber } = {}) {
     return 0;
   } catch {
     if (claim && !resultPersisted) {
-      const candidateBundleCurrent = currentCandidateBundleMatches(
+      const candidateBundleCurrent = deps.currentCandidateBundleMatches(
         candidateSha,
         bundleSha256,
-        existsSync(REPORT_PATH),
+        deps.reportExists(REPORT_PATH),
       );
-      const claimCurrent = durableClaimStatus(prNumber)?.disposition?.claimId === claim.claimId;
+      let claimCurrent = false;
+      try {
+        claimCurrent = deps.durableClaimStatus(prNumber)?.disposition?.claimId === claim.claimId;
+      } catch {
+        claimCurrent = false;
+      }
       const checks = {
         ...validation,
         answerUtf8Bytes:
@@ -794,16 +912,22 @@ export function runA01AggregateCohortOfflineAgentMcp({ prNumber } = {}) {
         runnerReceiptValid,
         privacyPreserved: true,
       };
-      const reasonCode =
-        reportBuildValid && !runnerReceiptValid
+      const reasonCode = !claimCurrent
+        ? 'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED'
+        : reportBuildValid && !runnerReceiptValid
           ? 'A01_AGGREGATE_MATRIX_RUNNER_RECEIPT_INVALID'
           : !reportBuildValid && validation.passed && postrunGate
             ? 'A01_AGGREGATE_MATRIX_REPORT_BUILD_FAILED'
             : classifyA01AggregateFailure(execution, parsed, events, validation, postrunGate);
+      terminalReasonCode = reasonCode;
       const diag = diagnostics(execution, parsed, events, checks, reasonCode);
-      resultPersisted = terminalResult(claim, 'INCONCLUSIVE', diag, reportSha256);
+      try {
+        resultPersisted = deps.terminalResult(claim, 'INCONCLUSIVE', diag, reportSha256);
+      } catch {
+        resultPersisted = false;
+      }
     }
-    process.stdout.write(
+    deps.writeOutput(
       `${JSON.stringify({
         passed: false,
         state: claim
@@ -813,9 +937,13 @@ export function runA01AggregateCohortOfflineAgentMcp({ prNumber } = {}) {
           : 'CLAIM_NOT_AUTHORIZED',
         profileId: PROFILE.id,
         claimId: claim?.claimId ?? null,
-        reasonCode: classifyA01AggregateFailure(execution, parsed, events, validation, postrunGate),
+        reasonCode:
+          terminalReasonCode ??
+          classifyA01AggregateFailure(execution, parsed, events, validation, postrunGate),
+        invocationAttempted: execution.invocationAttempted,
         processSpawned: execution.processSpawned,
         processTimedOut: execution.processTimedOut,
+        outputLimitExceeded: execution.outputLimitExceeded,
         processExitCode: execution.exitCode,
         stdoutBytes: execution.stdoutBytes,
         stderrBytes: execution.stderrBytes,
@@ -824,8 +952,16 @@ export function runA01AggregateCohortOfflineAgentMcp({ prNumber } = {}) {
     );
     return claim ? (resultPersisted ? 1 : 2) : 1;
   } finally {
-    rmSync(tempDir, { recursive: true, force: true });
+    deps.removeTempDirectory(tempDir);
   }
+}
+
+export function runA01AggregateCohortOfflineAgentMcp({ prNumber } = {}) {
+  return runA01AggregateCohortOfflineAgentMcpWithDependencies({ prNumber });
+}
+
+export function runA01AggregateCohortOfflineAgentMcpForTest({ prNumber, dependencies } = {}) {
+  return runA01AggregateCohortOfflineAgentMcpWithDependencies({ prNumber, dependencies });
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

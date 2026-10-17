@@ -16,9 +16,12 @@ import {
 import { parseCodexOneToolMcpArguments } from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 import {
+  a01CodexSpawnFacts,
   buildCodexExecArgs,
   classifyA01AggregateFailure,
   parseA01AggregateCohortRunnerArgs,
+  readA01ClaimOrThrowConfirmedId,
+  runA01AggregateCohortOfflineAgentMcpForTest,
 } from '../../scripts/acceptance/run-a01-aggregate-cohort-offline-agent-mcp.mjs';
 
 const candidateSha = 'a'.repeat(40);
@@ -287,14 +290,204 @@ test('runner is Run #95/PR-bound, exposes one tool, and disables general capabil
   );
 });
 
+test('claim readback failure retains the confirmed claim id without retaining the readback error', () => {
+  const confirmedClaimId = `profile-run-95-pr-218-${candidateSha.slice(0, 12)}-123`;
+  const recoveredClaim = { claimId: confirmedClaimId, prNumber: 218 };
+  assert.equal(
+    readA01ClaimOrThrowConfirmedId(confirmedClaimId, () => recoveredClaim),
+    recoveredClaim,
+  );
+  assert.throws(
+    () =>
+      readA01ClaimOrThrowConfirmedId(confirmedClaimId, () => {
+        throw new Error('raw control-plane response body');
+      }),
+    (error) =>
+      error.confirmedClaimId === confirmedClaimId &&
+      error.message === 'A01 aggregate durable claim readback failed.',
+  );
+});
+
+test('confirmed claim readback failure terminalizes without invoking Codex', () => {
+  const confirmedClaimId = `profile-run-95-pr-218-${candidateSha.slice(0, 12)}-123`;
+  const readbackError = Object.assign(new Error('durable readback failed'), {
+    confirmedClaimId,
+  });
+  let readbackAttempts = 0;
+  let codexInvocations = 0;
+  const terminalResults = [];
+  let output = '';
+  const exitCode = runA01AggregateCohortOfflineAgentMcpForTest({
+    prNumber: 218,
+    dependencies: {
+      gitText(args) {
+        return args[0] === 'status' ? '' : candidateSha;
+      },
+      reportExists: () => false,
+      assertCurrentGate: () => ({
+        candidateSha,
+        baseSha: 'c'.repeat(40),
+        reviewerId: 'gpt-6-luna-max-run95-pr218-round1',
+        prNumber: 218,
+      }),
+      codexVersion: () => '1.2.14',
+      buildExactCandidateBundle: () => bundleSha256,
+      currentCandidateBundleMatches: () => true,
+      claimProfile() {
+        readbackAttempts += 1;
+        throw readbackError;
+      },
+      recoverClaim() {
+        readbackAttempts += 1;
+        return null;
+      },
+      durableClaimStatus: () => null,
+      invokeCodex() {
+        codexInvocations += 1;
+        throw new Error('Codex must not be invoked before claim readback.');
+      },
+      terminalResult(claim, state, diagnostics) {
+        terminalResults.push({ claim, state, diagnostics });
+        return true;
+      },
+      writeOutput(value) {
+        output += value;
+      },
+    },
+  });
+
+  assert.equal(readbackAttempts, 2);
+  assert.equal(codexInvocations, 0);
+  assert.equal(exitCode, 1);
+  assert.equal(terminalResults.length, 1);
+  assert.deepEqual(terminalResults[0].claim, { claimId: confirmedClaimId, prNumber: 218 });
+  assert.equal(terminalResults[0].state, 'INCONCLUSIVE');
+  assert.equal(
+    terminalResults[0].diagnostics.reasonCode,
+    'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED',
+  );
+  assert.equal(terminalResults[0].diagnostics.checks.invocationAttempted, false);
+  assert.equal(terminalResults[0].diagnostics.checks.claimReadbackValid, false);
+  assert.equal(JSON.parse(output).state, 'INCONCLUSIVE');
+  assert.equal(JSON.parse(output).retryAllowed, false);
+});
+
+test('recovered claim readback failure before Codex terminalizes without invoking Codex', () => {
+  const confirmedClaimId = `profile-run-95-pr-218-${candidateSha.slice(0, 12)}-124`;
+  const reviewerId = 'gpt-6-luna-max-run95-pr218-round1';
+  let gateChecks = 0;
+  let codexInvocations = 0;
+  const terminalResults = [];
+  let output = '';
+  const exitCode = runA01AggregateCohortOfflineAgentMcpForTest({
+    prNumber: 218,
+    dependencies: {
+      gitText(args) {
+        return args[0] === 'status' ? '' : candidateSha;
+      },
+      reportExists: () => false,
+      assertCurrentGate(_prNumber, _candidate, { allowClaimed = false } = {}) {
+        gateChecks += 1;
+        if (allowClaimed) throw new Error('durable profile readback unavailable');
+        return { candidateSha, baseSha: 'c'.repeat(40), reviewerId, prNumber: 218 };
+      },
+      codexVersion: () => '1.2.14',
+      buildExactCandidateBundle: () => bundleSha256,
+      currentCandidateBundleMatches: () => true,
+      claimProfile(_gate, _bundle, keyPair) {
+        return {
+          claimId: confirmedClaimId,
+          prNumber: 218,
+          baseSha: 'c'.repeat(40),
+          reviewerId,
+          runnerReceiptPublicKey: keyPair.publicKey
+            .export({ format: 'der', type: 'spki' })
+            .toString('base64'),
+        };
+      },
+      recoverClaim: () => null,
+      durableClaimStatus() {
+        throw new Error('durable profile readback unavailable');
+      },
+      invokeCodex() {
+        codexInvocations += 1;
+        throw new Error('Codex must not be invoked when claim state is not re-established.');
+      },
+      terminalResult(claim, state, diagnostics) {
+        terminalResults.push({ claim, state, diagnostics });
+        return true;
+      },
+      writeOutput(value) {
+        output += value;
+      },
+    },
+  });
+
+  assert.equal(gateChecks, 3);
+  assert.equal(codexInvocations, 0);
+  assert.equal(exitCode, 1);
+  assert.equal(terminalResults.length, 1);
+  assert.equal(terminalResults[0].claim.claimId, confirmedClaimId);
+  assert.equal(terminalResults[0].state, 'INCONCLUSIVE');
+  assert.equal(
+    terminalResults[0].diagnostics.reasonCode,
+    'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED',
+  );
+  assert.equal(JSON.parse(output).reasonCode, 'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED');
+  assert.equal(JSON.parse(output).retryAllowed, false);
+});
+
+test('Codex spawn facts distinguish invocation, spawn failure, timeout, and output limits', () => {
+  assert.deepEqual(a01CodexSpawnFacts({ pid: 123, status: 0 }), {
+    invocationAttempted: true,
+    processSpawned: true,
+    processTimedOut: false,
+    outputLimitExceeded: false,
+  });
+  assert.deepEqual(
+    a01CodexSpawnFacts({ pid: undefined, status: null, error: { code: 'ENOENT' } }),
+    {
+      invocationAttempted: true,
+      processSpawned: false,
+      processTimedOut: false,
+      outputLimitExceeded: false,
+    },
+  );
+  assert.deepEqual(a01CodexSpawnFacts({ pid: 123, status: null, error: { code: 'ETIMEDOUT' } }), {
+    invocationAttempted: true,
+    processSpawned: true,
+    processTimedOut: true,
+    outputLimitExceeded: false,
+  });
+  assert.deepEqual(
+    a01CodexSpawnFacts({
+      pid: 123,
+      status: null,
+      error: { code: 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' },
+    }),
+    {
+      invocationAttempted: true,
+      processSpawned: true,
+      processTimedOut: false,
+      outputLimitExceeded: true,
+    },
+  );
+});
+
 test('failure reason codes distinguish process, stream, MCP, answer, and postrun gates', () => {
   assert.equal(
-    classifyA01AggregateFailure({ processSpawned: true, processTimedOut: true }, {}, {}, {}, true),
+    classifyA01AggregateFailure(
+      { invocationAttempted: true, processSpawned: true, processTimedOut: true },
+      {},
+      {},
+      {},
+      true,
+    ),
     'A01_AGGREGATE_MATRIX_CLI_TIMED_OUT',
   );
   assert.equal(
     classifyA01AggregateFailure(
-      { processSpawned: false, processTimedOut: false, exitCode: null },
+      { invocationAttempted: true, processSpawned: false, processTimedOut: false, exitCode: null },
       {},
       {},
       {},
@@ -304,7 +497,33 @@ test('failure reason codes distinguish process, stream, MCP, answer, and postrun
   );
   assert.equal(
     classifyA01AggregateFailure(
-      { processSpawned: true, processTimedOut: false, exitCode: 0 },
+      { invocationAttempted: false, processSpawned: false, processTimedOut: false, exitCode: null },
+      {},
+      {},
+      {},
+      true,
+    ),
+    'A01_AGGREGATE_MATRIX_PREINVOCATION_GATE_FAILED',
+  );
+  assert.equal(
+    classifyA01AggregateFailure(
+      {
+        invocationAttempted: true,
+        processSpawned: true,
+        processTimedOut: false,
+        outputLimitExceeded: true,
+        exitCode: null,
+      },
+      {},
+      {},
+      {},
+      true,
+    ),
+    'A01_AGGREGATE_MATRIX_CLI_OUTPUT_LIMIT_EXCEEDED',
+  );
+  assert.equal(
+    classifyA01AggregateFailure(
+      { invocationAttempted: true, processSpawned: true, processTimedOut: false, exitCode: 0 },
       { parsed: false },
       {},
       {},
@@ -314,7 +533,7 @@ test('failure reason codes distinguish process, stream, MCP, answer, and postrun
   );
   assert.equal(
     classifyA01AggregateFailure(
-      { processSpawned: true, processTimedOut: false, exitCode: 0 },
+      { invocationAttempted: true, processSpawned: true, processTimedOut: false, exitCode: 0 },
       { parsed: true },
       { eventStreamComplete: true, codexMcpToolEventCount: 0 },
       { serverSummaryValid: false },
@@ -324,7 +543,7 @@ test('failure reason codes distinguish process, stream, MCP, answer, and postrun
   );
   assert.equal(
     classifyA01AggregateFailure(
-      { processSpawned: true, processTimedOut: false, exitCode: 0 },
+      { invocationAttempted: true, processSpawned: true, processTimedOut: false, exitCode: 0 },
       { parsed: true },
       { eventStreamComplete: true, codexMcpToolEventCount: 1 },
       { serverSummaryValid: true, answerChecks: { exactMetricAndCoverageAnswer: false } },

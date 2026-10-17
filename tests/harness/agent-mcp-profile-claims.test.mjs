@@ -732,6 +732,34 @@ test('A01 aggregate failure diagnostics retain process facts but reject raw outp
   });
   assert.equal(diagnostics.reasonCode, 'A01_AGGREGATE_MATRIX_CLI_TIMED_OUT');
   assert.equal(diagnostics.counters.codexStderrBytes, 127);
+  const claimReadbackFailure = normalizeAgentMcpProfileDiagnostics({
+    schemaVersion: 1,
+    reasonCode: 'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED',
+    checks: {
+      invocationAttempted: false,
+      processSpawned: false,
+      claimReadbackValid: false,
+      activeGateCurrent: false,
+      privacyPreserved: true,
+    },
+    counters: { processExitCode: null, codexMcpToolEvents: 0 },
+  });
+  assert.equal(claimReadbackFailure.reasonCode, 'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED');
+  assert.equal(claimReadbackFailure.checks.invocationAttempted, false);
+  const outputLimitFailure = normalizeAgentMcpProfileDiagnostics({
+    schemaVersion: 1,
+    reasonCode: 'A01_AGGREGATE_MATRIX_CLI_OUTPUT_LIMIT_EXCEEDED',
+    checks: {
+      invocationAttempted: true,
+      processSpawned: true,
+      outputLimitExceeded: true,
+      processTimedOut: false,
+      privacyPreserved: true,
+    },
+    counters: { codexStdoutBytes: 8_388_608, processExitCode: null },
+  });
+  assert.equal(outputLimitFailure.reasonCode, 'A01_AGGREGATE_MATRIX_CLI_OUTPUT_LIMIT_EXCEEDED');
+  assert.equal(outputLimitFailure.checks.outputLimitExceeded, true);
   for (const invalid of [
     {
       schemaVersion: 1,

@@ -134,6 +134,9 @@ const C03_PROFILE = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
 const C02_PROFILE = getAgentMcpProfileById('c02-cardcaptor-tv-movie-v1');
 const C01_PROFILE = getAgentMcpProfileById('c01-rating-count-gap-v1');
 const A01_PROFILE = getAgentMcpProfileById('a01-rating-dispersion-1998-spring-v1');
+const A01_AGGREGATE_PROFILE = getAgentMcpProfileById(
+  'a01-aggregate-cohort-offline-agent-mcp-matrix-v1',
+);
 const P03_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
 const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const P06_PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
@@ -2627,6 +2630,79 @@ test('C01 Harness records a valid REPORT_WRITTEN report with its exact signed di
   } finally {
     environment.cleanup();
     fs.rmSync(harnessRoot, { recursive: true, force: true });
+  }
+});
+
+test('A01 aggregate Harness records bounded readback failure as terminal and non-retryable', () => {
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(A01_AGGREGATE_PROFILE);
+  const keyPair = generateKeyPairSync('ed25519');
+  const publicKeyBase64 = keyPair.publicKey
+    .export({ type: 'spki', format: 'der' })
+    .toString('base64');
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', A01_AGGREGATE_PROFILE.id];
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claim = JSON.parse(claimed.stdout);
+    const diagnostics = {
+      schemaVersion: 1,
+      reasonCode: 'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED',
+      checks: {
+        invocationAttempted: false,
+        outputLimitExceeded: false,
+        processSpawned: false,
+        processTimedOut: false,
+        codexExecutionSucceeded: false,
+        candidateBundleCurrent: true,
+        activeGateCurrent: false,
+        claimReadbackValid: false,
+        privacyPreserved: true,
+      },
+      counters: {
+        processExitCode: null,
+        codexStdoutBytes: 0,
+        codexStderrBytes: 0,
+        codexMcpToolEvents: 0,
+        codexErrorItems: 0,
+        mcpToolErrorResults: 0,
+        nonMcpToolEvents: 0,
+        shellCalls: 0,
+        answerUtf8Bytes: null,
+      },
+    };
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claim.claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--diagnostics-json',
+      JSON.stringify(diagnostics),
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    assert.equal(JSON.parse(terminal.stdout).state, 'AGENT_MCP_PROFILE_RESULT_RECORDED');
+    const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(status.status, 0, status.stderr);
+    const profileStatus = JSON.parse(status.stdout);
+    assert.equal(profileStatus.state, 'INCONCLUSIVE');
+    assert.equal(profileStatus.retry_allowed, false);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    const disposition =
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[A01_AGGREGATE_PROFILE.id];
+    assert.equal(disposition.failureDiagnostics.reasonCode, diagnostics.reasonCode);
+    assert.equal(disposition.retryAllowed, false);
+  } finally {
+    environment.cleanup();
   }
 });
 
