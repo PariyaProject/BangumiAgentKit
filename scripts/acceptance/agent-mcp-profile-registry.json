@@ -690,6 +690,39 @@
           }
         }
       ]
+    },
+    {
+      "id": "r03-two-hop-relations-offline-agent-mcp-v1",
+      "frontierId": "R03",
+      "epochId": "run95-r03-two-hop-relations-offline-agent-mcp-20261017",
+      "toolName": "bangumi.get_subject_relations",
+      "argumentProfile": "fixed-r03-synthetic-two-hop-relations-990910-990911-v1",
+      "claimLabelName": "harness-r95-r03-two-hop-relations-claimed",
+      "reportPath": "docs/live-probes/r03-two-hop-relations-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-r03-relations-agent-mcp-offline-matrix-2026-10-17.md",
+      "evidenceKind": "codex_cli_r03_relations_offline_agent_mcp_matrix",
+      "answerCheckMethod": "r03-synthetic-two-hop-relations-execution-only-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-r03-two-hop-relations-offline-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 2048,
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 990910,
+            "includeEvidence": true
+          }
+        },
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 990911,
+            "includeEvidence": true
+          }
+        }
+      ]
     }
   ]
 }

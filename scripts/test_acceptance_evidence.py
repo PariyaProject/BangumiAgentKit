@@ -9265,7 +9265,7 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
         self.assertFalse(self.validate_report(raw_rows))
 
         expanded_fixture = json.loads(json.dumps(self.report))
-        expanded_fixture['offlineFixture']['requestCount'] = 2
+        expanded_fixture['offlineFixture']['requestCount'] = 3
         self.assertFalse(self.validate_report(expanded_fixture))
 
         network_request = json.loads(json.dumps(self.report))
@@ -9695,7 +9695,7 @@ class R01OfflineRelationsProfileReportValidationTests(unittest.TestCase):
         self.assertFalse(self.validate_report(scenario_credit))
 
         expanded_fixture = json.loads(json.dumps(self.report))
-        expanded_fixture['offlineFixture']['requestCount'] = 2
+        expanded_fixture['offlineFixture']['requestCount'] = 3
         self.assertFalse(self.validate_report(expanded_fixture))
 
         unexpected_error = json.loads(json.dumps(self.report))
@@ -9721,6 +9721,412 @@ class R01OfflineRelationsProfileReportValidationTests(unittest.TestCase):
                 },
             },
         )
+
+
+class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='r03-offline-profile-evidence-test-')
+        self.root = Path(self.temp_dir.name)
+        self.report_path = self.root / GENERATOR.CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH
+        self.report_path.parent.mkdir(parents=True)
+        selection_path = self.root / GENERATOR.CODEX_R03_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH
+        selection_path.parent.mkdir(parents=True)
+        selection_path.write_text('R03 scenario remains UNASSESSED; matrix-only fixture.\n', encoding='utf-8')
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier_path.parent.mkdir(parents=True)
+        frontier_path.write_text(json.dumps({
+            'records': [{
+                'id': 'R03',
+                'status': 'UNASSESSED',
+                'source_refs': [
+                    GENERATOR.CODEX_R03_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH,
+                    GENERATOR.CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH,
+                ],
+            }],
+        }), encoding='utf-8')
+        self.catalog_path = self.root / 'docs/tool-catalog.json'
+        self.catalog_path.parent.mkdir(parents=True, exist_ok=True)
+        self.catalog = [{
+            'name': GENERATOR.CODEX_R03_OFFLINE_TOOL_NAME,
+            'auth': 'none',
+            'risk': 'read',
+            'description': 'Synthetic direct relations test tool.',
+            'inputSchema': {'type': 'object', 'required': ['subjectId']},
+        }]
+        self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
+        self.report = self.build_report()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def build_report(self):
+        catalog_bytes = self.catalog_path.read_bytes()
+        selection_bytes = (self.root / GENERATOR.CODEX_R03_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
+        tool = self.catalog[0]
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': GENERATOR.CODEX_R03_OFFLINE_EVIDENCE_KIND,
+            'runNumber': 95,
+            'frontierId': 'R03',
+            'scenarioId': None,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+            'epochId': GENERATOR.CODEX_R03_OFFLINE_EPOCH_ID,
+            'profileId': GENERATOR.CODEX_R03_OFFLINE_PROFILE_ID,
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
+            'codexCliVersion': '0.162.0',
+            'observedAt': '2026-10-16T05:00:00.000Z',
+            'sourceRevision': 'a' * 40,
+            'baseSha': 'b' * 40,
+            'ciSha': 'a' * 40,
+            'ciStatus': 'SUCCESS',
+            'ciRunId': '38812509760',
+            'ciChecks': [
+                {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+                for name in GENERATOR.CODEX_R03_OFFLINE_REQUIRED_CI_CHECKS
+            ],
+            'prNumber': 222,
+            'claimId': 'profile-run-95-pr-222-aaaaaaaaaaaa-1792100000000',
+            'mcpBundleSha256': 'c' * 64,
+            'registrySha256': GENERATOR.CODEX_R03_OFFLINE_PROFILE_REGISTRY_SHA256,
+            'selectionEvidenceSha256': hashlib.sha256(selection_bytes).hexdigest(),
+            'toolName': GENERATOR.CODEX_R03_OFFLINE_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_R03_OFFLINE_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_R03_OFFLINE_EXPECTED_ARGUMENTS_SHA256,
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode()).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': [GENERATOR.CODEX_R03_OFFLINE_TOOL_NAME],
+            'serverToolCount': 1,
+            'networkMode': GENERATOR.CODEX_R03_OFFLINE_NETWORK_MODE,
+            'mcpServerNames': ['bgk_r03_relations'],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 2,
+            'codexErrorItemCount': 2,
+            'blockedWebSearchErrorItemCount': 2,
+            'unexpectedCodexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 2,
+            'deniedCallCount': 0,
+            'answerCheckMethod': GENERATOR.CODEX_R03_OFFLINE_ANSWER_CHECK_METHOD,
+            'answerSha256': hashlib.sha256(b'R03_SYNTHETIC_TWO_HOP_RELATIONS_READ').hexdigest(),
+            'answerUtf8Bytes': len(b'R03_SYNTHETIC_TWO_HOP_RELATIONS_READ'),
+            'answerChecks': {key: True for key in GENERATOR.CODEX_R03_OFFLINE_ANSWER_CHECK_FIELDS},
+            'resultSummary': [
+                {
+                    'state': 'observed',
+                    'sourceDirection': 'source_subject_to_returned_target',
+                    'responseRowsObserved': 1,
+                    'rowsReturned': 1,
+                    'schemaDriftRows': 0,
+                    'truncated': False,
+                    'paginationAvailable': False,
+                    'totalCountAvailable': False,
+                    'completeness': 'not_provided_by_source',
+                    'relationLabels': ['续篇'],
+                },
+                {
+                    'state': 'observed',
+                    'sourceDirection': 'source_subject_to_returned_target',
+                    'responseRowsObserved': 2,
+                    'rowsReturned': 2,
+                    'schemaDriftRows': 0,
+                    'truncated': False,
+                    'paginationAvailable': False,
+                    'totalCountAvailable': False,
+                    'completeness': 'not_provided_by_source',
+                    'relationLabels': ['前传', '外传'],
+                },
+            ],
+            'offlineFixture': {
+                'profile': GENERATOR.CODEX_R03_OFFLINE_NETWORK_MODE,
+                'requestCount': 2,
+                'relationRequestCount': 2,
+                'rootRequestCount': 1,
+                'intermediateRequestCount': 1,
+                'duplicateRequestCount': 0,
+                'unexpectedRequestCount': 0,
+                'authorizationHeaderCount': 0,
+                'expectedOperationsComplete': True,
+            },
+            'networkBoundary': {
+                'liveBangumiApiRequestCount': 0,
+                'rendererAssetRequestCount': 0,
+                'fullCodexHarnessNetworkSandboxed': False,
+            },
+            'privacy': {
+                'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+                'writesAttempted': False, 'communityRead': False, 'qqPipelineTested': False,
+                'timClientTested': False, 'promptStored': False, 'answerStored': False,
+                'rawFixtureRowsStored': False, 'rawToolResultStored': False,
+                'artifactImageBytesStored': False, 'credentialsStored': False,
+            },
+            'runnerReceipt': {
+                'schemaVersion': 1,
+                'kind': 'r03-relations-offline-agent-mcp-runner-receipt-v1',
+                'publicKeyBase64': 'AQ==',
+                'publicKeySha256': 'd' * 64,
+                'payload': {field: None for field in GENERATOR.CODEX_R03_OFFLINE_RECEIPT_PAYLOAD_FIELDS},
+                'signature': 'AA==',
+            },
+        }
+
+    def candidate_epoch_status(self, candidate_sha=None):
+        branch = 'codex/epoch-run95-r03-two-hop-relations-offline-agent-mcp-20261017'
+        candidate_sha = candidate_sha or self.report['sourceRevision']
+        base_sha = self.report['baseSha']
+        reviewer_id = self.report['reviewerId']
+        return {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': self.report['prNumber']},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base_sha,
+                'pr_head_ref_name': branch,
+                'pr_head_sha': candidate_sha,
+                'pr_is_draft': False,
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_R03_OFFLINE_EPOCH_ID,
+                    'pr_number': self.report['prNumber'],
+                    'base_branch': 'master',
+                    'base_sha': base_sha,
+                    'candidate_sha': candidate_sha,
+                    'branch': branch,
+                    'review_history': [{
+                        'candidate_sha': self.report['sourceRevision'],
+                        'reviewed_base_sha': base_sha,
+                        'reviewer_id': reviewer_id,
+                        'verdict': 'PASS',
+                    }],
+                },
+            },
+        }
+
+    def profile_harness_status(self, report_sha256):
+        receipt = self.report['runnerReceipt']
+        disposition = {
+            'claimId': self.report['claimId'],
+            'profileId': GENERATOR.CODEX_R03_OFFLINE_PROFILE_ID,
+            'frontierId': 'R03',
+            'epochId': GENERATOR.CODEX_R03_OFFLINE_EPOCH_ID,
+            'runNumber': 95,
+            'prNumber': self.report['prNumber'],
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': self.report['sourceRevision'],
+            'baseSha': self.report['baseSha'],
+            'ciSha': self.report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'ciRunId': self.report['ciRunId'],
+            'ciChecks': self.report['ciChecks'],
+            'reviewerId': self.report['reviewerId'],
+            'bundleSha256': self.report['mcpBundleSha256'],
+            'registrySha256': GENERATOR.CODEX_R03_OFFLINE_PROFILE_REGISTRY_SHA256,
+            'toolName': GENERATOR.CODEX_R03_OFFLINE_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_R03_OFFLINE_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_R03_OFFLINE_EXPECTED_ARGUMENTS_SHA256,
+            'reportWritten': True,
+            'reportPath': GENERATOR.CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH,
+            'reportSha256': report_sha256,
+            'retryAllowed': False,
+            'runnerReceiptPublicKey': receipt['publicKeyBase64'],
+            'runnerReceiptPublicKeySha256': receipt['publicKeySha256'],
+            'runnerReceiptSha256': GENERATOR._canonical_json_sha256(receipt),
+        }
+        return {
+            'state': 'REPORT_WRITTEN',
+            'profile_id': GENERATOR.CODEX_R03_OFFLINE_PROFILE_ID,
+            'pr': self.report['prNumber'],
+            'tool_name': GENERATOR.CODEX_R03_OFFLINE_TOOL_NAME,
+            'argument_profile': GENERATOR.CODEX_R03_OFFLINE_ARGUMENT_PROFILE,
+            'expected_arguments_sha256': GENERATOR.CODEX_R03_OFFLINE_EXPECTED_ARGUMENTS_SHA256,
+            'registry_sha256': GENERATOR.CODEX_R03_OFFLINE_PROFILE_REGISTRY_SHA256,
+            'claim_label_present': True,
+            'terminal_label_present': True,
+            'disposition': disposition,
+        }
+
+    def test_candidate_binding_rejects_stale_candidate_base_review_and_scope(self):
+        status = self.candidate_epoch_status()
+        changed_paths = {GENERATOR.CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH}
+        bundle_sha256 = self.report['mcpBundleSha256']
+        self.assertTrue(GENERATOR.codex_r03_offline_profile_candidate_binding_is_valid(
+            self.report, status, changed_paths, bundle_sha256,
+        ))
+
+        wrong_head = json.loads(json.dumps(status))
+        wrong_head['epoch']['pr_head_sha'] = 'e' * 40
+        self.assertFalse(GENERATOR.codex_r03_offline_profile_candidate_binding_is_valid(
+            self.report, wrong_head, changed_paths, bundle_sha256,
+        ))
+
+        stale_base = json.loads(json.dumps(status))
+        stale_base['epoch']['state']['base_sha'] = 'f' * 40
+        self.assertFalse(GENERATOR.codex_r03_offline_profile_candidate_binding_is_valid(
+            self.report, stale_base, changed_paths, bundle_sha256,
+        ))
+
+        wrong_review = json.loads(json.dumps(status))
+        wrong_review['epoch']['state']['review_history'][0]['reviewer_id'] = 'other-reviewer'
+        self.assertFalse(GENERATOR.codex_r03_offline_profile_candidate_binding_is_valid(
+            self.report, wrong_review, changed_paths, bundle_sha256,
+        ))
+
+        unrelated_change = {'apps/mcp/codex-one-tool-mcp-mcp-server.mjs'}
+        self.assertFalse(GENERATOR.codex_r03_offline_profile_candidate_binding_is_valid(
+            self.report, status, unrelated_change, bundle_sha256,
+        ))
+        self.assertFalse(GENERATOR.codex_r03_offline_profile_candidate_binding_is_valid(
+            self.report, status, changed_paths, '0' * 64,
+        ))
+
+    def test_current_candidate_binding_accepts_only_an_evidence_refresh(self):
+        candidate_sha = 'e' * 40
+        status = self.candidate_epoch_status(candidate_sha)
+        source_revision = self.report['sourceRevision']
+        allowed_paths = '\n'.join([
+            GENERATOR.CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH,
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+        ]) + '\n'
+
+        def git_result(*args, stdout='', returncode=0):
+            return subprocess.CompletedProcess(args, returncode, stdout, '')
+
+        def run_repository_git(root, *args):
+            if args[:2] == ('merge-base', '--is-ancestor'):
+                self.assertEqual(args[2:], (source_revision, candidate_sha))
+                return git_result(*args)
+            if args[:2] == ('diff', '--name-only'):
+                return git_result(*args, stdout=allowed_paths)
+            if args[:2] == ('status', '--porcelain=v1'):
+                return git_result(*args)
+            raise AssertionError(f'unexpected git command: {args}')
+
+        with (
+            patch.object(GENERATOR, 'ROOT', self.root),
+            patch.object(GENERATOR, '_run_repository_git', side_effect=run_repository_git),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value=self.report['mcpBundleSha256']),
+        ):
+            self.assertTrue(
+                GENERATOR.codex_r03_offline_profile_report_candidate_binding_is_current(
+                    self.report, status,
+                ),
+            )
+
+            def unrelated_git(root, *args):
+                if args[:2] == ('merge-base', '--is-ancestor'):
+                    return git_result(*args)
+                if args[:2] == ('diff', '--name-only'):
+                    return git_result(*args, stdout=allowed_paths + 'apps/mcp/unrelated.mjs\n')
+                if args[:2] == ('status', '--porcelain=v1'):
+                    return git_result(*args)
+                raise AssertionError(f'unexpected git command: {args}')
+
+            with patch.object(GENERATOR, '_run_repository_git', side_effect=unrelated_git):
+                self.assertFalse(
+                    GENERATOR.codex_r03_offline_profile_report_candidate_binding_is_current(
+                        self.report, status,
+                    ),
+                )
+
+    def test_profile_disposition_binds_candidate_base_ci_and_reviewer(self):
+        report_sha256 = 'f' * 64
+        status = self.profile_harness_status(report_sha256)
+        self.assertIsNotNone(GENERATOR.codex_r03_offline_profile_disposition_matches_report(
+            self.report, status, report_sha256,
+        ))
+        for field, value in [
+            ('sourceCandidateSha', 'e' * 40),
+            ('baseSha', 'e' * 40),
+            ('ciSha', 'e' * 40),
+            ('ciStatus', 'FAILED'),
+            ('ciRunId', '38812509761'),
+            ('ciChecks', []),
+            ('reviewerId', 'other-reviewer'),
+        ]:
+            changed = json.loads(json.dumps(status))
+            changed['disposition'][field] = value
+            self.assertIsNone(GENERATOR.codex_r03_offline_profile_disposition_matches_report(
+                self.report, changed, report_sha256,
+            ), field)
+
+    def validate_report(self, report):
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        report_bytes = self.report_path.read_bytes()
+
+        def validate_embedded_report(args, **kwargs):
+            payload = json.loads(kwargs['input'])
+            embedded = base64.b64decode(payload['reportBytesBase64'])
+            return subprocess.CompletedProcess(
+                args, 0,
+                json.dumps({'passed': True, 'reportSha256': hashlib.sha256(embedded).hexdigest()}),
+                '',
+            )
+
+        with (
+            patch.object(GENERATOR, 'ROOT', self.root),
+            patch.object(GENERATOR, 'LIVE_PROBE_DIR', self.root / 'docs/live-probes'),
+            patch.object(GENERATOR, 'CATALOG', self.catalog_path),
+            patch.object(GENERATOR, 'codex_r03_offline_profile_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
+            patch.object(GENERATOR, 'codex_r03_offline_profile_report_candidate_binding_is_current', return_value=True),
+            patch.object(GENERATOR, 'codex_r03_offline_profile_disposition_matches_report', return_value={'state': 'REPORT_WRITTEN'}),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+        ):
+            return GENERATOR.codex_r03_offline_profile_report_is_valid(
+                report, harness_status={'fixture': True}, report_path=self.report_path,
+                epoch_status={'fixture': True},
+            )
+
+    def test_accepts_matrix_report_while_R03_remains_unassessed(self):
+        with patch.object(GENERATOR, 'ROOT', self.root):
+            self.assertTrue(GENERATOR.codex_r03_offline_frontier_is_unassessed(require_report_ref=True))
+        self.assertTrue(self.validate_report(self.report))
+
+    def test_rejects_scenario_credit_expanded_fixture_and_unclassified_errors(self):
+        scenario_credit = json.loads(json.dumps(self.report))
+        scenario_credit['scenarioId'] = 'R03'
+        self.assertFalse(self.validate_report(scenario_credit))
+
+        expanded_fixture = json.loads(json.dumps(self.report))
+        expanded_fixture['offlineFixture']['requestCount'] = 3
+        self.assertFalse(self.validate_report(expanded_fixture))
+
+        unexpected_error = json.loads(json.dumps(self.report))
+        unexpected_error['unexpectedCodexErrorItemCount'] = 1
+        self.assertFalse(self.validate_report(unexpected_error))
+
+    def test_routes_the_report_to_only_subject_relations_agent_mcp(self):
+        self.report_path.write_text(json.dumps(self.report), encoding='utf-8')
+        with (
+            patch.object(GENERATOR, 'ROOT', self.root),
+            patch.object(GENERATOR, 'LIVE_PROBE_DIR', self.root / 'docs/live-probes'),
+            patch.object(GENERATOR, 'codex_r03_offline_profile_harness_status', return_value={'fixture': True}),
+            patch.object(GENERATOR, 'codex_r03_offline_profile_epoch_harness_status', return_value={'fixture': True}),
+            patch.object(GENERATOR, 'codex_r03_offline_profile_report_is_valid', return_value=True),
+            patch.object(GENERATOR, 'codex_r03_offline_profile_report_matches_candidate_revision', return_value=True),
+        ):
+            sources = GENERATOR.model_mcp_e2e_sources(self.catalog)
+        self.assertEqual(
+            sources,
+            {
+                GENERATOR.CODEX_R03_OFFLINE_TOOL_NAME: {
+                    GENERATOR.CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH,
+                },
+            },
+        )
+
+
 
 
 class C03PersonSelectionEvidenceTests(unittest.TestCase):
