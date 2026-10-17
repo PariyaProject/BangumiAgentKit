@@ -261,6 +261,18 @@ export function assertR03CandidateReviewGate(
   };
 }
 
+export function sameR03CandidateReviewGate(left, right) {
+  if (!left || !right) return false;
+  return (
+    left?.candidateSha === right?.candidateSha &&
+    left?.baseSha === right?.baseSha &&
+    left?.prNumber === right?.prNumber &&
+    left?.reviewerId === right?.reviewerId &&
+    left?.ciRunId === right?.ciRunId &&
+    canonicalAgentMcpProfileJson(left?.ciChecks) === canonicalAgentMcpProfileJson(right?.ciChecks)
+  );
+}
+
 function assertCurrentCandidateBundle(sourceRevision, bundleSha256) {
   try {
     return (
@@ -647,6 +659,11 @@ function runR03({ runNumber }) {
       claim.sourceCandidateSha !== sourceRevision ||
       claim.baseSha !== currentGate.baseSha ||
       claim.reviewerId !== currentGate.reviewerId ||
+      claim.ciSha !== sourceRevision ||
+      claim.ciStatus !== 'SUCCESS' ||
+      claim.ciRunId !== currentGate.ciRunId ||
+      canonicalAgentMcpProfileJson(claim.ciChecks) !==
+        canonicalAgentMcpProfileJson(currentGate.ciChecks) ||
       claim.bundleSha256 !== bundleSha256 ||
       claim.expectedArgumentsSha256 !== agentMcpProfileArgumentsSha256(PROFILE) ||
       claim.registrySha256 !== agentMcpProfileRegistrySha256(PROFILE.id) ||
@@ -656,10 +673,23 @@ function runR03({ runNumber }) {
       return 1;
     }
 
+    const beforeInvokeStatus = readEpochStatus(prNumber);
+    const beforeInvokePr = readPullRequest(prNumber);
+    const beforeInvokeBase = fetchCurrentMaster();
+    const beforeInvokeGate = assertR03CandidateReviewGate(beforeInvokeStatus, beforeInvokePr, {
+      sourceRevision,
+      currentBaseSha: beforeInvokeBase,
+    });
+    if (!sameR03CandidateReviewGate(currentGate, beforeInvokeGate)) {
+      recordInconclusive(prNumber, ownedClaimId, 'R03_PREINVOKE_GATE_CHANGED');
+      return 1;
+    }
     const beforeInvoke = readProfileStatus(prNumber);
     if (
-      beforeInvoke.state !== 'CLAIMED' ||
-      beforeInvoke.disposition?.claimId !== ownedClaimId ||
+      !r03ClaimBelongsToRunner(beforeInvoke, {
+        claimId: ownedClaimId,
+        runnerReceiptPublicKey: publicKeyBase64,
+      }) ||
       !assertCurrentCandidateBundle(sourceRevision, bundleSha256)
     ) {
       recordInconclusive(prNumber, ownedClaimId, 'R03_PREINVOKE_GATE_MISMATCH');

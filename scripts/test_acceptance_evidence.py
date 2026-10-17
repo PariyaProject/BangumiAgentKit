@@ -9878,6 +9878,188 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
             },
         }
 
+    def candidate_epoch_status(self, candidate_sha=None):
+        branch = 'codex/epoch-run95-r03-two-hop-relations-offline-agent-mcp-20261017'
+        candidate_sha = candidate_sha or self.report['sourceRevision']
+        base_sha = self.report['baseSha']
+        reviewer_id = self.report['reviewerId']
+        return {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': self.report['prNumber']},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base_sha,
+                'pr_head_ref_name': branch,
+                'pr_head_sha': candidate_sha,
+                'pr_is_draft': False,
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_R03_OFFLINE_EPOCH_ID,
+                    'pr_number': self.report['prNumber'],
+                    'base_branch': 'master',
+                    'base_sha': base_sha,
+                    'candidate_sha': candidate_sha,
+                    'branch': branch,
+                    'review_history': [{
+                        'candidate_sha': self.report['sourceRevision'],
+                        'reviewed_base_sha': base_sha,
+                        'reviewer_id': reviewer_id,
+                        'verdict': 'PASS',
+                    }],
+                },
+            },
+        }
+
+    def profile_harness_status(self, report_sha256):
+        receipt = self.report['runnerReceipt']
+        disposition = {
+            'claimId': self.report['claimId'],
+            'profileId': GENERATOR.CODEX_R03_OFFLINE_PROFILE_ID,
+            'frontierId': 'R03',
+            'epochId': GENERATOR.CODEX_R03_OFFLINE_EPOCH_ID,
+            'runNumber': 95,
+            'prNumber': self.report['prNumber'],
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': self.report['sourceRevision'],
+            'baseSha': self.report['baseSha'],
+            'ciSha': self.report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'ciRunId': self.report['ciRunId'],
+            'ciChecks': self.report['ciChecks'],
+            'reviewerId': self.report['reviewerId'],
+            'bundleSha256': self.report['mcpBundleSha256'],
+            'registrySha256': GENERATOR.CODEX_R03_OFFLINE_PROFILE_REGISTRY_SHA256,
+            'toolName': GENERATOR.CODEX_R03_OFFLINE_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_R03_OFFLINE_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_R03_OFFLINE_EXPECTED_ARGUMENTS_SHA256,
+            'reportWritten': True,
+            'reportPath': GENERATOR.CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH,
+            'reportSha256': report_sha256,
+            'retryAllowed': False,
+            'runnerReceiptPublicKey': receipt['publicKeyBase64'],
+            'runnerReceiptPublicKeySha256': receipt['publicKeySha256'],
+            'runnerReceiptSha256': GENERATOR._canonical_json_sha256(receipt),
+        }
+        return {
+            'state': 'REPORT_WRITTEN',
+            'profile_id': GENERATOR.CODEX_R03_OFFLINE_PROFILE_ID,
+            'pr': self.report['prNumber'],
+            'tool_name': GENERATOR.CODEX_R03_OFFLINE_TOOL_NAME,
+            'argument_profile': GENERATOR.CODEX_R03_OFFLINE_ARGUMENT_PROFILE,
+            'expected_arguments_sha256': GENERATOR.CODEX_R03_OFFLINE_EXPECTED_ARGUMENTS_SHA256,
+            'registry_sha256': GENERATOR.CODEX_R03_OFFLINE_PROFILE_REGISTRY_SHA256,
+            'claim_label_present': True,
+            'terminal_label_present': True,
+            'disposition': disposition,
+        }
+
+    def test_candidate_binding_rejects_stale_candidate_base_review_and_scope(self):
+        status = self.candidate_epoch_status()
+        changed_paths = {GENERATOR.CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH}
+        bundle_sha256 = self.report['mcpBundleSha256']
+        self.assertTrue(GENERATOR.codex_r03_offline_profile_candidate_binding_is_valid(
+            self.report, status, changed_paths, bundle_sha256,
+        ))
+
+        wrong_head = json.loads(json.dumps(status))
+        wrong_head['epoch']['pr_head_sha'] = 'e' * 40
+        self.assertFalse(GENERATOR.codex_r03_offline_profile_candidate_binding_is_valid(
+            self.report, wrong_head, changed_paths, bundle_sha256,
+        ))
+
+        stale_base = json.loads(json.dumps(status))
+        stale_base['epoch']['state']['base_sha'] = 'f' * 40
+        self.assertFalse(GENERATOR.codex_r03_offline_profile_candidate_binding_is_valid(
+            self.report, stale_base, changed_paths, bundle_sha256,
+        ))
+
+        wrong_review = json.loads(json.dumps(status))
+        wrong_review['epoch']['state']['review_history'][0]['reviewer_id'] = 'other-reviewer'
+        self.assertFalse(GENERATOR.codex_r03_offline_profile_candidate_binding_is_valid(
+            self.report, wrong_review, changed_paths, bundle_sha256,
+        ))
+
+        unrelated_change = {'apps/mcp/codex-one-tool-mcp-mcp-server.mjs'}
+        self.assertFalse(GENERATOR.codex_r03_offline_profile_candidate_binding_is_valid(
+            self.report, status, unrelated_change, bundle_sha256,
+        ))
+        self.assertFalse(GENERATOR.codex_r03_offline_profile_candidate_binding_is_valid(
+            self.report, status, changed_paths, '0' * 64,
+        ))
+
+    def test_current_candidate_binding_accepts_only_an_evidence_refresh(self):
+        candidate_sha = 'e' * 40
+        status = self.candidate_epoch_status(candidate_sha)
+        source_revision = self.report['sourceRevision']
+        allowed_paths = '\n'.join([
+            GENERATOR.CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH,
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+        ]) + '\n'
+
+        def git_result(*args, stdout='', returncode=0):
+            return subprocess.CompletedProcess(args, returncode, stdout, '')
+
+        def run_repository_git(root, *args):
+            if args[:2] == ('merge-base', '--is-ancestor'):
+                self.assertEqual(args[2:], (source_revision, candidate_sha))
+                return git_result(*args)
+            if args[:2] == ('diff', '--name-only'):
+                return git_result(*args, stdout=allowed_paths)
+            if args[:2] == ('status', '--porcelain=v1'):
+                return git_result(*args)
+            raise AssertionError(f'unexpected git command: {args}')
+
+        with (
+            patch.object(GENERATOR, 'ROOT', self.root),
+            patch.object(GENERATOR, '_run_repository_git', side_effect=run_repository_git),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value=self.report['mcpBundleSha256']),
+        ):
+            self.assertTrue(
+                GENERATOR.codex_r03_offline_profile_report_candidate_binding_is_current(
+                    self.report, status,
+                ),
+            )
+
+            def unrelated_git(root, *args):
+                if args[:2] == ('merge-base', '--is-ancestor'):
+                    return git_result(*args)
+                if args[:2] == ('diff', '--name-only'):
+                    return git_result(*args, stdout=allowed_paths + 'apps/mcp/unrelated.mjs\n')
+                if args[:2] == ('status', '--porcelain=v1'):
+                    return git_result(*args)
+                raise AssertionError(f'unexpected git command: {args}')
+
+            with patch.object(GENERATOR, '_run_repository_git', side_effect=unrelated_git):
+                self.assertFalse(
+                    GENERATOR.codex_r03_offline_profile_report_candidate_binding_is_current(
+                        self.report, status,
+                    ),
+                )
+
+    def test_profile_disposition_binds_candidate_base_ci_and_reviewer(self):
+        report_sha256 = 'f' * 64
+        status = self.profile_harness_status(report_sha256)
+        self.assertIsNotNone(GENERATOR.codex_r03_offline_profile_disposition_matches_report(
+            self.report, status, report_sha256,
+        ))
+        for field, value in [
+            ('sourceCandidateSha', 'e' * 40),
+            ('baseSha', 'e' * 40),
+            ('ciSha', 'e' * 40),
+            ('ciStatus', 'FAILED'),
+            ('ciRunId', '38812509761'),
+            ('ciChecks', []),
+            ('reviewerId', 'other-reviewer'),
+        ]:
+            changed = json.loads(json.dumps(status))
+            changed['disposition'][field] = value
+            self.assertIsNone(GENERATOR.codex_r03_offline_profile_disposition_matches_report(
+                self.report, changed, report_sha256,
+            ), field)
+
     def validate_report(self, report):
         self.report_path.write_text(json.dumps(report), encoding='utf-8')
         report_bytes = self.report_path.read_bytes()

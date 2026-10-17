@@ -5620,8 +5620,10 @@ CODEX_R03_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/run-r03-relations-offline-agent-mcp.mjs': (
         'export function validateR03RunnerArgs(',
         'export function assertR03CandidateReviewGate(',
+        'export function sameR03CandidateReviewGate(',
         'export function buildR03CodexExecArgs(',
         'export function classifyR03AssertionFailure(',
+        "'R03_PREINVOKE_GATE_CHANGED'",
         'function runR03(',
         'exactly twice, in order',
     ),
@@ -5653,6 +5655,8 @@ CODEX_R03_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
         'R03 fixture rejects unregistered routes, requests, authorization, and duplicates',
     ),
     'tests/harness/run-r03-relations-offline-agent-mcp.test.mjs': (
+        'R03 review gate binds the current Candidate, Base, seven checks, and Luna Max PASS',
+        'R03 pre-invocation gate comparison includes Candidate, Base, review, and exact CI',
         'R03 Codex invocation is ephemeral, read-only, and exposes only the fixed relations tool',
         'R03 server summary accepts exactly two ordered local relation responses',
     ),
@@ -5666,7 +5670,14 @@ CODEX_R03_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_r03_offline_profile_report_is_valid(',
+        'def codex_r03_offline_profile_candidate_binding_is_valid(',
+        'report_review_exists = isinstance(reviews, list) and any(',
         'CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH',
+    ),
+    'scripts/test_acceptance_evidence.py': (
+        'def test_candidate_binding_rejects_stale_candidate_base_review_and_scope(self):',
+        'def test_current_candidate_binding_accepts_only_an_evidence_refresh(self):',
+        'def test_profile_disposition_binds_candidate_base_ci_and_reviewer(self):',
     ),
 }
 CODEX_R02_PROFILE_IMPLEMENTATION_MARKERS = {
@@ -14249,8 +14260,17 @@ def codex_r03_offline_profile_candidate_binding_is_valid(
     candidate_sha = epoch.get('candidate_sha')
     pr_number = report.get('prNumber')
     branch = epoch.get('branch')
+    source_revision = report.get('sourceRevision')
     reviews = epoch.get('review_history', [])
     latest_review = reviews[-1] if isinstance(reviews, list) and reviews else None
+    report_review_exists = isinstance(reviews, list) and any(
+        isinstance(review, dict)
+        and review.get('candidate_sha') == source_revision
+        and review.get('reviewed_base_sha') == report.get('baseSha')
+        and review.get('reviewer_id') == report.get('reviewerId')
+        and review.get('verdict') == 'PASS'
+        for review in reviews
+    )
     active_pr = (
         run_state.get('state') == 'EPOCH_ACTIVE'
         and run_state.get('active_epoch_pr') == pr_number
@@ -14270,6 +14290,7 @@ def codex_r03_offline_profile_candidate_binding_is_valid(
         and pr_number > 0
         and run.get('number') == 95
         and (active_pr or merged_pr)
+        and report_review_exists
         and epoch.get('epoch_id') == CODEX_R03_OFFLINE_EPOCH_ID
         and epoch.get('pr_number') == pr_number
         and epoch.get('base_branch') == 'master'

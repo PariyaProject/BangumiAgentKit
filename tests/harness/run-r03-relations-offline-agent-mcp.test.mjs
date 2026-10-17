@@ -12,9 +12,11 @@ import {
   R03_RELATIONS_OFFLINE_PROFILE_ID,
 } from '../../scripts/lib/r03-relations-offline-profile.mjs';
 import {
+  assertR03CandidateReviewGate,
   buildR03CodexExecArgs,
   classifyR03AssertionFailure,
   recoverR03RunnerFailure,
+  sameR03CandidateReviewGate,
   validateR03RunnerArgs,
   validateR03ServerSummary,
 } from '../../scripts/acceptance/run-r03-relations-offline-agent-mcp.mjs';
@@ -23,6 +25,81 @@ const PROFILE = getAgentMcpProfileById(R03_RELATIONS_OFFLINE_PROFILE_ID);
 const SOURCE_SHA = 'a'.repeat(40);
 const BUNDLE_SHA = 'b'.repeat(64);
 const SERVER_ID = 'bgk_r03_relations';
+const CANDIDATE_SHA = 'c'.repeat(40);
+const BASE_SHA = 'd'.repeat(40);
+const CI_RUN_ID = '38820001234';
+const REQUIRED_CHECKS = [
+  'harness-control',
+  'sqlite-default',
+  'host-integration',
+  'standalone-release-smoke',
+  'postgres-compat',
+  'provider-foundation',
+  'discovery-foundation',
+];
+
+function candidateGateFixture() {
+  const branch = 'codex/epoch-run95-r03-two-hop-relations-offline-agent-mcp-20261017';
+  const reviewerId = 'gpt-6-luna-max-run95-pr222-round1';
+  const status = {
+    git: { status: '', head: CANDIDATE_SHA, branch },
+    run: {
+      state: {
+        state: 'EPOCH_ACTIVE',
+        profile: 'AUTONOMOUS_EVOLUTION',
+        active_epoch_pr: 222,
+        pending_epoch: null,
+      },
+    },
+    epoch: {
+      number: 222,
+      github_state: 'OPEN',
+      state: {
+        epoch_id: PROFILE.epochId,
+        pr_number: 222,
+        branch,
+        base_branch: 'master',
+        base_sha: BASE_SHA,
+        reviewed_base_sha: BASE_SHA,
+        candidate_sha: CANDIDATE_SHA,
+        review_pass_sha: CANDIDATE_SHA,
+        ci: {
+          sha: CANDIDATE_SHA,
+          status: 'SUCCESS',
+          url: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${CI_RUN_ID}`,
+        },
+        state: 'REVIEW_PASSED',
+        advances_frontier_ids: ['R03'],
+        scope_closure: { related_work_remaining: false },
+        adversarial_preflight: { completed: true },
+        review_history: [
+          {
+            reviewer_id: reviewerId,
+            candidate_sha: CANDIDATE_SHA,
+            reviewed_base_sha: BASE_SHA,
+            verdict: 'PASS',
+          },
+        ],
+      },
+    },
+  };
+  const pr = {
+    state: 'OPEN',
+    isDraft: false,
+    baseRefName: 'master',
+    headRefName: branch,
+    headRefOid: CANDIDATE_SHA,
+    statusCheckRollup: REQUIRED_CHECKS.map((name, index) => ({
+      name,
+      status: 'COMPLETED',
+      conclusion: 'SUCCESS',
+      detailsUrl: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${CI_RUN_ID}/job/${index + 1}`,
+    })),
+  };
+  const readGit = (...args) =>
+    args[0] === 'status' ? '' : args[0] === 'rev-parse' && args[1] === 'HEAD' ? CANDIDATE_SHA : '';
+  return { status, pr, readGit, reviewerId };
+}
 
 function serverSummary() {
   return {
@@ -63,6 +140,91 @@ function serverSummary() {
     },
   };
 }
+
+test('R03 review gate binds the current Candidate, Base, seven checks, and Luna Max PASS', () => {
+  const fixture = candidateGateFixture();
+  const gate = assertR03CandidateReviewGate(fixture.status, fixture.pr, {
+    sourceRevision: CANDIDATE_SHA,
+    currentBaseSha: BASE_SHA,
+    readGit: fixture.readGit,
+  });
+  assert.deepEqual(gate, {
+    candidateSha: CANDIDATE_SHA,
+    baseSha: BASE_SHA,
+    prNumber: 222,
+    reviewerId: fixture.reviewerId,
+    ciRunId: CI_RUN_ID,
+    ciChecks: REQUIRED_CHECKS.map((name) => ({
+      name,
+      status: 'COMPLETED',
+      conclusion: 'SUCCESS',
+    })),
+  });
+
+  assert.throws(() =>
+    assertR03CandidateReviewGate(fixture.status, fixture.pr, {
+      sourceRevision: CANDIDATE_SHA,
+      currentBaseSha: 'e'.repeat(40),
+      readGit: fixture.readGit,
+    }),
+  );
+  const staleCandidate = structuredClone(fixture.status);
+  staleCandidate.epoch.state.candidate_sha = 'f'.repeat(40);
+  assert.throws(() =>
+    assertR03CandidateReviewGate(staleCandidate, fixture.pr, {
+      sourceRevision: CANDIDATE_SHA,
+      currentBaseSha: BASE_SHA,
+      readGit: fixture.readGit,
+    }),
+  );
+  const wrongReview = structuredClone(fixture.status);
+  wrongReview.epoch.state.review_history[0].verdict = 'CORRECTIVE_REQUIRED';
+  assert.throws(() =>
+    assertR03CandidateReviewGate(wrongReview, fixture.pr, {
+      sourceRevision: CANDIDATE_SHA,
+      currentBaseSha: BASE_SHA,
+      readGit: fixture.readGit,
+    }),
+  );
+  const wrongCiRun = structuredClone(fixture.pr);
+  wrongCiRun.statusCheckRollup[0].detailsUrl =
+    'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/38820001235/job/1';
+  assert.throws(() =>
+    assertR03CandidateReviewGate(fixture.status, wrongCiRun, {
+      sourceRevision: CANDIDATE_SHA,
+      currentBaseSha: BASE_SHA,
+      readGit: fixture.readGit,
+    }),
+  );
+});
+
+test('R03 pre-invocation gate comparison includes Candidate, Base, review, and exact CI', () => {
+  const fixture = candidateGateFixture();
+  const gate = assertR03CandidateReviewGate(fixture.status, fixture.pr, {
+    sourceRevision: CANDIDATE_SHA,
+    currentBaseSha: BASE_SHA,
+    readGit: fixture.readGit,
+  });
+  assert.equal(sameR03CandidateReviewGate(gate, structuredClone(gate)), true);
+  for (const [field, value] of [
+    ['candidateSha', 'e'.repeat(40)],
+    ['baseSha', 'e'.repeat(40)],
+    ['prNumber', 223],
+    ['reviewerId', 'different-reviewer'],
+    ['ciRunId', '38820001235'],
+  ]) {
+    assert.equal(sameR03CandidateReviewGate(gate, { ...gate, [field]: value }), false);
+  }
+  assert.equal(
+    sameR03CandidateReviewGate(gate, {
+      ...gate,
+      ciChecks: gate.ciChecks.map((check, index) =>
+        index === 0 ? { ...check, conclusion: 'FAILURE' } : check,
+      ),
+    }),
+    false,
+  );
+});
 
 test('R03 Codex invocation is ephemeral, read-only, and exposes only the fixed relations tool', () => {
   assert.equal(validateR03RunnerArgs(['--help']), 'help');
