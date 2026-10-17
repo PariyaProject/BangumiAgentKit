@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   assertA01RatingDispersionCandidateReviewGate,
   buildA01RatingDispersionCodexExecArgs,
+  classifyA01RatingDispersionAttempt,
   validateA01RatingDispersionRunnerArgs,
 } from '../../scripts/acceptance/run-a01-rating-dispersion-agent-mcp.mjs';
 import { getAgentMcpProfileById } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
@@ -137,4 +138,34 @@ test('A01 runner arguments reject modes other than one run or help', () => {
   assert.equal(validateA01RatingDispersionRunnerArgs([]), 'run');
   assert.equal(validateA01RatingDispersionRunnerArgs(['--help']), 'help');
   assert.throws(() => validateA01RatingDispersionRunnerArgs(['--retry']), /Usage:/u);
+});
+
+test('A01 startup reconciles claimed attempts and never restarts a terminal or orphaned profile', () => {
+  const profileStatus = (state, dispositionState = state) => ({
+    state,
+    disposition: dispositionState === null ? null : { state: dispositionState },
+  });
+
+  assert.equal(classifyA01RatingDispersionAttempt(profileStatus('UNCLAIMED', null), false), 'START');
+  assert.equal(
+    classifyA01RatingDispersionAttempt(profileStatus('UNCLAIMED', null), true),
+    'REJECT_ORPHAN_REPORT',
+  );
+  assert.equal(
+    classifyA01RatingDispersionAttempt(profileStatus('CLAIMED'), false),
+    'FINALIZE_WITHOUT_REPORT',
+  );
+  assert.equal(
+    classifyA01RatingDispersionAttempt(profileStatus('CLAIMED'), true),
+    'RECOVER_EXISTING_REPORT',
+  );
+  assert.equal(
+    classifyA01RatingDispersionAttempt(profileStatus('REPORT_WRITTEN'), true),
+    'TERMINAL_REPORT_WRITTEN',
+  );
+  assert.equal(
+    classifyA01RatingDispersionAttempt(profileStatus('INCONCLUSIVE'), false),
+    'TERMINAL_INCONCLUSIVE',
+  );
+  assert.equal(classifyA01RatingDispersionAttempt(profileStatus('CLAIMED', null), false), 'REJECT');
 });

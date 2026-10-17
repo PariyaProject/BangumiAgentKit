@@ -1,4 +1,8 @@
 export function validateA01RatingDispersionRunnerArgs(args: string[]): 'help' | 'run';
+export function classifyA01RatingDispersionAttempt(
+  profileStatus: unknown,
+  reportExists: boolean,
+): string;
 export function assertA01RatingDispersionCandidateReviewGate(
   status: unknown,
   pr: unknown,

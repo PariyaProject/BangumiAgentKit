@@ -488,14 +488,159 @@ export function validateA01RatingDispersionRunnerArgs(args) {
   );
 }
 
+export function classifyA01RatingDispersionAttempt(profileStatus, reportExists) {
+  if (
+    !profileStatus ||
+    typeof profileStatus.state !== 'string' ||
+    typeof reportExists !== 'boolean'
+  ) {
+    throw new TypeError('A01 recovery requires durable profile status and report presence.');
+  }
+  if (
+    profileStatus.state === 'REPORT_WRITTEN' &&
+    profileStatus.disposition?.state === 'REPORT_WRITTEN'
+  ) {
+    return 'TERMINAL_REPORT_WRITTEN';
+  }
+  if (
+    profileStatus.state === 'INCONCLUSIVE' &&
+    profileStatus.disposition?.state === 'INCONCLUSIVE'
+  ) {
+    return 'TERMINAL_INCONCLUSIVE';
+  }
+  if (profileStatus.state === 'CLAIMED' && profileStatus.disposition?.state === 'CLAIMED') {
+    return reportExists ? 'RECOVER_EXISTING_REPORT' : 'FINALIZE_WITHOUT_REPORT';
+  }
+  if (profileStatus.state === 'UNCLAIMED' && profileStatus.disposition === null) {
+    return reportExists ? 'REJECT_ORPHAN_REPORT' : 'START';
+  }
+  return 'REJECT';
+}
+
+function claimForProfileRecovery(disposition) {
+  const gate = {
+    prNumber: disposition.prNumber,
+    candidateSha: disposition.sourceCandidateSha,
+    baseSha: disposition.baseSha,
+    reviewerId: disposition.reviewerId,
+  };
+  return claimFromDisposition(
+    { ...disposition, state: 'CLAIMED' },
+    gate,
+    disposition.bundleSha256,
+    disposition.runnerReceiptPublicKey,
+  );
+}
+
+function reconcileA01ProfileAttempt(profileStatus, action, reportPath) {
+  const reportExists = existsSync(reportPath);
+  if (action === 'REJECT_ORPHAN_REPORT' || action === 'REJECT') {
+    process.stdout.write(
+      `${JSON.stringify({ state: 'REFUSED', profileId: PROFILE.id, retryAllowed: false })}\n`,
+    );
+    return 1;
+  }
+  if (action === 'TERMINAL_INCONCLUSIVE') {
+    process.stdout.write(
+      `${JSON.stringify({
+        state: 'INCONCLUSIVE',
+        profileId: PROFILE.id,
+        retryAllowed: false,
+        reused: true,
+      })}\n`,
+    );
+    return 1;
+  }
+
+  let claim;
+  try {
+    claim = claimForProfileRecovery(profileStatus.disposition);
+  } catch {
+    process.stdout.write(
+      `${JSON.stringify({
+        state: 'CLAIM_RECOVERY_REFUSED',
+        profileId: PROFILE.id,
+        retryAllowed: false,
+      })}\n`,
+    );
+    return 1;
+  }
+
+  if (action === 'TERMINAL_REPORT_WRITTEN') {
+    const validation = reportExists
+      ? validateA01RatingDispersionSanitizedReportFile(claim, ROOT, reportPath)
+      : { passed: false };
+    if (
+      validation.passed &&
+      validation.reportSha256 === profileStatus.disposition.reportSha256
+    ) {
+      process.stdout.write(
+        `${JSON.stringify({
+          state: 'REPORT_WRITTEN',
+          profileId: PROFILE.id,
+          reportPath: validation.reportPath,
+          reportSha256: validation.reportSha256,
+          retryAllowed: false,
+          reused: true,
+        })}\n`,
+      );
+      return 0;
+    }
+    process.stdout.write(
+      `${JSON.stringify({
+        state: 'REPORT_WRITTEN_REPORT_INVALID',
+        profileId: PROFILE.id,
+        retryAllowed: false,
+        reused: true,
+      })}\n`,
+    );
+    return 1;
+  }
+
+  const validation = reportExists
+    ? validateA01RatingDispersionSanitizedReportFile(claim, ROOT, reportPath)
+    : { passed: false };
+  const terminalState = validation.passed ? 'REPORT_WRITTEN' : 'INCONCLUSIVE';
+  const reportSha256 = validation.passed ? validation.reportSha256 : null;
+  try {
+    recordProfileResult(claim, terminalState, reportSha256);
+  } catch {
+    process.stdout.write(
+      `${JSON.stringify({
+        state: 'CLAIMED_TERMINALIZATION_UNCONFIRMED',
+        profileId: PROFILE.id,
+        retryAllowed: false,
+        reportPresent: reportExists,
+      })}\n`,
+    );
+    return 1;
+  }
+  process.stdout.write(
+    `${JSON.stringify({
+      state: terminalState,
+      profileId: PROFILE.id,
+      ...(validation.passed ? { reportPath: validation.reportPath, reportSha256 } : {}),
+      retryAllowed: false,
+      reconciled: true,
+    })}\n`,
+  );
+  return validation.passed ? 0 : 1;
+}
+
 function run() {
   if (!PROFILE) throw new Error('A01 rating-dispersion profile is not registered.');
   const initialRun = readRunStatus();
   const prNumber = initialRun.run.state.active_epoch_pr;
   if (!Number.isSafeInteger(prNumber)) throw new Error('Run #95 has no active A01 Epoch.');
-  if (existsSync(path.join(ROOT, PROFILE.reportPath)))
-    throw new Error('A01 report already exists; refusing to run or retry.');
+  const reportPath = path.join(ROOT, PROFILE.reportPath);
   const initialProfile = readProfileStatus(prNumber);
+  const attemptAction = classifyA01RatingDispersionAttempt(
+    initialProfile,
+    existsSync(reportPath),
+  );
+  if (attemptAction !== 'START') {
+    return reconcileA01ProfileAttempt(initialProfile, attemptAction, reportPath);
+  }
   if (
     initialProfile.state !== 'UNCLAIMED' ||
     initialProfile.disposition !== null ||

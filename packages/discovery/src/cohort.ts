@@ -314,12 +314,16 @@ function finiteScore(value: unknown): number | undefined {
 }
 
 function queryForCohort(query: DiscoveryQuery, maxSubjects: number): DiscoveryQuery {
-  const limit = Math.min(maxSubjects, query.limit ?? maxSubjects);
+  const requestedLimit = Math.min(maxSubjects, query.limit ?? maxSubjects);
   const requestedBudget = query.budget ?? {};
+  const maxReturnedItems = Math.min(
+    requestedLimit,
+    boundedInteger(requestedBudget.maxReturnedItems, requestedLimit, maxSubjects),
+  );
   return {
     ...query,
     resultMode: 'all',
-    limit,
+    limit: maxReturnedItems,
     budget: {
       maxPages: boundedInteger(
         requestedBudget.maxPages,
@@ -342,10 +346,7 @@ function queryForCohort(query: DiscoveryQuery, maxSubjects: number): DiscoveryQu
         SUBJECT_COHORT_DETAIL_CONCURRENCY,
       ),
       maxConceptProbes: boundedInteger(requestedBudget.maxConceptProbes, 8, 8),
-      maxReturnedItems: Math.min(
-        limit,
-        boundedInteger(requestedBudget.maxReturnedItems, limit, maxSubjects),
-      ),
+      maxReturnedItems,
     },
   };
 }

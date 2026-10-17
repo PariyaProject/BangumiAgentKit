@@ -608,6 +608,37 @@ describe('subject cohort comparison', () => {
     expect(provider.searchRequests[0]?.limit).toBe(20);
   });
 
+  it('clamps the effective query limit to a smaller explicit returned-item budget', async () => {
+    const provider = new CohortProvider({
+      A: [
+        { id: 1, name: 'A one', score: 8, heat: 10, episodes: 12 },
+        { id: 2, name: 'A two', score: 7, heat: 8, episodes: 13 },
+        { id: 3, name: 'A three', score: 6, heat: 6, episodes: 14 },
+      ],
+    });
+    const result = await compareSubjectCohorts(
+      [
+        {
+          query: {
+            keyword: 'A',
+            media: 'anime',
+            resultMode: 'all',
+            limit: 4,
+            budget: { maxReturnedItems: 2 },
+          },
+        },
+      ],
+      { maxSubjects: 4 },
+      provider,
+    );
+
+    expect(result.cohorts[0]?.query).toMatchObject({
+      limit: 2,
+      budget: { maxReturnedItems: 2 },
+    });
+    expect(result.cohorts[0]?.subjects).toHaveLength(2);
+  });
+
   it('clamps direct cohort-query budgets to the server safety ceilings', async () => {
     const provider = new CohortProvider({ A: [] });
     const unsafeQuery = {
