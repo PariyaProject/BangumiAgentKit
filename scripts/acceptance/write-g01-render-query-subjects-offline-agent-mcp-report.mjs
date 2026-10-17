@@ -12,15 +12,18 @@ import {
 import { isValidP06CiRunEvidence as isValidProfileCiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   assertG01RenderQueryOfflineProfile,
-  G01_RENDER_QUERY_OFFLINE_NETWORK_MODE,
+  getG01RenderQueryOfflineProfileSpec,
+  G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
+  G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID,
 } from '../lib/g01-render-query-subjects-offline-profile.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const PROFILE = getAgentMcpProfileById('g01-render-query-subjects-offline-agent-mcp-v1');
-const REPORT_RELATIVE_PATH = PROFILE?.reportPath;
-const REPORT_PATH = path.join(ROOT, REPORT_RELATIVE_PATH ?? 'invalid-g01-report-path');
-const RECEIPT_KIND = 'g01-render-query-offline-runner-receipt-v1';
-const ACKNOWLEDGEMENT = 'G01_RENDER_QUERY_SYNTHETIC_OFFLINE_OK';
+const profileArgIndex = process.argv.indexOf('--profile-id');
+const defaultProfileId =
+  profileArgIndex >= 0 ? process.argv[profileArgIndex + 1] : G01_RENDER_QUERY_OFFLINE_PROFILE_ID;
+let PROFILE = getAgentMcpProfileById(defaultProfileId);
+const RECEIPT_KIND_V1 = 'g01-render-query-offline-runner-receipt-v1';
+const RECEIPT_KIND_V2 = 'g01-render-query-offline-runner-receipt-v2';
 const REPORT_FIELDS = new Set([
   'schemaVersion',
   'evidenceKind',
@@ -128,6 +131,8 @@ const RECEIPT_PAYLOAD_FIELDS = new Set([
   'eventStreamSha256',
   'serverSummarySha256',
 ]);
+const REPORT_FIELDS_V2 = new Set([...REPORT_FIELDS, 'mcpToolErrorResultCount']);
+const RECEIPT_PAYLOAD_FIELDS_V2 = new Set([...RECEIPT_PAYLOAD_FIELDS, 'mcpToolErrorResultCount']);
 const ANSWER_CHECK_FIELDS = new Set([
   'exactRegisteredProfile',
   'oneAllowedMcpTool',
@@ -181,6 +186,28 @@ const OFFLINE_ASSET_FIELDS = new Set([
   'nonEmptyAssetUrlCount',
   'blockedAssetRequestCount',
 ]);
+
+function withProfile(profileId, callback) {
+  const selected = getAgentMcpProfileById(profileId);
+  if (!selected || !assertG01RenderQueryOfflineProfile(selected)) {
+    return { passed: false, reason: 'G01_RENDER_QUERY_PROFILE_INVALID' };
+  }
+  const previous = PROFILE;
+  PROFILE = selected;
+  try {
+    return callback();
+  } finally {
+    PROFILE = previous;
+  }
+}
+
+function offlineProfileSpec() {
+  return getG01RenderQueryOfflineProfileSpec(PROFILE);
+}
+
+function runnerReceiptKind() {
+  return PROFILE.id === G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID ? RECEIPT_KIND_V2 : RECEIPT_KIND_V1;
+}
 
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
@@ -244,6 +271,18 @@ export function buildG01RenderQueryOfflineRunnerReceiptPayload(
   report,
   { eventStreamSha256, serverSummarySha256 },
 ) {
+  return withProfile(report?.profileId, () =>
+    buildCurrentG01RenderQueryOfflineRunnerReceiptPayload(report, {
+      eventStreamSha256,
+      serverSummarySha256,
+    }),
+  );
+}
+
+function buildCurrentG01RenderQueryOfflineRunnerReceiptPayload(
+  report,
+  { eventStreamSha256, serverSummarySha256 },
+) {
   if (
     !report ||
     typeof report !== 'object' ||
@@ -253,9 +292,9 @@ export function buildG01RenderQueryOfflineRunnerReceiptPayload(
     throw new TypeError('G01 render-query runner receipt requires exact sanitized run inputs.');
   }
   const sanitizedReport = { ...report, runnerReceipt: null };
-  return {
+  const payload = {
     schemaVersion: 1,
-    kind: RECEIPT_KIND,
+    kind: runnerReceiptKind(),
     sanitizedReportSha256: sha256(canonicalAgentMcpProfileJson(sanitizedReport)),
     claimId: report.claimId,
     profileId: report.profileId,
@@ -295,6 +334,10 @@ export function buildG01RenderQueryOfflineRunnerReceiptPayload(
     eventStreamSha256,
     serverSummarySha256,
   };
+  if (PROFILE.id === G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID) {
+    payload.mcpToolErrorResultCount = report.mcpToolErrorResultCount;
+  }
+  return payload;
 }
 
 function createRunnerReceipt(payload, { publicKeyBase64, privateKey }) {
@@ -311,7 +354,7 @@ function createRunnerReceipt(payload, { publicKeyBase64, privateKey }) {
   const signature = sign(null, Buffer.from(canonicalAgentMcpProfileJson(payload)), privateKey);
   return {
     schemaVersion: 1,
-    kind: RECEIPT_KIND,
+    kind: runnerReceiptKind(),
     publicKeyBase64,
     publicKeySha256: sha256(publicKeyDer),
     payload,
@@ -319,7 +362,18 @@ function createRunnerReceipt(payload, { publicKeyBase64, privateKey }) {
   };
 }
 
-export function validateG01RenderQueryOfflineProfileReport(report, claim, reportBytes = null) {
+export function validateG01RenderQueryOfflineProfileReport(
+  report,
+  claim,
+  reportBytes = null,
+  profileId = claim?.profileId,
+) {
+  return withProfile(profileId, () =>
+    validateCurrentG01RenderQueryOfflineProfileReport(report, claim, reportBytes),
+  );
+}
+
+function validateCurrentG01RenderQueryOfflineProfileReport(report, claim, reportBytes = null) {
   const claimStateValid =
     (claim?.state === 'CLAIMED' && claim.reportWritten === false) ||
     (claim?.state === 'REPORT_WRITTEN' &&
@@ -329,7 +383,10 @@ export function validateG01RenderQueryOfflineProfileReport(report, claim, report
   if (
     !PROFILE ||
     !assertG01RenderQueryOfflineProfile(PROFILE) ||
-    !exactKeys(report, REPORT_FIELDS) ||
+    !exactKeys(
+      report,
+      PROFILE.id === G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID ? REPORT_FIELDS_V2 : REPORT_FIELDS,
+    ) ||
     !claim ||
     claim.profileId !== PROFILE.id ||
     !claimStateValid ||
@@ -357,7 +414,7 @@ export function validateG01RenderQueryOfflineProfileReport(report, claim, report
     credentialsStored: false,
   };
   const expectedFixture = {
-    profile: G01_RENDER_QUERY_OFFLINE_NETWORK_MODE,
+    profile: PROFILE.networkMode,
     requestCount: 2,
     searchRequestCount: 1,
     subjectDetailRequestCount: 1,
@@ -388,7 +445,8 @@ export function validateG01RenderQueryOfflineProfileReport(report, claim, report
     report.frontierId !== 'G01' ||
     report.scenarioId !== null ||
     report.epochId !== PROFILE.epochId ||
-    report.profile !== 'codex-luna-max-offline-agent-mcp-matrix-v1' ||
+    report.profile !==
+      `codex-luna-max-offline-agent-mcp-matrix-${PROFILE.id.endsWith('-v2') ? 'v2' : 'v1'}` ||
     report.model !== PROFILE.model ||
     report.reasoningEffort !== PROFILE.reasoningEffort ||
     !/^gpt-6-luna-max-run95-pr\d+-round[1-9]\d*$/u.test(report.reviewerId ?? '') ||
@@ -400,7 +458,7 @@ export function validateG01RenderQueryOfflineProfileReport(report, claim, report
     report.toolName !== PROFILE.toolName ||
     report.argumentProfile !== PROFILE.argumentProfile ||
     report.expectedArgumentsSha256 !== expectedArgumentsSha256 ||
-    report.networkMode !== G01_RENDER_QUERY_OFFLINE_NETWORK_MODE ||
+    report.networkMode !== PROFILE.networkMode ||
     report.serverToolNames?.length !== 1 ||
     report.serverToolNames[0] !== PROFILE.toolName ||
     report.serverToolCount !== 1 ||
@@ -411,6 +469,8 @@ export function validateG01RenderQueryOfflineProfileReport(report, claim, report
     report.eventStreamParsed !== true ||
     report.turnCompleted !== true ||
     report.codexMcpToolEventCount !== 1 ||
+    (PROFILE.id === G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID &&
+      report.mcpToolErrorResultCount !== 0) ||
     report.codexErrorItemCount !== 0 ||
     report.nonMcpToolEventCount !== 0 ||
     !Array.isArray(report.nonMcpToolTypes) ||
@@ -419,8 +479,8 @@ export function validateG01RenderQueryOfflineProfileReport(report, claim, report
     report.allowedCallCount !== 1 ||
     report.deniedCallCount !== 0 ||
     report.answerCheckMethod !== PROFILE.answerCheckMethod ||
-    report.answerSha256 !== sha256(ACKNOWLEDGEMENT) ||
-    report.answerUtf8Bytes !== Buffer.byteLength(ACKNOWLEDGEMENT, 'utf8') ||
+    report.answerSha256 !== sha256(offlineProfileSpec().acknowledgement) ||
+    report.answerUtf8Bytes !== Buffer.byteLength(offlineProfileSpec().acknowledgement, 'utf8') ||
     !exactKeys(report.offlineFixture, OFFLINE_FIXTURE_FIELDS) ||
     canonicalAgentMcpProfileJson(report.offlineFixture) !==
       canonicalAgentMcpProfileJson(expectedFixture) ||
@@ -452,7 +512,12 @@ export function validateG01RenderQueryOfflineProfileReport(report, claim, report
     canonicalAgentMcpProfileJson(report.privacy) !==
       canonicalAgentMcpProfileJson(expectedPrivacy) ||
     !exactKeys(report.runnerReceipt, RECEIPT_FIELDS) ||
-    !exactKeys(receipt.payload, RECEIPT_PAYLOAD_FIELDS)
+    !exactKeys(
+      receipt.payload,
+      PROFILE.id === G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID
+        ? RECEIPT_PAYLOAD_FIELDS_V2
+        : RECEIPT_PAYLOAD_FIELDS,
+    )
   ) {
     return { passed: false, reason: 'G01_RENDER_QUERY_REPORT_FIELDS_INVALID' };
   }
@@ -469,9 +534,9 @@ export function validateG01RenderQueryOfflineProfileReport(report, claim, report
     });
     signatureValid =
       receipt.schemaVersion === 1 &&
-      receipt.kind === RECEIPT_KIND &&
+      receipt.kind === runnerReceiptKind() &&
       receipt.payload.schemaVersion === 1 &&
-      receipt.payload.kind === RECEIPT_KIND &&
+      receipt.payload.kind === runnerReceiptKind() &&
       receipt.publicKeyBase64 === publicKeyBase64 &&
       receipt.publicKeySha256 === publicKeySha256 &&
       publicKey.asymmetricKeyType === 'ed25519' &&
@@ -492,10 +557,16 @@ export function validateG01RenderQueryOfflineProfileReport(report, claim, report
   if (reportBytes && reportBytes.length > 64 * 1024) {
     return { passed: false, reason: 'G01_RENDER_QUERY_REPORT_TOO_LARGE' };
   }
-  return { passed: true, reportPath: REPORT_RELATIVE_PATH };
+  return { passed: true, reportPath: PROFILE.reportPath };
 }
 
-export function buildG01RenderQueryOfflineProfileReport(
+export function buildG01RenderQueryOfflineProfileReport(input, options = {}) {
+  return withProfile(input?.claim?.profileId, () =>
+    buildCurrentG01RenderQueryOfflineProfileReport(input, options),
+  );
+}
+
+function buildCurrentG01RenderQueryOfflineProfileReport(
   {
     claim,
     serverSummary,
@@ -526,6 +597,8 @@ export function buildG01RenderQueryOfflineProfileReport(
     events.eventStreamParsed !== true ||
     events.turnCompleted !== true ||
     events.codexMcpToolEventCount !== 1 ||
+    (PROFILE.id === G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID &&
+      events.mcpToolErrorResultCount !== 0) ||
     events.codexErrorItemCount !== 0 ||
     events.nonMcpToolEventCount !== 0 ||
     events.shellToolCallCount !== 0 ||
@@ -535,7 +608,7 @@ export function buildG01RenderQueryOfflineProfileReport(
     events.mcpServerNames[0] !== 'bgk_g01_render_query' ||
     serverSummary.profileId !== PROFILE.id ||
     serverSummary.serverProfile !== 'closed-profile-sequence-anonymous-offline-v1' ||
-    serverSummary.networkMode !== G01_RENDER_QUERY_OFFLINE_NETWORK_MODE ||
+    serverSummary.networkMode !== PROFILE.networkMode ||
     serverSummary.sourceRevision !== claim.sourceCandidateSha ||
     serverSummary.bundleSha256 !== claim.bundleSha256 ||
     serverSummary.toolName !== PROFILE.toolName ||
@@ -555,7 +628,7 @@ export function buildG01RenderQueryOfflineProfileReport(
     serverSummary.results[0]?.resultSummary?.resultState !== 'artifact_returned' ||
     !exactKeys(serverSummary.offlineFixture, OFFLINE_FIXTURE_FIELDS) ||
     !exactKeys(serverSummary.offlineAssetBoundary, OFFLINE_ASSET_FIELDS) ||
-    answer !== ACKNOWLEDGEMENT ||
+    answer !== offlineProfileSpec().acknowledgement ||
     typeof privateKey === 'undefined' ||
     !/^[0-9a-f]{64}$/u.test(eventStreamSha256 ?? '') ||
     !/^[0-9a-f]{64}$/u.test(serverSummarySha256 ?? '')
@@ -573,7 +646,7 @@ export function buildG01RenderQueryOfflineProfileReport(
     scenarioId: null,
     epochId: PROFILE.epochId,
     profileId: PROFILE.id,
-    profile: 'codex-luna-max-offline-agent-mcp-matrix-v1',
+    profile: `codex-luna-max-offline-agent-mcp-matrix-${PROFILE.id.endsWith('-v2') ? 'v2' : 'v1'}`,
     model: PROFILE.model,
     reasoningEffort: PROFILE.reasoningEffort,
     reviewerId: claim.reviewerId,
@@ -598,13 +671,16 @@ export function buildG01RenderQueryOfflineProfileReport(
     inputSchemaSha256: serverSummary.inputSchemaSha256,
     serverToolNames: serverSummary.serverToolNames,
     serverToolCount: serverSummary.serverToolCount,
-    networkMode: G01_RENDER_QUERY_OFFLINE_NETWORK_MODE,
+    networkMode: PROFILE.networkMode,
     mcpServerNames: events.mcpServerNames,
     processExitCode: events.processExitCode,
     resultStatus: serverSummary.serverResultStatus,
     eventStreamParsed: events.eventStreamParsed,
     turnCompleted: events.turnCompleted,
     codexMcpToolEventCount: events.codexMcpToolEventCount,
+    ...(PROFILE.id === G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID
+      ? { mcpToolErrorResultCount: events.mcpToolErrorResultCount }
+      : {}),
     codexErrorItemCount: events.codexErrorItemCount,
     nonMcpToolEventCount: events.nonMcpToolEventCount,
     nonMcpToolTypes: events.nonMcpToolTypes,
@@ -667,7 +743,7 @@ export function buildG01RenderQueryOfflineProfileReport(
     }),
     { publicKeyBase64: claim.runnerReceiptPublicKey, privateKey },
   );
-  const validation = validateG01RenderQueryOfflineProfileReport(report, claim);
+  const validation = validateG01RenderQueryOfflineProfileReport(report, claim, null, PROFILE.id);
   if (!validation.passed) return validation;
   return { passed: true, report };
 }
@@ -676,12 +752,16 @@ export function writeG01RenderQueryOfflineProfileReport(input, options = {}) {
   const built = buildG01RenderQueryOfflineProfileReport(input, options);
   if (!built.passed) return built;
   const report = built.report;
+  const reportProfile = getAgentMcpProfileById(report.profileId);
+  if (!reportProfile || !assertG01RenderQueryOfflineProfile(reportProfile)) {
+    return { passed: false, reason: 'G01_RENDER_QUERY_PROFILE_INVALID' };
+  }
   const bytes = Buffer.from(`${JSON.stringify(report, null, 2)}\n`, 'utf8');
   if (bytes.length > 64 * 1024)
     return { passed: false, reason: 'G01_RENDER_QUERY_REPORT_TOO_LARGE' };
   let descriptor;
   try {
-    descriptor = openSync(REPORT_PATH, 'wx', 0o600);
+    descriptor = openSync(path.join(ROOT, reportProfile.reportPath), 'wx', 0o600);
     writeFileSync(descriptor, bytes);
     closeSync(descriptor);
   } catch {
@@ -696,7 +776,7 @@ export function writeG01RenderQueryOfflineProfileReport(input, options = {}) {
   }
   return {
     passed: true,
-    reportPath: REPORT_RELATIVE_PATH,
+    reportPath: reportProfile.reportPath,
     reportSha256: sha256(bytes),
   };
 }
@@ -705,23 +785,33 @@ export function validateG01RenderQueryOfflineSanitizedReportFile(
   claim,
   root = ROOT,
   reportPath = null,
+  profileId = claim?.profileId,
 ) {
-  if (!PROFILE || !claim || claim.profileId !== PROFILE.id) {
-    return { passed: false, reason: 'G01_RENDER_QUERY_CLAIM_INVALID' };
-  }
-  const absolutePath = reportPath ?? path.join(root, REPORT_RELATIVE_PATH);
-  try {
-    const relativePath = path.resolve(absolutePath).replace(`${path.resolve(root)}${path.sep}`, '');
-    const reportBytes = readFileSync(absolutePath);
-    if (relativePath !== REPORT_RELATIVE_PATH) {
-      return { passed: false, reason: 'G01_RENDER_QUERY_REPORT_PATH_INVALID' };
+  return withProfile(profileId, () => {
+    if (!PROFILE || !claim || claim.profileId !== PROFILE.id) {
+      return { passed: false, reason: 'G01_RENDER_QUERY_CLAIM_INVALID' };
     }
-    const report = JSON.parse(reportBytes.toString('utf8'));
-    const validation = validateG01RenderQueryOfflineProfileReport(report, claim, reportBytes);
-    return validation.passed
-      ? { ...validation, reportPath: relativePath, reportSha256: sha256(reportBytes), report }
-      : validation;
-  } catch {
-    return { passed: false, reason: 'G01_RENDER_QUERY_REPORT_UNREADABLE' };
-  }
+    const absolutePath = reportPath ?? path.join(root, PROFILE.reportPath);
+    try {
+      const relativePath = path
+        .resolve(absolutePath)
+        .replace(`${path.resolve(root)}${path.sep}`, '');
+      const reportBytes = readFileSync(absolutePath);
+      if (relativePath !== PROFILE.reportPath) {
+        return { passed: false, reason: 'G01_RENDER_QUERY_REPORT_PATH_INVALID' };
+      }
+      const report = JSON.parse(reportBytes.toString('utf8'));
+      const validation = validateG01RenderQueryOfflineProfileReport(
+        report,
+        claim,
+        reportBytes,
+        PROFILE.id,
+      );
+      return validation.passed
+        ? { ...validation, reportPath: relativePath, reportSha256: sha256(reportBytes), report }
+        : validation;
+    } catch {
+      return { passed: false, reason: 'G01_RENDER_QUERY_REPORT_UNREADABLE' };
+    }
+  });
 }

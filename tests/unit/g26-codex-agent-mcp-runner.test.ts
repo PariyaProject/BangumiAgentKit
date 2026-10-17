@@ -169,6 +169,7 @@ describe('G26 Codex one-tool runner', () => {
     expect(parsed.malformedLinesCount).toBe(0);
     expect(summary.eventStreamComplete).toBe(true);
     expect(summary.codexMcpToolEventCount).toBe(1);
+    expect(summary.mcpToolErrorResultCount).toBe(0);
     expect(summary.mcpServerNames).toEqual(['bgk_g26_one_tool']);
     expect(summary.nonMcpToolEventCount).toBe(0);
     expect(summary.shellToolCallCount).toBe(0);
@@ -217,6 +218,30 @@ describe('G26 Codex one-tool runner', () => {
     expect(summary.shellToolCallCount).toBe(0);
     expect(summary.answer).toBe('diagnostic-ok');
     expect(JSON.stringify(summary)).not.toContain('private diagnostic');
+  });
+
+  it('counts MCP error results and marks the tool call failed', () => {
+    const summary = summarizeCodexEvents([
+      { type: 'thread.started', thread_id: 'thread-1' },
+      { type: 'turn.started', turn_id: 'turn-1' },
+      {
+        type: 'item.completed',
+        item: {
+          id: 'mcp-error-1',
+          type: 'mcp_tool_call',
+          server: 'bgk_fixture',
+          tool: 'bangumi.render_query_subjects',
+          arguments: { keyword: 'private synthetic keyword' },
+          status: 'completed',
+          result: { isError: true, content: [{ type: 'text', text: 'private tool error text' }] },
+        },
+      },
+      { type: 'turn.completed', turn_id: 'turn-1' },
+    ]);
+
+    expect(summary.codexMcpToolEventCount).toBe(1);
+    expect(summary.mcpToolErrorResultCount).toBe(1);
+    expect(summary.toolCalls[0]?.state).toBe('ERROR');
   });
 
   it('still marks a top-level Codex error event as an incomplete failed turn', () => {

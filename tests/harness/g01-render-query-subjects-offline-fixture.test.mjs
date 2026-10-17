@@ -11,13 +11,18 @@ import {
   G01_RENDER_QUERY_OFFLINE_EXPECTED_ARGUMENTS,
   G01_RENDER_QUERY_OFFLINE_NETWORK_MODE,
   G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
+  G01_RENDER_QUERY_OFFLINE_V2_EXPECTED_ARGUMENTS,
+  G01_RENDER_QUERY_OFFLINE_V2_NETWORK_MODE,
+  G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID,
   assertG01RenderQueryOfflineProfile,
 } from '../../scripts/lib/g01-render-query-subjects-offline-profile.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 
 const PROFILE = getAgentMcpProfileById(G01_RENDER_QUERY_OFFLINE_PROFILE_ID);
+const PROFILE_V2 = getAgentMcpProfileById(G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID);
 const SEARCH_URL = 'https://api.bgm.tv/v0/search/subjects?limit=20&offset=0';
 const DETAIL_URL = 'https://api.bgm.tv/v0/subjects/990920';
+const V2_DETAIL_URL = 'https://api.bgm.tv/v0/subjects/991111';
 const SEARCH_BODY = {
   keyword: 'run95 g01 synthetic render query offline 20261017',
   sort: 'match',
@@ -41,6 +46,19 @@ test('G01 offline profile is fixed to the registered synthetic render-query matr
       ],
     }),
   );
+});
+
+test('G01 v2 profile is a distinct fresh-input contract bound to its new synthetic identity', () => {
+  assert.equal(assertG01RenderQueryOfflineProfile(PROFILE_V2), true);
+  assert.equal(assertG01RenderQueryOfflineFixtureProfile(PROFILE_V2), true);
+  assert.notEqual(PROFILE_V2.id, PROFILE.id);
+  assert.notEqual(PROFILE_V2.epochId, PROFILE.epochId);
+  assert.notEqual(PROFILE_V2.claimLabelName, PROFILE.claimLabelName);
+  assert.notEqual(PROFILE_V2.reportPath, PROFILE.reportPath);
+  assert.notEqual(PROFILE_V2.calls[0].arguments.keyword, PROFILE.calls[0].arguments.keyword);
+  assert.notDeepEqual(PROFILE_V2.calls[0].arguments, G01_RENDER_QUERY_OFFLINE_EXPECTED_ARGUMENTS);
+  assert.deepEqual(PROFILE_V2.calls[0].arguments, G01_RENDER_QUERY_OFFLINE_V2_EXPECTED_ARGUMENTS);
+  assert.equal(PROFILE_V2.networkMode, G01_RENDER_QUERY_OFFLINE_V2_NETWORK_MODE);
 });
 
 test('G01 fixture serves exactly one synthetic search and one subject detail response', async () => {
@@ -69,6 +87,37 @@ test('G01 fixture serves exactly one synthetic search and one subject detail res
     rawFixturePayloadStored: false,
   });
   assert.equal(JSON.stringify(snapshot).includes('G01 Synthetic Render Query'), false);
+});
+
+test('G01 v2 fixture accepts only its fresh keyword and synthetic subject ID', async () => {
+  const fixture = createG01RenderQueryOfflineFetch(PROFILE_V2);
+  const expected = G01_RENDER_QUERY_OFFLINE_V2_EXPECTED_ARGUMENTS;
+  const search = await fixture.fetchFn(SEARCH_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      keyword: expected.keyword,
+      sort: 'match',
+      filter: { type: [2] },
+    }),
+  });
+  const detail = await fixture.fetchFn(V2_DETAIL_URL);
+
+  assert.equal(search.status, 200);
+  assert.equal((await search.json()).data[0].id, 991111);
+  assert.equal(detail.status, 200);
+  assert.equal((await detail.json()).id, 991111);
+  assert.deepEqual(fixture.snapshot(), {
+    profile: G01_RENDER_QUERY_OFFLINE_V2_NETWORK_MODE,
+    requestCount: 2,
+    searchRequestCount: 1,
+    subjectDetailRequestCount: 1,
+    duplicateRequestCount: 0,
+    unexpectedRequestCount: 0,
+    authorizationHeaderCount: 0,
+    expectedOperationsComplete: true,
+    rawFixturePayloadStored: false,
+  });
 });
 
 test('G01 fixture rejects duplicate, query-drift, method, auth, and wrong-origin requests', async () => {

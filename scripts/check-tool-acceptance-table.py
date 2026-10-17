@@ -13,6 +13,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / 'docs/tool-catalog.json'
 TABLE = ROOT / 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'
+PROFILE_REGISTRY = json.loads(
+    (ROOT / 'scripts/acceptance/agent-mcp-profile-registry.json').read_text(encoding='utf-8'),
+)
+G01_RENDER_QUERY_PROFILE_VERSIONS = {
+    'g01-render-query-subjects-offline-agent-mcp-v1': 'v1',
+    'g01-render-query-subjects-offline-agent-mcp-v2': 'v2',
+}
+G01_RENDER_QUERY_PROFILES = {
+    profile.get('id'): profile
+    for profile in PROFILE_REGISTRY.get('profiles', [])
+    if isinstance(profile, dict)
+    and profile.get('id') in G01_RENDER_QUERY_PROFILE_VERSIONS
+    and profile.get('frontierId') == 'G01'
+    and profile.get('toolName') == 'bangumi.render_query_subjects'
+    and profile.get('acceptanceScope') == 'agent-mcp-matrix-only'
+}
 sys.path.insert(0, str(ROOT / 'scripts'))
 from client_evidence import tool_client_e2e_sources
 TOOL_ROW = re.compile(r'^\| `(bangumi\.[a-z0-9_]+)` \|')
@@ -20,6 +36,91 @@ SOURCE_REFERENCE = re.compile(r'`(?P<path>tests/[^`|:]+):(?P<line>[1-9][0-9]*)`'
 LIVE_EVIDENCE_REFERENCE = re.compile(r'`(?P<path>docs/live-probes/[^`|]+\.json)`')
 VALID_LIVE = {'◐', '—', '⬜'}
 VALID_MARK = {'✅', '⬜', '—'}
+
+
+def g01_render_query_report_matches(name: str, relative_path: str, report: object) -> bool:
+    if not isinstance(report, dict):
+        return False
+    profile_id = report.get('profileId')
+    profile = G01_RENDER_QUERY_PROFILES.get(profile_id)
+    if profile is None:
+        return False
+    profile_version = G01_RENDER_QUERY_PROFILE_VERSIONS.get(profile_id)
+    if profile_version is None:
+        return False
+    acknowledgement = (
+        'G01_RENDER_QUERY_SYNTHETIC_OFFLINE_V2_OK'
+        if profile_version == 'v2'
+        else 'G01_RENDER_QUERY_SYNTHETIC_OFFLINE_OK'
+    )
+    fixture = report.get('offlineFixture')
+    artifact = report.get('artifact')
+    checks = report.get('answerChecks')
+    return bool(
+        name == profile['toolName']
+        and relative_path == profile['reportPath']
+        and report.get('evidenceKind') == profile['evidenceKind']
+        and report.get('profile') == f'codex-luna-max-offline-agent-mcp-matrix-{profile_version}'
+        and report.get('epochId') == profile['epochId']
+        and report.get('runNumber') == 95
+        and report.get('frontierId') == 'G01'
+        and report.get('scenarioId') is None
+        and report.get('resultStatus') == 'SUCCESS'
+        and report.get('codexMcpToolEventCount') == 1
+        and (
+            (profile_version == 'v2' and report.get('mcpToolErrorResultCount') == 0)
+            or (profile_version == 'v1' and 'mcpToolErrorResultCount' not in report)
+        )
+        and report.get('codexErrorItemCount') == 0
+        and report.get('allowedCallCount') == 1
+        and report.get('deniedCallCount') == 0
+        and report.get('nonMcpToolEventCount') == 0
+        and report.get('nonMcpToolTypes') == []
+        and report.get('shellToolCallCount') == 0
+        and report.get('toolName') == profile['toolName']
+        and report.get('serverToolNames') == [profile['toolName']]
+        and report.get('mcpServerNames') == ['bgk_g01_render_query']
+        and report.get('networkMode') == profile['networkMode']
+        and isinstance(fixture, dict)
+        and fixture == {
+            'profile': profile['networkMode'],
+            'requestCount': 2,
+            'searchRequestCount': 1,
+            'subjectDetailRequestCount': 1,
+            'duplicateRequestCount': 0,
+            'unexpectedRequestCount': 0,
+            'authorizationHeaderCount': 0,
+            'expectedOperationsComplete': True,
+            'rawFixturePayloadStored': False,
+        }
+        and report.get('offlineAssetBoundary') == {
+            'assetResolutionCallCount': 0,
+            'nonEmptyAssetUrlCount': 0,
+            'blockedAssetRequestCount': 0,
+        }
+        and isinstance(report.get('networkBoundary'), dict)
+        and report['networkBoundary'].get('liveBangumiApiRequestCount') == 0
+        and report['networkBoundary'].get('rendererAssetRequestCount') == 0
+        and isinstance(artifact, dict)
+        and artifact.get('returned') is True
+        and artifact.get('persisted') is False
+        and artifact.get('mimeType') == 'image/png'
+        and type(artifact.get('width')) is int
+        and 0 < artifact['width'] <= 3000
+        and type(artifact.get('height')) is int
+        and 0 < artifact['height'] <= 5000
+        and type(artifact.get('byteLength')) is int
+        and 0 < artifact['byteLength'] <= 5_000_000
+        and artifact.get('pngSignatureValid') is True
+        and isinstance(checks, dict)
+        and len(checks) == 10
+        and all(value is True for value in checks.values())
+        and report.get('answerCheckMethod') == profile['answerCheckMethod']
+        and report.get('answerSha256') == hashlib.sha256(acknowledgement.encode()).hexdigest()
+        and report.get('answerUtf8Bytes') == len(acknowledgement.encode())
+    )
+
+
 R01_OFFLINE_TOOL_NAME = 'bangumi.get_subject_relations'
 R01_OFFLINE_REPORT_PATH = 'docs/live-probes/r01-relations-offline-agent-mcp-run95.json'
 R01_OFFLINE_REPORT_KIND = 'codex_cli_r01_subject_relations_offline_agent_mcp_matrix'
@@ -564,65 +665,7 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                 and all(value is True for value in title_query_render_checks.values())
                 and name in title_query_render_tool_names
             )
-            g01_render_query_fixture = report.get('offlineFixture') if isinstance(report, dict) else None
-            g01_render_query_asset = report.get('offlineAssetBoundary') if isinstance(report, dict) else None
-            g01_render_query_network = report.get('networkBoundary') if isinstance(report, dict) else None
-            g01_render_query_artifact = report.get('artifact') if isinstance(report, dict) else None
-            g01_render_query_checks = report.get('answerChecks') if isinstance(report, dict) else None
-            g01_render_query_matches = (
-                isinstance(report, dict)
-                and relative_path == 'docs/live-probes/g01-render-query-subjects-offline-agent-mcp-run95.json'
-                and report.get('evidenceKind') == 'codex_cli_g01_render_query_subjects_offline_agent_mcp'
-                and report.get('profileId') == 'g01-render-query-subjects-offline-agent-mcp-v1'
-                and report.get('runNumber') == 95
-                and report.get('frontierId') == 'G01'
-                and report.get('scenarioId') is None
-                and report.get('resultStatus') == 'SUCCESS'
-                and report.get('codexMcpToolEventCount') == 1
-                and report.get('allowedCallCount') == 1
-                and report.get('deniedCallCount') == 0
-                and report.get('nonMcpToolEventCount') == 0
-                and report.get('nonMcpToolTypes') == []
-                and report.get('shellToolCallCount') == 0
-                and report.get('toolName') == 'bangumi.render_query_subjects'
-                and report.get('serverToolNames') == ['bangumi.render_query_subjects']
-                and report.get('mcpServerNames') == ['bgk_g01_render_query']
-                and report.get('networkMode') == 'run95-g01-render-query-subjects-synthetic-offline-v1'
-                and g01_render_query_fixture == {
-                    'profile': 'run95-g01-render-query-subjects-synthetic-offline-v1',
-                    'requestCount': 2,
-                    'searchRequestCount': 1,
-                    'subjectDetailRequestCount': 1,
-                    'duplicateRequestCount': 0,
-                    'unexpectedRequestCount': 0,
-                    'authorizationHeaderCount': 0,
-                    'expectedOperationsComplete': True,
-                    'rawFixturePayloadStored': False,
-                }
-                and g01_render_query_asset == {
-                    'assetResolutionCallCount': 0,
-                    'nonEmptyAssetUrlCount': 0,
-                    'blockedAssetRequestCount': 0,
-                }
-                and isinstance(g01_render_query_network, dict)
-                and g01_render_query_network.get('liveBangumiApiRequestCount') == 0
-                and g01_render_query_network.get('rendererAssetRequestCount') == 0
-                and isinstance(g01_render_query_artifact, dict)
-                and g01_render_query_artifact.get('returned') is True
-                and g01_render_query_artifact.get('persisted') is False
-                and g01_render_query_artifact.get('mimeType') == 'image/png'
-                and type(g01_render_query_artifact.get('width')) is int
-                and 0 < g01_render_query_artifact['width'] <= 3000
-                and type(g01_render_query_artifact.get('height')) is int
-                and 0 < g01_render_query_artifact['height'] <= 5000
-                and type(g01_render_query_artifact.get('byteLength')) is int
-                and 0 < g01_render_query_artifact['byteLength'] <= 5_000_000
-                and g01_render_query_artifact.get('pngSignatureValid') is True
-                and isinstance(g01_render_query_checks, dict)
-                and len(g01_render_query_checks) == 10
-                and all(value is True for value in g01_render_query_checks.values())
-                and name == 'bangumi.render_query_subjects'
-            )
+            g01_render_query_matches = g01_render_query_report_matches(name, relative_path, report)
             g01_query_subjects_fixture = report.get('offlineFixture') if isinstance(report, dict) else None
             g01_query_subjects_result = report.get('resultSummary') if isinstance(report, dict) else None
             g01_query_subjects_network = report.get('networkBoundary') if isinstance(report, dict) else None
