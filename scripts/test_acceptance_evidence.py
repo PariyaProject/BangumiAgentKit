@@ -10112,6 +10112,68 @@ class P07ProfileEvidenceTests(unittest.TestCase):
         self.assertFalse(GENERATOR.codex_p07_frontier_is_partial(require_report_ref=True))
 
 
+class S05ProfileEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.original_root = GENERATOR.ROOT
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='s05-profile-evidence-test-')
+        GENERATOR.ROOT = Path(self.temp_dir.name)
+        self.frontier_path = GENERATOR.ROOT / 'docs/product/frontier-ledger.json'
+        self.frontier_path.parent.mkdir(parents=True, exist_ok=True)
+        self.frontier = {
+            'records': [{
+                'id': 'S05',
+                'status': 'PARTIAL',
+                'source_refs': [
+                    GENERATOR.CODEX_S05_SELECTION_EVIDENCE_RELATIVE_PATH,
+                    GENERATOR.CODEX_S05_REPORT_RELATIVE_PATH,
+                ],
+            }],
+        }
+        self.frontier_path.write_text(json.dumps(self.frontier), encoding='utf-8')
+
+    def tearDown(self):
+        GENERATOR.ROOT = self.original_root
+        self.temp_dir.cleanup()
+
+    def test_s05_profile_is_one_fixed_bounded_voice_activity_call(self):
+        profile = GENERATOR.CODEX_S05_PROFILE
+        self.assertEqual(profile['id'], 's05-bounded-non-tv-voice-agent-mcp-v1')
+        self.assertEqual(profile['frontierId'], 'S05')
+        self.assertEqual(profile['model'], 'gpt-6-luna')
+        self.assertEqual(profile['reasoningEffort'], 'max')
+        self.assertEqual(len(profile['calls']), 1)
+        self.assertEqual(profile['calls'][0]['arguments'], {
+            'personId': 3474,
+            'kind': 'voice',
+            'media': 'anime',
+            'windowMonths': 6,
+            'maxRelations': 48,
+            'maxSubjectDetails': 16,
+            'maxRows': 8,
+        })
+
+    def test_s05_partial_credit_requires_positive_report_reference(self):
+        self.assertTrue(GENERATOR.codex_s05_frontier_is_partial(require_report_ref=True))
+        self.frontier['records'][0]['status'] = 'UNASSESSED'
+        self.frontier_path.write_text(json.dumps(self.frontier), encoding='utf-8')
+        self.assertFalse(GENERATOR.codex_s05_frontier_is_partial(require_report_ref=True))
+        self.frontier['records'][0]['status'] = 'PARTIAL'
+        self.frontier['records'][0]['source_refs'].remove(GENERATOR.CODEX_S05_REPORT_RELATIVE_PATH)
+        self.frontier_path.write_text(json.dumps(self.frontier), encoding='utf-8')
+        self.assertFalse(GENERATOR.codex_s05_frontier_is_partial(require_report_ref=True))
+
+    def test_s05_report_refresh_paths_are_closed_to_the_exact_evidence_scope(self):
+        self.assertTrue(GENERATOR.codex_s05_profile_evidence_refresh_paths_are_valid([
+            GENERATOR.CODEX_S05_REPORT_RELATIVE_PATH,
+            'docs/product/frontier-ledger.json',
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+        ]))
+        self.assertFalse(GENERATOR.codex_s05_profile_evidence_refresh_paths_are_valid([
+            GENERATOR.CODEX_S05_REPORT_RELATIVE_PATH,
+            'README.md',
+        ]))
+
+
 class R02PositiveDirectRelationsProfileReportValidationTests(unittest.TestCase):
     def setUp(self):
         self.original_root = GENERATOR.ROOT

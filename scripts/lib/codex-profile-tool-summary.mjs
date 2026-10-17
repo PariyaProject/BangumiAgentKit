@@ -7,6 +7,10 @@ import {
   summarizeP07PersonActivityToolResult,
 } from './p07-person-season-evidence.mjs';
 import {
+  S05_PROFILE_ID,
+  summarizeS05PersonActivityToolResult,
+} from './s05-person-activity-evidence.mjs';
+import {
   R05_PROFILE_ID,
   summarizeR05SubjectOverlapToolResult,
 } from './r05-shared-person-overlap-evidence.mjs';
@@ -428,6 +432,9 @@ export function summarizeProfileToolResult(
   }
   if (profileId === P07_PROFILE_ID) {
     return summarizeP07PersonActivityToolResult(result, expectedArguments);
+  }
+  if (profileId === S05_PROFILE_ID) {
+    return summarizeS05PersonActivityToolResult(result, expectedArguments);
   }
   if (profileId === R05_PROFILE_ID) {
     return summarizeR05SubjectOverlapToolResult(result, expectedArguments);

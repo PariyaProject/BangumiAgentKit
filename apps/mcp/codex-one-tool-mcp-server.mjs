@@ -19,7 +19,11 @@ import {
   summarizeToolResult,
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
-import { parseCodexOneToolMcpArguments } from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
+import {
+  codexOneToolMcpServerProfileForNetworkMode,
+  parseCodexOneToolMcpArguments,
+} from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
+import { S05_PROFILE_ID } from '../../scripts/lib/s05-person-activity-evidence.mjs';
 import {
   computeMcpBundleSha256,
   gitRepositoryText,
@@ -438,14 +442,7 @@ async function main(argv = process.argv.slice(2)) {
     schemaVersion: 1,
     ...(config.profile
       ? {
-          serverProfile: config.networkMode
-            ? config.networkMode === C04_COHORT_COMPARISON_NETWORK_MODE ||
-              config.networkMode === A01_RATING_DISPERSION_NETWORK_MODE ||
-              config.networkMode === TITLE_QUERY_RENDER_NETWORK_MODE ||
-              config.networkMode === R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE
-              ? 'closed-profile-sequence-anonymous-public-v1'
-              : 'closed-profile-sequence-anonymous-offline-v1'
-            : 'closed-profile-sequence-anonymous-public-v1',
+          serverProfile: codexOneToolMcpServerProfileForNetworkMode(config.networkMode),
         }
       : { serverProfile: 'one-tool-anonymous-public-v1' }),
     ...(config.profile
@@ -694,6 +691,29 @@ async function main(argv = process.argv.slice(2)) {
           const text = JSON.stringify(safeProjection);
           return {
             content: [{ type: 'text', text }],
+            structuredContent: safeProjection,
+          };
+        }
+        if (config.profile?.id === S05_PROFILE_ID) {
+          const safeProjection = summary.results[sequenceIndex]?.resultSummary;
+          if (!safeProjection) {
+            summary = {
+              ...summary,
+              serverResultStatus: 'ERROR',
+              results: [
+                { sequenceIndex, status: 'ERROR', errorCode: 'S05_POSITIVE_SUMMARY_UNAVAILABLE' },
+              ],
+            };
+            persistSummary();
+            return {
+              content: [
+                { type: 'text', text: 'S05 positive non-TV sample summary is unavailable.' },
+              ],
+              isError: true,
+            };
+          }
+          return {
+            content: [{ type: 'text', text: JSON.stringify(safeProjection) }],
             structuredContent: safeProjection,
           };
         }

@@ -660,6 +660,36 @@
           }
         }
       ]
+    },
+    {
+      "id": "s05-bounded-non-tv-voice-agent-mcp-v1",
+      "frontierId": "S05",
+      "epochId": "run95-s05-bounded-non-tv-voice-agent-mcp-20261017",
+      "toolName": "bangumi.get_person_activity",
+      "argumentProfile": "fixed-s05-person-3474-voice-anime-6m-48r-16d-8rows-v1",
+      "claimLabelName": "harness-r95-s05-nontv-voice-claimed",
+      "reportPath": "docs/live-probes/s05-bounded-non-tv-voice-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-s05-six-month-non-tv-source-contract-2026-10-17.md",
+      "evidenceKind": "codex_cli_s05_bounded_non_tv_voice_agent_mcp",
+      "answerCheckMethod": "s05-positive-non-tv-observation-v1",
+      "networkMode": "run95-s05-anonymous-public-voice-activity-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 2048,
+      "calls": [
+        {
+          "toolName": "bangumi.get_person_activity",
+          "arguments": {
+            "personId": 3474,
+            "kind": "voice",
+            "media": "anime",
+            "windowMonths": 6,
+            "maxRelations": 48,
+            "maxSubjectDetails": 16,
+            "maxRows": 8
+          }
+        }
+      ]
     }
   ]
 }
