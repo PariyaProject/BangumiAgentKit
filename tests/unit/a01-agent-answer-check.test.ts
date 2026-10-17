@@ -533,6 +533,47 @@ describe('A01 current-source answer checker', () => {
     expect(verified.passed).toBe(false);
   });
 
+  it('accepts explicitly not-computable rows left unhydrated after query filtering', () => {
+    const { result, args } = ratingDispersionFixture();
+    const cohort = result.cohorts[1]!;
+    cohort.coverage.query.coverage.hydrationsAttempted = 3;
+    cohort.coverage.query.coverage.hydrationsSucceeded = 3;
+    cohort.coverage.detailHydrationsAttempted = 1;
+    cohort.coverage.detailHydrationsSucceeded = 1;
+    cohort.coverage.detailHydrationsFailed = 0;
+    cohort.subjects[1] = subject(200001, '1998春季样本', undefined, 'not_computable');
+    Object.assign(cohort.coverage.metrics.ratingStandardDeviation, {
+      valid: 1,
+      notComputable: 1,
+    });
+
+    result.coverage.detailHydrationsAttempted = 2;
+    result.coverage.detailHydrationsSucceeded = 2;
+    result.coverage.detailHydrationsFailed = 0;
+    const metric = result.metrics.find((item) => item.key === 'ratingStandardDeviation')!;
+    Object.assign(metric, {
+      validCounts: [1, 1],
+      partialAverages: [1.23456, 1.23456],
+      notComputableCounts: [0, 1],
+    });
+    const expected = expectedA01RatingDispersionAnswerLines(result);
+    const answer = [
+      ...expected.rows,
+      expected.averageLine,
+      `范围：${expected.scopeTokens.join(';')}`,
+    ].join('\n');
+    const verified = verifyA01RatingDispersionAnswer({
+      answer,
+      queryArguments: args,
+      toolResult: { structuredContent: result },
+    });
+
+    expect(verified.checks.hydrationCoverage).toBe(true);
+    expect(verified.checks.hydrationBudgetSatisfied).toBe(true);
+    expect(verified.checks.exactRows).toBe(true);
+    expect(verified.passed).toBe(true);
+  });
+
   it('rejects an altered target ID for the bounded rating-dispersion profile', () => {
     const { result, answer, args } = ratingDispersionFixture();
     result.cohorts[0]!.subjects[0]!.id = 999999;
@@ -578,6 +619,43 @@ describe('A01 current-source answer checker', () => {
     const tampered = structuredClone(report);
     tampered.resultSummary.coverage.totalSubjectsReturned += 1;
     expect(validateA01RatingDispersionProfileReport(tampered, fixture.claim).passed).toBe(false);
+  });
+
+  it('accepts bounded physical detail retries alongside logical hydration counts', () => {
+    const fixture = signedReportFixture();
+    Object.assign(fixture.serverSummary.publicRequestScope, {
+      requestCount: 9,
+      allowedRequestCount: 9,
+      detailRequestCount: 7,
+    });
+    const built = buildA01RatingDispersionProfileReport(
+      {
+        claim: fixture.claim,
+        serverSummary: fixture.serverSummary,
+        events: fixture.events,
+        answer: fixture.answer,
+        rawResult: fixture.result,
+        codexCliVersion: '1.2.14',
+        eventStreamSha256: sha256('synthetic retry event stream'),
+        serverSummarySha256: sha256('synthetic retry server summary'),
+      },
+      { privateKey: fixture.privateKey },
+    );
+
+    expect(built.passed).toBe(true);
+    if (!built.passed) return;
+    const report = built.report as Record<string, any>;
+    expect(report.publicRequestScope.detailRequestCount).toBe(7);
+    const cohorts = report.resultSummary.cohorts as Array<{
+      queryHydrationsAttempted: number;
+      detailHydrationsAttempted: number;
+    }>;
+    expect(
+      cohorts.reduce(
+        (sum, cohort) => sum + cohort.queryHydrationsAttempted + cohort.detailHydrationsAttempted,
+        0,
+      ),
+    ).toBe(6);
   });
 
   it('rejects subject and overlap identifiers from the persisted report summary', () => {

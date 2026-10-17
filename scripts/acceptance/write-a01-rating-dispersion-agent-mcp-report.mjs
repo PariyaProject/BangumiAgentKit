@@ -205,11 +205,8 @@ export function validateA01RatingDispersionRequestScope(
   maxRequests = A01_RATING_DISPERSION_MAX_REQUESTS,
 ) {
   const profileArguments = PROFILE.calls[0].arguments;
-  // Discovery filtering and returned-row detail reads share each cohort's fixed hydration budget.
-  const maxDetailRequests = profileArguments.cohorts.reduce(
-    (sum, cohort) => sum + cohort.query.budget.maxHydrations,
-    0,
-  );
+  // These counters record physical HTTP attempts, including bounded GET retries. The result
+  // summary validates two logical cohorts and their shared per-cohort hydration budgets.
   return (
     exactKeys(scope, REQUEST_SCOPE_FIELDS) &&
     integer(scope.requestCount, maxRequests) &&
@@ -221,8 +218,8 @@ export function validateA01RatingDispersionRequestScope(
     integer(scope.unexpectedRouteCount, maxRequests) &&
     scope.requestCount === scope.allowedRequestCount &&
     scope.requestCount === scope.searchRequestCount + scope.detailRequestCount &&
-    scope.searchRequestCount === profileArguments.cohorts.length &&
-    scope.detailRequestCount <= maxDetailRequests &&
+    scope.searchRequestCount >= profileArguments.cohorts.length &&
+    scope.detailRequestCount <= maxRequests - profileArguments.cohorts.length &&
     scope.deniedRequestCount === 0 &&
     scope.credentialAttemptCount === 0 &&
     scope.unexpectedRouteCount === 0 &&
@@ -452,11 +449,6 @@ export function validateA01RatingDispersionServerSummary(
     !validResultSummary(result.resultSummary)
   )
     return false;
-  const expectedDetailRequests = result.resultSummary.cohorts.reduce(
-    (sum, cohort) => sum + cohort.queryHydrationsAttempted + cohort.detailHydrationsAttempted,
-    0,
-  );
-  if (summary.publicRequestScope.detailRequestCount !== expectedDetailRequests) return false;
   const catalogEvidence = catalogEvidenceForSummary(summary, root);
   return catalogEvidence;
 }

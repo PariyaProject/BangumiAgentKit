@@ -685,13 +685,15 @@ function hydrationCoverageMatches(result) {
       succeeded: hydration?.detailHydrationsSucceeded,
       failed: hydration?.detailHydrationsFailed,
     };
+    const unattempted = Array.isArray(rows) ? rows.length - counts.attempted : -1;
+    const notComputable = hydration?.metrics?.ratingStandardDeviation?.notComputable;
     if (
       !Array.isArray(rows) ||
       Object.values(counts).some((value) => !Number.isSafeInteger(value) || value < 0) ||
-      counts.attempted !== rows.length ||
+      counts.attempted > rows.length ||
       counts.succeeded + counts.failed !== counts.attempted ||
-      !Number.isSafeInteger(hydration?.metrics?.ratingStandardDeviation?.notComputable) ||
-      counts.failed > hydration.metrics.ratingStandardDeviation.notComputable
+      !Number.isSafeInteger(notComputable) ||
+      notComputable < counts.failed + unattempted
     )
       return false;
     for (const key of Object.keys(totals)) totals[key] += counts[key];
