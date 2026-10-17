@@ -42,7 +42,7 @@ const SPECS = new Map([
     V2_ID,
     Object.freeze({
       id: V2_ID,
-      epochId: 'run95-g01-render-query-offline-matrix-v2-20261018',
+      epochId: 'run95-g01-render-query-offline-matrix-v2-call-20261018',
       argumentProfile: 'fixed-g01-synthetic-render-query-991111-one-result-v2',
       claimLabelName: 'harness-r95-g01-render-query-offline-v2-claimed',
       reportPath: 'docs/live-probes/g01-render-query-subjects-offline-agent-mcp-v2-run95.json',

@@ -5347,7 +5347,7 @@ CODEX_G01_RENDER_QUERY_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
 CODEX_G01_RENDER_QUERY_OFFLINE_V2_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/agent-mcp-profile-registry.json': (
         '"id": "g01-render-query-subjects-offline-agent-mcp-v2"',
-        '"epochId": "run95-g01-render-query-offline-matrix-v2-20261018"',
+        '"epochId": "run95-g01-render-query-offline-matrix-v2-call-20261018"',
         'run95 g01 fresh synthetic render query offline 20261018',
     ),
     'scripts/lib/g01-render-query-subjects-offline-profile.mjs': (

@@ -116,6 +116,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   const g01RenderQueryV2 = getAgentMcpProfileById('g01-render-query-subjects-offline-agent-mcp-v2');
   assert.ok(g01RenderQueryV2);
   assert.equal(g01RenderQueryV2.frontierId, 'G01');
+  assert.equal(g01RenderQueryV2.epochId, 'run95-g01-render-query-offline-matrix-v2-call-20261018');
   assert.equal(g01RenderQueryV2.toolName, 'bangumi.render_query_subjects');
   assert.equal(g01RenderQueryV2.acceptanceScope, 'agent-mcp-matrix-only');
   assert.equal(

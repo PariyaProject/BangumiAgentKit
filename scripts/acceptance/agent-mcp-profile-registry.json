@@ -788,7 +788,7 @@
     {
       "id": "g01-render-query-subjects-offline-agent-mcp-v2",
       "frontierId": "G01",
-      "epochId": "run95-g01-render-query-offline-matrix-v2-20261018",
+      "epochId": "run95-g01-render-query-offline-matrix-v2-call-20261018",
       "toolName": "bangumi.render_query_subjects",
       "argumentProfile": "fixed-g01-synthetic-render-query-991111-one-result-v2",
       "claimLabelName": "harness-r95-g01-render-query-offline-v2-claimed",

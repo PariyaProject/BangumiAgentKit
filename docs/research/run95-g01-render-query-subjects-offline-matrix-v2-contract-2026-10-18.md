@@ -5,7 +5,8 @@ This document records the selection contract for one fresh, synthetic, offline `
 ## Scope and fixed identity
 
 - Profile: `g01-render-query-subjects-offline-agent-mcp-v2`
-- Epoch: `run95-g01-render-query-offline-matrix-v2-20261018`
+- Implementation Epoch: `run95-g01-render-query-offline-matrix-v2-20261018` (PR #216; no claim or invocation)
+- Invocation Epoch: `run95-g01-render-query-offline-matrix-v2-call-20261018` (the v2 profile's `epochId`, selected only after PR #216 integrates)
 - Tool: one `bangumi.render_query_subjects` call
 - Input keyword: `run95 g01 fresh synthetic render query offline 20261018`
 - Synthetic subject ID: `991111`
@@ -23,6 +24,6 @@ Failure dispositions may include only allowlisted booleans and bounded counters.
 
 ## Review and acceptance gates
 
-Do not claim or invoke the profile before its exact Candidate passes all seven required CI checks, the Harness candidate gate, and the same-identity GPT-6 Luna Max first review while the Epoch PR is still active. Harness claims are bound to an active Epoch, so the one-shot must occur before merge. Invoke the v2 profile exactly once after those gates, then commit the sanitized report and matrix/frontier evidence, refresh the Candidate, rerun exact CI and same-identity review, and merge through Harness. Reconcile only from the exact registered v2 claim, report, and profile status; an inconclusive run is terminal and must never be retried.
+PR #216 is implementation-only. After it integrates, select the separately registered Invocation Epoch `run95-g01-render-query-offline-matrix-v2-call-20261018` and keep its PR active. Do not claim or invoke the profile before that PR's exact Candidate passes all seven required CI checks, the Harness Candidate gate, and the same-identity GPT-6 Luna Max first review. Harness claims are bound to an active Epoch, so invoke the v2 profile exactly once after those gates and before that Invocation Epoch merges. Then commit the sanitized report and matrix/frontier evidence, refresh the Candidate, rerun exact CI and same-identity review, and merge through Harness. Reconcile only from the exact registered v2 claim, report, and profile status; an inconclusive run is terminal and must never be retried.
 
 A successful report may credit only the `bangumi.render_query_subjects` Agent/MCP matrix cell. It does not answer the July 2026 G01 scenario, prove Bangumi-wide search completeness, add public API coverage, or change the public target. G01 remains `PARTIAL` until separate scenario evidence meets its own contract.

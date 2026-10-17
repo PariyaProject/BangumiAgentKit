@@ -138,7 +138,7 @@ class G01RenderQueryProfileContractTests(unittest.TestCase):
         profile = GENERATOR.codex_g01_render_query_offline_profile_spec(profile_id)
         candidate_sha = 'a' * 40
         base_sha = 'b' * 40
-        branch = 'codex/epoch-run95-g01-render-query-offline-matrix-v2-20261018'
+        branch = 'codex/epoch-run95-g01-render-query-offline-matrix-v2-call-20261018'
         report = {
             'profileId': profile_id,
             'prNumber': 223,
