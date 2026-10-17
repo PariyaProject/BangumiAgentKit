@@ -19,7 +19,11 @@ import {
   summarizeToolResult,
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
-import { parseCodexOneToolMcpArguments } from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
+import {
+  codexOneToolMcpServerProfileForNetworkMode,
+  parseCodexOneToolMcpArguments,
+} from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
+import { S05_PROFILE_ID } from '../../scripts/lib/s05-person-activity-evidence.mjs';
 import {
   computeMcpBundleSha256,
   gitRepositoryText,
@@ -125,7 +129,6 @@ function createTitleQueryRenderOfflineAssetResolver() {
 }
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const P07_PERSON_SEASON_PROFILE_ID = 'p07-person-season-distribution-agent-mcp-v1';
-const S05_NON_TV_VOICE_PROFILE_ID = 's05-bounded-non-tv-voice-agent-mcp-v1';
 
 class MemoryArtifactStore {
   constructor() {
@@ -439,14 +442,7 @@ async function main(argv = process.argv.slice(2)) {
     schemaVersion: 1,
     ...(config.profile
       ? {
-          serverProfile: config.networkMode
-            ? config.networkMode === C04_COHORT_COMPARISON_NETWORK_MODE ||
-              config.networkMode === A01_RATING_DISPERSION_NETWORK_MODE ||
-              config.networkMode === TITLE_QUERY_RENDER_NETWORK_MODE ||
-              config.networkMode === R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE
-              ? 'closed-profile-sequence-anonymous-public-v1'
-              : 'closed-profile-sequence-anonymous-offline-v1'
-            : 'closed-profile-sequence-anonymous-public-v1',
+          serverProfile: codexOneToolMcpServerProfileForNetworkMode(config.networkMode),
         }
       : { serverProfile: 'one-tool-anonymous-public-v1' }),
     ...(config.profile
@@ -698,7 +694,7 @@ async function main(argv = process.argv.slice(2)) {
             structuredContent: safeProjection,
           };
         }
-        if (config.profile?.id === S05_NON_TV_VOICE_PROFILE_ID) {
+        if (config.profile?.id === S05_PROFILE_ID) {
           const safeProjection = summary.results[sequenceIndex]?.resultSummary;
           if (!safeProjection) {
             summary = {

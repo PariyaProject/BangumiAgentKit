@@ -12,14 +12,43 @@ import { assertR04SeriesWatchOrderOfflineProfile } from './r04-series-watch-orde
 import { assertR01RelationsOfflineProfile } from './r01-relations-offline-profile.mjs';
 import {
   assertC04CohortComparisonPublicProfile,
+  C04_COHORT_COMPARISON_NETWORK_MODE,
   C04_COHORT_COMPARISON_PROFILE_ID,
 } from './c04-cohort-comparison-public-profile.mjs';
-import { assertR02PositiveDirectRelationsProfile } from './r02-positive-direct-relations-profile.mjs';
+import {
+  assertR02PositiveDirectRelationsProfile,
+  R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE,
+} from './r02-positive-direct-relations-profile.mjs';
 import { assertA01RenderCohortAggregationOfflineProfile } from './a01-render-cohort-aggregation-offline-fixture.mjs';
 import { assertR04RenderSeriesWatchOrderOfflineProfile } from './r04-render-series-watch-order-offline-fixture.mjs';
-import { assertTitleQueryRenderPublicProfile } from './title-query-render-agent-mcp-profile.mjs';
-import { assertA01RatingDispersionProfile } from './a01-rating-dispersion-profile.mjs';
+import {
+  assertTitleQueryRenderPublicProfile,
+  TITLE_QUERY_RENDER_NETWORK_MODE,
+} from './title-query-render-agent-mcp-profile.mjs';
+import {
+  A01_RATING_DISPERSION_NETWORK_MODE,
+  assertA01RatingDispersionProfile,
+} from './a01-rating-dispersion-profile.mjs';
 import { assertG06SubjectCastOfflineProfile } from './g06-subject-cast-offline-profile.mjs';
+import {
+  assertS05PersonActivityProfile,
+  S05_NETWORK_MODE,
+  S05_PROFILE_ID,
+} from './s05-person-activity-evidence.mjs';
+
+const ANONYMOUS_PUBLIC_NETWORK_MODES = new Set([
+  C04_COHORT_COMPARISON_NETWORK_MODE,
+  A01_RATING_DISPERSION_NETWORK_MODE,
+  TITLE_QUERY_RENDER_NETWORK_MODE,
+  R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE,
+  S05_NETWORK_MODE,
+]);
+
+export function codexOneToolMcpServerProfileForNetworkMode(networkMode) {
+  return !networkMode || ANONYMOUS_PUBLIC_NETWORK_MODES.has(networkMode)
+    ? 'closed-profile-sequence-anonymous-public-v1'
+    : 'closed-profile-sequence-anonymous-offline-v1';
+}
 
 export function parseCodexOneToolMcpArguments(argv) {
   const values = new Map();
@@ -65,6 +94,9 @@ export function parseCodexOneToolMcpArguments(argv) {
     }
     const profile = getAgentMcpProfileById(profileId);
     if (!profile) throw new Error('Unknown closed Agent/MCP profile id.');
+    if (profile.id === S05_PROFILE_ID && !assertS05PersonActivityProfile(profile)) {
+      throw new Error('Registered S05 profile does not match its fixed public contract.');
+    }
     if (profile.id === C04_COHORT_COMPARISON_PROFILE_ID) {
       if (!/^(0|1)$/u.test(profileCallIndexValue ?? '')) {
         throw new Error('C04 requires a profile-call-index of 0 or 1 for a separate one-tool run.');
@@ -100,6 +132,7 @@ export function parseCodexOneToolMcpArguments(argv) {
         assertG06SubjectCastOfflineProfile(profile) ||
         assertC04CohortComparisonPublicProfile(profile) ||
         assertTitleQueryRenderPublicProfile(profile) ||
+        assertS05PersonActivityProfile(profile) ||
         assertC07RenderComparisonOfflineProfile(profile) ||
         assertP06RenderPersonProfileOfflineProfile(profile) ||
         assertP02PersonProfileOfflineProfile(profile) ||

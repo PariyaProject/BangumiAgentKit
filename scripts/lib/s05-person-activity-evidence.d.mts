@@ -1,6 +1,8 @@
 export const S05_PROFILE_ID: string;
+export const S05_NETWORK_MODE: string;
 export const S05_TOOL_NAME: string;
 export const S05_ARGUMENT_PROFILE: string;
+export const S05_EPOCH_ID: string;
 export const S05_EXPECTED_ARGUMENTS: Readonly<{
   personId: number;
   kind: 'voice';
@@ -13,6 +15,8 @@ export const S05_EXPECTED_ARGUMENTS: Readonly<{
 export const S05_ANSWER_CHECK_METHOD: string;
 export const S05_CANONICAL_CAVEAT: string;
 export const S05_ANSWER_CHECK_FIELDS: readonly string[];
+
+export function assertS05PersonActivityProfile(profile: unknown): boolean;
 
 export interface S05PersonActivitySummary {
   state: 'complete' | 'partial';

@@ -1,6 +1,8 @@
 export const S05_PROFILE_ID = 's05-bounded-non-tv-voice-agent-mcp-v1';
+export const S05_NETWORK_MODE = 'run95-s05-anonymous-public-voice-activity-v1';
 export const S05_TOOL_NAME = 'bangumi.get_person_activity';
 export const S05_ARGUMENT_PROFILE = 'fixed-s05-person-3474-voice-anime-6m-48r-16d-8rows-v1';
+export const S05_EPOCH_ID = 'run95-s05-bounded-non-tv-voice-agent-mcp-20261017';
 export const S05_EXPECTED_ARGUMENTS = Object.freeze({
   personId: 3474,
   kind: 'voice',
@@ -65,6 +67,26 @@ function exactKeys(value, expected) {
     typeof value === 'object' &&
     !Array.isArray(value) &&
     canonicalJson(Object.keys(value).sort()) === canonicalJson([...expected].sort()),
+  );
+}
+
+export function assertS05PersonActivityProfile(profile) {
+  return Boolean(
+    profile &&
+    typeof profile === 'object' &&
+    profile.id === S05_PROFILE_ID &&
+    profile.frontierId === 'S05' &&
+    profile.epochId === S05_EPOCH_ID &&
+    profile.toolName === S05_TOOL_NAME &&
+    profile.argumentProfile === S05_ARGUMENT_PROFILE &&
+    profile.networkMode === S05_NETWORK_MODE &&
+    profile.model === 'gpt-6-luna' &&
+    profile.reasoningEffort === 'max' &&
+    Array.isArray(profile.calls) &&
+    profile.calls.length === 1 &&
+    exactKeys(profile.calls[0], ['toolName', 'arguments']) &&
+    profile.calls[0].toolName === S05_TOOL_NAME &&
+    canonicalJson(profile.calls[0].arguments) === canonicalJson(S05_EXPECTED_ARGUMENTS),
   );
 }
 
