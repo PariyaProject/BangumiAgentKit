@@ -347,6 +347,32 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   assert.match(g01Evidence.acceptance_boundary, /No G01 July 2026 harem scenario/u);
   assert.match(g01Evidence.acceptance_boundary, /Agent\/MCP evidence is inferred/u);
 
+  assert.equal(
+    g01.evidence?.run95_agent_mcp_terminal_profile_2026_10_17,
+    undefined,
+    'Harness runtime dispositions must not be copied into the product frontier',
+  );
+  assert.doesNotMatch(
+    JSON.stringify(g01),
+    /INCONCLUSIVE|call_count|report_written|retry_allowed|reason_code|codex_error_items|claim_latch_present|terminal_latch_present/u,
+    'the G01 frontier must not copy terminal profile runtime fields from Harness',
+  );
+  assert.match(
+    g01.next_action,
+    /frontier ledger is scenario guidance, not a profile-claim status source/u,
+  );
+  assert.match(
+    g01.next_action,
+    /consult the active Run #95 Harness for exact claim and terminal eligibility/u,
+  );
+  assert.doesNotMatch(
+    g01.next_action,
+    /PR #211|INCONCLUSIVE|call_count|reportWritten|retryAllowed|claim latch|terminal latch/iu,
+  );
+  assert.match(g01.next_action, /never retry the consumed one-shot/u);
+  assert.match(g01.next_action, /do not replay the consumed G01 Agent\/MCP canary/u);
+  assert.doesNotMatch(g01.next_action, /unclaimed|remains unclaimed/iu);
+
   const p02 = ledger.records.find(({ id }) => id === 'P02');
   assert.ok(p02, 'P02 must remain in the canonical frontier');
   assert.equal(p02.status, 'PARTIAL');
