@@ -8642,6 +8642,25 @@ class P06OfflineProfileReportValidationTests(unittest.TestCase):
         )
 
 
+class G01OfflineProfileStaticMarkerTests(unittest.TestCase):
+    def test_current_candidate_contains_all_g01_report_revision_markers(self):
+        head = subprocess.run(
+            ['git', 'rev-parse', 'HEAD'],
+            cwd=GENERATOR.ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(head.returncode, 0, head.stderr)
+        revision = head.stdout.strip()
+        self.assertRegex(revision, r'^[0-9a-f]{40}$')
+        self.assertTrue(
+            GENERATOR.codex_g01_render_query_offline_profile_revision_has_implementation(
+                revision,
+            ),
+        )
+
+
 class C07RenderComparisonOfflineProfileReportValidationTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='c07-render-comparison-offline-report-test-')

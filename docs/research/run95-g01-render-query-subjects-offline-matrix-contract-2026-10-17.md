@@ -8,7 +8,7 @@ This profile is a fresh, one-tool Agent/MCP matrix check for `bangumi.render_que
 
 The profile uses `run95 g01 synthetic render query offline 20261017`, media `anime`, `reportedEpisodeCount={min:1,max:1}`, one top result, relevance sort, `explain=none`, and `nsfw=include`. The closed fixture permits exactly one anonymous `POST https://api.bgm.tv/v0/search/subjects?limit=20&offset=0` with the matching keyword, `sort=match`, and media type `[2]`, followed by exactly one anonymous `GET /v0/subjects/990920`. Search deliberately omits `eps`; detail supplies `eps=1`, so this profile exercises the documented bounded detail hydration path as well as rendering. Every other origin, route, method, query, body, duplicate, or authorization header is rejected locally.
 
-The subject has empty image fields. Renderer asset resolution, if requested, returns a built-in one-pixel placeholder; it never performs an asset HTTP request. The temporary artifact store retains image bytes only for the duration of the MCP process. The sanitized report retains dimensions and hashes, not image bytes or raw fixture rows.
+The subject has empty image fields, so the renderer is expected to skip asset resolution. The injected asset resolver rejects any unexpected resolution call and never performs an asset HTTP request. The temporary artifact store retains image bytes only for the duration of the MCP process. The sanitized report retains dimensions and hashes, not image bytes or raw fixture rows.
 
 ## Acceptance gates
 

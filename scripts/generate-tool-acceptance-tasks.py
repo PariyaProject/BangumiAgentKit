@@ -5144,7 +5144,7 @@ CODEX_G01_RENDER_QUERY_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'rawFixturePayloadStored',
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
-        "profileId === 'g01-render-query-subjects-offline-agent-mcp-v1'",
+        'profileId === G01_RENDER_QUERY_OFFLINE_PROFILE_ID',
         'artifactSummary',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
@@ -5181,8 +5181,8 @@ CODEX_G01_RENDER_QUERY_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'Keep G01 PARTIAL.',
     ),
     'docs/research/run95-g01-render-query-subjects-offline-matrix-contract-2026-10-17.md': (
-        'The new closed fetch fixture allows exactly one synthetic keyword POST and one bounded subject detail GET',
-        'It does not answer the G01 scenario or establish global search coverage',
+        'The closed fixture permits exactly one anonymous',
+        'It does not answer the G01 July harem scenario',
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_g01_render_query_offline_profile_report_is_valid(',
