@@ -333,6 +333,7 @@ export function buildC07RenderComparisonOfflineCodexExecArgs({
   ];
   return [
     'exec',
+    '--approve-for-me',
     '--ignore-user-config',
     '--strict-config',
     '--ephemeral',

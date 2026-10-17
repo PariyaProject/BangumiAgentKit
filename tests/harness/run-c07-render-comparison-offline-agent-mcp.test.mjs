@@ -224,6 +224,7 @@ test('C07 Codex invocation is ephemeral, read-only, and exposes only the fixed o
     bundleSha256: BUNDLE_SHA,
   });
   assert.equal(args[0], 'exec');
+  assert.ok(args.includes('--approve-for-me'));
   assert.ok(args.includes('--ignore-user-config'));
   assert.ok(args.includes('--strict-config'));
   assert.ok(args.includes('--ephemeral'));
