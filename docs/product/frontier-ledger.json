@@ -107,7 +107,7 @@
         "tests/harness/run-g01-render-query-subjects-offline-agent-mcp.test.mjs",
         "scripts/test_acceptance_evidence.py"
       ],
-      "next_action": "Keep G01 PARTIAL: the July 2026 harem question and Bangumi-wide search completeness are not established. The direct public observations support only their own public API matrix rows; preserve the public target at 65/65. The frontier ledger is scenario guidance, not a profile-claim status source. Before any future Agent/MCP matrix work, consult the active Run #95 Harness for exact claim and terminal eligibility; never retry the consumed one-shot or any other spent profile; do not replay the consumed G01 Agent/MCP canary (the original July 2026 input). Implementation PR #216 does not claim or invoke v2. The separately registered v2 profile can credit only its single Agent/MCP matrix row in the separate `run95-g01-render-query-offline-matrix-v2-call-20261018` Invocation Epoch, after exact 7/7 CI and same-identity first PASS on that active Epoch, a terminal one-shot report, and Harness merge of the refreshed Candidate.",
+      "next_action": "Keep G01 PARTIAL: the July 2026 harem question and Bangumi-wide search completeness are not established. Direct public observations support only their own public API rows; preserve the 65/65 public target. The v2 implementation and separate Invocation Epoch gate regression are deterministic readiness evidence only; they do not establish an Agent/MCP call, a G01 scenario answer, or complete search coverage. The frontier ledger is scenario guidance, not a profile-claim status source. Before any new Agent/MCP matrix work, consult the active Run #95 Harness for exact claim and terminal eligibility; never retry the consumed one-shot or any other spent profile, never retry a consumed claim, and do not replay the consumed G01 Agent/MCP canary (the original July 2026 input). Continue on another safe, genuinely unspent frontier.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2916,9 +2916,23 @@
         "scripts/acceptance/validate-a01-rating-dispersion-agent-mcp-report.mjs",
         "tests/harness/a01-rating-dispersion-public-profile.test.mjs",
         "tests/harness/run-a01-rating-dispersion-agent-mcp.test.mjs",
-        "tests/harness/write-a01-rating-dispersion-agent-mcp-report.test.mjs"
+        "tests/harness/write-a01-rating-dispersion-agent-mcp-report.test.mjs",
+        "docs/research/run95-a01-aggregate-subject-cohort-offline-agent-mcp-contract-2026-10-18.md",
+        "scripts/lib/a01-aggregate-cohort-offline-matrix-profile.mjs",
+        "scripts/lib/a01-aggregate-cohort-offline-matrix-profile.d.mts",
+        "scripts/acceptance/run-a01-aggregate-cohort-offline-agent-mcp.mjs",
+        "scripts/acceptance/write-a01-aggregate-cohort-offline-agent-mcp-report.mjs",
+        "scripts/acceptance/validate-a01-aggregate-cohort-offline-agent-mcp-report.mjs",
+        "scripts/lib/codex-one-tool-mcp-arguments.mjs",
+        "apps/mcp/codex-one-tool-mcp-server.mjs",
+        "scripts/agent-harness.mjs",
+        "scripts/lib/agent-mcp-profile-claims.mjs",
+        "tests/harness/a01-aggregate-cohort-offline-matrix.test.mjs",
+        "tests/harness/codex-one-tool-mcp-server-a01-aggregate-matrix.test.mjs",
+        "tests/harness/write-a01-aggregate-cohort-offline-agent-mcp-report.test.mjs",
+        "tests/harness/agent-mcp-profile-claims.test.mjs"
       ],
-      "next_action": "Keep A01 UNASSESSED. The exact 2026-10-16 public report for aggregate_subject_cohort, compare_subject_cohorts, render_subject_cohort_aggregation, and render_subject_cohort_comparison supports only their corresponding public-matrix rows, not the cohort-analysis scenario. The C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks. For the A01 render-aggregation profile, run the one-shot only after its unique Epoch is an open active PR with a clean exact Candidate, current Base, seven-check CI, and same-identity Luna Max PASS; keep the PR active until a signed report or terminal no-retry disposition is recorded. A valid report may credit only bangumi.render_subject_cohort_aggregation; no public or scenario evidence is added. Keep one-shot claim status and authorization in the active Harness Run/Epoch control state only; never retry a consumed claim. The current selected profile is a separate bounded 1998-spring rating-dispersion Agent/MCP observation documented in docs/research/run95-a01-rating-dispersion-1998-spring-agent-mcp-contract.md. It compares Cardcaptor Sakura TV (subject 1940) with a returned same-season anime sample, maxSubjects=4 and fixed per-cohort caps of one page, 20 candidates, and four detail hydrations. It can record only the returned sample and rating-SD summaries, cannot determine statistical significance or whether the target is “明显” above a season population, and may move A01 only to PARTIAL after its signed exact-Candidate report is accepted. A01 remains UNASSESSED; no claim or query has been made. Invoke this one-shot only after exact Candidate/Base, seven-check CI, same-identity GPT-6 Luna Max PASS, and Harness UNCLAIMED/eligible status are verified. Never retry.",
+      "next_action": "Keep A01 UNASSESSED: the exact public reports support only their corresponding public API rows, not the cohort-analysis scenario. The aggregate_subject_cohort and three other cohort tools’ 2026-10-16 public-matrix rows are separate from the scenario. The C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks. The new a01-aggregate-cohort-offline-agent-mcp-matrix-v1 profile is distinct synthetic offline Agent/MCP evidence for bangumi.aggregate_subject_cohort only; even a valid signed report can credit that one matrix cell, not the A01 scenario, public API, comparison, significance, recommendation, or historical claims. Profile claim state and terminal eligibility belong to the active Harness Run/Epoch; never retry a consumed claim. Continue only with a genuinely unspent profile after the exact Harness Candidate, Base, CI, review, and report gates.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2948,7 +2962,16 @@
           "scripts/acceptance/run-a01-rating-dispersion-agent-mcp.mjs",
           "scripts/acceptance/run-a01-rating-dispersion-agent-mcp.d.mts",
           "scripts/acceptance/write-a01-rating-dispersion-agent-mcp-report.mjs",
-          "scripts/acceptance/validate-a01-rating-dispersion-agent-mcp-report.mjs"
+          "scripts/acceptance/validate-a01-rating-dispersion-agent-mcp-report.mjs",
+          "scripts/lib/a01-aggregate-cohort-offline-matrix-profile.mjs",
+          "scripts/lib/a01-aggregate-cohort-offline-matrix-profile.d.mts",
+          "scripts/acceptance/run-a01-aggregate-cohort-offline-agent-mcp.mjs",
+          "scripts/acceptance/write-a01-aggregate-cohort-offline-agent-mcp-report.mjs",
+          "scripts/acceptance/validate-a01-aggregate-cohort-offline-agent-mcp-report.mjs",
+          "apps/mcp/codex-one-tool-mcp-server.mjs",
+          "scripts/lib/codex-one-tool-mcp-arguments.mjs",
+          "scripts/lib/agent-mcp-profile-claims.mjs",
+          "scripts/agent-harness.mjs"
         ],
         "tests": [
           "tests/discovery/cohort.test.ts",
@@ -2964,9 +2987,36 @@
           "scripts/test_acceptance_evidence.py",
           "tests/harness/a01-rating-dispersion-public-profile.test.mjs",
           "tests/harness/run-a01-rating-dispersion-agent-mcp.test.mjs",
-          "tests/harness/write-a01-rating-dispersion-agent-mcp-report.test.mjs"
+          "tests/harness/write-a01-rating-dispersion-agent-mcp-report.test.mjs",
+          "tests/harness/a01-aggregate-cohort-offline-matrix.test.mjs",
+          "tests/harness/codex-one-tool-mcp-server-a01-aggregate-matrix.test.mjs",
+          "tests/harness/write-a01-aggregate-cohort-offline-agent-mcp-report.test.mjs",
+          "tests/harness/agent-mcp-profile-claims.test.mjs",
+          "tests/harness/frontier-ledger-data.test.mjs",
+          "tests/integration/tool-direct-execute-discovery.test.ts"
         ],
-        "acceptance_limit": "The consumed compare_subject_cohorts A01 claim remains INCONCLUSIVE and must never be retried. The distinct aggregate_subject_cohort one-shot was invoked once after exact-Candidate CI and normal Luna Max PASS, but is INCONCLUSIVE because the target call returned DONE/SUCCESS without structured result readback; its sanitized report records no raw answer and does not count as accepted tool evidence. The report is retained and the attempt is no-retry. An offline small-result regression reproduced the presenter branch that omits structuredContent below 3600 UTF-8 bytes; the fix preserves structuredContent. The A01 render-cohort-aggregation profile, if accepted, covers only that offline Agent/MCP matrix cell and provides no public API or A01 scenario evidence. Keep A01 UNASSESSED. Neither aggregate sample resolves the original comparative question.",
+        "aggregate_cohort_offline_matrix_contract_2026_10_18": {
+          "contract": "docs/research/run95-a01-aggregate-subject-cohort-offline-agent-mcp-contract-2026-10-18.md",
+          "profile_id": "a01-aggregate-cohort-offline-agent-mcp-matrix-v1",
+          "tool": "bangumi.aggregate_subject_cohort",
+          "acceptance_scope": "agent-mcp-matrix-only",
+          "source": "local synthetic fixture; exact one anonymous search and one detail response; no external network request",
+          "result_boundary": "one Agent/MCP matrix cell only; no A01 scenario or public API credit",
+          "implementation": [
+            "scripts/lib/a01-aggregate-cohort-offline-matrix-profile.mjs",
+            "scripts/lib/a01-aggregate-cohort-offline-matrix-profile.d.mts",
+            "scripts/acceptance/run-a01-aggregate-cohort-offline-agent-mcp.mjs",
+            "scripts/acceptance/write-a01-aggregate-cohort-offline-agent-mcp-report.mjs",
+            "scripts/acceptance/validate-a01-aggregate-cohort-offline-agent-mcp-report.mjs"
+          ],
+          "tests": [
+            "tests/harness/a01-aggregate-cohort-offline-matrix.test.mjs",
+            "tests/harness/codex-one-tool-mcp-server-a01-aggregate-matrix.test.mjs",
+            "tests/harness/write-a01-aggregate-cohort-offline-agent-mcp-report.test.mjs",
+            "tests/integration/tool-direct-execute-discovery.test.ts"
+          ]
+        },
+        "acceptance_limit": "The consumed compare_subject_cohorts A01 scenario claim is INCONCLUSIVE and permanently spent; its retained evidence does not answer the scenario or earn accepted matrix evidence. The separate A01 render-aggregation profile (PR #197) and rating-dispersion profile (PR #203) are both Harness-terminal INCONCLUSIVE with no report and no retry; neither can be reused. The new a01-aggregate-cohort-offline-agent-mcp-matrix-v1 profile is a distinct synthetic offline check and can support only the aggregate_subject_cohort Agent/MCP matrix cell if the exact signed report is accepted by Harness. No A01 scenario, public API, comparison, significance, recommendation, or historical claim is inferred. Keep A01 UNASSESSED.",
         "aggregate_one_tool_probe_design": {
           "tool": "bangumi.aggregate_subject_cohort",
           "state": "INCONCLUSIVE_CONSUMED_NO_RETRY",

@@ -2789,6 +2789,51 @@ CODEX_A01_RENDER_AGGREGATION_REPORT_FIELDS = {
     'answerSha256', 'answerUtf8Bytes', 'answerChecks', 'privacy', 'scenarios',
     'retryAllowed', 'reportWritten', 'runnerReceipt',
 }
+CODEX_A01_AGGREGATE_MATRIX_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1'
+)
+CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID = CODEX_A01_AGGREGATE_MATRIX_PROFILE['id']
+CODEX_A01_AGGREGATE_MATRIX_EPOCH_ID = CODEX_A01_AGGREGATE_MATRIX_PROFILE['epochId']
+CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME = CODEX_A01_AGGREGATE_MATRIX_PROFILE['toolName']
+CODEX_A01_AGGREGATE_MATRIX_ARGUMENT_PROFILE = CODEX_A01_AGGREGATE_MATRIX_PROFILE['argumentProfile']
+CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS = CODEX_A01_AGGREGATE_MATRIX_PROFILE['calls'][0]['arguments']
+CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_A01_AGGREGATE_MATRIX_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_A01_AGGREGATE_MATRIX_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH = CODEX_A01_AGGREGATE_MATRIX_PROFILE['reportPath']
+CODEX_A01_AGGREGATE_MATRIX_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_A01_AGGREGATE_MATRIX_PROFILE['selectionEvidencePath']
+CODEX_A01_AGGREGATE_MATRIX_EVIDENCE_KIND = CODEX_A01_AGGREGATE_MATRIX_PROFILE['evidenceKind']
+CODEX_A01_AGGREGATE_MATRIX_NETWORK_MODE = CODEX_A01_AGGREGATE_MATRIX_PROFILE['networkMode']
+CODEX_A01_AGGREGATE_MATRIX_ANSWER_CHECK_FIELDS = {
+    'fixedArguments', 'singleToolInvocation', 'structuredResultReadback',
+    'exactMetricAndCoverageAnswer', 'offlineFixtureBounded',
+}
+CODEX_A01_AGGREGATE_MATRIX_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'profile', 'model', 'reasoningEffort', 'codexCliVersion',
+    'runNumber', 'frontierId', 'epochId', 'profileId', 'scenarioId', 'acceptanceScope',
+    'claimId', 'prNumber', 'reviewerId', 'toolName', 'argumentProfile',
+    'expectedArgumentsSha256', 'registrySha256', 'selectionEvidenceSha256', 'sourceRevision',
+    'baseSha', 'ciSha', 'ciStatus', 'mcpBundleSha256', 'catalogSha256',
+    'toolDescriptionSha256', 'inputSchemaSha256', 'networkMode', 'serverId',
+    'serverToolNames', 'serverToolCount', 'processExitCode', 'processSpawned',
+    'processTimedOut', 'stdoutBytes', 'stderrBytes', 'resultStatus', 'resultCount',
+    'eventStreamParsed', 'turnCompleted', 'codexMcpToolEventCount', 'codexErrorItemCount',
+    'nonMcpToolEventCount', 'shellToolCallCount', 'allowedCallCount', 'deniedCallCount',
+    'accountBindingCount', 'externalNetworkRequestCount', 'writeActionReached',
+    'qqPipelineTested', 'timClientTested', 'offlineFixture', 'resultSummary', 'observedAt',
+    'answerSha256', 'answerUtf8Bytes', 'answerChecks', 'privacy', 'retryAllowed',
+    'reportWritten', 'runnerReceipt',
+}
 CODEX_P02_REPORT_FIELDS = {
     'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
     'profileId', 'profile', 'model', 'reasoningEffort', 'reviewerId', 'codexCliVersion',
@@ -13498,6 +13543,507 @@ def codex_a01_render_aggregation_profile_report_is_valid(
     )
 
 
+def codex_a01_aggregate_matrix_profile_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+        return False
+    required_paths = {
+        'apps/mcp/codex-one-tool-mcp-server.mjs',
+        'scripts/agent-harness.mjs',
+        'scripts/acceptance/agent-mcp-profile-registry.json',
+        'scripts/acceptance/run-a01-aggregate-cohort-offline-agent-mcp.mjs',
+        'scripts/acceptance/write-a01-aggregate-cohort-offline-agent-mcp-report.mjs',
+        'scripts/acceptance/validate-a01-aggregate-cohort-offline-agent-mcp-report.mjs',
+        'scripts/lib/a01-aggregate-cohort-offline-matrix-profile.mjs',
+        'scripts/lib/a01-aggregate-cohort-offline-matrix-profile.d.mts',
+        'scripts/lib/agent-mcp-profile-claims.mjs',
+        'scripts/lib/codex-one-tool-mcp-arguments.mjs',
+        'scripts/lib/codex-profile-tool-summary.mjs',
+        'scripts/generate-tool-acceptance-tasks.py',
+        'docs/research/run95-a01-aggregate-subject-cohort-offline-agent-mcp-contract-2026-10-18.md',
+        'tests/harness/a01-aggregate-cohort-offline-matrix.test.mjs',
+        'tests/harness/codex-one-tool-mcp-server-a01-aggregate-matrix.test.mjs',
+        'tests/integration/tool-direct-execute-discovery.test.ts',
+        'tests/harness/write-a01-aggregate-cohort-offline-agent-mcp-report.test.mjs',
+    }
+    return all(
+        _run_repository_git(ROOT, 'cat-file', '-e', f'{revision}:{relative_path}').returncode == 0
+        for relative_path in required_paths
+    )
+
+
+def codex_a01_aggregate_matrix_profile_report_matches_candidate_revision(
+    report: object, revision: object,
+) -> bool:
+    if (
+        not isinstance(report, dict)
+        or not isinstance(revision, str)
+        or report.get('sourceRevision') != revision
+        or not codex_a01_aggregate_matrix_profile_revision_has_implementation(revision)
+        or not re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
+        or _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', report['baseSha'], revision,
+        ).returncode != 0
+    ):
+        return False
+    try:
+        catalog = _run_repository_git(ROOT, 'show', f'{revision}:docs/tool-catalog.json')
+        return (
+            codex_g26_candidate_bundle_sha256(revision) == report.get('mcpBundleSha256')
+            and catalog.returncode == 0
+            and hashlib.sha256(catalog.stdout.encode('utf-8')).hexdigest()
+            == report.get('catalogSha256')
+        )
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return False
+
+
+def codex_a01_aggregate_matrix_profile_epoch_harness_status(
+    pr_number: object,
+) -> dict[str, object] | None:
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            ['node', str(ROOT / 'scripts/agent-harness.mjs'), 'status', '--run', '95', '--pr', str(pr_number)],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_a01_aggregate_matrix_profile_harness_status(
+    pr_number: object,
+) -> dict[str, object] | None:
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                'node', str(ROOT / 'scripts/agent-harness.mjs'),
+                'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
+                '--profile-id', CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID,
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_a01_aggregate_matrix_profile_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+) -> dict[str, object] | None:
+    if not isinstance(harness_status, dict):
+        return None
+    receipt = report.get('runnerReceipt')
+    disposition = harness_status.get('disposition')
+    if (
+        harness_status.get('state') != 'REPORT_WRITTEN'
+        or harness_status.get('profile_id') != CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID
+        or harness_status.get('pr') != report.get('prNumber')
+        or harness_status.get('tool_name') != CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME
+        or harness_status.get('argument_profile') != CODEX_A01_AGGREGATE_MATRIX_ARGUMENT_PROFILE
+        or harness_status.get('expected_arguments_sha256') != CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS_SHA256
+        or harness_status.get('registry_sha256') != CODEX_A01_AGGREGATE_MATRIX_PROFILE_REGISTRY_SHA256
+        or harness_status.get('claim_label_present') is not True
+        or harness_status.get('terminal_label_present') is not True
+        or not isinstance(disposition, dict)
+        or not isinstance(receipt, dict)
+        or not isinstance(report_sha256, str)
+        or re.fullmatch(r'[0-9a-f]{64}', report_sha256) is None
+    ):
+        return None
+    expected = {
+        'claimId': report.get('claimId'),
+        'profileId': CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID,
+        'frontierId': 'A01',
+        'epochId': CODEX_A01_AGGREGATE_MATRIX_EPOCH_ID,
+        'runNumber': 95,
+        'prNumber': report.get('prNumber'),
+        'state': 'REPORT_WRITTEN',
+        'sourceCandidateSha': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'ciSha': report.get('sourceRevision'),
+        'ciStatus': 'SUCCESS',
+        'reviewerId': report.get('reviewerId'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'registrySha256': CODEX_A01_AGGREGATE_MATRIX_PROFILE_REGISTRY_SHA256,
+        'toolName': CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME,
+        'argumentProfile': CODEX_A01_AGGREGATE_MATRIX_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS_SHA256,
+        'reportWritten': True,
+        'reportPath': CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH,
+        'reportSha256': report_sha256,
+        'retryAllowed': False,
+        'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
+        'runnerReceiptPublicKeySha256': receipt.get('publicKeySha256'),
+        'runnerReceiptSha256': _canonical_json_sha256(receipt),
+    }
+    return disposition if all(disposition.get(key) == value for key, value in expected.items()) else None
+
+
+def codex_a01_aggregate_matrix_profile_candidate_binding_is_current(
+    report: dict[str, object], epoch_status: object, current_bundle_sha256: object,
+) -> bool:
+    if not isinstance(epoch_status, dict):
+        return False
+    run_result = epoch_status.get('run')
+    epoch_result = epoch_status.get('epoch')
+    if not isinstance(run_result, dict) or not isinstance(epoch_result, dict):
+        return False
+    run = run_result.get('state')
+    epoch = epoch_result.get('state')
+    if not isinstance(run, dict) or not isinstance(epoch, dict):
+        return False
+    pr_number = report.get('prNumber')
+    candidate_sha = epoch.get('candidate_sha')
+    report_candidate_sha = report.get('sourceRevision')
+    if (
+        not isinstance(candidate_sha, str)
+        or re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is None
+        or not isinstance(report_candidate_sha, str)
+        or re.fullmatch(r'[0-9a-f]{40}', report_candidate_sha) is None
+    ):
+        return False
+    reviews = epoch.get('review_history', [])
+    if not isinstance(reviews, list):
+        return False
+    source_review_passed = any(
+        isinstance(review, dict)
+        and review.get('candidate_sha') == report_candidate_sha
+        and review.get('reviewed_base_sha') == report.get('baseSha')
+        and review.get('reviewer_id') == report.get('reviewerId')
+        and review.get('verdict') == 'PASS'
+        for review in reviews
+    )
+    active_pr = (
+        run.get('state') == 'EPOCH_ACTIVE'
+        and run.get('active_epoch_pr') == pr_number
+        and epoch_result.get('github_state') == 'OPEN'
+        and epoch.get('state') != 'MERGED'
+    )
+    merged_pr = epoch.get('state') == 'MERGED' and epoch_result.get('github_state') == 'MERGED'
+    latest_review = reviews[-1] if reviews else None
+    if merged_pr and not (
+        isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == candidate_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+    ):
+        return False
+    changed = _run_repository_git(ROOT, 'diff', '--name-only', report_candidate_sha, candidate_sha)
+    if changed.returncode != 0:
+        return False
+    candidate_paths = {item for item in changed.stdout.splitlines() if item}
+    allowed_refresh_paths = {
+        CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH,
+        'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+        'docs/product/frontier-ledger.json',
+    }
+    refresh_paths_valid = (
+        report_candidate_sha == candidate_sha
+        or (
+            CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH in candidate_paths
+            and candidate_paths <= allowed_refresh_paths
+        )
+    )
+    return bool(
+        type(pr_number) is int
+        and pr_number > 0
+        and run_result.get('number') == 95
+        and (active_pr or merged_pr)
+        and epoch.get('epoch_id') == CODEX_A01_AGGREGATE_MATRIX_EPOCH_ID
+        and epoch.get('pr_number') == pr_number
+        and epoch.get('base_branch') == 'master'
+        and epoch.get('base_sha') == report.get('baseSha')
+        and epoch.get('reviewed_base_sha') == report.get('baseSha')
+        and epoch_result.get('pr_base_ref_name') == 'master'
+        and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
+        and epoch_result.get('pr_head_ref_name') == epoch.get('branch')
+        and epoch_result.get('pr_is_draft') is False
+        and _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', report_candidate_sha, candidate_sha,
+        ).returncode == 0
+        and epoch_result.get('pr_head_sha') == candidate_sha
+        and source_review_passed
+        and refresh_paths_valid
+        and current_bundle_sha256 == report.get('mcpBundleSha256')
+    )
+
+
+def codex_a01_aggregate_matrix_profile_frontier_is_unassessed() -> bool:
+    try:
+        frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    records = frontier.get('records') if isinstance(frontier, dict) else None
+    record = next(
+        (item for item in records or [] if isinstance(item, dict) and item.get('id') == 'A01'),
+        None,
+    )
+    source_refs = record.get('source_refs') if isinstance(record, dict) else None
+    return bool(
+        isinstance(record, dict)
+        and record.get('status') == 'UNASSESSED'
+        and isinstance(source_refs, list)
+        and CODEX_A01_AGGREGATE_MATRIX_SELECTION_EVIDENCE_RELATIVE_PATH in source_refs
+    )
+
+
+def codex_a01_aggregate_matrix_profile_report_is_valid(
+    report: object,
+    harness_status: object = None,
+    report_path: Path | None = None,
+    epoch_status: object = None,
+) -> bool:
+    if not isinstance(report, dict) or set(report) != CODEX_A01_AGGREGATE_MATRIX_REPORT_FIELDS:
+        return False
+    if (
+        report.get('evidenceKind') != CODEX_A01_AGGREGATE_MATRIX_EVIDENCE_KIND
+        or report.get('runNumber') != 95
+        or report.get('frontierId') != 'A01'
+        or report.get('epochId') != CODEX_A01_AGGREGATE_MATRIX_EPOCH_ID
+        or report.get('profileId') != CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID
+        or report.get('scenarioId') is not None
+        or report.get('acceptanceScope') != 'agent-mcp-matrix-only'
+        or report.get('toolName') != CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME
+        or report.get('argumentProfile') != CODEX_A01_AGGREGATE_MATRIX_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS_SHA256
+        or report.get('registrySha256') != CODEX_A01_AGGREGATE_MATRIX_PROFILE_REGISTRY_SHA256
+        or report.get('networkMode') != CODEX_A01_AGGREGATE_MATRIX_NETWORK_MODE
+        or report.get('retryAllowed') is not False
+        or report.get('reportWritten') is not True
+        or report.get('processExitCode') != 0
+        or report.get('processSpawned') is not True
+        or report.get('processTimedOut') is not False
+        or report.get('resultStatus') != 'SUCCESS'
+        or report.get('resultCount') != 1
+        or report.get('eventStreamParsed') is not True
+        or report.get('turnCompleted') is not True
+        or report.get('codexMcpToolEventCount') != 1
+        or report.get('codexErrorItemCount') != 0
+        or report.get('nonMcpToolEventCount') != 0
+        or report.get('shellToolCallCount') != 0
+        or report.get('allowedCallCount') != 1
+        or report.get('deniedCallCount') != 0
+        or report.get('accountBindingCount') != 0
+        or report.get('externalNetworkRequestCount') != 0
+        or report.get('writeActionReached') is not False
+        or report.get('qqPipelineTested') is not False
+        or report.get('timClientTested') is not False
+        or report.get('serverId') != 'bgk_a01_aggregate_cohort_offline'
+        or report.get('serverToolNames') != [CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME]
+        or report.get('serverToolCount') != 1
+        or report.get('ciSha') != report.get('sourceRevision')
+        or report.get('ciStatus') != 'SUCCESS'
+        or not re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
+        or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('mcpBundleSha256', '')))
+        or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('catalogSha256', '')))
+        or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('toolDescriptionSha256', '')))
+        or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('inputSchemaSha256', '')))
+        or not isinstance(report.get('codexCliVersion'), str)
+        or not re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion'])
+        or not isinstance(report.get('observedAt'), str)
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', report['observedAt'])
+        or report.get('privacy') != {
+            'authProfile': 'anonymous',
+            'oauthAttempted': False,
+            'accountDataRead': False,
+            'writesAttempted': False,
+            'communityRead': False,
+            'qqPipelineTested': False,
+            'timClientTested': False,
+            'promptStored': False,
+            'answerStored': False,
+            'rawResultStored': False,
+            'artifactImageBytesStored': False,
+            'credentialsStored': False,
+        }
+    ):
+        return False
+    path = report_path or (LIVE_PROBE_DIR / Path(CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH).name)
+    try:
+        relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+        report_bytes = path.read_bytes()
+        selection_bytes = (ROOT / CODEX_A01_AGGREGATE_MATRIX_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
+        if (
+            relative_path != CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH
+            or len(report_bytes) > 64 * 1024
+            or json.loads(report_bytes.decode('utf-8')) != report
+            or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
+        ):
+            return False
+    except (OSError, ValueError, UnicodeError):
+        return False
+    if (
+        not codex_a01_aggregate_matrix_profile_frontier_is_unassessed()
+        or not codex_a01_aggregate_matrix_profile_report_matches_candidate_revision(
+            report, report.get('sourceRevision'),
+        )
+    ):
+        return False
+    fixture = report.get('offlineFixture')
+    if fixture != {
+        'profile': CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID,
+        'requestCount': 2,
+        'searchRequestCount': 1,
+        'detailRequestCount': 1,
+        'unexpectedRequestCount': 0,
+        'authorizationHeaderCount': 0,
+        'expectedOperationsComplete': True,
+    }:
+        return False
+    summary = report.get('resultSummary')
+    expected_metrics = [
+        ('score', 7),
+        ('heat', 56),
+        ('episodesReported', 12),
+        ('ratingStandardDeviation', 1),
+    ]
+    if (
+        not isinstance(summary, dict)
+        or set(summary) != {'resultState', 'cohortCount', 'cohorts', 'metricCount', 'metrics', 'coverage'}
+        or summary.get('resultState') != 'complete'
+        or summary.get('cohortCount') != 1
+        or summary.get('metricCount') != 4
+        or not isinstance(summary.get('cohorts'), list)
+        or len(summary['cohorts']) != 1
+        or summary['cohorts'][0] != {
+            'queryState': 'ok',
+            'subjectCount': 1,
+            'detailHydrationsAttempted': 1,
+            'detailHydrationsSucceeded': 1,
+            'detailHydrationsFailed': 0,
+        }
+        or not isinstance(summary.get('metrics'), list)
+        or len(summary['metrics']) != 4
+        or not isinstance(summary.get('coverage'), dict)
+        or summary['coverage'] != {
+            'maxSubjectsPerCohort': 1,
+            'totalSubjectsReturned': 1,
+            'cohortsComplete': 1,
+            'cohortsPartial': 0,
+            'detailHydrationsAttempted': 1,
+            'detailHydrationsSucceeded': 1,
+            'detailHydrationsFailed': 0,
+            'truncated': False,
+        }
+    ):
+        return False
+    for metric, (key, average) in zip(summary['metrics'], expected_metrics):
+        if (
+            not isinstance(metric, dict)
+            or set(metric) != {
+                'key', 'state', 'averages', 'partialAverages', 'validCounts',
+                'partialCounts', 'missingCounts', 'conflictCounts', 'notComputableCounts',
+            }
+            or metric.get('key') != key
+            or metric.get('state') != 'complete'
+            or not isinstance(metric.get('averages'), list)
+            or len(metric['averages']) != 1
+            or not isinstance(metric['averages'][0], (int, float))
+            or not math.isclose(metric['averages'][0], average, rel_tol=0, abs_tol=1e-10)
+            or metric.get('partialAverages') != []
+            or metric.get('validCounts') != [1]
+            or metric.get('partialCounts') != [0]
+            or metric.get('missingCounts') != [0]
+            or metric.get('conflictCounts') != [0]
+            or metric.get('notComputableCounts') != [0]
+        ):
+            return False
+    if (
+        not isinstance(report.get('answerChecks'), dict)
+        or set(report['answerChecks']) != CODEX_A01_AGGREGATE_MATRIX_ANSWER_CHECK_FIELDS
+        or not all(value is True for value in report['answerChecks'].values())
+        or type(report.get('stdoutBytes')) is not int
+        or not 0 <= report['stdoutBytes'] <= 8 * 1024 * 1024
+        or type(report.get('stderrBytes')) is not int
+        or not 0 <= report['stderrBytes'] <= 8 * 1024 * 1024
+        or type(report.get('answerUtf8Bytes')) is not int
+        or not 0 <= report['answerUtf8Bytes'] <= CODEX_A01_AGGREGATE_MATRIX_PROFILE['maxAnswerBytes']
+        or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('answerSha256', '')))
+    ):
+        return False
+    receipt = report.get('runnerReceipt')
+    if not isinstance(receipt, dict):
+        return False
+    claim = {
+        'state': 'REPORT_WRITTEN',
+        'reportWritten': True,
+        'reportSha256': hashlib.sha256(report_bytes).hexdigest(),
+        'retryAllowed': False,
+        'runNumber': report.get('runNumber'),
+        'frontierId': report.get('frontierId'),
+        'epochId': report.get('epochId'),
+        'profileId': report.get('profileId'),
+        'claimId': report.get('claimId'),
+        'prNumber': report.get('prNumber'),
+        'toolName': report.get('toolName'),
+        'argumentProfile': report.get('argumentProfile'),
+        'sourceCandidateSha': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'ciSha': report.get('ciSha'),
+        'ciStatus': report.get('ciStatus'),
+        'reviewerId': report.get('reviewerId'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'registrySha256': report.get('registrySha256'),
+        'expectedArgumentsSha256': report.get('expectedArgumentsSha256'),
+        'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
+        'runnerReceiptPublicKeySha256': receipt.get('publicKeySha256'),
+    }
+    validation = subprocess.run(
+        ['node', str(ROOT / 'scripts/acceptance/validate-a01-aggregate-cohort-offline-agent-mcp-report.mjs')],
+        cwd=ROOT,
+        input=json.dumps({
+            'claim': claim,
+            'reportBytesBase64': base64.b64encode(report_bytes).decode('ascii'),
+        }),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if validation.returncode != 0:
+        return False
+    try:
+        validation_result = json.loads(validation.stdout)
+    except (TypeError, ValueError):
+        return False
+    report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+    if validation_result.get('passed') is not True or validation_result.get('reportSha256') != report_sha256:
+        return False
+    current_epoch_status = epoch_status if isinstance(epoch_status, dict) else (
+        codex_a01_aggregate_matrix_profile_epoch_harness_status(report.get('prNumber'))
+    )
+    current_harness_status = harness_status if isinstance(harness_status, dict) else (
+        codex_a01_aggregate_matrix_profile_harness_status(report.get('prNumber'))
+    )
+    epoch_result = current_epoch_status.get('epoch') if isinstance(current_epoch_status, dict) else None
+    epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
+    candidate_sha = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
+    if not isinstance(candidate_sha, str):
+        return False
+    try:
+        current_bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate_sha)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return False
+    return (
+        codex_a01_aggregate_matrix_profile_candidate_binding_is_current(
+            report, current_epoch_status, current_bundle_sha256,
+        )
+        and codex_a01_aggregate_matrix_profile_disposition_matches_report(
+            report, current_harness_status, report_sha256,
+        ) is not None
+    )
+
+
 def codex_p02_profile_evidence_refresh_paths_are_valid(paths: object) -> bool:
     return (
         isinstance(paths, (list, tuple, set, frozenset))
@@ -20877,6 +21423,18 @@ def codex_mcp_evidence_is_valid(
     tool_name = report.get('toolName')
     if not isinstance(tool_name, str):
         return False
+    if report.get('profileId') == CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID:
+        current_tool = current_by_name.get(CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME)
+        return bool(
+            tool_name == CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME
+            and report.get('argumentProfile') == CODEX_A01_AGGREGATE_MATRIX_ARGUMENT_PROFILE
+            and report.get('acceptanceScope') == 'agent-mcp-matrix-only'
+            and current_tool is not None
+            and evidence_by_name.get(CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME) == current_tool
+            and current_tool.get('auth') == 'none'
+            and current_tool.get('risk') == 'read'
+            and codex_a01_aggregate_matrix_profile_report_is_valid(report)
+        )
     argument_profile = report.get('argumentProfile')
     if (
         tool_name == CODEX_A01_RENDER_AGGREGATION_TOOL_NAME
@@ -21303,6 +21861,9 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(
         LIVE_PROBE_DIR / CODEX_A01_RENDER_AGGREGATION_REPORT_RELATIVE_PATH.split('/')[-1],
     )
+    report_paths.append(
+        LIVE_PROBE_DIR / CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH.split('/')[-1],
+    )
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_D07_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G19_REPORT_RELATIVE_PATH.split('/')[-1])
@@ -21341,6 +21902,33 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             ):
                 continue
             sources.setdefault(CODEX_A01_RENDER_AGGREGATION_TOOL_NAME, set()).add(
+                report_source_ref(path),
+            )
+            continue
+        if report.get('evidenceKind') == CODEX_A01_AGGREGATE_MATRIX_EVIDENCE_KIND:
+            try:
+                report_relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+            except ValueError:
+                continue
+            evidence_by_name = catalog_for_hash(report.get('catalogSha256'))
+            current_tool = current_by_name.get(CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME)
+            if (
+                report_relative_path != CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH
+                or report.get('frontierId') != 'A01'
+                or report.get('scenarioId') is not None
+                or report.get('toolName') != CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME
+                or report.get('argumentProfile') != CODEX_A01_AGGREGATE_MATRIX_ARGUMENT_PROFILE
+                or report.get('profileId') != CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID
+                or report.get('acceptanceScope') != 'agent-mcp-matrix-only'
+                or evidence_by_name is None
+                or current_tool is None
+                or evidence_by_name.get(CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME) != current_tool
+                or current_tool.get('auth') != 'none'
+                or current_tool.get('risk') != 'read'
+                or not codex_a01_aggregate_matrix_profile_report_is_valid(report, report_path=path)
+            ):
+                continue
+            sources.setdefault(CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME, set()).add(
                 report_source_ref(path),
             )
             continue

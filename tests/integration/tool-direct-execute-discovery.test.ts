@@ -13,6 +13,11 @@ import {
   G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS,
   G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_SUBJECT_ID,
 } from '../../scripts/lib/g01-query-subjects-offline-matrix-profile.mjs';
+import {
+  A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
+  A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+  createA01AggregateCohortOfflineFetch,
+} from '../../scripts/lib/a01-aggregate-cohort-offline-matrix-profile.mjs';
 
 const context = {
   principalId: 'direct-execute-fixture',
@@ -86,6 +91,83 @@ function createFixtureProvider() {
 }
 
 describe('direct execute coverage for discovery tools', () => {
+  it('executes the A01 aggregate matrix profile through the exact synthetic offline fixture', async () => {
+    const fixture = createA01AggregateCohortOfflineFetch();
+    const observedRequests: Array<{ url: string; method: string; body: string | null }> = [];
+    const publicHttpClient = new HttpClient({
+      baseUrl: 'https://api.bgm.tv',
+      fetchFn: (async (input: string | URL, init?: RequestInit) => {
+        observedRequests.push({
+          url: String(input),
+          method: String(init?.method ?? 'GET'),
+          body: typeof init?.body === 'string' ? init.body : null,
+        });
+        return fixture.fetchFn(input, init);
+      }) as typeof fetch,
+    });
+    const dependencies = createRuntimeDependenciesWithStorage(new MemoryStorage(), {
+      publicHttpClient,
+    });
+    const tool = createDiscoveryTools().find(
+      (candidate) => candidate.name === 'bangumi.aggregate_subject_cohort',
+    )!;
+    const result = await (tool.execute as any)(
+      A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
+      context,
+      dependencies,
+    );
+
+    expect(
+      result.state,
+      JSON.stringify({
+        state: result.state,
+        queryState: result.cohorts?.[0]?.coverage?.query?.state,
+        queryCoverageState: result.cohorts?.[0]?.coverage?.query?.coverage?.state,
+        detailHydrations: {
+          attempted: result.cohorts?.[0]?.coverage?.detailHydrationsAttempted,
+          succeeded: result.cohorts?.[0]?.coverage?.detailHydrationsSucceeded,
+          failed: result.cohorts?.[0]?.coverage?.detailHydrationsFailed,
+        },
+        rowStates: result.cohorts?.[0]?.subjects?.map((subject: any) => ({
+          score: subject.score,
+          collectionTotal: subject.collectionTotal,
+          episodesReported: subject.episodesReported,
+          ratingStandardDeviation: subject.ratingStandardDeviation,
+          metricStates: subject.metricStates,
+        })),
+        metricStates: result.metrics?.map((metric: { key: string; state: string }) => ({
+          key: metric.key,
+          state: metric.state,
+        })),
+        fixture: fixture.snapshot(),
+      }),
+    ).toBe('complete');
+    expect(result.cohorts).toHaveLength(1);
+    expect(result.cohorts[0].subjects).toHaveLength(1);
+    expect(result.metrics).toMatchObject([
+      { key: 'score', state: 'complete', averages: [7], validCounts: [1] },
+      { key: 'heat', state: 'complete', averages: [56], validCounts: [1] },
+      { key: 'episodesReported', state: 'complete', averages: [12], validCounts: [1] },
+      { key: 'ratingStandardDeviation', state: 'complete', averages: [1], validCounts: [1] },
+    ]);
+    expect(result.coverage).toMatchObject({
+      totalSubjectsReturned: 1,
+      detailHydrationsAttempted: 1,
+      detailHydrationsSucceeded: 1,
+      detailHydrationsFailed: 0,
+      truncated: false,
+    });
+    expect(fixture.snapshot(), JSON.stringify(observedRequests)).toMatchObject({
+      profile: A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+      requestCount: 2,
+      searchRequestCount: 1,
+      detailRequestCount: 1,
+      unexpectedRequestCount: 0,
+      authorizationHeaderCount: 0,
+      expectedOperationsComplete: true,
+    });
+  });
+
   it('runs the G01 query-only matrix profile through one local synthetic search fixture', async () => {
     const fixture = createG01QuerySubjectsOfflineFetch();
     const observedRequests: Array<{ url: string; method: string; body: string | null }> = [];

@@ -92,7 +92,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 25);
+  assert.equal(listAgentMcpProfiles().length, 26);
   const c07RenderComparison = getAgentMcpProfileById(
     'c07-render-comparison-offline-agent-mcp-matrix-v1',
   );
@@ -148,6 +148,13 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(a01RenderAggregation.frontierId, 'A01');
   assert.equal(a01RenderAggregation.toolName, 'bangumi.render_subject_cohort_aggregation');
   assert.equal(a01RenderAggregation.acceptanceScope, 'agent-mcp-matrix-only');
+  const a01AggregateMatrix = getAgentMcpProfileById(
+    'a01-aggregate-cohort-offline-agent-mcp-matrix-v1',
+  );
+  assert.ok(a01AggregateMatrix);
+  assert.equal(a01AggregateMatrix.toolName, 'bangumi.aggregate_subject_cohort');
+  assert.equal(a01AggregateMatrix.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.notEqual(a01AggregateMatrix.id, 'a01-rating-dispersion-1998-spring-v1');
   const a01RatingDispersion = getAgentMcpProfileById('a01-rating-dispersion-1998-spring-v1');
   assert.ok(a01RatingDispersion);
   assert.equal(a01RatingDispersion.frontierId, 'A01');
@@ -700,6 +707,81 @@ test('profile failure diagnostics keep only bounded allowlisted checks and count
   ]) {
     assert.throws(
       () => normalizeAgentMcpProfileDiagnostics(value),
+      (error) => error.code === 'PROFILE_DIAGNOSTICS_INVALID',
+    );
+  }
+});
+
+test('A01 aggregate failure diagnostics retain process facts but reject raw output', () => {
+  const diagnostics = normalizeAgentMcpProfileDiagnostics({
+    schemaVersion: 1,
+    reasonCode: 'A01_AGGREGATE_MATRIX_CLI_TIMED_OUT',
+    checks: {
+      processSpawned: true,
+      processTimedOut: true,
+      codexExecutionSucceeded: false,
+      eventStreamParsed: false,
+    },
+    counters: {
+      processExitCode: null,
+      codexStdoutBytes: 64,
+      codexStderrBytes: 127,
+      codexMcpToolEvents: 0,
+      codexErrorItems: 0,
+    },
+  });
+  assert.equal(diagnostics.reasonCode, 'A01_AGGREGATE_MATRIX_CLI_TIMED_OUT');
+  assert.equal(diagnostics.counters.codexStderrBytes, 127);
+  const claimReadbackFailure = normalizeAgentMcpProfileDiagnostics({
+    schemaVersion: 1,
+    reasonCode: 'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED',
+    checks: {
+      invocationAttempted: false,
+      processSpawned: false,
+      claimReadbackValid: false,
+      activeGateCurrent: false,
+      privacyPreserved: true,
+    },
+    counters: { processExitCode: null, codexMcpToolEvents: 0 },
+  });
+  assert.equal(claimReadbackFailure.reasonCode, 'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED');
+  assert.equal(claimReadbackFailure.checks.invocationAttempted, false);
+  const outputLimitFailure = normalizeAgentMcpProfileDiagnostics({
+    schemaVersion: 1,
+    reasonCode: 'A01_AGGREGATE_MATRIX_CLI_OUTPUT_LIMIT_EXCEEDED',
+    checks: {
+      invocationAttempted: true,
+      processSpawned: true,
+      outputLimitExceeded: true,
+      processTimedOut: false,
+      privacyPreserved: true,
+    },
+    counters: { codexStdoutBytes: 8_388_608, processExitCode: null },
+  });
+  assert.equal(outputLimitFailure.reasonCode, 'A01_AGGREGATE_MATRIX_CLI_OUTPUT_LIMIT_EXCEEDED');
+  assert.equal(outputLimitFailure.checks.outputLimitExceeded, true);
+  for (const invalid of [
+    {
+      schemaVersion: 1,
+      reasonCode: 'A01_AGGREGATE_MATRIX_CLI_TIMED_OUT',
+      checks: { stderr: 'private output' },
+      counters: {},
+    },
+    {
+      schemaVersion: 1,
+      reasonCode: 'A01_AGGREGATE_MATRIX_CLI_TIMED_OUT',
+      checks: { processSpawned: true },
+      counters: { codexStderrBytes: 10_000_001 },
+    },
+    {
+      schemaVersion: 1,
+      reasonCode: 'A01_AGGREGATE_MATRIX_CLI_TIMED_OUT',
+      checks: { processSpawned: true },
+      counters: { stderrText: 'private output' },
+    },
+  ]) {
+    assert.throws(
+      () => normalizeAgentMcpProfileDiagnostics(invalid),
       (error) => error.code === 'PROFILE_DIAGNOSTICS_INVALID',
     );
   }

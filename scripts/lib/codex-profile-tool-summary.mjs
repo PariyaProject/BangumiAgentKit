@@ -31,6 +31,7 @@ import {
   summarizeR02PositiveDirectRelationsToolResult,
 } from './r02-positive-direct-relations-profile.mjs';
 import { A01_RENDER_COHORT_AGGREGATION_PROFILE_ID } from './a01-render-cohort-aggregation-offline-fixture.mjs';
+import { A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID } from './a01-aggregate-cohort-offline-matrix-profile.mjs';
 import {
   A01_RATING_DISPERSION_PROFILE,
   A01_RATING_DISPERSION_PROFILE_ID,
@@ -212,6 +213,63 @@ function summarizeC04CohortResult(result) {
   };
 }
 
+function summarizeA01AggregateCohortResult(result) {
+  const rawCohorts = Array.isArray(result?.cohorts) ? result.cohorts : [];
+  const rawMetrics = Array.isArray(result?.metrics) ? result.metrics : [];
+  const cohorts = rawCohorts.slice(0, 2);
+  const metrics = rawMetrics.slice(0, 5);
+  const coverage = result?.coverage;
+  const safeNumber = (value) =>
+    typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const safeCounts = (value) =>
+    Array.isArray(value)
+      ? value.slice(0, 2).map((count) => (Number.isSafeInteger(count) && count >= 0 ? count : null))
+      : [];
+  return {
+    resultState: C04_RESULT_STATES.has(result?.state) ? result.state : 'unknown',
+    cohortCount: rawCohorts.length,
+    cohorts: cohorts.map((cohort) => ({
+      queryState: C04_RESULT_STATES.has(cohort?.coverage?.query?.state)
+        ? cohort.coverage.query.state
+        : 'unknown',
+      subjectCount: Array.isArray(cohort?.subjects) ? cohort.subjects.length : null,
+      detailHydrationsAttempted: Number.isSafeInteger(cohort?.coverage?.detailHydrationsAttempted)
+        ? cohort.coverage.detailHydrationsAttempted
+        : null,
+      detailHydrationsSucceeded: Number.isSafeInteger(cohort?.coverage?.detailHydrationsSucceeded)
+        ? cohort.coverage.detailHydrationsSucceeded
+        : null,
+      detailHydrationsFailed: Number.isSafeInteger(cohort?.coverage?.detailHydrationsFailed)
+        ? cohort.coverage.detailHydrationsFailed
+        : null,
+    })),
+    metricCount: rawMetrics.length,
+    metrics: metrics.map((metric) => ({
+      key: C04_METRIC_KEYS.has(metric?.key) ? metric.key : 'unclassified',
+      state: C04_RESULT_STATES.has(metric?.state) ? metric.state : 'unknown',
+      averages: Array.isArray(metric?.averages) ? metric.averages.slice(0, 2).map(safeNumber) : [],
+      partialAverages: Array.isArray(metric?.partialAverages)
+        ? metric.partialAverages.slice(0, 2).map(safeNumber)
+        : [],
+      validCounts: safeCounts(metric?.validCounts),
+      partialCounts: safeCounts(metric?.partialCounts),
+      missingCounts: safeCounts(metric?.missingCounts),
+      conflictCounts: safeCounts(metric?.conflictCounts),
+      notComputableCounts: safeCounts(metric?.notComputableCounts),
+    })),
+    coverage: {
+      maxSubjectsPerCohort: boundedCounter(coverage?.maxSubjectsPerCohort),
+      totalSubjectsReturned: boundedCounter(coverage?.totalSubjectsReturned),
+      cohortsComplete: boundedCounter(coverage?.cohortsComplete),
+      cohortsPartial: boundedCounter(coverage?.cohortsPartial),
+      detailHydrationsAttempted: boundedCounter(coverage?.detailHydrationsAttempted),
+      detailHydrationsSucceeded: boundedCounter(coverage?.detailHydrationsSucceeded),
+      detailHydrationsFailed: boundedCounter(coverage?.detailHydrationsFailed),
+      truncated: typeof coverage?.truncated === 'boolean' ? coverage.truncated : null,
+    },
+  };
+}
+
 export function summarizeA01RatingDispersionResult(result) {
   const cohorts = Array.isArray(result?.cohorts) ? result.cohorts.slice(0, 2) : [];
   const coverage = result?.coverage;
@@ -385,6 +443,9 @@ export function summarizeProfileToolResult(
     return toolName === 'bangumi.render_subject_cohort_comparison'
       ? summarizeC04Artifact(artifactSummary)
       : summarizeC04CohortResult(result);
+  }
+  if (profileId === A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID) {
+    return summarizeA01AggregateCohortResult(result);
   }
   if (profileId === A01_RATING_DISPERSION_PROFILE_ID) {
     return summarizeA01RatingDispersionResult(result);

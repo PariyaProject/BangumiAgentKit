@@ -28,8 +28,27 @@ const PROFILE_DIAGNOSTIC_CHECKS = new Set([
   'requestBudgetSatisfied',
   'privacyPreserved',
   'codexExecutionSucceeded',
+  'invocationAttempted',
+  'outputLimitExceeded',
+  'processSpawned',
+  'processTimedOut',
+  'invocationStateUnknown',
 ]);
 const PROFILE_DIAGNOSTIC_REASON_CODES = new Set([
+  'A01_AGGREGATE_MATRIX_AGENT_MCP_ASSERTION_FAILED',
+  'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
+  'A01_AGGREGATE_MATRIX_ANSWER_INVALID',
+  'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED',
+  'A01_AGGREGATE_MATRIX_CLI_EXITED_NONZERO',
+  'A01_AGGREGATE_MATRIX_CLI_OUTPUT_LIMIT_EXCEEDED',
+  'A01_AGGREGATE_MATRIX_CLI_SPAWN_FAILED',
+  'A01_AGGREGATE_MATRIX_CLI_TIMED_OUT',
+  'A01_AGGREGATE_MATRIX_EVENT_STREAM_INCOMPLETE',
+  'A01_AGGREGATE_MATRIX_MCP_RESULT_INVALID',
+  'A01_AGGREGATE_MATRIX_POSTRUN_GATE_CHANGED',
+  'A01_AGGREGATE_MATRIX_PREINVOCATION_GATE_FAILED',
+  'A01_AGGREGATE_MATRIX_REPORT_BUILD_FAILED',
+  'A01_AGGREGATE_MATRIX_RUNNER_RECEIPT_INVALID',
   'C03_ACTIVE_GATE_CHANGED_DURING_QUERY',
   'C03_AGENT_MCP_ASSERTION_FAILED',
   'C03_ACTOR_COUNT_INVALID',
@@ -150,8 +169,12 @@ const PROFILE_DIAGNOSTIC_COUNTERS = new Set([
   'artifactWidth',
   'artifactHeight',
   'answerUtf8Bytes',
+  'processExitCode',
+  'codexStdoutBytes',
+  'codexStderrBytes',
 ]);
 const PROFILE_DIAGNOSTICS_MAX_JSON_CHARS = 4096;
+const PROFILE_DIAGNOSTIC_COUNTER_MAX = 10_000_000;
 
 export class AgentMcpProfileClaimError extends Error {
   constructor(code, message) {
@@ -223,7 +246,9 @@ export function normalizeAgentMcpProfileDiagnostics(value) {
   const counters = normalizeFields(
     value.counters,
     PROFILE_DIAGNOSTIC_COUNTERS,
-    (field) => field === null || (Number.isSafeInteger(field) && field >= 0),
+    (field) =>
+      field === null ||
+      (Number.isSafeInteger(field) && field >= 0 && field <= PROFILE_DIAGNOSTIC_COUNTER_MAX),
     0,
   );
   const normalized = { schemaVersion: 1, reasonCode: value.reasonCode, checks, counters };
