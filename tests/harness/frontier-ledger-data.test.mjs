@@ -270,7 +270,7 @@ test('A01 aggregate cohort offline profile is distinct and remains matrix-only',
   assert.ok(record);
   assert.ok(profile);
   assert.equal(record.status, 'UNASSESSED');
-  assert.equal(profile.epochId, 'run95-a01-aggregate-cohort-offline-matrix-20261018');
+  assert.equal(profile.epochId, 'run95-a01-aggregate-cohort-matrix-followup-20261018');
   assert.equal(profile.acceptanceScope, 'agent-mcp-matrix-only');
   assert.equal(profile.toolName, 'bangumi.aggregate_subject_cohort');
   assert.ok(

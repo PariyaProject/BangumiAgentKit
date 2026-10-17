@@ -65,6 +65,10 @@ if (tool === 'gh') {
       fail('HTTP 422 Validation Failed: label already exists');
     else {
       state.repositoryLabels[label.name] = label;
+      if (label.name.endsWith('-terminal') && state.concurrentPrBodyOnTerminalLabelCreate) {
+        state.prBody = state.concurrentPrBodyOnTerminalLabelCreate;
+        delete state.concurrentPrBodyOnTerminalLabelCreate;
+      }
       output(label);
     }
   } else if (group === 'api' && /^repos\/\{owner\}\/\{repo\}\/labels\//u.test(action)) {
