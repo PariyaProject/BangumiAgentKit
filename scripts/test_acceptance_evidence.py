@@ -11519,7 +11519,7 @@ class A01AggregateCohortOfflineMatrixProfileTests(unittest.TestCase):
         source_candidate = 'a' * 40
         refreshed_candidate = 'd' * 40
         base_sha = 'b' * 40
-        branch = 'codex/epoch-run95-a01-aggregate-cohort-offline-matrix-20261018'
+        branch = 'codex/epoch-run95-a01-aggregate-matrix-followup-20261018'
         reviewer_id = 'gpt-6-luna-max-run95-pr231-round1'
         report = {
             'prNumber': 231,

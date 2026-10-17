@@ -270,9 +270,19 @@ test('A01 aggregate cohort offline profile is distinct and remains matrix-only',
   assert.ok(record);
   assert.ok(profile);
   assert.equal(record.status, 'UNASSESSED');
-  assert.equal(profile.epochId, 'run95-a01-aggregate-cohort-offline-matrix-20261018');
+  assert.equal(profile.epochId, 'run95-a01-aggregate-cohort-matrix-followup-20261018');
   assert.equal(profile.acceptanceScope, 'agent-mcp-matrix-only');
   assert.equal(profile.toolName, 'bangumi.aggregate_subject_cohort');
+  assert.equal(
+    record.evidence.aggregate_cohort_offline_matrix_followup_2026_10_18.epoch_id,
+    profile.epochId,
+  );
+  assert.match(
+    record.evidence.aggregate_cohort_offline_matrix_followup_2026_10_18.reconciliation_behavior,
+    /preserve unrelated concurrent PR control updates/u,
+  );
+  assert.match(record.next_action, /A01 remains UNASSESSED/u);
+  assert.match(record.next_action, /re-reads the current PR control state/u);
   assert.ok(
     record.source_refs.includes(
       'docs/research/run95-a01-aggregate-subject-cohort-offline-agent-mcp-contract-2026-10-18.md',

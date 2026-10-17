@@ -1,7 +1,7 @@
 export const A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID =
   'a01-aggregate-cohort-offline-agent-mcp-matrix-v1';
 export const A01_AGGREGATE_COHORT_OFFLINE_EPOCH_ID =
-  'run95-a01-aggregate-cohort-offline-matrix-20261018';
+  'run95-a01-aggregate-cohort-matrix-followup-20261018';
 export const A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE =
   'run95-a01-aggregate-cohort-offline-matrix-v1';
 export const A01_AGGREGATE_COHORT_TOOL = 'bangumi.aggregate_subject_cohort';

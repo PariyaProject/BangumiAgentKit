@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-16T20:19:24Z",
+  "updated_at": "2026-10-17T21:00:22Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2932,7 +2932,7 @@
         "tests/harness/write-a01-aggregate-cohort-offline-agent-mcp-report.test.mjs",
         "tests/harness/agent-mcp-profile-claims.test.mjs"
       ],
-      "next_action": "Keep A01 UNASSESSED: the exact public reports support only their corresponding public API rows, not the cohort-analysis scenario. The aggregate_subject_cohort and three other cohort tools’ 2026-10-16 public-matrix rows are separate from the scenario. The C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks. The new a01-aggregate-cohort-offline-agent-mcp-matrix-v1 profile is distinct synthetic offline Agent/MCP evidence for bangumi.aggregate_subject_cohort only; even a valid signed report can credit that one matrix cell, not the A01 scenario, public API, comparison, significance, recommendation, or historical claims. Profile claim state and terminal eligibility belong to the active Harness Run/Epoch; never retry a consumed claim. Continue only with a genuinely unspent profile after the exact Harness Candidate, Base, CI, review, and report gates.",
+      "next_action": "Keep A01 UNASSESSED: the exact public reports support only their corresponding public API rows, not the cohort-analysis scenario. The aggregate_subject_cohort and three other cohort tools’ 2026-10-16 public-matrix rows are separate from the scenario. The C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks. The new a01-aggregate-cohort-offline-agent-mcp-matrix-v1 profile is distinct synthetic offline Agent/MCP evidence for bangumi.aggregate_subject_cohort only; even a valid signed report can credit that one matrix cell, not the A01 scenario, public API, comparison, significance, recommendation, or historical claims. A01 remains UNASSESSED. Profile claim state and terminal eligibility belong to the active Harness Run/Epoch; consult live Harness for exact Candidate/Base/CI/review eligibility and never retry a consumed claim. Ambiguous-latch recovery re-reads the current PR control state after terminal-label creation and fails closed on changed profile state. Continue only with a genuinely unspent profile after the exact Harness Candidate, Base, CI, review, and report gates.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -3015,6 +3015,24 @@
             "tests/harness/write-a01-aggregate-cohort-offline-agent-mcp-report.test.mjs",
             "tests/integration/tool-direct-execute-discovery.test.ts"
           ]
+        },
+        "aggregate_cohort_offline_matrix_followup_2026_10_18": {
+          "epoch_id": "run95-a01-aggregate-cohort-matrix-followup-20261018",
+          "profile_id": "a01-aggregate-cohort-offline-agent-mcp-matrix-v1",
+          "tool": "bangumi.aggregate_subject_cohort",
+          "acceptance_scope": "agent-mcp-matrix-only",
+          "reconciliation_behavior": "After permanent terminal-label acquisition, re-read the active Run, exact Epoch PR, profile disposition, and labels; preserve unrelated concurrent PR control updates by writing from the fresh Epoch snapshot, and fail closed on stale identity/disposition/latch/report state.",
+          "implementation": [
+            "scripts/agent-harness.mjs",
+            "scripts/lib/a01-aggregate-cohort-offline-matrix-profile.mjs",
+            "scripts/acceptance/agent-mcp-profile-registry.json"
+          ],
+          "tests": [
+            "tests/harness/agent-harness-cli.test.mjs",
+            "tests/harness/frontier-ledger-data.test.mjs",
+            "tests/harness/a01-aggregate-cohort-offline-matrix.test.mjs"
+          ],
+          "acceptance_boundary": "This code/test evidence does not establish a profile result or matrix credit. Only one exact Harness-acknowledged signed report may credit the aggregate_subject_cohort Agent/MCP row; A01 remains UNASSESSED and public API/QQ/TIM evidence is unchanged."
         },
         "acceptance_limit": "The consumed compare_subject_cohorts A01 scenario claim is INCONCLUSIVE and permanently spent; its retained evidence does not answer the scenario or earn accepted matrix evidence. The separate A01 render-aggregation profile (PR #197) and rating-dispersion profile (PR #203) are both Harness-terminal INCONCLUSIVE with no report and no retry; neither can be reused. The new a01-aggregate-cohort-offline-agent-mcp-matrix-v1 profile is a distinct synthetic offline check and can support only the aggregate_subject_cohort Agent/MCP matrix cell if the exact signed report is accepted by Harness. No A01 scenario, public API, comparison, significance, recommendation, or historical claim is inferred. Keep A01 UNASSESSED.",
         "aggregate_one_tool_probe_design": {
