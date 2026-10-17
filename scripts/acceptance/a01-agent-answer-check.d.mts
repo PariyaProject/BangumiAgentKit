@@ -33,16 +33,47 @@ export const A01_EXPECTED_QUERY_ARGUMENTS: {
   ];
   maxSubjects: 8;
 };
+export const A01_RATING_DISPERSION_ANSWER_CHECK_FIELDS: readonly string[];
+export const A01_RATING_DISPERSION_ANSWER_PROFILE: Readonly<{
+  expectedArguments: unknown;
+  targetSubjectId: number;
+  targetTitles: null;
+  maxSubjects: number;
+  dateRange: { from: string; to: string };
+  queryBudget: Readonly<Record<string, number>>;
+  includeBudgetInDisclosure: true;
+}>;
 
-export function expectedA01QueryPlan(index: 0 | 1): Record<string, unknown>;
+export function expectedA01QueryPlan(index: 0 | 1, profile?: unknown): Record<string, unknown>;
 export function canonicalJson(value: unknown): string;
 export function sha256(value: string): string;
-export function expectedA01AnswerLines(result: unknown): {
+export function expectedA01AnswerLines(
+  result: unknown,
+  profile?: unknown,
+): {
   rows: string[];
   averageLine: string;
   scopeTokens: string[];
 };
-export function verifyA01AgentAnswer(input: {
+export function expectedA01RatingDispersionAnswerLines(result: unknown): {
+  rows: string[];
+  averageLine: string;
+  scopeTokens: string[];
+};
+export function verifyA01AgentAnswer(
+  input: {
+    answer: string;
+    queryArguments: unknown;
+    toolResult: { structuredContent?: unknown };
+  },
+  profile?: unknown,
+): {
+  passed: boolean;
+  checks: Record<string, boolean>;
+  answerSha256: string | null;
+  answerUtf8Bytes: number | null;
+};
+export function verifyA01RatingDispersionAnswer(input: {
   answer: string;
   queryArguments: unknown;
   toolResult: { structuredContent?: unknown };

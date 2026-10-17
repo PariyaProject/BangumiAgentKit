@@ -194,15 +194,43 @@ def local_tool_auth_denial_report_matches(name: str, report: dict) -> bool:
     except (OSError, UnicodeError, ValueError):
         return False
     tool = next((item for item in catalog if item.get('name') == name), None)
+    catalog_sha256 = report.get('catalogSha256')
+    evidence_catalog = None
+    if isinstance(catalog_sha256, str) and re.fullmatch(r'[0-9a-f]{64}', catalog_sha256):
+        if hashlib.sha256(catalog_bytes).hexdigest() == catalog_sha256:
+            evidence_catalog = catalog
+        else:
+            snapshot_path = (
+                ROOT / 'docs/live-probes' / 'catalog-snapshots' / f'{catalog_sha256}.json'
+            )
+            try:
+                snapshot_bytes = snapshot_path.read_bytes()
+                snapshot = json.loads(snapshot_bytes)
+            except (OSError, ValueError):
+                snapshot = None
+                snapshot_bytes = b''
+            if (
+                hashlib.sha256(snapshot_bytes).hexdigest() == catalog_sha256
+                and isinstance(snapshot, list)
+            ):
+                evidence_catalog = snapshot
+    evidence_tool = (
+        next((
+            item for item in evidence_catalog
+            if isinstance(item, dict) and item.get('name') == name
+        ), None)
+        if evidence_catalog is not None
+        else None
+    )
     assertions = report.get('assertions')
     return bool(
         tool
+        and evidence_tool == tool
         and tool.get('auth') == 'required'
         and tool.get('risk') in {'read', 'write', 'destructive'}
         and report.get('schemaVersion') == 1
         and report.get('evidenceKind') == 'tool_registry_no_account_auth_denial_test'
         and report.get('profile') == LOCAL_AUTH_DENIAL_TEST_PROFILE
-        and report.get('catalogSha256') == hashlib.sha256(catalog_bytes).hexdigest()
         and report.get('tool') == name
         and report.get('testSourcePath') == expected['sourcePath']
         and report.get('testSourceSha256') == source_sha256

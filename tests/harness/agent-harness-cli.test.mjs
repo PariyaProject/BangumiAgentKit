@@ -89,12 +89,23 @@ import {
 import { makeP01Report } from './p01-report-fixture.mjs';
 import { makeR05ProfileReportInput } from './fixtures/r05-profile-report-input.mjs';
 import { writeR05SharedPersonOverlapReport } from '../../scripts/acceptance/write-r05-shared-person-overlap-report.mjs';
-import { getAgentMcpProfileById } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
+import {
+  agentMcpProfileArgumentsSha256,
+  canonicalAgentMcpProfileJson,
+  getAgentMcpProfileById,
+} from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
   C01_SAFE_SCOPE_NOTE,
   projectC01ComparisonResult,
 } from '../../scripts/lib/c01-rating-count-evidence.mjs';
 import { writeC01ProfileReport } from '../../scripts/acceptance/write-c01-rating-count-report.mjs';
+import {
+  A01_RATING_DISPERSION_ANSWER_PROFILE,
+  expectedA01QueryPlan,
+  expectedA01RatingDispersionAnswerLines,
+} from '../../scripts/acceptance/a01-agent-answer-check.mjs';
+import { writeA01RatingDispersionProfileReport } from '../../scripts/acceptance/write-a01-rating-dispersion-agent-mcp-report.mjs';
+import { summarizeA01RatingDispersionResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const mockBin = path.join(root, 'tests/harness/mock-harness-bin.mjs');
@@ -103,6 +114,7 @@ const D07_EPOCH_ID = 'run95-d07-current-rank-by-release-year';
 const C03_PROFILE = getAgentMcpProfileById('c03-voice-actor-comparison-v1');
 const C02_PROFILE = getAgentMcpProfileById('c02-cardcaptor-tv-movie-v1');
 const C01_PROFILE = getAgentMcpProfileById('c01-rating-count-gap-v1');
+const A01_PROFILE = getAgentMcpProfileById('a01-rating-dispersion-1998-spring-v1');
 const P03_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
 const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const P06_PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
@@ -1654,6 +1666,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
     P02_PROFILE.id,
     C04_PROFILE.id,
     TITLE_QUERY_RENDER_PROFILE.id,
+    A01_PROFILE.id,
   ];
   const checks = exactCiProfileIds.includes(profile.id)
     ? mandatoryChecks.map((name, index) => ({
@@ -1679,6 +1692,241 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
     ...overrides,
   });
   return { environment, reviewerId, branch, run, epoch };
+}
+
+function makeA01RatingDispersionReportInputs(harnessRoot) {
+  const toolArguments = A01_PROFILE.calls[0].arguments;
+  const retrievedAt = '2026-10-17T00:00:00.000Z';
+  const queryCoverage = {
+    state: 'partial',
+    requested: 20,
+    scanned: 20,
+    matched: 1,
+    returned: 1,
+    pagesRequested: 1,
+    pagesScanned: 1,
+    upstreamExhausted: false,
+    budgetExceeded: true,
+    postFilterCount: 0,
+    totalKind: 'estimated',
+    hydrationsAttempted: 0,
+    hydrationsSucceeded: 0,
+    hydrationsFailed: 0,
+    hydrationsUnresolved: 0,
+    unresolvedCandidates: 0,
+    hydrationBudgetExceeded: false,
+  };
+  const result = {
+    state: 'partial',
+    cohorts: toolArguments.cohorts.map((definition, index) => {
+      const subject =
+        index === 0
+          ? {
+              id: A01_PROFILE.answerProfile.targetSubjectId,
+              name: 'Cardcaptor Sakura',
+              displayName: 'カードキャプターさくら',
+              date: '1998-04-03',
+            }
+          : {
+              id: 200001,
+              name: '1998 spring sample',
+              displayName: '1998 spring sample',
+              date: '1998-05-01',
+            };
+      return {
+        label: definition.label,
+        query: definition.query,
+        querySummary: definition.label,
+        subjects: [
+          {
+            ...subject,
+            ratingCount: 100,
+            ratingStandardDeviation: index === 0 ? 1.25 : 1.75,
+            metricStates: { ratingStandardDeviation: 'available' },
+          },
+        ],
+        coverage: {
+          query: {
+            state: 'partial',
+            coverage: queryCoverage,
+            plan: expectedA01QueryPlan(index, A01_RATING_DISPERSION_ANSWER_PROFILE),
+          },
+          detailHydrationsAttempted: 1,
+          detailHydrationsSucceeded: 1,
+          detailHydrationsFailed: 0,
+          metrics: {
+            ratingStandardDeviation: {
+              valid: 1,
+              partial: 0,
+              missing: 0,
+              conflicts: 0,
+              notComputable: 0,
+              state: 'partial',
+            },
+          },
+        },
+      };
+    }),
+    metrics: [
+      { key: 'score', state: 'partial' },
+      { key: 'heat', state: 'partial' },
+      { key: 'episodesReported', state: 'partial' },
+      {
+        key: 'ratingStandardDeviation',
+        state: 'partial',
+        formula: { id: 'bangumi.rating.population_sd.v1', version: 1 },
+        averages: [null, null],
+        partialAverages: [1.25, 1.75],
+        validCounts: [1, 1],
+        partialCounts: [0, 0],
+        missingCounts: [0, 0],
+        conflictCounts: [0, 0],
+        notComputableCounts: [0, 0],
+      },
+    ],
+    formulaVersion: 'subject-cohort-comparison-v1',
+    coverage: {
+      maxSubjectsPerCohort: 4,
+      totalSubjectsReturned: 2,
+      cohortsComplete: 0,
+      cohortsPartial: 2,
+      detailHydrationsAttempted: 2,
+      detailHydrationsSucceeded: 2,
+      detailHydrationsFailed: 0,
+      truncated: true,
+      overlap: { subjectIds: [], count: 0 },
+      evidence: {
+        retained: 2,
+        omitted: 0,
+        deduplicated: 0,
+        omittedByBound: 0,
+        bytes: 512,
+        maxRefs: 256,
+        maxBytes: 96000,
+        truncated: false,
+      },
+      warnings: { retained: 0, omitted: 0, max: 12, truncated: false },
+    },
+    source: {
+      official: {
+        class: 'official-v0',
+        operations: ['searchSubjects', 'getSubjectById'],
+        attemptedAt: retrievedAt,
+        retrievedAt,
+      },
+      derived: {
+        class: 'derived-s7',
+        operations: ['subject-cohort-comparison'],
+        attemptedAt: retrievedAt,
+        retrievedAt,
+      },
+    },
+    evidence: [
+      {
+        source: { class: 'official_v0', provider: 'bangumi', version: 'v0', operation: 'searchSubjects' },
+        retrievedAt,
+      },
+      {
+        source: { class: 'official_v0', provider: 'bangumi', version: 'v0', operation: 'getSubjectById' },
+        retrievedAt,
+      },
+    ],
+    warnings: [],
+    limitations: ['bounded current snapshot'],
+    retrievedAt,
+  };
+  const expected = expectedA01RatingDispersionAnswerLines(result);
+  const answer = [...expected.rows, expected.averageLine, `范围：${expected.scopeTokens.join(';')}`].join(
+    '\n',
+  );
+  const catalogBytes = fs.readFileSync(path.join(harnessRoot, 'docs/tool-catalog.json'));
+  const catalog = JSON.parse(catalogBytes.toString('utf8'));
+  const descriptor = catalog.find((item) => item.name === A01_PROFILE.toolName);
+  const sha256 = (value) => createHash('sha256').update(value).digest('hex');
+  const publicRequestScope = {
+    requestCount: 4,
+    allowedRequestCount: 4,
+    deniedRequestCount: 0,
+    searchRequestCount: 2,
+    detailRequestCount: 2,
+    credentialAttemptCount: 0,
+    unexpectedRouteCount: 0,
+    budgetExceeded: false,
+    maxRequests: 20,
+    anonymousOnly: true,
+    officialV0Only: true,
+    searchPagination: 'limit-20-offset-0-only',
+    redirectPolicy: 'error',
+  };
+  const privacy = {
+    authProfile: 'anonymous',
+    oauthAttempted: false,
+    accountDataRead: false,
+    writesAttempted: false,
+    communityRead: false,
+    qqPipelineTested: false,
+    timClientTested: false,
+    promptStored: false,
+    answerStored: false,
+    rawResultStored: false,
+    artifactImageBytesStored: false,
+    credentialsStored: false,
+  };
+  const serverSummary = {
+    serverProfile: 'closed-profile-sequence-anonymous-public-v1',
+    profileId: A01_PROFILE.id,
+    argumentProfile: A01_PROFILE.argumentProfile,
+    expectedCallCount: 1,
+    networkMode: A01_PROFILE.networkMode,
+    sourceRevision: 'b'.repeat(40),
+    bundleSha256: 'c'.repeat(64),
+    catalogSha256: sha256(catalogBytes),
+    toolName: A01_PROFILE.toolName,
+    toolDescriptionSha256: sha256(descriptor.description),
+    inputSchemaSha256: sha256(canonicalAgentMcpProfileJson(descriptor.inputSchema)),
+    serverToolNames: [A01_PROFILE.toolName],
+    serverToolCount: 1,
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(A01_PROFILE),
+    serverResultStatus: 'SUCCESS',
+    allowedCallCount: 1,
+    deniedCallCount: 0,
+    argumentMatch: true,
+    results: [
+      {
+        sequenceIndex: 0,
+        toolName: A01_PROFILE.toolName,
+        status: 'SUCCESS',
+        resultSummary: summarizeA01RatingDispersionResult(result),
+      },
+    ],
+    publicRequestScope,
+    privacy,
+    serverInstanceId: '00000000-0000-4000-8000-000000000001',
+  };
+  const events = {
+    processExitCode: 0,
+    eventStreamParsed: true,
+    turnCompleted: true,
+    codexMcpToolEventCount: 1,
+    codexErrorItemCount: 0,
+    nonMcpToolEventCount: 0,
+    nonMcpToolTypes: [],
+    shellToolCallCount: 0,
+    exactArguments: true,
+    exactToolEvent: true,
+    exactServerName: true,
+    exactCandidateBundle: true,
+    answer,
+  };
+  return {
+    result,
+    answer,
+    serverSummary,
+    publicRequestScope,
+    privacy,
+    events,
+    sha256,
+  };
 }
 
 function c03ReviewReadyEnvironment(overrides = {}) {
@@ -2353,6 +2601,80 @@ test('C01 Harness records a valid REPORT_WRITTEN report with its exact signed di
     assert.equal(disposition.reportPath, C01_PROFILE.reportPath);
     assert.equal(disposition.reportWritten, true);
     assert.equal(disposition.retryAllowed, false);
+  } finally {
+    environment.cleanup();
+    fs.rmSync(harnessRoot, { recursive: true, force: true });
+  }
+});
+
+test('A01 Harness records a valid signed rating-dispersion REPORT_WRITTEN result', () => {
+  const harnessRoot = createIsolatedHarnessRoot();
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(A01_PROFILE, {
+    harnessRoot,
+  });
+  const runnerKeyPair = generateKeyPairSync('ed25519');
+  const publicKeyBase64 = runnerKeyPair.publicKey
+    .export({ type: 'spki', format: 'der' })
+    .toString('base64');
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', A01_PROFILE.id];
+  try {
+    const initial = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(initial.status, 0, initial.stderr);
+    assert.equal(JSON.parse(initial.stdout).state, 'UNCLAIMED');
+
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    const claim = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.agent_mcp_profile_dispositions[A01_PROFILE.id];
+    assert.equal(claim.ciRunId, '38806371672');
+    assert.equal(claim.ciChecks.length, mandatoryChecks.length);
+    const inputs = makeA01RatingDispersionReportInputs(harnessRoot);
+    const report = writeA01RatingDispersionProfileReport(
+      {
+        claim,
+        serverSummary: inputs.serverSummary,
+        events: inputs.events,
+        answer: inputs.answer,
+        rawResult: inputs.result,
+        codexCliVersion: '1.2.14',
+        eventStreamSha256: inputs.sha256('synthetic A01 event stream'),
+        serverSummarySha256: inputs.sha256('synthetic A01 server summary'),
+      },
+      { privateKey: runnerKeyPair.privateKey, root: harnessRoot },
+    );
+    assert.equal(report.passed, true, JSON.stringify(report));
+    assert.equal(JSON.stringify(report.report).includes('subjectIds'), false);
+    assert.equal(JSON.stringify(report.report).includes('overlapIds'), false);
+
+    const mockState = environment.readState();
+    mockState.dirty = `?? ${A01_PROFILE.reportPath}`;
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(mockState, null, 2)}\n`);
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claimResult.claimId,
+      '--state',
+      'REPORT_WRITTEN',
+      '--report-sha256',
+      report.reportSha256,
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    assert.equal(JSON.parse(terminal.stdout).state, 'AGENT_MCP_PROFILE_RESULT_RECORDED');
+
+    const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(status.status, 0, status.stderr);
+    assert.equal(JSON.parse(status.stdout).state, 'REPORT_WRITTEN');
   } finally {
     environment.cleanup();
     fs.rmSync(harnessRoot, { recursive: true, force: true });

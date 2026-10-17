@@ -229,6 +229,7 @@ export interface SubjectCohortComparisonResult {
 interface HydratedSubject {
   item: DiscoveryItem;
   result: CapabilityResult<ProviderSubjectData>;
+  requestAttempted: boolean;
 }
 
 const METRIC_LABELS: Record<SubjectCohortMetricKey, string> = {
@@ -314,18 +315,39 @@ function finiteScore(value: unknown): number | undefined {
 }
 
 function queryForCohort(query: DiscoveryQuery, maxSubjects: number): DiscoveryQuery {
-  const limit = Math.min(maxSubjects, query.limit ?? maxSubjects);
+  const requestedLimit = Math.min(maxSubjects, query.limit ?? maxSubjects);
+  const requestedBudget = query.budget ?? {};
+  const maxReturnedItems = Math.min(
+    requestedLimit,
+    boundedInteger(requestedBudget.maxReturnedItems, requestedLimit, maxSubjects),
+  );
   return {
     ...query,
     resultMode: 'all',
-    limit,
+    limit: maxReturnedItems,
     budget: {
-      maxPages: SUBJECT_COHORT_MAX_PAGES,
-      maxCandidates: SUBJECT_COHORT_MAX_CANDIDATES,
-      maxHydrations: SUBJECT_COHORT_MAX_QUERY_HYDRATIONS,
-      concurrency: SUBJECT_COHORT_DETAIL_CONCURRENCY,
-      maxConceptProbes: 8,
-      maxReturnedItems: limit,
+      maxPages: boundedInteger(
+        requestedBudget.maxPages,
+        SUBJECT_COHORT_MAX_PAGES,
+        SUBJECT_COHORT_MAX_PAGES,
+      ),
+      maxCandidates: boundedInteger(
+        requestedBudget.maxCandidates,
+        SUBJECT_COHORT_MAX_CANDIDATES,
+        SUBJECT_COHORT_MAX_CANDIDATES,
+      ),
+      maxHydrations: boundedInteger(
+        requestedBudget.maxHydrations,
+        SUBJECT_COHORT_MAX_QUERY_HYDRATIONS,
+        SUBJECT_COHORT_MAX_QUERY_HYDRATIONS,
+      ),
+      concurrency: boundedInteger(
+        requestedBudget.concurrency,
+        SUBJECT_COHORT_DETAIL_CONCURRENCY,
+        SUBJECT_COHORT_DETAIL_CONCURRENCY,
+      ),
+      maxConceptProbes: boundedInteger(requestedBudget.maxConceptProbes, 8, 8),
+      maxReturnedItems,
     },
   };
 }
@@ -352,13 +374,21 @@ async function hydrate(
   provider: SubjectDiscoveryProvider,
   items: DiscoveryItem[],
   context: ProviderRequestContext,
+  maxRequests: number,
+  concurrency: number,
 ): Promise<HydratedSubject[]> {
-  return mapConcurrent(items, SUBJECT_COHORT_DETAIL_CONCURRENCY, async (item) => {
+  const requestedItems = items.slice(0, maxRequests);
+  const attempted = await mapConcurrent(requestedItems, concurrency, async (item) => {
     try {
-      return { item, result: await provider.getSubject(item.id, context) };
+      return {
+        item,
+        requestAttempted: true,
+        result: await provider.getSubject(item.id, context),
+      };
     } catch {
       return {
         item,
+        requestAttempted: true,
         result: {
           state: 'upstream_error',
           error: { code: 'upstream_error', retryable: false },
@@ -372,6 +402,12 @@ async function hydrate(
       } satisfies HydratedSubject;
     }
   });
+  const notAttempted = items.slice(requestedItems.length).map((item) => ({
+    item,
+    requestAttempted: false,
+    result: { state: 'not_computable' } satisfies CapabilityResult<ProviderSubjectData>,
+  }));
+  return [...attempted, ...notAttempted];
 }
 
 function querySummary(label: string, query: DiscoveryQuery, resolvedSeason?: string): string {
@@ -500,7 +536,11 @@ function itemValue(
           'official detail score materially differs from the histogram-derived mean',
       });
     }
-    if (discoveredTotalConflict && discoveredRatingTotal !== undefined && detailRatingTotal !== undefined) {
+    if (
+      discoveredTotalConflict &&
+      discoveredRatingTotal !== undefined &&
+      detailRatingTotal !== undefined
+    ) {
       ratingConflicts.push({
         kind: 'discovery_vs_detail_rating_total',
         discoveryRatingCount: discoveredRatingTotal,
@@ -688,12 +728,13 @@ function buildGroup(
       subjects,
       coverage: {
         query,
-        detailHydrationsAttempted: hydrated.length,
+        detailHydrationsAttempted: hydrated.filter((item) => item.requestAttempted).length,
         detailHydrationsSucceeded: hydrated.filter(
-          (item) => item.result.state === 'ok' && item.result.data,
+          (item) => item.requestAttempted && item.result.state === 'ok' && item.result.data,
         ).length,
         detailHydrationsFailed: hydrated.filter(
-          (item) => item.result.state !== 'ok' || !item.result.data,
+          (item) =>
+            item.requestAttempted && (item.result.state !== 'ok' || !item.result.data),
         ).length,
         metrics,
       },
@@ -897,7 +938,17 @@ export async function compareSubjectCohorts(
   for (const definition of definitions) {
     const query = queryForCohort(definition.query, maxSubjects);
     const result = await engine.query(query, context);
-    const hydrated = await hydrate(provider, result.items, context);
+    const maxHydrations = query.budget?.maxHydrations ?? SUBJECT_COHORT_MAX_QUERY_HYDRATIONS;
+    const queryHydrations = Math.min(maxHydrations, result.coverage.hydrationsAttempted);
+    const remainingHydrations = Math.max(0, maxHydrations - queryHydrations);
+    const concurrency = query.budget?.concurrency ?? SUBJECT_COHORT_DETAIL_CONCURRENCY;
+    const hydrated = await hydrate(
+      provider,
+      result.items,
+      context,
+      remainingHydrations,
+      concurrency,
+    );
     groups.push({ definition: { ...definition, query }, result, hydrated });
   }
 
@@ -978,9 +1029,7 @@ export async function compareSubjectCohorts(
   );
   const conflicts = uniqueStrings(
     built.flatMap(({ conflicts }) =>
-      conflicts
-        .filter((key) => key !== 'ratingStandardDeviation')
-        .map((key) => `conflict:${key}`),
+      conflicts.filter((key) => key !== 'ratingStandardDeviation').map((key) => `conflict:${key}`),
     ),
   );
   if (conflicts.length > 0) {

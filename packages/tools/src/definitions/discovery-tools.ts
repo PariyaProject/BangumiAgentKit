@@ -4,6 +4,10 @@ import {
   COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
   DiscoveryEngine,
   ConceptResolver,
+  SUBJECT_COHORT_DETAIL_CONCURRENCY,
+  SUBJECT_COHORT_MAX_CANDIDATES,
+  SUBJECT_COHORT_MAX_PAGES,
+  SUBJECT_COHORT_MAX_QUERY_HYDRATIONS,
   SUBJECT_COHORT_MAX_SUBJECTS,
 } from '@bangumi-agent-kit/discovery';
 import { defineTool } from '../define-tool.js';
@@ -147,9 +151,24 @@ export const renderQuerySubjectsInput = discoveryQueryInputBase
 // service rejects "top" because its metrics are intended to describe the
 // bounded returned sample. Encode that execution contract in MCP Schema so
 // clients cannot submit an input that the tool will turn into INTERNAL_ERROR.
+const cohortDiscoveryBudgetInput = z
+  .object({
+    maxPages: z.number().int().min(1).max(SUBJECT_COHORT_MAX_PAGES).optional(),
+    maxCandidates: z.number().int().min(1).max(SUBJECT_COHORT_MAX_CANDIDATES).optional(),
+    maxHydrations: z.number().int().min(1).max(SUBJECT_COHORT_MAX_QUERY_HYDRATIONS).optional(),
+    concurrency: z.number().int().min(1).max(SUBJECT_COHORT_DETAIL_CONCURRENCY).optional(),
+    maxConceptProbes: z.number().int().min(1).max(8).optional(),
+    maxReturnedItems: z.number().int().min(1).max(SUBJECT_COHORT_MAX_SUBJECTS).optional(),
+  })
+  .strict()
+  .describe(
+    '可选的每个 cohort 查询预算；服务端会将每项限制在官方安全上限内，maxReturnedItems 还会受 maxSubjects 限制。实际执行覆盖会返回在 coverage 中。',
+  );
+
 const cohortDiscoveryQueryInput = discoveryQueryInputBase
   .extend({
     resultMode: z.literal('all').default('all'),
+    budget: cohortDiscoveryBudgetInput.optional(),
   })
   .strict();
 
@@ -205,7 +224,7 @@ export function createDiscoveryTools() {
   const compareSubjectCohortsTool = defineTool({
     name: 'bangumi.compare_subject_cohorts',
     description:
-      '比较一个或两个由现有 discovery 条件定义的 Bangumi 条目 cohort。仅使用官方 v0 discovery 与有界条目详情，输出平均评分、平均热度（collection 各状态之和）、平均报告话数和每条目评分直方图总体标准差的 cohort 均值；标准差复用 bangumi.rating.population_sd.v1，仅在完整十档直方图上计算。两侧时才输出 B−A 差值，同时输出每项有效/部分/缺失/冲突/不可计算计数、查询覆盖、重叠 ID 与检索证据。重叠条目仍分别计入两侧均值；结果是有界返回样本的描述性当前快照，不表示统计显著性、极化、质量、因果、推荐或历史趋势。',
+      '比较一个或两个由现有 discovery 条件定义的 Bangumi 条目 cohort。仅使用官方 v0 discovery 与有界条目详情，输出平均评分、平均热度（collection 各状态之和）、平均报告话数和每条目评分直方图总体标准差的 cohort 均值；标准差复用 bangumi.rating.population_sd.v1，仅在完整十档直方图上计算。每个 query 可提供受服务端安全上限约束的 budget；maxSubjects 限制每个 cohort 保留的条目数，执行覆盖会明确返回。两侧时才输出 B−A 差值，同时输出每项有效/部分/缺失/冲突/不可计算计数、查询覆盖、重叠 ID 与检索证据。重叠条目仍分别计入两侧均值；结果是有界返回样本的描述性当前快照，不表示统计显著性、极化、质量、因果、推荐或历史趋势。',
     input: subjectCohortComparisonInput,
     auth: 'none',
     scopes: [],

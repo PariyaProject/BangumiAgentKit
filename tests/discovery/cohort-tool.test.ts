@@ -19,6 +19,57 @@ describe('bangumi.compare_subject_cohorts tool contract', () => {
     ).toMatchObject({ maxSubjects: 12 });
     expect(
       tool?.input.parse({
+        cohorts: [
+          {
+            query: {
+              media: 'anime',
+              season: '1998-spring',
+              resultMode: 'all',
+              budget: {
+                maxPages: 1,
+                maxCandidates: 20,
+                maxHydrations: 4,
+                concurrency: 2,
+                maxConceptProbes: 1,
+                maxReturnedItems: 4,
+              },
+            },
+          },
+        ],
+        maxSubjects: 4,
+      }),
+    ).toMatchObject({
+      cohorts: [
+        {
+          query: {
+            budget: {
+              maxPages: 1,
+              maxCandidates: 20,
+              maxHydrations: 4,
+              concurrency: 2,
+              maxConceptProbes: 1,
+              maxReturnedItems: 4,
+            },
+          },
+        },
+      ],
+      maxSubjects: 4,
+    });
+    expect(() =>
+      tool?.input.parse({
+        cohorts: [
+          {
+            query: {
+              media: 'anime',
+              season: '1998-spring',
+              budget: { maxPages: 7 },
+            },
+          },
+        ],
+      }),
+    ).toThrow();
+    expect(
+      tool?.input.parse({
         cohorts: [{ query: { media: 'anime' } }],
       }),
     ).toMatchObject({ cohorts: [{ query: { media: 'anime' } }] });

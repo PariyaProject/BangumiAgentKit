@@ -1,10 +1,21 @@
 import { describe, expect, it } from 'vitest';
+import { createHash, generateKeyPairSync } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { compileDiscoveryPlan, normalizeDiscoveryQuery } from '@bangumi-agent-kit/discovery';
 import {
   A01_EXPECTED_QUERY_ARGUMENTS,
+  A01_RATING_DISPERSION_ANSWER_PROFILE,
+  canonicalJson,
   expectedA01AnswerLines,
+  expectedA01RatingDispersionAnswerLines,
+  sha256,
   verifyA01AgentAnswer,
+  verifyA01RatingDispersionAnswer,
 } from '../../scripts/acceptance/a01-agent-answer-check.mjs';
+import {
+  buildA01RatingDispersionProfileReport,
+  validateA01RatingDispersionProfileReport,
+} from '../../scripts/acceptance/write-a01-rating-dispersion-agent-mcp-report.mjs';
 
 const queryCoverage = {
   state: 'partial',
@@ -26,12 +37,7 @@ const queryCoverage = {
   hydrationBudgetExceeded: false,
 };
 
-function subject(
-  id: number,
-  name: string,
-  sd: number | undefined,
-  state = 'available',
-) {
+function subject(id: number, name: string, sd: number | undefined, state = 'available') {
   return {
     id,
     name,
@@ -215,6 +221,272 @@ function fixture() {
   return { result, answer };
 }
 
+function ratingDispersionFixture() {
+  const { result } = fixture();
+  const profile = A01_RATING_DISPERSION_ANSWER_PROFILE;
+  const args = profile.expectedArguments as {
+    cohorts: Array<{ label: string; query: Record<string, unknown> }>;
+    maxSubjects: number;
+  };
+  for (const [index, cohortResult] of result.cohorts.entries()) {
+    const inputQuery = args.cohorts[index]!.query;
+    const effectiveQuery = {
+      ...inputQuery,
+      resultMode: 'all',
+      limit: profile.maxSubjects,
+      budget: {
+        maxPages: 1,
+        maxCandidates: 20,
+        maxHydrations: 4,
+        concurrency: 2,
+        maxConceptProbes: 1,
+        maxReturnedItems: 4,
+      },
+    };
+    Object.assign(cohortResult, {
+      label: args.cohorts[index]!.label,
+      query: effectiveQuery,
+    });
+    cohortResult.coverage.query.plan = compileDiscoveryPlan(
+      normalizeDiscoveryQuery(effectiveQuery as Parameters<typeof normalizeDiscoveryQuery>[0]),
+    );
+  }
+  const target = result.cohorts[0]!.subjects[0]!;
+  Object.assign(target, {
+    id: profile.targetSubjectId,
+    name: 'Cardcaptor Sakura',
+    displayName: 'カードキャプターさくら',
+    date: '1998-04-03',
+  });
+  const baselineTarget = result.cohorts[1]!.subjects[0]!;
+  Object.assign(baselineTarget, {
+    id: profile.targetSubjectId,
+    name: 'Cardcaptor Sakura',
+    displayName: 'カードキャプターさくら',
+    date: '1998-04-03',
+  });
+  Object.assign(result.coverage, {
+    maxSubjectsPerCohort: profile.maxSubjects,
+    overlap: { subjectIds: [profile.targetSubjectId], count: 1 },
+  });
+  const expected = expectedA01RatingDispersionAnswerLines(result);
+  const answer = [
+    ...expected.rows,
+    expected.averageLine,
+    `范围：${expected.scopeTokens.join(';')}`,
+  ].join('\n');
+  return { result, answer, args: profile.expectedArguments };
+}
+
+function signedReportFixture() {
+  const { result, answer } = ratingDispersionFixture();
+  const registry = JSON.parse(
+    readFileSync('scripts/acceptance/agent-mcp-profile-registry.json', 'utf8'),
+  ) as {
+    profiles: Array<Record<string, any>>;
+  };
+  const profile = registry.profiles.find(
+    (item) => item.id === 'a01-rating-dispersion-1998-spring-v1',
+  )!;
+  const toolName = profile.toolName as string;
+  const callArguments = profile.calls[0].arguments;
+  const expectedArgumentsSha256 = sha256(canonicalJson([callArguments]));
+  const registrySha256 = sha256(canonicalJson(profile));
+  const cohortSummaries = result.cohorts.map((cohortResult) => {
+    const counts = {
+      available: 0,
+      partial: 0,
+      missing: 0,
+      conflict: 0,
+      notComputable: 0,
+      unknown: 0,
+    };
+    for (const row of cohortResult.subjects) {
+      const state = row.metricStates.ratingStandardDeviation;
+      if (state === 'available') counts.available += 1;
+      else if (state === 'partial') counts.partial += 1;
+      else if (state === 'missing') counts.missing += 1;
+      else if (state === 'conflict') counts.conflict += 1;
+      else if (state === 'not_computable') counts.notComputable += 1;
+      else counts.unknown += 1;
+    }
+    return {
+      queryState: cohortResult.coverage.query.state,
+      subjectCount: cohortResult.subjects.length,
+      queryHydrationsAttempted: cohortResult.coverage.query.coverage.hydrationsAttempted,
+      ratingStandardDeviationCounts: counts,
+      detailHydrationsAttempted: cohortResult.coverage.detailHydrationsAttempted,
+      detailHydrationsSucceeded: cohortResult.coverage.detailHydrationsSucceeded,
+      detailHydrationsFailed: cohortResult.coverage.detailHydrationsFailed,
+    };
+  });
+  const metric = result.metrics.find((item) => item.key === 'ratingStandardDeviation') as {
+    state: string;
+    formula: { id: string; version: number };
+    averages: Array<number | undefined>;
+    partialAverages: Array<number | undefined>;
+    validCounts: number[];
+    partialCounts: number[];
+    missingCounts: number[];
+    conflictCounts: number[];
+    notComputableCounts: number[];
+  };
+  const resultSummary = {
+    resultState: result.state,
+    cohortCount: 2,
+    fixedTargetIdentityMatched:
+      result.cohorts[0]!.subjects.length === 1 &&
+      result.cohorts[0]!.subjects[0]!.id === profile.answerProfile.targetSubjectId,
+    cohorts: cohortSummaries,
+    ratingStandardDeviation: {
+      state: metric.state,
+      formulaId: metric.formula.id,
+      formulaVersion: metric.formula.version,
+      averages: metric.averages.map((value) => value ?? null),
+      partialAverages: metric.partialAverages.map((value) => value ?? null),
+      validCounts: metric.validCounts,
+      partialCounts: metric.partialCounts,
+      missingCounts: metric.missingCounts,
+      conflictCounts: metric.conflictCounts,
+      notComputableCounts: metric.notComputableCounts,
+    },
+    coverage: {
+      maxSubjectsPerCohort: result.coverage.maxSubjectsPerCohort,
+      totalSubjectsReturned: result.coverage.totalSubjectsReturned,
+      cohortsComplete: result.coverage.cohortsComplete,
+      cohortsPartial: result.coverage.cohortsPartial,
+      detailHydrationsAttempted: result.coverage.detailHydrationsAttempted,
+      detailHydrationsSucceeded: result.coverage.detailHydrationsSucceeded,
+      detailHydrationsFailed: result.coverage.detailHydrationsFailed,
+      truncated: result.coverage.truncated,
+      overlapCount: result.coverage.overlap.count,
+    },
+  };
+  const catalogBytes = readFileSync('docs/tool-catalog.json');
+  const catalog = JSON.parse(catalogBytes.toString('utf8')) as Array<Record<string, any>>;
+  const descriptor = catalog.find((item) => item.name === toolName)!;
+  const summaryScope = {
+    requestCount: 8,
+    allowedRequestCount: 8,
+    deniedRequestCount: 0,
+    searchRequestCount: 2,
+    detailRequestCount: 6,
+    credentialAttemptCount: 0,
+    unexpectedRouteCount: 0,
+    budgetExceeded: false,
+    maxRequests: 20,
+    anonymousOnly: true,
+    officialV0Only: true,
+    searchPagination: 'limit-20-offset-0-only',
+    redirectPolicy: 'error',
+  };
+  const privacy = {
+    authProfile: 'anonymous',
+    oauthAttempted: false,
+    accountDataRead: false,
+    writesAttempted: false,
+    communityRead: false,
+    qqPipelineTested: false,
+    timClientTested: false,
+    promptStored: false,
+    answerStored: false,
+    rawResultStored: false,
+    artifactImageBytesStored: false,
+    credentialsStored: false,
+  };
+  const sourceRevision = 'a'.repeat(40);
+  const baseSha = 'b'.repeat(40);
+  const bundleSha256 = 'c'.repeat(64);
+  const serverSummary = {
+    serverProfile: 'closed-profile-sequence-anonymous-public-v1',
+    profileId: profile.id,
+    argumentProfile: profile.argumentProfile,
+    expectedCallCount: 1,
+    networkMode: profile.networkMode,
+    sourceRevision,
+    bundleSha256,
+    catalogSha256: createHash('sha256').update(catalogBytes).digest('hex'),
+    toolName,
+    toolDescriptionSha256: sha256(descriptor.description),
+    inputSchemaSha256: sha256(canonicalJson(descriptor.inputSchema)),
+    serverToolNames: [toolName],
+    serverToolCount: 1,
+    expectedArgumentsSha256,
+    serverResultStatus: 'SUCCESS',
+    allowedCallCount: 1,
+    deniedCallCount: 0,
+    argumentMatch: true,
+    results: [{ sequenceIndex: 0, toolName, status: 'SUCCESS', resultSummary }],
+    publicRequestScope: summaryScope,
+    privacy,
+    serverInstanceId: '00000000-0000-4000-8000-000000000001',
+  };
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+  const publicKeyDer = publicKey.export({ type: 'spki', format: 'der' });
+  const publicKeyBase64 = publicKeyDer.toString('base64');
+  const ciChecks = [
+    'harness-control',
+    'sqlite-default',
+    'host-integration',
+    'standalone-release-smoke',
+    'postgres-compat',
+    'provider-foundation',
+    'discovery-foundation',
+  ].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
+  const claim = {
+    state: 'CLAIMED',
+    reportWritten: false,
+    retryAllowed: false,
+    claimId: 'profile-run-95-pr-210-aabbccddeeff-1234567890',
+    profileId: profile.id,
+    frontierId: 'A01',
+    epochId: profile.epochId,
+    runNumber: 95,
+    prNumber: 210,
+    toolName,
+    argumentProfile: profile.argumentProfile,
+    sourceCandidateSha: sourceRevision,
+    baseSha,
+    ciSha: sourceRevision,
+    ciStatus: 'SUCCESS',
+    ciRunId: '1234567890',
+    ciChecks,
+    reviewerId: 'gpt-6-luna-max-run95-pr210-round1',
+    bundleSha256,
+    registrySha256,
+    expectedArgumentsSha256,
+    runnerReceiptPublicKey: publicKeyBase64,
+    runnerReceiptPublicKeySha256: createHash('sha256').update(publicKeyDer).digest('hex'),
+  };
+  const events = {
+    processExitCode: 0,
+    eventStreamParsed: true,
+    turnCompleted: true,
+    codexMcpToolEventCount: 1,
+    codexErrorItemCount: 0,
+    nonMcpToolEventCount: 0,
+    nonMcpToolTypes: [],
+    shellToolCallCount: 0,
+    exactArguments: true,
+    exactToolEvent: true,
+    exactServerName: true,
+    exactCandidateBundle: true,
+    answer,
+  };
+  return {
+    result,
+    answer,
+    callArguments,
+    claim,
+    privateKey,
+    serverSummary,
+    events,
+    sourceRevision,
+    baseSha,
+    bundleSha256,
+  };
+}
+
 describe('A01 current-source answer checker', () => {
   it('accepts exact target rows, formula counts, query coverage, overlap, and non-inferential limits', () => {
     const { result, answer } = fixture();
@@ -224,8 +496,193 @@ describe('A01 current-source answer checker', () => {
       toolResult: { structuredContent: result },
     });
 
-    expect(verified.passed).toBe(true);
+    expect(verified.checks).toEqual(
+      Object.fromEntries(Object.keys(verified.checks).map((key) => [key, true])),
+    );
     expect(Object.values(verified.checks).every(Boolean)).toBe(true);
+  });
+
+  it('accepts the bounded 1998-spring Cardcaptor Sakura rating-dispersion profile', () => {
+    const { result, answer, args } = ratingDispersionFixture();
+    const verified = verifyA01RatingDispersionAnswer({
+      answer,
+      queryArguments: args,
+      toolResult: { structuredContent: result },
+    });
+
+    expect(verified.checks).toEqual(
+      Object.fromEntries(Object.keys(verified.checks).map((key) => [key, true])),
+    );
+    expect(Object.values(verified.checks).every(Boolean)).toBe(true);
+    expect(expectedA01RatingDispersionAnswerLines(result).scopeTokens.join(';')).toContain(
+      'queryBudget=',
+    );
+  });
+
+  it('rejects discovery and returned-row hydration totals above each cohort budget', () => {
+    const { result, answer, args } = ratingDispersionFixture();
+    result.cohorts[1]!.coverage.query.coverage.hydrationsAttempted = 3;
+
+    const verified = verifyA01RatingDispersionAnswer({
+      answer,
+      queryArguments: args,
+      toolResult: { structuredContent: result },
+    });
+
+    expect(verified.checks.hydrationBudgetSatisfied).toBe(false);
+    expect(verified.passed).toBe(false);
+  });
+
+  it('accepts explicitly not-computable rows left unhydrated after query filtering', () => {
+    const { result, args } = ratingDispersionFixture();
+    const cohort = result.cohorts[1]!;
+    cohort.coverage.query.coverage.hydrationsAttempted = 3;
+    cohort.coverage.query.coverage.hydrationsSucceeded = 3;
+    cohort.coverage.detailHydrationsAttempted = 1;
+    cohort.coverage.detailHydrationsSucceeded = 1;
+    cohort.coverage.detailHydrationsFailed = 0;
+    cohort.subjects[1] = subject(200001, '1998春季样本', undefined, 'not_computable');
+    Object.assign(cohort.coverage.metrics.ratingStandardDeviation, {
+      valid: 1,
+      notComputable: 1,
+    });
+
+    result.coverage.detailHydrationsAttempted = 2;
+    result.coverage.detailHydrationsSucceeded = 2;
+    result.coverage.detailHydrationsFailed = 0;
+    const metric = result.metrics.find((item) => item.key === 'ratingStandardDeviation')!;
+    Object.assign(metric, {
+      validCounts: [1, 1],
+      partialAverages: [1.23456, 1.23456],
+      notComputableCounts: [0, 1],
+    });
+    const expected = expectedA01RatingDispersionAnswerLines(result);
+    const answer = [
+      ...expected.rows,
+      expected.averageLine,
+      `范围：${expected.scopeTokens.join(';')}`,
+    ].join('\n');
+    const verified = verifyA01RatingDispersionAnswer({
+      answer,
+      queryArguments: args,
+      toolResult: { structuredContent: result },
+    });
+
+    expect(verified.checks.hydrationCoverage).toBe(true);
+    expect(verified.checks.hydrationBudgetSatisfied).toBe(true);
+    expect(verified.checks.exactRows).toBe(true);
+    expect(verified.passed).toBe(true);
+  });
+
+  it('rejects an altered target ID for the bounded rating-dispersion profile', () => {
+    const { result, answer, args } = ratingDispersionFixture();
+    result.cohorts[0]!.subjects[0]!.id = 999999;
+    const verified = verifyA01RatingDispersionAnswer({
+      answer,
+      queryArguments: args,
+      toolResult: { structuredContent: result },
+    });
+
+    expect(verified.passed).toBe(false);
+    expect(verified.checks.targetIdentity).toBe(false);
+  });
+
+  it('builds and verifies a signed sanitized A01 rating-dispersion report', () => {
+    const fixture = signedReportFixture();
+    const built = buildA01RatingDispersionProfileReport(
+      {
+        claim: fixture.claim,
+        serverSummary: fixture.serverSummary,
+        events: fixture.events,
+        answer: fixture.answer,
+        rawResult: fixture.result,
+        codexCliVersion: '1.2.14',
+        eventStreamSha256: sha256('synthetic event stream'),
+        serverSummarySha256: sha256('synthetic server summary'),
+      },
+      { privateKey: fixture.privateKey },
+    );
+
+    expect(built.passed).toBe(true);
+    if (!built.passed) return;
+    const report = built.report as Record<string, any>;
+    expect(validateA01RatingDispersionProfileReport(report, fixture.claim).passed).toBe(true);
+    expect(report.answerSha256).toBe(sha256(fixture.answer));
+    expect(JSON.stringify(report)).not.toContain('Cardcaptor Sakura');
+    expect(JSON.stringify(report)).not.toContain('少女终末旅行');
+    expect(report.resultSummary.fixedTargetIdentityMatched).toBe(true);
+    expect(report.resultSummary.cohorts[0].queryHydrationsAttempted).toBe(1);
+    expect(report.resultSummary.coverage).not.toHaveProperty('overlapIds');
+    expect(JSON.stringify(report)).not.toContain('subjectIds');
+    expect(JSON.stringify(report)).not.toContain('overlapIds');
+
+    const tampered = structuredClone(report);
+    tampered.resultSummary.coverage.totalSubjectsReturned += 1;
+    expect(validateA01RatingDispersionProfileReport(tampered, fixture.claim).passed).toBe(false);
+  });
+
+  it('accepts bounded physical detail retries alongside logical hydration counts', () => {
+    const fixture = signedReportFixture();
+    Object.assign(fixture.serverSummary.publicRequestScope, {
+      requestCount: 9,
+      allowedRequestCount: 9,
+      detailRequestCount: 7,
+    });
+    const built = buildA01RatingDispersionProfileReport(
+      {
+        claim: fixture.claim,
+        serverSummary: fixture.serverSummary,
+        events: fixture.events,
+        answer: fixture.answer,
+        rawResult: fixture.result,
+        codexCliVersion: '1.2.14',
+        eventStreamSha256: sha256('synthetic retry event stream'),
+        serverSummarySha256: sha256('synthetic retry server summary'),
+      },
+      { privateKey: fixture.privateKey },
+    );
+
+    expect(built.passed).toBe(true);
+    if (!built.passed) return;
+    const report = built.report as Record<string, any>;
+    expect(report.publicRequestScope.detailRequestCount).toBe(7);
+    const cohorts = report.resultSummary.cohorts as Array<{
+      queryHydrationsAttempted: number;
+      detailHydrationsAttempted: number;
+    }>;
+    expect(
+      cohorts.reduce(
+        (sum, cohort) => sum + cohort.queryHydrationsAttempted + cohort.detailHydrationsAttempted,
+        0,
+      ),
+    ).toBe(6);
+  });
+
+  it('rejects subject and overlap identifiers from the persisted report summary', () => {
+    const fixture = signedReportFixture();
+    const built = buildA01RatingDispersionProfileReport(
+      {
+        claim: fixture.claim,
+        serverSummary: fixture.serverSummary,
+        events: fixture.events,
+        answer: fixture.answer,
+        rawResult: fixture.result,
+        codexCliVersion: '1.2.14',
+        eventStreamSha256: sha256('synthetic event stream'),
+        serverSummarySha256: sha256('synthetic server summary'),
+      },
+      { privateKey: fixture.privateKey },
+    );
+    expect(built.passed).toBe(true);
+    if (!built.passed) return;
+
+    const leaked = structuredClone(built.report as Record<string, any>);
+    leaked.resultSummary.cohorts[0].subjectIds = [1940];
+    expect(validateA01RatingDispersionProfileReport(leaked, fixture.claim).passed).toBe(false);
+
+    const overlapLeak = structuredClone(built.report as Record<string, any>);
+    overlapLeak.resultSummary.coverage.overlapIds = [1940];
+    expect(validateA01RatingDispersionProfileReport(overlapLeak, fixture.claim).passed).toBe(false);
   });
 
   it('rejects a target cohort that resolves to a different subject', () => {
@@ -430,7 +887,10 @@ describe('A01 current-source answer checker', () => {
         Reflect.set(filter, 'airDate', ['>=2018-01-01', '<2018-04-01']);
       },
       (result: ReturnType<typeof fixture>['result']) => {
-        const filters = Reflect.get(result.cohorts[0]!.coverage.query.plan, 'postFilters') as unknown[];
+        const filters = Reflect.get(
+          result.cohorts[0]!.coverage.query.plan,
+          'postFilters',
+        ) as unknown[];
         filters.splice(0);
       },
       (result: ReturnType<typeof fixture>['result']) => {

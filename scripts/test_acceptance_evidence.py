@@ -161,6 +161,129 @@ class PublicApiEvidenceTests(unittest.TestCase):
             {'bangumi.get_subject': {'docs/live-probes/public-tools-fixture.json'}},
         )
 
+    def test_historical_public_cohort_rows_survive_the_additive_budget_schema(self):
+        previous_catalog_sha = '2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92'
+        previous_snapshot = (
+            self.original_root / 'docs/live-probes/catalog-snapshots' / f'{previous_catalog_sha}.json'
+        ).read_bytes()
+        current_catalog = (self.original_root / 'docs/tool-catalog.json').read_bytes()
+        self.catalog_path.write_bytes(current_catalog)
+        self.catalog = json.loads(current_catalog)
+        snapshot_path = (
+            GENERATOR.LIVE_PROBE_DIR / 'catalog-snapshots' / f'{previous_catalog_sha}.json'
+        )
+        snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+        snapshot_path.write_bytes(previous_snapshot)
+        tools = [
+            'bangumi.aggregate_subject_cohort',
+            'bangumi.compare_subject_cohorts',
+            'bangumi.render_subject_cohort_aggregation',
+            'bangumi.render_subject_cohort_comparison',
+        ]
+
+        self.assertTrue(
+            GENERATOR.public_api_catalog_evidence_matches_current(previous_catalog_sha, tools),
+        )
+
+        changed = next(
+            item for item in self.catalog if item['name'] == 'bangumi.compare_subject_cohorts'
+        )
+        changed['inputSchema']['properties']['cohorts']['items']['properties']['query']['properties']['budget']['properties']['maxPages']['maximum'] = 5
+        self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
+        self.assertFalse(
+            GENERATOR.public_api_catalog_evidence_matches_current(previous_catalog_sha, tools),
+        )
+
+    def test_additive_cohort_budget_keeps_old_public_catalog_evidence_compatible(self):
+        added_description = (
+            '每个 query 可提供受服务端安全上限约束的 budget；maxSubjects 限制每个 cohort '
+            '保留的条目数，执行覆盖会明确返回。'
+        )
+        query_schema = {
+            'type': 'object',
+            'properties': {'resultMode': {'type': 'string', 'const': 'all'}},
+            'required': ['resultMode'],
+            'additionalProperties': False,
+        }
+        old_entries = []
+        current_entries = []
+        names = [
+            'bangumi.aggregate_subject_cohort',
+            'bangumi.compare_subject_cohorts',
+            'bangumi.render_subject_cohort_aggregation',
+            'bangumi.render_subject_cohort_comparison',
+        ]
+        for name in names:
+            if name in {'bangumi.aggregate_subject_cohort', 'bangumi.render_subject_cohort_aggregation'}:
+                old_schema = {
+                    'type': 'object',
+                    'properties': {
+                        'cohort': {'type': 'object', 'properties': {'query': query_schema}},
+                    },
+                }
+                current_schema = json.loads(json.dumps(old_schema))
+                budget_path = current_schema['properties']['cohort']['properties']['query']['properties']
+            else:
+                old_schema = {
+                    'type': 'object',
+                    'properties': {
+                        'cohorts': {
+                            'type': 'array',
+                            'items': {'type': 'object', 'properties': {'query': query_schema}},
+                        },
+                    },
+                }
+                current_schema = json.loads(json.dumps(old_schema))
+                budget_path = current_schema['properties']['cohorts']['items']['properties']['query']['properties']
+            budget_path['budget'] = {
+                'type': 'object',
+                'properties': {
+                    'maxPages': {'type': 'integer', 'minimum': 1, 'maximum': 6},
+                    'maxCandidates': {'type': 'integer', 'minimum': 1, 'maximum': 300},
+                    'maxHydrations': {'type': 'integer', 'minimum': 1, 'maximum': 60},
+                    'concurrency': {'type': 'integer', 'minimum': 1, 'maximum': 6},
+                    'maxConceptProbes': {'type': 'integer', 'minimum': 1, 'maximum': 8},
+                    'maxReturnedItems': {'type': 'integer', 'minimum': 1, 'maximum': 60},
+                },
+                'additionalProperties': False,
+                'description': (
+                    '可选的每个 cohort 查询预算；服务端会将每项限制在官方安全上限内，'
+                    'maxReturnedItems 还会受 maxSubjects 限制。实际执行覆盖会返回在 coverage 中。'
+                ),
+            }
+            old_description = 'Existing descriptive cohort tool.'
+            current_description = old_description + (
+                added_description if name == 'bangumi.compare_subject_cohorts' else ''
+            )
+            old_entries.append({
+                'name': name, 'auth': 'none', 'risk': 'read',
+                'description': old_description, 'inputSchema': old_schema,
+            })
+            current_entries.append({
+                'name': name, 'auth': 'none', 'risk': 'read',
+                'description': current_description, 'inputSchema': current_schema,
+            })
+
+        old_bytes = json.dumps(old_entries, ensure_ascii=False).encode('utf-8')
+        self.catalog_path.write_bytes(json.dumps(current_entries, ensure_ascii=False).encode('utf-8'))
+        snapshot_sha = hashlib.sha256(old_bytes).hexdigest()
+        snapshot_path = self.root / 'docs/live-probes/catalog-snapshots' / f'{snapshot_sha}.json'
+        snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+        snapshot_path.write_bytes(old_bytes)
+        self.catalog = current_entries
+
+        for old_entry, current_entry in zip(old_entries, current_entries, strict=True):
+            self.assertTrue(GENERATOR.public_api_catalog_entry_is_compatible_with_current(
+                old_entry['name'], old_entry, current_entry,
+            ))
+        self.assertTrue(GENERATOR.public_api_catalog_evidence_matches_current(snapshot_sha, names))
+
+        changed_current = json.loads(json.dumps(current_entries[1]))
+        changed_current['inputSchema']['properties']['cohorts']['items']['properties']['query']['properties']['budget']['properties']['maxPages']['maximum'] = 5
+        self.assertFalse(GENERATOR.public_api_catalog_entry_is_compatible_with_current(
+            'bangumi.compare_subject_cohorts', old_entries[1], changed_current,
+        ))
+
     def test_explicitly_excluded_public_report_does_not_count(self):
         self.write_report()
         report = json.loads(self.report_path.read_text(encoding='utf-8'))
@@ -6924,6 +7047,53 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         candidate_binding.assert_not_called()
         self.assertEqual(sources, {})
 
+    def test_c04_matrix_evidence_stays_valid_after_a01_frontier_advances(self):
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier_path.parent.mkdir(parents=True, exist_ok=True)
+        frontier_path.write_text(json.dumps({
+            'records': [
+                {'id': 'A01', 'status': 'PARTIAL'},
+                {'id': 'C04', 'status': 'DELIVERED'},
+                {'id': 'C07', 'status': 'UNASSESSED'},
+            ],
+        }), encoding='utf-8')
+
+        with patch.object(GENERATOR, 'ROOT', self.root):
+            self.assertTrue(GENERATOR.codex_c04_frontier_is_matrix_only())
+
+    def test_a01_rating_dispersion_report_maps_only_its_registered_agent_mcp_tool(self):
+        relative_path = GENERATOR.CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH
+        report_path = self.root / relative_path
+        report_path.write_text(json.dumps({
+            'evidenceKind': GENERATOR.CODEX_A01_RATING_DISPERSION_EVIDENCE_KIND,
+            'profileId': GENERATOR.CODEX_A01_RATING_DISPERSION_PROFILE_ID,
+            'prNumber': 191,
+            'toolName': 'bangumi.compare_subject_cohorts',
+        }), encoding='utf-8')
+        epoch_status = {'epoch': {'state': {}}}
+        with (
+            patch.object(GENERATOR, 'codex_a01_rating_dispersion_profile_harness_status', return_value={'state': 'REPORT_WRITTEN'}) as harness_status,
+            patch.object(GENERATOR, 'codex_a01_rating_dispersion_profile_epoch_harness_status', return_value=epoch_status) as epoch_harness_status,
+            patch.object(GENERATOR, 'codex_a01_rating_dispersion_profile_report_is_valid', return_value=True) as report_validator,
+            patch.object(GENERATOR, 'codex_a01_rating_dispersion_profile_report_matches_candidate_revision', return_value=True) as candidate_binding,
+        ):
+            sources = GENERATOR.model_mcp_e2e_sources(self.catalog)
+        harness_status.assert_called_once_with(191)
+        epoch_harness_status.assert_called_once_with(191)
+        report_validator.assert_called_once()
+        candidate_binding.assert_called_once_with(report_path, None)
+        self.assertEqual(sources, {'bangumi.compare_subject_cohorts': {relative_path}})
+
+        with (
+            patch.object(GENERATOR, 'codex_a01_rating_dispersion_profile_harness_status', return_value={'state': 'REPORT_WRITTEN'}),
+            patch.object(GENERATOR, 'codex_a01_rating_dispersion_profile_epoch_harness_status', return_value=epoch_status),
+            patch.object(GENERATOR, 'codex_a01_rating_dispersion_profile_report_is_valid', return_value=False),
+            patch.object(GENERATOR, 'codex_a01_rating_dispersion_profile_report_matches_candidate_revision', return_value=True) as candidate_binding,
+        ):
+            sources = GENERATOR.model_mcp_e2e_sources(self.catalog)
+        candidate_binding.assert_not_called()
+        self.assertEqual(sources, {})
+
     def test_title_query_render_signed_matrix_route_credits_only_its_two_tools(self):
         relative_path = 'docs/live-probes/title-query-render-agent-mcp-run95.json'
         report_path = self.root / relative_path
@@ -9977,6 +10147,33 @@ class LocalToolAuthDenialEvidenceTests(unittest.TestCase):
         cell = '✅<br>`docs/live-probes/tool-registry-no-account-auth-denial-manage-index.json`'
         self.assertIsNone(TABLE_CHECKER.evidence_reference_error('bangumi.manage_index', cell, 'auth_denial'))
         self.assertIn('bangumi.manage_index', GENERATOR.auth_gate_denial_names(self.catalog))
+
+    def test_accepts_historical_catalog_snapshot_when_tool_descriptor_is_unchanged(self):
+        snapshot_dir = self.live_probe_dir / 'catalog-snapshots'
+        snapshot_dir.mkdir()
+        snapshot_bytes = json.dumps(self.catalog, indent=2).encode('utf-8')
+        snapshot_sha256 = hashlib.sha256(snapshot_bytes).hexdigest()
+        (snapshot_dir / f'{snapshot_sha256}.json').write_bytes(snapshot_bytes)
+        self.report['catalogSha256'] = snapshot_sha256
+        self.write_report()
+
+        self.assertIn('bangumi.manage_index', GENERATOR.auth_gate_denial_sources(self.catalog))
+        cell = '✅<br>`docs/live-probes/tool-registry-no-account-auth-denial-manage-index.json`'
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+            'bangumi.manage_index', cell, 'auth_denial',
+        ))
+
+        changed_snapshot = [{**self.catalog[0], 'auth': 'optional'}]
+        changed_bytes = json.dumps(changed_snapshot, indent=2).encode('utf-8')
+        changed_sha256 = hashlib.sha256(changed_bytes).hexdigest()
+        (snapshot_dir / f'{changed_sha256}.json').write_bytes(changed_bytes)
+        self.report['catalogSha256'] = changed_sha256
+        self.write_report()
+        self.assertNotIn('bangumi.manage_index', GENERATOR.auth_gate_denial_sources(self.catalog))
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.manage_index', cell, 'auth_denial',
+        )
+        self.assertIn('does not contain evidence for bangumi.manage_index', error)
 
     def test_rejects_stale_catalog_or_test_source_hash(self):
         self.report['catalogSha256'] = '0' * 64

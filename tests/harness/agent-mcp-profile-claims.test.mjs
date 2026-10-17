@@ -81,7 +81,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 16);
+  assert.equal(listAgentMcpProfiles().length, 17);
   const a01RenderAggregation = getAgentMcpProfileById(
     'a01-render-cohort-aggregation-agent-mcp-offline-v1',
   );
@@ -89,6 +89,12 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(a01RenderAggregation.frontierId, 'A01');
   assert.equal(a01RenderAggregation.toolName, 'bangumi.render_subject_cohort_aggregation');
   assert.equal(a01RenderAggregation.acceptanceScope, 'agent-mcp-matrix-only');
+  const a01RatingDispersion = getAgentMcpProfileById('a01-rating-dispersion-1998-spring-v1');
+  assert.ok(a01RatingDispersion);
+  assert.equal(a01RatingDispersion.frontierId, 'A01');
+  assert.equal(a01RatingDispersion.toolName, 'bangumi.compare_subject_cohorts');
+  assert.equal(a01RatingDispersion.acceptanceScope, 'agent-mcp-scenario-and-matrix');
+  assert.equal(a01RatingDispersion.calls.length, 1);
   const m07 = getAgentMcpProfileById('m07-manage-index-unbound-agent-mcp-v1');
   assert.ok(m07);
   assert.equal(m07.frontierId, 'M07');

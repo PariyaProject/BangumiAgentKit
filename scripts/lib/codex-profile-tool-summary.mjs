@@ -22,6 +22,10 @@ import {
   summarizeR02PositiveDirectRelationsToolResult,
 } from './r02-positive-direct-relations-profile.mjs';
 import { A01_RENDER_COHORT_AGGREGATION_PROFILE_ID } from './a01-render-cohort-aggregation-offline-fixture.mjs';
+import {
+  A01_RATING_DISPERSION_PROFILE,
+  A01_RATING_DISPERSION_PROFILE_ID,
+} from './a01-rating-dispersion-profile.mjs';
 import { R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID } from './r04-render-series-watch-order-offline-fixture.mjs';
 import { TITLE_QUERY_RENDER_PROFILE_ID } from './title-query-render-agent-mcp-profile.mjs';
 
@@ -84,10 +88,9 @@ function summarizeTitleQueryResult(result) {
       pagesScanned: boundedCounter(coverage?.pagesScanned),
       upstreamExhausted:
         typeof coverage?.upstreamExhausted === 'boolean' ? coverage.upstreamExhausted : null,
-      budgetExceeded: typeof coverage?.budgetExceeded === 'boolean' ? coverage.budgetExceeded : null,
-      totalKind: TITLE_QUERY_TOTAL_KINDS.has(coverage?.totalKind)
-        ? coverage.totalKind
-        : 'unknown',
+      budgetExceeded:
+        typeof coverage?.budgetExceeded === 'boolean' ? coverage.budgetExceeded : null,
+      totalKind: TITLE_QUERY_TOTAL_KINDS.has(coverage?.totalKind) ? coverage.totalKind : 'unknown',
     },
     warningCodes,
   };
@@ -96,7 +99,8 @@ function summarizeTitleQueryResult(result) {
 function summarizeTitleQueryRenderArtifact(result, artifactSummary) {
   const artifact = artifactSummary && typeof artifactSummary === 'object' ? artifactSummary : {};
   return {
-    resultState: result?.artifact?.id && artifact.returned === true ? 'artifact_returned' : 'artifact_missing',
+    resultState:
+      result?.artifact?.id && artifact.returned === true ? 'artifact_returned' : 'artifact_missing',
     artifact: {
       returned: artifact.returned === true,
       persisted: artifact.persisted === true,
@@ -191,6 +195,113 @@ function summarizeC04CohortResult(result) {
   };
 }
 
+export function summarizeA01RatingDispersionResult(result) {
+  const cohorts = Array.isArray(result?.cohorts) ? result.cohorts.slice(0, 2) : [];
+  const coverage = result?.coverage;
+  const metric = Array.isArray(result?.metrics)
+    ? result.metrics.find((item) => item?.key === 'ratingStandardDeviation')
+    : null;
+  const nonnegativeCounter = (value) =>
+    Number.isSafeInteger(value) && value >= 0 && value <= 1_000_000 ? value : null;
+  const finiteNumber = (value) =>
+    typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const countRows = (cohort) => {
+    const states = {
+      available: 0,
+      partial: 0,
+      missing: 0,
+      conflict: 0,
+      notComputable: 0,
+      unknown: 0,
+    };
+    for (const subject of Array.isArray(cohort?.subjects) ? cohort.subjects.slice(0, 4) : []) {
+      const state = subject?.metricStates?.ratingStandardDeviation;
+      if (state === 'available') states.available += 1;
+      else if (state === 'partial') states.partial += 1;
+      else if (state === 'missing') states.missing += 1;
+      else if (state === 'conflict') states.conflict += 1;
+      else if (state === 'not_computable') states.notComputable += 1;
+      else states.unknown += 1;
+    }
+    return states;
+  };
+  const states = new Set([
+    'ok',
+    'complete',
+    'partial',
+    'conflict',
+    'unavailable',
+    'not_computable',
+    'not_found',
+    'upstream_error',
+    'unsupported',
+    'stale',
+    'auth_required',
+    'permission_denied',
+    'error',
+  ]);
+  return {
+    resultState: states.has(result?.state) ? result.state : 'unknown',
+    cohortCount: cohorts.length,
+    fixedTargetIdentityMatched:
+      Array.isArray(cohorts[0]?.subjects) &&
+      cohorts[0].subjects.length === 1 &&
+      cohorts[0].subjects[0]?.id === A01_RATING_DISPERSION_PROFILE?.answerProfile?.targetSubjectId,
+    cohorts: cohorts.map((cohort) => ({
+      queryState: states.has(cohort?.coverage?.query?.state)
+        ? cohort.coverage.query.state
+        : 'unknown',
+      subjectCount: Array.isArray(cohort?.subjects) ? Math.min(cohort.subjects.length, 4) : null,
+      queryHydrationsAttempted: nonnegativeCounter(
+        cohort?.coverage?.query?.coverage?.hydrationsAttempted,
+      ),
+      ratingStandardDeviationCounts: countRows(cohort),
+      detailHydrationsAttempted: nonnegativeCounter(cohort?.coverage?.detailHydrationsAttempted),
+      detailHydrationsSucceeded: nonnegativeCounter(cohort?.coverage?.detailHydrationsSucceeded),
+      detailHydrationsFailed: nonnegativeCounter(cohort?.coverage?.detailHydrationsFailed),
+    })),
+    ratingStandardDeviation: {
+      state: states.has(metric?.state) ? metric.state : 'unknown',
+      formulaId: typeof metric?.formula?.id === 'string' ? metric.formula.id : null,
+      formulaVersion: Number.isSafeInteger(metric?.formula?.version)
+        ? metric.formula.version
+        : null,
+      averages: Array.isArray(metric?.averages)
+        ? metric.averages.slice(0, 2).map(finiteNumber)
+        : [null, null],
+      partialAverages: Array.isArray(metric?.partialAverages)
+        ? metric.partialAverages.slice(0, 2).map(finiteNumber)
+        : [null, null],
+      validCounts: Array.isArray(metric?.validCounts)
+        ? metric.validCounts.slice(0, 2).map(nonnegativeCounter)
+        : [],
+      partialCounts: Array.isArray(metric?.partialCounts)
+        ? metric.partialCounts.slice(0, 2).map(nonnegativeCounter)
+        : [],
+      missingCounts: Array.isArray(metric?.missingCounts)
+        ? metric.missingCounts.slice(0, 2).map(nonnegativeCounter)
+        : [],
+      conflictCounts: Array.isArray(metric?.conflictCounts)
+        ? metric.conflictCounts.slice(0, 2).map(nonnegativeCounter)
+        : [],
+      notComputableCounts: Array.isArray(metric?.notComputableCounts)
+        ? metric.notComputableCounts.slice(0, 2).map(nonnegativeCounter)
+        : [],
+    },
+    coverage: {
+      maxSubjectsPerCohort: nonnegativeCounter(coverage?.maxSubjectsPerCohort),
+      totalSubjectsReturned: nonnegativeCounter(coverage?.totalSubjectsReturned),
+      cohortsComplete: nonnegativeCounter(coverage?.cohortsComplete),
+      cohortsPartial: nonnegativeCounter(coverage?.cohortsPartial),
+      detailHydrationsAttempted: nonnegativeCounter(coverage?.detailHydrationsAttempted),
+      detailHydrationsSucceeded: nonnegativeCounter(coverage?.detailHydrationsSucceeded),
+      detailHydrationsFailed: nonnegativeCounter(coverage?.detailHydrationsFailed),
+      truncated: typeof coverage?.truncated === 'boolean' ? coverage.truncated : null,
+      overlapCount: nonnegativeCounter(coverage?.overlap?.count),
+    },
+  };
+}
+
 function summarizeC04Artifact(artifactSummary) {
   const artifact = artifactSummary && typeof artifactSummary === 'object' ? artifactSummary : {};
   return {
@@ -224,6 +335,9 @@ export function summarizeProfileToolResult(
     return toolName === 'bangumi.render_subject_cohort_comparison'
       ? summarizeC04Artifact(artifactSummary)
       : summarizeC04CohortResult(result);
+  }
+  if (profileId === A01_RATING_DISPERSION_PROFILE_ID) {
+    return summarizeA01RatingDispersionResult(result);
   }
   if (
     profileId === 'p06-render-person-profile-offline-agent-mcp-v1' ||

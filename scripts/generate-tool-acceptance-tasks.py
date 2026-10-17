@@ -905,7 +905,6 @@ def fresh_public_cohort_four_v2_request_usage(report: object) -> int | None:
     if not isinstance(report, dict):
         return None
     script_path = ROOT / FRESH_PUBLIC_COHORT_FOUR_V2_PROGRAM
-    catalog_path = ROOT / 'docs/tool-catalog.json'
     support_hashes = report.get('supportingSourceSha256')
     if (
         set(report) != FRESH_PUBLIC_API_MATRIX_SIX_REPORT_KEYS
@@ -917,7 +916,9 @@ def fresh_public_cohort_four_v2_request_usage(report: object) -> int | None:
         or not isinstance(report.get('probeScriptSha256'), str)
         or not script_path.is_file()
         or report['probeScriptSha256'] != hashlib.sha256(script_path.read_bytes()).hexdigest()
-        or report.get('catalogSha256') != hashlib.sha256(catalog_path.read_bytes()).hexdigest()
+        or not public_api_catalog_evidence_matches_current(
+            report.get('catalogSha256'), FRESH_PUBLIC_COHORT_FOUR_V2_TOOLS,
+        )
         or not isinstance(support_hashes, dict)
         or set(support_hashes) != FRESH_PUBLIC_COHORT_FOUR_V2_SUPPORTING_SOURCES
         or any(
@@ -1070,6 +1071,117 @@ def fresh_public_epoch_request_total() -> int | None:
         total += v2_usage
 
     return total if total <= FRESH_PUBLIC_EPOCH_REQUEST_CAP else None
+
+
+def public_api_catalog_entry_is_compatible_with_current(
+    tool_name: object,
+    evidence_tool: object,
+    current_tool: object,
+) -> bool:
+    """Retain evidence for unchanged calls across the additive cohort-budget option."""
+    if not isinstance(evidence_tool, dict) or not isinstance(current_tool, dict):
+        return False
+    if evidence_tool == current_tool:
+        return True
+    compatible_names = {
+        'bangumi.aggregate_subject_cohort',
+        'bangumi.compare_subject_cohorts',
+        'bangumi.render_subject_cohort_aggregation',
+        'bangumi.render_subject_cohort_comparison',
+    }
+    if tool_name not in compatible_names:
+        return False
+    historical = json.loads(json.dumps(current_tool))
+    schema = historical.get('inputSchema')
+    if tool_name in {
+        'bangumi.aggregate_subject_cohort',
+        'bangumi.render_subject_cohort_aggregation',
+    }:
+        query = (
+            schema.get('properties', {}).get('cohort', {}).get('properties', {})
+            .get('query', {}).get('properties', {})
+        ) if isinstance(schema, dict) else {}
+    else:
+        query = (
+            schema.get('properties', {}).get('cohorts', {}).get('items', {}).get('properties', {})
+            .get('query', {}).get('properties', {})
+        ) if isinstance(schema, dict) else {}
+    expected_budget = {
+        'type': 'object',
+        'properties': {
+            'maxPages': {'type': 'integer', 'minimum': 1, 'maximum': 6},
+            'maxCandidates': {'type': 'integer', 'minimum': 1, 'maximum': 300},
+            'maxHydrations': {'type': 'integer', 'minimum': 1, 'maximum': 60},
+            'concurrency': {'type': 'integer', 'minimum': 1, 'maximum': 6},
+            'maxConceptProbes': {'type': 'integer', 'minimum': 1, 'maximum': 8},
+            'maxReturnedItems': {'type': 'integer', 'minimum': 1, 'maximum': 60},
+        },
+        'additionalProperties': False,
+        'description': (
+            '可选的每个 cohort 查询预算；服务端会将每项限制在官方安全上限内，'
+            'maxReturnedItems 还会受 maxSubjects 限制。实际执行覆盖会返回在 coverage 中。'
+        ),
+    }
+    if query.get('budget') != expected_budget:
+        return False
+    query.pop('budget')
+    if tool_name == 'bangumi.compare_subject_cohorts':
+        added_description = (
+            '每个 query 可提供受服务端安全上限约束的 budget；maxSubjects 限制每个 cohort '
+            '保留的条目数，执行覆盖会明确返回。'
+        )
+        description = historical.get('description')
+        if not isinstance(description, str) or added_description not in description:
+            return False
+        historical['description'] = description.replace(added_description, '', 1)
+    return evidence_tool == historical
+
+
+def public_api_catalog_evidence_matches_current(
+    catalog_sha256: object,
+    tool_names: object,
+) -> bool:
+    """Accept an archived catalog when its selected public tools remain compatible."""
+    if (
+        not isinstance(catalog_sha256, str)
+        or re.fullmatch(r'[0-9a-f]{64}', catalog_sha256) is None
+        or not isinstance(tool_names, list)
+        or not tool_names
+        or any(not isinstance(name, str) for name in tool_names)
+    ):
+        return False
+    try:
+        current_bytes = CATALOG.read_bytes()
+        current = json.loads(current_bytes)
+    except (OSError, ValueError):
+        return False
+    current_by_name = {
+        item['name']: item for item in current
+        if isinstance(item, dict) and isinstance(item.get('name'), str)
+    }
+    current_sha256 = hashlib.sha256(current_bytes).hexdigest()
+    if catalog_sha256 == current_sha256:
+        return all(name in current_by_name for name in tool_names)
+    snapshot_path = LIVE_PROBE_DIR / 'catalog-snapshots' / f'{catalog_sha256}.json'
+    try:
+        snapshot_bytes = snapshot_path.read_bytes()
+        snapshot = json.loads(snapshot_bytes)
+    except (OSError, ValueError):
+        return False
+    if hashlib.sha256(snapshot_bytes).hexdigest() != catalog_sha256 or not isinstance(snapshot, list):
+        return False
+    evidence_by_name = {
+        item['name']: item for item in snapshot
+        if isinstance(item, dict) and isinstance(item.get('name'), str)
+    }
+    return all(
+        name in evidence_by_name
+        and name in current_by_name
+        and public_api_catalog_entry_is_compatible_with_current(
+            name, evidence_by_name[name], current_by_name[name],
+        )
+        for name in tool_names
+    )
 
 
 def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
@@ -1319,8 +1431,9 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 or name not in public_candidates
                 or evidence_tool is None
                 or current_tool is None
-                or json.dumps(evidence_tool, sort_keys=True, separators=(',', ':'))
-                != json.dumps(current_tool, sort_keys=True, separators=(',', ':'))
+                or not public_api_catalog_entry_is_compatible_with_current(
+                    name, evidence_tool, current_tool,
+                )
             ):
                 continue
             result = result_by_name[name]
@@ -2624,6 +2737,75 @@ CODEX_C04_EVIDENCE_REFRESH_PATHS = {
     CODEX_C04_REPORT_RELATIVE_PATH,
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
     'docs/product/frontier-ledger.json',
+}
+CODEX_A01_RATING_DISPERSION_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'a01-rating-dispersion-1998-spring-v1'
+)
+CODEX_A01_RATING_DISPERSION_PROFILE_ID = CODEX_A01_RATING_DISPERSION_PROFILE['id']
+CODEX_A01_RATING_DISPERSION_EPOCH_ID = CODEX_A01_RATING_DISPERSION_PROFILE['epochId']
+CODEX_A01_RATING_DISPERSION_TOOL_NAME = CODEX_A01_RATING_DISPERSION_PROFILE['toolName']
+CODEX_A01_RATING_DISPERSION_TOOL_NAMES = CODEX_A01_RATING_DISPERSION_PROFILE.get(
+    'toolNames', [CODEX_A01_RATING_DISPERSION_TOOL_NAME],
+)
+CODEX_A01_RATING_DISPERSION_ARGUMENT_PROFILE = CODEX_A01_RATING_DISPERSION_PROFILE['argumentProfile']
+CODEX_A01_RATING_DISPERSION_EXPECTED_CALLS = CODEX_A01_RATING_DISPERSION_PROFILE['calls']
+CODEX_A01_RATING_DISPERSION_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_A01_RATING_DISPERSION_EXPECTED_CALLS],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_A01_RATING_DISPERSION_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_A01_RATING_DISPERSION_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH = CODEX_A01_RATING_DISPERSION_PROFILE['reportPath']
+CODEX_A01_RATING_DISPERSION_EVIDENCE_KIND = CODEX_A01_RATING_DISPERSION_PROFILE['evidenceKind']
+CODEX_A01_RATING_DISPERSION_NETWORK_MODE = CODEX_A01_RATING_DISPERSION_PROFILE['networkMode']
+CODEX_A01_RATING_DISPERSION_EVIDENCE_REFRESH_PATHS = {
+    CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+}
+CODEX_A01_RATING_DISPERSION_PROFILE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "a01-rating-dispersion-1998-spring-v1"',
+        '"networkMode": "run95-a01-rating-dispersion-public-v1"',
+    ),
+    'scripts/lib/a01-rating-dispersion-profile.mjs': (
+        'export function assertA01RatingDispersionProfile(',
+        'export function createA01RatingDispersionPublicFetch(',
+        'A01_RATING_DISPERSION_MAX_REQUESTS = 20',
+    ),
+    'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
+        'assertA01RatingDispersionProfile(profile)',
+    ),
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        'export function summarizeA01RatingDispersionResult(result)',
+        'if (profileId === A01_RATING_DISPERSION_PROFILE_ID)',
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        'createA01RatingDispersionPublicFetch()',
+        'A01_RATING_DISPERSION_NETWORK_MODE',
+    ),
+    'scripts/acceptance/a01-agent-answer-check.mjs': (
+        'export const A01_RATING_DISPERSION_ANSWER_CHECK_FIELDS',
+        'export function verifyA01RatingDispersionAnswer(input)',
+    ),
+    'scripts/acceptance/run-a01-rating-dispersion-agent-mcp.mjs': (
+        'export function assertA01RatingDispersionCandidateReviewGate(',
+        'export function runA01RatingDispersionProfile()',
+    ),
+    'scripts/acceptance/write-a01-rating-dispersion-agent-mcp-report.mjs': (
+        'export function validateA01RatingDispersionProfileReport(',
+        'export function buildA01RatingDispersionProfileReport(',
+    ),
+    'scripts/acceptance/validate-a01-rating-dispersion-agent-mcp-report.mjs': (
+        'validateA01RatingDispersionProfileReport',
+    ),
 }
 CODEX_TITLE_QUERY_RENDER_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
@@ -13176,7 +13358,7 @@ def codex_c04_profile_disposition_matches_report(
 
 
 def codex_c04_frontier_is_matrix_only() -> bool:
-    """Keep A01 unassessed and do not promote the delivered C04 scenario from matrix evidence."""
+    """Keep historical C04 matrix evidence valid as independent frontier states advance."""
     try:
         frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -13187,10 +13369,10 @@ def codex_c04_frontier_is_matrix_only() -> bool:
         for item in records or []
         if isinstance(item, dict)
     }
-    return (
-        statuses.get('A01') == 'UNASSESSED'
-        and statuses.get('C04') == 'DELIVERED'
-        and statuses.get('C07') == 'UNASSESSED'
+    valid_statuses = {'UNASSESSED', 'PARTIAL', 'DELIVERED', 'CLOSED_NO_SAFE_SOURCE'}
+    return all(
+        frontier_id in statuses and statuses[frontier_id] in valid_statuses
+        for frontier_id in ('A01', 'C04', 'C07')
     )
 
 
@@ -13274,6 +13456,368 @@ def codex_c04_profile_report_is_valid(
     except (TypeError, ValueError):
         return False
     return result.get('passed') is True and result.get('reportSha256') == report_sha256
+
+
+def codex_a01_rating_dispersion_profile_revision_has_implementation(revision: object) -> bool:
+    """Bind A01 rating-dispersion evidence to its exact fixed profile and signed runner."""
+    if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_A01_RATING_DISPERSION_PROFILE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
+def codex_a01_rating_dispersion_profile_evidence_refresh_paths_are_valid(paths: object) -> bool:
+    return (
+        isinstance(paths, (list, tuple, set, frozenset))
+        and CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH in paths
+        and all(
+            isinstance(item, str) and item in CODEX_A01_RATING_DISPERSION_EVIDENCE_REFRESH_PATHS
+            for item in paths
+        )
+    )
+
+
+def _codex_a01_rating_dispersion_profile_candidate_paths(
+    source_revision: object, candidate_sha: object,
+) -> set[str] | None:
+    if (
+        not isinstance(source_revision, str)
+        or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
+        or not isinstance(candidate_sha, str)
+        or re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is None
+        or _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', source_revision, candidate_sha,
+        ).returncode != 0
+    ):
+        return None
+    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
+    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
+    if diff.returncode != 0 or status.returncode != 0:
+        return None
+    paths = set(diff.stdout.splitlines())
+    for line in status.stdout.splitlines():
+        if len(line) < 4:
+            return None
+        paths.add(line[3:])
+    return paths
+
+
+def codex_a01_rating_dispersion_profile_candidate_binding_is_valid(
+    report: object,
+    epoch_status: object,
+    changed_paths: object,
+    current_bundle_sha256: object,
+) -> bool:
+    if not isinstance(report, dict) or not isinstance(epoch_status, dict):
+        return False
+    run = epoch_status.get('run')
+    epoch_result = epoch_status.get('epoch')
+    if not isinstance(run, dict) or not isinstance(epoch_result, dict):
+        return False
+    run_state = run.get('state')
+    epoch = epoch_result.get('state')
+    if not isinstance(run_state, dict) or not isinstance(epoch, dict):
+        return False
+    candidate_sha = epoch.get('candidate_sha')
+    pr_number = report.get('prNumber')
+    reviews = epoch.get('review_history', [])
+    latest_review = reviews[-1] if isinstance(reviews, list) and reviews else None
+    active_pr = (
+        run_state.get('state') == 'EPOCH_ACTIVE'
+        and run_state.get('active_epoch_pr') == pr_number
+        and epoch_result.get('github_state') == 'OPEN'
+        and epoch.get('state') != 'MERGED'
+    )
+    merged_pr = (
+        epoch.get('state') == 'MERGED'
+        and epoch_result.get('github_state') == 'MERGED'
+        and run_state.get('last_merged_epoch_pr') == pr_number
+        and isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == candidate_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+    )
+    return (
+        type(pr_number) is int
+        and pr_number > 0
+        and run.get('number') == 95
+        and (active_pr or merged_pr)
+        and epoch.get('epoch_id') == CODEX_A01_RATING_DISPERSION_EPOCH_ID
+        and epoch.get('pr_number') == pr_number
+        and epoch.get('base_branch') == 'master'
+        and epoch.get('base_sha') == report.get('baseSha')
+        and epoch_result.get('pr_base_ref_name') == 'master'
+        and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
+        and isinstance(epoch.get('branch'), str)
+        and epoch_result.get('pr_head_ref_name') == epoch.get('branch')
+        and epoch_result.get('pr_is_draft') is False
+        and isinstance(candidate_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
+        and epoch_result.get('pr_head_sha') == candidate_sha
+        and isinstance(report.get('sourceRevision'), str)
+        and re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision']) is not None
+        and codex_a01_rating_dispersion_profile_evidence_refresh_paths_are_valid(changed_paths)
+        and current_bundle_sha256 == report.get('mcpBundleSha256')
+    )
+
+
+def codex_a01_rating_dispersion_profile_report_candidate_binding_is_current(
+    report: dict[str, object], epoch_status: object,
+) -> bool:
+    candidate = None
+    if isinstance(epoch_status, dict):
+        epoch_result = epoch_status.get('epoch')
+        epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
+        candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
+    paths = _codex_a01_rating_dispersion_profile_candidate_paths(report.get('sourceRevision'), candidate)
+    bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
+    return codex_a01_rating_dispersion_profile_candidate_binding_is_valid(
+        report, epoch_status, paths, bundle_sha256,
+    )
+
+
+def codex_a01_rating_dispersion_profile_epoch_harness_status(
+    pr_number: object,
+) -> dict[str, object] | None:
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            ['node', str(ROOT / 'scripts/agent-harness.mjs'), 'status', '--run', '95', '--pr', str(pr_number)],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_a01_rating_dispersion_profile_harness_status(
+    pr_number: object,
+) -> dict[str, object] | None:
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                'node', str(ROOT / 'scripts/agent-harness.mjs'),
+                'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
+                '--profile-id', CODEX_A01_RATING_DISPERSION_PROFILE_ID,
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_a01_rating_dispersion_profile_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+) -> dict[str, object] | None:
+    if not isinstance(harness_status, dict):
+        return None
+    receipt = report.get('runnerReceipt')
+    disposition = harness_status.get('disposition')
+    if (
+        harness_status.get('state') != 'REPORT_WRITTEN'
+        or harness_status.get('profile_id') != CODEX_A01_RATING_DISPERSION_PROFILE_ID
+        or harness_status.get('pr') != report.get('prNumber')
+        or harness_status.get('tool_name') != CODEX_A01_RATING_DISPERSION_TOOL_NAME
+        or harness_status.get('argument_profile') != CODEX_A01_RATING_DISPERSION_ARGUMENT_PROFILE
+        or harness_status.get('expected_arguments_sha256') != CODEX_A01_RATING_DISPERSION_EXPECTED_ARGUMENTS_SHA256
+        or harness_status.get('registry_sha256') != CODEX_A01_RATING_DISPERSION_PROFILE_REGISTRY_SHA256
+        or harness_status.get('claim_label_present') is not True
+        or harness_status.get('terminal_label_present') is not True
+        or not isinstance(disposition, dict)
+        or not isinstance(receipt, dict)
+        or not isinstance(report_sha256, str)
+        or re.fullmatch(r'[0-9a-f]{64}', report_sha256) is None
+    ):
+        return None
+    expected = {
+        'claimId': report.get('claimId'),
+        'profileId': CODEX_A01_RATING_DISPERSION_PROFILE_ID,
+        'frontierId': 'A01',
+        'epochId': CODEX_A01_RATING_DISPERSION_EPOCH_ID,
+        'runNumber': 95,
+        'prNumber': report.get('prNumber'),
+        'state': 'REPORT_WRITTEN',
+        'sourceCandidateSha': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'ciSha': report.get('sourceRevision'),
+        'ciStatus': 'SUCCESS',
+        'ciRunId': report.get('ciRunId'),
+        'ciChecks': report.get('ciChecks'),
+        'reviewerId': report.get('reviewerId'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'registrySha256': CODEX_A01_RATING_DISPERSION_PROFILE_REGISTRY_SHA256,
+        'toolName': CODEX_A01_RATING_DISPERSION_TOOL_NAME,
+        'argumentProfile': CODEX_A01_RATING_DISPERSION_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': CODEX_A01_RATING_DISPERSION_EXPECTED_ARGUMENTS_SHA256,
+        'reportWritten': True,
+        'reportPath': CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH,
+        'reportSha256': report_sha256,
+        'retryAllowed': False,
+        'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
+        'runnerReceiptPublicKeySha256': receipt.get('publicKeySha256'),
+        'runnerReceiptSha256': _canonical_json_sha256(receipt),
+    }
+    if any(disposition.get(key) != value for key, value in expected.items()):
+        return None
+    return disposition
+
+
+def codex_a01_rating_dispersion_frontier_is_partial() -> bool:
+    try:
+        frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    records = frontier.get('records') if isinstance(frontier, dict) else None
+    record = next(
+        (item for item in records or [] if isinstance(item, dict) and item.get('id') == 'A01'),
+        None,
+    )
+    source_refs = record.get('source_refs') if isinstance(record, dict) else None
+    return (
+        isinstance(record, dict)
+        and record.get('status') == 'PARTIAL'
+        and isinstance(source_refs, list)
+        and CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH in source_refs
+        and CODEX_A01_RATING_DISPERSION_PROFILE['selectionEvidencePath'] in source_refs
+    )
+
+
+def codex_a01_rating_dispersion_profile_report_is_valid(
+    report: object,
+    harness_status: object = None,
+    report_path: Path | None = None,
+    epoch_status: object = None,
+) -> bool:
+    """Validate the signed A01 partial scenario observation and exact matrix profile evidence."""
+    if not isinstance(report, dict):
+        return False
+    path = report_path or (LIVE_PROBE_DIR / Path(CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH).name)
+    try:
+        relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+        report_bytes = path.read_bytes()
+        selection_bytes = (ROOT / CODEX_A01_RATING_DISPERSION_PROFILE['selectionEvidencePath']).read_bytes()
+    except (OSError, ValueError):
+        return False
+    report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+    pr_number = report.get('prNumber')
+    answer_checks = report.get('answerChecks')
+    if (
+        relative_path != CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH
+        or len(report_bytes) > 64 * 1024
+        or report.get('evidenceKind') != CODEX_A01_RATING_DISPERSION_EVIDENCE_KIND
+        or report.get('runNumber') != 95
+        or report.get('frontierId') != 'A01'
+        or report.get('scenarioId') != 'A01'
+        or report.get('acceptanceScope') != 'agent-mcp-scenario-and-matrix'
+        or report.get('epochId') != CODEX_A01_RATING_DISPERSION_EPOCH_ID
+        or report.get('profileId') != CODEX_A01_RATING_DISPERSION_PROFILE_ID
+        or report.get('profile') != 'codex-luna-max-one-tool-anonymous-public-agent-mcp-v1'
+        or report.get('model') != 'gpt-6-luna'
+        or report.get('reasoningEffort') != 'max'
+        or report.get('toolName') != CODEX_A01_RATING_DISPERSION_TOOL_NAME
+        or report.get('toolNames') != CODEX_A01_RATING_DISPERSION_TOOL_NAMES
+        or report.get('argumentProfile') != CODEX_A01_RATING_DISPERSION_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != CODEX_A01_RATING_DISPERSION_EXPECTED_ARGUMENTS_SHA256
+        or report.get('registrySha256') != CODEX_A01_RATING_DISPERSION_PROFILE_REGISTRY_SHA256
+        or report.get('networkMode') != CODEX_A01_RATING_DISPERSION_NETWORK_MODE
+        or report.get('answerCheckMethod') != CODEX_A01_RATING_DISPERSION_PROFILE['answerCheckMethod']
+        or report.get('resultStatus') != 'SUCCESS'
+        or report.get('processExitCode') != 0
+        or report.get('eventStreamParsed') is not True
+        or report.get('turnCompleted') is not True
+        or report.get('codexRunCount') != 1
+        or report.get('codexMcpToolEventCount') != 1
+        or report.get('codexErrorItemCount') != 0
+        or report.get('nonMcpToolEventCount') != 0
+        or report.get('nonMcpToolTypes') != []
+        or report.get('shellToolCallCount') != 0
+        or report.get('allowedCallCount') != 1
+        or report.get('deniedCallCount') != 0
+        or report.get('serverToolNames') != [CODEX_A01_RATING_DISPERSION_TOOL_NAME]
+        or report.get('serverToolCount') != 1
+        or not isinstance(answer_checks, dict)
+        or not answer_checks
+        or any(value is not True for value in answer_checks.values())
+        or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
+        or not codex_a01_rating_dispersion_frontier_is_partial()
+        or type(pr_number) is not int
+        or pr_number < 1
+        or not codex_a01_rating_dispersion_profile_revision_has_implementation(report.get('sourceRevision'))
+        or not codex_a01_rating_dispersion_profile_report_matches_candidate_revision(path, report.get('sourceRevision'))
+    ):
+        return False
+    current_epoch_status = epoch_status or codex_a01_rating_dispersion_profile_epoch_harness_status(pr_number)
+    if not codex_a01_rating_dispersion_profile_report_candidate_binding_is_current(report, current_epoch_status):
+        return False
+    status = harness_status or codex_a01_rating_dispersion_profile_harness_status(pr_number)
+    disposition = codex_a01_rating_dispersion_profile_disposition_matches_report(
+        report, status, report_sha256,
+    )
+    if disposition is None:
+        return False
+    validator = ROOT / 'scripts/acceptance/validate-a01-rating-dispersion-agent-mcp-report.mjs'
+    validation = subprocess.run(
+        ['node', str(validator)],
+        cwd=ROOT,
+        input=json.dumps({
+            'claim': disposition,
+            'reportBytesBase64': base64.b64encode(report_bytes).decode('ascii'),
+        }),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if validation.returncode != 0:
+        return False
+    try:
+        result = json.loads(validation.stdout)
+    except (TypeError, ValueError):
+        return False
+    return result.get('passed') is True and result.get('reportSha256') == report_sha256
+
+
+def codex_a01_rating_dispersion_profile_report_matches_candidate_revision(
+    report_path: Path, revision: object,
+) -> bool:
+    """Bind the report to the exact reviewed pre-call Candidate and its post-call report commit."""
+    if not codex_a01_rating_dispersion_profile_revision_has_implementation(revision):
+        return False
+    try:
+        relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError, TypeError):
+        return False
+    if (
+        relative_path != CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH
+        or report.get('sourceRevision') != revision
+        or report.get('mcpBundleSha256') != codex_g26_candidate_bundle_sha256(revision)
+    ):
+        return False
+    base_sha = report.get('baseSha')
+    if (
+        not isinstance(base_sha, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', base_sha)
+        or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', base_sha, revision).returncode != 0
+    ):
+        return False
+    return _codex_relations_report_matches_candidate_revision(
+        report_path, revision, CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH,
+    )
 
 
 def codex_title_query_render_profile_revision_has_implementation(revision: object) -> bool:
@@ -17018,6 +17562,9 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(LIVE_PROBE_DIR / CODEX_R01_OFFLINE_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R02_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_C04_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(
+        LIVE_PROBE_DIR / CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH.split('/')[-1],
+    )
     report_paths.append(LIVE_PROBE_DIR / CODEX_P07_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(
         LIVE_PROBE_DIR / CODEX_TITLE_QUERY_RENDER_REPORT_RELATIVE_PATH.split('/')[-1],
@@ -17288,6 +17835,25 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             source_ref = report_source_ref(path)
             for tool_name in CODEX_C04_TOOL_NAMES:
                 sources.setdefault(tool_name, set()).add(source_ref)
+            continue
+        if report.get('evidenceKind') == CODEX_A01_RATING_DISPERSION_EVIDENCE_KIND:
+            current_status = codex_a01_rating_dispersion_profile_harness_status(report.get('prNumber'))
+            current_epoch_status = codex_a01_rating_dispersion_profile_epoch_harness_status(
+                report.get('prNumber'),
+            )
+            if (
+                path.name != Path(CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH).name
+                or not codex_a01_rating_dispersion_profile_report_is_valid(
+                    report, current_status, path, current_epoch_status,
+                )
+                or not codex_a01_rating_dispersion_profile_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault(CODEX_A01_RATING_DISPERSION_TOOL_NAME, set()).add(
+                report_source_ref(path),
+            )
             continue
         if report.get('evidenceKind') == CODEX_TITLE_QUERY_RENDER_EVIDENCE_KIND:
             current_status = codex_title_query_render_profile_harness_status(report.get('prNumber'))
@@ -17584,10 +18150,17 @@ def auth_gate_denial_sources(catalog: list[dict]) -> dict[str, set[str]]:
             continue
         if not isinstance(report, dict):
             continue
+        evidence_by_name = catalog_for_hash(report.get('catalogSha256'))
         name = report.get('tool')
         tool = current_by_name.get(name)
+        evidence_tool = evidence_by_name.get(name) if evidence_by_name is not None else None
         expected_test = local_gate_tests.get(name)
-        if not tool or not expected_test or tool.get('auth') != 'required':
+        if (
+            not tool
+            or evidence_tool != tool
+            or not expected_test
+            or tool.get('auth') != 'required'
+        ):
             continue
         source_path = (ROOT / expected_test['source_path']).resolve()
         try:
@@ -17603,7 +18176,6 @@ def auth_gate_denial_sources(catalog: list[dict]) -> dict[str, set[str]]:
             or report.get('schemaVersion') != 1
             or report.get('evidenceKind') != 'tool_registry_no_account_auth_denial_test'
             or report.get('profile') != 'bangumi-tool-registry-no-account-auth-denial-v1'
-            or report.get('catalogSha256') != catalog_sha256
             or report.get('testSourcePath') != expected_test['source_path']
             or report.get('testSourceSha256') != source_sha256
             or any(fragment not in source_text for fragment in expected_test['source_fragments'])
