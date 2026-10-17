@@ -347,6 +347,34 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   assert.match(g01Evidence.acceptance_boundary, /No G01 July 2026 harem scenario/u);
   assert.match(g01Evidence.acceptance_boundary, /Agent\/MCP evidence is inferred/u);
 
+  const g01Terminal = g01.evidence?.run95_agent_mcp_terminal_profile_2026_10_17;
+  assert.deepEqual(g01Terminal, {
+    source: 'Harness epoch:agent-mcp-profile-status readback for PR #211',
+    pr_number: 211,
+    epoch_id: 'run95-g01-query-subjects-offline-agent-mcp-matrix-20261017',
+    profile_id: 'g01-query-subjects-offline-agent-mcp-matrix-v1',
+    tool_name: 'bangumi.query_subjects',
+    state: 'INCONCLUSIVE',
+    call_count: 1,
+    report_written: false,
+    retry_allowed: false,
+    reason_code: 'G01_QUERY_SUBJECTS_AGENT_MCP_ASSERTION_FAILED',
+    codex_error_items: 3,
+    claim_latch_present: true,
+    terminal_latch_present: true,
+    acceptance_credit: false,
+  });
+  assert.match(g01.next_action, /claimed and executed once on PR #211/u);
+  assert.match(
+    g01.next_action,
+    /INCONCLUSIVE, call_count=1, reportWritten=false, retryAllowed=false/u,
+  );
+  assert.match(g01.next_action, /Never claim or invoke this profile again/u);
+  assert.match(g01.next_action, /never retry the consumed one-shot/u);
+  assert.match(g01.next_action, /do not replay the consumed G01 Agent\/MCP canary/u);
+  assert.match(g01.next_action, /adds no Agent\/MCP matrix credit/u);
+  assert.doesNotMatch(g01.next_action, /unclaimed|remains unclaimed/iu);
+
   const p02 = ledger.records.find(({ id }) => id === 'P02');
   assert.ok(p02, 'P02 must remain in the canonical frontier');
   assert.equal(p02.status, 'PARTIAL');

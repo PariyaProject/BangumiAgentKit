@@ -103,7 +103,7 @@
         "scripts/lib/g01-query-subjects-offline-matrix-fixture.mjs",
         "tests/integration/tool-direct-execute-discovery.test.ts"
       ],
-      "next_action": "A distinct synthetic offline Agent/MCP profile now targets bangumi.query_subjects once against an exact local fixture with a new keyword and synthetic subject. It can credit only the Agent/MCP matrix row; it does not answer the July 2026 harem question, establish search completeness, or add public API evidence. The direct ToolRegistry integration test checks one local search request. Code and fixture tests alone are not Agent/MCP runtime evidence; any matrix credit requires the separate claim-bound signed report accepted through Harness. Keep G01 PARTIAL; never retry the consumed one-shot or any prior terminal profile; do not replay the consumed G01 Agent/MCP canary (the original July 2026 input). Preserve the public API target at 65/65.",
+      "next_action": "The G01 synthetic offline profile g01-query-subjects-offline-agent-mcp-matrix-v1 was claimed and executed once on PR #211. Harness records INCONCLUSIVE, call_count=1, reportWritten=false, retryAllowed=false, with permanent claim and terminal latches. Never claim or invoke this profile again; never retry the consumed one-shot; do not replay the consumed G01 Agent/MCP canary (the original July 2026 input). Its result adds no Agent/MCP matrix credit and does not answer the July 2026 harem question or establish search completeness. Keep G01 PARTIAL; the separate direct-public observations remain limited to the public API rows and the target remains 65/65.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -155,6 +155,22 @@
           "direct_tool_test": "tests/integration/tool-direct-execute-discovery.test.ts",
           "fixture_boundary": "One exact anonymous local search request returns one synthetic row; duplicates, credentialed requests, other URLs, and detail hydration are denied. The fixture never calls native fetch.",
           "acceptance_boundary": "This is implementation and local direct-ToolRegistry fixture evidence only. It is not a Codex Agent/MCP runtime result and adds no matrix credit by itself. A later accepted signed report may credit only bangumi.query_subjects Agent/MCP; it cannot change the G01 scenario status or the 65/65 public API target. Keep G01 PARTIAL."
+        },
+        "run95_agent_mcp_terminal_profile_2026_10_17": {
+          "source": "Harness epoch:agent-mcp-profile-status readback for PR #211",
+          "pr_number": 211,
+          "epoch_id": "run95-g01-query-subjects-offline-agent-mcp-matrix-20261017",
+          "profile_id": "g01-query-subjects-offline-agent-mcp-matrix-v1",
+          "tool_name": "bangumi.query_subjects",
+          "state": "INCONCLUSIVE",
+          "call_count": 1,
+          "report_written": false,
+          "retry_allowed": false,
+          "reason_code": "G01_QUERY_SUBJECTS_AGENT_MCP_ASSERTION_FAILED",
+          "codex_error_items": 3,
+          "claim_latch_present": true,
+          "terminal_latch_present": true,
+          "acceptance_credit": false
         }
       }
     },
