@@ -268,6 +268,8 @@ export function buildA01RatingDispersionCodexExecArgs({
     call.toolName,
     '--arguments-json',
     JSON.stringify(call.arguments),
+    '--profile-id',
+    PROFILE.id,
     '--summary-file',
     summaryPath,
     '--candidate-sha',

@@ -200,7 +200,16 @@ function optionalFinite(value) {
   return value === null || (typeof value === 'number' && Number.isFinite(value));
 }
 
-function validRequestScope(scope, maxRequests = A01_RATING_DISPERSION_MAX_REQUESTS) {
+export function validateA01RatingDispersionRequestScope(
+  scope,
+  maxRequests = A01_RATING_DISPERSION_MAX_REQUESTS,
+) {
+  const profileArguments = PROFILE.calls[0].arguments;
+  // Each cohort can hydrate discovery filter candidates and then hydrate its returned rows.
+  const maxDetailRequests = profileArguments.cohorts.reduce(
+    (sum, cohort) => sum + cohort.query.budget.maxHydrations + profileArguments.maxSubjects,
+    0,
+  );
   return (
     exactKeys(scope, REQUEST_SCOPE_FIELDS) &&
     integer(scope.requestCount, maxRequests) &&
@@ -213,7 +222,7 @@ function validRequestScope(scope, maxRequests = A01_RATING_DISPERSION_MAX_REQUES
     scope.requestCount === scope.allowedRequestCount &&
     scope.requestCount === scope.searchRequestCount + scope.detailRequestCount &&
     scope.searchRequestCount >= 2 &&
-    scope.detailRequestCount <= 8 &&
+    scope.detailRequestCount <= maxDetailRequests &&
     scope.deniedRequestCount === 0 &&
     scope.credentialAttemptCount === 0 &&
     scope.unexpectedRouteCount === 0 &&
@@ -437,7 +446,7 @@ export function validateA01RatingDispersionServerSummary(
     summary.argumentMatch !== true ||
     !Array.isArray(summary.results) ||
     summary.results.length !== 1 ||
-    !validRequestScope(summary.publicRequestScope) ||
+    !validateA01RatingDispersionRequestScope(summary.publicRequestScope) ||
     canonicalAgentMcpProfileJson(summary.privacy) !== canonicalAgentMcpProfileJson(PRIVACY)
   )
     return false;
@@ -678,7 +687,7 @@ export function validateA01RatingDispersionProfileReport(
     report.shellToolCallCount === 0 &&
     report.allowedCallCount === 1 &&
     report.deniedCallCount === 0 &&
-    validRequestScope(report.publicRequestScope) &&
+    validateA01RatingDispersionRequestScope(report.publicRequestScope) &&
     report.answerCheckMethod === PROFILE.answerCheckMethod &&
     HEX_SHA256.test(report.answerSha256 ?? '') &&
     Number.isSafeInteger(report.answerUtf8Bytes) &&
@@ -808,7 +817,7 @@ export function buildA01RatingDispersionProfileReport(
       'anonymousOfficialV0Only',
       publicRequestScope.anonymousOnly && publicRequestScope.officialV0Only,
     ],
-    ['requestBudgetSatisfied', validRequestScope(publicRequestScope)],
+    ['requestBudgetSatisfied', validateA01RatingDispersionRequestScope(publicRequestScope)],
     ['oneCodexMcpCall', events.codexMcpToolEventCount === 1 && events.turnCompleted === true],
     ['noExtraTools', events.nonMcpToolEventCount === 0 && events.shellToolCallCount === 0],
     [

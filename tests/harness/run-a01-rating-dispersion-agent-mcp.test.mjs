@@ -116,6 +116,12 @@ test('A01 Codex invocation exposes one tool and disables shell, browser, web, an
   const serialized = args.join('\n');
   assert.equal(profile.calls.length, 1);
   assert.equal(profile.calls[0].toolName, 'bangumi.compare_subject_cohorts');
+  const serverArgsEntry = config.find((entry) => entry.includes('.args=['));
+  assert.ok(serverArgsEntry);
+  const serverArgs = JSON.parse(serverArgsEntry.slice(serverArgsEntry.indexOf('=') + 1));
+  const profileIdIndex = serverArgs.indexOf('--profile-id');
+  assert.ok(profileIdIndex >= 0);
+  assert.equal(serverArgs[profileIdIndex + 1], profile.id);
   assert.equal(serialized.includes('features.shell_tool=false'), true);
   assert.equal(serialized.includes('features.browser_use=false'), true);
   assert.equal(serialized.includes('features.web_search=false'), true);

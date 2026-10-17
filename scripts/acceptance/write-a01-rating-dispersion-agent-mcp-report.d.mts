@@ -5,6 +5,10 @@ export function validateA01RatingDispersionServerSummary(
   bundleSha256: string,
   root?: string,
 ): boolean;
+export function validateA01RatingDispersionRequestScope(
+  scope: unknown,
+  maxRequests?: number,
+): boolean;
 export function buildA01RatingDispersionProfileReport(
   input: Record<string, unknown>,
   options?: { privateKey?: unknown; root?: string },
