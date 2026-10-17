@@ -7,7 +7,7 @@ import {
   validateA01RatingDispersionServerSummary,
 } from '../../scripts/acceptance/write-a01-rating-dispersion-agent-mcp-report.mjs';
 
-test('A01 request scope counts physical retry attempts within the fixed request cap', () => {
+test('A01 request scope caps fixed search requests while counting physical detail retries', () => {
   const scope = (detailRequestCount, searchRequestCount = 2) => ({
     requestCount: searchRequestCount + detailRequestCount,
     allowedRequestCount: searchRequestCount + detailRequestCount,
@@ -28,7 +28,8 @@ test('A01 request scope counts physical retry attempts within the fixed request 
   assert.equal(validateA01RatingDispersionRequestScope(scope(9)), true);
   assert.equal(validateA01RatingDispersionRequestScope(scope(18)), true);
   assert.equal(validateA01RatingDispersionRequestScope(scope(19)), false);
-  assert.equal(validateA01RatingDispersionRequestScope(scope(6, 3)), true);
+  assert.equal(validateA01RatingDispersionRequestScope(scope(6, 2)), true);
+  assert.equal(validateA01RatingDispersionRequestScope(scope(6, 3)), false);
   assert.equal(validateA01RatingDispersionRequestScope(scope(1, 1)), false);
 });
 

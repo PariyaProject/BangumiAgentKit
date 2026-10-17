@@ -205,8 +205,8 @@ export function validateA01RatingDispersionRequestScope(
   maxRequests = A01_RATING_DISPERSION_MAX_REQUESTS,
 ) {
   const profileArguments = PROFILE.calls[0].arguments;
-  // These counters record physical HTTP attempts, including bounded GET retries. The result
-  // summary validates two logical cohorts and their shared per-cohort hydration budgets.
+  // Search POSTs are not retried and redirects fail closed, so this fixed one-page profile
+  // makes exactly one physical search request per cohort. Detail GETs may include retries.
   return (
     exactKeys(scope, REQUEST_SCOPE_FIELDS) &&
     integer(scope.requestCount, maxRequests) &&
@@ -218,7 +218,7 @@ export function validateA01RatingDispersionRequestScope(
     integer(scope.unexpectedRouteCount, maxRequests) &&
     scope.requestCount === scope.allowedRequestCount &&
     scope.requestCount === scope.searchRequestCount + scope.detailRequestCount &&
-    scope.searchRequestCount >= profileArguments.cohorts.length &&
+    scope.searchRequestCount === profileArguments.cohorts.length &&
     scope.detailRequestCount <= maxRequests - profileArguments.cohorts.length &&
     scope.deniedRequestCount === 0 &&
     scope.credentialAttemptCount === 0 &&
