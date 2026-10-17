@@ -92,7 +92,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 23);
+  assert.equal(listAgentMcpProfiles().length, 24);
   const c07RenderComparison = getAgentMcpProfileById(
     'c07-render-comparison-offline-agent-mcp-matrix-v1',
   );
@@ -353,6 +353,27 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
     agentMcpProfileClaimLabelDescription(r03Offline),
     'Run 95 R03 profile r03-two-hop-relations-offline-agent-mcp-v1; permanent one-shot latch.',
   );
+  const r03MatrixV2 = getAgentMcpProfileById('r03-direct-relations-offline-agent-mcp-matrix-v2');
+  assert.ok(r03MatrixV2);
+  assert.equal(r03MatrixV2.frontierId, 'R03');
+  assert.equal(
+    r03MatrixV2.epochId,
+    'run95-r03-direct-relations-offline-agent-mcp-matrix-v2-20261017',
+  );
+  assert.equal(r03MatrixV2.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(r03MatrixV2.networkMode, 'run95-r03-direct-relations-offline-matrix-v2');
+  assert.equal(r03MatrixV2.toolName, 'bangumi.get_subject_relations');
+  assert.equal(r03MatrixV2.argumentProfile, 'fixed-r03-synthetic-direct-relations-991020-v2');
+  assert.deepEqual(r03MatrixV2.calls, [
+    {
+      toolName: 'bangumi.get_subject_relations',
+      arguments: { subjectId: 991020, includeEvidence: true },
+    },
+  ]);
+  assert.notEqual(r03MatrixV2.claimLabelName, r03Offline.claimLabelName);
+  assert.notEqual(r03MatrixV2.argumentProfile, r03Offline.argumentProfile);
+  assert.match(agentMcpProfileArgumentsSha256(r03MatrixV2), /^[0-9a-f]{64}$/u);
+  assert.match(agentMcpProfileRegistrySha256(r03MatrixV2.id), /^[0-9a-f]{64}$/u);
   const r02 = getAgentMcpProfileById('r02-positive-direct-relations-agent-mcp-v1');
   assert.ok(r02);
   assert.equal(r02.frontierId, 'R02');

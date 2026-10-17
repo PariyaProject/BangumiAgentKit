@@ -725,6 +725,32 @@
       ]
     },
     {
+      "id": "r03-direct-relations-offline-agent-mcp-matrix-v2",
+      "frontierId": "R03",
+      "epochId": "run95-r03-direct-relations-offline-agent-mcp-matrix-v2-20261017",
+      "toolName": "bangumi.get_subject_relations",
+      "argumentProfile": "fixed-r03-synthetic-direct-relations-991020-v2",
+      "claimLabelName": "harness-r95-r03-direct-v2-claimed",
+      "reportPath": "docs/live-probes/r03-direct-relations-agent-mcp-matrix-v2-run95.json",
+      "selectionEvidencePath": "docs/research/run95-r03-direct-relations-offline-agent-mcp-matrix-v2-2026-10-17.md",
+      "evidenceKind": "codex_cli_r03_direct_relations_offline_agent_mcp_matrix_v2",
+      "answerCheckMethod": "r03-synthetic-direct-relations-execution-only-v2",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-r03-direct-relations-offline-matrix-v2",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 1024,
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 991020,
+            "includeEvidence": true
+          }
+        }
+      ]
+    },
+    {
       "id": "g01-render-query-subjects-offline-agent-mcp-v1",
       "frontierId": "G01",
       "epochId": "run95-g01-render-query-subjects-offline-matrix-20261017",

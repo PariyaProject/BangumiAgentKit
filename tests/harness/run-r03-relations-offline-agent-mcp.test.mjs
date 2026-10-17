@@ -24,7 +24,7 @@ import {
 const PROFILE = getAgentMcpProfileById(R03_RELATIONS_OFFLINE_PROFILE_ID);
 const SOURCE_SHA = 'a'.repeat(40);
 const BUNDLE_SHA = 'b'.repeat(64);
-const SERVER_ID = 'bgk_r03_relations';
+const SERVER_ID = 'bgk_r03_relations_v2';
 const CANDIDATE_SHA = 'c'.repeat(40);
 const BASE_SHA = 'd'.repeat(40);
 const CI_RUN_ID = '38820001234';
@@ -39,7 +39,7 @@ const REQUIRED_CHECKS = [
 ];
 
 function candidateGateFixture() {
-  const branch = 'codex/epoch-run95-r03-two-hop-relations-offline-agent-mcp-20261017';
+  const branch = 'codex/epoch-run95-r03-direct-relations-offline-agent-mcp-matrix-v2-20261017';
   const reviewerId = 'gpt-6-luna-max-run95-pr222-round1';
   const status = {
     git: { status: '', head: CANDIDATE_SHA, branch },
@@ -116,9 +116,9 @@ function serverSummary() {
     inputSchemaSha256: 'e'.repeat(64),
     serverToolNames: [PROFILE.toolName],
     serverToolCount: 1,
-    expectedCallCount: 2,
+    expectedCallCount: 1,
     serverResultStatus: 'SUCCESS',
-    allowedCallCount: 2,
+    allowedCallCount: 1,
     deniedCallCount: 0,
     results: R03_RELATIONS_OFFLINE_EXPECTED_RESULT_SUMMARIES.map(
       (resultSummary, sequenceIndex) => ({
@@ -129,10 +129,10 @@ function serverSummary() {
     ),
     offlineFixture: {
       profile: R03_RELATIONS_OFFLINE_NETWORK_MODE,
-      requestCount: 2,
-      relationRequestCount: 2,
+      requestCount: 1,
+      relationRequestCount: 1,
       rootRequestCount: 1,
-      intermediateRequestCount: 1,
+      intermediateRequestCount: 0,
       duplicateRequestCount: 0,
       unexpectedRequestCount: 0,
       authorizationHeaderCount: 0,
@@ -255,15 +255,13 @@ test('R03 Codex invocation is ephemeral, read-only, and exposes only the fixed r
     false,
   );
   assert.equal(
-    args
-      .at(-1)
-      .includes(JSON.stringify(R03_RELATIONS_OFFLINE_EXPECTED_CALLS.map((call) => call.arguments))),
+    args.at(-1).includes(JSON.stringify(R03_RELATIONS_OFFLINE_EXPECTED_CALLS[0].arguments)),
     true,
   );
   assert.equal(args.at(-1).includes(R03_RELATIONS_OFFLINE_ACKNOWLEDGEMENT), true);
 });
 
-test('R03 server summary accepts exactly two ordered local relation responses', () => {
+test('R03 server summary accepts exactly one local relation response', () => {
   const summary = serverSummary();
   assert.equal(validateR03ServerSummary(summary, SOURCE_SHA, BUNDLE_SHA), true);
   assert.equal(
@@ -276,19 +274,19 @@ test('R03 server summary accepts exactly two ordered local relation responses', 
   );
   assert.equal(
     validateR03ServerSummary(
-      { ...summary, results: [...summary.results].reverse() },
+      { ...summary, results: [{ ...summary.results[0], sequenceIndex: 1 }] },
       SOURCE_SHA,
       BUNDLE_SHA,
     ),
     false,
   );
   assert.equal(
-    validateR03ServerSummary({ ...summary, results: [summary.results[0]] }, SOURCE_SHA, BUNDLE_SHA),
+    validateR03ServerSummary({ ...summary, results: [] }, SOURCE_SHA, BUNDLE_SHA),
     false,
   );
 });
 
-test('R03 failure classification enforces two exact MCP calls and a clean tool-only turn', () => {
+test('R03 failure classification enforces one exact MCP call and a clean tool-only turn', () => {
   const base = {
     execution: { failed: false, spawnErrorCode: null },
     parsed: { parsed: true },
@@ -301,7 +299,7 @@ test('R03 failure classification enforces two exact MCP calls and a clean tool-o
       nonMcpToolEventCount: 0,
       shellToolCallCount: 0,
       mcpServerNames: [SERVER_ID],
-      codexMcpToolEventCount: 2,
+      codexMcpToolEventCount: 1,
       completedMcpCalls: R03_RELATIONS_OFFLINE_EXPECTED_CALLS.map((call) => ({
         tool: call.toolName,
         arguments: call.arguments,
@@ -320,8 +318,8 @@ test('R03 failure classification enforces two exact MCP calls and a clean tool-o
       ...base,
       events: {
         ...base.events,
-        codexMcpToolEventCount: 1,
-        completedMcpCalls: base.events.completedMcpCalls.slice(0, 1),
+        codexMcpToolEventCount: 0,
+        completedMcpCalls: base.events.completedMcpCalls.slice(0, 0),
       },
     }),
     'MCP_CALL_COUNT_MISMATCH',
@@ -336,7 +334,7 @@ test('R03 failure classification enforces two exact MCP calls and a clean tool-o
   assert.equal(
     classifyR03AssertionFailure({
       ...base,
-      events: { ...base.events, codexMcpToolEventCount: 2, answer: 'wrong' },
+      events: { ...base.events, answer: 'wrong' },
     }),
     'ACKNOWLEDGEMENT_MISMATCH',
   );

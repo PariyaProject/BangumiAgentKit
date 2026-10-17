@@ -275,6 +275,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'r04-render-series-watch-order-offline-agent-mcp-v1',
   'r01-subject-relations-offline-agent-mcp-v1',
   'r03-two-hop-relations-offline-agent-mcp-v1',
+  'r03-direct-relations-offline-agent-mcp-matrix-v2',
   'r02-positive-direct-relations-agent-mcp-v1',
   'c04-cohort-comparison-agent-mcp-matrix-v1',
   'query-render-title-agent-mcp-v1',
@@ -3867,6 +3868,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'r01-subject-relations-offline-agent-mcp-v1':
       return validateR01RelationsOfflineSanitizedReportFile(claim, root, reportPath);
     case 'r03-two-hop-relations-offline-agent-mcp-v1':
+      return validateR03RelationsOfflineSanitizedReportFile(claim, root, reportPath);
+    case 'r03-direct-relations-offline-agent-mcp-matrix-v2':
       return validateR03RelationsOfflineSanitizedReportFile(claim, root, reportPath);
     case 'r02-positive-direct-relations-agent-mcp-v1':
       return validateR02SanitizedReportFile(claim, root, reportPath);

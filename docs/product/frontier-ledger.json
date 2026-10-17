@@ -3350,6 +3350,7 @@
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
         "docs/research/run95-r03-relations-agent-mcp-offline-matrix-2026-10-17.md",
+        "docs/research/run95-r03-direct-relations-offline-agent-mcp-matrix-v2-2026-10-17.md",
         "packages/tools/src/definitions/read-tools.ts",
         "openapi/upstream/v0.yaml",
         "scripts/acceptance/agent-mcp-profile-registry.json",
@@ -3373,7 +3374,7 @@
         "tests/harness/write-r03-relations-offline-agent-mcp-report.test.mjs",
         "tests/harness/frontier-ledger-data.test.mjs"
       ],
-      "next_action": "R03 remains UNASSESSED. Its registered offline profile on PR #208 is terminal INCONCLUSIVE/no-report/retryAllowed=false; never repeat its claim or fixed IDs. The shared Codex MCP config now uses server-level default approval with the exact enabled_tools allowlist; this runner repair does not alter the terminal profile or add matrix evidence. A future distinct offline profile may credit only bangumi.get_subject_relations Agent/MCP after fresh registration, new inputs, exact-Candidate seven-check CI, and GPT-6 Luna Max review; do not answer the highest-rated two-hop question or infer real graph paths, scores, or completeness from fixture data.",
+      "next_action": "R03 remains UNASSESSED. The registered PR #208 profile r03-two-hop-relations-offline-agent-mcp-v1 is terminal INCONCLUSIVE/no-report/retryAllowed=false; never repeat its claim or fixed IDs. The distinct v2 profile r03-direct-relations-offline-agent-mcp-matrix-v2 uses one fresh synthetic direct-relation input and may credit only bangumi.get_subject_relations Agent/MCP after exact-Candidate seven-check CI, same-identity GPT-6 Luna Max review, and its own fresh UNCLAIMED Harness status. Preserve the v1 claim and report boundary; do not answer the highest-rated two-hop question or infer real graph paths, scores, or completeness from fixture data.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

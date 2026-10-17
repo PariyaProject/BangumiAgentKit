@@ -21,8 +21,7 @@ const REQUIRED = [
   '--bundle-sha256',
   'b'.repeat(64),
 ];
-const ROOT_URL = 'https://api.bgm.tv/v0/subjects/990910/subjects';
-const INTERMEDIATE_URL = 'https://api.bgm.tv/v0/subjects/990911/subjects';
+const DIRECT_URL = 'https://api.bgm.tv/v0/subjects/991020/subjects';
 const HTTP_HEADERS = {
   accept: 'application/json',
   'user-agent': 'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)',
@@ -44,7 +43,7 @@ const result = (subjectId, items) => ({
   items,
 });
 
-test('R03 profile binds exactly two ordered synthetic relation reads', () => {
+test('R03 profile v2 binds exactly one synthetic direct-relation read', () => {
   assert.equal(assertR03RelationsOfflineProfile(PROFILE), true);
   const config = parseCodexOneToolMcpArguments([
     '--profile-id',
@@ -58,6 +57,20 @@ test('R03 profile binds exactly two ordered synthetic relation reads', () => {
     R03_RELATIONS_OFFLINE_EXPECTED_CALLS.map((call) => call.arguments),
   );
   assert.equal(config.profile.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(
+    assertR03RelationsOfflineProfile(
+      getAgentMcpProfileById('r03-two-hop-relations-offline-agent-mcp-v1'),
+    ),
+    false,
+  );
+  assert.throws(() =>
+    assertR03RelationsOfflineProfile({
+      ...PROFILE,
+      calls: [
+        { toolName: PROFILE.toolName, arguments: { subjectId: 991022, includeEvidence: true } },
+      ],
+    }),
+  );
   assert.throws(() =>
     parseCodexOneToolMcpArguments([
       '--profile-id',
@@ -67,53 +80,27 @@ test('R03 profile binds exactly two ordered synthetic relation reads', () => {
       ...REQUIRED,
     ]),
   );
-  assert.throws(() =>
-    assertR03RelationsOfflineProfile({
-      ...PROFILE,
-      calls: [
-        { toolName: PROFILE.toolName, arguments: { subjectId: 990910, includeEvidence: true } },
-      ],
-    }),
-  );
 });
 
-test('R03 fixture returns the bounded synthetic root and first-hop responses once each', async () => {
+test('R03 fixture returns one bounded synthetic direct-relation response', async () => {
   const fixture = createR03RelationsOfflineFetch();
-  const root = await fixture.fetchFn(ROOT_URL, { headers: HTTP_HEADERS });
-  assert.equal(root.status, 200);
-  assert.deepEqual(await root.json(), [
+  const direct = await fixture.fetchFn(DIRECT_URL, { headers: HTTP_HEADERS });
+  assert.equal(direct.status, 200);
+  assert.deepEqual(await direct.json(), [
     {
-      id: 990911,
+      id: 991021,
       type: 2,
-      name: 'Synthetic R03 intermediate node',
-      name_cn: '合成 R03 中间节点',
+      name: 'Synthetic R03 matrix target 991021',
+      name_cn: '合成 R03 矩阵目标 991021',
       relation: '续篇',
-    },
-  ]);
-  const intermediate = await fixture.fetchFn(INTERMEDIATE_URL, { headers: HTTP_HEADERS });
-  assert.equal(intermediate.status, 200);
-  assert.deepEqual(await intermediate.json(), [
-    {
-      id: 990912,
-      type: 2,
-      name: 'Synthetic R03 candidate one',
-      name_cn: '合成 R03 候选一',
-      relation: '前传',
-    },
-    {
-      id: 990913,
-      type: 2,
-      name: 'Synthetic R03 candidate two',
-      name_cn: '合成 R03 候选二',
-      relation: '外传',
     },
   ]);
   assert.deepEqual(fixture.snapshot(), {
     profile: R03_RELATIONS_OFFLINE_NETWORK_MODE,
-    requestCount: 2,
-    relationRequestCount: 2,
+    requestCount: 1,
+    relationRequestCount: 1,
     rootRequestCount: 1,
-    intermediateRequestCount: 1,
+    intermediateRequestCount: 0,
     duplicateRequestCount: 0,
     unexpectedRequestCount: 0,
     authorizationHeaderCount: 0,
@@ -123,14 +110,14 @@ test('R03 fixture returns the bounded synthetic root and first-hop responses onc
 
 test('R03 fixture rejects unregistered routes, requests, authorization, and duplicates', async () => {
   const invalidCalls = [
-    [`${ROOT_URL}?limit=1`, undefined],
-    [ROOT_URL, undefined],
-    [ROOT_URL, { headers: { ...HTTP_HEADERS, 'x-unexpected': 'value' } }],
-    [ROOT_URL, { headers: { ...HTTP_HEADERS, 'user-agent': 'unexpected' } }],
-    [ROOT_URL, { method: 'POST' }],
-    [ROOT_URL, { headers: { authorization: 'Bearer synthetic' } }],
-    ['https://example.test/v0/subjects/990910/subjects', undefined],
-    ['https://api.bgm.tv/v0/subjects/990912/subjects', undefined],
+    [`${DIRECT_URL}?limit=1`, { headers: HTTP_HEADERS }],
+    [DIRECT_URL, undefined],
+    [DIRECT_URL, { headers: { ...HTTP_HEADERS, 'x-unexpected': 'value' } }],
+    [DIRECT_URL, { headers: { ...HTTP_HEADERS, 'user-agent': 'unexpected' } }],
+    [DIRECT_URL, { method: 'POST', headers: HTTP_HEADERS }],
+    [DIRECT_URL, { headers: { ...HTTP_HEADERS, authorization: 'Bearer synthetic' } }],
+    ['https://example.test/v0/subjects/991020/subjects', { headers: HTTP_HEADERS }],
+    ['https://api.bgm.tv/v0/subjects/991022/subjects', { headers: HTTP_HEADERS }],
   ];
   for (const [url, init] of invalidCalls) {
     const fixture = createR03RelationsOfflineFetch();
@@ -138,50 +125,37 @@ test('R03 fixture rejects unregistered routes, requests, authorization, and dupl
     assert.equal(fixture.snapshot().unexpectedRequestCount, 1);
   }
   const duplicate = createR03RelationsOfflineFetch();
-  await duplicate.fetchFn(ROOT_URL, { headers: HTTP_HEADERS });
-  assert.equal((await duplicate.fetchFn(ROOT_URL, { headers: HTTP_HEADERS })).status, 599);
+  await duplicate.fetchFn(DIRECT_URL, { headers: HTTP_HEADERS });
+  assert.equal((await duplicate.fetchFn(DIRECT_URL, { headers: HTTP_HEADERS })).status, 599);
   assert.equal(duplicate.snapshot().duplicateRequestCount, 1);
   const body = createR03RelationsOfflineFetch();
-  assert.equal((await body.fetchFn(INTERMEDIATE_URL, { body: '{}' })).status, 599);
+  assert.equal((await body.fetchFn(DIRECT_URL, { ...HTTP_HEADERS, body: '{}' })).status, 599);
 });
 
 test('R03 summaries omit synthetic IDs, names, and raw relation rows', () => {
-  const rootResult = result(990910, [
-    { id: 990911, name: 'private fixture name', relation: '续篇' },
+  const directResult = result(991020, [
+    { id: 991021, name: 'private fixture name', relation: '续篇' },
   ]);
-  const intermediateResult = result(990911, [
-    { id: 990912, name: 'private candidate one', relation: '前传' },
-    { id: 990913, name: 'private candidate two', relation: '外传' },
-  ]);
-  const rootSummary = summarizeProfileToolResult(
-    rootResult,
+  const directSummary = summarizeProfileToolResult(
+    directResult,
     R03_RELATIONS_OFFLINE_EXPECTED_CALLS[0].arguments,
     R03_RELATIONS_OFFLINE_PROFILE_ID,
   );
-  const intermediateSummary = summarizeProfileToolResult(
-    intermediateResult,
-    R03_RELATIONS_OFFLINE_EXPECTED_CALLS[1].arguments,
-    R03_RELATIONS_OFFLINE_PROFILE_ID,
-  );
-  assert.equal(rootSummary.responseRowsObserved, 1);
-  assert.deepEqual(rootSummary.relationLabels, ['续篇']);
-  assert.equal(intermediateSummary.responseRowsObserved, 2);
-  assert.deepEqual(intermediateSummary.relationLabels, ['前传', '外传']);
-  for (const summary of [rootSummary, intermediateSummary]) {
-    const encoded = JSON.stringify(summary);
-    assert.equal(encoded.includes('99091'), false);
-    assert.equal(encoded.includes('private'), false);
-  }
+  assert.equal(directSummary.responseRowsObserved, 1);
+  assert.deepEqual(directSummary.relationLabels, ['续篇']);
+  const encoded = JSON.stringify(directSummary);
+  assert.equal(encoded.includes('9910'), false);
+  assert.equal(encoded.includes('private'), false);
   assert.equal(
-    summarizeR03RelationsOfflineToolResult(rootResult, {
-      subjectId: 990901,
+    summarizeR03RelationsOfflineToolResult(directResult, {
+      subjectId: 991099,
       includeEvidence: true,
     }),
     null,
   );
   assert.equal(
     summarizeR03RelationsOfflineToolResult(
-      { ...rootResult, items: [{ ...rootResult.items[0], id: 990999 }] },
+      { ...directResult, items: [{ ...directResult.items[0], id: 991099 }] },
       R03_RELATIONS_OFFLINE_EXPECTED_CALLS[0].arguments,
     ),
     null,
