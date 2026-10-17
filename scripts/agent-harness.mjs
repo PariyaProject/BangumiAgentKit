@@ -3373,6 +3373,131 @@ function agentMcpProfileClaims(epoch) {
   return epoch?.adversarial_preflight?.agent_mcp_profile_dispositions ?? {};
 }
 
+function isMatchingA01AggregateProfileClaim(profile, claim, prNumber) {
+  if (!claim || typeof claim !== 'object' || Array.isArray(claim)) return false;
+  const claimFields = new Set([
+    'schemaVersion',
+    'claimId',
+    'state',
+    'profileId',
+    'frontierId',
+    'epochId',
+    'runNumber',
+    'prNumber',
+    'toolName',
+    'argumentProfile',
+    'expectedArguments',
+    'expectedArgumentsSha256',
+    'registrySha256',
+    'sourceCandidateSha',
+    'baseSha',
+    'ciSha',
+    'ciStatus',
+    'reviewerId',
+    'bundleSha256',
+    'runnerReceiptPublicKey',
+    'runnerReceiptPublicKeySha256',
+    'reportWritten',
+    'retryAllowed',
+    'claimedAt',
+    'claimIdentityRecovered',
+    'ambiguousLatchReconciled',
+    'failureDiagnostics',
+    'terminalLabel',
+    'terminalLabelDescription',
+    'finishedAt',
+  ]);
+  if (Object.keys(claim).some((key) => !claimFields.has(key))) return false;
+  if (
+    claim.state === 'CLAIMED' &&
+    [
+      'claimIdentityRecovered',
+      'ambiguousLatchReconciled',
+      'failureDiagnostics',
+      'terminalLabel',
+      'terminalLabelDescription',
+      'finishedAt',
+    ].some((key) => Object.hasOwn(claim, key))
+  ) {
+    return false;
+  }
+  const candidateSha = claim.sourceCandidateSha;
+  const claimIdMatch =
+    typeof claim.claimId === 'string'
+      ? new RegExp(`^profile-run-95-pr-${prNumber}-([0-9a-f]{12})-\\d+$`, 'u').exec(claim.claimId)
+      : null;
+  let publicKeySha256 = null;
+  try {
+    publicKeySha256 = g16RunnerPublicKeySha256(claim.runnerReceiptPublicKey);
+  } catch {
+    return false;
+  }
+  try {
+    return (
+      profile.id === 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1' &&
+      claim.schemaVersion === 1 &&
+      ['CLAIMED', 'INCONCLUSIVE'].includes(claim.state) &&
+      claimIdMatch?.[1] === candidateSha?.slice(0, 12) &&
+      /^[0-9a-f]{40}$/u.test(candidateSha ?? '') &&
+      /^[0-9a-f]{40}$/u.test(claim.baseSha ?? '') &&
+      claim.profileId === profile.id &&
+      claim.frontierId === profile.frontierId &&
+      claim.epochId === profile.epochId &&
+      claim.runNumber === 95 &&
+      claim.prNumber === Number(prNumber) &&
+      claim.toolName === profile.toolName &&
+      claim.argumentProfile === profile.argumentProfile &&
+      canonicalHash(claim.expectedArguments) ===
+        canonicalHash(profile.calls.map((call) => call.arguments)) &&
+      claim.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(profile) &&
+      claim.registrySha256 === agentMcpProfileRegistrySha256(profile.id) &&
+      claim.ciSha === candidateSha &&
+      claim.ciStatus === 'SUCCESS' &&
+      typeof claim.reviewerId === 'string' &&
+      isG16LunaMaxReviewerId(claim.reviewerId, Number(prNumber)) &&
+      /^[0-9a-f]{64}$/u.test(claim.bundleSha256 ?? '') &&
+      claim.runnerReceiptPublicKeySha256 === publicKeySha256 &&
+      claim.reportWritten === false &&
+      claim.retryAllowed === false &&
+      typeof claim.claimedAt === 'string' &&
+      Number.isFinite(Date.parse(claim.claimedAt)) &&
+      claim.reportPath === undefined &&
+      claim.reportSha256 === undefined &&
+      claim.unacceptedReportSha256 === undefined &&
+      claim.runnerReceiptSha256 === undefined
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isA01AggregateClaimTerminalizedDuringReconciliation(
+  profile,
+  disposition,
+  prNumber,
+  terminalDescription,
+) {
+  return (
+    isMatchingA01AggregateProfileClaim(profile, disposition, prNumber) &&
+    disposition.state === 'INCONCLUSIVE' &&
+    disposition.claimIdentityRecovered === true &&
+    disposition.ambiguousLatchReconciled === true &&
+    disposition.reportWritten === false &&
+    disposition.retryAllowed === false &&
+    disposition.terminalLabel === agentMcpProfileTerminalLabelName(profile) &&
+    disposition.terminalLabelDescription === terminalDescription &&
+    canonicalHash(disposition.failureDiagnostics ?? null) ===
+      canonicalHash({
+        schemaVersion: 1,
+        reasonCode: 'A01_AGGREGATE_MATRIX_AMBIGUOUS_CLAIM_TERMINALIZED',
+        checks: { invocationStateUnknown: true },
+        counters: {},
+      }) &&
+    typeof disposition.finishedAt === 'string' &&
+    Number.isFinite(Date.parse(disposition.finishedAt))
+  );
+}
+
 function agentMcpProfileBundleMatches(candidateSha, bundleSha256, allowReportWorktree = false) {
   if (process.env.HARNESS_MOCK_STATE) {
     const status = git('status', '--porcelain', '--untracked-files=all');
@@ -3719,6 +3844,9 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
 
   const dispositions = agentMcpProfileClaims(epoch);
   const current = dispositions[profile.id];
+  const initialMatchingClaim =
+    current?.state === 'CLAIMED' &&
+    isMatchingA01AggregateProfileClaim(profile, current, Number(prNumber));
   if (current) {
     if (
       current.state === 'INCONCLUSIVE' &&
@@ -3737,11 +3865,36 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
       });
       return;
     }
-    throw new HarnessInvariantError(
-      'AGENT_MCP_PROFILE_DISPOSITION_NOT_AMBIGUOUS',
-      'A durable profile disposition already exists; refusing ambiguous-latch reconciliation.',
-      { profileId, currentState: current.state },
-    );
+    const matchingClaim =
+      current.state === 'CLAIMED' &&
+      isMatchingA01AggregateProfileClaim(profile, current, Number(prNumber));
+    if (!matchingClaim || terminalLabel?.description !== terminalDescription) {
+      if (
+        isA01AggregateClaimTerminalizedDuringReconciliation(
+          profile,
+          current,
+          Number(prNumber),
+          terminalDescription,
+        ) &&
+        !fs.existsSync(path.join(root, profile.reportPath))
+      ) {
+        print({
+          state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED',
+          run: 95,
+          pr: Number(prNumber),
+          profileId,
+          claimId: current.claimId,
+          resultState: 'INCONCLUSIVE',
+          retryAllowed: false,
+        });
+        return;
+      }
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_DISPOSITION_NOT_AMBIGUOUS',
+        'A durable profile disposition already exists; refusing ambiguous-latch reconciliation.',
+        { profileId, currentState: current.state },
+      );
+    }
   }
   if (fs.existsSync(path.join(root, profile.reportPath))) {
     throw new HarnessInvariantError(
@@ -3778,6 +3931,31 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
     return;
   }
   if (
+    isA01AggregateClaimTerminalizedDuringReconciliation(
+      profile,
+      latestDisposition,
+      Number(prNumber),
+      terminalDescription,
+    ) &&
+    latestTerminalLabel?.description === terminalDescription &&
+    !fs.existsSync(path.join(root, profile.reportPath))
+  ) {
+    print({
+      state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED',
+      run: 95,
+      pr: Number(prNumber),
+      profileId,
+      claimId: latestDisposition.claimId,
+      resultState: 'INCONCLUSIVE',
+      retryAllowed: false,
+    });
+    return;
+  }
+  const matchingClaim =
+    latestDisposition?.state === 'CLAIMED' &&
+    isMatchingA01AggregateProfileClaim(profile, latestDisposition, Number(prNumber)) &&
+    (!initialMatchingClaim || canonicalHash(current) === canonicalHash(latestDisposition));
+  if (
     latestRun.state !== 'EPOCH_ACTIVE' ||
     latestRun.active_epoch_pr !== Number(prNumber) ||
     latestEpoch.epoch_id !== epoch.epoch_id ||
@@ -3785,7 +3963,7 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
     latestEpoch.pr_number !== Number(prNumber) ||
     latestEpochResult.view.state !== 'OPEN' ||
     latestEpochResult.view.isDraft ||
-    latestDisposition !== undefined ||
+    (latestDisposition !== undefined && !matchingClaim) ||
     latestClaimLabel?.description !== agentMcpProfileClaimLabelDescription(profile) ||
     latestTerminalLabel?.description !== terminalDescription ||
     fs.existsSync(path.join(root, profile.reportPath))
@@ -3798,50 +3976,68 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
   }
   const failureDiagnostics = normalizeAgentMcpProfileDiagnostics({
     schemaVersion: 1,
-    reasonCode: 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
+    reasonCode: matchingClaim
+      ? 'A01_AGGREGATE_MATRIX_AMBIGUOUS_CLAIM_TERMINALIZED'
+      : 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
     checks: { invocationStateUnknown: true },
     counters: {},
   });
   const nextEpoch = structuredClone(latestEpoch);
-  const disposition = {
-    schemaVersion: 1,
-    claimId: null,
-    claimIdentityRecovered: false,
-    ambiguousLatchReconciled: true,
-    state: 'INCONCLUSIVE',
-    profileId: profile.id,
-    frontierId: profile.frontierId,
-    epochId: profile.epochId,
-    runNumber: 95,
-    prNumber: Number(prNumber),
-    toolName: profile.toolName,
-    argumentProfile: profile.argumentProfile,
-    expectedArguments: profile.calls.map((call) => structuredClone(call.arguments)),
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
-    registrySha256: agentMcpProfileRegistrySha256(profile.id),
-    sourceCandidateSha: null,
-    baseSha: null,
-    ciSha: null,
-    ciStatus: 'UNKNOWN',
-    reviewerId: null,
-    bundleSha256: null,
-    reportWritten: false,
-    failureDiagnostics,
-    terminalLabel: terminal.name,
-    terminalLabelDescription: terminal.description,
-    retryAllowed: false,
-    finishedAt: new Date().toISOString(),
-  };
+  const disposition = matchingClaim
+    ? {
+        ...latestDisposition,
+        state: 'INCONCLUSIVE',
+        claimIdentityRecovered: true,
+        ambiguousLatchReconciled: true,
+        reportWritten: false,
+        failureDiagnostics,
+        terminalLabel: terminal.name,
+        terminalLabelDescription: terminal.description,
+        retryAllowed: false,
+        finishedAt: new Date().toISOString(),
+      }
+    : {
+        schemaVersion: 1,
+        claimId: null,
+        claimIdentityRecovered: false,
+        ambiguousLatchReconciled: true,
+        state: 'INCONCLUSIVE',
+        profileId: profile.id,
+        frontierId: profile.frontierId,
+        epochId: profile.epochId,
+        runNumber: 95,
+        prNumber: Number(prNumber),
+        toolName: profile.toolName,
+        argumentProfile: profile.argumentProfile,
+        expectedArguments: profile.calls.map((call) => structuredClone(call.arguments)),
+        expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+        registrySha256: agentMcpProfileRegistrySha256(profile.id),
+        sourceCandidateSha: null,
+        baseSha: null,
+        ciSha: null,
+        ciStatus: 'UNKNOWN',
+        reviewerId: null,
+        bundleSha256: null,
+        reportWritten: false,
+        failureDiagnostics,
+        terminalLabel: terminal.name,
+        terminalLabelDescription: terminal.description,
+        retryAllowed: false,
+        finishedAt: new Date().toISOString(),
+      };
   nextEpoch.adversarial_preflight.agent_mcp_profile_dispositions = {
     ...latestDispositions,
     [profile.id]: disposition,
   };
   updatePr(prNumber, nextEpoch);
   print({
-    state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
+    state: matchingClaim
+      ? 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_CLAIM_TERMINALIZED'
+      : 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
     run: 95,
     pr: Number(prNumber),
     profileId,
+    ...(matchingClaim ? { claimId: disposition.claimId } : {}),
     resultState: 'INCONCLUSIVE',
     retryAllowed: false,
   });
