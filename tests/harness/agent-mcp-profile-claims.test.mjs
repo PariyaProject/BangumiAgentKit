@@ -92,7 +92,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 20);
+  assert.equal(listAgentMcpProfiles().length, 21);
   const c07RenderComparison = getAgentMcpProfileById(
     'c07-render-comparison-offline-agent-mcp-matrix-v1',
   );
@@ -309,6 +309,26 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(
     agentMcpProfileClaimLabelDescription(r01Offline),
     'Run 95 R01 profile r01-subject-relations-offline-agent-mcp-v1; permanent one-shot latch.',
+  );
+  const r03Offline = getAgentMcpProfileById('r03-two-hop-relations-offline-agent-mcp-v1');
+  assert.ok(r03Offline);
+  assert.equal(r03Offline.frontierId, 'R03');
+  assert.equal(r03Offline.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(r03Offline.networkMode, 'run95-r03-two-hop-relations-offline-v1');
+  assert.equal(r03Offline.toolName, 'bangumi.get_subject_relations');
+  assert.equal(r03Offline.calls.length, 2);
+  assert.deepEqual(
+    r03Offline.calls.map((call) => call.arguments),
+    [
+      { subjectId: 990910, includeEvidence: true },
+      { subjectId: 990911, includeEvidence: true },
+    ],
+  );
+  assert.match(agentMcpProfileArgumentsSha256(r03Offline), /^[0-9a-f]{64}$/u);
+  assert.match(agentMcpProfileRegistrySha256(r03Offline.id), /^[0-9a-f]{64}$/u);
+  assert.equal(
+    agentMcpProfileClaimLabelDescription(r03Offline),
+    'Run 95 R03 profile r03-two-hop-relations-offline-agent-mcp-v1; permanent one-shot latch.',
   );
   const r02 = getAgentMcpProfileById('r02-positive-direct-relations-agent-mcp-v1');
   assert.ok(r02);

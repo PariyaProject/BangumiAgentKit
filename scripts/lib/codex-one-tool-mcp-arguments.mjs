@@ -10,6 +10,7 @@ import { assertC07RenderComparisonOfflineProfile } from './c07-render-comparison
 import { assertP02PersonProfileOfflineProfile } from './p02-person-profile-offline-fixture.mjs';
 import { assertR04SeriesWatchOrderOfflineProfile } from './r04-series-watch-order-offline-fixture.mjs';
 import { assertR01RelationsOfflineProfile } from './r01-relations-offline-profile.mjs';
+import { assertR03RelationsOfflineProfile } from './r03-relations-offline-profile.mjs';
 import {
   assertC04CohortComparisonPublicProfile,
   C04_COHORT_COMPARISON_NETWORK_MODE,
@@ -138,6 +139,7 @@ export function parseCodexOneToolMcpArguments(argv) {
         assertP02PersonProfileOfflineProfile(profile) ||
         assertR04SeriesWatchOrderOfflineProfile(profile) ||
         assertR01RelationsOfflineProfile(profile) ||
+        assertR03RelationsOfflineProfile(profile) ||
         assertR02PositiveDirectRelationsProfile(profile) ||
         assertA01RatingDispersionProfile(profile) ||
         assertA01RenderCohortAggregationOfflineProfile(profile) ||

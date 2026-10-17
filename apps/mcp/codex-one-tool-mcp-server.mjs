@@ -85,6 +85,11 @@ import {
   R01_RELATIONS_OFFLINE_PROFILE_ID,
 } from '../../scripts/lib/r01-relations-offline-profile.mjs';
 import {
+  assertR03RelationsOfflineFixture,
+  createR03RelationsOfflineFetch,
+} from '../../scripts/lib/r03-relations-offline-fixture.mjs';
+import { R03_RELATIONS_OFFLINE_NETWORK_MODE } from '../../scripts/lib/r03-relations-offline-profile.mjs';
+import {
   assertC04CohortComparisonPublicProfile,
   createC04CohortComparisonPublicFetch,
   C04_COHORT_COMPARISON_PROFILE_ID,
@@ -268,6 +273,9 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE) {
     assertR01RelationsOfflineFixture(config.profile);
   }
+  if (config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE) {
+    assertR03RelationsOfflineFixture(config.profile);
+  }
   if (config.networkMode === R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE) {
     assertR02PositiveDirectRelationsProfile(config.profile);
   }
@@ -353,7 +361,9 @@ async function main(argv = process.argv.slice(2)) {
                     ? createR04RenderSeriesWatchOrderOfflineFetch()
                     : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
                       ? createR01RelationsOfflineFetch()
-                      : null;
+                      : config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE
+                        ? createR03RelationsOfflineFetch()
+                        : null;
   const r04RenderAssetFence =
     config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
       ? createR04RenderSeriesWatchOrderAssetFence()

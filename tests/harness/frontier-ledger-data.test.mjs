@@ -140,6 +140,37 @@ test('R01 frontier keeps source limits separate from Harness runtime state', () 
   assertOneShotRuntimeIsHarnessOwned(record);
 });
 
+test('R03 offline matrix evidence keeps the two-hop scenario unassessed', () => {
+  const record = ledger.records.find(({ id }) => id === 'R03');
+  assert.ok(record, 'R03 must remain in the canonical frontier');
+  assert.equal(record.status, 'UNASSESSED');
+  assert.match(record.next_action, /offline profile may credit only/u);
+  assert.match(record.next_action, /do not answer the highest-rated two-hop question/u);
+  for (const source of [
+    'docs/research/run95-r03-relations-agent-mcp-offline-matrix-2026-10-17.md',
+    'scripts/acceptance/agent-mcp-profile-registry.json',
+    'scripts/acceptance/run-r03-relations-offline-agent-mcp.mjs',
+    'scripts/acceptance/write-r03-relations-offline-agent-mcp-report.mjs',
+    'scripts/acceptance/validate-r03-relations-offline-agent-mcp-report.mjs',
+    'scripts/lib/r03-relations-offline-profile.mjs',
+    'scripts/lib/r03-relations-offline-fixture.mjs',
+    'apps/mcp/codex-one-tool-mcp-server.mjs',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/test_acceptance_evidence.py',
+    'tests/harness/r03-relations-offline-fixture.test.mjs',
+    'tests/harness/run-r03-relations-offline-agent-mcp.test.mjs',
+    'tests/harness/write-r03-relations-offline-agent-mcp-report.test.mjs',
+  ]) {
+    assert.ok(record.source_refs.includes(source), `R03 source reference missing: ${source}`);
+    assert.equal(existsSync(path.join(root, source)), true, `R03 source reference is missing: ${source}`);
+  }
+  const matrixReport = 'docs/live-probes/r03-two-hop-relations-agent-mcp-run95.json';
+  if (record.source_refs.includes(matrixReport)) {
+    assert.equal(existsSync(path.join(root, matrixReport)), true);
+    assert.match(record.next_action, /synthetic offline matrix-only profile/u);
+  }
+});
+
 test('D07, P01, and A01 keep stable scenario guidance and defer claim state to Harness', () => {
   const expected = [
     {
