@@ -15,7 +15,7 @@ export const C07_RENDER_COMPARISON_OFFLINE_REPORT_PATH =
 export const C07_RENDER_COMPARISON_OFFLINE_SELECTION_EVIDENCE_PATH =
   'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-contract-2026-10-17.md';
 export const C07_RENDER_COMPARISON_OFFLINE_CLAIM_LABEL_NAME =
-  'harness-r95-c07-render-comparison-offline-matrix-claimed';
+  'harness-r95-c07-cohort-render-offline-claimed';
 export const C07_RENDER_COMPARISON_OFFLINE_EVIDENCE_KIND =
   'codex_cli_c07_render_comparison_offline_agent_mcp_matrix';
 export const C07_RENDER_COMPARISON_OFFLINE_ANSWER_CHECK_METHOD =

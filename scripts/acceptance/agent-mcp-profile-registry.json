@@ -631,7 +631,7 @@
       "epochId": "run95-c07-render-cohort-comparison-offline-agent-mcp-20261017",
       "toolName": "bangumi.render_subject_cohort_comparison",
       "argumentProfile": "fixed-c07-synthetic-single-cohort-render-comparison-v1",
-      "claimLabelName": "harness-r95-c07-render-comparison-offline-matrix-claimed",
+      "claimLabelName": "harness-r95-c07-cohort-render-offline-claimed",
       "reportPath": "docs/live-probes/c07-render-comparison-offline-agent-mcp-run95.json",
       "selectionEvidencePath": "docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-contract-2026-10-17.md",
       "evidenceKind": "codex_cli_c07_render_comparison_offline_agent_mcp_matrix",

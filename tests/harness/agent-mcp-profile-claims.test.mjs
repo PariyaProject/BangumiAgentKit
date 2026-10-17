@@ -69,6 +69,17 @@ test('C04 matrix profile binds its two exact read-only tools in order', () => {
 });
 
 test('Agent/MCP profile registry is closed and immutable, including C03 exact calls', () => {
+  for (const profile of listAgentMcpProfiles()) {
+    assert.ok(
+      profile.claimLabelName.length <= 50,
+      `${profile.id} claim label exceeds GitHub's limit`,
+    );
+    const terminalLabelName = profile.claimLabelName.replace(/-claimed$/u, '-terminal');
+    assert.ok(
+      terminalLabelName.length <= 50,
+      `${profile.id} terminal label exceeds GitHub's limit`,
+    );
+  }
   assert.ok(PROFILE);
   assert.equal(PROFILE.id, 'c03-voice-actor-comparison-v1');
   assert.equal(PROFILE.frontierId, 'C03');
@@ -93,6 +104,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   );
   assert.equal(c07RenderComparison.acceptanceScope, 'agent-mcp-matrix-only');
   assert.equal(c07RenderComparison.networkMode, 'run95-c07-render-comparison-synthetic-offline-v1');
+  assert.equal(c07RenderComparison.claimLabelName, 'harness-r95-c07-cohort-render-offline-claimed');
   const a01RenderAggregation = getAgentMcpProfileById(
     'a01-render-cohort-aggregation-agent-mcp-offline-v1',
   );
