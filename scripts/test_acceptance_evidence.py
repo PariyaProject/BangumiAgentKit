@@ -7184,6 +7184,103 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             sources = GENERATOR.model_mcp_e2e_sources(self.catalog)
         self.assertEqual(sources, {})
 
+    def test_g01_query_subjects_offline_signed_matrix_route_credits_only_query_tool(self):
+        report = {
+            'evidenceKind': 'codex_cli_g01_query_subjects_offline_agent_mcp',
+            'profileId': 'g01-query-subjects-offline-agent-mcp-matrix-v1',
+            'runNumber': 95,
+            'frontierId': 'G01',
+            'scenarioId': None,
+            'toolName': 'bangumi.query_subjects',
+        }
+        self.assertEqual(
+            GENERATOR.codex_g01_query_subjects_offline_profile_matrix_targets(report),
+            ('bangumi.query_subjects',),
+        )
+        self.assertEqual(
+            GENERATOR.codex_g01_query_subjects_offline_profile_matrix_targets({
+                **report,
+                'toolName': 'bangumi.render_query_subjects',
+            }),
+            (),
+        )
+        self.assertEqual(
+            GENERATOR.codex_g01_query_subjects_offline_profile_matrix_targets({
+                **report,
+                'scenarioId': 'G01',
+            }),
+            (),
+        )
+
+    def test_g01_query_subjects_offline_report_reference_maps_only_query_subjects(self):
+        relative_path = 'docs/live-probes/g01-query-subjects-offline-agent-mcp-run95.json'
+        report_path = self.live_probe_dir / Path(relative_path).name
+        report = {
+            'evidenceKind': 'codex_cli_g01_query_subjects_offline_agent_mcp',
+            'profileId': 'g01-query-subjects-offline-agent-mcp-matrix-v1',
+            'runNumber': 95,
+            'frontierId': 'G01',
+            'scenarioId': None,
+            'prNumber': 191,
+            'toolName': 'bangumi.query_subjects',
+        }
+        epoch_status = {'epoch': {'state': {}}}
+
+        def write_report(value):
+            report_path.write_text(json.dumps(value, ensure_ascii=False), encoding='utf-8')
+
+        with (
+            patch.object(
+                GENERATOR,
+                'codex_g01_query_subjects_offline_profile_harness_status',
+                return_value={'state': 'REPORT_WRITTEN'},
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_g01_query_subjects_offline_profile_epoch_harness_status',
+                return_value=epoch_status,
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_g01_query_subjects_offline_profile_report_is_valid',
+                return_value=True,
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_g01_query_subjects_offline_profile_report_matches_candidate_revision',
+                return_value=True,
+            ),
+        ):
+            write_report(report)
+            sources = GENERATOR.model_mcp_e2e_sources(self.catalog)
+        self.assertEqual(sources, {'bangumi.query_subjects': {relative_path}})
+
+        with (
+            patch.object(
+                GENERATOR,
+                'codex_g01_query_subjects_offline_profile_harness_status',
+                return_value={'state': 'REPORT_WRITTEN'},
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_g01_query_subjects_offline_profile_epoch_harness_status',
+                return_value=epoch_status,
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_g01_query_subjects_offline_profile_report_is_valid',
+                return_value=True,
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_g01_query_subjects_offline_profile_report_matches_candidate_revision',
+                return_value=True,
+            ),
+        ):
+            write_report({**report, 'toolName': 'bangumi.render_query_subjects'})
+            sources = GENERATOR.model_mcp_e2e_sources(self.catalog)
+        self.assertEqual(sources, {})
+
     def test_a01_report_remains_countable_after_candidate_child_evidence_commit(self):
         report = self._a01_report_fixture()
         self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-A01.json'
@@ -7935,6 +8032,78 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         )
         self.assertIn('does not contain evidence for bangumi.render_query_subjects', error)
 
+    def test_offline_query_subjects_report_reference_maps_only_query_tool(self):
+        relative_path = 'docs/live-probes/g01-query-subjects-offline-agent-mcp-run95.json'
+        report = {
+            'evidenceKind': 'codex_cli_g01_query_subjects_offline_agent_mcp',
+            'profileId': 'g01-query-subjects-offline-agent-mcp-matrix-v1',
+            'runNumber': 95,
+            'frontierId': 'G01',
+            'scenarioId': None,
+            'resultStatus': 'SUCCESS',
+            'codexMcpToolEventCount': 1,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'toolName': 'bangumi.query_subjects',
+            'serverToolNames': ['bangumi.query_subjects'],
+            'mcpServerNames': ['bgk_g01_query_subjects_offline'],
+            'networkMode': 'run95-g01-query-subjects-synthetic-offline-v1',
+            'offlineFixture': {
+                'profile': 'run95-g01-query-subjects-synthetic-offline-v1',
+                'requestCount': 1,
+                'searchRequestCount': 1,
+                'duplicateRequestCount': 0,
+                'unexpectedRequestCount': 0,
+                'rejectedHeaderCount': 0,
+                'expectedOperationsComplete': True,
+                'rawFixturePayloadStored': False,
+            },
+            'resultSummary': {
+                'resultState': 'ok',
+                'returnedItems': 1,
+                'coverageState': 'partial',
+                'requested': 1,
+                'returned': 1,
+                'pagesScanned': 1,
+                'totalKind': 'estimated',
+                'warningCount': 1,
+            },
+            'networkBoundary': {
+                'liveBangumiApiRequestCount': 0,
+                'unexpectedNetworkRequestCount': 0,
+                'rendererAssetRequestCount': 0,
+                'fullCodexHarnessNetworkSandboxed': False,
+            },
+            'answerChecks': {f'check{index}': True for index in range(9)},
+            'privacy': {
+                'authProfile': 'anonymous',
+                'oauthAttempted': False,
+                'accountDataRead': False,
+                'writesAttempted': False,
+                'communityRead': False,
+                'qqPipelineTested': False,
+                'timClientTested': False,
+                'promptStored': False,
+                'answerStored': False,
+                'rawFixtureRowsStored': False,
+                'rawToolResultStored': False,
+                'artifactImageBytesStored': False,
+                'credentialsStored': False,
+            },
+        }
+        (self.root / relative_path).write_text(json.dumps(report), encoding='utf-8')
+        cell = f'✅<br>`{relative_path}`'
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+            'bangumi.query_subjects', cell, 'agent_mcp',
+        ))
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.render_query_subjects', cell, 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.render_query_subjects', error)
+
     def write_r01_offline_report(
         self, relative_path=TABLE_CHECKER.R01_OFFLINE_REPORT_PATH, **overrides,
     ):
@@ -8659,6 +8828,26 @@ class G01OfflineProfileStaticMarkerTests(unittest.TestCase):
                 revision,
             ),
         )
+
+    def test_synthetic_query_subjects_implementation_keeps_g01_partial_without_matrix_credit(self):
+        frontier = json.loads(
+            (GENERATOR.ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'),
+        )
+        record = next(item for item in frontier['records'] if item['id'] == 'G01')
+        evidence = record['evidence']['synthetic_offline_agent_mcp_implementation_2026_10_17']
+
+        self.assertEqual(record['status'], 'PARTIAL')
+        self.assertIn(evidence['contract'], record['source_refs'])
+        self.assertIn(evidence['offline_fixture'], record['source_refs'])
+        self.assertIn(evidence['direct_tool_test'], record['source_refs'])
+        self.assertIn(
+            'implementation and local direct-ToolRegistry fixture evidence only',
+            evidence['acceptance_boundary'],
+        )
+        self.assertIn('adds no matrix credit by itself', evidence['acceptance_boundary'])
+        self.assertIn('65/65', record['next_action'])
+        self.assertIn('never retry the consumed one-shot', record['next_action'])
+        self.assertIn('do not replay the consumed G01 Agent/MCP canary', record['next_action'])
 
 
 class C07RenderComparisonOfflineProfileReportValidationTests(unittest.TestCase):

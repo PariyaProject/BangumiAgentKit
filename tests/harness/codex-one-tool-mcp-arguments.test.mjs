@@ -7,11 +7,16 @@ test('C04 MCP profile parser exposes one indexed tool per separate Codex run', (
   const profile = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
   for (const [index, call] of profile.calls.entries()) {
     const config = parseCodexOneToolMcpArguments([
-      '--profile-id', profile.id,
-      '--profile-call-index', String(index),
-      '--summary-file', `/tmp/c04-mcp-summary-${index}.json`,
-      '--candidate-sha', 'a'.repeat(40),
-      '--bundle-sha256', 'b'.repeat(64),
+      '--profile-id',
+      profile.id,
+      '--profile-call-index',
+      String(index),
+      '--summary-file',
+      `/tmp/c04-mcp-summary-${index}.json`,
+      '--candidate-sha',
+      'a'.repeat(40),
+      '--bundle-sha256',
+      'b'.repeat(64),
     ]);
 
     assert.equal(config.profile.id, profile.id);
@@ -22,25 +27,88 @@ test('C04 MCP profile parser exposes one indexed tool per separate Codex run', (
     assert.deepEqual(config.expectedArgumentSequence, [call.arguments]);
     assert.equal(config.networkMode, profile.networkMode);
   }
-  assert.throws(() => parseCodexOneToolMcpArguments([
-    '--profile-id', profile.id,
-    '--summary-file', '/tmp/c04-mcp-summary.json',
-    '--candidate-sha', 'a'.repeat(40),
-    '--bundle-sha256', 'b'.repeat(64),
-  ]), /profile-call-index/u);
-  assert.throws(() => parseCodexOneToolMcpArguments([
-    '--profile-id', profile.id,
-    '--profile-call-index', '2',
-    '--summary-file', '/tmp/c04-mcp-summary.json',
-    '--candidate-sha', 'a'.repeat(40),
-    '--bundle-sha256', 'b'.repeat(64),
-  ]), /profile-call-index/u);
-  assert.throws(() => parseCodexOneToolMcpArguments([
-    '--tool', 'bangumi.auth_status',
-    '--arguments-json', '{}',
-    '--profile-call-index', '0',
-    '--summary-file', '/tmp/c04-mcp-summary.json',
-    '--candidate-sha', 'a'.repeat(40),
-    '--bundle-sha256', 'b'.repeat(64),
-  ]), /reserved for the registered C04 profile/u);
+  assert.throws(
+    () =>
+      parseCodexOneToolMcpArguments([
+        '--profile-id',
+        profile.id,
+        '--summary-file',
+        '/tmp/c04-mcp-summary.json',
+        '--candidate-sha',
+        'a'.repeat(40),
+        '--bundle-sha256',
+        'b'.repeat(64),
+      ]),
+    /profile-call-index/u,
+  );
+  assert.throws(
+    () =>
+      parseCodexOneToolMcpArguments([
+        '--profile-id',
+        profile.id,
+        '--profile-call-index',
+        '2',
+        '--summary-file',
+        '/tmp/c04-mcp-summary.json',
+        '--candidate-sha',
+        'a'.repeat(40),
+        '--bundle-sha256',
+        'b'.repeat(64),
+      ]),
+    /profile-call-index/u,
+  );
+  assert.throws(
+    () =>
+      parseCodexOneToolMcpArguments([
+        '--tool',
+        'bangumi.auth_status',
+        '--arguments-json',
+        '{}',
+        '--profile-call-index',
+        '0',
+        '--summary-file',
+        '/tmp/c04-mcp-summary.json',
+        '--candidate-sha',
+        'a'.repeat(40),
+        '--bundle-sha256',
+        'b'.repeat(64),
+      ]),
+    /reserved for the registered C04 profile/u,
+  );
+});
+
+test('G01 query-subjects profile is fixed to one exact synthetic offline read', () => {
+  const profile = getAgentMcpProfileById('g01-query-subjects-offline-agent-mcp-matrix-v1');
+  assert.ok(profile);
+  const config = parseCodexOneToolMcpArguments([
+    '--profile-id',
+    profile.id,
+    '--summary-file',
+    '/tmp/g01-query-subjects-mcp-summary.json',
+    '--candidate-sha',
+    'a'.repeat(40),
+    '--bundle-sha256',
+    'b'.repeat(64),
+  ]);
+  assert.equal(config.profile.id, profile.id);
+  assert.equal(config.toolName, 'bangumi.query_subjects');
+  assert.deepEqual(config.toolNames, ['bangumi.query_subjects']);
+  assert.deepEqual(config.expectedToolSequence, ['bangumi.query_subjects']);
+  assert.equal(config.networkMode, 'run95-g01-query-subjects-synthetic-offline-v1');
+  assert.throws(
+    () =>
+      parseCodexOneToolMcpArguments([
+        '--profile-id',
+        profile.id,
+        '--tool',
+        'bangumi.query_subjects',
+        '--summary-file',
+        '/tmp/g01-query-subjects-mcp-summary.json',
+        '--candidate-sha',
+        'a'.repeat(40),
+        '--bundle-sha256',
+        'b'.repeat(64),
+      ]),
+    /cannot be combined/u,
+  );
 });

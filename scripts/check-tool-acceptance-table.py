@@ -623,6 +623,76 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                 and all(value is True for value in g01_render_query_checks.values())
                 and name == 'bangumi.render_query_subjects'
             )
+            g01_query_subjects_fixture = report.get('offlineFixture') if isinstance(report, dict) else None
+            g01_query_subjects_result = report.get('resultSummary') if isinstance(report, dict) else None
+            g01_query_subjects_network = report.get('networkBoundary') if isinstance(report, dict) else None
+            g01_query_subjects_checks = report.get('answerChecks') if isinstance(report, dict) else None
+            g01_query_subjects_privacy = report.get('privacy') if isinstance(report, dict) else None
+            g01_query_subjects_offline_matches = (
+                isinstance(report, dict)
+                and relative_path == 'docs/live-probes/g01-query-subjects-offline-agent-mcp-run95.json'
+                and report.get('evidenceKind') == 'codex_cli_g01_query_subjects_offline_agent_mcp'
+                and report.get('profileId') == 'g01-query-subjects-offline-agent-mcp-matrix-v1'
+                and report.get('runNumber') == 95
+                and report.get('frontierId') == 'G01'
+                and report.get('scenarioId') is None
+                and report.get('resultStatus') == 'SUCCESS'
+                and report.get('codexMcpToolEventCount') == 1
+                and report.get('allowedCallCount') == 1
+                and report.get('deniedCallCount') == 0
+                and report.get('nonMcpToolEventCount') == 0
+                and report.get('nonMcpToolTypes') == []
+                and report.get('shellToolCallCount') == 0
+                and report.get('toolName') == 'bangumi.query_subjects'
+                and report.get('serverToolNames') == ['bangumi.query_subjects']
+                and report.get('mcpServerNames') == ['bgk_g01_query_subjects_offline']
+                and report.get('networkMode') == 'run95-g01-query-subjects-synthetic-offline-v1'
+                and g01_query_subjects_fixture == {
+                    'profile': 'run95-g01-query-subjects-synthetic-offline-v1',
+                    'requestCount': 1,
+                    'searchRequestCount': 1,
+                    'duplicateRequestCount': 0,
+                    'unexpectedRequestCount': 0,
+                    'rejectedHeaderCount': 0,
+                    'expectedOperationsComplete': True,
+                    'rawFixturePayloadStored': False,
+                }
+                and isinstance(g01_query_subjects_result, dict)
+                and set(g01_query_subjects_result) == {
+                    'resultState', 'returnedItems', 'coverageState', 'requested', 'returned',
+                    'pagesScanned', 'totalKind', 'warningCount',
+                }
+                and g01_query_subjects_result.get('resultState') == 'ok'
+                and g01_query_subjects_result.get('returnedItems') == 1
+                and g01_query_subjects_result.get('coverageState') in {
+                    'complete', 'partial', 'unavailable', 'not_computable', 'unknown',
+                }
+                and g01_query_subjects_result.get('requested') == 1
+                and g01_query_subjects_result.get('returned') == 1
+                and g01_query_subjects_result.get('pagesScanned') == 1
+                and g01_query_subjects_result.get('totalKind') in {
+                    'exact', 'estimated', 'unknown', 'unavailable',
+                }
+                and type(g01_query_subjects_result.get('warningCount')) is int
+                and 0 <= g01_query_subjects_result['warningCount'] <= 8
+                and g01_query_subjects_network == {
+                    'liveBangumiApiRequestCount': 0,
+                    'unexpectedNetworkRequestCount': 0,
+                    'rendererAssetRequestCount': 0,
+                    'fullCodexHarnessNetworkSandboxed': False,
+                }
+                and isinstance(g01_query_subjects_checks, dict)
+                and len(g01_query_subjects_checks) == 9
+                and all(value is True for value in g01_query_subjects_checks.values())
+                and isinstance(g01_query_subjects_privacy, dict)
+                and g01_query_subjects_privacy.get('authProfile') == 'anonymous'
+                and all(
+                    value is False
+                    for key, value in g01_query_subjects_privacy.items()
+                    if key != 'authProfile'
+                )
+                and name == 'bangumi.query_subjects'
+            )
             r01_offline_matches = r01_offline_agent_mcp_matches(
                 name, relative_path, report,
             )
@@ -631,7 +701,8 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
             )
             matches = (
                 scenario_matches or c04_matches or title_query_render_matches
-                or g01_render_query_matches or r01_offline_matches or r02_positive_matches
+                or g01_render_query_matches or g01_query_subjects_offline_matches
+                or r01_offline_matches or r02_positive_matches
             )
         else:
             try:

@@ -56,6 +56,10 @@ import {
   createG01RenderQueryOfflineFetch,
 } from '../../scripts/lib/g01-render-query-subjects-offline-fixture.mjs';
 import {
+  assertG01QuerySubjectsOfflineFixtureProfile,
+  createG01QuerySubjectsOfflineFetch,
+} from '../../scripts/lib/g01-query-subjects-offline-matrix-fixture.mjs';
+import {
   C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
@@ -63,6 +67,7 @@ import {
   G01_RENDER_QUERY_OFFLINE_NETWORK_MODE,
   G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
 } from '../../scripts/lib/g01-render-query-subjects-offline-profile.mjs';
+import { G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE } from '../../scripts/lib/g01-query-subjects-offline-matrix-profile.mjs';
 import {
   assertP02PersonProfileOfflineProfile,
   createP02PersonProfileOfflineFetch,
@@ -273,6 +278,9 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === G01_RENDER_QUERY_OFFLINE_NETWORK_MODE) {
     assertG01RenderQueryOfflineFixtureProfile(config.profile);
   }
+  if (config.networkMode === G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE) {
+    assertG01QuerySubjectsOfflineFixtureProfile(config.profile);
+  }
   if (config.networkMode === G06_CAST_OFFLINE_NETWORK_MODE) {
     assertG06SubjectCastOfflineProfile(config.profile);
   }
@@ -365,19 +373,21 @@ async function main(argv = process.argv.slice(2)) {
             ? createC07RenderComparisonOfflineFetch()
             : config.networkMode === G01_RENDER_QUERY_OFFLINE_NETWORK_MODE
               ? createG01RenderQueryOfflineFetch()
-              : config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE
-                ? createP02PersonProfileOfflineFetch()
-                : config.networkMode === G06_CAST_OFFLINE_NETWORK_MODE
-                  ? createG06SubjectCastOfflineFetch()
-                  : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
-                    ? createR04SeriesWatchOrderOfflineFetch()
-                    : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
-                      ? createR04RenderSeriesWatchOrderOfflineFetch()
-                      : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
-                        ? createR01RelationsOfflineFetch()
-                        : config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE
-                          ? createR03RelationsOfflineFetch()
-                          : null;
+              : config.networkMode === G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE
+                ? createG01QuerySubjectsOfflineFetch()
+                : config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE
+                  ? createP02PersonProfileOfflineFetch()
+                  : config.networkMode === G06_CAST_OFFLINE_NETWORK_MODE
+                    ? createG06SubjectCastOfflineFetch()
+                    : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
+                      ? createR04SeriesWatchOrderOfflineFetch()
+                      : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
+                        ? createR04RenderSeriesWatchOrderOfflineFetch()
+                        : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
+                          ? createR01RelationsOfflineFetch()
+                          : config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE
+                            ? createR03RelationsOfflineFetch()
+                            : null;
   const r04RenderAssetFence =
     config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
       ? createR04RenderSeriesWatchOrderAssetFence()

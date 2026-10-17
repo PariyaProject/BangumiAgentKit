@@ -41,6 +41,10 @@ import {
   G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
   summarizeG01RenderQueryOfflineToolResult,
 } from './g01-render-query-subjects-offline-profile.mjs';
+import {
+  G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
+  summarizeG01QuerySubjectsOfflineToolResult,
+} from './g01-query-subjects-offline-matrix-profile.mjs';
 
 const C04_RESULT_STATES = new Set([
   'ok',
@@ -365,6 +369,11 @@ export function summarizeProfileToolResult(
   if (profileId === G01_RENDER_QUERY_OFFLINE_PROFILE_ID) {
     return toolName === 'bangumi.render_query_subjects'
       ? summarizeG01RenderQueryOfflineToolResult(result, artifactSummary)
+      : { resultState: 'unexpected_tool' };
+  }
+  if (profileId === G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID) {
+    return toolName === 'bangumi.query_subjects'
+      ? summarizeG01QuerySubjectsOfflineToolResult(result)
       : { resultState: 'unexpected_tool' };
   }
   if (profileId === TITLE_QUERY_RENDER_PROFILE_ID) {
