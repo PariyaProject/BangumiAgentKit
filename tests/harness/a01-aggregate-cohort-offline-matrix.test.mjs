@@ -152,12 +152,22 @@ test('offline fixture rejects credentials, repeated calls, and unregistered requ
     headers: { cookie: 'synthetic-cookie' },
   });
   assert.equal(cookieHeader.status, 599);
+  assert.equal(fixture.snapshot().unexpectedRequestCount, 5);
+  const proxyAuthorizationHeader = await fixture.fetchFn('https://api.bgm.tv/v0/subjects/990184', {
+    headers: { 'proxy-authorization': 'Bearer synthetic-proxy-only' },
+  });
+  assert.equal(proxyAuthorizationHeader.status, 599);
+  assert.equal(fixture.snapshot().unexpectedRequestCount, 6);
+  const apiKeyHeader = await fixture.fetchFn('https://api.bgm.tv/v0/subjects/990184', {
+    headers: { 'x-api-key': 'synthetic-api-key-only' },
+  });
+  assert.equal(apiKeyHeader.status, 599);
   assert.deepEqual(fixture.snapshot(), {
     profile: A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
-    requestCount: 7,
+    requestCount: 9,
     searchRequestCount: 1,
     detailRequestCount: 1,
-    unexpectedRequestCount: 5,
+    unexpectedRequestCount: 7,
     authorizationHeaderCount: 1,
     expectedOperationsComplete: true,
   });
