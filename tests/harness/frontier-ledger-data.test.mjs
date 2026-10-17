@@ -140,14 +140,17 @@ test('R01 frontier keeps source limits separate from Harness runtime state', () 
   assertOneShotRuntimeIsHarnessOwned(record);
 });
 
-test('R03 offline matrix evidence keeps the two-hop scenario unassessed', () => {
+test('R03 bounded rating evidence is partial and does not credit Agent/MCP', () => {
   const record = ledger.records.find(({ id }) => id === 'R03');
   assert.ok(record, 'R03 must remain in the canonical frontier');
-  assert.equal(record.status, 'UNASSESSED');
-  assert.match(record.next_action, /v2 profile .* may credit only/u);
-  assert.match(record.next_action, /terminal INCONCLUSIVE\/no-report\/retryAllowed=false/u);
-  assert.match(record.next_action, /never repeat its claim or fixed IDs/u);
-  assert.match(record.next_action, /do not answer the highest-rated two-hop question/u);
+  assert.equal(record.status, 'PARTIAL');
+  assert.match(record.next_action, /analysisMode=observed_two_hop_rating/u);
+  assert.match(record.next_action, /bounded outgoing two-hop sample/u);
+  assert.match(record.next_action, /does not establish the complete two-hop graph/u);
+  assert.match(record.next_action, /local tests earn no Agent\/MCP matrix credit/u);
+  assert.match(record.next_action, /PR #208 v1 and PR #212 v2 R03 claims are terminal/u);
+  assert.match(record.next_action, /retryAllowed=false and must never be repeated/u);
+  assert.match(record.next_action, /must not change the 65\/65 public API target/u);
   for (const source of [
     'docs/research/run95-r03-relations-agent-mcp-offline-matrix-2026-10-17.md',
     'docs/research/run95-r03-direct-relations-offline-agent-mcp-matrix-v2-2026-10-17.md',
@@ -165,6 +168,12 @@ test('R03 offline matrix evidence keeps the two-hop scenario unassessed', () => 
     'tests/harness/r03-relations-offline-fixture.test.mjs',
     'tests/harness/run-r03-relations-offline-agent-mcp.test.mjs',
     'tests/harness/write-r03-relations-offline-agent-mcp-report.test.mjs',
+    'docs/research/run95-r03-bounded-observed-two-hop-rating-contract-2026-10-17.md',
+    'packages/bangumi-core/src/services/subject-relations-analysis-service.ts',
+    'packages/bangumi-core/src/services/subject-service.ts',
+    'apps/mcp/src/result-presenter.ts',
+    'tests/semantic/subject-relations-analysis.test.ts',
+    'tests/integration/subject-relations-analysis-presenter.test.ts',
   ]) {
     assert.ok(record.source_refs.includes(source), `R03 source reference missing: ${source}`);
     assert.equal(existsSync(path.join(root, source)), true, `R03 source reference is missing: ${source}`);

@@ -1073,16 +1073,48 @@ def fresh_public_epoch_request_total() -> int | None:
     return total if total <= FRESH_PUBLIC_EPOCH_REQUEST_CAP else None
 
 
+SUBJECT_RELATIONS_ANALYSIS_ADDED_DESCRIPTION = (
+    '可显式设置 analysisMode=observed_two_hop_rating，串行检查有界的两跳出向样本及当前条目评分，'
+    '返回“本次成功观察到的最高评分”与并列项、路径和覆盖证据；它不代表完整关系图或全局最高分。'
+    '分析模式最多 11 个逻辑 GET、每个响应最多 1 MiB。指定 analysisMode 时优先返回分析 envelope。'
+)
+
+
 def public_api_catalog_entry_is_compatible_with_current(
     tool_name: object,
     evidence_tool: object,
     current_tool: object,
 ) -> bool:
-    """Retain evidence for unchanged calls across the additive cohort-budget option."""
+    """Retain historical public evidence only across explicitly safe additive options."""
     if not isinstance(evidence_tool, dict) or not isinstance(current_tool, dict):
         return False
     if evidence_tool == current_tool:
         return True
+    if tool_name == 'bangumi.get_subject_relations':
+        previous_description = evidence_tool.get('description')
+        current_description = current_tool.get('description')
+        historical = json.loads(json.dumps(current_tool))
+        schema = historical.get('inputSchema')
+        properties = schema.get('properties') if isinstance(schema, dict) else None
+        required = schema.get('required') if isinstance(schema, dict) else None
+        expected_analysis_mode = {
+            'description': '显式启用有界两跳观察评分分析；缺省时不增加请求且保留既有返回形式',
+            'type': 'string',
+            'const': 'observed_two_hop_rating',
+        }
+        if (
+            not isinstance(previous_description, str)
+            or current_description
+            != previous_description + SUBJECT_RELATIONS_ANALYSIS_ADDED_DESCRIPTION
+            or not isinstance(properties, dict)
+            or properties.get('analysisMode') != expected_analysis_mode
+            or not isinstance(required, list)
+            or 'analysisMode' in required
+        ):
+            return False
+        del properties['analysisMode']
+        historical['description'] = previous_description
+        return evidence_tool == historical
     compatible_names = {
         'bangumi.aggregate_subject_cohort',
         'bangumi.compare_subject_cohorts',

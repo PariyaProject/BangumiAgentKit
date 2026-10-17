@@ -349,7 +349,7 @@ export class SubjectService {
 
   async getSubjectRelations(
     subjectId: number,
-    options: { limit?: number; maxResponseBytes?: number } = {},
+    options: { limit?: number; maxResponseBytes?: number; strict?: boolean } = {},
   ): Promise<SubjectRelationItem[]> {
     const result = await this.getSubjectRelationsWithCoverage(subjectId, options);
     return result.items;
@@ -357,13 +357,20 @@ export class SubjectService {
 
   async getSubjectRelationsWithCoverage(
     subjectId: number,
-    options: { limit?: number; maxResponseBytes?: number } = {},
+    options: { limit?: number; maxResponseBytes?: number; strict?: boolean } = {},
   ): Promise<SubjectRelationsResult> {
     const raw = await this.api.getRelatedSubjectsBySubjectId(subjectId, {
       ...(options.maxResponseBytes === undefined
         ? {}
         : { maxResponseBytes: options.maxResponseBytes }),
     });
+    if (options.strict && !Array.isArray(raw)) {
+      throw new BangumiError(
+        'PARSER_ERROR',
+        `SCHEMA_DRIFT: subject ${subjectId} relation response must be an array.`,
+        false,
+      );
+    }
     const rawRows = Array.isArray(raw) ? raw : [];
     const validRows = rawRows.filter(validSubjectRelation);
     const schemaDriftRows = rawRows.length - validRows.length;
