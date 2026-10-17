@@ -189,11 +189,9 @@ import {
   C07_RENDER_COMPARISON_OFFLINE_SELECTION_EVIDENCE_PATH,
 } from './lib/c07-render-comparison-offline-profile.mjs';
 import {
-  G01_RENDER_QUERY_OFFLINE_ARGUMENT_PROFILE,
-  G01_RENDER_QUERY_OFFLINE_EPOCH_ID,
   G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
-  G01_RENDER_QUERY_OFFLINE_REPORT_PATH,
-  G01_RENDER_QUERY_OFFLINE_SELECTION_EVIDENCE_PATH,
+  G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID,
+  getG01RenderQueryOfflineProfileSpec,
 } from './lib/g01-render-query-subjects-offline-profile.mjs';
 import {
   G06_MODEL,
@@ -282,6 +280,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'a01-rating-dispersion-1998-spring-v1',
   'g06-cast-offline-agent-mcp-matrix-v1',
   'g01-render-query-subjects-offline-agent-mcp-v1',
+  G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID,
   'g01-query-subjects-offline-agent-mcp-matrix-v1',
 ]);
 const profileRequiresExactCiRunEvidence = (profileId) => PROFILE_CI_RUN_EVIDENCE_IDS.has(profileId);
@@ -807,7 +806,7 @@ Usage: pnpm harness <command> [options]
   epoch:g16-one-shot-run --run <issue>
   epoch:agent-mcp-profile-status --run <issue> --pr <number> --profile-id <id>
   epoch:agent-mcp-profile-claim --run <issue> --pr <number> --profile-id <id> --bundle-sha256 <sha> --reviewer-id <id> --runner-public-key <base64>
-  epoch:agent-mcp-profile-result --run <issue> --pr <number> --profile-id <id> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN> [--report-sha256 <sha>]
+  epoch:agent-mcp-profile-result --run <issue> --pr <number> --profile-id <id> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN> [--report-sha256 <sha>] [--diagnostics-json <allowlisted-json>]
   epoch:r01-one-shot-run --run <issue>
   epoch:r01-one-shot-reconcile --run <issue> --pr <number>
   epoch:g06-one-shot-run --run <issue>
@@ -3856,6 +3855,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'c07-render-comparison-offline-agent-mcp-matrix-v1':
       return validateC07RenderComparisonOfflineSanitizedReportFile(claim, root, reportPath);
     case 'g01-render-query-subjects-offline-agent-mcp-v1':
+    case 'g01-render-query-subjects-offline-agent-mcp-v2':
       return validateG01RenderQueryOfflineSanitizedReportFile(claim, root, reportPath);
     case 'g01-query-subjects-offline-agent-mcp-matrix-v1':
       return validateG01QuerySubjectsOfflineSanitizedReportFile(claim, root, reportPath);
@@ -7736,9 +7736,15 @@ function assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(epoch, run
   }
 }
 
-function assertG01RenderQueryOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber) {
-  const profile = getAgentMcpProfileById(G01_RENDER_QUERY_OFFLINE_PROFILE_ID);
-  const disposition = agentMcpProfileClaims(epoch)[G01_RENDER_QUERY_OFFLINE_PROFILE_ID];
+function assertG01RenderQueryOfflineProfileReconciledBeforeMerge(
+  epoch,
+  runNumber,
+  prNumber,
+  profileId = G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
+) {
+  const profile = getAgentMcpProfileById(profileId);
+  const profileSpec = getG01RenderQueryOfflineProfileSpec(profileId);
+  const disposition = agentMcpProfileClaims(epoch)[profileId];
   const latestReview = epoch.review_history?.at(-1);
   const terminalState = disposition?.state;
   const reportWritten = terminalState === 'REPORT_WRITTEN';
@@ -7752,17 +7758,18 @@ function assertG01RenderQueryOfflineProfileReconciledBeforeMerge(epoch, runNumbe
       review?.verdict === 'PASS',
   );
   if (
-    epoch.epoch_id !== G01_RENDER_QUERY_OFFLINE_EPOCH_ID ||
+    !profileSpec ||
+    epoch.epoch_id !== profileSpec.epochId ||
     epoch.state !== 'REVIEW_PASSED' ||
     epoch.pr_number !== Number(prNumber) ||
     !profile ||
-    disposition?.profileId !== G01_RENDER_QUERY_OFFLINE_PROFILE_ID ||
+    disposition?.profileId !== profileId ||
     disposition.frontierId !== 'G01' ||
-    disposition.epochId !== G01_RENDER_QUERY_OFFLINE_EPOCH_ID ||
+    disposition.epochId !== profileSpec.epochId ||
     disposition.runNumber !== Number(runNumber) ||
     disposition.prNumber !== Number(prNumber) ||
     disposition.toolName !== 'bangumi.render_query_subjects' ||
-    disposition.argumentProfile !== G01_RENDER_QUERY_OFFLINE_ARGUMENT_PROFILE ||
+    disposition.argumentProfile !== profileSpec.argumentProfile ||
     disposition.expectedArgumentsSha256 !== agentMcpProfileArgumentsSha256(profile) ||
     disposition.registrySha256 !== agentMcpProfileRegistrySha256(profile.id) ||
     disposition.retryAllowed !== false ||
@@ -7820,7 +7827,7 @@ function assertG01RenderQueryOfflineProfileReconciledBeforeMerge(epoch, runNumbe
   if (
     record?.status !== 'PARTIAL' ||
     !Array.isArray(sourceRefs) ||
-    !sourceRefs.includes(G01_RENDER_QUERY_OFFLINE_SELECTION_EVIDENCE_PATH)
+    !sourceRefs.includes(profileSpec.selectionEvidencePath)
   ) {
     throw new HarnessInvariantError(
       'G01_RENDER_QUERY_OFFLINE_FRONTIER_INVALID',
@@ -7828,10 +7835,10 @@ function assertG01RenderQueryOfflineProfileReconciledBeforeMerge(epoch, runNumbe
     );
   }
 
-  const reportPath = path.join(root, G01_RENDER_QUERY_OFFLINE_REPORT_PATH);
+  const reportPath = path.join(root, profileSpec.reportPath);
   const changed = new Set(changedPaths(disposition.sourceCandidateSha));
   const allowedRefreshPaths = new Set([
-    G01_RENDER_QUERY_OFFLINE_REPORT_PATH,
+    profileSpec.reportPath,
     'docs/product/frontier-ledger.json',
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
   ]);
@@ -7845,12 +7852,12 @@ function assertG01RenderQueryOfflineProfileReconciledBeforeMerge(epoch, runNumbe
 
   if (reportWritten) {
     if (
-      disposition.reportPath !== G01_RENDER_QUERY_OFFLINE_REPORT_PATH ||
+      disposition.reportPath !== profileSpec.reportPath ||
       !/^[0-9a-f]{64}$/u.test(disposition.reportSha256 ?? '') ||
       (disposition.unacceptedReportSha256 !== null &&
         disposition.unacceptedReportSha256 !== undefined) ||
-      !sourceRefs.includes(G01_RENDER_QUERY_OFFLINE_REPORT_PATH) ||
-      !changed.has(G01_RENDER_QUERY_OFFLINE_REPORT_PATH) ||
+      !sourceRefs.includes(profileSpec.reportPath) ||
+      !changed.has(profileSpec.reportPath) ||
       !changed.has('docs/product/frontier-ledger.json') ||
       !changed.has('docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md')
     ) {
@@ -7863,6 +7870,7 @@ function assertG01RenderQueryOfflineProfileReconciledBeforeMerge(epoch, runNumbe
       disposition,
       root,
       reportPath,
+      profileId,
     );
     if (!validation.passed || validation.reportSha256 !== disposition.reportSha256) {
       throw new HarnessInvariantError(
@@ -8067,8 +8075,18 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
   } else if (epoch.epoch_id === C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID) {
     assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber);
     ensureCleanWorkingTree();
-  } else if (epoch.epoch_id === G01_RENDER_QUERY_OFFLINE_EPOCH_ID) {
-    assertG01RenderQueryOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber);
+  } else if (
+    [G01_RENDER_QUERY_OFFLINE_PROFILE_ID, G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID].some(
+      (profileId) => getG01RenderQueryOfflineProfileSpec(profileId)?.epochId === epoch.epoch_id,
+    )
+  ) {
+    const profileId = [
+      G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
+      G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID,
+    ].find(
+      (candidate) => getG01RenderQueryOfflineProfileSpec(candidate)?.epochId === epoch.epoch_id,
+    );
+    assertG01RenderQueryOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber, profileId);
     ensureCleanWorkingTree();
   } else if (epoch.epoch_id === G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID) {
     assertG01QuerySubjectsOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber);

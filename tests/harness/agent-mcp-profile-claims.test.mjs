@@ -92,7 +92,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 24);
+  assert.equal(listAgentMcpProfiles().length, 25);
   const c07RenderComparison = getAgentMcpProfileById(
     'c07-render-comparison-offline-agent-mcp-matrix-v1',
   );
@@ -113,6 +113,18 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(g01RenderQuery.acceptanceScope, 'agent-mcp-matrix-only');
   assert.equal(g01RenderQuery.networkMode, 'run95-g01-render-query-subjects-synthetic-offline-v1');
   assert.notEqual(g01RenderQuery.id, 'query-render-title-agent-mcp-v1');
+  const g01RenderQueryV2 = getAgentMcpProfileById('g01-render-query-subjects-offline-agent-mcp-v2');
+  assert.ok(g01RenderQueryV2);
+  assert.equal(g01RenderQueryV2.frontierId, 'G01');
+  assert.equal(g01RenderQueryV2.toolName, 'bangumi.render_query_subjects');
+  assert.equal(g01RenderQueryV2.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(
+    g01RenderQueryV2.networkMode,
+    'run95-g01-render-query-subjects-synthetic-offline-v2',
+  );
+  assert.notEqual(g01RenderQueryV2.argumentProfile, g01RenderQuery.argumentProfile);
+  assert.notDeepEqual(g01RenderQueryV2.calls, g01RenderQuery.calls);
+  assert.notEqual(g01RenderQueryV2.claimLabelName, g01RenderQuery.claimLabelName);
   const g01QuerySubjects = getAgentMcpProfileById('g01-query-subjects-offline-agent-mcp-matrix-v1');
   assert.ok(g01QuerySubjects);
   assert.equal(g01QuerySubjects.frontierId, 'G01');
@@ -609,6 +621,25 @@ test('profile failure diagnostics keep only bounded allowlisted checks and count
     checks: { answerValid: true, eventStreamParsed: false },
     counters: { codexErrorItems: 0, nonMcpToolEvents: 3 },
   });
+  assert.deepEqual(
+    normalizeAgentMcpProfileDiagnostics({
+      schemaVersion: 1,
+      reasonCode: 'G01_RENDER_QUERY_AGENT_MCP_ASSERTION_FAILED',
+      checks: { mcpToolErrorResultCountZero: false },
+      counters: { codexErrorItems: 2, mcpToolErrorResults: 1 },
+    }).counters,
+    { codexErrorItems: 2, mcpToolErrorResults: 1 },
+  );
+  assert.throws(
+    () =>
+      normalizeAgentMcpProfileDiagnostics({
+        schemaVersion: 1,
+        reasonCode: 'G01_RENDER_QUERY_AGENT_MCP_ASSERTION_FAILED',
+        checks: { mcpToolErrorResultCountZero: false },
+        counters: { mcpToolErrorResults: 'raw result text' },
+      }),
+    (error) => error.code === 'PROFILE_DIAGNOSTICS_INVALID',
+  );
   for (const reasonCode of [
     'S05_AGENT_MCP_ASSERTION_FAILED',
     'S05_ACTIVE_GATE_CHANGED_DURING_QUERY',

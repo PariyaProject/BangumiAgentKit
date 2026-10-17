@@ -9,16 +9,17 @@ import {
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
-  G01_RENDER_QUERY_OFFLINE_EXPECTED_ARGUMENTS,
-  G01_RENDER_QUERY_OFFLINE_NETWORK_MODE,
+  getG01RenderQueryOfflineProfileSpec,
+  G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
+  G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID,
 } from '../../scripts/lib/g01-render-query-subjects-offline-profile.mjs';
 import {
   buildG01RenderQueryOfflineProfileReport,
   validateG01RenderQueryOfflineProfileReport,
 } from '../../scripts/acceptance/write-g01-render-query-subjects-offline-agent-mcp-report.mjs';
 
-const PROFILE = getAgentMcpProfileById('g01-render-query-subjects-offline-agent-mcp-v1');
-const ACKNOWLEDGEMENT = 'G01_RENDER_QUERY_SYNTHETIC_OFFLINE_OK';
+const PROFILE = getAgentMcpProfileById(G01_RENDER_QUERY_OFFLINE_PROFILE_ID);
+const V2_PROFILE = getAgentMcpProfileById(G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID);
 const CI_RUN_ID = '38806371672';
 const CI_CHECKS = [
   'harness-control',
@@ -31,7 +32,9 @@ const CI_CHECKS = [
 ].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
-function fixtureInput() {
+function fixtureInput(profile = PROFILE) {
+  const spec = getG01RenderQueryOfflineProfileSpec(profile);
+  const expectedArguments = spec.expectedArguments;
   const keyPair = generateKeyPairSync('ed25519');
   const publicKeyBase64 = keyPair.publicKey
     .export({ type: 'spki', format: 'der' })
@@ -41,16 +44,16 @@ function fixtureInput() {
     schemaVersion: 1,
     claimId: 'profile-run-95-pr-222-0123456789ab-1792100000000',
     state: 'CLAIMED',
-    profileId: PROFILE.id,
+    profileId: profile.id,
     frontierId: 'G01',
-    epochId: PROFILE.epochId,
+    epochId: profile.epochId,
     runNumber: 95,
     prNumber: 222,
-    toolName: PROFILE.toolName,
-    argumentProfile: PROFILE.argumentProfile,
-    expectedArguments: [G01_RENDER_QUERY_OFFLINE_EXPECTED_ARGUMENTS],
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
-    registrySha256: agentMcpProfileRegistrySha256(PROFILE.id),
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
+    expectedArguments: [expectedArguments],
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+    registrySha256: agentMcpProfileRegistrySha256(profile.id),
     sourceCandidateSha: '0'.repeat(40),
     baseSha: '1'.repeat(40),
     ciSha: '0'.repeat(40),
@@ -65,7 +68,7 @@ function fixtureInput() {
     retryAllowed: false,
   };
   const offlineFixture = {
-    profile: G01_RENDER_QUERY_OFFLINE_NETWORK_MODE,
+    profile: profile.networkMode,
     requestCount: 2,
     searchRequestCount: 1,
     subjectDetailRequestCount: 1,
@@ -92,19 +95,19 @@ function fixtureInput() {
   };
   const catalogBytes = readFileSync(new URL('../../docs/tool-catalog.json', import.meta.url));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
-  const catalogTool = catalog.find((item) => item.name === PROFILE.toolName);
+  const catalogTool = catalog.find((item) => item.name === profile.toolName);
   const serverSummary = {
-    profileId: PROFILE.id,
-    argumentProfile: PROFILE.argumentProfile,
-    networkMode: G01_RENDER_QUERY_OFFLINE_NETWORK_MODE,
+    profileId: profile.id,
+    argumentProfile: profile.argumentProfile,
+    networkMode: profile.networkMode,
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
     sourceRevision: claim.sourceCandidateSha,
     bundleSha256: claim.bundleSha256,
     catalogSha256: sha256(catalogBytes),
-    toolName: PROFILE.toolName,
+    toolName: profile.toolName,
     toolDescriptionSha256: sha256(catalogTool.description),
     inputSchemaSha256: sha256(canonicalAgentMcpProfileJson(catalogTool.inputSchema)),
-    serverToolNames: [PROFILE.toolName],
+    serverToolNames: [profile.toolName],
     serverToolCount: 1,
     expectedArgumentsSha256: claim.expectedArgumentsSha256,
     expectedCallCount: 1,
@@ -127,6 +130,7 @@ function fixtureInput() {
     eventStreamParsed: true,
     turnCompleted: true,
     codexMcpToolEventCount: 1,
+    mcpToolErrorResultCount: 0,
     codexErrorItemCount: 0,
     nonMcpToolEventCount: 0,
     nonMcpToolTypes: [],
@@ -140,10 +144,8 @@ function fixtureInput() {
       claim,
       serverSummary,
       events,
-      completedMcpCalls: [
-        { tool: PROFILE.toolName, arguments: G01_RENDER_QUERY_OFFLINE_EXPECTED_ARGUMENTS },
-      ],
-      answer: ACKNOWLEDGEMENT,
+      completedMcpCalls: [{ tool: profile.toolName, arguments: expectedArguments }],
+      answer: spec.acknowledgement,
       codexCliVersion: '1.2.14',
       eventStreamSha256: '7'.repeat(64),
       serverSummarySha256: '8'.repeat(64),
@@ -164,6 +166,9 @@ test('G01 report builder signs only sanitized matrix evidence with no scenario c
   assert.equal(built.report.toolName, 'bangumi.render_query_subjects');
   assert.equal(built.report.networkBoundary.fullCodexHarnessNetworkSandboxed, false);
   assert.equal(built.report.ciRunId, input.claim.ciRunId);
+  assert.equal(Object.hasOwn(built.report, 'mcpToolErrorResultCount'), false);
+  assert.equal(built.report.runnerReceipt.kind, 'g01-render-query-offline-runner-receipt-v1');
+  assert.equal(Object.hasOwn(built.report.runnerReceipt.payload, 'mcpToolErrorResultCount'), false);
   assert.deepEqual(built.report.ciChecks, input.claim.ciChecks);
   assert.equal(built.report.runnerReceipt.payload.ciRunId, input.claim.ciRunId);
   assert.deepEqual(built.report.runnerReceipt.payload.ciChecks, input.claim.ciChecks);
@@ -184,6 +189,32 @@ test('G01 report builder signs only sanitized matrix evidence with no scenario c
   assert.equal(Object.hasOwn(built.report, 'prompt'), false);
   assert.equal(Object.hasOwn(built.report, 'answer'), false);
   assert.equal(Object.hasOwn(built.report.artifact, 'id'), false);
+});
+
+test('G01 v2 report binds its fresh identity and stores no raw event or error text', () => {
+  const { input, keyPair } = fixtureInput(V2_PROFILE);
+  const built = buildG01RenderQueryOfflineProfileReport(input, {
+    privateKey: keyPair.privateKey,
+  });
+
+  assert.equal(built.passed, true, JSON.stringify(built));
+  assert.equal(built.report.profileId, V2_PROFILE.id);
+  assert.equal(built.report.epochId, V2_PROFILE.epochId);
+  assert.equal(built.report.evidenceKind, V2_PROFILE.evidenceKind);
+  assert.equal(built.report.networkMode, V2_PROFILE.networkMode);
+  assert.equal(built.report.profile, 'codex-luna-max-offline-agent-mcp-matrix-v2');
+  assert.equal(built.report.mcpToolErrorResultCount, 0);
+  assert.equal(built.report.runnerReceipt.kind, 'g01-render-query-offline-runner-receipt-v2');
+  assert.equal(validateG01RenderQueryOfflineProfileReport(built.report, input.claim).passed, true);
+  const serialized = JSON.stringify(built.report);
+  for (const forbidden of [
+    'fresh synthetic render query offline',
+    'Synthetic Work',
+    'raw event text',
+    'raw error message',
+  ]) {
+    assert.equal(serialized.includes(forbidden), false, forbidden);
+  }
 });
 
 test('G01 report validator rejects changed fixture counters and any modified signed evidence', () => {
@@ -236,7 +267,7 @@ test('G01 report validator rejects changed fixture counters and any modified sig
 test('G01 report builder fails closed for a changed one-tool argument object', () => {
   const { input, keyPair } = fixtureInput();
   input.completedMcpCalls[0].arguments = {
-    ...G01_RENDER_QUERY_OFFLINE_EXPECTED_ARGUMENTS,
+    ...getG01RenderQueryOfflineProfileSpec(PROFILE).expectedArguments,
     includeChronology: true,
   };
   const result = buildG01RenderQueryOfflineProfileReport(input, {

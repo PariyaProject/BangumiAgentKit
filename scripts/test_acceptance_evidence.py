@@ -29,6 +29,166 @@ TABLE_CHECKER = importlib.util.module_from_spec(TABLE_SPEC)
 TABLE_SPEC.loader.exec_module(TABLE_CHECKER)
 
 
+class G01RenderQueryProfileContractTests(unittest.TestCase):
+    def test_v1_and_v2_are_independently_bound_in_acceptance_helpers(self):
+        profile_ids = [
+            'g01-render-query-subjects-offline-agent-mcp-v1',
+            'g01-render-query-subjects-offline-agent-mcp-v2',
+        ]
+        for profile_id in profile_ids:
+            with self.subTest(profile_id=profile_id):
+                profile = GENERATOR.codex_g01_render_query_offline_profile_spec(profile_id)
+                self.assertIsNotNone(profile)
+                registry_sha, arguments_sha = GENERATOR.codex_g01_render_query_offline_profile_hashes(profile)
+                self.assertRegex(registry_sha, r'^[0-9a-f]{64}$')
+                self.assertRegex(arguments_sha, r'^[0-9a-f]{64}$')
+                changed_paths = [
+                    profile['reportPath'],
+                    'docs/product/frontier-ledger.json',
+                    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+                ]
+                self.assertTrue(
+                    GENERATOR.codex_g01_render_query_offline_profile_evidence_refresh_paths_are_valid(
+                        changed_paths, profile_id,
+                    ),
+                )
+                changed_paths[0] = 'docs/live-probes/wrong-profile-report.json'
+                self.assertFalse(
+                    GENERATOR.codex_g01_render_query_offline_profile_evidence_refresh_paths_are_valid(
+                        changed_paths, profile_id,
+                    ),
+                )
+
+                version = 'v2' if profile_id.endswith('-v2') else 'v1'
+                acknowledgement = (
+                    'G01_RENDER_QUERY_SYNTHETIC_OFFLINE_V2_OK'
+                    if version == 'v2'
+                    else 'G01_RENDER_QUERY_SYNTHETIC_OFFLINE_OK'
+                )
+                report = {
+                    'profileId': profile_id,
+                    'evidenceKind': profile['evidenceKind'],
+                    'profile': f'codex-luna-max-offline-agent-mcp-matrix-{version}',
+                    'epochId': profile['epochId'],
+                    'runNumber': 95,
+                    'frontierId': 'G01',
+                    'scenarioId': None,
+                    'resultStatus': 'SUCCESS',
+                    'codexMcpToolEventCount': 1,
+                    'codexErrorItemCount': 0,
+                    'allowedCallCount': 1,
+                    'deniedCallCount': 0,
+                    'nonMcpToolEventCount': 0,
+                    'nonMcpToolTypes': [],
+                    'shellToolCallCount': 0,
+                    'toolName': profile['toolName'],
+                    'serverToolNames': [profile['toolName']],
+                    'mcpServerNames': ['bgk_g01_render_query'],
+                    'networkMode': profile['networkMode'],
+                    'offlineFixture': {
+                        'profile': profile['networkMode'],
+                        'requestCount': 2,
+                        'searchRequestCount': 1,
+                        'subjectDetailRequestCount': 1,
+                        'duplicateRequestCount': 0,
+                        'unexpectedRequestCount': 0,
+                        'authorizationHeaderCount': 0,
+                        'expectedOperationsComplete': True,
+                        'rawFixturePayloadStored': False,
+                    },
+                    'offlineAssetBoundary': {
+                        'assetResolutionCallCount': 0,
+                        'nonEmptyAssetUrlCount': 0,
+                        'blockedAssetRequestCount': 0,
+                    },
+                    'networkBoundary': {
+                        'liveBangumiApiRequestCount': 0,
+                        'rendererAssetRequestCount': 0,
+                    },
+                    'artifact': {
+                        'returned': True,
+                        'persisted': False,
+                        'mimeType': 'image/png',
+                        'width': 10,
+                        'height': 10,
+                        'byteLength': 32,
+                        'pngSignatureValid': True,
+                    },
+                    'answerChecks': {f'check{index}': True for index in range(10)},
+                    'answerCheckMethod': profile['answerCheckMethod'],
+                    'answerSha256': hashlib.sha256(acknowledgement.encode()).hexdigest(),
+                    'answerUtf8Bytes': len(acknowledgement.encode()),
+                }
+                if version == 'v2':
+                    report['mcpToolErrorResultCount'] = 0
+                self.assertTrue(
+                    TABLE_CHECKER.g01_render_query_report_matches(
+                        profile['toolName'], profile['reportPath'], report,
+                    ),
+                )
+                report['mcpToolErrorResultCount'] = 1 if version == 'v2' else 0
+                self.assertFalse(
+                    TABLE_CHECKER.g01_render_query_report_matches(
+                        profile['toolName'], profile['reportPath'], report,
+                    ),
+                )
+
+    def test_candidate_binding_uses_the_selected_profile_epoch_and_report_path(self):
+        profile_id = 'g01-render-query-subjects-offline-agent-mcp-v2'
+        profile = GENERATOR.codex_g01_render_query_offline_profile_spec(profile_id)
+        candidate_sha = 'a' * 40
+        base_sha = 'b' * 40
+        branch = 'codex/epoch-run95-g01-render-query-offline-matrix-v2-20261018'
+        report = {
+            'profileId': profile_id,
+            'prNumber': 223,
+            'sourceRevision': candidate_sha,
+            'baseSha': base_sha,
+            'mcpBundleSha256': 'c' * 64,
+        }
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 223},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'candidate_sha': candidate_sha,
+                    'epoch_id': profile['epochId'],
+                    'pr_number': 223,
+                    'base_branch': 'master',
+                    'base_sha': base_sha,
+                    'branch': branch,
+                    'review_history': [],
+                },
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base_sha,
+                'pr_head_ref_name': branch,
+                'pr_is_draft': False,
+                'pr_head_sha': candidate_sha,
+            },
+        }
+        changed_paths = [
+            profile['reportPath'],
+            'docs/product/frontier-ledger.json',
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+        ]
+        self.assertTrue(
+            GENERATOR.codex_g01_render_query_offline_profile_candidate_binding_is_valid(
+                report, epoch_status, changed_paths, 'c' * 64,
+            ),
+        )
+        epoch_status['epoch']['state']['epoch_id'] = (
+            'run95-g01-render-query-subjects-offline-matrix-20261017'
+        )
+        self.assertFalse(
+            GENERATOR.codex_g01_render_query_offline_profile_candidate_binding_is_valid(
+                report, epoch_status, changed_paths, 'c' * 64,
+            ),
+        )
+
+
 class PublicApiEvidenceTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='acceptance-evidence-test-')
@@ -8868,7 +9028,7 @@ class P06OfflineProfileReportValidationTests(unittest.TestCase):
 
 
 class G01OfflineProfileStaticMarkerTests(unittest.TestCase):
-    def test_current_candidate_contains_all_g01_report_revision_markers(self):
+    def test_v1_base_and_current_v2_have_their_exact_report_revision_markers(self):
         head = subprocess.run(
             ['git', 'rev-parse', 'HEAD'],
             cwd=GENERATOR.ROOT,
@@ -8877,11 +9037,28 @@ class G01OfflineProfileStaticMarkerTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(head.returncode, 0, head.stderr)
-        revision = head.stdout.strip()
-        self.assertRegex(revision, r'^[0-9a-f]{40}$')
+        candidate = head.stdout.strip()
+        self.assertRegex(candidate, r'^[0-9a-f]{40}$')
+        base_result = subprocess.run(
+            ['git', 'rev-parse', 'origin/master'],
+            cwd=GENERATOR.ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(base_result.returncode, 0, base_result.stderr)
+        base = base_result.stdout.strip()
+        self.assertRegex(base, r'^[0-9a-f]{40}$')
         self.assertTrue(
             GENERATOR.codex_g01_render_query_offline_profile_revision_has_implementation(
-                revision,
+                base,
+                'g01-render-query-subjects-offline-agent-mcp-v1',
+            ),
+        )
+        self.assertTrue(
+            GENERATOR.codex_g01_render_query_offline_profile_revision_has_implementation(
+                candidate,
+                'g01-render-query-subjects-offline-agent-mcp-v2',
             ),
         )
 

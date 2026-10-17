@@ -63,6 +63,7 @@ export declare function createAttestedOneShotClaims(options: {
 export declare function summarizeCodexEvents(events: readonly unknown[]): {
   eventStreamComplete: boolean;
   codexMcpToolEventCount: number;
+  mcpToolErrorResultCount: number;
   codexErrorItemCount: number;
   mcpServerNames: unknown[];
   nonMcpToolEventCount: number;

@@ -3,11 +3,13 @@ import test from 'node:test';
 import {
   agentMcpProfileArgumentsSha256,
   getAgentMcpProfileById,
+  normalizeAgentMcpProfileDiagnostics,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import { G01_RENDER_QUERY_OFFLINE_NETWORK_MODE } from '../../scripts/lib/g01-render-query-subjects-offline-profile.mjs';
 import {
   assertG01RenderQueryCandidateReviewGate,
   buildG01RenderQueryOfflineCodexExecArgs,
+  safeG01RenderQueryOfflineDiagnostics,
   validateG01RenderQueryOfflineRunnerArgs,
   validateG01RenderQueryOfflineServerSummary,
 } from '../../scripts/acceptance/run-g01-render-query-subjects-offline-agent-mcp.mjs';
@@ -142,9 +144,73 @@ function serverSummaryFixture() {
 test('G01 runner accepts only its single governed Run #95 entry point', () => {
   assert.equal(validateG01RenderQueryOfflineRunnerArgs(['--help']), 'help');
   assert.equal(validateG01RenderQueryOfflineRunnerArgs(['--run', '95']), 'run');
+  assert.equal(
+    validateG01RenderQueryOfflineRunnerArgs([
+      '--run',
+      '95',
+      '--profile-id',
+      'g01-render-query-subjects-offline-agent-mcp-v2',
+    ]),
+    'run',
+  );
   for (const args of [[], ['--run', '94'], ['--run', '95', '--retry'], ['--help', '--run']]) {
     assert.throws(() => validateG01RenderQueryOfflineRunnerArgs(args));
   }
+});
+
+test('G01 failure diagnostics preserve only allowlisted counters and booleans', () => {
+  const diagnostics = safeG01RenderQueryOfflineDiagnostics({
+    reasonCode: 'G01_RENDER_QUERY_AGENT_MCP_ASSERTION_FAILED',
+    parsed: { parsed: true },
+    events: {
+      eventStreamComplete: true,
+      turnCompleted: true,
+      codexMcpToolEventCount: 1,
+      mcpToolErrorResultCount: 1,
+      codexErrorItemCount: 3,
+      nonMcpToolEventCount: 0,
+      shellToolCallCount: 0,
+      answer: 'private full model answer',
+    },
+    serverSummary: {
+      allowedCallCount: 1,
+      deniedCallCount: 0,
+      offlineFixture: { requestCount: 2 },
+      results: [{ resultSummary: { artifact: { byteLength: 512, width: 640, height: 480 } } }],
+    },
+    execution: { failed: false, exitCode: 0 },
+    checks: {
+      exactCall: true,
+      exactToolEvent: false,
+      serverSummaryValid: true,
+      candidateBundleCurrent: true,
+      activeGateCurrent: true,
+      claimReadbackValid: true,
+      reportBuildValid: false,
+    },
+  });
+  const persisted = normalizeAgentMcpProfileDiagnostics(diagnostics);
+
+  assert.deepEqual(persisted.counters, {
+    codexMcpToolEvents: 1,
+    codexErrorItems: 3,
+    mcpToolErrorResults: 1,
+    nonMcpToolEvents: 0,
+    shellCalls: 0,
+    allowedToolCalls: 1,
+    deniedToolCalls: 0,
+    httpRequests: 2,
+    artifactBytes: 512,
+    artifactWidth: 640,
+    artifactHeight: 480,
+    answerUtf8Bytes: Buffer.byteLength('private full model answer', 'utf8'),
+  });
+  const serialized = JSON.stringify(persisted);
+  assert.doesNotMatch(serialized, /private full model answer/u);
+  assert.doesNotMatch(serialized, /error text|tool arguments|raw rows|credentials/u);
+  assert.equal(persisted.checks.exactToolEvents, false);
+  assert.equal(persisted.checks.mcpToolErrorResultCountZero, false);
+  assert.equal(persisted.checks.privacyPreserved, true);
 });
 
 test('G01 Candidate gate requires exact CI, Base, and same-identity Luna Max PASS', () => {

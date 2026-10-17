@@ -1,15 +1,15 @@
 import {
-  G01_RENDER_QUERY_OFFLINE_EXPECTED_ARGUMENTS,
-  G01_RENDER_QUERY_OFFLINE_NETWORK_MODE,
-  G01_RENDER_QUERY_OFFLINE_SYNTHETIC_KEYWORD,
-  G01_RENDER_QUERY_OFFLINE_SYNTHETIC_SUBJECT_ID,
   assertG01RenderQueryOfflineProfile,
+  getG01RenderQueryOfflineProfileSpec,
 } from './g01-render-query-subjects-offline-profile.mjs';
-import { canonicalAgentMcpProfileJson } from './agent-mcp-profile-claims.mjs';
+import {
+  canonicalAgentMcpProfileJson,
+  getAgentMcpProfileById,
+} from './agent-mcp-profile-claims.mjs';
 
 const ORIGIN = 'https://api.bgm.tv';
 const SEARCH_PATH = '/v0/search/subjects';
-const DETAIL_PATH = `/v0/subjects/${G01_RENDER_QUERY_OFFLINE_SYNTHETIC_SUBJECT_ID}`;
+const DEFAULT_PROFILE_ID = 'g01-render-query-subjects-offline-agent-mcp-v1';
 
 function response(value) {
   return new Response(JSON.stringify(value), {
@@ -43,12 +43,12 @@ function parseBody(init) {
   }
 }
 
-function syntheticSubject() {
+function syntheticSubject(subjectId) {
   return {
-    id: G01_RENDER_QUERY_OFFLINE_SYNTHETIC_SUBJECT_ID,
+    id: subjectId,
     type: 2,
-    name: 'Run95 Synthetic Render Query Work 990920',
-    name_cn: 'Run95 合成渲染查询作品 990920',
+    name: `Run95 Synthetic Render Query Work ${subjectId}`,
+    name_cn: `Run95 合成渲染查询作品 ${subjectId}`,
     date: '2025-10-01',
     platform: 'TV',
     summary: 'Synthetic offline fixture only; not a Bangumi record.',
@@ -61,7 +61,7 @@ function syntheticSubject() {
     total_episodes: 1,
     rating: {
       score: 8,
-      rank: G01_RENDER_QUERY_OFFLINE_SYNTHETIC_SUBJECT_ID,
+      rank: subjectId,
       total: 1,
       count: Object.fromEntries(
         Array.from({ length: 10 }, (_, index) => [String(index + 1), index === 7 ? 1 : 0]),
@@ -71,11 +71,19 @@ function syntheticSubject() {
   };
 }
 
-export function createG01RenderQueryOfflineFetch() {
+export function createG01RenderQueryOfflineFetch(
+  profile = getAgentMcpProfileById(DEFAULT_PROFILE_ID),
+) {
+  if (!assertG01RenderQueryOfflineProfile(profile)) {
+    throw new Error('G01 render-query fixture requires a registered offline profile.');
+  }
+  const spec = getG01RenderQueryOfflineProfileSpec(profile);
+  const expectedArguments = profile.calls[0].arguments;
+  const detailPath = `/v0/subjects/${spec.syntheticSubjectId}`;
   const observedSearches = new Set();
   const observedDetails = new Set();
   const counters = {
-    profile: G01_RENDER_QUERY_OFFLINE_NETWORK_MODE,
+    profile: spec.networkMode,
     requestCount: 0,
     searchRequestCount: 0,
     subjectDetailRequestCount: 0,
@@ -114,10 +122,10 @@ export function createG01RenderQueryOfflineFetch() {
         Object.keys(body?.filter ?? {})
           .sort()
           .join(',') === 'type' &&
-        body?.keyword === G01_RENDER_QUERY_OFFLINE_SYNTHETIC_KEYWORD &&
+        body?.keyword === expectedArguments.keyword &&
         body.sort === 'match' &&
         canonicalAgentMcpProfileJson(body.filter.type) === canonicalAgentMcpProfileJson([2]);
-      const duplicate = valid && observedSearches.has(G01_RENDER_QUERY_OFFLINE_SYNTHETIC_KEYWORD);
+      const duplicate = valid && observedSearches.has(expectedArguments.keyword);
       if (!valid || duplicate) {
         if (duplicate) counters.duplicateRequestCount += 1;
         counters.unexpectedRequestCount += 1;
@@ -125,35 +133,31 @@ export function createG01RenderQueryOfflineFetch() {
           status: 599,
         });
       }
-      observedSearches.add(G01_RENDER_QUERY_OFFLINE_SYNTHETIC_KEYWORD);
+      observedSearches.add(expectedArguments.keyword);
       counters.searchRequestCount += 1;
-      const subject = syntheticSubject();
+      const subject = syntheticSubject(spec.syntheticSubjectId);
       delete subject.eps;
       delete subject.total_episodes;
       return response({ data: [subject], total: 1, limit: 20, offset: 0 });
     }
 
-    if (
-      method === 'GET' &&
-      url.pathname === DETAIL_PATH &&
-      url.href === `${ORIGIN}${DETAIL_PATH}`
-    ) {
+    if (method === 'GET' && url.pathname === detailPath && url.href === `${ORIGIN}${detailPath}`) {
       if (headers.has('authorization') || init?.body !== undefined) {
         counters.unexpectedRequestCount += 1;
         return new Response('G01 render-query fixture denied a detail request variant.', {
           status: 599,
         });
       }
-      if (observedDetails.has(G01_RENDER_QUERY_OFFLINE_SYNTHETIC_SUBJECT_ID)) {
+      if (observedDetails.has(spec.syntheticSubjectId)) {
         counters.duplicateRequestCount += 1;
         counters.unexpectedRequestCount += 1;
         return new Response('G01 render-query fixture denied a duplicate detail request.', {
           status: 599,
         });
       }
-      observedDetails.add(G01_RENDER_QUERY_OFFLINE_SYNTHETIC_SUBJECT_ID);
+      observedDetails.add(spec.syntheticSubjectId);
       counters.subjectDetailRequestCount += 1;
-      return response(syntheticSubject());
+      return response(syntheticSubject(spec.syntheticSubjectId));
     }
 
     counters.unexpectedRequestCount += 1;
@@ -195,15 +199,7 @@ export function createG01RenderQueryOfflineAssetResolver() {
 
 export function assertG01RenderQueryOfflineFixtureProfile(profile) {
   if (!assertG01RenderQueryOfflineProfile(profile)) {
-    throw new Error('G01 render-query offline fixture requires its exact registered profile.');
-  }
-  if (
-    canonicalAgentMcpProfileJson(profile.calls[0]?.arguments) !==
-    canonicalAgentMcpProfileJson(G01_RENDER_QUERY_OFFLINE_EXPECTED_ARGUMENTS)
-  ) {
-    throw new Error(
-      'G01 render-query offline fixture arguments do not match the registered profile.',
-    );
+    throw new Error('G01 render-query offline fixture requires an exact registered profile.');
   }
   return true;
 }

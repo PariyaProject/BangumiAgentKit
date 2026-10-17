@@ -38,7 +38,7 @@ import {
 import { R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID } from './r04-render-series-watch-order-offline-fixture.mjs';
 import { TITLE_QUERY_RENDER_PROFILE_ID } from './title-query-render-agent-mcp-profile.mjs';
 import {
-  G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
+  isG01RenderQueryOfflineProfileId,
   summarizeG01RenderQueryOfflineToolResult,
 } from './g01-render-query-subjects-offline-profile.mjs';
 import {
@@ -366,7 +366,7 @@ export function summarizeProfileToolResult(
   artifactSummary = null,
   toolName = null,
 ) {
-  if (profileId === G01_RENDER_QUERY_OFFLINE_PROFILE_ID) {
+  if (isG01RenderQueryOfflineProfileId(profileId)) {
     return toolName === 'bangumi.render_query_subjects'
       ? summarizeG01RenderQueryOfflineToolResult(result, artifactSummary)
       : { resultState: 'unexpected_tool' };

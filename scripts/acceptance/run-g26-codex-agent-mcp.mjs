@@ -248,6 +248,7 @@ export function summarizeCodexEvents(events) {
     turnFailed,
     unexpectedEventTypes,
     codexMcpToolEventCount: mcpCalls.length,
+    mcpToolErrorResultCount: mcpCalls.filter((item) => item.result?.isError === true).length,
     codexErrorItemCount: errorItems.size + anonymousErrorItemCount,
     mcpServerNames: mcpCalls.map((item) => item.server),
     ...safeCodexNonMcpEventSummary({
