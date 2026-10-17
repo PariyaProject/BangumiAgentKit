@@ -47,6 +47,11 @@ import {
   P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
 } from '../../scripts/lib/p02-person-profile-offline-fixture.mjs';
 import {
+  assertG06SubjectCastOfflineProfile,
+  createG06SubjectCastOfflineFetch,
+  G06_CAST_OFFLINE_NETWORK_MODE,
+} from '../../scripts/lib/g06-subject-cast-offline-profile.mjs';
+import {
   assertR04SeriesWatchOrderOfflineProfile,
   createR04SeriesWatchOrderOfflineFetch,
   R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE,
@@ -235,6 +240,9 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE) {
     assertP02PersonProfileOfflineProfile(config.profile);
   }
+  if (config.networkMode === G06_CAST_OFFLINE_NETWORK_MODE) {
+    assertG06SubjectCastOfflineProfile(config.profile);
+  }
   if (config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE) {
     assertR04SeriesWatchOrderOfflineProfile(config.profile);
   }
@@ -319,13 +327,15 @@ async function main(argv = process.argv.slice(2)) {
           ? createP06RenderPersonProfileOfflineFetch()
           : config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE
             ? createP02PersonProfileOfflineFetch()
-            : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
-              ? createR04SeriesWatchOrderOfflineFetch()
-              : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
-                ? createR04RenderSeriesWatchOrderOfflineFetch()
-                : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
-                  ? createR01RelationsOfflineFetch()
-                  : null;
+            : config.networkMode === G06_CAST_OFFLINE_NETWORK_MODE
+              ? createG06SubjectCastOfflineFetch()
+              : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
+                ? createR04SeriesWatchOrderOfflineFetch()
+                : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
+                  ? createR04RenderSeriesWatchOrderOfflineFetch()
+                  : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
+                    ? createR01RelationsOfflineFetch()
+                    : null;
   const r04RenderAssetFence =
     config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
       ? createR04RenderSeriesWatchOrderAssetFence()

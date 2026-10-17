@@ -11,6 +11,7 @@ import {
   summarizeR05SubjectOverlapToolResult,
 } from './r05-shared-person-overlap-evidence.mjs';
 import { P02_PERSON_PROFILE_OFFLINE_PROFILE_ID } from './p02-person-profile-offline-fixture.mjs';
+import { G06_CAST_OFFLINE_PROFILE_ID } from './g06-subject-cast-offline-profile.mjs';
 import { R04_SERIES_WATCH_ORDER_OFFLINE_PROFILE_ID } from './r04-series-watch-order-offline-fixture.mjs';
 import { C04_COHORT_COMPARISON_PROFILE_ID } from './c04-cohort-comparison-public-profile.mjs';
 import {
@@ -319,6 +320,29 @@ function summarizeC04Artifact(artifactSummary) {
   };
 }
 
+function summarizeG06SubjectCastOfflineResult(result, expectedArguments) {
+  const coverage = result?.source;
+  const counter = (value) =>
+    Number.isSafeInteger(value) && value >= 0 && value <= 100_000 ? value : null;
+  return {
+    status: result?.status === 'ok' ? 'ok' : 'unknown',
+    subjectIdMatches: result?.subjectId === expectedArguments?.subjectId,
+    rowsObserved: counter(result?.observed),
+    rowsReturned: counter(result?.returned),
+    multiRoleVoiceActorCount: counter(
+      Array.isArray(result?.multiRoleVoiceActors) ? result.multiRoleVoiceActors.length : null,
+    ),
+    truncated: typeof result?.truncated === 'boolean' ? result.truncated : null,
+    schemaDriftRows: counter(result?.schemaDriftRows),
+    invalidActorIdRows: counter(result?.invalidActorIdRows),
+    sourceStatus: ['observed', 'partial'].includes(coverage?.status) ? coverage.status : 'unknown',
+    paginationAvailable:
+      typeof coverage?.paginationAvailable === 'boolean' ? coverage.paginationAvailable : null,
+    totalCountAvailable:
+      typeof coverage?.totalCountAvailable === 'boolean' ? coverage.totalCountAvailable : null,
+  };
+}
+
 export function summarizeProfileToolResult(
   result,
   expectedArguments,
@@ -367,6 +391,9 @@ export function summarizeProfileToolResult(
         Number.isSafeInteger(result?.person?.id) && result.person.id > 0 ? result.person.id : null,
       state: typeof result?.state === 'string' ? result.state : 'unknown',
     };
+  }
+  if (profileId === G06_CAST_OFFLINE_PROFILE_ID) {
+    return summarizeG06SubjectCastOfflineResult(result, expectedArguments);
   }
   if (profileId === R01_RELATIONS_OFFLINE_PROFILE_ID) {
     return summarizeR01RelationsOfflineToolResult(result, expectedArguments);
