@@ -7523,7 +7523,9 @@ function assertG06CastOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNu
     }
   } else if (
     (disposition.reportPath !== undefined && disposition.reportPath !== null) ||
-    terminalReportSha256 !== null ||
+    disposition.reportSha256 !== undefined ||
+    (disposition.unacceptedReportSha256 !== undefined &&
+      !/^[0-9a-f]{64}$/u.test(disposition.unacceptedReportSha256)) ||
     fs.existsSync(reportPath)
   ) {
     throw new HarnessInvariantError(

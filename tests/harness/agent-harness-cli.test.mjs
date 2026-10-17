@@ -6091,7 +6091,7 @@ function mergeReadyEnvironment(overrides = {}) {
   });
 }
 
-function g06CastOfflineMergeEnvironment({ terminal = false } = {}) {
+function g06CastOfflineMergeEnvironment({ terminal = false, unacceptedReportSha256 = null } = {}) {
   const { run, epoch } = controlFixture();
   const prNumber = 222;
   const reviewerId = `gpt-6-luna-max-run95-pr${prNumber}-round1`;
@@ -6138,6 +6138,7 @@ function g06CastOfflineMergeEnvironment({ terminal = false } = {}) {
               registrySha256: agentMcpProfileRegistrySha256(profile.id),
               claimId: `profile-run-95-pr-${prNumber}-${sha('b').slice(0, 12)}-1792200000000`,
               sourceCandidateSha: sha('b'),
+              ...(unacceptedReportSha256 ? { unacceptedReportSha256 } : {}),
               baseSha: sha('a'),
               ciSha: sha('b'),
               ciStatus: 'SUCCESS',
@@ -6178,7 +6179,11 @@ function g06CastOfflineMergeEnvironment({ terminal = false } = {}) {
         [profile.claimLabelName.replace(/-claimed$/u, '-terminal')]: {
           name: profile.claimLabelName.replace(/-claimed$/u, '-terminal'),
           color: '0e8a16',
-          description: agentMcpProfileTerminalLabelDescription(profile, 'INCONCLUSIVE'),
+          description: agentMcpProfileTerminalLabelDescription(
+            profile,
+            'INCONCLUSIVE',
+            unacceptedReportSha256,
+          ),
         },
       }
     : {};
@@ -6221,6 +6226,21 @@ test('G06 offline matrix Epoch cannot merge without a durable terminal profile r
 
 test('G06 offline matrix Epoch can merge a terminal inconclusive result without credit', () => {
   const environment = g06CastOfflineMergeEnvironment({ terminal: true });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '222']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(parseControlBlock(environment.readState().prBody, EPOCH_MARKER).state, 'MERGED');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('G06 offline matrix Epoch can merge after removing an unaccepted inconclusive report', () => {
+  const unacceptedReportSha256 = 'e'.repeat(64);
+  const environment = g06CastOfflineMergeEnvironment({
+    terminal: true,
+    unacceptedReportSha256,
+  });
   try {
     const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '222']);
     assert.equal(result.status, 0, result.stderr);
