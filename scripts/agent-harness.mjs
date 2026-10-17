@@ -3876,6 +3876,7 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
           Number(prNumber),
           terminalDescription,
         ) &&
+        terminalLabel?.description === terminalDescription &&
         !fs.existsSync(path.join(root, profile.reportPath))
       ) {
         print({
