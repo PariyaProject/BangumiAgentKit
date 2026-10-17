@@ -9,6 +9,7 @@ import {
   parseCodexJsonl,
   safeCodexNonMcpEventSummary,
   summarizeCodexEvents,
+  hasExactCompletedCodexToolCalls,
 } from './run-g26-codex-agent-mcp.mjs';
 import {
   agentMcpProfileArgumentsSha256,
@@ -670,10 +671,7 @@ function runR04({ runNumber }) {
       actualCall?.tool === PROFILE.toolName &&
       canonicalAgentMcpProfileJson(actualCall?.arguments) ===
         canonicalAgentMcpProfileJson(R04_SERIES_WATCH_ORDER_EXPECTED_ARGUMENTS);
-    const exactToolEvent =
-      events.toolCalls.length === 1 &&
-      events.toolCalls[0]?.tool === PROFILE.toolName &&
-      events.toolCalls[0]?.state === 'DONE';
+    const exactToolEvent = hasExactCompletedCodexToolCalls(events.toolCalls, [PROFILE.toolName]);
     const summaryValid = validateR04ServerSummary(serverSummary, sourceRevision, bundleSha256);
     const candidateBundleCurrent = assertCurrentCandidateBundle(sourceRevision, bundleSha256);
     const safeEvents = {

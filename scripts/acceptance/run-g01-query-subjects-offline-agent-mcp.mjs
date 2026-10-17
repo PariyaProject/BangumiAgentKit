@@ -9,6 +9,7 @@ import {
   parseCodexJsonl,
   safeCodexNonMcpEventSummary,
   summarizeCodexEvents,
+  hasExactCompletedCodexToolCalls,
 } from './run-g26-codex-agent-mcp.mjs';
 import { deriveP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
@@ -650,10 +651,7 @@ async function runG01QuerySubjectsOffline({ runNumber }) {
       actualCall?.tool === PROFILE.toolName &&
       canonicalAgentMcpProfileJson(actualCall?.arguments) ===
         canonicalAgentMcpProfileJson(G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS);
-    const exactToolEvent =
-      events.toolCalls.length === 1 &&
-      events.toolCalls[0]?.tool === PROFILE.toolName &&
-      events.toolCalls[0]?.state === 'DONE';
+    const exactToolEvent = hasExactCompletedCodexToolCalls(events.toolCalls, [PROFILE.toolName]);
     const serverSummaryValid = validateG01QuerySubjectsOfflineServerSummary(
       serverSummary,
       sourceRevision,

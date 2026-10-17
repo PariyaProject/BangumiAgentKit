@@ -7,7 +7,12 @@ import {
   buildG06CastOfflineCodexExecArgs,
   validateG06CastOfflineRunnerArgs,
   validateG06CastOfflineServerSummary,
+  validateG06CastOfflineToolEvent,
 } from '../../scripts/acceptance/run-g06-subject-cast-offline-agent-mcp.mjs';
+import {
+  hasExactCompletedCodexToolCalls,
+  summarizeCodexEvents,
+} from '../../scripts/acceptance/run-g26-codex-agent-mcp.mjs';
 import {
   G06_CAST_OFFLINE_EXPECTED_ARGUMENTS,
   G06_CAST_OFFLINE_NETWORK_MODE,
@@ -169,4 +174,44 @@ test('G06 offline server summary requires exactly one bounded synthetic response
     validateG06CastOfflineServerSummary(wrongTool, 'a'.repeat(40), 'b'.repeat(64)),
     false,
   );
+});
+
+test('G06 offline runner matches the MCP event summary field and rejects wrong or extra calls', () => {
+  const events = summarizeCodexEvents([
+    { type: 'thread.started' },
+    { type: 'turn.started' },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'synthetic-call',
+        type: 'mcp_tool_call',
+        server: SERVER_ID,
+        tool: TOOL_NAME,
+        arguments: G06_CAST_OFFLINE_EXPECTED_ARGUMENTS,
+        status: 'completed',
+        result: { isError: false },
+      },
+    },
+    { type: 'turn.completed' },
+  ]);
+
+  assert.deepEqual(events.toolCalls, [
+    {
+      name: TOOL_NAME,
+      arguments: G06_CAST_OFFLINE_EXPECTED_ARGUMENTS,
+      state: 'DONE',
+    },
+  ]);
+  assert.equal(hasExactCompletedCodexToolCalls(events.toolCalls, [TOOL_NAME]), true);
+  assert.equal(validateG06CastOfflineToolEvent(events), true);
+
+  const wrongTool = structuredClone(events);
+  wrongTool.toolCalls[0].name = 'bangumi.get_person';
+  assert.equal(hasExactCompletedCodexToolCalls(wrongTool.toolCalls, [TOOL_NAME]), false);
+  assert.equal(validateG06CastOfflineToolEvent(wrongTool), false);
+
+  const duplicate = structuredClone(events);
+  duplicate.toolCalls.push(duplicate.toolCalls[0]);
+  assert.equal(hasExactCompletedCodexToolCalls(duplicate.toolCalls, [TOOL_NAME]), false);
+  assert.equal(validateG06CastOfflineToolEvent(duplicate), false);
 });

@@ -266,6 +266,21 @@ export function summarizeCodexEvents(events) {
   };
 }
 
+export function hasExactCompletedCodexToolCalls(toolCalls, expectedToolNames) {
+  return (
+    Array.isArray(toolCalls) &&
+    Array.isArray(expectedToolNames) &&
+    toolCalls.length === expectedToolNames.length &&
+    toolCalls.every(
+      (call, index) =>
+        call !== null &&
+        typeof call === 'object' &&
+        call.name === expectedToolNames[index] &&
+        call.state === 'DONE',
+    )
+  );
+}
+
 function gitText(args) {
   return gitRepositoryText(ROOT, args);
 }

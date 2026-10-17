@@ -9,6 +9,7 @@ import {
   parseCodexJsonl,
   safeCodexNonMcpEventSummary,
   summarizeCodexEvents,
+  hasExactCompletedCodexToolCalls,
 } from './run-g26-codex-agent-mcp.mjs';
 import {
   computeMcpBundleSha256,
@@ -83,6 +84,10 @@ export function validateG06CastOfflineRunnerArgs(args) {
   if (args.length === 1 && args[0] === '--help') return 'help';
   if (args.length === 2 && args[0] === '--run' && args[1] === String(RUN_NUMBER)) return 'run';
   throw new Error('Pass --run 95 only after exact Candidate/Base CI and Luna Max PASS gates.');
+}
+
+export function validateG06CastOfflineToolEvent(events, toolName = PROFILE?.toolName) {
+  return hasExactCompletedCodexToolCalls(events?.toolCalls, [toolName]);
 }
 
 function environment(source = process.env, allowGitHub = false) {
@@ -661,10 +666,7 @@ async function runG06CastOfflineProfile({ runNumber }) {
       call?.tool === PROFILE.toolName &&
       canonicalAgentMcpProfileJson(call?.arguments) ===
         canonicalAgentMcpProfileJson(G06_CAST_OFFLINE_EXPECTED_ARGUMENTS);
-    const exactToolEvent =
-      events.toolCalls.length === 1 &&
-      events.toolCalls[0]?.tool === PROFILE.toolName &&
-      events.toolCalls[0]?.state === 'DONE';
+    const exactToolEvent = validateG06CastOfflineToolEvent(events);
     const eventSummary = safeCodexNonMcpEventSummary(events);
     const safeEvents = {
       processExitCode: execution.exitCode,

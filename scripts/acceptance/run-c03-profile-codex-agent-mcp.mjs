@@ -8,6 +8,7 @@ import {
   parseCodexJsonl,
   safeCodexNonMcpEventSummary,
   summarizeCodexEvents,
+  hasExactCompletedCodexToolCalls,
 } from './run-g26-codex-agent-mcp.mjs';
 import {
   computeMcpBundleSha256,
@@ -802,9 +803,10 @@ function runC03Profile({ runNumber }) {
             canonicalAgentMcpProfileJson(expected.arguments)
         );
       });
-    const exactToolEvents =
-      events.toolCalls.length === PROFILE.calls.length &&
-      events.toolCalls.every((call) => call?.tool === PROFILE.toolName && call?.state === 'DONE');
+    const exactToolEvents = hasExactCompletedCodexToolCalls(
+      events.toolCalls,
+      PROFILE.calls.map(({ toolName }) => toolName),
+    );
     const structuredReadback =
       events.completedMcpCalls.length === PROFILE.calls.length &&
       events.completedMcpCalls.every(
@@ -827,7 +829,11 @@ function runC03Profile({ runNumber }) {
       allowedCallCount: serverSummary?.allowedCallCount ?? 0,
       deniedCallCount: serverSummary?.deniedCallCount ?? null,
     };
-    const serverSummaryValid = validateC03ServerSummary(serverSummary, sourceRevision, bundleSha256);
+    const serverSummaryValid = validateC03ServerSummary(
+      serverSummary,
+      sourceRevision,
+      bundleSha256,
+    );
     const candidateBundleCurrent = assertCurrentCandidateBundle(sourceRevision, bundleSha256);
     const passed =
       !execution.failed &&

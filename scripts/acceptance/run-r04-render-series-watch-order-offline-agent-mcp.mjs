@@ -5,7 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { parseCodexJsonl, summarizeCodexEvents } from './run-g26-codex-agent-mcp.mjs';
+import {
+  parseCodexJsonl,
+  summarizeCodexEvents,
+  hasExactCompletedCodexToolCalls,
+} from './run-g26-codex-agent-mcp.mjs';
 import {
   agentMcpProfileArgumentsSha256,
   agentMcpProfileRegistrySha256,
@@ -631,10 +635,7 @@ function runR04Render({ runNumber }) {
       call?.tool === PROFILE.toolName &&
       canonicalAgentMcpProfileJson(call?.arguments) ===
         canonicalAgentMcpProfileJson(R04_RENDER_SERIES_WATCH_ORDER_EXPECTED_ARGUMENTS);
-    const exactToolEvent =
-      events.toolCalls.length === 1 &&
-      events.toolCalls[0]?.tool === PROFILE.toolName &&
-      events.toolCalls[0]?.state === 'DONE';
+    const exactToolEvent = hasExactCompletedCodexToolCalls(events.toolCalls, [PROFILE.toolName]);
     const safeTextReadback = exactR04RenderTextReadback(call?.result, resultSummary);
     const serverSummaryValid = validateR04RenderServerSummary(
       serverSummary,
