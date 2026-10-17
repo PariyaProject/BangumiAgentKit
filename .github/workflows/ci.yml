@@ -132,6 +132,9 @@ jobs:
       - name: Build MCP and workspace packages
         run: pnpm build
 
+      - name: Verify one-tool MCP server module loads without starting stdio
+        run: node --test tests/integration/codex-one-tool-mcp-server-load.test.mjs
+
       - name: Run Python host tests
         run: pnpm test:host
 

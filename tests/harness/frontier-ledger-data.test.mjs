@@ -372,7 +372,11 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
     'docs/research/user-scenario-catalog.md',
     'docs/research/run95-s05-six-month-non-tv-source-contract-2026-10-17.md',
   ]);
-  assert.match(s05.next_action, /S05 remains UNASSESSED until the exact one-shot report is accepted/u);
+  assert.match(
+    s05.next_action,
+    /sole Run #95 claim is terminal INCONCLUSIVE with no report, no retry, and no Agent\/MCP credit/u,
+  );
+  assert.match(s05.next_action, /Keep S05 UNASSESSED and uncredited/u);
   assert.match(s05.next_action, /cannot establish that all recent voice work was non-TV/u);
   assert.doesNotMatch(s05.next_action, /R02/u);
   assert.equal(

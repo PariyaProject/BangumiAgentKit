@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { parseCodexOneToolMcpArguments } from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
 import {
   C07_RENDER_COMPARISON_OFFLINE_EXPECTED_ARGUMENTS,
@@ -15,6 +16,10 @@ const REQUIRED = [
   '--bundle-sha256',
   'b'.repeat(64),
 ];
+const SERVER_SOURCE = readFileSync(
+  new URL('../../apps/mcp/codex-one-tool-mcp-server.mjs', import.meta.url),
+  'utf8',
+);
 
 test('registered C07 profile selects only its immutable offline network mode', () => {
   const config = parseCodexOneToolMcpArguments([
@@ -28,6 +33,26 @@ test('registered C07 profile selects only its immutable offline network mode', (
   assert.deepEqual(config.expectedArgumentSequence, [
     C07_RENDER_COMPARISON_OFFLINE_EXPECTED_ARGUMENTS,
   ]);
+});
+
+test('one-tool MCP server imports C07 constants from their defining module', () => {
+  const profileImport = SERVER_SOURCE.match(
+    /import\s*\{([^}]+)\}\s*from\s*['"]\.\.\/\.\.\/scripts\/lib\/c07-render-comparison-offline-profile\.mjs['"]/u,
+  );
+  assert.ok(profileImport);
+  assert.match(profileImport[1], /\bC07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE\b/u);
+  assert.match(profileImport[1], /\bC07_RENDER_COMPARISON_OFFLINE_PROFILE_ID\b/u);
+
+  const fixtureImport = SERVER_SOURCE.match(
+    /import\s*\{([^}]+)\}\s*from\s*['"]\.\.\/\.\.\/scripts\/lib\/c07-render-comparison-offline-fixture\.mjs['"]/u,
+  );
+  assert.ok(fixtureImport);
+  assert.match(fixtureImport[1], /\bassertC07RenderComparisonOfflineFixtureProfile\b/u);
+  assert.match(fixtureImport[1], /\bcreateC07RenderComparisonOfflineFetch\b/u);
+  assert.doesNotMatch(
+    fixtureImport[1],
+    /\bC07_RENDER_COMPARISON_OFFLINE_(?:NETWORK_MODE|PROFILE_ID)\b/u,
+  );
 });
 
 test('C07 registered profile rejects arbitrary arguments and caller-selected network modes', () => {
