@@ -2037,6 +2037,7 @@
       "status": "UNASSESSED",
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-contract-2026-10-17.md",
         "apps/mcp/codex-one-tool-mcp-server.mjs",
         "scripts/acceptance/run-c07-cohort-renderer-codex-agent-mcp.mjs",
         "scripts/lib/c07-cohort-render-offline-fixture.mjs",
@@ -2050,7 +2051,7 @@
         "tests/integration/tool-e2e-acceptance.test.ts",
         "tests/render/subject-cohort-comparison.test.ts"
       ],
-      "next_action": "PR #144 merged at 82d32ca after exact Candidate/Base/CI and GPT-6 Luna Max review PASS. The final allowed renderer fixture invocation on Candidate 97a36b2 returned INCONCLUSIVE: synthetic tool/artifact/privacy checks and exact acknowledgement passed, but three Codex error items made execution incomplete; no sanitized report or matrix increment was written. Do not invoke the renderer runner again. Follow-up Epoch run95-c07-acceptance-validator-ci aligns the stale acceptance marker with the runner phrase fixed local synthetic fixture and adds acceptance:check to required CI. Keep C07 UNASSESSED until a valid report exists; this validator repair does not accept the user-facing comparison answer.",
+      "next_action": "PR #144 merged at 82d32ca after exact Candidate/Base/CI and GPT-6 Luna Max review PASS. The legacy A/B renderer fixture invocation on Candidate 97a36b2 returned INCONCLUSIVE: synthetic tool/artifact/privacy checks and exact acknowledgement passed, but three Codex error items made execution incomplete; no sanitized report or matrix increment was written. Never invoke that consumed legacy profile again. A separate Run #95 Epoch may use its exact registered synthetic cohort C profile once for the render_subject_cohort_comparison Agent/MCP matrix cell after all Harness gates pass; this distinct matrix-only evidence does not assess the C07 scenario or compare_subject_cohorts tool. Keep C07 UNASSESSED.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
