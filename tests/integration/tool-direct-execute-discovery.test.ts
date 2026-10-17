@@ -1,10 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
+import { MemoryStorage } from '@bangumi-agent-kit/db';
+import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { ProviderRegistry } from '@bangumi-agent-kit/provider-core';
 import {
   createDiscoveryTools,
+  createRuntimeDependenciesWithStorage,
   discoveryQueryInput,
   renderQuerySubjectsInput,
 } from '@bangumi-agent-kit/tools';
+import { createG01QuerySubjectsOfflineFetch } from '../../scripts/lib/g01-query-subjects-offline-matrix-fixture.mjs';
+import {
+  G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS,
+  G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_SUBJECT_ID,
+} from '../../scripts/lib/g01-query-subjects-offline-matrix-profile.mjs';
 
 const context = {
   principalId: 'direct-execute-fixture',
@@ -78,6 +86,54 @@ function createFixtureProvider() {
 }
 
 describe('direct execute coverage for discovery tools', () => {
+  it('runs the G01 query-only matrix profile through one local synthetic search fixture', async () => {
+    const fixture = createG01QuerySubjectsOfflineFetch();
+    const observedRequests: Array<{ url: string; method: string; body: string | null }> = [];
+    const publicHttpClient = new HttpClient({
+      baseUrl: 'https://api.bgm.tv',
+      fetchFn: (async (input: string | URL, init?: RequestInit) => {
+        observedRequests.push({
+          url: String(input),
+          method: String(init?.method ?? 'GET'),
+          body: typeof init?.body === 'string' ? init.body : null,
+        });
+        return fixture.fetchFn(input, init);
+      }) as typeof fetch,
+    });
+    const dependencies = createRuntimeDependenciesWithStorage(new MemoryStorage(), {
+      publicHttpClient,
+    });
+    const tool = createDiscoveryTools().find(
+      (candidate) => candidate.name === 'bangumi.query_subjects',
+    )!;
+    const result = await (tool.execute as any)(
+      G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS,
+      context,
+      dependencies,
+    );
+
+    expect(fixture.snapshot(), JSON.stringify(observedRequests)).toMatchObject({
+      requestCount: 1,
+      searchRequestCount: 1,
+      unexpectedRequestCount: 0,
+      expectedOperationsComplete: true,
+    });
+    expect(result).toMatchObject({
+      state: 'ok',
+      items: [{ id: G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_SUBJECT_ID }],
+      coverage: { requested: 1, returned: 1, pagesScanned: 1 },
+    });
+    expect(fixture.snapshot()).toMatchObject({
+      requestCount: 1,
+      searchRequestCount: 1,
+      duplicateRequestCount: 0,
+      unexpectedRequestCount: 0,
+      authorizationHeaderCount: 0,
+      expectedOperationsComplete: true,
+      rawFixturePayloadStored: false,
+    });
+  });
+
   it('accepts reported episode count only on the discovery query tool', () => {
     expect(discoveryQueryInput.parse({ reportedEpisodeCount: { max: 12 } })).toMatchObject({
       reportedEpisodeCount: { max: 12 },

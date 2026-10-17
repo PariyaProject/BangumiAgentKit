@@ -1,0 +1,23 @@
+export const G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_ARGUMENT_PROFILE: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_REPORT_PATH: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_SELECTION_EVIDENCE_PATH: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_CLAIM_LABEL_NAME: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_EVIDENCE_KIND: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_ANSWER_CHECK_METHOD: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_ACKNOWLEDGEMENT: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_SERVER_ID: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_KEYWORD: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_SUBJECT_ID: number;
+export const G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS: Readonly<{
+  keyword: string;
+  media: 'anime';
+  resultMode: 'top';
+  limit: 1;
+  sort: 'relevance';
+  explain: 'none';
+  nsfw: false;
+}>;
+export function assertG01QuerySubjectsOfflineProfile(profile: unknown): boolean;

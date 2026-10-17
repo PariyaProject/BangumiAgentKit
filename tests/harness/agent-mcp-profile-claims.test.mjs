@@ -92,7 +92,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 22);
+  assert.equal(listAgentMcpProfiles().length, 23);
   const c07RenderComparison = getAgentMcpProfileById(
     'c07-render-comparison-offline-agent-mcp-matrix-v1',
   );
@@ -113,6 +113,21 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(g01RenderQuery.acceptanceScope, 'agent-mcp-matrix-only');
   assert.equal(g01RenderQuery.networkMode, 'run95-g01-render-query-subjects-synthetic-offline-v1');
   assert.notEqual(g01RenderQuery.id, 'query-render-title-agent-mcp-v1');
+  const g01QuerySubjects = getAgentMcpProfileById('g01-query-subjects-offline-agent-mcp-matrix-v1');
+  assert.ok(g01QuerySubjects);
+  assert.equal(g01QuerySubjects.frontierId, 'G01');
+  assert.equal(g01QuerySubjects.toolName, 'bangumi.query_subjects');
+  assert.equal(g01QuerySubjects.calls.length, 1);
+  assert.equal(g01QuerySubjects.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(g01QuerySubjects.networkMode, 'run95-g01-query-subjects-synthetic-offline-v1');
+  assert.notDeepEqual(
+    g01QuerySubjects.calls[0].arguments,
+    getAgentMcpProfileById('query-render-title-agent-mcp-v1').calls[0].arguments,
+  );
+  assert.notEqual(
+    g01QuerySubjects.claimLabelName,
+    getAgentMcpProfileById('query-render-title-agent-mcp-v1').claimLabelName,
+  );
   const a01RenderAggregation = getAgentMcpProfileById(
     'a01-render-cohort-aggregation-agent-mcp-offline-v1',
   );

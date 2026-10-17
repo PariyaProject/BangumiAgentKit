@@ -155,6 +155,12 @@ import { validateR05SanitizedReportFile } from './acceptance/write-r05-shared-pe
 import { validateP06SanitizedReportFile } from './acceptance/write-p06-render-person-profile-agent-mcp-report.mjs';
 import { validateC07RenderComparisonOfflineSanitizedReportFile } from './acceptance/write-c07-render-comparison-offline-agent-mcp-report.mjs';
 import { validateG01RenderQueryOfflineSanitizedReportFile } from './acceptance/write-g01-render-query-subjects-offline-agent-mcp-report.mjs';
+import { validateG01QuerySubjectsOfflineSanitizedReportFile } from './acceptance/write-g01-query-subjects-offline-agent-mcp-report.mjs';
+import {
+  G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID,
+  G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
+  G01_QUERY_SUBJECTS_OFFLINE_REPORT_PATH,
+} from './lib/g01-query-subjects-offline-matrix-profile.mjs';
 import { validateP02SanitizedReportFile } from './acceptance/write-p02-person-profile-agent-mcp-report.mjs';
 import { validateG06SubjectCastOfflineSanitizedReportFile } from './acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs';
 import { validateR04SanitizedReportFile } from './acceptance/write-r04-series-watch-order-offline-agent-mcp-report.mjs';
@@ -275,6 +281,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'a01-rating-dispersion-1998-spring-v1',
   'g06-cast-offline-agent-mcp-matrix-v1',
   'g01-render-query-subjects-offline-agent-mcp-v1',
+  'g01-query-subjects-offline-agent-mcp-matrix-v1',
 ]);
 const profileRequiresExactCiRunEvidence = (profileId) => PROFILE_CI_RUN_EVIDENCE_IDS.has(profileId);
 const P01_MODEL = 'gpt-6-luna';
@@ -2133,9 +2140,7 @@ function commandEpochP05OneShotResult(options) {
   const prNumber = Number(required(options, 'pr'));
   const claimId = required(options, 'claim-id');
   const resultState = required(options, 'state');
-  const artifactSha256 = options['artifact-sha256']
-    ? required(options, 'artifact-sha256')
-    : null;
+  const artifactSha256 = options['artifact-sha256'] ? required(options, 'artifact-sha256') : null;
   if (
     runNumber !== 95 ||
     prNumber !== 166 ||
@@ -2191,12 +2196,20 @@ function commandEpochP05OneShotResult(options) {
     resultState,
     reportWritten: resultState === 'REPORT_WRITTEN',
     retryAllowed: false,
-    ...(artifactSha256 ? { artifactPath: 'docs/live-probes/p05-person-media-public-probe-run95.json', artifactSha256 } : {}),
+    ...(artifactSha256
+      ? {
+          artifactPath: 'docs/live-probes/p05-person-media-public-probe-run95.json',
+          artifactSha256,
+        }
+      : {}),
     finishedAt: new Date().toISOString(),
   };
   updatePr(prNumber, nextEpoch);
   const readback = epochState(prNumber).state.adversarial_preflight?.p05_one_shot_disposition;
-  if (canonicalHash(readback) !== canonicalHash(nextEpoch.adversarial_preflight.p05_one_shot_disposition)) {
+  if (
+    canonicalHash(readback) !==
+    canonicalHash(nextEpoch.adversarial_preflight.p05_one_shot_disposition)
+  ) {
     throw new HarnessInvariantError(
       'P05_ONESHOT_RESULT_READBACK_MISMATCH',
       'The terminal P05 one-shot result did not read back exactly from the active Epoch PR.',
@@ -3448,10 +3461,9 @@ function assertAgentMcpProfileReviewReadiness(
   const baseSha = epoch.base_sha;
   const currentBaseSha = remoteBaseSha('master');
   const latestReview = epoch.review_history?.at(-1);
-  const profileCiEvidence =
-    profileRequiresExactCiRunEvidence(profile.id)
-      ? deriveP06CiRunEvidence(epoch.ci?.url, pr.statusCheckRollup)
-      : null;
+  const profileCiEvidence = profileRequiresExactCiRunEvidence(profile.id)
+    ? deriveP06CiRunEvidence(epoch.ci?.url, pr.statusCheckRollup)
+    : null;
   let runnerReceiptPublicKeySha256;
   if (checkRunnerReceiptKey) {
     try {
@@ -3774,10 +3786,9 @@ function assertAgentMcpProfileClaimCurrent(profile, claim) {
   const pr = epochResult.view;
   const latestReview = epoch.review_history?.at(-1);
   const currentBaseSha = remoteBaseSha('master');
-  const profileCiEvidence =
-    profileRequiresExactCiRunEvidence(profile.id)
-      ? deriveP06CiRunEvidence(epoch.ci?.url, pr.statusCheckRollup)
-      : null;
+  const profileCiEvidence = profileRequiresExactCiRunEvidence(profile.id)
+    ? deriveP06CiRunEvidence(epoch.ci?.url, pr.statusCheckRollup)
+    : null;
   const profileCiIdentityCurrent =
     !profileRequiresExactCiRunEvidence(profile.id) ||
     (profileCiEvidence !== null &&
@@ -3845,6 +3856,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateC07RenderComparisonOfflineSanitizedReportFile(claim, root, reportPath);
     case 'g01-render-query-subjects-offline-agent-mcp-v1':
       return validateG01RenderQueryOfflineSanitizedReportFile(claim, root, reportPath);
+    case 'g01-query-subjects-offline-agent-mcp-matrix-v1':
+      return validateG01QuerySubjectsOfflineSanitizedReportFile(claim, root, reportPath);
     case 'p02-person-profile-offline-agent-mcp-v1':
       return validateP02SanitizedReportFile(claim, root, reportPath);
     case 'r04-series-watch-order-offline-agent-mcp-v1':
@@ -7302,11 +7315,12 @@ function assertP05OneShotReconciledBeforeMerge(epoch, runNumber, prNumber) {
     claim.globalLatch?.name !== P05_ONE_SHOT_LATCH_LABEL_NAME ||
     claim.globalLatch?.description !== P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION ||
     !epoch.advances_frontier_ids?.includes('P05') ||
-    !epoch.review_history?.some((review) =>
-      review.candidate_sha === claim.sourceCandidateSha &&
-      review.reviewed_base_sha === claim.baseSha &&
-      review.reviewer_id === claim.reviewerId &&
-      review.verdict === 'PASS'
+    !epoch.review_history?.some(
+      (review) =>
+        review.candidate_sha === claim.sourceCandidateSha &&
+        review.reviewed_base_sha === claim.baseSha &&
+        review.reviewer_id === claim.reviewerId &&
+        review.verdict === 'PASS',
     )
   ) {
     throw new HarnessInvariantError(
@@ -7372,7 +7386,10 @@ function assertP05OneShotReconciledBeforeMerge(epoch, runNumber, prNumber) {
   try {
     report = JSON.parse(artifactBytes.toString('utf8'));
   } catch {
-    throw new HarnessInvariantError('P05_ONESHOT_REPORT_INVALID', 'The P05 report is not valid JSON.');
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_REPORT_INVALID',
+      'The P05 report is not valid JSON.',
+    );
   }
   const expectedResultState = claim.state === 'REPORT_WRITTEN' ? 'SUCCESS' : 'INCONCLUSIVE';
   if (
@@ -7408,7 +7425,9 @@ function assertP05OneShotReconciledBeforeMerge(epoch, runNumber, prNumber) {
   if (
     claim.state === 'REPORT_WRITTEN' &&
     (!p05PersonMediaSummaryIsValid(report.resultSummary) ||
-      Object.keys(report.assertions ?? {}).sort().join(',') !== expectedAssertions.sort().join(',') ||
+      Object.keys(report.assertions ?? {})
+        .sort()
+        .join(',') !== expectedAssertions.sort().join(',') ||
       expectedAssertions.some((key) => report.assertions[key] !== true))
   ) {
     throw new HarnessInvariantError(
@@ -7864,6 +7883,147 @@ function assertG01RenderQueryOfflineProfileReconciledBeforeMerge(epoch, runNumbe
   }
 }
 
+function assertG01QuerySubjectsOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber) {
+  const profile = getAgentMcpProfileById(G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID);
+  const disposition = agentMcpProfileClaims(epoch)[G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID];
+  const latestReview = epoch.review_history?.at(-1);
+  const terminalState = disposition?.state;
+  const reportWritten = terminalState === 'REPORT_WRITTEN';
+  const terminalReportSha256 =
+    disposition?.reportSha256 ?? disposition?.unacceptedReportSha256 ?? null;
+  const claimReview = epoch.review_history?.find(
+    (review) =>
+      review?.candidate_sha === disposition?.sourceCandidateSha &&
+      review?.reviewed_base_sha === disposition?.baseSha &&
+      review?.reviewer_id === disposition?.reviewerId &&
+      review?.verdict === 'PASS',
+  );
+  if (
+    epoch.epoch_id !== G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID ||
+    epoch.state !== 'REVIEW_PASSED' ||
+    epoch.pr_number !== Number(prNumber) ||
+    !profile ||
+    disposition?.profileId !== G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID ||
+    disposition.frontierId !== 'G01' ||
+    disposition.epochId !== G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID ||
+    disposition.runNumber !== Number(runNumber) ||
+    disposition.prNumber !== Number(prNumber) ||
+    disposition.toolName !== 'bangumi.query_subjects' ||
+    disposition.argumentProfile !== profile.argumentProfile ||
+    disposition.expectedArgumentsSha256 !== agentMcpProfileArgumentsSha256(profile) ||
+    disposition.registrySha256 !== agentMcpProfileRegistrySha256(profile.id) ||
+    disposition.retryAllowed !== false ||
+    !['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(terminalState) ||
+    disposition.reportWritten !== reportWritten ||
+    !/^[0-9a-f]{40}$/u.test(disposition.sourceCandidateSha ?? '') ||
+    !isAncestor(disposition.sourceCandidateSha, epoch.candidate_sha) ||
+    disposition.baseSha !== epoch.base_sha ||
+    disposition.ciSha !== disposition.sourceCandidateSha ||
+    disposition.ciStatus !== 'SUCCESS' ||
+    disposition.reviewerId !== claimReview?.reviewer_id ||
+    claimReview?.reviewed_base_sha !== disposition.baseSha ||
+    latestReview?.candidate_sha !== epoch.candidate_sha ||
+    latestReview?.reviewed_base_sha !== epoch.base_sha ||
+    latestReview?.verdict !== 'PASS' ||
+    epoch.review_pass_sha !== epoch.candidate_sha ||
+    !isG16LunaMaxReviewerId(latestReview?.reviewer_id, Number(prNumber)) ||
+    !epoch.advances_frontier_ids?.includes('G01')
+  ) {
+    throw new HarnessInvariantError(
+      'G01_QUERY_SUBJECTS_OFFLINE_RECONCILIATION_REQUIRED',
+      'The G01 query-subjects offline matrix Epoch requires its exact terminal one-shot claim and reviewed final Candidate before merge.',
+    );
+  }
+
+  const labels = readAgentMcpProfileLabels();
+  const claimLabel = labels.find((label) => label.name === profile.claimLabelName);
+  const terminalLabel = labels.find(
+    (label) => label.name === agentMcpProfileTerminalLabelName(profile),
+  );
+  let expectedTerminalDescription;
+  try {
+    expectedTerminalDescription = agentMcpProfileTerminalLabelDescription(
+      profile,
+      terminalState,
+      terminalReportSha256,
+    );
+  } catch {
+    expectedTerminalDescription = null;
+  }
+  if (
+    claimLabel?.description !== agentMcpProfileClaimLabelDescription(profile) ||
+    !terminalLabel ||
+    terminalLabel.description !== expectedTerminalDescription
+  ) {
+    throw new HarnessInvariantError(
+      'G01_QUERY_SUBJECTS_OFFLINE_TERMINAL_LATCH_MISMATCH',
+      'The permanent query-subjects claim and terminal latches must match its durable disposition.',
+    );
+  }
+
+  const frontier = frontierContext().ledger;
+  const record = frontier.records.find((item) => item.id === 'G01');
+  if (record?.status !== 'PARTIAL') {
+    throw new HarnessInvariantError(
+      'G01_QUERY_SUBJECTS_OFFLINE_FRONTIER_INVALID',
+      'The matrix-only query profile must leave the G01 scenario PARTIAL.',
+    );
+  }
+
+  const reportPath = path.join(root, G01_QUERY_SUBJECTS_OFFLINE_REPORT_PATH);
+  const changed = new Set(changedPaths(disposition.sourceCandidateSha));
+  const allowedRefreshPaths = new Set([
+    G01_QUERY_SUBJECTS_OFFLINE_REPORT_PATH,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+  ]);
+  if ([...changed].some((item) => !allowedRefreshPaths.has(item))) {
+    throw new HarnessInvariantError(
+      'G01_QUERY_SUBJECTS_OFFLINE_REFRESH_SCOPE_INVALID',
+      'The final Candidate may contain only the sanitized matrix report and generated acceptance row.',
+      { changed: [...changed] },
+    );
+  }
+
+  if (reportWritten) {
+    if (
+      disposition.reportPath !== G01_QUERY_SUBJECTS_OFFLINE_REPORT_PATH ||
+      !/^[0-9a-f]{64}$/u.test(disposition.reportSha256 ?? '') ||
+      (disposition.unacceptedReportSha256 !== null &&
+        disposition.unacceptedReportSha256 !== undefined) ||
+      !changed.has(G01_QUERY_SUBJECTS_OFFLINE_REPORT_PATH) ||
+      !changed.has('docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md')
+    ) {
+      throw new HarnessInvariantError(
+        'G01_QUERY_SUBJECTS_OFFLINE_REPORT_REFRESH_REQUIRED',
+        'A written query-subjects matrix report must be committed with its generated acceptance row.',
+      );
+    }
+    const validation = validateG01QuerySubjectsOfflineSanitizedReportFile(
+      disposition,
+      root,
+      reportPath,
+    );
+    if (!validation.passed || validation.reportSha256 !== disposition.reportSha256) {
+      throw new HarnessInvariantError(
+        'G01_QUERY_SUBJECTS_OFFLINE_REPORT_INVALID',
+        validation.reason ?? 'The query-subjects offline report does not match its terminal claim.',
+      );
+    }
+  } else if (
+    (disposition.reportPath !== undefined && disposition.reportPath !== null) ||
+    disposition.reportSha256 !== undefined ||
+    (disposition.unacceptedReportSha256 !== null &&
+      disposition.unacceptedReportSha256 !== undefined &&
+      !/^[0-9a-f]{64}$/u.test(disposition.unacceptedReportSha256)) ||
+    fs.existsSync(reportPath)
+  ) {
+    throw new HarnessInvariantError(
+      'G01_QUERY_SUBJECTS_OFFLINE_INCONCLUSIVE_REPORT_PRESENT',
+      'An inconclusive query-subjects profile cannot merge with an accepted report artifact.',
+    );
+  }
+}
+
 function commandEpochMerge(options, { resumeBlocked = false } = {}) {
   ensureControlPlane();
   const runNumber = required(options, 'run');
@@ -7906,6 +8066,9 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
     ensureCleanWorkingTree();
   } else if (epoch.epoch_id === G01_RENDER_QUERY_OFFLINE_EPOCH_ID) {
     assertG01RenderQueryOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber);
+    ensureCleanWorkingTree();
+  } else if (epoch.epoch_id === G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID) {
+    assertG01QuerySubjectsOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber);
     ensureCleanWorkingTree();
   } else ensureCleanWorkingTree();
   if (

@@ -112,6 +112,7 @@ import {
   G01_RENDER_QUERY_OFFLINE_EPOCH_ID,
   G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
 } from '../../scripts/lib/g01-render-query-subjects-offline-profile.mjs';
+import { G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID } from '../../scripts/lib/g01-query-subjects-offline-matrix-profile.mjs';
 import {
   C01_SAFE_SCOPE_NOTE,
   projectC01ComparisonResult,
@@ -6654,6 +6655,77 @@ test('G01 REPORT_WRITTEN with a null unaccepted digest reaches signed report val
     const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);
     assert.equal(result.status, 2);
     assert.match(result.stderr, /^G01_RENDER_QUERY_OFFLINE_REPORT_INVALID:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+function g01QuerySubjectsOfflineMergeEnvironment() {
+  const { run, epoch } = controlFixture();
+  const prNumber = 231;
+  const reviewerId = `gpt-6-luna-max-run95-pr${prNumber}-round1`;
+  run.state = 'EPOCH_ACTIVE';
+  run.active_epoch_pr = prNumber;
+  run.outer_sol.consumed = 1;
+  run.outer_sol.product.consumed = 1;
+  epoch.epoch_id = G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID;
+  epoch.base_sha = sha('a');
+  epoch.base_branch = 'master';
+  epoch.branch = 'codex/epoch-run95-g01-query-subjects-offline-agent-mcp-matrix-20261017';
+  epoch.pr_number = prNumber;
+  epoch.state = 'REVIEW_PASSED';
+  epoch.candidate_sha = sha('b');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.review_pass_sha = sha('b');
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.advances_frontier_ids = ['G01'];
+  epoch.scope_closure = {
+    why_not_review_earlier: 'This is a new synthetic offline matrix-only profile.',
+    why_not_extend_further: 'It makes no G01 scenario or public API claim.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'One-query local fixture and exact report gates verified.',
+  };
+  epoch.review.consumed = 1;
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: reviewerId,
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  const frontierLedger = JSON.parse(
+    fs.readFileSync(path.join(root, 'docs/product/frontier-ledger.json'), 'utf8'),
+  );
+  return createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    frontierLedger,
+    runIssueNumber: 95,
+    draft: false,
+    branch: epoch.branch,
+    baseBranch: 'master',
+    featureBranch: epoch.branch,
+    baseSha: sha('a'),
+    featureHeadSha: sha('b'),
+    mergeSha: sha('c'),
+    changedPaths: [],
+    dirty: '',
+  });
+}
+
+test('G01 query-subjects matrix Epoch cannot merge without a durable terminal profile result', () => {
+  const environment = g01QuerySubjectsOfflineMergeEnvironment();
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '231']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G01_QUERY_SUBJECTS_OFFLINE_RECONCILIATION_REQUIRED:/u);
     assert.equal(environment.readState().prState, 'OPEN');
   } finally {
     environment.cleanup();
