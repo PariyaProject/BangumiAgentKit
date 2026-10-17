@@ -5,7 +5,10 @@ import {
   getAgentMcpProfileById,
   normalizeAgentMcpProfileDiagnostics,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
-import { G01_RENDER_QUERY_OFFLINE_NETWORK_MODE } from '../../scripts/lib/g01-render-query-subjects-offline-profile.mjs';
+import {
+  G01_RENDER_QUERY_OFFLINE_NETWORK_MODE,
+  G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID,
+} from '../../scripts/lib/g01-render-query-subjects-offline-profile.mjs';
 import {
   assertG01RenderQueryCandidateReviewGate,
   buildG01RenderQueryOfflineCodexExecArgs,
@@ -15,6 +18,7 @@ import {
 } from '../../scripts/acceptance/run-g01-render-query-subjects-offline-agent-mcp.mjs';
 
 const PROFILE = getAgentMcpProfileById('g01-render-query-subjects-offline-agent-mcp-v1');
+const PROFILE_V2 = getAgentMcpProfileById(G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID);
 const SOURCE_SHA = 'a'.repeat(40);
 const BASE_SHA = 'b'.repeat(40);
 const BUNDLE_SHA = 'c'.repeat(64);
@@ -278,6 +282,40 @@ test('G01 Candidate gate requires exact CI, Base, and same-identity Luna Max PAS
       sourceRevision: SOURCE_SHA,
       currentBaseSha: BASE_SHA,
       readGit: (...args) => (args[0] === 'status' ? ' M dirty-file' : SOURCE_SHA),
+    }),
+  );
+});
+
+test('G01 v2 Candidate gate binds only to its separate Invocation Epoch', () => {
+  const invocationStatus = statusFixture();
+  invocationStatus.epoch.state.epoch_id = PROFILE_V2.epochId;
+  const gate = assertG01RenderQueryCandidateReviewGate(invocationStatus, pullRequestFixture(), {
+    sourceRevision: SOURCE_SHA,
+    currentBaseSha: BASE_SHA,
+    readGit: readGitFixture,
+    profile: PROFILE_V2,
+  });
+  assert.equal(gate.candidateSha, SOURCE_SHA);
+  assert.equal(gate.baseSha, BASE_SHA);
+  assert.equal(gate.prNumber, PR_NUMBER);
+  assert.equal(gate.reviewerId, REVIEWER_ID);
+  assert.equal(PROFILE_V2.epochId, 'run95-g01-render-query-offline-matrix-v2-call-20261018');
+
+  const implementationStatus = statusFixture();
+  assert.throws(() =>
+    assertG01RenderQueryCandidateReviewGate(implementationStatus, pullRequestFixture(), {
+      sourceRevision: SOURCE_SHA,
+      currentBaseSha: BASE_SHA,
+      readGit: readGitFixture,
+      profile: PROFILE_V2,
+    }),
+  );
+  assert.throws(() =>
+    assertG01RenderQueryCandidateReviewGate(invocationStatus, pullRequestFixture(), {
+      sourceRevision: SOURCE_SHA,
+      currentBaseSha: BASE_SHA,
+      readGit: readGitFixture,
+      profile: PROFILE,
     }),
   );
 });
