@@ -139,6 +139,7 @@ const A01_AGGREGATE_PROFILE = getAgentMcpProfileById(
 const P03_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
 const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const P06_PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
+const G06_V2_PROFILE = getAgentMcpProfileById(G06_CAST_OFFLINE_V2_PROFILE_ID);
 const P02_PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
 const R04_PROFILE = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v1');
 const R04_RENDER_PROFILE = getAgentMcpProfileById(
@@ -1688,6 +1689,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
     C04_PROFILE.id,
     TITLE_QUERY_RENDER_PROFILE.id,
     A01_PROFILE.id,
+    G06_V2_PROFILE.id,
   ];
   const checks = exactCiProfileIds.includes(profile.id)
     ? mandatoryChecks.map((name, index) => ({
@@ -2453,6 +2455,40 @@ test('P06 Harness profile claim persists the exact successful CI run and check i
   }
 });
 
+test('G06 v2 Harness profile claim persists the exact successful CI run and check identities', () => {
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(G06_V2_PROFILE);
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', G06_V2_PROFILE.id];
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    assert.equal(claimResult.profileId, G06_V2_PROFILE.id);
+    assert.equal(claimResult.ciRunId, '38806371672');
+    assert.deepEqual(
+      claimResult.ciChecks.map(({ name, status, conclusion }) => ({ name, status, conclusion })),
+      mandatoryChecks.map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' })),
+    );
+
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    const disposition =
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[G06_V2_PROFILE.id];
+    assert.equal(disposition.ciRunId, claimResult.ciRunId);
+    assert.deepEqual(disposition.ciChecks, claimResult.ciChecks);
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('P02 Harness profile claim persists the exact successful CI run and check identities', () => {
   const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(P02_PROFILE);
   const keyPair = generateG04RunnerReceiptKeyPair();
@@ -2617,6 +2653,53 @@ test('P06 Harness claim rejects required checks attached to a different Actions 
     assert.equal(
       stored.adversarial_preflight.agent_mcp_profile_dispositions?.[P06_PROFILE.id],
       undefined,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('G06 v2 Harness claim rejects required checks attached to a different Actions run', () => {
+  const ciRunId = '38806371672';
+  const runUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
+  const mismatchedChecks = mandatoryChecks.map((name, index) => ({
+    name,
+    status: 'COMPLETED',
+    conclusion: 'SUCCESS',
+    detailsUrl: `${runUrl}/job/${116668186145 + index}`,
+  }));
+  mismatchedChecks[0].detailsUrl =
+    'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/99999999999/job/1';
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(G06_V2_PROFILE, {
+    checks: mismatchedChecks,
+  });
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  try {
+    const rejected = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--profile-id',
+      G06_V2_PROFILE.id,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(rejected.status, 2);
+    assert.match(rejected.stderr, /^AGENT_MCP_PROFILE_CLAIM_GATE_FAILED:/u);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions?.[G06_V2_PROFILE.id],
+      undefined,
+    );
+    assert.equal(
+      Object.hasOwn(environment.readState().repositoryLabels ?? {}, G06_V2_PROFILE.claimLabelName),
+      false,
     );
   } finally {
     environment.cleanup();

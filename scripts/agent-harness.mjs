@@ -280,6 +280,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'query-render-title-agent-mcp-v1',
   'a01-rating-dispersion-1998-spring-v1',
   'g06-cast-offline-agent-mcp-matrix-v1',
+  G06_CAST_OFFLINE_V2_PROFILE_ID,
   'g01-render-query-subjects-offline-agent-mcp-v1',
   G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID,
   'g01-query-subjects-offline-agent-mcp-matrix-v1',
