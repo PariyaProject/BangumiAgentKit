@@ -3752,13 +3752,57 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
   }
 
   const terminal = acquireAgentMcpProfileTerminalGitHubLatch(gh, profile, 'INCONCLUSIVE');
+  const latestRun = issueState(runNumber).state;
+  const latestEpochResult = epochState(prNumber);
+  const latestEpoch = latestEpochResult.state;
+  const latestDispositions = agentMcpProfileClaims(latestEpoch);
+  const latestDisposition = latestDispositions[profile.id];
+  const latestLabels = readAgentMcpProfileLabels();
+  const latestClaimLabel = latestLabels.find((label) => label.name === profile.claimLabelName);
+  const latestTerminalLabel = latestLabels.find((label) => label.name === terminalLabelName);
+  if (
+    latestDisposition?.state === 'INCONCLUSIVE' &&
+    latestDisposition.ambiguousLatchReconciled === true &&
+    latestDisposition.claimIdentityRecovered === false &&
+    latestDisposition.terminalLabelDescription === terminalDescription &&
+    latestTerminalLabel?.description === terminalDescription
+  ) {
+    print({
+      state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED',
+      run: 95,
+      pr: Number(prNumber),
+      profileId,
+      resultState: 'INCONCLUSIVE',
+      retryAllowed: false,
+    });
+    return;
+  }
+  if (
+    latestRun.state !== 'EPOCH_ACTIVE' ||
+    latestRun.active_epoch_pr !== Number(prNumber) ||
+    latestEpoch.epoch_id !== epoch.epoch_id ||
+    latestEpoch.epoch_id !== profile.epochId ||
+    latestEpoch.pr_number !== Number(prNumber) ||
+    latestEpochResult.view.state !== 'OPEN' ||
+    latestEpochResult.view.isDraft ||
+    latestDisposition !== undefined ||
+    latestClaimLabel?.description !== agentMcpProfileClaimLabelDescription(profile) ||
+    latestTerminalLabel?.description !== terminalDescription ||
+    fs.existsSync(path.join(root, profile.reportPath))
+  ) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_AMBIGUOUS_RECONCILIATION_STALE',
+      'The active Epoch or ambiguous profile disposition changed during terminal-latch creation; refusing a stale PR write.',
+      { profileId, prNumber: Number(prNumber) },
+    );
+  }
   const failureDiagnostics = normalizeAgentMcpProfileDiagnostics({
     schemaVersion: 1,
     reasonCode: 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
     checks: { invocationStateUnknown: true },
     counters: {},
   });
-  const nextEpoch = structuredClone(epoch);
+  const nextEpoch = structuredClone(latestEpoch);
   const disposition = {
     schemaVersion: 1,
     claimId: null,
@@ -3789,7 +3833,7 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
     finishedAt: new Date().toISOString(),
   };
   nextEpoch.adversarial_preflight.agent_mcp_profile_dispositions = {
-    ...dispositions,
+    ...latestDispositions,
     [profile.id]: disposition,
   };
   updatePr(prNumber, nextEpoch);

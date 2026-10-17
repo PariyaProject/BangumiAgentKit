@@ -2127,6 +2127,43 @@ test('A01 ambiguous profile latch reconciliation is terminal, bounded, and idemp
   }
 });
 
+test('A01 ambiguous profile reconciliation preserves concurrent Epoch control updates', () => {
+  const { environment } = agentMcpProfileReviewReadyEnvironment(A01_AGGREGATE_PROFILE, {
+    repositoryLabels: {
+      [A01_AGGREGATE_PROFILE.claimLabelName]: {
+        name: A01_AGGREGATE_PROFILE.claimLabelName,
+        description: agentMcpProfileClaimLabelDescription(A01_AGGREGATE_PROFILE),
+      },
+    },
+  });
+  const state = environment.readState();
+  const concurrentlyUpdatedEpoch = parseControlBlock(state.prBody, EPOCH_MARKER);
+  concurrentlyUpdatedEpoch.next_action = 'CONCURRENT_UNRELATED_CONTROL_UPDATE';
+  state.concurrentPrBodyOnTerminalLabelCreate = renderEpochBody(concurrentlyUpdatedEpoch);
+  fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', A01_AGGREGATE_PROFILE.id];
+  try {
+    const reconciled = environment.execute([
+      'epoch:agent-mcp-profile-reconcile-ambiguous',
+      ...runArgs,
+    ]);
+    assert.equal(reconciled.status, 0, reconciled.stderr);
+    assert.equal(
+      JSON.parse(reconciled.stdout).state,
+      'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
+    );
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.next_action, 'CONCURRENT_UNRELATED_CONTROL_UPDATE');
+    assert.equal(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[A01_AGGREGATE_PROFILE.id]
+        .ambiguousLatchReconciled,
+      true,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('A01 ambiguous profile latch reconciliation requires the exact permanent latch', () => {
   const { environment } = agentMcpProfileReviewReadyEnvironment(A01_AGGREGATE_PROFILE, {
     repositoryLabels: {
