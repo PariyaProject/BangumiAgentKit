@@ -145,9 +145,13 @@ test('R03 offline matrix evidence keeps the two-hop scenario unassessed', () => 
   assert.ok(record, 'R03 must remain in the canonical frontier');
   assert.equal(record.status, 'UNASSESSED');
   assert.match(record.next_action, /offline profile may credit only/u);
+  assert.match(record.next_action, /terminal INCONCLUSIVE\/no-report\/retryAllowed=false/u);
+  assert.match(record.next_action, /never repeat its claim or fixed IDs/u);
   assert.match(record.next_action, /do not answer the highest-rated two-hop question/u);
   for (const source of [
     'docs/research/run95-r03-relations-agent-mcp-offline-matrix-2026-10-17.md',
+    'scripts/lib/codex-mcp-approval-config.mjs',
+    'tests/harness/codex-mcp-approval-config.test.mjs',
     'scripts/acceptance/agent-mcp-profile-registry.json',
     'scripts/acceptance/run-r03-relations-offline-agent-mcp.mjs',
     'scripts/acceptance/write-r03-relations-offline-agent-mcp-report.mjs',

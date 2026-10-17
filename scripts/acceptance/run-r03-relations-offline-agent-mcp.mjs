@@ -11,7 +11,7 @@ import {
   summarizeCodexEvents,
 } from './run-g26-codex-agent-mcp.mjs';
 import {
-  codexMcpExactToolApprovalConfig,
+  codexMcpExactToolAccessConfig,
   summarizeCodexErrorItems,
 } from '../lib/codex-mcp-approval-config.mjs';
 import {
@@ -365,9 +365,7 @@ export function buildR03CodexExecArgs({
     `mcp_servers.${SERVER_ID}.cwd=${tomlString(ROOT)}`,
     `mcp_servers.${SERVER_ID}.enabled=true`,
     `mcp_servers.${SERVER_ID}.required=true`,
-    `mcp_servers.${SERVER_ID}.enabled_tools=${tomlStringArray([PROFILE.toolName])}`,
-    `mcp_servers.${SERVER_ID}.default_tools_approval_mode="prompt"`,
-    ...codexMcpExactToolApprovalConfig(SERVER_ID, [PROFILE.toolName]),
+    ...codexMcpExactToolAccessConfig(SERVER_ID, [PROFILE.toolName]),
     `mcp_servers.${SERVER_ID}.startup_timeout_sec=20`,
     `mcp_servers.${SERVER_ID}.tool_timeout_sec=180`,
   ];

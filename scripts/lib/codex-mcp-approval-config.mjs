@@ -7,10 +7,10 @@ function isExactToolName(value) {
 }
 
 /**
- * Codex CLI needs an explicit per-tool approval setting for noninteractive MCP calls.
- * The quoted TOML component is required because Bangumi tool names contain a dot.
+ * Configure a dedicated profile server with an exact exposed-tool allowlist.
+ * Approval is server-wide, so the allowlist must contain every exposed tool.
  */
-export function codexMcpExactToolApprovalConfig(serverName, toolNames) {
+export function codexMcpExactToolAccessConfig(serverName, toolNames) {
   if (
     !isExactServerName(serverName) ||
     !Array.isArray(toolNames) ||
@@ -21,10 +21,10 @@ export function codexMcpExactToolApprovalConfig(serverName, toolNames) {
   ) {
     throw new TypeError('Codex MCP approval config requires an exact server and unique tools.');
   }
-  return toolNames.map(
-    (toolName) =>
-      `mcp_servers.${serverName}.tools.${JSON.stringify(toolName)}.approval_mode="approve"`,
-  );
+  return [
+    `mcp_servers.${serverName}.enabled_tools=${JSON.stringify(toolNames)}`,
+    `mcp_servers.${serverName}.default_tools_approval_mode="approve"`,
+  ];
 }
 
 function isBlockedDisabledWebSearchError(item) {

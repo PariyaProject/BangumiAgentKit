@@ -71,7 +71,7 @@ function serverSummary() {
   };
 }
 
-test('R04 render Codex config uses an exact per-tool grant without deprecated feature keys', () => {
+test('R04 render Codex config approves only exact enabled tools without deprecated feature keys', () => {
   assert.equal(validateR04RenderRunnerArgs(['--help']), 'help');
   assert.equal(validateR04RenderRunnerArgs(['--run', '95']), 'run');
   assert.throws(() => validateR04RenderRunnerArgs(['--run', '94']));
@@ -94,11 +94,13 @@ test('R04 render Codex config uses an exact per-tool grant without deprecated fe
   assert.ok(args.includes('features.shell_tool=false'));
   assert.ok(args.includes('features.browser_use=false'));
   assert.ok(
-    args.includes(
-      'mcp_servers.bgk_r04_render_watch_order.tools."bangumi.render_series_watch_order".approval_mode="approve"',
-    ),
+    args.includes('mcp_servers.bgk_r04_render_watch_order.default_tools_approval_mode="approve"'),
   );
   assert.ok(args.includes(`mcp_servers.${SERVER_ID}.enabled_tools=["${PROFILE.toolName}"]`));
+  assert.equal(
+    args.some((setting) => setting.includes(`mcp_servers.${SERVER_ID}.tools.`)),
+    false,
+  );
   assert.ok(args.at(-1).includes(JSON.stringify(R04_RENDER_SERIES_WATCH_ORDER_EXPECTED_ARGUMENTS)));
 });
 

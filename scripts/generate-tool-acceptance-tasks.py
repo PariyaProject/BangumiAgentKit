@@ -5451,7 +5451,7 @@ CODEX_R04_RENDER_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function buildR04RenderCodexExecArgs(',
         'export function exactR04RenderTextReadback(',
         'export function validateR04RenderServerSummary(',
-        'codexMcpExactToolApprovalConfig(SERVER_ID, [PROFILE.toolName])',
+        'codexMcpExactToolAccessConfig(SERVER_ID, [PROFILE.toolName])',
         'function runR04Render(',
     ),
     'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-report.mjs': (
@@ -5511,7 +5511,7 @@ CODEX_R01_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
         'duplicateRequestCount',
     ),
     'scripts/lib/codex-mcp-approval-config.mjs': (
-        'export function codexMcpExactToolApprovalConfig(',
+        'export function codexMcpExactToolAccessConfig(',
         'export function summarizeCodexErrorItems(',
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
@@ -5538,7 +5538,7 @@ CODEX_R01_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function buildR01CodexExecArgs(',
         'export function classifyR01AssertionFailure(',
         'function runR01(',
-        'codexMcpExactToolApprovalConfig(SERVER_ID, [PROFILE.toolName])',
+        'codexMcpExactToolAccessConfig(SERVER_ID, [PROFILE.toolName])',
     ),
     'scripts/acceptance/write-r01-relations-offline-agent-mcp-report.mjs': (
         'export function buildR01RunnerReceiptPayload(',
@@ -5622,6 +5622,7 @@ CODEX_R03_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function assertR03CandidateReviewGate(',
         'export function sameR03CandidateReviewGate(',
         'export function buildR03CodexExecArgs(',
+        'codexMcpExactToolAccessConfig(SERVER_ID, [PROFILE.toolName])',
         'export function classifyR03AssertionFailure(',
         "'R03_PREINVOKE_GATE_CHANGED'",
         'function runR03(',
@@ -5713,7 +5714,7 @@ CODEX_R02_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function buildR02CodexExecArgs(',
         '0.163.0 or later before claim',
         'function runR02(',
-        'codexMcpExactToolApprovalConfig(SERVER_ID, [PROFILE.toolName])',
+        'codexMcpExactToolAccessConfig(SERVER_ID, [PROFILE.toolName])',
     ),
     'scripts/acceptance/write-r02-positive-direct-relations-agent-mcp-report.mjs': (
         'export function buildR02RunnerReceiptPayload(',
