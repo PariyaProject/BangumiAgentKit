@@ -86,9 +86,9 @@ function input(errorCount = 0) {
     inputSchemaSha256: sha256(canonicalAgentMcpProfileJson(catalogTool.inputSchema)),
     serverToolNames: [PROFILE.toolName],
     serverToolCount: 1,
-    expectedCallCount: 2,
+    expectedCallCount: 1,
     serverResultStatus: 'SUCCESS',
-    allowedCallCount: 2,
+    allowedCallCount: 1,
     deniedCallCount: 0,
     results: SUMMARIES.map((resultSummary, sequenceIndex) => ({
       sequenceIndex,
@@ -97,10 +97,10 @@ function input(errorCount = 0) {
     })),
     offlineFixture: {
       profile: R03_RELATIONS_OFFLINE_NETWORK_MODE,
-      requestCount: 2,
-      relationRequestCount: 2,
+      requestCount: 1,
+      relationRequestCount: 1,
       rootRequestCount: 1,
-      intermediateRequestCount: 1,
+      intermediateRequestCount: 0,
       duplicateRequestCount: 0,
       unexpectedRequestCount: 0,
       authorizationHeaderCount: 0,
@@ -111,17 +111,17 @@ function input(errorCount = 0) {
     processExitCode: 0,
     eventStreamParsed: true,
     turnCompleted: true,
-    codexMcpToolEventCount: 2,
+    codexMcpToolEventCount: 1,
     codexErrorItemCount: errorCount,
     blockedWebSearchErrorItemCount: errorCount,
     unexpectedCodexErrorItemCount: 0,
     nonMcpToolEventCount: 0,
     nonMcpToolTypes: [],
     shellToolCallCount: 0,
-    mcpServerNames: ['bgk_r03_relations'],
+    mcpServerNames: ['bgk_r03_relations_v2'],
     exactCall: true,
     exactToolEvent: true,
-    allowedCallCount: 2,
+    allowedCallCount: 1,
     deniedCallCount: 0,
   };
   return { claim, serverSummary, events, keys };
@@ -160,8 +160,8 @@ test('R03 report builder signs only sanitized matrix evidence without scenario c
     assert.deepEqual(report.resultSummary, SUMMARIES);
     for (const field of ['answer', 'prompt', 'subjectId', 'rawResult'])
       assert.equal(Object.hasOwn(report, field), false);
-    assert.equal(JSON.stringify(report.resultSummary).includes('99091'), false);
-    assert.equal(JSON.stringify(report.offlineFixture).includes('99091'), false);
+    assert.equal(JSON.stringify(report.resultSummary).includes('9910'), false);
+    assert.equal(JSON.stringify(report.offlineFixture).includes('9910'), false);
     assert.equal(JSON.stringify(report).includes('Synthetic R03'), false);
     const validated = validateR03SanitizedReportFile(value.claim, root, reportPath);
     assert.equal(validated.passed, true, validated.reason);
@@ -182,7 +182,7 @@ test('R03 report validator rejects modified signatures and local request counter
     writeFileSync(reportPath, JSON.stringify(report));
     assert.equal(validateR03SanitizedReportFile(value.claim, root, reportPath).passed, false);
     const tampered = { ...report, offlineFixture: value.serverSummary.offlineFixture };
-    tampered.resultSummary[1].rowsReturned = 1;
+    tampered.resultSummary[0].rowsReturned = 0;
     assert.equal(validateR03ProfileReport(tampered, value.claim).passed, false);
   } finally {
     rmSync(root, { recursive: true, force: true });

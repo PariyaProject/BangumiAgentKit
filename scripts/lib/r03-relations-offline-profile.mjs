@@ -4,35 +4,25 @@ import {
   getAgentMcpProfileById,
 } from './agent-mcp-profile-claims.mjs';
 
-export const R03_RELATIONS_OFFLINE_PROFILE_ID = 'r03-two-hop-relations-offline-agent-mcp-v1';
+export const R03_RELATIONS_OFFLINE_PROFILE_ID = 'r03-direct-relations-offline-agent-mcp-matrix-v2';
 export const R03_RELATIONS_OFFLINE_EPOCH_ID =
-  'run95-r03-two-hop-relations-offline-agent-mcp-20261017';
-export const R03_RELATIONS_OFFLINE_NETWORK_MODE = 'run95-r03-two-hop-relations-offline-v1';
+  'run95-r03-direct-relations-offline-agent-mcp-matrix-v2-20261017';
+export const R03_RELATIONS_OFFLINE_NETWORK_MODE = 'run95-r03-direct-relations-offline-matrix-v2';
 export const R03_RELATIONS_OFFLINE_ARGUMENT_PROFILE =
-  'fixed-r03-synthetic-two-hop-relations-990910-990911-v1';
-export const R03_RELATIONS_OFFLINE_ACKNOWLEDGEMENT = 'R03_SYNTHETIC_TWO_HOP_RELATIONS_READ';
+  'fixed-r03-synthetic-direct-relations-991020-v2';
+export const R03_RELATIONS_OFFLINE_ACKNOWLEDGEMENT = 'R03_SYNTHETIC_DIRECT_RELATION_MATRIX_READ';
 export const R03_RELATIONS_OFFLINE_EXPECTED_CALLS = Object.freeze([
   Object.freeze({
     toolName: 'bangumi.get_subject_relations',
-    arguments: Object.freeze({ subjectId: 990910, includeEvidence: true }),
-  }),
-  Object.freeze({
-    toolName: 'bangumi.get_subject_relations',
-    arguments: Object.freeze({ subjectId: 990911, includeEvidence: true }),
+    arguments: Object.freeze({ subjectId: 991020, includeEvidence: true }),
   }),
 ]);
 export const R03_RELATIONS_OFFLINE_EXPECTED_ARGUMENTS = Object.freeze(
   R03_RELATIONS_OFFLINE_EXPECTED_CALLS.map((call) => call.arguments),
 );
 
-const EXPECTED_RELATION_LABELS = Object.freeze([
-  Object.freeze(['续篇']),
-  Object.freeze(['前传', '外传']),
-]);
-const EXPECTED_TARGET_IDS = Object.freeze([
-  Object.freeze([990911]),
-  Object.freeze([990912, 990913]),
-]);
+const EXPECTED_RELATION_LABELS = Object.freeze([Object.freeze(['续篇'])]);
+const EXPECTED_TARGET_IDS = Object.freeze([Object.freeze([991021])]);
 export const R03_RELATIONS_OFFLINE_EXPECTED_RESULT_SUMMARIES = Object.freeze([
   Object.freeze({
     state: 'observed',
@@ -45,18 +35,6 @@ export const R03_RELATIONS_OFFLINE_EXPECTED_RESULT_SUMMARIES = Object.freeze([
     totalCountAvailable: false,
     completeness: 'not_provided_by_source',
     relationLabels: Object.freeze(['续篇']),
-  }),
-  Object.freeze({
-    state: 'observed',
-    sourceDirection: 'source_subject_to_returned_target',
-    responseRowsObserved: 2,
-    rowsReturned: 2,
-    schemaDriftRows: 0,
-    truncated: false,
-    paginationAvailable: false,
-    totalCountAvailable: false,
-    completeness: 'not_provided_by_source',
-    relationLabels: Object.freeze(['前传', '外传']),
   }),
 ]);
 
@@ -118,7 +96,7 @@ export function assertR03RelationsOfflineProfile(profile) {
   if (profile?.id !== R03_RELATIONS_OFFLINE_PROFILE_ID) return false;
   const registered = getAgentMcpProfileById(R03_RELATIONS_OFFLINE_PROFILE_ID);
   if (!registered) {
-    throw new Error('R03 offline relations mode requires its registered profile.');
+    throw new Error('R03 offline relations mode requires its registered v2 profile.');
   }
   if (
     profile.networkMode !== R03_RELATIONS_OFFLINE_NETWORK_MODE ||
@@ -127,11 +105,11 @@ export function assertR03RelationsOfflineProfile(profile) {
     profile.toolName !== 'bangumi.get_subject_relations' ||
     profile.argumentProfile !== R03_RELATIONS_OFFLINE_ARGUMENT_PROFILE ||
     profile.acceptanceScope !== 'agent-mcp-matrix-only' ||
-    profile.reportPath !== 'docs/live-probes/r03-two-hop-relations-agent-mcp-run95.json' ||
+    profile.reportPath !== 'docs/live-probes/r03-direct-relations-agent-mcp-matrix-v2-run95.json' ||
     profile.selectionEvidencePath !==
-      'docs/research/run95-r03-relations-agent-mcp-offline-matrix-2026-10-17.md' ||
-    profile.evidenceKind !== 'codex_cli_r03_relations_offline_agent_mcp_matrix' ||
-    profile.answerCheckMethod !== 'r03-synthetic-two-hop-relations-execution-only-v1' ||
+      'docs/research/run95-r03-direct-relations-offline-agent-mcp-matrix-v2-2026-10-17.md' ||
+    profile.evidenceKind !== 'codex_cli_r03_direct_relations_offline_agent_mcp_matrix_v2' ||
+    profile.answerCheckMethod !== 'r03-synthetic-direct-relations-execution-only-v2' ||
     profile.model !== 'gpt-6-luna' ||
     profile.reasoningEffort !== 'max' ||
     profile.calls?.length !== R03_RELATIONS_OFFLINE_EXPECTED_CALLS.length ||
@@ -143,7 +121,7 @@ export function assertR03RelationsOfflineProfile(profile) {
     ) ||
     agentMcpProfileArgumentsSha256(profile) !== agentMcpProfileArgumentsSha256(registered)
   ) {
-    throw new Error('R03 offline relations mode does not match its immutable profile.');
+    throw new Error('R03 offline relations mode does not match its immutable v2 profile.');
   }
   return true;
 }

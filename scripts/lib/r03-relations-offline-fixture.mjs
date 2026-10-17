@@ -5,10 +5,7 @@ import {
 } from './r03-relations-offline-profile.mjs';
 
 const ORIGIN = 'https://api.bgm.tv';
-const ROUTES = Object.freeze({
-  root: '/v0/subjects/990910/subjects',
-  intermediate: '/v0/subjects/990911/subjects',
-});
+const ROUTES = Object.freeze({ direct: '/v0/subjects/991020/subjects' });
 const EXPECTED_REQUEST_HEADERS = Object.freeze({
   accept: 'application/json',
   'user-agent': 'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)',
@@ -44,37 +41,19 @@ function hasExactExpectedHeaders(headers) {
   );
 }
 
-const syntheticRootRelations = () => [
+const syntheticDirectRelations = () => [
   {
-    id: 990911,
+    id: 991021,
     type: 2,
-    name: 'Synthetic R03 intermediate node',
-    name_cn: '合成 R03 中间节点',
+    name: 'Synthetic R03 matrix target 991021',
+    name_cn: '合成 R03 矩阵目标 991021',
     relation: '续篇',
-  },
-];
-
-const syntheticIntermediateRelations = () => [
-  {
-    id: 990912,
-    type: 2,
-    name: 'Synthetic R03 candidate one',
-    name_cn: '合成 R03 候选一',
-    relation: '前传',
-  },
-  {
-    id: 990913,
-    type: 2,
-    name: 'Synthetic R03 candidate two',
-    name_cn: '合成 R03 候选二',
-    relation: '外传',
   },
 ];
 
 export function createR03RelationsOfflineFetch() {
   const operations = new Map([
-    [ROUTES.root, { name: 'root', respond: syntheticRootRelations }],
-    [ROUTES.intermediate, { name: 'intermediate', respond: syntheticIntermediateRelations }],
+    [ROUTES.direct, { name: 'direct', respond: syntheticDirectRelations }],
   ]);
   const observed = new Set();
   const counters = {
@@ -96,7 +75,7 @@ export function createR03RelationsOfflineFetch() {
       url = toUrl(input);
     } catch {
       counters.unexpectedRequestCount += 1;
-      return new Response('R03 offline fixture denied an invalid URL.', { status: 599 });
+      return new Response('R03 offline fixture denied an invalid request.', { status: 599 });
     }
     const method = requestMethod(input, init);
     const headers = requestHeaders(input, init);
@@ -124,8 +103,7 @@ export function createR03RelationsOfflineFetch() {
     }
     observed.add(url.pathname);
     counters.relationRequestCount += 1;
-    if (operation.name === 'root') counters.rootRequestCount += 1;
-    else counters.intermediateRequestCount += 1;
+    counters.rootRequestCount += 1;
     return response(operation.respond());
   };
 
@@ -140,7 +118,7 @@ export function createR03RelationsOfflineFetch() {
 
 export function assertR03RelationsOfflineFixture(profile) {
   if (profile?.id !== R03_RELATIONS_OFFLINE_PROFILE_ID) {
-    throw new Error('R03 offline fixture requires its exact registered profile.');
+    throw new Error('R03 offline fixture requires its exact registered v2 profile.');
   }
   return assertR03RelationsOfflineProfile(profile);
 }

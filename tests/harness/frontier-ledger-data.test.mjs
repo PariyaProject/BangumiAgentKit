@@ -144,12 +144,13 @@ test('R03 offline matrix evidence keeps the two-hop scenario unassessed', () => 
   const record = ledger.records.find(({ id }) => id === 'R03');
   assert.ok(record, 'R03 must remain in the canonical frontier');
   assert.equal(record.status, 'UNASSESSED');
-  assert.match(record.next_action, /offline profile may credit only/u);
+  assert.match(record.next_action, /v2 profile .* may credit only/u);
   assert.match(record.next_action, /terminal INCONCLUSIVE\/no-report\/retryAllowed=false/u);
   assert.match(record.next_action, /never repeat its claim or fixed IDs/u);
   assert.match(record.next_action, /do not answer the highest-rated two-hop question/u);
   for (const source of [
     'docs/research/run95-r03-relations-agent-mcp-offline-matrix-2026-10-17.md',
+    'docs/research/run95-r03-direct-relations-offline-agent-mcp-matrix-v2-2026-10-17.md',
     'scripts/lib/codex-mcp-approval-config.mjs',
     'tests/harness/codex-mcp-approval-config.test.mjs',
     'scripts/acceptance/agent-mcp-profile-registry.json',
@@ -168,7 +169,7 @@ test('R03 offline matrix evidence keeps the two-hop scenario unassessed', () => 
     assert.ok(record.source_refs.includes(source), `R03 source reference missing: ${source}`);
     assert.equal(existsSync(path.join(root, source)), true, `R03 source reference is missing: ${source}`);
   }
-  const matrixReport = 'docs/live-probes/r03-two-hop-relations-agent-mcp-run95.json';
+  const matrixReport = 'docs/live-probes/r03-direct-relations-agent-mcp-matrix-v2-run95.json';
   if (record.source_refs.includes(matrixReport)) {
     assert.equal(existsSync(path.join(root, matrixReport)), true);
     assert.match(record.next_action, /synthetic offline matrix-only profile/u);

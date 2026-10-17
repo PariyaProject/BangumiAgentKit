@@ -22,8 +22,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const PROFILE = getAgentMcpProfileById(R03_RELATIONS_OFFLINE_PROFILE_ID);
 const REPORT_RELATIVE_PATH = PROFILE?.reportPath;
 const ACKNOWLEDGEMENT = R03_RELATIONS_OFFLINE_ACKNOWLEDGEMENT;
-const SERVER_ID = 'bgk_r03_relations';
-const RECEIPT_KIND = 'r03-relations-offline-agent-mcp-runner-receipt-v1';
+const SERVER_ID = 'bgk_r03_relations_v2';
+const RECEIPT_KIND = 'r03-relations-offline-agent-mcp-runner-receipt-v2';
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const canonicalSha256 = (value) => sha256(canonicalAgentMcpProfileJson(value));
 
@@ -174,7 +174,7 @@ const ANSWER_CHECK_FIELDS = new Set([
   'fixedArguments',
   'exactCandidateBundle',
   'offlineFixtureOnly',
-  'twoExpectedLocalResponses',
+  'oneExpectedLocalResponse',
   'noAssetRequests',
   'exactAcknowledgement',
   'privacyPreserved',
@@ -192,10 +192,10 @@ function exactKeys(value, fields) {
 function expectedFixture() {
   return {
     profile: R03_RELATIONS_OFFLINE_NETWORK_MODE,
-    requestCount: 2,
-    relationRequestCount: 2,
+    requestCount: 1,
+    relationRequestCount: 1,
     rootRequestCount: 1,
-    intermediateRequestCount: 1,
+    intermediateRequestCount: 0,
     duplicateRequestCount: 0,
     unexpectedRequestCount: 0,
     authorizationHeaderCount: 0,
@@ -240,7 +240,7 @@ function expectedAnswerChecks() {
     fixedArguments: true,
     exactCandidateBundle: true,
     offlineFixtureOnly: true,
-    twoExpectedLocalResponses: true,
+    oneExpectedLocalResponse: true,
     noAssetRequests: true,
     exactAcknowledgement: true,
     privacyPreserved: true,
@@ -391,7 +391,7 @@ export function validateR03ProfileReport(report, claim, reportBytes = null) {
     report.acceptanceScope === 'agent-mcp-matrix-only' &&
     report.epochId === PROFILE.epochId &&
     report.profileId === PROFILE.id &&
-    report.profile === 'codex-luna-max-offline-agent-mcp-matrix-v1' &&
+    report.profile === 'codex-luna-max-offline-agent-mcp-matrix-v2' &&
     report.model === PROFILE.model &&
     report.reasoningEffort === PROFILE.reasoningEffort &&
     new RegExp(`^gpt-6-luna-max-run95-pr${report.prNumber}-round[1-9]\\d*$`, 'u').test(
@@ -427,7 +427,7 @@ export function validateR03ProfileReport(report, claim, reportBytes = null) {
     report.resultStatus === 'SUCCESS' &&
     report.eventStreamParsed === true &&
     report.turnCompleted === true &&
-    report.codexMcpToolEventCount === 2 &&
+    report.codexMcpToolEventCount === 1 &&
     Number.isSafeInteger(report.codexErrorItemCount) &&
     report.codexErrorItemCount >= 0 &&
     report.codexErrorItemCount <= 3 &&
@@ -437,13 +437,13 @@ export function validateR03ProfileReport(report, claim, reportBytes = null) {
     Array.isArray(report.nonMcpToolTypes) &&
     report.nonMcpToolTypes.length === 0 &&
     report.shellToolCallCount === 0 &&
-    report.allowedCallCount === 2 &&
+    report.allowedCallCount === 1 &&
     report.deniedCallCount === 0 &&
     report.answerCheckMethod === PROFILE.answerCheckMethod &&
     report.answerSha256 === sha256(ACKNOWLEDGEMENT) &&
     report.answerUtf8Bytes === Buffer.byteLength(ACKNOWLEDGEMENT, 'utf8') &&
     Array.isArray(report.resultSummary) &&
-    report.resultSummary.length === 2 &&
+    report.resultSummary.length === 1 &&
     canonicalAgentMcpProfileJson(report.resultSummary) ===
       canonicalAgentMcpProfileJson(expectedResultSummary()) &&
     exactKeys(report.offlineFixture, OFFLINE_FIXTURE_FIELDS) &&
@@ -514,7 +514,7 @@ export function buildR03ProfileReport(
     events.processExitCode !== 0 ||
     events.eventStreamParsed !== true ||
     events.turnCompleted !== true ||
-    events.codexMcpToolEventCount !== 2 ||
+    events.codexMcpToolEventCount !== 1 ||
     !Number.isSafeInteger(events.codexErrorItemCount) ||
     events.codexErrorItemCount < 0 ||
     events.codexErrorItemCount > 3 ||
@@ -529,9 +529,9 @@ export function buildR03ProfileReport(
     serverSummary.serverToolCount !== 1 ||
     canonicalAgentMcpProfileJson(serverSummary.serverToolNames) !==
       canonicalAgentMcpProfileJson([PROFILE.toolName]) ||
-    serverSummary.allowedCallCount !== 2 ||
+    serverSummary.allowedCallCount !== 1 ||
     serverSummary.deniedCallCount !== 0 ||
-    serverSummary.results?.length !== 2 ||
+    serverSummary.results?.length !== 1 ||
     serverSummary.results.some(
       (result, index) =>
         result?.sequenceIndex !== index ||
@@ -552,7 +552,7 @@ export function buildR03ProfileReport(
     acceptanceScope: 'agent-mcp-matrix-only',
     epochId: PROFILE.epochId,
     profileId: PROFILE.id,
-    profile: 'codex-luna-max-offline-agent-mcp-matrix-v1',
+    profile: 'codex-luna-max-offline-agent-mcp-matrix-v2',
     model: PROFILE.model,
     reasoningEffort: PROFILE.reasoningEffort,
     reviewerId: claim.reviewerId,

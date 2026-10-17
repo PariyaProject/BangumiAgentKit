@@ -9980,7 +9980,7 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
             'acceptanceScope': 'agent-mcp-matrix-only',
             'epochId': GENERATOR.CODEX_R03_OFFLINE_EPOCH_ID,
             'profileId': GENERATOR.CODEX_R03_OFFLINE_PROFILE_ID,
-            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
             'model': 'gpt-6-luna',
             'reasoningEffort': 'max',
             'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
@@ -10009,23 +10009,23 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
             'serverToolNames': [GENERATOR.CODEX_R03_OFFLINE_TOOL_NAME],
             'serverToolCount': 1,
             'networkMode': GENERATOR.CODEX_R03_OFFLINE_NETWORK_MODE,
-            'mcpServerNames': ['bgk_r03_relations'],
+            'mcpServerNames': ['bgk_r03_relations_v2'],
             'processExitCode': 0,
             'resultStatus': 'SUCCESS',
             'eventStreamParsed': True,
             'turnCompleted': True,
-            'codexMcpToolEventCount': 2,
+            'codexMcpToolEventCount': 1,
             'codexErrorItemCount': 2,
             'blockedWebSearchErrorItemCount': 2,
             'unexpectedCodexErrorItemCount': 0,
             'nonMcpToolEventCount': 0,
             'nonMcpToolTypes': [],
             'shellToolCallCount': 0,
-            'allowedCallCount': 2,
+            'allowedCallCount': 1,
             'deniedCallCount': 0,
             'answerCheckMethod': GENERATOR.CODEX_R03_OFFLINE_ANSWER_CHECK_METHOD,
-            'answerSha256': hashlib.sha256(b'R03_SYNTHETIC_TWO_HOP_RELATIONS_READ').hexdigest(),
-            'answerUtf8Bytes': len(b'R03_SYNTHETIC_TWO_HOP_RELATIONS_READ'),
+            'answerSha256': hashlib.sha256(b'R03_SYNTHETIC_DIRECT_RELATION_MATRIX_READ').hexdigest(),
+            'answerUtf8Bytes': len(b'R03_SYNTHETIC_DIRECT_RELATION_MATRIX_READ'),
             'answerChecks': {key: True for key in GENERATOR.CODEX_R03_OFFLINE_ANSWER_CHECK_FIELDS},
             'resultSummary': [
                 {
@@ -10040,25 +10040,13 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
                     'completeness': 'not_provided_by_source',
                     'relationLabels': ['续篇'],
                 },
-                {
-                    'state': 'observed',
-                    'sourceDirection': 'source_subject_to_returned_target',
-                    'responseRowsObserved': 2,
-                    'rowsReturned': 2,
-                    'schemaDriftRows': 0,
-                    'truncated': False,
-                    'paginationAvailable': False,
-                    'totalCountAvailable': False,
-                    'completeness': 'not_provided_by_source',
-                    'relationLabels': ['前传', '外传'],
-                },
             ],
             'offlineFixture': {
                 'profile': GENERATOR.CODEX_R03_OFFLINE_NETWORK_MODE,
-                'requestCount': 2,
-                'relationRequestCount': 2,
+                'requestCount': 1,
+                'relationRequestCount': 1,
                 'rootRequestCount': 1,
-                'intermediateRequestCount': 1,
+                'intermediateRequestCount': 0,
                 'duplicateRequestCount': 0,
                 'unexpectedRequestCount': 0,
                 'authorizationHeaderCount': 0,
@@ -10078,7 +10066,7 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
             },
             'runnerReceipt': {
                 'schemaVersion': 1,
-                'kind': 'r03-relations-offline-agent-mcp-runner-receipt-v1',
+                'kind': 'r03-relations-offline-agent-mcp-runner-receipt-v2',
                 'publicKeyBase64': 'AQ==',
                 'publicKeySha256': 'd' * 64,
                 'payload': {field: None for field in GENERATOR.CODEX_R03_OFFLINE_RECEIPT_PAYLOAD_FIELDS},
@@ -10087,7 +10075,7 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
         }
 
     def candidate_epoch_status(self, candidate_sha=None):
-        branch = 'codex/epoch-run95-r03-two-hop-relations-offline-agent-mcp-20261017'
+        branch = 'codex/epoch-run95-r03-direct-relations-offline-agent-mcp-matrix-v2-20261017'
         candidate_sha = candidate_sha or self.report['sourceRevision']
         base_sha = self.report['baseSha']
         reviewer_id = self.report['reviewerId']
