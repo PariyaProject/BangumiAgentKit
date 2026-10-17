@@ -30,6 +30,11 @@ test('registered C07 profile selects only its immutable offline network mode', (
   ]);
 });
 
+test('one-tool MCP server module imports without starting its stdio entry point', async () => {
+  const serverModule = await import('../../apps/mcp/codex-one-tool-mcp-server.mjs');
+  assert.equal(typeof serverModule, 'object');
+});
+
 test('C07 registered profile rejects arbitrary arguments and caller-selected network modes', () => {
   assert.throws(() =>
     parseCodexOneToolMcpArguments([

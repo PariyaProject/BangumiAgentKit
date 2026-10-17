@@ -49,9 +49,11 @@ import {
   assertC07RenderComparisonOfflineFixtureProfile,
   createC07RenderComparisonOfflineAssetGuard,
   createC07RenderComparisonOfflineFetch,
+} from '../../scripts/lib/c07-render-comparison-offline-fixture.mjs';
+import {
   C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
-} from '../../scripts/lib/c07-render-comparison-offline-fixture.mjs';
+} from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 import {
   assertP02PersonProfileOfflineProfile,
   createP02PersonProfileOfflineFetch,
