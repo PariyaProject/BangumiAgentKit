@@ -365,6 +365,7 @@ export function summarizeProfileToolResult(
   }
   if (
     profileId === 'p06-render-person-profile-offline-agent-mcp-v1' ||
+    profileId === 'c07-render-comparison-offline-agent-mcp-matrix-v1' ||
     profileId === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID ||
     profileId === R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID
   ) {

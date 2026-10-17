@@ -42,6 +42,13 @@ import {
   P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
 } from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 import {
+  assertC07RenderComparisonOfflineFixtureProfile,
+  createC07RenderComparisonOfflineAssetGuard,
+  createC07RenderComparisonOfflineFetch,
+  C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
+  C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
+} from '../../scripts/lib/c07-render-comparison-offline-fixture.mjs';
+import {
   assertP02PersonProfileOfflineProfile,
   createP02PersonProfileOfflineFetch,
   P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
@@ -240,6 +247,9 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE) {
     assertP02PersonProfileOfflineProfile(config.profile);
   }
+  if (config.networkMode === C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE) {
+    assertC07RenderComparisonOfflineFixtureProfile(config.profile);
+  }
   if (config.networkMode === G06_CAST_OFFLINE_NETWORK_MODE) {
     assertG06SubjectCastOfflineProfile(config.profile);
   }
@@ -325,17 +335,19 @@ async function main(argv = process.argv.slice(2)) {
         ? createC07CohortRenderOfflineFixtureFetch()
         : config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
           ? createP06RenderPersonProfileOfflineFetch()
-          : config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE
-            ? createP02PersonProfileOfflineFetch()
-            : config.networkMode === G06_CAST_OFFLINE_NETWORK_MODE
-              ? createG06SubjectCastOfflineFetch()
-              : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
-                ? createR04SeriesWatchOrderOfflineFetch()
-                : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
-                  ? createR04RenderSeriesWatchOrderOfflineFetch()
-                  : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
-                    ? createR01RelationsOfflineFetch()
-                    : null;
+          : config.networkMode === C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE
+            ? createC07RenderComparisonOfflineFetch()
+            : config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE
+              ? createP02PersonProfileOfflineFetch()
+              : config.networkMode === G06_CAST_OFFLINE_NETWORK_MODE
+                ? createG06SubjectCastOfflineFetch()
+                : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
+                  ? createR04SeriesWatchOrderOfflineFetch()
+                  : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
+                    ? createR04RenderSeriesWatchOrderOfflineFetch()
+                    : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
+                      ? createR01RelationsOfflineFetch()
+                      : null;
   const r04RenderAssetFence =
     config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
       ? createR04RenderSeriesWatchOrderAssetFence()
@@ -344,17 +356,23 @@ async function main(argv = process.argv.slice(2)) {
     config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
       ? createP06RenderPersonProfileAssetGuard()
       : null;
+  const c07RenderComparisonAssetGuard =
+    config.profile?.id === C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID
+      ? createC07RenderComparisonOfflineAssetGuard()
+      : null;
   const titleQueryRenderAssetResolver =
     config.profile?.id === TITLE_QUERY_RENDER_PROFILE_ID
       ? createTitleQueryRenderOfflineAssetResolver()
       : null;
-  const renderService = p06AssetGuard
-    ? new RenderService(undefined, undefined, p06AssetGuard.assetResolver)
-    : r04RenderAssetFence
-      ? new RenderService(undefined, undefined, r04RenderAssetFence.assetResolver)
-      : titleQueryRenderAssetResolver
-        ? new RenderService(undefined, undefined, titleQueryRenderAssetResolver)
-        : undefined;
+  const renderService = c07RenderComparisonAssetGuard
+    ? new RenderService(undefined, undefined, c07RenderComparisonAssetGuard.assetResolver)
+    : p06AssetGuard
+      ? new RenderService(undefined, undefined, p06AssetGuard.assetResolver)
+      : r04RenderAssetFence
+        ? new RenderService(undefined, undefined, r04RenderAssetFence.assetResolver)
+        : titleQueryRenderAssetResolver
+          ? new RenderService(undefined, undefined, titleQueryRenderAssetResolver)
+          : undefined;
   const publicHttpClient = new HttpClient({
     baseUrl: 'https://api.bgm.tv',
     timeoutMs: 10000,
@@ -461,6 +479,9 @@ async function main(argv = process.argv.slice(2)) {
       ? { results: Array(config.expectedArgumentSequence.length).fill(null) }
       : { result: null }),
     ...(offlineFixture ? { offlineFixture: offlineFixture.snapshot() } : {}),
+    ...(c07RenderComparisonAssetGuard
+      ? { offlineAssetBoundary: c07RenderComparisonAssetGuard.snapshot() }
+      : {}),
     ...(p06AssetGuard ? { offlineAssetBoundary: p06AssetGuard.snapshot() } : {}),
     ...(r04RenderAssetFence ? { rendererAssetBoundary: r04RenderAssetFence.snapshot() } : {}),
     ...(c04PublicFetch ? { publicRequestScope: c04PublicFetch.snapshot() } : {}),
@@ -596,7 +617,8 @@ async function main(argv = process.argv.slice(2)) {
         }
         if (config.profile) {
           const artifactSummary =
-            config.profile.id === 'p06-render-person-profile-offline-agent-mcp-v1'
+            config.profile.id === 'p06-render-person-profile-offline-agent-mcp-v1' ||
+            config.profile.id === C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID
               ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
               : config.profile.id === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID
                 ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
@@ -644,6 +666,12 @@ async function main(argv = process.argv.slice(2)) {
           };
         }
         if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
+        if (c07RenderComparisonAssetGuard) {
+          summary = {
+            ...summary,
+            offlineAssetBoundary: c07RenderComparisonAssetGuard.snapshot(),
+          };
+        }
         if (p06AssetGuard) summary = { ...summary, offlineAssetBoundary: p06AssetGuard.snapshot() };
         if (r04RenderAssetFence) {
           summary = { ...summary, rendererAssetBoundary: r04RenderAssetFence.snapshot() };
@@ -768,6 +796,12 @@ async function main(argv = process.argv.slice(2)) {
           summary = { ...summary, serverResultStatus: 'ERROR', errorCode };
         }
         if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
+        if (c07RenderComparisonAssetGuard) {
+          summary = {
+            ...summary,
+            offlineAssetBoundary: c07RenderComparisonAssetGuard.snapshot(),
+          };
+        }
         if (p06AssetGuard) summary = { ...summary, offlineAssetBoundary: p06AssetGuard.snapshot() };
         if (r04RenderAssetFence) {
           summary = { ...summary, rendererAssetBoundary: r04RenderAssetFence.snapshot() };
