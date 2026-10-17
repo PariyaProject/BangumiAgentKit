@@ -79,6 +79,12 @@ import {
   TITLE_QUERY_RENDER_PROFILE_ID,
 } from '../../scripts/lib/title-query-render-agent-mcp-profile.mjs';
 import {
+  A01_RATING_DISPERSION_NETWORK_MODE,
+  A01_RATING_DISPERSION_PROFILE_ID,
+  assertA01RatingDispersionProfile,
+  createA01RatingDispersionPublicFetch,
+} from '../../scripts/lib/a01-rating-dispersion-profile.mjs';
+import {
   assertR02PositiveDirectRelationsProfile,
   createR02PositiveDirectRelationsPublicFetch,
   R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE,
@@ -243,7 +249,16 @@ async function main(argv = process.argv.slice(2)) {
   }
   if (config.networkMode === TITLE_QUERY_RENDER_NETWORK_MODE) {
     if (!assertTitleQueryRenderPublicProfile(config.profile)) {
-      throw new Error('The registered title query/render profile does not match its fixed contract.');
+      throw new Error(
+        'The registered title query/render profile does not match its fixed contract.',
+      );
+    }
+  }
+  if (config.networkMode === A01_RATING_DISPERSION_NETWORK_MODE) {
+    if (!assertA01RatingDispersionProfile(config.profile)) {
+      throw new Error(
+        'The registered A01 rating-dispersion profile does not match its fixed contract.',
+      );
     }
   }
   const serverInstanceId = randomUUID();
@@ -291,6 +306,10 @@ async function main(argv = process.argv.slice(2)) {
     config.networkMode === TITLE_QUERY_RENDER_NETWORK_MODE
       ? createTitleQueryRenderPublicFetch()
       : null;
+  const a01RatingDispersionPublicFetch =
+    config.networkMode === A01_RATING_DISPERSION_NETWORK_MODE
+      ? createA01RatingDispersionPublicFetch()
+      : null;
   const offlineFixture =
     config.networkMode === A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE
       ? createA01RenderCohortAggregationOfflineFetch()
@@ -331,13 +350,15 @@ async function main(argv = process.argv.slice(2)) {
     timeoutMs: 10000,
     ...(offlineFixture
       ? { fetchFn: offlineFixture.fetchFn }
-      : c04PublicFetch
-        ? { fetchFn: c04PublicFetch.fetchFn }
-        : titleQueryRenderPublicFetch
-          ? { fetchFn: titleQueryRenderPublicFetch.fetchFn }
-        : r02PublicFetch
-          ? { fetchFn: r02PublicFetch.fetchFn }
-          : {}),
+      : a01RatingDispersionPublicFetch
+        ? { fetchFn: a01RatingDispersionPublicFetch.fetchFn }
+        : c04PublicFetch
+          ? { fetchFn: c04PublicFetch.fetchFn }
+          : titleQueryRenderPublicFetch
+            ? { fetchFn: titleQueryRenderPublicFetch.fetchFn }
+            : r02PublicFetch
+              ? { fetchFn: r02PublicFetch.fetchFn }
+              : {}),
   });
   const dependencies = createRuntimeDependenciesWithStorage(storage, {
     publicHttpClient,
@@ -351,6 +372,14 @@ async function main(argv = process.argv.slice(2)) {
   ) {
     throw new Error(
       'The registered C04 multi-tool profile does not match its fixed public contract.',
+    );
+  }
+  if (
+    config.profile?.id === A01_RATING_DISPERSION_PROFILE_ID &&
+    !assertA01RatingDispersionProfile(config.profile)
+  ) {
+    throw new Error(
+      'The registered A01 rating-dispersion profile does not match its fixed contract.',
     );
   }
   const tools =
@@ -383,6 +412,7 @@ async function main(argv = process.argv.slice(2)) {
       ? {
           serverProfile: config.networkMode
             ? config.networkMode === C04_COHORT_COMPARISON_NETWORK_MODE ||
+              config.networkMode === A01_RATING_DISPERSION_NETWORK_MODE ||
               config.networkMode === TITLE_QUERY_RENDER_NETWORK_MODE ||
               config.networkMode === R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE
               ? 'closed-profile-sequence-anonymous-public-v1'
@@ -424,6 +454,9 @@ async function main(argv = process.argv.slice(2)) {
     ...(p06AssetGuard ? { offlineAssetBoundary: p06AssetGuard.snapshot() } : {}),
     ...(r04RenderAssetFence ? { rendererAssetBoundary: r04RenderAssetFence.snapshot() } : {}),
     ...(c04PublicFetch ? { publicRequestScope: c04PublicFetch.snapshot() } : {}),
+    ...(a01RatingDispersionPublicFetch
+      ? { publicRequestScope: a01RatingDispersionPublicFetch.snapshot() }
+      : {}),
     ...(r02PublicFetch ? { publicRequestScope: r02PublicFetch.snapshot() } : {}),
     ...(titleQueryRenderPublicFetch
       ? { publicRequestScope: titleQueryRenderPublicFetch.snapshot() }
@@ -438,7 +471,11 @@ async function main(argv = process.argv.slice(2)) {
       : {}),
     privacy: buildG06PrivacySummary(),
   };
-  const publicRequestFetch = c04PublicFetch || r02PublicFetch || titleQueryRenderPublicFetch;
+  const publicRequestFetch =
+    a01RatingDispersionPublicFetch ||
+    c04PublicFetch ||
+    r02PublicFetch ||
+    titleQueryRenderPublicFetch;
   const persistSummary = () =>
     writeSanitizedSummary(
       config.summaryPath,
@@ -558,10 +595,10 @@ async function main(argv = process.argv.slice(2)) {
                   : config.profile.id === C04_COHORT_COMPARISON_PROFILE_ID &&
                       expectedToolName === 'bangumi.render_subject_cohort_comparison'
                     ? artifactStore.summarize(result?.artifact?.id)
-                : config.profile.id === TITLE_QUERY_RENDER_PROFILE_ID &&
-                    expectedToolName === 'bangumi.render_query_subjects'
-                  ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
-                    : null;
+                    : config.profile.id === TITLE_QUERY_RENDER_PROFILE_ID &&
+                        expectedToolName === 'bangumi.render_query_subjects'
+                      ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
+                      : null;
           const resultSummary = summarizeProfileToolResult(
             result,
             expectedArguments,

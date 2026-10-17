@@ -482,14 +482,85 @@
       ]
     },
     {
+      "id": "a01-rating-dispersion-1998-spring-v1",
+      "frontierId": "A01",
+      "epochId": "run95-a01-rating-dispersion-agent-mcp-1998-spring",
+      "toolName": "bangumi.compare_subject_cohorts",
+      "argumentProfile": "fixed-a01-rating-dispersion-cardcaptor-1998-spring-max4-v1",
+      "claimLabelName": "harness-r95-a01-rating-sd-1998-spring-claimed",
+      "reportPath": "docs/live-probes/a01-rating-dispersion-agent-mcp-1998-spring-run95.json",
+      "selectionEvidencePath": "docs/research/run95-a01-rating-dispersion-1998-spring-agent-mcp-contract.md",
+      "evidenceKind": "codex_cli_a01_rating_dispersion_agent_mcp_v1",
+      "answerCheckMethod": "a01-fixed-target-vs-seasonal-sample-rating-sd-v1",
+      "acceptanceScope": "agent-mcp-scenario-and-matrix",
+      "networkMode": "run95-a01-rating-dispersion-public-v1",
+      "answerProfile": {
+        "targetSubjectId": 1940,
+        "targetSeason": "1998-spring",
+        "targetDateRange": {
+          "from": "1998-04-01",
+          "to": "1998-07-01"
+        },
+        "maxSubjects": 4
+      },
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 4096,
+      "calls": [
+        {
+          "toolName": "bangumi.compare_subject_cohorts",
+          "arguments": {
+            "cohorts": [
+              {
+                "label": "Run95 A01 Cardcaptor Sakura 1998-spring TV sample",
+                "query": {
+                  "keyword": "カードキャプターさくら",
+                  "media": "anime",
+                  "categories": "tv",
+                  "season": "1998-spring",
+                  "resultMode": "all",
+                  "nsfw": "exclude",
+                  "limit": 4,
+                  "budget": {
+                    "maxPages": 1,
+                    "maxCandidates": 20,
+                    "maxHydrations": 4,
+                    "concurrency": 2,
+                    "maxConceptProbes": 1,
+                    "maxReturnedItems": 4
+                  }
+                }
+              },
+              {
+                "label": "Run95 A01 1998-spring anime returned sample",
+                "query": {
+                  "media": "anime",
+                  "season": "1998-spring",
+                  "resultMode": "all",
+                  "nsfw": "exclude",
+                  "limit": 4,
+                  "budget": {
+                    "maxPages": 1,
+                    "maxCandidates": 20,
+                    "maxHydrations": 4,
+                    "concurrency": 2,
+                    "maxConceptProbes": 1,
+                    "maxReturnedItems": 4
+                  }
+                }
+              }
+            ],
+            "maxSubjects": 4
+          }
+        }
+      ]
+    },
+    {
       "id": "query-render-title-agent-mcp-v1",
       "frontierId": "G01",
       "epochId": "run95-title-query-render-agent-mcp-matrix-20261017",
       "toolName": "bangumi.query_subjects",
-      "toolNames": [
-        "bangumi.query_subjects",
-        "bangumi.render_query_subjects"
-      ],
+      "toolNames": ["bangumi.query_subjects", "bangumi.render_query_subjects"],
       "argumentProfile": "harness-r95-title-query-render-20261017-v1",
       "claimLabelName": "harness-r95-title-query-render-agent-mcp-claimed",
       "reportPath": "docs/live-probes/title-query-render-agent-mcp-run95.json",

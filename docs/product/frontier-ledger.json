@@ -2869,9 +2869,20 @@
         "scripts/acceptance/write-a01-render-cohort-aggregation-agent-mcp-report.mjs",
         "scripts/acceptance/validate-a01-render-cohort-aggregation-agent-mcp-report.mjs",
         "tests/harness/a01-render-cohort-aggregation-agent-mcp.test.mjs",
-        "tests/harness/frontier-ledger-data.test.mjs"
+        "tests/harness/frontier-ledger-data.test.mjs",
+        "docs/research/run95-a01-rating-dispersion-1998-spring-agent-mcp-contract.md",
+        "scripts/lib/a01-rating-dispersion-profile.mjs",
+        "scripts/lib/codex-profile-tool-summary.mjs",
+        "scripts/acceptance/agent-mcp-profile-registry.json",
+        "scripts/acceptance/run-a01-rating-dispersion-agent-mcp.mjs",
+        "scripts/acceptance/run-a01-rating-dispersion-agent-mcp.d.mts",
+        "scripts/acceptance/write-a01-rating-dispersion-agent-mcp-report.mjs",
+        "scripts/acceptance/validate-a01-rating-dispersion-agent-mcp-report.mjs",
+        "tests/harness/a01-rating-dispersion-public-profile.test.mjs",
+        "tests/harness/run-a01-rating-dispersion-agent-mcp.test.mjs",
+        "tests/harness/write-a01-rating-dispersion-agent-mcp-report.test.mjs"
       ],
-      "next_action": "Keep A01 UNASSESSED. The exact 2026-10-16 public report for aggregate_subject_cohort, compare_subject_cohorts, render_subject_cohort_aggregation, and render_subject_cohort_comparison supports only their corresponding public-matrix rows, not the cohort-analysis scenario. The C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks. For the A01 render-aggregation profile, run the one-shot only after its unique Epoch is an open active PR with a clean exact Candidate, current Base, seven-check CI, and same-identity Luna Max PASS; keep the PR active until a signed report or terminal no-retry disposition is recorded. A valid report may credit only bangumi.render_subject_cohort_aggregation; no public or scenario evidence is added. Keep one-shot claim status and authorization in the active Harness Run/Epoch control state only; never retry a consumed claim.",
+      "next_action": "Keep A01 UNASSESSED. The exact 2026-10-16 public report for aggregate_subject_cohort, compare_subject_cohorts, render_subject_cohort_aggregation, and render_subject_cohort_comparison supports only their corresponding public-matrix rows, not the cohort-analysis scenario. The C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks. For the A01 render-aggregation profile, run the one-shot only after its unique Epoch is an open active PR with a clean exact Candidate, current Base, seven-check CI, and same-identity Luna Max PASS; keep the PR active until a signed report or terminal no-retry disposition is recorded. A valid report may credit only bangumi.render_subject_cohort_aggregation; no public or scenario evidence is added. Keep one-shot claim status and authorization in the active Harness Run/Epoch control state only; never retry a consumed claim. The current selected profile is a separate bounded 1998-spring rating-dispersion Agent/MCP observation documented in docs/research/run95-a01-rating-dispersion-1998-spring-agent-mcp-contract.md. It compares Cardcaptor Sakura TV (subject 1940) with a returned same-season anime sample, maxSubjects=4 and fixed per-cohort caps of one page, 20 candidates, and four detail hydrations. It can record only the returned sample and rating-SD summaries, cannot determine statistical significance or whether the target is “明显” above a season population, and may move A01 only to PARTIAL after its signed exact-Candidate report is accepted. A01 remains UNASSESSED; no claim or query has been made. Invoke this one-shot only after exact Candidate/Base, seven-check CI, same-identity GPT-6 Luna Max PASS, and Harness UNCLAIMED/eligible status are verified. Never retry.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2894,7 +2905,14 @@
           "scripts/lib/a01-render-cohort-aggregation-offline-fixture.mjs",
           "scripts/acceptance/run-a01-render-cohort-aggregation-agent-mcp.mjs",
           "scripts/acceptance/write-a01-render-cohort-aggregation-agent-mcp-report.mjs",
-          "scripts/acceptance/validate-a01-render-cohort-aggregation-agent-mcp-report.mjs"
+          "scripts/acceptance/validate-a01-render-cohort-aggregation-agent-mcp-report.mjs",
+          "scripts/lib/a01-rating-dispersion-profile.mjs",
+          "scripts/lib/codex-profile-tool-summary.mjs",
+          "scripts/acceptance/agent-mcp-profile-registry.json",
+          "scripts/acceptance/run-a01-rating-dispersion-agent-mcp.mjs",
+          "scripts/acceptance/run-a01-rating-dispersion-agent-mcp.d.mts",
+          "scripts/acceptance/write-a01-rating-dispersion-agent-mcp-report.mjs",
+          "scripts/acceptance/validate-a01-rating-dispersion-agent-mcp-report.mjs"
         ],
         "tests": [
           "tests/discovery/cohort.test.ts",
@@ -2907,7 +2925,10 @@
           "tests/unit/a01-aggregate-codex-agent-mcp-runner.test.ts",
           "tests/harness/a01-render-cohort-aggregation-agent-mcp.test.mjs",
           "tests/harness/frontier-ledger-data.test.mjs",
-          "scripts/test_acceptance_evidence.py"
+          "scripts/test_acceptance_evidence.py",
+          "tests/harness/a01-rating-dispersion-public-profile.test.mjs",
+          "tests/harness/run-a01-rating-dispersion-agent-mcp.test.mjs",
+          "tests/harness/write-a01-rating-dispersion-agent-mcp-report.test.mjs"
         ],
         "acceptance_limit": "The consumed compare_subject_cohorts A01 claim remains INCONCLUSIVE and must never be retried. The distinct aggregate_subject_cohort one-shot was invoked once after exact-Candidate CI and normal Luna Max PASS, but is INCONCLUSIVE because the target call returned DONE/SUCCESS without structured result readback; its sanitized report records no raw answer and does not count as accepted tool evidence. The report is retained and the attempt is no-retry. An offline small-result regression reproduced the presenter branch that omits structuredContent below 3600 UTF-8 bytes; the fix preserves structuredContent. The A01 render-cohort-aggregation profile, if accepted, covers only that offline Agent/MCP matrix cell and provides no public API or A01 scenario evidence. Keep A01 UNASSESSED. Neither aggregate sample resolves the original comparative question.",
         "aggregate_one_tool_probe_design": {

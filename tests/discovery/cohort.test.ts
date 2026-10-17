@@ -493,7 +493,9 @@ describe('subject cohort comparison', () => {
         message: expect.stringContaining('score=9 histogramMean=8'),
       }),
     );
-    expect(result.warnings.some((warning) => warning.code === 'COHORT_METRIC_CONFLICT')).toBe(false);
+    expect(result.warnings.some((warning) => warning.code === 'COHORT_METRIC_CONFLICT')).toBe(
+      false,
+    );
     expect(result.state).toBe('conflict');
   });
 
@@ -557,6 +559,83 @@ describe('subject cohort comparison', () => {
         metaTags: ['原创'],
         airDate: ['>=2026-04-01', '<2026-07-01'],
       },
+    });
+  });
+
+  it('honors explicit per-cohort discovery budgets and caps returned items at the cohort limit', async () => {
+    const provider = new CohortProvider({
+      A: [
+        { id: 1, name: 'A one', score: 8, heat: 10, episodes: 12 },
+        { id: 2, name: 'A two', score: 7, heat: 8, episodes: 13 },
+      ],
+    });
+    const result = await compareSubjectCohorts(
+      [
+        {
+          query: {
+            keyword: 'A',
+            media: 'anime',
+            season: '2026-spring',
+            resultMode: 'all',
+            limit: 2,
+            budget: {
+              maxPages: 1,
+              maxCandidates: 20,
+              maxHydrations: 4,
+              concurrency: 2,
+              maxConceptProbes: 1,
+              maxReturnedItems: 2,
+            },
+          },
+        },
+      ],
+      { maxSubjects: 1 },
+      provider,
+    );
+
+    expect(result.cohorts[0]?.query).toMatchObject({
+      limit: 1,
+      budget: {
+        maxPages: 1,
+        maxCandidates: 20,
+        maxHydrations: 4,
+        concurrency: 2,
+        maxConceptProbes: 1,
+        maxReturnedItems: 1,
+      },
+    });
+    expect(result.cohorts[0]?.subjects).toHaveLength(1);
+    expect(provider.searchRequests[0]?.limit).toBe(20);
+  });
+
+  it('clamps direct cohort-query budgets to the server safety ceilings', async () => {
+    const provider = new CohortProvider({ A: [] });
+    const unsafeQuery = {
+      keyword: 'A',
+      media: 'anime' as const,
+      resultMode: 'all' as const,
+      budget: {
+        maxPages: 100,
+        maxCandidates: 10_000,
+        maxHydrations: 10_000,
+        concurrency: 100,
+        maxConceptProbes: 100,
+        maxReturnedItems: 100,
+      },
+    };
+    const result = await compareSubjectCohorts(
+      [{ query: unsafeQuery }],
+      { maxSubjects: 4 },
+      provider,
+    );
+
+    expect(result.cohorts[0]?.query.budget).toEqual({
+      maxPages: 6,
+      maxCandidates: 300,
+      maxHydrations: 60,
+      concurrency: 6,
+      maxConceptProbes: 8,
+      maxReturnedItems: 4,
     });
   });
 

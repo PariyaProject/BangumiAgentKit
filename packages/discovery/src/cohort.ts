@@ -315,17 +315,37 @@ function finiteScore(value: unknown): number | undefined {
 
 function queryForCohort(query: DiscoveryQuery, maxSubjects: number): DiscoveryQuery {
   const limit = Math.min(maxSubjects, query.limit ?? maxSubjects);
+  const requestedBudget = query.budget ?? {};
   return {
     ...query,
     resultMode: 'all',
     limit,
     budget: {
-      maxPages: SUBJECT_COHORT_MAX_PAGES,
-      maxCandidates: SUBJECT_COHORT_MAX_CANDIDATES,
-      maxHydrations: SUBJECT_COHORT_MAX_QUERY_HYDRATIONS,
-      concurrency: SUBJECT_COHORT_DETAIL_CONCURRENCY,
-      maxConceptProbes: 8,
-      maxReturnedItems: limit,
+      maxPages: boundedInteger(
+        requestedBudget.maxPages,
+        SUBJECT_COHORT_MAX_PAGES,
+        SUBJECT_COHORT_MAX_PAGES,
+      ),
+      maxCandidates: boundedInteger(
+        requestedBudget.maxCandidates,
+        SUBJECT_COHORT_MAX_CANDIDATES,
+        SUBJECT_COHORT_MAX_CANDIDATES,
+      ),
+      maxHydrations: boundedInteger(
+        requestedBudget.maxHydrations,
+        SUBJECT_COHORT_MAX_QUERY_HYDRATIONS,
+        SUBJECT_COHORT_MAX_QUERY_HYDRATIONS,
+      ),
+      concurrency: boundedInteger(
+        requestedBudget.concurrency,
+        SUBJECT_COHORT_DETAIL_CONCURRENCY,
+        SUBJECT_COHORT_DETAIL_CONCURRENCY,
+      ),
+      maxConceptProbes: boundedInteger(requestedBudget.maxConceptProbes, 8, 8),
+      maxReturnedItems: Math.min(
+        limit,
+        boundedInteger(requestedBudget.maxReturnedItems, limit, maxSubjects),
+      ),
     },
   };
 }
@@ -500,7 +520,11 @@ function itemValue(
           'official detail score materially differs from the histogram-derived mean',
       });
     }
-    if (discoveredTotalConflict && discoveredRatingTotal !== undefined && detailRatingTotal !== undefined) {
+    if (
+      discoveredTotalConflict &&
+      discoveredRatingTotal !== undefined &&
+      detailRatingTotal !== undefined
+    ) {
       ratingConflicts.push({
         kind: 'discovery_vs_detail_rating_total',
         discoveryRatingCount: discoveredRatingTotal,
@@ -978,9 +1002,7 @@ export async function compareSubjectCohorts(
   );
   const conflicts = uniqueStrings(
     built.flatMap(({ conflicts }) =>
-      conflicts
-        .filter((key) => key !== 'ratingStandardDeviation')
-        .map((key) => `conflict:${key}`),
+      conflicts.filter((key) => key !== 'ratingStandardDeviation').map((key) => `conflict:${key}`),
     ),
   );
   if (conflicts.length > 0) {

@@ -1,7 +1,31 @@
 import { createHash } from 'node:crypto';
+import { A01_RATING_DISPERSION_PROFILE } from '../lib/a01-rating-dispersion-profile.mjs';
 
 export const A01_TARGET_TOOL = 'bangumi.compare_subject_cohorts';
 export const A01_MAX_SUBJECTS = 8;
+export const A01_RATING_DISPERSION_ANSWER_CHECK_FIELDS = Object.freeze([
+  'fixedArguments',
+  'resultStructuredContent',
+  'targetIdentity',
+  'queryPlan',
+  'queryCoverage',
+  'sampleBound',
+  'returnedRowCount',
+  'metricFormula',
+  'metricCoverage',
+  'hydrationCoverage',
+  'comparisonState',
+  'overlap',
+  'officialProvenance',
+  'officialPublicOperations',
+  'answerPresent',
+  'exactRows',
+  'exactMetricLine',
+  'exactScopeLine',
+  'rejectsUnsupportedSignificance',
+  'rejectsUnsupportedCompleteness',
+  'rejectsUnsupportedInterpretation',
+]);
 export const A01_EXPECTED_QUERY_BUDGET = Object.freeze({
   maxPages: 6,
   maxCandidates: 300,
@@ -36,17 +60,12 @@ export const A01_EXPECTED_QUERY_ARGUMENTS = Object.freeze({
   maxSubjects: A01_MAX_SUBJECTS,
 });
 
-const A01_OFFICIAL_OPERATIONS = new Set([
-  'searchSubjects',
-  'getSubjectById',
-]);
-const A01_EXPECTED_EFFECTIVE_QUERIES = A01_EXPECTED_QUERY_ARGUMENTS.cohorts.map(
-  ({ query }) => ({
-    ...query,
-    limit: A01_MAX_SUBJECTS,
-    budget: A01_EXPECTED_QUERY_BUDGET,
-  }),
-);
+const A01_OFFICIAL_OPERATIONS = new Set(['searchSubjects', 'getSubjectById']);
+const A01_EXPECTED_EFFECTIVE_QUERIES = A01_EXPECTED_QUERY_ARGUMENTS.cohorts.map(({ query }) => ({
+  ...query,
+  limit: A01_MAX_SUBJECTS,
+  budget: A01_EXPECTED_QUERY_BUDGET,
+}));
 const A01_METRIC_STATES = new Set([
   'complete',
   'partial',
@@ -91,6 +110,48 @@ const A01_PLAN_LIMITATIONS = [
 ];
 const A01_DATE_RANGE = { from: '2017-10-01', to: '2018-01-01' };
 
+const DEFAULT_A01_ANSWER_PROFILE = {
+  expectedArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+  targetSubjectId: 218707,
+  targetTitles: ['少女终末旅行', '少女終末旅行'],
+  maxSubjects: A01_MAX_SUBJECTS,
+  dateRange: A01_DATE_RANGE,
+  queryBudget: A01_EXPECTED_QUERY_BUDGET,
+  includeBudgetInDisclosure: false,
+};
+
+export const A01_RATING_DISPERSION_ANSWER_PROFILE = Object.freeze({
+  expectedArguments: A01_RATING_DISPERSION_PROFILE.calls[0].arguments,
+  targetSubjectId: A01_RATING_DISPERSION_PROFILE.answerProfile.targetSubjectId,
+  targetTitles: null,
+  maxSubjects: A01_RATING_DISPERSION_PROFILE.answerProfile.maxSubjects,
+  dateRange: A01_RATING_DISPERSION_PROFILE.answerProfile.targetDateRange,
+  queryBudget: A01_RATING_DISPERSION_PROFILE.calls[0].arguments.cohorts[0].query.budget,
+  includeBudgetInDisclosure: true,
+});
+
+function answerProfileConfig(profile) {
+  return profile ?? DEFAULT_A01_ANSWER_PROFILE;
+}
+
+function effectiveQueryForA01(query, profile) {
+  const limit = Math.min(profile.maxSubjects, query.limit ?? profile.maxSubjects);
+  const requestedBudget = query.budget ?? profile.queryBudget;
+  return {
+    ...query,
+    resultMode: 'all',
+    limit,
+    budget: {
+      maxPages: requestedBudget.maxPages,
+      maxCandidates: requestedBudget.maxCandidates,
+      maxHydrations: requestedBudget.maxHydrations,
+      concurrency: requestedBudget.concurrency,
+      maxConceptProbes: requestedBudget.maxConceptProbes,
+      maxReturnedItems: Math.min(limit, requestedBudget.maxReturnedItems ?? limit),
+    },
+  };
+}
+
 function a01PlanFilter(field, operator, value, classification = 'PUSHDOWN') {
   return {
     field,
@@ -102,27 +163,41 @@ function a01PlanFilter(field, operator, value, classification = 'PUSHDOWN') {
   };
 }
 
-export function expectedA01QueryPlan(index) {
+export function expectedA01QueryPlan(index, answerProfile = null) {
+  const profile = answerProfileConfig(answerProfile);
+  const inputQuery = profile.expectedArguments.cohorts[index]?.query ?? {};
+  const mediaValues = Array.isArray(inputQuery.media)
+    ? inputQuery.media
+    : [inputQuery.media ?? 'anime'];
+  const categories =
+    inputQuery.categories === undefined
+      ? []
+      : Array.isArray(inputQuery.categories)
+        ? inputQuery.categories
+        : [inputQuery.categories];
+  const nsfwValue = inputQuery.nsfw === 'exclude' ? false : inputQuery.nsfw;
+  const queryBudget = effectiveQueryForA01(inputQuery, profile).budget;
   const pushdown = [
-    ...(index === 0 ? [a01PlanFilter('keyword', 'eq', '少女终末旅行')] : []),
-    a01PlanFilter('media', 'in', ['anime']),
-    a01PlanFilter('dateRange', 'range', A01_DATE_RANGE),
-    a01PlanFilter('nsfw', 'eq', false),
+    ...(inputQuery.keyword ? [a01PlanFilter('keyword', 'eq', inputQuery.keyword)] : []),
+    a01PlanFilter('media', 'in', mediaValues),
+    a01PlanFilter('dateRange', 'range', profile.dateRange),
+    ...(nsfwValue === undefined ? [] : [a01PlanFilter('nsfw', 'eq', nsfwValue)]),
     a01PlanFilter('sort:relevance', 'eq', 'relevance'),
   ];
-  const postFilters = index === 0
-    ? [a01PlanFilter('categories', 'in', ['tv'], 'POST_FILTER')]
-    : [];
+  const postFilters =
+    categories.length > 0 ? [a01PlanFilter('categories', 'in', categories, 'POST_FILTER')] : [];
   const hydrationRequirements = [
-    { reason: 'nsfw_filter', fields: ['nsfw'], source: 'candidate_or_detail' },
-    ...(index === 0
+    ...(nsfwValue === undefined
+      ? []
+      : [{ reason: 'nsfw_filter', fields: ['nsfw'], source: 'candidate_or_detail' }]),
+    ...(categories.length > 0
       ? [{ reason: 'category_filter', fields: ['platform'], source: 'candidate_or_detail' }]
       : []),
   ];
   return {
     source: 'official_v0',
     operation: 'searchSubjects',
-    season: '2017-autumn',
+    season: inputQuery.season,
     sort: 'relevance',
     order: 'desc',
     totalKind: 'estimated',
@@ -132,27 +207,29 @@ export function expectedA01QueryPlan(index) {
     unsupported: [],
     hydrationRequired: true,
     hydrationRequirements,
-    requestedTopN: A01_MAX_SUBJECTS,
+    requestedTopN: profile.maxSubjects,
     resultMode: 'all',
     quality: 'bounded_exact',
-    budget: A01_EXPECTED_QUERY_BUDGET,
-    steps: [{
-      kind: 'search',
-      source: 'official_v0',
-      operation: 'searchSubjects',
-      page: 0,
-      request: {
-        keyword: index === 0 ? '少女终末旅行' : '',
-        limit: 20,
-        offset: 0,
-        sort: 'match',
-        filter: {
-          type: [2],
-          airDate: ['>=2017-10-01', '<2018-01-01'],
-          nsfw: false,
+    budget: queryBudget,
+    steps: [
+      {
+        kind: 'search',
+        source: 'official_v0',
+        operation: 'searchSubjects',
+        page: 0,
+        request: {
+          keyword: inputQuery.keyword ?? '',
+          limit: 20,
+          offset: 0,
+          sort: 'match',
+          filter: {
+            type: mediaValues.map((media) => (media === 'anime' ? 2 : media)),
+            airDate: [`>=${profile.dateRange.from}`, `<${profile.dateRange.to}`],
+            ...(nsfwValue === undefined ? {} : { nsfw: nsfwValue }),
+          },
         },
       },
-    }],
+    ],
     limitations: A01_PLAN_LIMITATIONS,
   };
 }
@@ -210,7 +287,20 @@ function queryCoverageToken(cohorts, field) {
   );
 }
 
-export function expectedA01AnswerLines(result) {
+function queryScopeText(query) {
+  const fields = ['keyword', 'media', 'categories', 'season', 'resultMode', 'nsfw'];
+  const values = fields
+    .filter((field) => query?.[field] !== undefined)
+    .map((field) => {
+      const value = Array.isArray(query[field]) ? query[field].join('|') : String(query[field]);
+      return `${field}=${value}`;
+    });
+  return `(${values.join(',')})`;
+}
+
+export function expectedA01AnswerLines(result, answerProfile = null) {
+  const profile = answerProfileConfig(answerProfile);
+  const expectedCohorts = profile.expectedArguments.cohorts;
   const cohorts = Array.isArray(result?.cohorts) ? result.cohorts : [];
   const metric = Array.isArray(result?.metrics)
     ? result.metrics.find((item) => item?.key === 'ratingStandardDeviation')
@@ -245,9 +335,14 @@ export function expectedA01AnswerLines(result) {
   ].join(';');
   const scopeLine = [
     '范围：',
-    'A.query=(keyword=少女终末旅行,media=anime,categories=tv,season=2017-autumn,resultMode=all,nsfw=exclude)',
-    'B.query=(media=anime,season=2017-autumn,resultMode=all,nsfw=exclude)',
+    `A.query=${queryScopeText(expectedCohorts[0]?.query)}`,
+    `B.query=${queryScopeText(expectedCohorts[1]?.query)}`,
     `maxSubjects=${result?.coverage?.maxSubjectsPerCohort ?? 'unknown'}/cohort`,
+    ...(profile.includeBudgetInDisclosure
+      ? [
+          `queryBudget=${JSON.stringify(expectedCohorts.map(({ query }) => effectiveQueryForA01(query, profile).budget))}`,
+        ]
+      : []),
     `returned=[${cohorts.map((cohort) => cohort?.subjects?.length ?? 0).join(',')}]`,
     `queryState=${JSON.stringify(queryStates)}`,
     `coverageState=${queryCoverageToken(cohorts, 'state')}`,
@@ -256,11 +351,13 @@ export function expectedA01AnswerLines(result) {
     `pagesScanned=${queryCoverageToken(cohorts, 'pagesScanned')}`,
     `upstreamExhausted=${queryCoverageToken(cohorts, 'upstreamExhausted')}`,
     `totalKind=${queryCoverageToken(cohorts, 'totalKind')}`,
-    `detailHydrations=${JSON.stringify(cohorts.map((cohort) => [
-      cohort?.coverage?.detailHydrationsAttempted ?? 0,
-      cohort?.coverage?.detailHydrationsSucceeded ?? 0,
-      cohort?.coverage?.detailHydrationsFailed ?? 0,
-    ]))}`,
+    `detailHydrations=${JSON.stringify(
+      cohorts.map((cohort) => [
+        cohort?.coverage?.detailHydrationsAttempted ?? 0,
+        cohort?.coverage?.detailHydrationsSucceeded ?? 0,
+        cohort?.coverage?.detailHydrationsFailed ?? 0,
+      ]),
+    )}`,
     `resultState=${result?.state ?? 'unknown'}`,
     `truncated=${Boolean(result?.coverage?.truncated)}`,
     `overlapCount=${overlap.count ?? 'unknown'}`,
@@ -287,75 +384,85 @@ export function expectedA01AnswerLines(result) {
   };
 }
 
-function exactTarget(cohorts) {
+export function expectedA01RatingDispersionAnswerLines(result) {
+  return expectedA01AnswerLines(result, A01_RATING_DISPERSION_ANSWER_PROFILE);
+}
+
+function exactTarget(cohorts, answerProfile = null) {
+  const profile = answerProfileConfig(answerProfile);
   const targetRows = Array.isArray(cohorts?.[0]?.subjects) ? cohorts[0].subjects : [];
   const target = targetRows[0];
-  const acceptedTitles = new Set(['少女终末旅行', '少女終末旅行']);
+  if (targetRows.length !== 1 || target?.id !== profile.targetSubjectId) return false;
+  if (!Array.isArray(profile.targetTitles)) return true;
+  const acceptedTitles = new Set(profile.targetTitles);
+  return acceptedTitles.has(target?.name) || acceptedTitles.has(target?.displayName);
+}
+
+function queryPlanMatches(cohorts, answerProfile = null) {
+  const profile = answerProfileConfig(answerProfile);
   return (
-    targetRows.length === 1 &&
-    target?.id === 218707 &&
-    (acceptedTitles.has(target?.name) || acceptedTitles.has(target?.displayName))
+    cohorts?.length === 2 &&
+    cohorts.every((cohort, index) => {
+      const expectedPlan = expectedA01QueryPlan(index, profile);
+      const expectedQuery = answerProfile
+        ? effectiveQueryForA01(profile.expectedArguments.cohorts[index].query, profile)
+        : A01_EXPECTED_EFFECTIVE_QUERIES[index];
+      return (
+        canonicalJson(cohort?.query) === canonicalJson(expectedQuery) &&
+        canonicalJson(cohort?.coverage?.query?.plan) === canonicalJson(expectedPlan) &&
+        cohort?.coverage?.query?.coverage?.totalKind === expectedPlan.totalKind
+      );
+    })
   );
 }
 
-function queryPlanMatches(cohorts) {
-  return cohorts?.length === 2 && cohorts.every((cohort, index) => {
-    const expectedPlan = expectedA01QueryPlan(index);
-    return canonicalJson(cohort?.query) === canonicalJson(A01_EXPECTED_EFFECTIVE_QUERIES[index]) &&
-      canonicalJson(cohort?.coverage?.query?.plan) === canonicalJson(expectedPlan) &&
-      cohort?.coverage?.query?.coverage?.totalKind === expectedPlan.totalKind;
-  });
-}
-
 function queryCoverageMatches(cohorts) {
-  return cohorts?.length === 2 && cohorts.every((cohort) => {
-    const query = cohort?.coverage?.query;
-    const coverage = query?.coverage;
-    const rows = cohort?.subjects;
-    if (
-      !coverage ||
-      !Array.isArray(rows) ||
-      !Number.isSafeInteger(coverage.matched) ||
-      !Number.isSafeInteger(coverage.returned) ||
-      !Number.isSafeInteger(coverage.hydrationsUnresolved) ||
-      coverage.hydrationsUnresolved < 0 ||
-      ('unresolvedCandidates' in coverage &&
-        (!Number.isSafeInteger(coverage.unresolvedCandidates) ||
-          coverage.unresolvedCandidates !== coverage.hydrationsUnresolved)) ||
-      typeof coverage.upstreamExhausted !== 'boolean' ||
-      typeof coverage.budgetExceeded !== 'boolean' ||
-      typeof coverage.hydrationBudgetExceeded !== 'boolean' ||
-      (coverage.hydrationBudgetExceeded && !coverage.budgetExceeded) ||
-      coverage.matched < coverage.returned ||
-      coverage.returned !== rows.length
-    ) return false;
+  return (
+    cohorts?.length === 2 &&
+    cohorts.every((cohort) => {
+      const query = cohort?.coverage?.query;
+      const coverage = query?.coverage;
+      const rows = cohort?.subjects;
+      if (
+        !coverage ||
+        !Array.isArray(rows) ||
+        !Number.isSafeInteger(coverage.matched) ||
+        !Number.isSafeInteger(coverage.returned) ||
+        !Number.isSafeInteger(coverage.hydrationsUnresolved) ||
+        coverage.hydrationsUnresolved < 0 ||
+        ('unresolvedCandidates' in coverage &&
+          (!Number.isSafeInteger(coverage.unresolvedCandidates) ||
+            coverage.unresolvedCandidates !== coverage.hydrationsUnresolved)) ||
+        typeof coverage.upstreamExhausted !== 'boolean' ||
+        typeof coverage.budgetExceeded !== 'boolean' ||
+        typeof coverage.hydrationBudgetExceeded !== 'boolean' ||
+        (coverage.hydrationBudgetExceeded && !coverage.budgetExceeded) ||
+        coverage.matched < coverage.returned ||
+        coverage.returned !== rows.length
+      )
+        return false;
 
-    const outputTruncated = coverage.matched > coverage.returned;
-    const expectedCoverageState = coverage.budgetExceeded || outputTruncated ||
-      coverage.hydrationsUnresolved > 0
-      ? 'partial'
-      : coverage.upstreamExhausted
-        ? 'complete'
-        : 'unknown';
-    if (coverage.state !== expectedCoverageState) return false;
+      const outputTruncated = coverage.matched > coverage.returned;
+      const expectedCoverageState =
+        coverage.budgetExceeded || outputTruncated || coverage.hydrationsUnresolved > 0
+          ? 'partial'
+          : coverage.upstreamExhausted
+            ? 'complete'
+            : 'unknown';
+      if (coverage.state !== expectedCoverageState) return false;
 
-    const expectedQueryState = expectedCoverageState === 'partial'
-      ? 'partial'
-      : rows.length === 0
-        ? 'not_found'
-        : 'ok';
-    return query.state === expectedQueryState;
-  });
+      const expectedQueryState =
+        expectedCoverageState === 'partial' ? 'partial' : rows.length === 0 ? 'not_found' : 'ok';
+      return query.state === expectedQueryState;
+    })
+  );
 }
 
 function expectedCohortMetricState(cohort, coverage) {
   const queryState = cohort?.coverage?.query?.state;
   const queryCoverageState = cohort?.coverage?.query?.coverage?.state;
-  const queryMetricState = queryState === 'ok'
-    ? undefined
-    : queryState === 'not_found'
-      ? 'not_computable'
-      : queryState;
+  const queryMetricState =
+    queryState === 'ok' ? undefined : queryState === 'not_found' ? 'not_computable' : queryState;
   if (queryMetricState !== undefined && queryMetricState !== 'partial') return queryMetricState;
   if (coverage.conflicts > 0) return 'conflict';
   if (
@@ -363,14 +470,16 @@ function expectedCohortMetricState(cohort, coverage) {
     coverage.partial === 0 &&
     coverage.notComputable > 0 &&
     coverage.missing === 0
-  ) return 'not_computable';
+  )
+    return 'not_computable';
   if (
     queryMetricState === 'partial' ||
     queryCoverageState !== 'complete' ||
     coverage.partial > 0 ||
     coverage.missing > 0 ||
     coverage.notComputable > 0
-  ) return 'partial';
+  )
+    return 'partial';
   if (coverage.valid === 0) return 'not_computable';
   return 'complete';
 }
@@ -407,11 +516,12 @@ function metricCoverageMatches(result) {
       !coverage ||
       !rows ||
       canonicalJson(Object.keys(coverage).sort()) !== canonicalJson([...coverageFields].sort()) ||
-      !coverageFields.slice(0, -1).every(
-        (field) => Number.isSafeInteger(coverage[field]) && coverage[field] >= 0,
-      ) ||
+      !coverageFields
+        .slice(0, -1)
+        .every((field) => Number.isSafeInteger(coverage[field]) && coverage[field] >= 0) ||
       !A01_METRIC_STATES.has(coverage.state)
-    ) return false;
+    )
+      return false;
     const rowCounts = Object.fromEntries([...A01_METRIC_ROW_STATES].map((state) => [state, 0]));
     for (const row of rows) {
       const state = subjectState(row);
@@ -420,12 +530,14 @@ function metricCoverageMatches(result) {
       if (
         (state === 'available' || state === 'partial') &&
         (!Number.isFinite(deviation) || deviation < 0)
-      ) return false;
+      )
+        return false;
       if (
         (state === 'missing' || state === 'not_computable') &&
         deviation !== undefined &&
         deviation !== null
-      ) return false;
+      )
+        return false;
       rowCounts[state] += 1;
     }
     if (
@@ -435,13 +547,12 @@ function metricCoverageMatches(result) {
       rowCounts.conflict !== coverage.conflicts ||
       rowCounts.not_computable !== coverage.notComputable ||
       coverage.state !== expectedCohortMetricState(cohort, coverage)
-    ) return false;
+    )
+      return false;
     coverages.push(coverage);
   }
-  if (
-    metric.state !== aggregateMetricState(coverages) ||
-    !A01_METRIC_STATES.has(metric.state)
-  ) return false;
+  if (metric.state !== aggregateMetricState(coverages) || !A01_METRIC_STATES.has(metric.state))
+    return false;
   for (const [metricField, coverageField] of countFields) {
     const values = metric[metricField];
     if (
@@ -449,17 +560,17 @@ function metricCoverageMatches(result) {
       values.length !== 2 ||
       values.some((value) => !Number.isSafeInteger(value) || value < 0) ||
       values.some((value, index) => value !== coverages[index]?.[coverageField])
-    ) return false;
+    )
+      return false;
   }
   const resultCoverage = result?.coverage;
-  const queryCoverageStates = cohorts.map(
-    (cohort) => cohort?.coverage?.query?.coverage?.state,
-  );
+  const queryCoverageStates = cohorts.map((cohort) => cohort?.coverage?.query?.coverage?.state);
   const completeCount = queryCoverageStates.filter((state) => state === 'complete').length;
   const expectedTruncated =
-    cohorts.some((cohort) =>
-      cohort?.coverage?.query?.coverage?.budgetExceeded ||
-      cohort?.coverage?.query?.coverage?.state !== 'complete',
+    cohorts.some(
+      (cohort) =>
+        cohort?.coverage?.query?.coverage?.budgetExceeded ||
+        cohort?.coverage?.query?.coverage?.state !== 'complete',
     ) ||
     resultCoverage?.evidence?.truncated === true ||
     resultCoverage?.warnings?.truncated === true;
@@ -470,7 +581,8 @@ function metricCoverageMatches(result) {
     resultCoverage.truncated !== expectedTruncated ||
     typeof resultCoverage?.evidence?.truncated !== 'boolean' ||
     typeof resultCoverage?.warnings?.truncated !== 'boolean'
-  ) return false;
+  )
+    return false;
 
   if (metric.state === 'complete') {
     return (
@@ -480,13 +592,14 @@ function metricCoverageMatches(result) {
       metric.partialAverages === undefined &&
       Number.isFinite(metric.delta) &&
       Math.abs(metric.delta - (metric.averages[1] - metric.averages[0])) <= 1e-9 &&
-      coverages.every((coverage) =>
-        coverage.state === 'complete' &&
-        coverage.valid > 0 &&
-        coverage.partial === 0 &&
-        coverage.missing === 0 &&
-        coverage.conflicts === 0 &&
-        coverage.notComputable === 0,
+      coverages.every(
+        (coverage) =>
+          coverage.state === 'complete' &&
+          coverage.valid > 0 &&
+          coverage.partial === 0 &&
+          coverage.missing === 0 &&
+          coverage.conflicts === 0 &&
+          coverage.notComputable === 0,
       )
     );
   }
@@ -501,7 +614,7 @@ function metricCoverageMatches(result) {
       if (value !== undefined && value !== null && (!Number.isFinite(value) || value < 0)) {
         return false;
       }
-      return (coverages[index].valid + coverages[index].partial > 0) === Number.isFinite(value);
+      return coverages[index].valid + coverages[index].partial > 0 === Number.isFinite(value);
     }) &&
     (metric.delta === undefined || metric.delta === null)
   );
@@ -517,7 +630,8 @@ function expectedComparisonState(queryStates, metricStates) {
   if (
     queryStates.some((state) => state !== 'ok') ||
     metricStates.some((state) => state !== 'complete')
-  ) return 'partial';
+  )
+    return 'partial';
   return 'complete';
 }
 
@@ -533,15 +647,19 @@ function comparisonStateMatches(result) {
       !A01_METRIC_KEYS.includes(metric.key) ||
       states.has(metric.key) ||
       !A01_METRIC_STATES.has(metric.state)
-    ) return false;
+    )
+      return false;
     states.set(metric.key, metric.state);
   }
   if (!A01_METRIC_KEYS.every((key) => states.has(key))) return false;
   const queryStates = cohorts.map((cohort) => cohort?.coverage?.query?.state);
   if (queryStates.some((state) => typeof state !== 'string')) return false;
-  return result.state === expectedComparisonState(
-    queryStates,
-    A01_METRIC_KEYS.map((key) => states.get(key)),
+  return (
+    result.state ===
+    expectedComparisonState(
+      queryStates,
+      A01_METRIC_KEYS.map((key) => states.get(key)),
+    )
   );
 }
 
@@ -565,7 +683,8 @@ function hydrationCoverageMatches(result) {
       counts.succeeded + counts.failed !== counts.attempted ||
       !Number.isSafeInteger(hydration?.metrics?.ratingStandardDeviation?.notComputable) ||
       counts.failed > hydration.metrics.ratingStandardDeviation.notComputable
-    ) return false;
+    )
+      return false;
     for (const key of Object.keys(totals)) totals[key] += counts[key];
   }
   return (
@@ -580,17 +699,25 @@ function officialEvidenceMatches(result) {
   const sources = (Array.isArray(result?.evidence) ? result.evidence : [])
     .map((item) => item?.source)
     .filter((source) => source?.class === 'official_v0');
-  if (!Array.isArray(operations) || sources.length === 0 || !sources.every((source) =>
-    source.provider === 'bangumi' &&
-    source.version === 'v0' &&
-    A01_OFFICIAL_OPERATIONS.has(source.operation) &&
-    (source.experimental === undefined || typeof source.experimental === 'boolean'),
-  )) return false;
+  if (
+    !Array.isArray(operations) ||
+    sources.length === 0 ||
+    !sources.every(
+      (source) =>
+        source.provider === 'bangumi' &&
+        source.version === 'v0' &&
+        A01_OFFICIAL_OPERATIONS.has(source.operation) &&
+        (source.experimental === undefined || typeof source.experimental === 'boolean'),
+    )
+  )
+    return false;
   const summaryOperations = new Set(operations);
   const evidenceOperations = new Set(sources.map((source) => source.operation));
   if ([...evidenceOperations].some((operation) => !summaryOperations.has(operation))) return false;
-  return result?.coverage?.evidence?.truncated === true ||
-    canonicalJson([...summaryOperations].sort()) === canonicalJson([...evidenceOperations].sort());
+  return (
+    result?.coverage?.evidence?.truncated === true ||
+    canonicalJson([...summaryOperations].sort()) === canonicalJson([...evidenceOperations].sort())
+  );
 }
 
 function overlapMatches(result) {
@@ -620,10 +747,11 @@ function affirmativeClaim(answer, patterns) {
       const nextBoundary = answer.slice(end).search(sentenceEnd);
       const endOfSentence = nextBoundary < 0 ? answer.length : end + nextBoundary + 1;
       if (/[？?]/u.test(answer.slice(start, endOfSentence))) continue;
-      const clausePrefix = answer
-        .slice(startOfSentence, start)
-        .split(/(?:但|但是|然而|不过|实际上|[，,:；])/u)
-        .at(-1) ?? '';
+      const clausePrefix =
+        answer
+          .slice(startOfSentence, start)
+          .split(/(?:但|但是|然而|不过|实际上|[，,:；])/u)
+          .at(-1) ?? '';
       if (negation.test(clausePrefix.slice(-40))) continue;
       return true;
     }
@@ -658,45 +786,53 @@ function affirmativeUnsupportedInterpretation(answer) {
   ]);
 }
 
-export function verifyA01AgentAnswer({ answer, queryArguments, toolResult }) {
+export function verifyA01AgentAnswer({ answer, queryArguments, toolResult }, answerProfile = null) {
+  const profile = answerProfileConfig(answerProfile);
   const result = toolResult?.structuredContent;
   const cohorts = result?.cohorts;
   const metric = result?.metrics?.find((item) => item?.key === 'ratingStandardDeviation');
   const lines = typeof answer === 'string' ? answer.split(/\r?\n/u).map((line) => line.trim()) : [];
-  const expected = expectedA01AnswerLines(result);
+  const expected = expectedA01AnswerLines(result, profile);
   const expectedScopeLine = `范围：${expected.scopeTokens.join(';')}`;
   const outputRowLines = lines.filter((line) => /^(?:A|B)｜/u.test(line));
-  const exactRows = expected.rows.length > 0 &&
+  const exactRows =
+    expected.rows.length > 0 &&
     canonicalJson(lines.slice(0, expected.rows.length)) === canonicalJson(expected.rows) &&
     canonicalJson(outputRowLines) === canonicalJson(expected.rows);
   const checks = {
-    fixedArguments: canonicalJson(queryArguments) === canonicalJson(A01_EXPECTED_QUERY_ARGUMENTS),
-    resultStructuredContent: Boolean(result && Array.isArray(result.cohorts) && Array.isArray(result.metrics)),
-    targetIdentity: exactTarget(cohorts),
-    queryPlan: queryPlanMatches(cohorts),
+    fixedArguments: canonicalJson(queryArguments) === canonicalJson(profile.expectedArguments),
+    resultStructuredContent: Boolean(
+      result && Array.isArray(result.cohorts) && Array.isArray(result.metrics),
+    ),
+    targetIdentity: exactTarget(cohorts, profile),
+    queryPlan: queryPlanMatches(cohorts, profile),
     queryCoverage: queryCoverageMatches(cohorts),
-    sampleBound: result?.coverage?.maxSubjectsPerCohort === A01_MAX_SUBJECTS &&
+    sampleBound:
+      result?.coverage?.maxSubjectsPerCohort === profile.maxSubjects &&
       cohorts?.length === 2 &&
       cohorts.every(
         (cohort) =>
-          Array.isArray(cohort?.subjects) && cohort.subjects.length <= A01_MAX_SUBJECTS,
+          Array.isArray(cohort?.subjects) && cohort.subjects.length <= profile.maxSubjects,
       ),
-    returnedRowCount: result?.coverage?.totalSubjectsReturned ===
+    returnedRowCount:
+      result?.coverage?.totalSubjectsReturned ===
       cohorts?.reduce(
         (total, cohort) => total + (Array.isArray(cohort?.subjects) ? cohort.subjects.length : 0),
         0,
       ),
-    metricFormula: metric?.formula?.id === 'bangumi.rating.population_sd.v1' &&
-      metric?.formula?.version === 1,
+    metricFormula:
+      metric?.formula?.id === 'bangumi.rating.population_sd.v1' && metric?.formula?.version === 1,
     metricCoverage: metricCoverageMatches(result),
     hydrationCoverage: hydrationCoverageMatches(result),
     comparisonState: comparisonStateMatches(result),
     overlap: overlapMatches(result),
-    officialProvenance: result?.source?.official?.class === 'official-v0' &&
+    officialProvenance:
+      result?.source?.official?.class === 'official-v0' &&
       Array.isArray(result.source.official.operations) &&
       result.source.official.operations.length > 0 &&
       officialEvidenceMatches(result),
-    officialPublicOperations: Array.isArray(result?.source?.official?.operations) &&
+    officialPublicOperations:
+      Array.isArray(result?.source?.official?.operations) &&
       result.source.official.operations.every(
         (operation) => typeof operation === 'string' && A01_OFFICIAL_OPERATIONS.has(operation),
       ),
@@ -717,4 +853,8 @@ export function verifyA01AgentAnswer({ answer, queryArguments, toolResult }) {
     answerSha256: typeof answer === 'string' ? sha256(answer) : null,
     answerUtf8Bytes: typeof answer === 'string' ? Buffer.byteLength(answer, 'utf8') : null,
   };
+}
+
+export function verifyA01RatingDispersionAnswer(input) {
+  return verifyA01AgentAnswer(input, A01_RATING_DISPERSION_ANSWER_PROFILE);
 }
