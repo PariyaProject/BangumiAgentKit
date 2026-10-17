@@ -312,8 +312,8 @@ function signedReportFixture() {
     }
     return {
       queryState: cohortResult.coverage.query.state,
-      subjectIds: cohortResult.subjects.map((row) => row.id),
       subjectCount: cohortResult.subjects.length,
+      queryHydrationsAttempted: cohortResult.coverage.query.coverage.hydrationsAttempted,
       ratingStandardDeviationCounts: counts,
       detailHydrationsAttempted: cohortResult.coverage.detailHydrationsAttempted,
       detailHydrationsSucceeded: cohortResult.coverage.detailHydrationsSucceeded,
@@ -334,6 +334,9 @@ function signedReportFixture() {
   const resultSummary = {
     resultState: result.state,
     cohortCount: 2,
+    fixedTargetIdentityMatched:
+      result.cohorts[0]!.subjects.length === 1 &&
+      result.cohorts[0]!.subjects[0]!.id === profile.answerProfile.targetSubjectId,
     cohorts: cohortSummaries,
     ratingStandardDeviation: {
       state: metric.state,
@@ -356,7 +359,6 @@ function signedReportFixture() {
       detailHydrationsSucceeded: result.coverage.detailHydrationsSucceeded,
       detailHydrationsFailed: result.coverage.detailHydrationsFailed,
       truncated: result.coverage.truncated,
-      overlapIds: [...result.coverage.overlap.subjectIds].sort((a, b) => a - b),
       overlapCount: result.coverage.overlap.count,
     },
   };
@@ -364,11 +366,11 @@ function signedReportFixture() {
   const catalog = JSON.parse(catalogBytes.toString('utf8')) as Array<Record<string, any>>;
   const descriptor = catalog.find((item) => item.name === toolName)!;
   const summaryScope = {
-    requestCount: 5,
-    allowedRequestCount: 5,
+    requestCount: 8,
+    allowedRequestCount: 8,
     deniedRequestCount: 0,
     searchRequestCount: 2,
-    detailRequestCount: 3,
+    detailRequestCount: 6,
     credentialAttemptCount: 0,
     unexpectedRouteCount: 0,
     budgetExceeded: false,
@@ -517,6 +519,20 @@ describe('A01 current-source answer checker', () => {
     );
   });
 
+  it('rejects discovery and returned-row hydration totals above each cohort budget', () => {
+    const { result, answer, args } = ratingDispersionFixture();
+    result.cohorts[1]!.coverage.query.coverage.hydrationsAttempted = 3;
+
+    const verified = verifyA01RatingDispersionAnswer({
+      answer,
+      queryArguments: args,
+      toolResult: { structuredContent: result },
+    });
+
+    expect(verified.checks.hydrationBudgetSatisfied).toBe(false);
+    expect(verified.passed).toBe(false);
+  });
+
   it('rejects an altered target ID for the bounded rating-dispersion profile', () => {
     const { result, answer, args } = ratingDispersionFixture();
     result.cohorts[0]!.subjects[0]!.id = 999999;
@@ -553,11 +569,42 @@ describe('A01 current-source answer checker', () => {
     expect(report.answerSha256).toBe(sha256(fixture.answer));
     expect(JSON.stringify(report)).not.toContain('Cardcaptor Sakura');
     expect(JSON.stringify(report)).not.toContain('少女终末旅行');
-    expect(report.resultSummary.cohorts[0].subjectIds).toEqual([1940]);
+    expect(report.resultSummary.fixedTargetIdentityMatched).toBe(true);
+    expect(report.resultSummary.cohorts[0].queryHydrationsAttempted).toBe(1);
+    expect(report.resultSummary.coverage).not.toHaveProperty('overlapIds');
+    expect(JSON.stringify(report)).not.toContain('subjectIds');
+    expect(JSON.stringify(report)).not.toContain('overlapIds');
 
     const tampered = structuredClone(report);
     tampered.resultSummary.coverage.totalSubjectsReturned += 1;
     expect(validateA01RatingDispersionProfileReport(tampered, fixture.claim).passed).toBe(false);
+  });
+
+  it('rejects subject and overlap identifiers from the persisted report summary', () => {
+    const fixture = signedReportFixture();
+    const built = buildA01RatingDispersionProfileReport(
+      {
+        claim: fixture.claim,
+        serverSummary: fixture.serverSummary,
+        events: fixture.events,
+        answer: fixture.answer,
+        rawResult: fixture.result,
+        codexCliVersion: '1.2.14',
+        eventStreamSha256: sha256('synthetic event stream'),
+        serverSummarySha256: sha256('synthetic server summary'),
+      },
+      { privateKey: fixture.privateKey },
+    );
+    expect(built.passed).toBe(true);
+    if (!built.passed) return;
+
+    const leaked = structuredClone(built.report as Record<string, any>);
+    leaked.resultSummary.cohorts[0].subjectIds = [1940];
+    expect(validateA01RatingDispersionProfileReport(leaked, fixture.claim).passed).toBe(false);
+
+    const overlapLeak = structuredClone(built.report as Record<string, any>);
+    overlapLeak.resultSummary.coverage.overlapIds = [1940];
+    expect(validateA01RatingDispersionProfileReport(overlapLeak, fixture.claim).passed).toBe(false);
   });
 
   it('rejects a target cohort that resolves to a different subject', () => {

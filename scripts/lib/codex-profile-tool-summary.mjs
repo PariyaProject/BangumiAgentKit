@@ -22,7 +22,10 @@ import {
   summarizeR02PositiveDirectRelationsToolResult,
 } from './r02-positive-direct-relations-profile.mjs';
 import { A01_RENDER_COHORT_AGGREGATION_PROFILE_ID } from './a01-render-cohort-aggregation-offline-fixture.mjs';
-import { A01_RATING_DISPERSION_PROFILE_ID } from './a01-rating-dispersion-profile.mjs';
+import {
+  A01_RATING_DISPERSION_PROFILE,
+  A01_RATING_DISPERSION_PROFILE_ID,
+} from './a01-rating-dispersion-profile.mjs';
 import { R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID } from './r04-render-series-watch-order-offline-fixture.mjs';
 import { TITLE_QUERY_RENDER_PROFILE_ID } from './title-query-render-agent-mcp-profile.mjs';
 
@@ -202,10 +205,6 @@ export function summarizeA01RatingDispersionResult(result) {
     Number.isSafeInteger(value) && value >= 0 && value <= 1_000_000 ? value : null;
   const finiteNumber = (value) =>
     typeof value === 'number' && Number.isFinite(value) ? value : null;
-  const boundedIds = (value) =>
-    Array.isArray(value)
-      ? value.slice(0, 4).map((id) => (Number.isSafeInteger(id) && id > 0 ? id : null))
-      : [];
   const countRows = (cohort) => {
     const states = {
       available: 0,
@@ -244,12 +243,18 @@ export function summarizeA01RatingDispersionResult(result) {
   return {
     resultState: states.has(result?.state) ? result.state : 'unknown',
     cohortCount: cohorts.length,
+    fixedTargetIdentityMatched:
+      Array.isArray(cohorts[0]?.subjects) &&
+      cohorts[0].subjects.length === 1 &&
+      cohorts[0].subjects[0]?.id === A01_RATING_DISPERSION_PROFILE?.answerProfile?.targetSubjectId,
     cohorts: cohorts.map((cohort) => ({
       queryState: states.has(cohort?.coverage?.query?.state)
         ? cohort.coverage.query.state
         : 'unknown',
-      subjectIds: boundedIds(cohort?.subjects?.map((subject) => subject?.id)),
       subjectCount: Array.isArray(cohort?.subjects) ? Math.min(cohort.subjects.length, 4) : null,
+      queryHydrationsAttempted: nonnegativeCounter(
+        cohort?.coverage?.query?.coverage?.hydrationsAttempted,
+      ),
       ratingStandardDeviationCounts: countRows(cohort),
       detailHydrationsAttempted: nonnegativeCounter(cohort?.coverage?.detailHydrationsAttempted),
       detailHydrationsSucceeded: nonnegativeCounter(cohort?.coverage?.detailHydrationsSucceeded),
@@ -292,7 +297,6 @@ export function summarizeA01RatingDispersionResult(result) {
       detailHydrationsSucceeded: nonnegativeCounter(coverage?.detailHydrationsSucceeded),
       detailHydrationsFailed: nonnegativeCounter(coverage?.detailHydrationsFailed),
       truncated: typeof coverage?.truncated === 'boolean' ? coverage.truncated : null,
-      overlapIds: boundedIds(coverage?.overlap?.subjectIds).sort((left, right) => left - right),
       overlapCount: nonnegativeCounter(coverage?.overlap?.count),
     },
   };

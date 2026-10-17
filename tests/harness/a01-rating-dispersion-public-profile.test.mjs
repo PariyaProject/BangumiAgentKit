@@ -136,7 +136,7 @@ test('A01 rating-dispersion summary retains bounded numeric evidence without tit
       {
         label: 'sensitive title text is excluded',
         coverage: {
-          query: { state: 'partial' },
+          query: { state: 'partial', coverage: { hydrationsAttempted: 0 } },
           detailHydrationsAttempted: 1,
           detailHydrationsSucceeded: 1,
           detailHydrationsFailed: 0,
@@ -150,7 +150,10 @@ test('A01 rating-dispersion summary retains bounded numeric evidence without tit
         ],
       },
       {
-        coverage: { query: { state: 'partial' }, detailHydrationsAttempted: 0 },
+        coverage: {
+          query: { state: 'partial', coverage: { hydrationsAttempted: 0 } },
+          detailHydrationsAttempted: 0,
+        },
         subjects: [],
       },
     ],
@@ -181,9 +184,14 @@ test('A01 rating-dispersion summary retains bounded numeric evidence without tit
     },
   });
 
-  assert.deepEqual(summary.cohorts[0].subjectIds, [1940]);
+  assert.equal(summary.fixedTargetIdentityMatched, true);
+  assert.equal(summary.cohorts[0].subjectCount, 1);
+  assert.equal(summary.cohorts[0].queryHydrationsAttempted, 0);
+  assert.equal('subjectIds' in summary.cohorts[0], false);
+  assert.equal('overlapIds' in summary.coverage, false);
   assert.equal(summary.ratingStandardDeviation.formulaId, 'bangumi.rating.population_sd.v1');
   assert.equal(summary.ratingStandardDeviation.partialAverages[0], 1.25);
   assert.equal(JSON.stringify(summary).includes('title'), false);
   assert.equal(JSON.stringify(summary).includes('label'), false);
+  assert.equal(JSON.stringify(summary).includes('1940'), false);
 });

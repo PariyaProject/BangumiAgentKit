@@ -14,6 +14,7 @@ export const A01_RATING_DISPERSION_ANSWER_CHECK_FIELDS = Object.freeze([
   'metricFormula',
   'metricCoverage',
   'hydrationCoverage',
+  'hydrationBudgetSatisfied',
   'comparisonState',
   'overlap',
   'officialProvenance',
@@ -351,12 +352,20 @@ export function expectedA01AnswerLines(result, answerProfile = null) {
     `pagesScanned=${queryCoverageToken(cohorts, 'pagesScanned')}`,
     `upstreamExhausted=${queryCoverageToken(cohorts, 'upstreamExhausted')}`,
     `totalKind=${queryCoverageToken(cohorts, 'totalKind')}`,
+    `queryHydrations=${queryCoverageToken(cohorts, 'hydrationsAttempted')}`,
     `detailHydrations=${JSON.stringify(
       cohorts.map((cohort) => [
         cohort?.coverage?.detailHydrationsAttempted ?? 0,
         cohort?.coverage?.detailHydrationsSucceeded ?? 0,
         cohort?.coverage?.detailHydrationsFailed ?? 0,
       ]),
+    )}`,
+    `detailHydrationTotals=${JSON.stringify(
+      cohorts.map(
+        (cohort) =>
+          (cohort?.coverage?.query?.coverage?.hydrationsAttempted ?? 0) +
+          (cohort?.coverage?.detailHydrationsAttempted ?? 0),
+      ),
     )}`,
     `resultState=${result?.state ?? 'unknown'}`,
     `truncated=${Boolean(result?.coverage?.truncated)}`,
@@ -824,6 +833,24 @@ export function verifyA01AgentAnswer({ answer, queryArguments, toolResult }, ans
       metric?.formula?.id === 'bangumi.rating.population_sd.v1' && metric?.formula?.version === 1,
     metricCoverage: metricCoverageMatches(result),
     hydrationCoverage: hydrationCoverageMatches(result),
+    hydrationBudgetSatisfied:
+      !answerProfile ||
+      (Array.isArray(cohorts) &&
+        cohorts.length === profile.expectedArguments.cohorts.length &&
+        cohorts.every((cohort, index) => {
+          const queryHydrations = cohort?.coverage?.query?.coverage?.hydrationsAttempted;
+          const detailHydrations = cohort?.coverage?.detailHydrationsAttempted;
+          const maxHydrations =
+            profile.expectedArguments.cohorts[index]?.query?.budget?.maxHydrations;
+          return (
+            Number.isSafeInteger(queryHydrations) &&
+            queryHydrations >= 0 &&
+            Number.isSafeInteger(detailHydrations) &&
+            detailHydrations >= 0 &&
+            Number.isSafeInteger(maxHydrations) &&
+            queryHydrations + detailHydrations <= maxHydrations
+          );
+        })),
     comparisonState: comparisonStateMatches(result),
     overlap: overlapMatches(result),
     officialProvenance:

@@ -73,6 +73,8 @@ class CohortProvider implements SubjectDiscoveryProvider {
   readonly searchCalls: string[] = [];
   readonly searchRequests: SubjectDiscoverySearchRequest[] = [];
   readonly detailCalls: number[] = [];
+  activeDetailCalls = 0;
+  maximumConcurrentDetailCalls = 0;
 
   constructor(
     private readonly groups: Record<string, FixtureSubject[]>,
@@ -80,6 +82,7 @@ class CohortProvider implements SubjectDiscoveryProvider {
     private readonly missingIds = new Set<number>(),
     private readonly evidenceCount = 0,
     private readonly warningCount = 0,
+    private readonly detailDelayMs = 0,
   ) {}
 
   async getSubject(
@@ -87,37 +90,49 @@ class CohortProvider implements SubjectDiscoveryProvider {
     _context?: ProviderRequestContext,
   ): Promise<CapabilityResult<ProviderSubjectData>> {
     this.detailCalls.push(id);
-    if (this.unavailableIds.has(id)) {
+    this.activeDetailCalls += 1;
+    this.maximumConcurrentDetailCalls = Math.max(
+      this.maximumConcurrentDetailCalls,
+      this.activeDetailCalls,
+    );
+    try {
+      if (this.detailDelayMs > 0) {
+        await new Promise<void>((resolve) => setTimeout(resolve, this.detailDelayMs));
+      }
+      if (this.unavailableIds.has(id)) {
+        return {
+          state: 'unavailable',
+          error: { code: 'upstream_unavailable', retryable: true },
+          warnings: [{ code: 'UPSTREAM_ERROR', message: 'fixture detail unavailable' }],
+        };
+      }
+      if (this.missingIds.has(id)) return { state: 'not_found' };
+      const subject = Object.values(this.groups)
+        .flat()
+        .find((candidate) => candidate.id === id);
+      if (!subject) return { state: 'not_found' };
       return {
-        state: 'unavailable',
-        error: { code: 'upstream_unavailable', retryable: true },
-        warnings: [{ code: 'UPSTREAM_ERROR', message: 'fixture detail unavailable' }],
+        state: 'ok',
+        data: {
+          id: subject.id,
+          type: 2,
+          name: subject.name,
+          nameCn: subject.name,
+          summary: '',
+          nsfw: false,
+          locked: false,
+          date: '2026-01-01',
+          platform: 'TV',
+          images: {},
+          eps: subject.episodes,
+          totalEpisodes: subject.episodes,
+          stats: stats(subject),
+        },
+        evidence: {},
       };
+    } finally {
+      this.activeDetailCalls -= 1;
     }
-    if (this.missingIds.has(id)) return { state: 'not_found' };
-    const subject = Object.values(this.groups)
-      .flat()
-      .find((candidate) => candidate.id === id);
-    if (!subject) return { state: 'not_found' };
-    return {
-      state: 'ok',
-      data: {
-        id: subject.id,
-        type: 2,
-        name: subject.name,
-        nameCn: subject.name,
-        summary: '',
-        nsfw: false,
-        locked: false,
-        date: '2026-01-01',
-        platform: 'TV',
-        images: {},
-        eps: subject.episodes,
-        totalEpisodes: subject.episodes,
-        stats: stats(subject),
-      },
-      evidence: {},
-    };
   }
 
   async getSubjectStats(
@@ -637,6 +652,90 @@ describe('subject cohort comparison', () => {
       budget: { maxReturnedItems: 2 },
     });
     expect(result.cohorts[0]?.subjects).toHaveLength(2);
+  });
+
+  it('shares each cohort hydration budget across discovery filtering and returned-row detail reads', async () => {
+    const provider = new CohortProvider({
+      A: [
+        { id: 1, name: 'A one', score: 8, heat: 10, episodes: 12 },
+        { id: 2, name: 'A two', score: 7, heat: 8, episodes: 13 },
+      ],
+    });
+    const result = await compareSubjectCohorts(
+      [
+        {
+          query: {
+            keyword: 'A',
+            media: 'anime',
+            resultMode: 'all',
+            limit: 2,
+            collectionCompletionRate: { min: 0 },
+            budget: {
+              maxPages: 1,
+              maxCandidates: 20,
+              maxHydrations: 1,
+              concurrency: 1,
+              maxConceptProbes: 1,
+              maxReturnedItems: 2,
+            },
+          },
+        },
+      ],
+      { maxSubjects: 2 },
+      provider,
+    );
+
+    const cohort = result.cohorts[0]!;
+    expect(cohort.coverage.query.coverage.hydrationsAttempted).toBe(1);
+    expect(cohort.coverage.detailHydrationsAttempted).toBe(0);
+    expect(provider.detailCalls).toHaveLength(1);
+    expect(cohort.subjects.every((subject) => subject.ratingStandardDeviation === undefined)).toBe(
+      true,
+    );
+  });
+
+  it('applies the requested concurrency to returned-row detail hydrations', async () => {
+    const provider = new CohortProvider(
+      {
+        A: [
+          { id: 1, name: 'A one', score: 8, heat: 10, episodes: 12 },
+          { id: 2, name: 'A two', score: 7, heat: 8, episodes: 13 },
+          { id: 3, name: 'A three', score: 6, heat: 6, episodes: 14 },
+          { id: 4, name: 'A four', score: 5, heat: 4, episodes: 15 },
+        ],
+      },
+      new Set(),
+      new Set(),
+      0,
+      0,
+      5,
+    );
+    const result = await compareSubjectCohorts(
+      [
+        {
+          query: {
+            keyword: 'A',
+            media: 'anime',
+            resultMode: 'all',
+            limit: 4,
+            budget: {
+              maxPages: 1,
+              maxCandidates: 20,
+              maxHydrations: 4,
+              concurrency: 2,
+              maxConceptProbes: 1,
+              maxReturnedItems: 4,
+            },
+          },
+        },
+      ],
+      { maxSubjects: 4 },
+      provider,
+    );
+
+    expect(result.cohorts[0]?.coverage.query.coverage.hydrationsAttempted).toBe(0);
+    expect(result.cohorts[0]?.coverage.detailHydrationsAttempted).toBe(4);
+    expect(provider.maximumConcurrentDetailCalls).toBe(2);
   });
 
   it('clamps direct cohort-query budgets to the server safety ceilings', async () => {

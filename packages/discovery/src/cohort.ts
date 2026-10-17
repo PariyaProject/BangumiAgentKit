@@ -229,6 +229,7 @@ export interface SubjectCohortComparisonResult {
 interface HydratedSubject {
   item: DiscoveryItem;
   result: CapabilityResult<ProviderSubjectData>;
+  requestAttempted: boolean;
 }
 
 const METRIC_LABELS: Record<SubjectCohortMetricKey, string> = {
@@ -373,13 +374,21 @@ async function hydrate(
   provider: SubjectDiscoveryProvider,
   items: DiscoveryItem[],
   context: ProviderRequestContext,
+  maxRequests: number,
+  concurrency: number,
 ): Promise<HydratedSubject[]> {
-  return mapConcurrent(items, SUBJECT_COHORT_DETAIL_CONCURRENCY, async (item) => {
+  const requestedItems = items.slice(0, maxRequests);
+  const attempted = await mapConcurrent(requestedItems, concurrency, async (item) => {
     try {
-      return { item, result: await provider.getSubject(item.id, context) };
+      return {
+        item,
+        requestAttempted: true,
+        result: await provider.getSubject(item.id, context),
+      };
     } catch {
       return {
         item,
+        requestAttempted: true,
         result: {
           state: 'upstream_error',
           error: { code: 'upstream_error', retryable: false },
@@ -393,6 +402,12 @@ async function hydrate(
       } satisfies HydratedSubject;
     }
   });
+  const notAttempted = items.slice(requestedItems.length).map((item) => ({
+    item,
+    requestAttempted: false,
+    result: { state: 'not_computable' } satisfies CapabilityResult<ProviderSubjectData>,
+  }));
+  return [...attempted, ...notAttempted];
 }
 
 function querySummary(label: string, query: DiscoveryQuery, resolvedSeason?: string): string {
@@ -713,12 +728,13 @@ function buildGroup(
       subjects,
       coverage: {
         query,
-        detailHydrationsAttempted: hydrated.length,
+        detailHydrationsAttempted: hydrated.filter((item) => item.requestAttempted).length,
         detailHydrationsSucceeded: hydrated.filter(
-          (item) => item.result.state === 'ok' && item.result.data,
+          (item) => item.requestAttempted && item.result.state === 'ok' && item.result.data,
         ).length,
         detailHydrationsFailed: hydrated.filter(
-          (item) => item.result.state !== 'ok' || !item.result.data,
+          (item) =>
+            item.requestAttempted && (item.result.state !== 'ok' || !item.result.data),
         ).length,
         metrics,
       },
@@ -922,7 +938,17 @@ export async function compareSubjectCohorts(
   for (const definition of definitions) {
     const query = queryForCohort(definition.query, maxSubjects);
     const result = await engine.query(query, context);
-    const hydrated = await hydrate(provider, result.items, context);
+    const maxHydrations = query.budget?.maxHydrations ?? SUBJECT_COHORT_MAX_QUERY_HYDRATIONS;
+    const queryHydrations = Math.min(maxHydrations, result.coverage.hydrationsAttempted);
+    const remainingHydrations = Math.max(0, maxHydrations - queryHydrations);
+    const concurrency = query.budget?.concurrency ?? SUBJECT_COHORT_DETAIL_CONCURRENCY;
+    const hydrated = await hydrate(
+      provider,
+      result.items,
+      context,
+      remainingHydrations,
+      concurrency,
+    );
     groups.push({ definition: { ...definition, query }, result, hydrated });
   }
 

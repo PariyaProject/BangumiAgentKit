@@ -205,9 +205,9 @@ export function validateA01RatingDispersionRequestScope(
   maxRequests = A01_RATING_DISPERSION_MAX_REQUESTS,
 ) {
   const profileArguments = PROFILE.calls[0].arguments;
-  // Each cohort can hydrate discovery filter candidates and then hydrate its returned rows.
+  // Discovery filtering and returned-row detail reads share each cohort's fixed hydration budget.
   const maxDetailRequests = profileArguments.cohorts.reduce(
-    (sum, cohort) => sum + cohort.query.budget.maxHydrations + profileArguments.maxSubjects,
+    (sum, cohort) => sum + cohort.query.budget.maxHydrations,
     0,
   );
   return (
@@ -221,7 +221,7 @@ export function validateA01RatingDispersionRequestScope(
     integer(scope.unexpectedRouteCount, maxRequests) &&
     scope.requestCount === scope.allowedRequestCount &&
     scope.requestCount === scope.searchRequestCount + scope.detailRequestCount &&
-    scope.searchRequestCount >= 2 &&
+    scope.searchRequestCount === profileArguments.cohorts.length &&
     scope.detailRequestCount <= maxDetailRequests &&
     scope.deniedRequestCount === 0 &&
     scope.credentialAttemptCount === 0 &&
@@ -255,14 +255,15 @@ function validResultSummary(summary) {
   const fields = new Set([
     'resultState',
     'cohortCount',
+    'fixedTargetIdentityMatched',
     'cohorts',
     'ratingStandardDeviation',
     'coverage',
   ]);
   const cohortFields = new Set([
     'queryState',
-    'subjectIds',
     'subjectCount',
+    'queryHydrationsAttempted',
     'ratingStandardDeviationCounts',
     'detailHydrationsAttempted',
     'detailHydrationsSucceeded',
@@ -289,13 +290,13 @@ function validResultSummary(summary) {
     'detailHydrationsSucceeded',
     'detailHydrationsFailed',
     'truncated',
-    'overlapIds',
     'overlapCount',
   ]);
   if (
     !exactKeys(summary, fields) ||
     !RESULT_STATES.has(summary.resultState) ||
     summary.cohortCount !== 2 ||
+    summary.fixedTargetIdentityMatched !== true ||
     !Array.isArray(summary.cohorts) ||
     summary.cohorts.length !== 2 ||
     !exactKeys(summary.ratingStandardDeviation, metricFields) ||
@@ -307,24 +308,22 @@ function validResultSummary(summary) {
     if (
       !exactKeys(cohort, cohortFields) ||
       !RESULT_STATES.has(cohort.queryState) ||
-      !Array.isArray(cohort.subjectIds) ||
-      cohort.subjectIds.length > 4 ||
-      cohort.subjectIds.some((id) => !Number.isSafeInteger(id) || id < 1) ||
-      new Set(cohort.subjectIds).size !== cohort.subjectIds.length ||
-      cohort.subjectCount !== cohort.subjectIds.length ||
+      !integer(cohort.subjectCount, 4) ||
+      !integer(
+        cohort.queryHydrationsAttempted,
+        PROFILE.calls[0].arguments.cohorts[index].query.budget.maxHydrations,
+      ) ||
       !validCountRecord(cohort.ratingStandardDeviationCounts, cohort.subjectCount) ||
-      !integer(cohort.detailHydrationsAttempted, 4) ||
+      !integer(cohort.detailHydrationsAttempted, cohort.subjectCount) ||
       !integer(cohort.detailHydrationsSucceeded, 4) ||
       !integer(cohort.detailHydrationsFailed, 4) ||
+      cohort.queryHydrationsAttempted + cohort.detailHydrationsAttempted >
+        PROFILE.calls[0].arguments.cohorts[index].query.budget.maxHydrations ||
       cohort.detailHydrationsSucceeded + cohort.detailHydrationsFailed !==
         cohort.detailHydrationsAttempted
     )
       return false;
-    return (
-      index !== 0 ||
-      (cohort.subjectIds.length === 1 &&
-        cohort.subjectIds[0] === PROFILE.answerProfile.targetSubjectId)
-    );
+    return true;
   });
   const metric = summary.ratingStandardDeviation;
   const metricArrays = [
@@ -377,16 +376,10 @@ function validResultSummary(summary) {
             : typeof value === 'number' && Number.isFinite(value) && value >= 0;
         }));
   const coverage = summary.coverage;
-  const idsA = new Set(summary.cohorts[0].subjectIds);
-  const idsB = new Set(summary.cohorts[1].subjectIds);
-  const expectedOverlap = [...idsA].filter((id) => idsB.has(id)).sort((a, b) => a - b);
   const overlapValid =
-    Array.isArray(coverage.overlapIds) &&
-    coverage.overlapIds.every((id) => Number.isSafeInteger(id) && id > 0) &&
-    new Set(coverage.overlapIds).size === coverage.overlapIds.length &&
-    canonicalAgentMcpProfileJson(coverage.overlapIds) ===
-      canonicalAgentMcpProfileJson(expectedOverlap) &&
-    coverage.overlapCount === coverage.overlapIds.length;
+    integer(coverage.overlapCount, 4) &&
+    coverage.overlapCount <=
+      Math.min(summary.cohorts[0].subjectCount, summary.cohorts[1].subjectCount);
   const totalSubjects = summary.cohorts.reduce((sum, cohort) => sum + cohort.subjectCount, 0);
   const attempts = summary.cohorts.reduce(
     (sum, cohort) => sum + cohort.detailHydrationsAttempted,
@@ -459,6 +452,11 @@ export function validateA01RatingDispersionServerSummary(
     !validResultSummary(result.resultSummary)
   )
     return false;
+  const expectedDetailRequests = result.resultSummary.cohorts.reduce(
+    (sum, cohort) => sum + cohort.queryHydrationsAttempted + cohort.detailHydrationsAttempted,
+    0,
+  );
+  if (summary.publicRequestScope.detailRequestCount !== expectedDetailRequests) return false;
   const catalogEvidence = catalogEvidenceForSummary(summary, root);
   return catalogEvidence;
 }

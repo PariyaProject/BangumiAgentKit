@@ -7,7 +7,7 @@ import {
   validateA01RatingDispersionServerSummary,
 } from '../../scripts/acceptance/write-a01-rating-dispersion-agent-mcp-report.mjs';
 
-test('A01 request scope accepts both bounded hydration phases and rejects values beyond them', () => {
+test('A01 request scope enforces one shared per-cohort hydration budget', () => {
   const scope = (detailRequestCount) => ({
     requestCount: 2 + detailRequestCount,
     allowedRequestCount: 2 + detailRequestCount,
@@ -24,8 +24,8 @@ test('A01 request scope accepts both bounded hydration phases and rejects values
     redirectPolicy: 'error',
   });
 
-  assert.equal(validateA01RatingDispersionRequestScope(scope(16)), true);
-  assert.equal(validateA01RatingDispersionRequestScope(scope(17)), false);
+  assert.equal(validateA01RatingDispersionRequestScope(scope(8)), true);
+  assert.equal(validateA01RatingDispersionRequestScope(scope(9)), false);
 });
 
 test('A01 report validation rejects a report without its durable Harness claim', () => {

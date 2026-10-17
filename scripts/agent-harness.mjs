@@ -162,6 +162,7 @@ import { validateR02SanitizedReportFile } from './acceptance/write-r02-positive-
 import { validateC02SanitizedReportFile } from './acceptance/write-c02-tv-movie-comparison-report.mjs';
 import { validateM07SanitizedReportFile } from './acceptance/write-m07-manage-index-agent-mcp-report.mjs';
 import { validateA01RenderCohortAggregationSanitizedReportFile } from './acceptance/write-a01-render-cohort-aggregation-agent-mcp-report.mjs';
+import { validateA01RatingDispersionSanitizedReportFile } from './acceptance/write-a01-rating-dispersion-agent-mcp-report.mjs';
 import {
   G06_MODEL,
   G06_REASONING_EFFORT,
@@ -243,6 +244,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'r02-positive-direct-relations-agent-mcp-v1',
   'c04-cohort-comparison-agent-mcp-matrix-v1',
   'query-render-title-agent-mcp-v1',
+  'a01-rating-dispersion-1998-spring-v1',
 ]);
 const profileRequiresExactCiRunEvidence = (profileId) => PROFILE_CI_RUN_EVIDENCE_IDS.has(profileId);
 const P01_MODEL = 'gpt-6-luna';
@@ -3825,6 +3827,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateM07SanitizedReportFile(claim, root, reportPath);
     case 'a01-render-cohort-aggregation-agent-mcp-offline-v1':
       return validateA01RenderCohortAggregationSanitizedReportFile(claim, root, reportPath);
+    case 'a01-rating-dispersion-1998-spring-v1':
+      return validateA01RatingDispersionSanitizedReportFile(claim, root, reportPath);
     default:
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_REPORT_VALIDATOR_MISSING',
