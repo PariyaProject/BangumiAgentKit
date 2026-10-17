@@ -4,7 +4,7 @@ export interface G01QuerySubjectsOfflineFixtureSnapshot {
   searchRequestCount: number;
   duplicateRequestCount: number;
   unexpectedRequestCount: number;
-  authorizationHeaderCount: number;
+  rejectedHeaderCount: number;
   expectedOperationsComplete: boolean;
   rawFixturePayloadStored: boolean;
 }

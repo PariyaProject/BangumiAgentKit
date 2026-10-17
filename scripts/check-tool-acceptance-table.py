@@ -653,7 +653,7 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                     'searchRequestCount': 1,
                     'duplicateRequestCount': 0,
                     'unexpectedRequestCount': 0,
-                    'authorizationHeaderCount': 0,
+                    'rejectedHeaderCount': 0,
                     'expectedOperationsComplete': True,
                     'rawFixturePayloadStored': False,
                 }

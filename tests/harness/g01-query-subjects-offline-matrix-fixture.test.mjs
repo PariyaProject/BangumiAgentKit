@@ -22,6 +22,11 @@ const SEARCH_BODY = {
   sort: 'match',
   filter: { type: [2], nsfw: false },
 };
+const SAFE_HEADERS = {
+  accept: 'application/json',
+  'content-type': 'application/json',
+  'user-agent': 'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)',
+};
 test('profile uses a unique query and subject id', () => {
   assert.equal(assertG01QuerySubjectsOfflineProfile(PROFILE), true);
   assert.equal(assertG01QuerySubjectsOfflineFixtureProfile(PROFILE), true);
@@ -42,14 +47,14 @@ test('fixture serves one exact synthetic search and denies every second request'
   const fixture = createG01QuerySubjectsOfflineFetch();
   const response = await fixture.fetchFn(SEARCH_URL, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: SAFE_HEADERS,
     body: JSON.stringify(SEARCH_BODY),
   });
   assert.equal(response.status, 200);
   assert.equal((await response.json()).data[0].id, G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_SUBJECT_ID);
   const duplicate = await fixture.fetchFn(SEARCH_URL, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: SAFE_HEADERS,
     body: JSON.stringify(SEARCH_BODY),
   });
   assert.equal(duplicate.status, 599);
@@ -59,19 +64,59 @@ test('fixture serves one exact synthetic search and denies every second request'
     searchRequestCount: 1,
     duplicateRequestCount: 1,
     unexpectedRequestCount: 1,
-    authorizationHeaderCount: 0,
+    rejectedHeaderCount: 0,
     expectedOperationsComplete: false,
     rawFixturePayloadStored: false,
   });
 });
 
-test('fixture rejects credentials, mismatched arguments, detail hydration, and other origins', async () => {
+test('fixture rejects credential and unapproved headers, mismatched arguments, details, and other origins', async () => {
   const requests = [
     [
       'https://api.bgm.tv/v0/search/subjects?limit=20&offset=0',
       {
         method: 'POST',
-        headers: { authorization: 'Bearer synthetic-test-only' },
+        headers: { ...SAFE_HEADERS, authorization: 'Bearer synthetic-test-only' },
+        body: JSON.stringify(SEARCH_BODY),
+      },
+    ],
+    [
+      'https://api.bgm.tv/v0/search/subjects?limit=20&offset=0',
+      {
+        method: 'POST',
+        headers: { ...SAFE_HEADERS, cookie: 'session=synthetic-test-only' },
+        body: JSON.stringify(SEARCH_BODY),
+      },
+    ],
+    [
+      'https://api.bgm.tv/v0/search/subjects?limit=20&offset=0',
+      {
+        method: 'POST',
+        headers: { ...SAFE_HEADERS, 'proxy-authorization': 'Basic synthetic-test-only' },
+        body: JSON.stringify(SEARCH_BODY),
+      },
+    ],
+    [
+      'https://api.bgm.tv/v0/search/subjects?limit=20&offset=0',
+      {
+        method: 'POST',
+        headers: { ...SAFE_HEADERS, 'x-api-key': 'synthetic-test-only' },
+        body: JSON.stringify(SEARCH_BODY),
+      },
+    ],
+    [
+      'https://api.bgm.tv/v0/search/subjects?limit=20&offset=0',
+      {
+        method: 'POST',
+        headers: { ...SAFE_HEADERS, 'x-auth-token': 'synthetic-test-only' },
+        body: JSON.stringify(SEARCH_BODY),
+      },
+    ],
+    [
+      'https://api.bgm.tv/v0/search/subjects?limit=20&offset=0',
+      {
+        method: 'POST',
+        headers: { ...SAFE_HEADERS, accept: 'Bearer synthetic-test-only' },
         body: JSON.stringify(SEARCH_BODY),
       },
     ],
@@ -105,11 +150,11 @@ test('fixture rejects credentials, mismatched arguments, detail hydration, and o
   }
   assert.deepEqual(fixture.snapshot(), {
     profile: G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
-    requestCount: 5,
+    requestCount: 10,
     searchRequestCount: 0,
     duplicateRequestCount: 0,
-    unexpectedRequestCount: 5,
-    authorizationHeaderCount: 1,
+    unexpectedRequestCount: 10,
+    rejectedHeaderCount: 6,
     expectedOperationsComplete: false,
     rawFixturePayloadStored: false,
   });

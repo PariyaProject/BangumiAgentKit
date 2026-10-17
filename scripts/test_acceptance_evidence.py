@@ -8057,7 +8057,7 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
                 'searchRequestCount': 1,
                 'duplicateRequestCount': 0,
                 'unexpectedRequestCount': 0,
-                'authorizationHeaderCount': 0,
+                'rejectedHeaderCount': 0,
                 'expectedOperationsComplete': True,
                 'rawFixturePayloadStored': False,
             },

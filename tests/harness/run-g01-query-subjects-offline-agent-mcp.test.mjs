@@ -145,7 +145,7 @@ function serverSummaryFixture() {
       searchRequestCount: 1,
       duplicateRequestCount: 0,
       unexpectedRequestCount: 0,
-      authorizationHeaderCount: 0,
+      rejectedHeaderCount: 0,
       expectedOperationsComplete: true,
       rawFixturePayloadStored: false,
     },

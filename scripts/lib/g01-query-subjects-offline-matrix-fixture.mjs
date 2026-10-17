@@ -10,6 +10,14 @@ import {
 const API_ORIGIN = 'https://api.bgm.tv';
 const SEARCH_PATH = '/v0/search/subjects';
 const SEARCH_URL = `${API_ORIGIN}${SEARCH_PATH}?limit=20&offset=0`;
+const SAFE_REQUEST_HEADERS = new Map([
+  ['accept', 'application/json'],
+  ['content-type', 'application/json'],
+  [
+    'user-agent',
+    'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)',
+  ],
+]);
 
 function response(value) {
   return new Response(JSON.stringify(value), {
@@ -83,7 +91,7 @@ export function createG01QuerySubjectsOfflineFetch() {
     searchRequestCount: 0,
     duplicateRequestCount: 0,
     unexpectedRequestCount: 0,
-    authorizationHeaderCount: 0,
+    rejectedHeaderCount: 0,
     expectedOperationsComplete: false,
     rawFixturePayloadStored: false,
   };
@@ -100,7 +108,10 @@ export function createG01QuerySubjectsOfflineFetch() {
     const method = requestMethod(input, init);
     const headers = requestHeaders(input, init);
     const credentials = requestCredentials(input, init);
-    if (headers.has('authorization')) counters.authorizationHeaderCount += 1;
+    const rejectedHeaderCount = [...headers].filter(
+      ([name, value]) => SAFE_REQUEST_HEADERS.get(name) !== value,
+    ).length;
+    counters.rejectedHeaderCount += rejectedHeaderCount;
     if (url.origin !== API_ORIGIN || url.username || url.password || url.hash) {
       counters.unexpectedRequestCount += 1;
       return new Response('G01 query-subjects fixture denied an unexpected origin.', {
@@ -112,7 +123,7 @@ export function createG01QuerySubjectsOfflineFetch() {
     const validSearch =
       method === 'POST' &&
       url.href === SEARCH_URL &&
-      !headers.has('authorization') &&
+      rejectedHeaderCount === 0 &&
       (credentials === undefined || credentials === 'omit') &&
       canonicalAgentMcpProfileJson(body) ===
         canonicalAgentMcpProfileJson({
@@ -139,8 +150,10 @@ export function createG01QuerySubjectsOfflineFetch() {
     }
 
     counters.unexpectedRequestCount += 1;
-    if (headers.has('authorization') || (credentials !== undefined && credentials !== 'omit')) {
-      return new Response('G01 query-subjects fixture denied credentials.', { status: 599 });
+    if (rejectedHeaderCount > 0 || (credentials !== undefined && credentials !== 'omit')) {
+      return new Response('G01 query-subjects fixture denied credentials or request headers.', {
+        status: 599,
+      });
     }
     return new Response('G01 query-subjects fixture denied an unexpected operation.', {
       status: 599,

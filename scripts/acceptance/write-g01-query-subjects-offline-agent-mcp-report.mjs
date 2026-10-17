@@ -148,7 +148,7 @@ const OFFLINE_FIXTURE_FIELDS = new Set([
   'searchRequestCount',
   'duplicateRequestCount',
   'unexpectedRequestCount',
-  'authorizationHeaderCount',
+  'rejectedHeaderCount',
   'expectedOperationsComplete',
   'rawFixturePayloadStored',
 ]);
@@ -200,7 +200,7 @@ function expectedFixture() {
     searchRequestCount: 1,
     duplicateRequestCount: 0,
     unexpectedRequestCount: 0,
-    authorizationHeaderCount: 0,
+    rejectedHeaderCount: 0,
     expectedOperationsComplete: true,
     rawFixturePayloadStored: false,
   };

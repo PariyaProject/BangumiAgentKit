@@ -2563,7 +2563,7 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_ANSWER_CHECK_FIELDS = {
 }
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_FIXTURE_FIELDS = {
     'profile', 'requestCount', 'searchRequestCount', 'duplicateRequestCount',
-    'unexpectedRequestCount', 'authorizationHeaderCount', 'expectedOperationsComplete',
+    'unexpectedRequestCount', 'rejectedHeaderCount', 'expectedOperationsComplete',
     'rawFixturePayloadStored',
 }
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_RESULT_SUMMARY_FIELDS = {
@@ -5285,6 +5285,8 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/lib/g01-query-subjects-offline-matrix-fixture.mjs': (
         'export function createG01QuerySubjectsOfflineFetch()',
         'export function assertG01QuerySubjectsOfflineFixtureProfile(profile)',
+        'SAFE_REQUEST_HEADERS',
+        'rejectedHeaderCount',
         'unexpectedRequestCount',
         'rawFixturePayloadStored: false',
     ),
@@ -5337,6 +5339,7 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
     ),
     'tests/harness/g01-query-subjects-offline-matrix-fixture.test.mjs': (
         'fixture serves one exact synthetic search and denies every second request',
+        'credential and unapproved headers',
         'profile uses a unique query and subject id',
     ),
     'tests/harness/run-g01-query-subjects-offline-agent-mcp.test.mjs': (
@@ -12403,7 +12406,7 @@ def codex_g01_query_subjects_offline_profile_report_is_valid(
             'searchRequestCount': 1,
             'duplicateRequestCount': 0,
             'unexpectedRequestCount': 0,
-            'authorizationHeaderCount': 0,
+            'rejectedHeaderCount': 0,
             'expectedOperationsComplete': True,
             'rawFixturePayloadStored': False,
         }
