@@ -1999,7 +1999,7 @@
   },
   {
     "name": "bangumi.get_subject_relations",
-    "description": "读取指定 Bangumi 条目的官方 v0 直接关系响应，并保留原始 relation 标签。默认返回原始关系数组以兼容现有调用；设置 includeEvidence=true 时附带来源方向、响应行数、解析限制和明确覆盖说明。此接口没有分页、总数或全系列完整性承诺；结果只代表当前来源条目指向的可见直接关系，不包含反向或传递关系，也不能证明未返回的关系不存在。关系行的接口顺序不是官方观看顺序；如需观看建议，请单独使用 bangumi.get_series_watch_order，它是有限的本地推导而非 canonical 顺序。匿名可见性可能隐藏敏感条目。",
+    "description": "读取指定 Bangumi 条目的官方 v0 直接关系响应，并保留原始 relation 标签。默认返回原始关系数组以兼容现有调用；设置 includeEvidence=true 时附带来源方向、响应行数、解析限制和明确覆盖说明。此接口没有分页、总数或全系列完整性承诺；结果只代表当前来源条目指向的可见直接关系，不包含反向或传递关系，也不能证明未返回的关系不存在。关系行的接口顺序不是官方观看顺序；如需观看建议，请单独使用 bangumi.get_series_watch_order，它是有限的本地推导而非 canonical 顺序。匿名可见性可能隐藏敏感条目。可显式设置 analysisMode=observed_two_hop_rating，串行检查有界的两跳出向样本及当前条目评分，返回“本次成功观察到的最高评分”与并列项、路径和覆盖证据；它不代表完整关系图或全局最高分。分析模式最多 11 个逻辑 GET、每个响应最多 1 MiB。指定 analysisMode 时优先返回分析 envelope。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -2016,6 +2016,11 @@
         "includeEvidence": {
           "description": "启用带来源与覆盖限制的证据 envelope；默认 false，保持原始数组返回形式",
           "type": "boolean"
+        },
+        "analysisMode": {
+          "description": "显式启用有界两跳观察评分分析；缺省时不增加请求且保留既有返回形式",
+          "type": "string",
+          "const": "observed_two_hop_rating"
         }
       },
       "required": ["subjectId"],

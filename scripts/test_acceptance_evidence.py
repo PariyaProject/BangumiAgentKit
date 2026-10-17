@@ -1573,6 +1573,62 @@ class PublicApiEvidenceTests(unittest.TestCase):
             {'bangumi.get_subject': {'docs/live-probes/public-tools-fixture.json'}},
         )
 
+    def test_retains_default_relation_probe_across_opt_in_analysis_mode(self):
+        current_catalog_bytes = self.original_catalog.read_bytes()
+        current_catalog = json.loads(current_catalog_bytes)
+        current_tool = next(
+            item for item in current_catalog
+            if item['name'] == 'bangumi.get_subject_relations'
+        )
+        previous_tool = json.loads(json.dumps(current_tool))
+        added_description = GENERATOR.SUBJECT_RELATIONS_ANALYSIS_ADDED_DESCRIPTION
+        self.assertTrue(current_tool['description'].endswith(added_description))
+        previous_tool['description'] = current_tool['description'][:-len(added_description)]
+        del previous_tool['inputSchema']['properties']['analysisMode']
+        previous_catalog_bytes = json.dumps([previous_tool], indent=2).encode('utf-8')
+        previous_catalog_sha = hashlib.sha256(previous_catalog_bytes).hexdigest()
+        snapshot_dir = GENERATOR.LIVE_PROBE_DIR / 'catalog-snapshots'
+        snapshot_dir.mkdir(parents=True)
+        (snapshot_dir / f'{previous_catalog_sha}.json').write_bytes(previous_catalog_bytes)
+
+        self.catalog_path.write_bytes(current_catalog_bytes)
+        self.catalog = current_catalog
+        tool_name = 'bangumi.get_subject_relations'
+        self.write_report(
+            catalogSha256=previous_catalog_sha,
+            selectedTools=[tool_name],
+            probeCount=1,
+            results=[{
+                'tool': tool_name,
+                'input': {'subjectId': 123},
+                'httpRequests': 1,
+                'result': {'state': 'value', 'keys': ['0']},
+                'assertions': {
+                    name: True for name in GENERATOR.PUBLIC_API_REQUIRED_ASSERTIONS
+                },
+            }],
+        )
+
+        self.assertTrue(
+            GENERATOR.public_api_catalog_evidence_matches_current(
+                previous_catalog_sha, [tool_name],
+            ),
+        )
+        self.assertEqual(
+            GENERATOR.public_api_smoke_sources(current_catalog),
+            {tool_name: {'docs/live-probes/public-tools-fixture.json'}},
+        )
+
+        changed_catalog = json.loads(json.dumps(current_catalog))
+        changed_tool = next(item for item in changed_catalog if item['name'] == tool_name)
+        changed_tool['inputSchema']['properties']['subjectId']['maximum'] = 99
+        self.catalog_path.write_text(json.dumps(changed_catalog), encoding='utf-8')
+        self.assertFalse(
+            GENERATOR.public_api_catalog_evidence_matches_current(
+                previous_catalog_sha, [tool_name],
+            ),
+        )
+
     def test_model_mcp_evidence_keeps_the_per_tool_report_path(self):
         catalog_hash = hashlib.sha256(self.catalog_path.read_bytes()).hexdigest()
         report_path = self.root / 'docs/live-probes/pariya-agent-public-e2e-fixture.json'

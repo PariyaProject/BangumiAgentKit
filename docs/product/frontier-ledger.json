@@ -3346,7 +3346,7 @@
       "kind": "scenario",
       "user_question": "从一部作品出发，两跳内评分最高的关联作品是什么？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "PARTIAL",
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
         "docs/research/run95-r03-relations-agent-mcp-offline-matrix-2026-10-17.md",
@@ -3372,9 +3372,15 @@
         "tests/harness/r03-relations-offline-fixture.test.mjs",
         "tests/harness/run-r03-relations-offline-agent-mcp.test.mjs",
         "tests/harness/write-r03-relations-offline-agent-mcp-report.test.mjs",
-        "tests/harness/frontier-ledger-data.test.mjs"
+        "tests/harness/frontier-ledger-data.test.mjs",
+        "docs/research/run95-r03-bounded-observed-two-hop-rating-contract-2026-10-17.md",
+        "packages/bangumi-core/src/services/subject-relations-analysis-service.ts",
+        "packages/bangumi-core/src/services/subject-service.ts",
+        "apps/mcp/src/result-presenter.ts",
+        "tests/semantic/subject-relations-analysis.test.ts",
+        "tests/integration/subject-relations-analysis-presenter.test.ts"
       ],
-      "next_action": "R03 remains UNASSESSED. The registered PR #208 profile r03-two-hop-relations-offline-agent-mcp-v1 is terminal INCONCLUSIVE/no-report/retryAllowed=false; never repeat its claim or fixed IDs. The distinct v2 profile r03-direct-relations-offline-agent-mcp-matrix-v2 uses one fresh synthetic direct-relation input and may credit only bangumi.get_subject_relations Agent/MCP after exact-Candidate seven-check CI, same-identity GPT-6 Luna Max review, and its own fresh UNCLAIMED Harness status. Preserve the v1 claim and report boundary; do not answer the highest-rated two-hop question or infer real graph paths, scores, or completeness from fixture data.",
+      "next_action": "R03 remains PARTIAL. The existing bangumi.get_subject_relations tool now has an explicit analysisMode=observed_two_hop_rating for the highest successfully rated subject observed in its bounded outgoing two-hop sample; direct-array and includeEvidence defaults remain unchanged. Source, coverage, truncation, request limits, paths, failures, ties, and current score totals are exposed and covered by local fixtures. This does not establish the complete two-hop graph, a global highest-rated relation, or absence of unreturned paths. Fixtures and local tests earn no Agent/MCP matrix credit; the separate fresh Harness-gated matrix profile remains unassessed. PR #208 v1 and PR #212 v2 R03 claims are terminal INCONCLUSIVE with retryAllowed=false and must never be repeated. After integration, any new Agent/MCP evidence must use a distinct authorized profile and must not change the 65/65 public API target.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

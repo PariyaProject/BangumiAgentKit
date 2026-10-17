@@ -20,6 +20,7 @@ export * from './models/character-credit-integrity.js';
 export * from './models/subject-index-membership.js';
 
 export * from './services/subject-service.js';
+export * from './services/subject-relations-analysis-service.js';
 export * from './services/series-service.js';
 export * from './services/episode-service.js';
 export * from './services/episode-guide-service.js';

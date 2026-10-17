@@ -10,6 +10,7 @@ import type {
   SeriesWatchOrderResult,
   SeriesVoiceActorPresence,
   SubjectOverlapResult,
+  SubjectRelationsAnalysisResult,
   SubjectStaffGroup,
   SubjectStaffMember,
 } from '@bangumi-agent-kit/bangumi-core';
@@ -106,6 +107,17 @@ const PERSON_PROFILE_TEXT_SCOPE_NOTE =
 
 export function presentMcpToolResult(toolName: string, result: unknown): McpToolResultPresentation {
   const fullText = serializeFullResult(result);
+  if (
+    toolName === SUBJECT_RELATIONS_TOOL &&
+    isJsonObject(result) &&
+    isSubjectRelationsAnalysisResult(result)
+  ) {
+    return {
+      text: compactSubjectRelationsAnalysis(result),
+      structuredContent: result,
+    };
+  }
+
   if (
     toolName === SUBJECT_RELATIONS_TOOL &&
     isJsonObject(result) &&
@@ -868,6 +880,155 @@ function compactSubjectRelations(result: SubjectRelationsEvidenceResult): string
       throw new Error('Unable to produce bounded MCP subject-relations text');
     }
   }
+}
+
+function compactSubjectRelationsAnalysis(result: SubjectRelationsAnalysisResult): string {
+  const configurations = [
+    { pathLimit: 2, nameCharacters: 36, labelCharacters: 18, operations: 'all' as const },
+    { pathLimit: 1, nameCharacters: 24, labelCharacters: 12, operations: 'failures' as const },
+    { pathLimit: 0, nameCharacters: 0, labelCharacters: 0, operations: 'none' as const },
+  ];
+  const summary =
+    result.ratingAnalysis.topScore === null
+      ? '未计算出可用评分排名'
+      : `本次有界样本最高观察分 ${result.ratingAnalysis.topScore}；并列 ${result.ratingAnalysis.topCandidateCount} 项，显示 ${result.ratingAnalysis.topCandidates.length} 项`;
+
+  for (const configuration of configurations) {
+    const text = JSON.stringify({
+      state: result.state,
+      subjectId: result.subjectId,
+      summary,
+      scope: '仅本次可见的有向两跳样本，不代表完整关系图或全局最高分。',
+      ratingAnalysis: {
+        topScore: result.ratingAnalysis.topScore,
+        topCandidateCount: result.ratingAnalysis.topCandidateCount,
+        topCandidatesOmitted: result.ratingAnalysis.topCandidatesOmitted,
+        scoredCandidateCount: result.ratingAnalysis.scoredCandidateCount,
+        candidates: result.ratingAnalysis.topCandidates.map((candidate) => ({
+          id: candidate.id,
+          name: clipSubjectRelationText(candidate.name, configuration.nameCharacters),
+          ...(candidate.nameCn
+            ? { nameCn: clipSubjectRelationText(candidate.nameCn, configuration.nameCharacters) }
+            : {}),
+          score: candidate.score,
+          ratingTotal: candidate.ratingTotal,
+          paths: candidate.paths.slice(0, configuration.pathLimit).map((path) => ({
+            sourceId: path.sourceId,
+            targetId: path.targetId,
+            subjectIds: path.subjectIds,
+            depth: path.depth,
+            relationLabels: path.relationLabels.map((label) =>
+              clipSubjectRelationText(label, configuration.labelCharacters),
+            ),
+          })),
+          pathsOmittedFromText: Math.max(0, candidate.paths.length - configuration.pathLimit),
+        })),
+      },
+      coverage: {
+        rootRelationRowsObserved: result.coverage.rootRelationRowsObserved,
+        rootRelationRowsSelected: result.coverage.rootRelationRowsSelected,
+        rootRelationRowsOmitted: result.coverage.rootRelationRowsOmitted,
+        intermediateSubjectsSelected: result.coverage.intermediateSubjectsSelected,
+        intermediateRelationRowsObserved: result.coverage.intermediateRelationRowsObserved,
+        intermediateRelationRowsSelected: result.coverage.intermediateRelationRowsSelected,
+        depth1CandidatesSelected: result.coverage.depth1CandidatesSelected,
+        depth2CandidatesSelected: result.coverage.depth2CandidatesSelected,
+        detailRequestsAttempted: result.coverage.detailRequestsAttempted,
+        detailRequestsSucceeded: result.coverage.detailRequestsSucceeded,
+        detailRequestsFailed: result.coverage.detailRequestsFailed,
+        usableRatings: result.coverage.usableRatings,
+        missingRatings: result.coverage.missingRatings,
+        duplicateRelationRows: result.coverage.duplicateRelationRows,
+        cycleEdgesSkipped: result.coverage.cycleEdgesSkipped,
+        truncated: result.coverage.truncated,
+        partialReasons: result.coverage.partialReasons,
+        requestBudget: result.coverage.requestBudget,
+      },
+      ...(configuration.operations !== 'none'
+        ? {
+            operations: result.source.operations
+              .filter(
+                (operation) => configuration.operations === 'all' || operation.status === 'failed',
+              )
+              .map((operation) => ({
+                path: operation.path,
+                depth: operation.depth,
+                status: operation.status,
+                ...(operation.failureCode ? { failureCode: operation.failureCode } : {}),
+              })),
+          }
+        : {}),
+      warnings: result.warnings.slice(0, 3).map((warning) => clipSubjectRelationText(warning, 96)),
+      limitations: result.limitations
+        .slice(0, 2)
+        .map((limitation) => clipSubjectRelationText(limitation, 96)),
+      fullStructuredContentAvailable: true,
+    });
+    if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
+  }
+
+  return JSON.stringify({
+    state: result.state,
+    subjectId: result.subjectId,
+    summary,
+    scope: '仅本次有界的可见有向两跳样本，不代表完整关系图或全局最高分。',
+    topScore: result.ratingAnalysis.topScore,
+    topCandidateCount: result.ratingAnalysis.topCandidateCount,
+    topCandidatesOmitted: result.ratingAnalysis.topCandidatesOmitted,
+    logicalRequestsAttempted: result.coverage.requestBudget.logicalRequestsAttempted,
+    maxLogicalRequests: result.coverage.requestBudget.maxLogicalRequests,
+    fullStructuredContentAvailable: true,
+  });
+}
+
+function isSubjectRelationsAnalysisResult(
+  value: JsonObject,
+): value is JsonObject & SubjectRelationsAnalysisResult {
+  return (
+    ['observed', 'partial', 'not_computable', 'unavailable', 'not_found'].includes(
+      String(value.state),
+    ) &&
+    Number.isInteger(value.subjectId) &&
+    isJsonObject(value.source) &&
+    typeof value.source.retrievedAt === 'string' &&
+    Array.isArray(value.source.operations) &&
+    value.source.operations.every(
+      (operation) =>
+        isJsonObject(operation) &&
+        typeof operation.path === 'string' &&
+        Number.isInteger(operation.subjectId) &&
+        ['succeeded', 'failed'].includes(String(operation.status)),
+    ) &&
+    isJsonObject(value.ratingAnalysis) &&
+    value.ratingAnalysis.mode === 'observed_two_hop_rating' &&
+    (value.ratingAnalysis.topScore === null || typeof value.ratingAnalysis.topScore === 'number') &&
+    Array.isArray(value.ratingAnalysis.topCandidates) &&
+    value.ratingAnalysis.topCandidates.every(
+      (candidate) =>
+        isJsonObject(candidate) &&
+        Number.isInteger(candidate.id) &&
+        typeof candidate.name === 'string' &&
+        typeof candidate.nameCn === 'string' &&
+        typeof candidate.score === 'number' &&
+        typeof candidate.ratingTotal === 'number' &&
+        Array.isArray(candidate.paths) &&
+        candidate.paths.every(
+          (path) =>
+            isJsonObject(path) &&
+            Number.isInteger(path.sourceId) &&
+            Number.isInteger(path.targetId) &&
+            Array.isArray(path.subjectIds) &&
+            Array.isArray(path.relationLabels),
+        ),
+    ) &&
+    isJsonObject(value.coverage) &&
+    Array.isArray(value.coverage.partialReasons) &&
+    isJsonObject(value.coverage.requestBudget) &&
+    Array.isArray(value.warnings) &&
+    value.warnings.every((warning) => typeof warning === 'string') &&
+    Array.isArray(value.limitations) &&
+    value.limitations.every((limitation) => typeof limitation === 'string')
+  );
 }
 
 function isJsonObject(value: unknown): value is JsonObject {
