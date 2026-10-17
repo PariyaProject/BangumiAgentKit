@@ -5622,6 +5622,7 @@ CODEX_R03_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function assertR03CandidateReviewGate(',
         'export function sameR03CandidateReviewGate(',
         'export function buildR03CodexExecArgs(',
+        'codexMcpExactToolAccessConfig(SERVER_ID, [PROFILE.toolName])',
         'export function classifyR03AssertionFailure(',
         "'R03_PREINVOKE_GATE_CHANGED'",
         'function runR03(',
