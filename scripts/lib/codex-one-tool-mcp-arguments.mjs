@@ -18,6 +18,7 @@ import { assertA01RenderCohortAggregationOfflineProfile } from './a01-render-coh
 import { assertR04RenderSeriesWatchOrderOfflineProfile } from './r04-render-series-watch-order-offline-fixture.mjs';
 import { assertTitleQueryRenderPublicProfile } from './title-query-render-agent-mcp-profile.mjs';
 import { assertA01RatingDispersionProfile } from './a01-rating-dispersion-profile.mjs';
+import { assertG06SubjectCastOfflineProfile } from './g06-subject-cast-offline-profile.mjs';
 
 export function parseCodexOneToolMcpArguments(argv) {
   const values = new Map();
@@ -95,6 +96,7 @@ export function parseCodexOneToolMcpArguments(argv) {
     let registeredNetworkMode;
     if (profile.networkMode !== undefined) {
       const approved =
+        assertG06SubjectCastOfflineProfile(profile) ||
         assertC04CohortComparisonPublicProfile(profile) ||
         assertTitleQueryRenderPublicProfile(profile) ||
         assertP06RenderPersonProfileOfflineProfile(profile) ||
