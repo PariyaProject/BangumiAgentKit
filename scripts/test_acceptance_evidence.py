@@ -9541,11 +9541,12 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
         self.root = Path(self.temp_dir.name)
         self.report_path = self.root / GENERATOR.CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH
         self.report_path.parent.mkdir(parents=True)
-        selection_path = self.root / GENERATOR.CODEX_G06_CAST_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH
-        selection_path.parent.mkdir(parents=True, exist_ok=True)
-        selection_path.write_bytes(
-            (GENERATOR.ROOT / GENERATOR.CODEX_G06_CAST_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes(),
-        )
+        for profile in GENERATOR.CODEX_G06_CAST_OFFLINE_PROFILE_SPECS.values():
+            selection_path = self.root / profile['selectionEvidencePath']
+            selection_path.parent.mkdir(parents=True, exist_ok=True)
+            selection_path.write_bytes(
+                (GENERATOR.ROOT / profile['selectionEvidencePath']).read_bytes(),
+            )
         self.catalog_path = self.root / 'docs/tool-catalog.json'
         self.catalog_path.parent.mkdir(parents=True, exist_ok=True)
         self.catalog_path.write_bytes(GENERATOR.CATALOG.read_bytes())
@@ -9553,8 +9554,9 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
         frontier_path.parent.mkdir(parents=True, exist_ok=True)
         frontier = json.loads((GENERATOR.ROOT / 'docs/product/frontier-ledger.json').read_text())
         g06 = next(record for record in frontier['records'] if record['id'] == 'G06')
-        g06['source_refs'].append(GENERATOR.CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH)
-        g06['source_refs'].append(GENERATOR.CODEX_G06_CAST_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH)
+        for profile in GENERATOR.CODEX_G06_CAST_OFFLINE_PROFILE_SPECS.values():
+            g06['source_refs'].append(profile['reportPath'])
+            g06['source_refs'].append(profile['selectionEvidencePath'])
         frontier_path.write_text(json.dumps(frontier), encoding='utf-8')
         self.originals = (GENERATOR.ROOT, GENERATOR.CATALOG, GENERATOR.LIVE_PROBE_DIR)
         GENERATOR.ROOT = self.root
@@ -9665,7 +9667,10 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
         }
 
     def validate_report(self, report):
-        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        profile = GENERATOR.codex_g06_cast_offline_profile_spec(report.get('profileId'))
+        report_path = self.root / profile['reportPath']
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
 
         def validate_embedded_report(args, **kwargs):
             payload = json.loads(kwargs['input'])
@@ -9688,13 +9693,142 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
             return GENERATOR.codex_g06_cast_offline_profile_report_is_valid(
                 report,
                 harness_status={'fixture': True},
-                report_path=self.report_path,
+                report_path=report_path,
                 epoch_status={'fixture': True},
             )
+
+    def build_v2_report(self):
+        profile = GENERATOR.codex_g06_cast_offline_profile_spec(
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        )
+        report = json.loads(json.dumps(self.report))
+        report.update({
+            'evidenceKind': profile['evidenceKind'],
+            'epochId': profile['epochId'],
+            'profileId': profile['id'],
+            'profile': profile['reportProfile'],
+            'registrySha256': profile['registrySha256'],
+            'selectionEvidenceSha256': hashlib.sha256(
+                (self.root / profile['selectionEvidencePath']).read_bytes(),
+            ).hexdigest(),
+            'argumentProfile': profile['argumentProfile'],
+            'expectedArgumentsSha256': profile['expectedArgumentsSha256'],
+            'networkMode': profile['networkMode'],
+            'answerCheckMethod': profile['answerCheckMethod'],
+            'codexErrorItemCount': 3,
+        })
+        report['offlineFixture']['profile'] = profile['networkMode']
+        report_path = self.root / profile['reportPath']
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        return report, report_path, profile
+
+    def report_written_harness_status(self, report, report_path, profile):
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        report_bytes = report_path.read_bytes()
+        receipt = report['runnerReceipt']
+        disposition = {
+            'claimId': report['claimId'],
+            'profileId': profile['id'],
+            'frontierId': profile['frontierId'],
+            'epochId': profile['epochId'],
+            'runNumber': 95,
+            'prNumber': report['prNumber'],
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'ciRunId': report['ciRunId'],
+            'ciChecks': report['ciChecks'],
+            'reviewerId': report['reviewerId'],
+            'bundleSha256': report['mcpBundleSha256'],
+            'registrySha256': profile['registrySha256'],
+            'toolName': profile['toolName'],
+            'argumentProfile': profile['argumentProfile'],
+            'expectedArgumentsSha256': profile['expectedArgumentsSha256'],
+            'reportWritten': True,
+            'reportPath': profile['reportPath'],
+            'reportSha256': hashlib.sha256(report_bytes).hexdigest(),
+            'retryAllowed': False,
+            'runnerReceiptPublicKey': receipt['publicKeyBase64'],
+            'runnerReceiptPublicKeySha256': receipt['publicKeySha256'],
+            'runnerReceiptSha256': GENERATOR._canonical_json_sha256(receipt),
+        }
+        return {
+            'state': 'REPORT_WRITTEN',
+            'profile_id': profile['id'],
+            'pr': report['prNumber'],
+            'tool_name': profile['toolName'],
+            'argument_profile': profile['argumentProfile'],
+            'expected_arguments_sha256': profile['expectedArgumentsSha256'],
+            'registry_sha256': profile['registrySha256'],
+            'claim_label_present': True,
+            'terminal_label_present': True,
+            'disposition': disposition,
+        }
+
+    def run_v2_sources(self, report, report_path, profile, harness_status):
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        report_bytes = report_path.read_bytes()
+
+        def validate_embedded_report(args, **kwargs):
+            payload = json.loads(kwargs['input'])
+            embedded = base64.b64decode(payload['reportBytesBase64'])
+            return subprocess.CompletedProcess(
+                args, 0,
+                json.dumps({'passed': True, 'reportSha256': hashlib.sha256(embedded).hexdigest()}),
+                '',
+            )
+
+        with (
+            patch.object(GENERATOR, 'codex_g06_cast_offline_profile_harness_status', return_value=harness_status),
+            patch.object(GENERATOR, 'codex_g06_cast_offline_profile_epoch_harness_status', return_value={'fixture': True}),
+            patch.object(GENERATOR, 'codex_g06_cast_offline_profile_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g06_cast_offline_profile_report_matches_candidate_revision', return_value=True),
+            patch.object(GENERATOR, 'codex_g06_cast_offline_profile_report_candidate_binding_is_current', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+        ):
+            sources = GENERATOR.model_mcp_e2e_sources(json.loads(self.catalog_path.read_text()))
+        return sources, report_bytes
 
     def test_accepts_only_the_synthetic_agent_mcp_matrix_cell_while_G06_remains_partial(self):
         self.assertTrue(GENERATOR.codex_g06_cast_offline_frontier_is_partial())
         self.assertTrue(self.validate_report(self.report))
+
+    def test_v2_report_accepts_bounded_error_items_and_routes_only_after_harness_acceptance(self):
+        report, report_path, profile = self.build_v2_report()
+        self.assertTrue(GENERATOR.codex_g06_cast_offline_frontier_is_partial(
+            profile_id=profile['id'],
+        ))
+        self.assertTrue(self.validate_report(report))
+
+        accepted_status = self.report_written_harness_status(report, report_path, profile)
+        sources, _ = self.run_v2_sources(report, report_path, profile, accepted_status)
+        self.assertEqual(
+            sources,
+            {
+                profile['toolName']: {
+                    profile['reportPath'],
+                },
+            },
+        )
+
+        inconclusive_status = {'state': 'INCONCLUSIVE'}
+        sources, _ = self.run_v2_sources(report, report_path, profile, inconclusive_status)
+        self.assertNotIn(profile['toolName'], sources)
+
+    def test_v2_rejects_unbounded_error_counts_and_v1_still_requires_zero(self):
+        report, _, _ = self.build_v2_report()
+        for invalid_count in (-1, 10_000_001, True):
+            with self.subTest(error_item_count=invalid_count):
+                invalid = json.loads(json.dumps(report))
+                invalid['codexErrorItemCount'] = invalid_count
+                self.assertFalse(self.validate_report(invalid))
+
+        v1_with_error = json.loads(json.dumps(self.report))
+        v1_with_error['codexErrorItemCount'] = 1
+        self.assertFalse(self.validate_report(v1_with_error))
 
     def test_rejects_scenario_credit_raw_content_and_fixture_expansion(self):
         scenario_credit = json.loads(json.dumps(self.report))

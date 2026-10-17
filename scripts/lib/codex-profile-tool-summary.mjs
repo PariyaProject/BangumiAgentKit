@@ -15,7 +15,10 @@ import {
   summarizeR05SubjectOverlapToolResult,
 } from './r05-shared-person-overlap-evidence.mjs';
 import { P02_PERSON_PROFILE_OFFLINE_PROFILE_ID } from './p02-person-profile-offline-fixture.mjs';
-import { G06_CAST_OFFLINE_PROFILE_ID } from './g06-subject-cast-offline-profile.mjs';
+import {
+  G06_CAST_OFFLINE_PROFILE_ID,
+  G06_CAST_OFFLINE_V2_PROFILE_ID,
+} from './g06-subject-cast-offline-profile.mjs';
 import { R04_SERIES_WATCH_ORDER_OFFLINE_PROFILE_ID } from './r04-series-watch-order-offline-fixture.mjs';
 import { C04_COHORT_COMPARISON_PROFILE_ID } from './c04-cohort-comparison-public-profile.mjs';
 import {
@@ -480,7 +483,7 @@ export function summarizeProfileToolResult(
       state: typeof result?.state === 'string' ? result.state : 'unknown',
     };
   }
-  if (profileId === G06_CAST_OFFLINE_PROFILE_ID) {
+  if ([G06_CAST_OFFLINE_PROFILE_ID, G06_CAST_OFFLINE_V2_PROFILE_ID].includes(profileId)) {
     return summarizeG06SubjectCastOfflineResult(result, expectedArguments);
   }
   if (profileId === R01_RELATIONS_OFFLINE_PROFILE_ID) {

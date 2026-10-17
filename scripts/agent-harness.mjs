@@ -176,11 +176,11 @@ import { validateA01RenderCohortAggregationSanitizedReportFile } from './accepta
 import { validateA01AggregateCohortProfileReportFile } from './acceptance/write-a01-aggregate-cohort-offline-agent-mcp-report.mjs';
 import { validateA01RatingDispersionSanitizedReportFile } from './acceptance/write-a01-rating-dispersion-agent-mcp-report.mjs';
 import {
-  G06_CAST_OFFLINE_ARGUMENT_PROFILE,
   G06_CAST_OFFLINE_EPOCH_ID,
   G06_CAST_OFFLINE_PROFILE_ID,
-  G06_CAST_OFFLINE_REPORT_PATH,
-  G06_CAST_OFFLINE_SELECTION_PATH,
+  G06_CAST_OFFLINE_V2_EPOCH_ID,
+  G06_CAST_OFFLINE_V2_PROFILE_ID,
+  getG06CastOfflineProfileSpec,
 } from './lib/g06-subject-cast-offline-profile.mjs';
 import {
   C07_RENDER_COMPARISON_OFFLINE_ARGUMENT_PROFILE,
@@ -4284,6 +4284,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'a01-rating-dispersion-1998-spring-v1':
       return validateA01RatingDispersionSanitizedReportFile(claim, root, reportPath);
     case G06_CAST_OFFLINE_PROFILE_ID:
+    case G06_CAST_OFFLINE_V2_PROFILE_ID:
       return validateG06SubjectCastOfflineSanitizedReportFile(claim, root, reportPath);
     default:
       throw new HarnessInvariantError(
@@ -7841,8 +7842,11 @@ function assertP05OneShotReconciledBeforeMerge(epoch, runNumber, prNumber) {
 }
 
 function assertG06CastOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber) {
-  const profile = getAgentMcpProfileById(G06_CAST_OFFLINE_PROFILE_ID);
-  const disposition = agentMcpProfileClaims(epoch)[G06_CAST_OFFLINE_PROFILE_ID];
+  const profile = [G06_CAST_OFFLINE_PROFILE_ID, G06_CAST_OFFLINE_V2_PROFILE_ID]
+    .map((profileId) => getAgentMcpProfileById(profileId))
+    .find((candidate) => candidate?.epochId === epoch.epoch_id);
+  const profileSpec = getG06CastOfflineProfileSpec(profile);
+  const disposition = profile ? agentMcpProfileClaims(epoch)[profile.id] : null;
   const latestReview = epoch.review_history?.at(-1);
   const terminalState = disposition?.state;
   const reportWritten = terminalState === 'REPORT_WRITTEN';
@@ -7856,17 +7860,18 @@ function assertG06CastOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNu
       review?.verdict === 'PASS',
   );
   if (
-    epoch.epoch_id !== G06_CAST_OFFLINE_EPOCH_ID ||
+    !profile ||
+    !profileSpec ||
+    epoch.epoch_id !== profile.epochId ||
     epoch.state !== 'REVIEW_PASSED' ||
     epoch.pr_number !== Number(prNumber) ||
-    !profile ||
-    disposition?.profileId !== G06_CAST_OFFLINE_PROFILE_ID ||
+    disposition?.profileId !== profile.id ||
     disposition.frontierId !== 'G06' ||
-    disposition.epochId !== G06_CAST_OFFLINE_EPOCH_ID ||
+    disposition.epochId !== profile.epochId ||
     disposition.runNumber !== Number(runNumber) ||
     disposition.prNumber !== Number(prNumber) ||
     disposition.toolName !== 'bangumi.get_subject_cast' ||
-    disposition.argumentProfile !== G06_CAST_OFFLINE_ARGUMENT_PROFILE ||
+    disposition.argumentProfile !== profile.argumentProfile ||
     disposition.expectedArgumentsSha256 !== agentMcpProfileArgumentsSha256(profile) ||
     disposition.registrySha256 !== agentMcpProfileRegistrySha256(profile.id) ||
     disposition.retryAllowed !== false ||
@@ -7921,10 +7926,11 @@ function assertG06CastOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNu
   const frontier = frontierContext().ledger;
   const record = frontier.records.find((item) => item.id === 'G06');
   const sourceRefs = record?.source_refs;
+  const reportPath = path.join(root, profile.reportPath);
   if (
     record?.status !== 'PARTIAL' ||
     !Array.isArray(sourceRefs) ||
-    !sourceRefs.includes(G06_CAST_OFFLINE_SELECTION_PATH)
+    !sourceRefs.includes(profile.selectionEvidencePath)
   ) {
     throw new HarnessInvariantError(
       'G06_CAST_OFFLINE_FRONTIER_INVALID',
@@ -7932,10 +7938,9 @@ function assertG06CastOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNu
     );
   }
 
-  const reportPath = path.join(root, G06_CAST_OFFLINE_REPORT_PATH);
   const changed = new Set(changedPaths(disposition.sourceCandidateSha));
   const allowedRefreshPaths = new Set([
-    G06_CAST_OFFLINE_REPORT_PATH,
+    profile.reportPath,
     'docs/product/frontier-ledger.json',
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
   ]);
@@ -7949,10 +7954,10 @@ function assertG06CastOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNu
 
   if (reportWritten) {
     if (
-      disposition.reportPath !== G06_CAST_OFFLINE_REPORT_PATH ||
+      disposition.reportPath !== profile.reportPath ||
       !/^[0-9a-f]{64}$/u.test(disposition.reportSha256 ?? '') ||
-      !sourceRefs.includes(G06_CAST_OFFLINE_REPORT_PATH) ||
-      !changed.has(G06_CAST_OFFLINE_REPORT_PATH) ||
+      !sourceRefs.includes(profile.reportPath) ||
+      !changed.has(profile.reportPath) ||
       !changed.has('docs/product/frontier-ledger.json') ||
       !changed.has('docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md')
     ) {
@@ -8469,7 +8474,7 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
   } else if (epoch.epoch_id === P05_EPOCH_ID) {
     assertP05OneShotReconciledBeforeMerge(epoch, runNumber, prNumber);
     ensureCleanWorkingTree();
-  } else if (epoch.epoch_id === G06_CAST_OFFLINE_EPOCH_ID) {
+  } else if ([G06_CAST_OFFLINE_EPOCH_ID, G06_CAST_OFFLINE_V2_EPOCH_ID].includes(epoch.epoch_id)) {
     assertG06CastOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber);
     ensureCleanWorkingTree();
   } else if (epoch.epoch_id === C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID) {

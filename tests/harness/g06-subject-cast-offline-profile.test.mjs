@@ -7,11 +7,16 @@ import {
   G06_CAST_OFFLINE_EXPECTED_ARGUMENTS,
   G06_CAST_OFFLINE_NETWORK_MODE,
   G06_CAST_OFFLINE_PROFILE_ID,
+  G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS,
+  G06_CAST_OFFLINE_V2_NETWORK_MODE,
+  G06_CAST_OFFLINE_V2_PROFILE_ID,
 } from '../../scripts/lib/g06-subject-cast-offline-profile.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 
 const profile = getAgentMcpProfileById(G06_CAST_OFFLINE_PROFILE_ID);
+const v2Profile = getAgentMcpProfileById(G06_CAST_OFFLINE_V2_PROFILE_ID);
 const expectedUrl = 'https://api.bgm.tv/v0/subjects/990804/characters';
+const expectedV2Url = 'https://api.bgm.tv/v0/subjects/990805/characters';
 
 test('G06 offline profile is immutable and matrix-only', () => {
   assert.equal(assertG06SubjectCastOfflineProfile(profile), true);
@@ -25,8 +30,20 @@ test('G06 offline profile is immutable and matrix-only', () => {
   changed.calls[0].arguments.subjectId = 218707;
   assert.throws(
     () => assertG06SubjectCastOfflineProfile(changed),
-    /immutable synthetic matrix profile/u,
+    /immutable registered synthetic matrix profile/u,
   );
+});
+
+test('G06 v2 is a distinct immutable matrix-only profile with a different synthetic input', () => {
+  assert.equal(assertG06SubjectCastOfflineProfile(v2Profile), true);
+  assert.equal(v2Profile.id, G06_CAST_OFFLINE_V2_PROFILE_ID);
+  assert.equal(v2Profile.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(v2Profile.frontierId, 'G06');
+  assert.equal(v2Profile.calls.length, 1);
+  assert.deepEqual(v2Profile.calls[0].arguments, G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS);
+  assert.notDeepEqual(v2Profile.calls[0].arguments, profile.calls[0].arguments);
+  assert.notEqual(v2Profile.reportPath, profile.reportPath);
+  assert.notEqual(v2Profile.claimLabelName, profile.claimLabelName);
 });
 
 test('G06 offline fixture allows exactly one anonymous synthetic GET', async () => {
@@ -52,6 +69,28 @@ test('G06 offline fixture allows exactly one anonymous synthetic GET', async () 
   const repeated = await fixture.fetchFn(expectedUrl, { method: 'GET' });
   assert.equal(repeated.status, 599);
   assert.equal(fixture.snapshot().duplicateRequestCount, 1);
+  assert.equal(fixture.snapshot().unexpectedRequestCount, 1);
+});
+
+test('G06 v2 fixture allows only its distinct synthetic GET', async () => {
+  const fixture = createG06SubjectCastOfflineFetch(v2Profile);
+  const response = await fixture.fetchFn(expectedV2Url, { method: 'GET' });
+  assert.equal(response.status, 200);
+  const rows = await response.json();
+  assert.equal(rows.length, 2);
+  assert.deepEqual(fixture.snapshot(), {
+    profile: G06_CAST_OFFLINE_V2_NETWORK_MODE,
+    requestCount: 1,
+    allowedRequestCount: 1,
+    duplicateRequestCount: 0,
+    unexpectedRequestCount: 0,
+    authorizationHeaderCount: 0,
+    queryParameterCount: 0,
+    requestBodyCount: 0,
+    rowsReturned: 2,
+    expectedOperationComplete: true,
+  });
+  assert.equal((await fixture.fetchFn(expectedUrl, { method: 'GET' })).status, 599);
   assert.equal(fixture.snapshot().unexpectedRequestCount, 1);
 });
 

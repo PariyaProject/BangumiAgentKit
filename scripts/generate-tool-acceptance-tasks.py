@@ -2911,6 +2911,83 @@ CODEX_G06_CAST_OFFLINE_EVIDENCE_REFRESH_PATHS = {
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
     'docs/product/frontier-ledger.json',
 }
+CODEX_G06_CAST_OFFLINE_V2_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'g06-cast-offline-agent-mcp-matrix-v2'
+)
+CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID = CODEX_G06_CAST_OFFLINE_V2_PROFILE['id']
+CODEX_G06_CAST_OFFLINE_V2_EPOCH_ID = CODEX_G06_CAST_OFFLINE_V2_PROFILE['epochId']
+CODEX_G06_CAST_OFFLINE_V2_TOOL_NAME = CODEX_G06_CAST_OFFLINE_V2_PROFILE['toolName']
+CODEX_G06_CAST_OFFLINE_V2_ARGUMENT_PROFILE = CODEX_G06_CAST_OFFLINE_V2_PROFILE['argumentProfile']
+CODEX_G06_CAST_OFFLINE_V2_EXPECTED_CALLS = CODEX_G06_CAST_OFFLINE_V2_PROFILE['calls']
+CODEX_G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_G06_CAST_OFFLINE_V2_EXPECTED_CALLS],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_G06_CAST_OFFLINE_V2_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_G06_CAST_OFFLINE_V2_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_G06_CAST_OFFLINE_V2_REPORT_RELATIVE_PATH = CODEX_G06_CAST_OFFLINE_V2_PROFILE['reportPath']
+CODEX_G06_CAST_OFFLINE_V2_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_G06_CAST_OFFLINE_V2_PROFILE['selectionEvidencePath']
+CODEX_G06_CAST_OFFLINE_V2_EVIDENCE_KIND = CODEX_G06_CAST_OFFLINE_V2_PROFILE['evidenceKind']
+CODEX_G06_CAST_OFFLINE_V2_ANSWER_CHECK_METHOD = CODEX_G06_CAST_OFFLINE_V2_PROFILE['answerCheckMethod']
+CODEX_G06_CAST_OFFLINE_V2_NETWORK_MODE = CODEX_G06_CAST_OFFLINE_V2_PROFILE['networkMode']
+CODEX_G06_CAST_OFFLINE_V2_EVIDENCE_REFRESH_PATHS = {
+    CODEX_G06_CAST_OFFLINE_V2_REPORT_RELATIVE_PATH,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+}
+CODEX_G06_CAST_OFFLINE_PROFILE_IDS = (
+    CODEX_G06_CAST_OFFLINE_PROFILE_ID,
+    CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+)
+CODEX_G06_CAST_OFFLINE_PROFILE_SPECS = {
+    profile['id']: {
+        'id': profile['id'],
+        'frontierId': profile['frontierId'],
+        'epochId': profile['epochId'],
+        'toolName': profile['toolName'],
+        'argumentProfile': profile['argumentProfile'],
+        'reportPath': profile['reportPath'],
+        'selectionEvidencePath': profile['selectionEvidencePath'],
+        'evidenceKind': profile['evidenceKind'],
+        'answerCheckMethod': profile['answerCheckMethod'],
+        'acceptanceScope': profile['acceptanceScope'],
+        'networkMode': profile['networkMode'],
+        'model': profile['model'],
+        'reasoningEffort': profile['reasoningEffort'],
+        'calls': profile['calls'],
+        'expectedArgumentsSha256': hashlib.sha256(json.dumps(
+            [call['arguments'] for call in profile['calls']],
+            sort_keys=True,
+            separators=(',', ':'),
+            ensure_ascii=False,
+        ).encode('utf-8')).hexdigest(),
+        'registrySha256': hashlib.sha256(json.dumps(
+            profile,
+            sort_keys=True,
+            separators=(',', ':'),
+            ensure_ascii=False,
+        ).encode('utf-8')).hexdigest(),
+        'reportProfile': (
+            'codex-luna-max-offline-agent-mcp-matrix-v2'
+            if profile['id'] == CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID
+            else 'codex-luna-max-offline-agent-mcp-matrix-v1'
+        ),
+        'reportPathName': Path(profile['reportPath']).name,
+        'evidenceRefreshPaths': {
+            profile['reportPath'],
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+        },
+    }
+    for profile in (CODEX_G06_CAST_OFFLINE_PROFILE, CODEX_G06_CAST_OFFLINE_V2_PROFILE)
+}
 CODEX_G06_CAST_OFFLINE_REPORT_FIELDS = {
     'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId',
     'acceptanceScope', 'epochId', 'profileId', 'profile', 'model', 'reasoningEffort',
@@ -5704,6 +5781,59 @@ CODEX_G06_CAST_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
         'only the Agent/MCP matrix cell',
         'subjectId:990804,limit:2',
         'terminal `INCONCLUSIVE`',
+    ),
+}
+CODEX_G06_CAST_OFFLINE_V2_PROFILE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "g06-cast-offline-agent-mcp-matrix-v2"',
+        '"epochId": "run95-g06-cast-offline-matrix-v2-20261018"',
+        '"networkMode": "run95-g06-subject-cast-offline-v2"',
+        '"subjectId": 990805',
+    ),
+    'scripts/lib/g06-subject-cast-offline-profile.mjs': (
+        "export const G06_CAST_OFFLINE_V2_PROFILE_ID = 'g06-cast-offline-agent-mcp-matrix-v2'",
+        'G06_CAST_OFFLINE_V2_SYNTHETIC_SUBJECT_ID = 990805',
+        'export function assertG06SubjectCastOfflineProfile(profile)',
+        'export function createG06SubjectCastOfflineFetch(profile = null)',
+    ),
+    'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
+        'assertG06SubjectCastOfflineProfile(profile)',
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        'G06_CAST_OFFLINE_V2_NETWORK_MODE',
+        'createG06SubjectCastOfflineFetch(config.profile)',
+    ),
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        'G06_CAST_OFFLINE_V2_PROFILE_ID',
+        'summarizeG06SubjectCastOfflineResult(',
+    ),
+    'scripts/acceptance/run-g06-subject-cast-offline-agent-mcp.mjs': (
+        'G06_CAST_OFFLINE_V2_PROFILE_ID',
+        'summary.argumentMatch === true',
+        'function runG06CastOfflineProfile(',
+    ),
+    'scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs': (
+        'getG06CastOfflineProfileSpec(profile)',
+        'Number.isSafeInteger(report.codexErrorItemCount)',
+    ),
+    'scripts/acceptance/validate-g06-subject-cast-offline-agent-mcp-report.mjs': (
+        'validateG06SubjectCastOfflineReport(',
+    ),
+    'scripts/agent-harness.mjs': (
+        'G06_CAST_OFFLINE_V2_PROFILE_ID',
+        'G06_CAST_OFFLINE_V2_EPOCH_ID',
+        'assertG06CastOfflineProfileReconciledBeforeMerge(',
+    ),
+    'docs/research/run95-g06-subject-cast-offline-agent-mcp-matrix-v2-2026-10-18.md': (
+        'subjectId:990805,limit:2',
+        'adds no G06 scenario,',
+        'V2 has a new profile ID,',
+        'must never be invoked again.',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'CODEX_G06_CAST_OFFLINE_V2_PROFILE_IMPLEMENTATION_MARKERS',
+        'CODEX_G06_CAST_OFFLINE_V2_EVIDENCE_KIND',
+        'codex_g06_cast_offline_profile_spec(',
     ),
 }
 CODEX_M07_PROFILE_IMPLEMENTATION_MARKERS = {
@@ -14453,42 +14583,71 @@ def codex_p02_profile_report_is_valid(
     return result.get('passed') is True and result.get('reportSha256') == report_sha256
 
 
-def codex_g06_cast_offline_profile_revision_has_implementation(revision: object) -> bool:
-    """Bind G06 matrix evidence to the exact synthetic fixture, runner, and merge guard."""
-    if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+def codex_g06_cast_offline_profile_spec(profile_id: object = None) -> dict[str, object] | None:
+    selected_id = CODEX_G06_CAST_OFFLINE_PROFILE_ID if profile_id is None else profile_id
+    if not isinstance(selected_id, str):
+        return None
+    return CODEX_G06_CAST_OFFLINE_PROFILE_SPECS.get(selected_id)
+
+
+def codex_g06_cast_offline_profile_revision_has_implementation(
+    revision: object, profile_id: object = None,
+) -> bool:
+    """Bind each G06 matrix profile to its exact fixture, runner, and merge guard."""
+    profile = codex_g06_cast_offline_profile_spec(profile_id)
+    if (
+        profile is None
+        or not isinstance(revision, str)
+        or re.fullmatch(r'[0-9a-f]{40}', revision) is None
+    ):
         return False
+    markers = (
+        CODEX_G06_CAST_OFFLINE_V2_PROFILE_IMPLEMENTATION_MARKERS
+        if profile['id'] == CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID
+        else CODEX_G06_CAST_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS
+    )
     return (
         codex_probe_revision_has_implementation(revision)
-        and _codex_revision_has_markers(
-            str(ROOT), revision, CODEX_G06_CAST_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS,
-        )
+        and _codex_revision_has_markers(str(ROOT), revision, markers)
     )
 
 
 def codex_g06_cast_offline_profile_report_matches_candidate_revision(
-    report_path: Path, revision: object,
+    report_path: Path, revision: object, profile_id: object = None,
 ) -> bool:
     """Bind the sanitized result to the exact pre-invocation reviewed Candidate."""
-    if not codex_g06_cast_offline_profile_revision_has_implementation(revision):
+    profile = codex_g06_cast_offline_profile_spec(profile_id)
+    if profile is None or not codex_g06_cast_offline_profile_revision_has_implementation(
+        revision, profile['id'],
+    ):
         return False
     return _codex_relations_report_matches_candidate_revision(
-        report_path, revision, CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH,
+        report_path, revision, profile['reportPath'],
     )
 
 
-def codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(paths: object) -> bool:
-    return (
-        isinstance(paths, (list, tuple, set, frozenset))
-        and CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH in paths
+def codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
+    paths: object, profile_id: object = None,
+) -> bool:
+    profile = codex_g06_cast_offline_profile_spec(profile_id)
+    return bool(
+        profile is not None
+        and isinstance(paths, (list, tuple, set, frozenset))
+        and profile['reportPath'] in paths
         and all(
-            isinstance(item, str) and item in CODEX_G06_CAST_OFFLINE_EVIDENCE_REFRESH_PATHS
+            isinstance(item, str) and item in profile['evidenceRefreshPaths']
             for item in paths
         )
     )
 
 
-def codex_g06_cast_offline_frontier_is_partial(require_report_ref: bool = False) -> bool:
+def codex_g06_cast_offline_frontier_is_partial(
+    require_report_ref: bool = False, profile_id: object = None,
+) -> bool:
     """A synthetic matrix report cannot resolve the real G06 cast/CV scenario."""
+    profile = codex_g06_cast_offline_profile_spec(profile_id)
+    if profile is None:
+        return False
     try:
         frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -14503,10 +14662,10 @@ def codex_g06_cast_offline_frontier_is_partial(require_report_ref: bool = False)
         isinstance(record, dict)
         and record.get('status') == 'PARTIAL'
         and isinstance(source_refs, list)
-        and CODEX_G06_CAST_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH in source_refs
+        and profile['selectionEvidencePath'] in source_refs
         and (
             not require_report_ref
-            or CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH in source_refs
+            or profile['reportPath'] in source_refs
         )
     )
 
@@ -14519,6 +14678,9 @@ def codex_g06_cast_offline_profile_candidate_binding_is_valid(
 ) -> bool:
     """Bind the signed result to its source Candidate and a narrow report refresh."""
     if not isinstance(report, dict) or not isinstance(epoch_status, dict):
+        return False
+    profile = codex_g06_cast_offline_profile_spec(report.get('profileId'))
+    if profile is None:
         return False
     run = epoch_status.get('run')
     epoch_result = epoch_status.get('epoch')
@@ -14552,7 +14714,7 @@ def codex_g06_cast_offline_profile_candidate_binding_is_valid(
         and pr_number > 0
         and run.get('number') == 95
         and (active_pr or merged_pr)
-        and epoch.get('epoch_id') == CODEX_G06_CAST_OFFLINE_EPOCH_ID
+        and epoch.get('epoch_id') == profile['epochId']
         and epoch.get('pr_number') == pr_number
         and epoch.get('base_branch') == 'master'
         and isinstance(branch, str)
@@ -14566,7 +14728,9 @@ def codex_g06_cast_offline_profile_candidate_binding_is_valid(
         and epoch_result.get('pr_head_sha') == candidate_sha
         and isinstance(report.get('sourceRevision'), str)
         and re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision']) is not None
-        and codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(changed_paths)
+        and codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
+            changed_paths, profile['id'],
+        )
         and current_bundle_sha256 == report.get('mcpBundleSha256')
     )
 
@@ -14630,15 +14794,18 @@ def codex_g06_cast_offline_profile_epoch_harness_status(pr_number: object) -> di
     return status if isinstance(status, dict) else None
 
 
-def codex_g06_cast_offline_profile_harness_status(pr_number: object) -> dict[str, object] | None:
-    if type(pr_number) is not int or pr_number < 1:
+def codex_g06_cast_offline_profile_harness_status(
+    pr_number: object, profile_id: object = None,
+) -> dict[str, object] | None:
+    profile = codex_g06_cast_offline_profile_spec(profile_id)
+    if profile is None or type(pr_number) is not int or pr_number < 1:
         return None
     try:
         result = subprocess.run(
             [
                 'node', str(ROOT / 'scripts/agent-harness.mjs'),
                 'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
-                '--profile-id', CODEX_G06_CAST_OFFLINE_PROFILE_ID,
+                '--profile-id', profile['id'],
             ],
             cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
         )
@@ -14655,16 +14822,19 @@ def codex_g06_cast_offline_profile_disposition_matches_report(
 ) -> dict[str, object] | None:
     if not isinstance(harness_status, dict):
         return None
+    profile = codex_g06_cast_offline_profile_spec(report.get('profileId'))
+    if profile is None:
+        return None
     receipt = report.get('runnerReceipt')
     disposition = harness_status.get('disposition')
     if (
         harness_status.get('state') != 'REPORT_WRITTEN'
-        or harness_status.get('profile_id') != CODEX_G06_CAST_OFFLINE_PROFILE_ID
+        or harness_status.get('profile_id') != profile['id']
         or harness_status.get('pr') != report.get('prNumber')
-        or harness_status.get('tool_name') != CODEX_G06_CAST_OFFLINE_TOOL_NAME
-        or harness_status.get('argument_profile') != CODEX_G06_CAST_OFFLINE_ARGUMENT_PROFILE
-        or harness_status.get('expected_arguments_sha256') != CODEX_G06_CAST_OFFLINE_EXPECTED_ARGUMENTS_SHA256
-        or harness_status.get('registry_sha256') != CODEX_G06_CAST_OFFLINE_PROFILE_REGISTRY_SHA256
+        or harness_status.get('tool_name') != profile['toolName']
+        or harness_status.get('argument_profile') != profile['argumentProfile']
+        or harness_status.get('expected_arguments_sha256') != profile['expectedArgumentsSha256']
+        or harness_status.get('registry_sha256') != profile['registrySha256']
         or harness_status.get('claim_label_present') is not True
         or harness_status.get('terminal_label_present') is not True
         or not isinstance(disposition, dict)
@@ -14675,9 +14845,9 @@ def codex_g06_cast_offline_profile_disposition_matches_report(
         return None
     expected = {
         'claimId': report.get('claimId'),
-        'profileId': CODEX_G06_CAST_OFFLINE_PROFILE_ID,
-        'frontierId': 'G06',
-        'epochId': CODEX_G06_CAST_OFFLINE_EPOCH_ID,
+        'profileId': profile['id'],
+        'frontierId': profile['frontierId'],
+        'epochId': profile['epochId'],
         'runNumber': 95,
         'prNumber': report.get('prNumber'),
         'state': 'REPORT_WRITTEN',
@@ -14689,12 +14859,12 @@ def codex_g06_cast_offline_profile_disposition_matches_report(
         'ciChecks': report.get('ciChecks'),
         'reviewerId': report.get('reviewerId'),
         'bundleSha256': report.get('mcpBundleSha256'),
-        'registrySha256': CODEX_G06_CAST_OFFLINE_PROFILE_REGISTRY_SHA256,
-        'toolName': CODEX_G06_CAST_OFFLINE_TOOL_NAME,
-        'argumentProfile': CODEX_G06_CAST_OFFLINE_ARGUMENT_PROFILE,
-        'expectedArgumentsSha256': CODEX_G06_CAST_OFFLINE_EXPECTED_ARGUMENTS_SHA256,
+        'registrySha256': profile['registrySha256'],
+        'toolName': profile['toolName'],
+        'argumentProfile': profile['argumentProfile'],
+        'expectedArgumentsSha256': profile['expectedArgumentsSha256'],
         'reportWritten': True,
-        'reportPath': CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH,
+        'reportPath': profile['reportPath'],
         'reportSha256': report_sha256,
         'retryAllowed': False,
         'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
@@ -14714,15 +14884,16 @@ def codex_g06_cast_offline_profile_report_is_valid(
 ) -> bool:
     if not isinstance(report, dict) or set(report) != CODEX_G06_CAST_OFFLINE_REPORT_FIELDS:
         return False
-    path = report_path or (
-        LIVE_PROBE_DIR / Path(CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH).name
-    )
+    profile = codex_g06_cast_offline_profile_spec(report.get('profileId'))
+    if profile is None:
+        return False
+    path = report_path or (LIVE_PROBE_DIR / profile['reportPathName'])
     try:
         relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
         report_bytes = path.read_bytes()
-        selection_bytes = (ROOT / CODEX_G06_CAST_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
+        selection_bytes = (ROOT / profile['selectionEvidencePath']).read_bytes()
         if (
-            relative_path != CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH
+            relative_path != profile['reportPath']
             or len(report_bytes) > 64 * 1024
             or json.loads(report_bytes.decode('utf-8')) != report
             or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
@@ -14732,7 +14903,7 @@ def codex_g06_cast_offline_profile_report_is_valid(
         return False
 
     fixture = {
-        'profile': CODEX_G06_CAST_OFFLINE_NETWORK_MODE,
+        'profile': profile['networkMode'],
         'requestCount': 1,
         'allowedRequestCount': 1,
         'duplicateRequestCount': 0,
@@ -14780,17 +14951,23 @@ def codex_g06_cast_offline_profile_report_is_valid(
     }
     answer_checks = {key: True for key in CODEX_G06_CAST_OFFLINE_ANSWER_CHECK_FIELDS}
     pr_number = report.get('prNumber')
+    error_item_count = report.get('codexErrorItemCount')
+    error_item_count_valid = (
+        type(error_item_count) is int and error_item_count == 0
+        if profile['id'] == CODEX_G06_CAST_OFFLINE_PROFILE_ID
+        else type(error_item_count) is int and 0 <= error_item_count <= 10_000_000
+    )
     if (
-        report.get('evidenceKind') != CODEX_G06_CAST_OFFLINE_EVIDENCE_KIND
+        report.get('evidenceKind') != profile['evidenceKind']
         or report.get('runNumber') != 95
-        or report.get('frontierId') != 'G06'
+        or report.get('frontierId') != profile['frontierId']
         or report.get('scenarioId') is not None
-        or report.get('acceptanceScope') != 'agent-mcp-matrix-only'
-        or report.get('epochId') != CODEX_G06_CAST_OFFLINE_EPOCH_ID
-        or report.get('profileId') != CODEX_G06_CAST_OFFLINE_PROFILE_ID
-        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v1'
-        or report.get('model') != 'gpt-6-luna'
-        or report.get('reasoningEffort') != 'max'
+        or report.get('acceptanceScope') != profile['acceptanceScope']
+        or report.get('epochId') != profile['epochId']
+        or report.get('profileId') != profile['id']
+        or report.get('profile') != profile['reportProfile']
+        or report.get('model') != profile['model']
+        or report.get('reasoningEffort') != profile['reasoningEffort']
         or not isinstance(report.get('reviewerId'), str)
         or re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', report['reviewerId']) is None
         or not isinstance(report.get('codexCliVersion'), str)
@@ -14799,8 +14976,12 @@ def codex_g06_cast_offline_profile_report_is_valid(
         or re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', report['observedAt']) is None
         or not isinstance(report.get('sourceRevision'), str)
         or re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision']) is None
-        or not codex_g06_cast_offline_profile_revision_has_implementation(report['sourceRevision'])
-        or not codex_g06_cast_offline_frontier_is_partial(require_report_ref=True)
+        or not codex_g06_cast_offline_profile_revision_has_implementation(
+            report['sourceRevision'], profile['id'],
+        )
+        or not codex_g06_cast_offline_frontier_is_partial(
+            require_report_ref=True, profile_id=profile['id'],
+        )
         or not isinstance(report.get('baseSha'), str)
         or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
         or report.get('ciSha') != report.get('sourceRevision')
@@ -14816,12 +14997,12 @@ def codex_g06_cast_offline_profile_report_is_valid(
         or not isinstance(report.get('claimId'), str)
         or re.fullmatch(rf'profile-run-95-pr-{pr_number}-{report["sourceRevision"][:12]}-\d+', report['claimId']) is None
         or report.get('mcpBundleSha256') != codex_g26_candidate_bundle_sha256(report['sourceRevision'])
-        or report.get('registrySha256') != CODEX_G06_CAST_OFFLINE_PROFILE_REGISTRY_SHA256
-        or report.get('toolName') != CODEX_G06_CAST_OFFLINE_TOOL_NAME
-        or report.get('argumentProfile') != CODEX_G06_CAST_OFFLINE_ARGUMENT_PROFILE
-        or report.get('expectedArgumentsSha256') != CODEX_G06_CAST_OFFLINE_EXPECTED_ARGUMENTS_SHA256
-        or report.get('networkMode') != CODEX_G06_CAST_OFFLINE_NETWORK_MODE
-        or report.get('serverToolNames') != [CODEX_G06_CAST_OFFLINE_TOOL_NAME]
+        or report.get('registrySha256') != profile['registrySha256']
+        or report.get('toolName') != profile['toolName']
+        or report.get('argumentProfile') != profile['argumentProfile']
+        or report.get('expectedArgumentsSha256') != profile['expectedArgumentsSha256']
+        or report.get('networkMode') != profile['networkMode']
+        or report.get('serverToolNames') != [profile['toolName']]
         or report.get('serverToolCount') != 1
         or report.get('mcpServerNames') != [CODEX_G06_CAST_OFFLINE_SERVER_ID]
         or report.get('processExitCode') != 0
@@ -14829,13 +15010,13 @@ def codex_g06_cast_offline_profile_report_is_valid(
         or report.get('eventStreamParsed') is not True
         or report.get('turnCompleted') is not True
         or report.get('codexMcpToolEventCount') != 1
-        or report.get('codexErrorItemCount') != 0
+        or not error_item_count_valid
         or report.get('nonMcpToolEventCount') != 0
         or report.get('nonMcpToolTypes') != []
         or report.get('shellToolCallCount') != 0
         or report.get('allowedCallCount') != 1
         or report.get('deniedCallCount') != 0
-        or report.get('answerCheckMethod') != CODEX_G06_CAST_OFFLINE_ANSWER_CHECK_METHOD
+        or report.get('answerCheckMethod') != profile['answerCheckMethod']
         or report.get('answerSha256') != hashlib.sha256(b'G06_SYNTHETIC_CAST_MATRIX_EXECUTED').hexdigest()
         or report.get('answerUtf8Bytes') != len(b'G06_SYNTHETIC_CAST_MATRIX_EXECUTED')
         or not isinstance(report.get('toolResultSummary'), dict)
@@ -14859,7 +15040,7 @@ def codex_g06_cast_offline_profile_report_is_valid(
         or set(report['runnerReceipt']['payload']) != CODEX_G06_CAST_OFFLINE_RECEIPT_PAYLOAD_FIELDS
         or _contains_forbidden_codex_content(report)
         or not codex_g06_cast_offline_profile_report_matches_candidate_revision(
-            path, report.get('sourceRevision'),
+            path, report.get('sourceRevision'), profile['id'],
         )
     ):
         return False
@@ -14868,7 +15049,7 @@ def codex_g06_cast_offline_profile_report_is_valid(
         catalog_bytes = CATALOG.read_bytes()
         catalog = json.loads(catalog_bytes)
         catalog_tool = next(
-            (item for item in catalog if isinstance(item, dict) and item.get('name') == CODEX_G06_CAST_OFFLINE_TOOL_NAME),
+            (item for item in catalog if isinstance(item, dict) and item.get('name') == profile['toolName']),
             None,
         )
     except (OSError, ValueError):
@@ -14887,7 +15068,9 @@ def codex_g06_cast_offline_profile_report_is_valid(
     current_epoch_status = epoch_status or codex_g06_cast_offline_profile_epoch_harness_status(pr_number)
     if not codex_g06_cast_offline_profile_report_candidate_binding_is_current(report, current_epoch_status):
         return False
-    current_harness_status = harness_status or codex_g06_cast_offline_profile_harness_status(pr_number)
+    current_harness_status = harness_status or codex_g06_cast_offline_profile_harness_status(
+        pr_number, profile['id'],
+    )
     disposition = codex_g06_cast_offline_profile_disposition_matches_report(
         report, current_harness_status, report_sha256,
     )
@@ -21843,6 +22026,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     )
     report_paths.append(LIVE_PROBE_DIR / CODEX_P02_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(LIVE_PROBE_DIR / CODEX_G06_CAST_OFFLINE_V2_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_M07_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R04_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R04_RENDER_REPORT_RELATIVE_PATH.split('/')[-1])
@@ -22160,20 +22344,29 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 continue
             sources.setdefault(CODEX_P02_TOOL_NAME, set()).add(report_source_ref(path))
             continue
-        if report.get('evidenceKind') == CODEX_G06_CAST_OFFLINE_EVIDENCE_KIND:
-            current_status = codex_g06_cast_offline_profile_harness_status(report.get('prNumber'))
+        if report.get('evidenceKind') in {
+            CODEX_G06_CAST_OFFLINE_EVIDENCE_KIND,
+            CODEX_G06_CAST_OFFLINE_V2_EVIDENCE_KIND,
+        }:
+            profile = codex_g06_cast_offline_profile_spec(report.get('profileId'))
+            if profile is None:
+                continue
+            profile_id = str(profile['id'])
+            current_status = codex_g06_cast_offline_profile_harness_status(
+                report.get('prNumber'), profile_id,
+            )
             current_epoch_status = codex_g06_cast_offline_profile_epoch_harness_status(report.get('prNumber'))
             if (
-                path.name != Path(CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH).name
+                path.name != profile['reportPathName']
                 or not codex_g06_cast_offline_profile_report_is_valid(
                     report, current_status, path, current_epoch_status,
                 )
                 or not codex_g06_cast_offline_profile_report_matches_candidate_revision(
-                    path, report.get('sourceRevision'),
+                    path, report.get('sourceRevision'), profile_id,
                 )
             ):
                 continue
-            sources.setdefault(CODEX_G06_CAST_OFFLINE_TOOL_NAME, set()).add(report_source_ref(path))
+            sources.setdefault(str(profile['toolName']), set()).add(report_source_ref(path))
             continue
         if report.get('evidenceKind') == CODEX_R04_EVIDENCE_KIND:
             current_status = codex_r04_profile_harness_status(report.get('prNumber'))

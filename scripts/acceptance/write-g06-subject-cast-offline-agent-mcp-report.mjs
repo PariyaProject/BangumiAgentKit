@@ -12,20 +12,13 @@ import {
 import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   assertG06SubjectCastOfflineProfile,
-  G06_CAST_OFFLINE_ANSWER_CHECK_METHOD,
-  G06_CAST_OFFLINE_EVIDENCE_KIND,
-  G06_CAST_OFFLINE_NETWORK_MODE,
-  G06_CAST_OFFLINE_PROFILE_ID,
-  G06_CAST_OFFLINE_REPORT_PATH,
-  G06_CAST_OFFLINE_SELECTION_PATH,
+  getG06CastOfflineProfileSpec,
 } from '../lib/g06-subject-cast-offline-profile.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const PROFILE = getAgentMcpProfileById(G06_CAST_OFFLINE_PROFILE_ID);
 const SERVER_ID = 'bgk_g06_cast_offline_profile';
 const ACKNOWLEDGEMENT = 'G06_SYNTHETIC_CAST_MATRIX_EXECUTED';
 const RECEIPT_KIND = 'g06-cast-offline-agent-mcp-runner-receipt-v1';
-const REPORT_PATH = path.join(ROOT, G06_CAST_OFFLINE_REPORT_PATH);
 const REPORT_FIELDS = new Set([
   'schemaVersion',
   'evidenceKind',
@@ -199,9 +192,19 @@ function exactKeys(value, expected) {
   );
 }
 
-function expectedOfflineFixture() {
+function profileFor(profileId) {
+  const profile = getAgentMcpProfileById(profileId);
+  if (!profile || !getG06CastOfflineProfileSpec(profile)) return null;
+  try {
+    return assertG06SubjectCastOfflineProfile(profile) ? profile : null;
+  } catch {
+    return null;
+  }
+}
+
+function expectedOfflineFixture(profile) {
   return {
-    profile: G06_CAST_OFFLINE_NETWORK_MODE,
+    profile: profile.networkMode,
     requestCount: 1,
     allowedRequestCount: 1,
     duplicateRequestCount: 0,
@@ -224,8 +227,10 @@ function expectedNetworkBoundary() {
 }
 
 function matchesClaim(report, claim) {
+  const profile = profileFor(claim?.profileId);
   return (
-    claim?.profileId === G06_CAST_OFFLINE_PROFILE_ID &&
+    profile !== null &&
+    claim?.profileId === report.profileId &&
     claim?.retryAllowed === false &&
     ((claim.state === 'CLAIMED' && claim.reportWritten === false && !claim.reportSha256) ||
       (claim.state === 'REPORT_WRITTEN' &&
@@ -359,11 +364,11 @@ function verifyRunnerReceipt(report, claim) {
   }
 }
 
-function catalogEvidence(report) {
+function catalogEvidence(report, profile) {
   try {
     const bytes = readFileSync(path.join(ROOT, 'docs/tool-catalog.json'));
     const catalog = JSON.parse(bytes.toString('utf8'));
-    const tool = catalog.find((item) => item?.name === PROFILE?.toolName);
+    const tool = catalog.find((item) => item?.name === profile?.toolName);
     return Boolean(
       tool &&
       tool.auth === 'none' &&
@@ -378,9 +383,11 @@ function catalogEvidence(report) {
 }
 
 export function validateG06SubjectCastOfflineReport(report, claim, reportBytes = null) {
+  const profile = profileFor(claim?.profileId);
+  const profileSpec = getG06CastOfflineProfileSpec(profile);
   if (
-    !PROFILE ||
-    !assertG06SubjectCastOfflineProfile(PROFILE) ||
+    !profile ||
+    !profileSpec ||
     !exactKeys(report, REPORT_FIELDS) ||
     !claim ||
     !matchesClaim(report, claim) ||
@@ -397,11 +404,11 @@ export function validateG06SubjectCastOfflineReport(report, claim, reportBytes =
   }
   let selectionBytes;
   try {
-    selectionBytes = readFileSync(path.join(ROOT, G06_CAST_OFFLINE_SELECTION_PATH));
+    selectionBytes = readFileSync(path.join(ROOT, profile.selectionEvidencePath));
   } catch {
     return { passed: false, reason: 'G06_CAST_OFFLINE_SELECTION_MISSING' };
   }
-  const expectedFixture = expectedOfflineFixture();
+  const expectedFixture = expectedOfflineFixture(profile);
   const expectedBoundary = expectedNetworkBoundary();
   const expectedSummary = {
     status: 'ok',
@@ -420,14 +427,14 @@ export function validateG06SubjectCastOfflineReport(report, claim, reportBytes =
   const expectedPrivacy = { ...PRIVACY };
   const valid =
     report.schemaVersion === 1 &&
-    report.evidenceKind === G06_CAST_OFFLINE_EVIDENCE_KIND &&
+    report.evidenceKind === profile.evidenceKind &&
     report.runNumber === 95 &&
     report.frontierId === 'G06' &&
     report.scenarioId === null &&
     report.acceptanceScope === 'agent-mcp-matrix-only' &&
-    report.epochId === PROFILE.epochId &&
-    report.profileId === PROFILE.id &&
-    report.profile === 'codex-luna-max-offline-agent-mcp-matrix-v1' &&
+    report.epochId === profile.epochId &&
+    report.profileId === profile.id &&
+    report.profile === profileSpec.reportProfile &&
     report.model === 'gpt-6-luna' &&
     report.reasoningEffort === 'max' &&
     new RegExp(`^gpt-6-luna-max-run95-pr${report.prNumber}-round[1-9]\\d*$`, 'u').test(
@@ -444,14 +451,14 @@ export function validateG06SubjectCastOfflineReport(report, claim, reportBytes =
     report.prNumber > 0 &&
     /^profile-run-95-pr-\d+-[0-9a-f]{12}-\d+$/u.test(report.claimId ?? '') &&
     /^[0-9a-f]{64}$/u.test(report.mcpBundleSha256 ?? '') &&
-    report.registrySha256 === agentMcpProfileRegistrySha256(PROFILE.id) &&
+    report.registrySha256 === agentMcpProfileRegistrySha256(profile.id) &&
     report.selectionEvidenceSha256 === sha256(selectionBytes) &&
-    report.toolName === PROFILE.toolName &&
-    report.argumentProfile === PROFILE.argumentProfile &&
-    report.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(PROFILE) &&
-    report.networkMode === G06_CAST_OFFLINE_NETWORK_MODE &&
+    report.toolName === profile.toolName &&
+    report.argumentProfile === profile.argumentProfile &&
+    report.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(profile) &&
+    report.networkMode === profile.networkMode &&
     canonicalAgentMcpProfileJson(report.serverToolNames) ===
-      canonicalAgentMcpProfileJson([PROFILE.toolName]) &&
+      canonicalAgentMcpProfileJson([profile.toolName]) &&
     report.serverToolCount === 1 &&
     canonicalAgentMcpProfileJson(report.mcpServerNames) ===
       canonicalAgentMcpProfileJson([SERVER_ID]) &&
@@ -460,14 +467,18 @@ export function validateG06SubjectCastOfflineReport(report, claim, reportBytes =
     report.eventStreamParsed === true &&
     report.turnCompleted === true &&
     report.codexMcpToolEventCount === 1 &&
-    report.codexErrorItemCount === 0 &&
+    (profile.id === 'g06-cast-offline-agent-mcp-matrix-v1'
+      ? report.codexErrorItemCount === 0
+      : Number.isSafeInteger(report.codexErrorItemCount) &&
+        report.codexErrorItemCount >= 0 &&
+        report.codexErrorItemCount <= 10_000_000) &&
     report.nonMcpToolEventCount === 0 &&
     Array.isArray(report.nonMcpToolTypes) &&
     report.nonMcpToolTypes.length === 0 &&
     report.shellToolCallCount === 0 &&
     report.allowedCallCount === 1 &&
     report.deniedCallCount === 0 &&
-    report.answerCheckMethod === G06_CAST_OFFLINE_ANSWER_CHECK_METHOD &&
+    report.answerCheckMethod === profile.answerCheckMethod &&
     report.answerSha256 === sha256(ACKNOWLEDGEMENT) &&
     report.answerUtf8Bytes === Buffer.byteLength(ACKNOWLEDGEMENT, 'utf8') &&
     exactKeys(report.toolResultSummary, TOOL_SUMMARY_FIELDS) &&
@@ -485,7 +496,7 @@ export function validateG06SubjectCastOfflineReport(report, claim, reportBytes =
     exactKeys(report.privacy, new Set(Object.keys(PRIVACY))) &&
     canonicalAgentMcpProfileJson(report.privacy) ===
       canonicalAgentMcpProfileJson(expectedPrivacy) &&
-    catalogEvidence(report) &&
+    catalogEvidence(report, profile) &&
     verifyRunnerReceipt(report, claim) &&
     !Object.hasOwn(report, 'answer') &&
     !Object.hasOwn(report, 'toolOutput') &&
@@ -502,23 +513,24 @@ export function validateG06SubjectCastOfflineReport(report, claim, reportBytes =
 export function validateG06SubjectCastOfflineSanitizedReportFile(
   claim,
   root = ROOT,
-  reportPath = path.join(root, G06_CAST_OFFLINE_REPORT_PATH),
+  reportPath = undefined,
 ) {
   try {
-    const bytes = readFileSync(reportPath);
+    const profile = profileFor(claim?.profileId);
+    if (!profile) return { passed: false, reason: 'G06_CAST_OFFLINE_PROFILE_INVALID' };
+    const expectedReportPath = path.join(root, profile.reportPath);
+    const targetReportPath = reportPath ?? expectedReportPath;
+    const bytes = readFileSync(targetReportPath);
     const report = JSON.parse(bytes.toString('utf8'));
     const validation = validateG06SubjectCastOfflineReport(report, claim, bytes);
     const reportSha256 = sha256(bytes);
-    if (
-      !validation.passed ||
-      path.resolve(reportPath) !== path.resolve(root, G06_CAST_OFFLINE_REPORT_PATH)
-    ) {
+    if (!validation.passed || path.resolve(targetReportPath) !== path.resolve(expectedReportPath)) {
       return { passed: false, reason: validation.reason ?? 'G06_CAST_OFFLINE_REPORT_PATH_INVALID' };
     }
     if (claim.reportWritten === true && claim.reportSha256 !== reportSha256) {
       return { passed: false, reason: 'G06_CAST_OFFLINE_REPORT_DIGEST_MISMATCH' };
     }
-    return { passed: true, reportPath: G06_CAST_OFFLINE_REPORT_PATH, reportSha256, report };
+    return { passed: true, reportPath: profile.reportPath, reportSha256, report };
   } catch {
     return { passed: false, reason: 'G06_CAST_OFFLINE_REPORT_UNAVAILABLE' };
   }
@@ -526,30 +538,33 @@ export function validateG06SubjectCastOfflineSanitizedReportFile(
 
 export function writeG06SubjectCastOfflineReport(
   input,
-  { privateKey, publicKeyBase64, reportPath = REPORT_PATH } = {},
+  { privateKey, publicKeyBase64, reportPath = undefined } = {},
 ) {
-  if (!PROFILE || !assertG06SubjectCastOfflineProfile(PROFILE) || !input?.claim) {
+  const profile = profileFor(input?.claim?.profileId);
+  const profileSpec = getG06CastOfflineProfileSpec(profile);
+  const targetReportPath = reportPath ?? (profile ? path.join(ROOT, profile.reportPath) : null);
+  if (!profile || !profileSpec || !input?.claim || !targetReportPath) {
     return { passed: false, reason: 'G06_CAST_OFFLINE_PROFILE_INVALID' };
   }
-  const selectionBytes = readFileSync(path.join(ROOT, G06_CAST_OFFLINE_SELECTION_PATH));
+  const selectionBytes = readFileSync(path.join(ROOT, profile.selectionEvidencePath));
   const summary = input.serverSummary;
   const catalog = JSON.parse(readFileSync(path.join(ROOT, 'docs/tool-catalog.json'), 'utf8'));
-  const tool = catalog.find((item) => item?.name === PROFILE.toolName);
+  const tool = catalog.find((item) => item?.name === profile.toolName);
   if (!tool || !summary || !tool.inputSchema) {
     return { passed: false, reason: 'G06_CAST_OFFLINE_SUMMARY_INVALID' };
   }
   const baseReport = {
     schemaVersion: 1,
-    evidenceKind: G06_CAST_OFFLINE_EVIDENCE_KIND,
+    evidenceKind: profile.evidenceKind,
     runNumber: 95,
     frontierId: 'G06',
     scenarioId: null,
     acceptanceScope: 'agent-mcp-matrix-only',
-    epochId: PROFILE.epochId,
-    profileId: PROFILE.id,
-    profile: 'codex-luna-max-offline-agent-mcp-matrix-v1',
-    model: PROFILE.model,
-    reasoningEffort: PROFILE.reasoningEffort,
+    epochId: profile.epochId,
+    profileId: profile.id,
+    profile: profileSpec.reportProfile,
+    model: profile.model,
+    reasoningEffort: profile.reasoningEffort,
     reviewerId: input.claim.reviewerId,
     codexCliVersion: input.codexCliVersion,
     observedAt: input.observedAt,
@@ -564,15 +579,15 @@ export function writeG06SubjectCastOfflineReport(
     mcpBundleSha256: input.claim.bundleSha256,
     registrySha256: input.claim.registrySha256,
     selectionEvidenceSha256: sha256(selectionBytes),
-    toolName: PROFILE.toolName,
-    argumentProfile: PROFILE.argumentProfile,
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
     expectedArgumentsSha256: input.claim.expectedArgumentsSha256,
     catalogSha256: sha256(readFileSync(path.join(ROOT, 'docs/tool-catalog.json'))),
     toolDescriptionSha256: sha256(tool.description),
     inputSchemaSha256: sha256(canonicalAgentMcpProfileJson(tool.inputSchema)),
     serverToolNames: summary.serverToolNames,
     serverToolCount: summary.serverToolCount,
-    networkMode: G06_CAST_OFFLINE_NETWORK_MODE,
+    networkMode: profile.networkMode,
     mcpServerNames: input.events.mcpServerNames,
     processExitCode: input.events.processExitCode,
     resultStatus: summary.serverResultStatus,
@@ -585,7 +600,7 @@ export function writeG06SubjectCastOfflineReport(
     shellToolCallCount: input.events.shellToolCallCount,
     allowedCallCount: summary.allowedCallCount,
     deniedCallCount: summary.deniedCallCount,
-    answerCheckMethod: G06_CAST_OFFLINE_ANSWER_CHECK_METHOD,
+    answerCheckMethod: profile.answerCheckMethod,
     answerSha256: sha256(ACKNOWLEDGEMENT),
     answerUtf8Bytes: Buffer.byteLength(ACKNOWLEDGEMENT, 'utf8'),
     toolResultSummary: summary.results?.[0]?.resultSummary,
@@ -605,11 +620,11 @@ export function writeG06SubjectCastOfflineReport(
   const validation = validateG06SubjectCastOfflineReport(report, input.claim);
   if (!validation.passed) return validation;
   const bytes = Buffer.from(`${JSON.stringify(report, null, 2)}\n`, 'utf8');
-  mkdirSync(path.dirname(reportPath), { recursive: true, mode: 0o700 });
-  writeFileSync(reportPath, bytes, { flag: 'wx', mode: 0o600 });
+  mkdirSync(path.dirname(targetReportPath), { recursive: true, mode: 0o700 });
+  writeFileSync(targetReportPath, bytes, { flag: 'wx', mode: 0o600 });
   return {
     passed: true,
-    reportPath: path.relative(ROOT, reportPath),
+    reportPath: path.relative(ROOT, targetReportPath),
     reportSha256: sha256(bytes),
   };
 }

@@ -660,6 +660,32 @@
       ]
     },
     {
+      "id": "g06-cast-offline-agent-mcp-matrix-v2",
+      "frontierId": "G06",
+      "epochId": "run95-g06-cast-offline-matrix-v2-20261018",
+      "toolName": "bangumi.get_subject_cast",
+      "argumentProfile": "fixed-g06-synthetic-subject-cast-two-rows-v2",
+      "claimLabelName": "harness-r95-g06-cast-offline-matrix-v2-claimed",
+      "reportPath": "docs/live-probes/g06-subject-cast-offline-agent-mcp-run95-v2.json",
+      "selectionEvidencePath": "docs/research/run95-g06-subject-cast-offline-agent-mcp-matrix-v2-2026-10-18.md",
+      "evidenceKind": "codex_cli_g06_subject_cast_offline_agent_mcp_v2",
+      "answerCheckMethod": "g06-server-bound-synthetic-matrix-ack-v2",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-g06-subject-cast-offline-v2",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 2048,
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_cast",
+          "arguments": {
+            "subjectId": 990805,
+            "limit": 2
+          }
+        }
+      ]
+    },
+    {
       "id": "c07-render-comparison-offline-agent-mcp-matrix-v1",
       "frontierId": "C07",
       "epochId": "run95-c07-render-cohort-comparison-offline-agent-mcp-20261017",

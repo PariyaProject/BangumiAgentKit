@@ -98,9 +98,8 @@ import {
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
-  G06_CAST_OFFLINE_ARGUMENT_PROFILE,
-  G06_CAST_OFFLINE_EPOCH_ID,
   G06_CAST_OFFLINE_PROFILE_ID,
+  G06_CAST_OFFLINE_V2_PROFILE_ID,
 } from '../../scripts/lib/g06-subject-cast-offline-profile.mjs';
 import {
   C07_RENDER_COMPARISON_OFFLINE_ARGUMENT_PROFILE,
@@ -6470,19 +6469,23 @@ function mergeReadyEnvironment(overrides = {}) {
   });
 }
 
-function g06CastOfflineMergeEnvironment({ terminal = false, unacceptedReportSha256 = null } = {}) {
+function g06CastOfflineMergeEnvironment({
+  terminal = false,
+  unacceptedReportSha256 = null,
+  profileId = G06_CAST_OFFLINE_PROFILE_ID,
+} = {}) {
   const { run, epoch } = controlFixture();
   const prNumber = 222;
   const reviewerId = `gpt-6-luna-max-run95-pr${prNumber}-round1`;
-  const profile = getAgentMcpProfileById(G06_CAST_OFFLINE_PROFILE_ID);
+  const profile = getAgentMcpProfileById(profileId);
   run.state = 'EPOCH_ACTIVE';
   run.active_epoch_pr = prNumber;
   run.outer_sol.consumed = 1;
   run.outer_sol.product.consumed = 1;
-  epoch.epoch_id = G06_CAST_OFFLINE_EPOCH_ID;
+  epoch.epoch_id = profile.epochId;
   epoch.base_sha = sha('a');
   epoch.base_branch = 'master';
-  epoch.branch = 'codex/epoch-run95-g06-subject-cast-offline-agent-mcp-matrix-20261017';
+  epoch.branch = 'codex/epoch-' + profile.epochId;
   epoch.pr_number = prNumber;
   epoch.state = 'REVIEW_PASSED';
   epoch.candidate_sha = sha('b');
@@ -6507,11 +6510,11 @@ function g06CastOfflineMergeEnvironment({ terminal = false, unacceptedReportSha2
               retryAllowed: false,
               profileId: profile.id,
               frontierId: 'G06',
-              epochId: G06_CAST_OFFLINE_EPOCH_ID,
+              epochId: profile.epochId,
               runNumber: 95,
               prNumber,
               toolName: profile.toolName,
-              argumentProfile: G06_CAST_OFFLINE_ARGUMENT_PROFILE,
+              argumentProfile: profile.argumentProfile,
               expectedArguments: profile.calls.map((call) => call.arguments),
               expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
               registrySha256: agentMcpProfileRegistrySha256(profile.id),
@@ -6626,6 +6629,32 @@ test('G06 offline matrix Epoch can merge after removing an unaccepted inconclusi
     assert.equal(parseControlBlock(environment.readState().prBody, EPOCH_MARKER).state, 'MERGED');
   } finally {
     environment.cleanup();
+  }
+});
+
+test('G06 v2 offline matrix Epoch requires and reconciles its own terminal profile result', () => {
+  const unclaimed = g06CastOfflineMergeEnvironment({
+    profileId: G06_CAST_OFFLINE_V2_PROFILE_ID,
+  });
+  try {
+    const result = unclaimed.execute(['epoch:merge', '--run', '95', '--pr', '222']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G06_CAST_OFFLINE_RECONCILIATION_REQUIRED:/u);
+    assert.equal(unclaimed.readState().prState, 'OPEN');
+  } finally {
+    unclaimed.cleanup();
+  }
+
+  const terminal = g06CastOfflineMergeEnvironment({
+    terminal: true,
+    profileId: G06_CAST_OFFLINE_V2_PROFILE_ID,
+  });
+  try {
+    const result = terminal.execute(['epoch:merge', '--run', '95', '--pr', '222']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(parseControlBlock(terminal.readState().prBody, EPOCH_MARKER).state, 'MERGED');
+  } finally {
+    terminal.cleanup();
   }
 });
 

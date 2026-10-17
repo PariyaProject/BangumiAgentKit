@@ -14,10 +14,10 @@ import {
   summarizeCodexEvents,
 } from '../../scripts/acceptance/run-g26-codex-agent-mcp.mjs';
 import {
-  G06_CAST_OFFLINE_EXPECTED_ARGUMENTS,
-  G06_CAST_OFFLINE_NETWORK_MODE,
-  G06_CAST_OFFLINE_PROFILE_ID,
-  G06_CAST_OFFLINE_ARGUMENT_PROFILE,
+  G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS,
+  G06_CAST_OFFLINE_V2_NETWORK_MODE,
+  G06_CAST_OFFLINE_V2_PROFILE_ID,
+  G06_CAST_OFFLINE_V2_ARGUMENT_PROFILE,
 } from '../../scripts/lib/g06-subject-cast-offline-profile.mjs';
 import {
   agentMcpProfileArgumentsSha256,
@@ -47,7 +47,7 @@ function expectedToolSummary() {
 
 function expectedFixture() {
   return {
-    profile: G06_CAST_OFFLINE_NETWORK_MODE,
+    profile: G06_CAST_OFFLINE_V2_NETWORK_MODE,
     requestCount: 1,
     allowedRequestCount: 1,
     duplicateRequestCount: 0,
@@ -64,12 +64,12 @@ function serverSummary() {
   const catalogBytes = readFileSync(path.join(ROOT, 'docs/tool-catalog.json'));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
   const tool = catalog.find((item) => item.name === TOOL_NAME);
-  const profile = getAgentMcpProfileById(G06_CAST_OFFLINE_PROFILE_ID);
+  const profile = getAgentMcpProfileById(G06_CAST_OFFLINE_V2_PROFILE_ID);
   return {
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
-    profileId: G06_CAST_OFFLINE_PROFILE_ID,
-    argumentProfile: G06_CAST_OFFLINE_ARGUMENT_PROFILE,
-    networkMode: G06_CAST_OFFLINE_NETWORK_MODE,
+    profileId: G06_CAST_OFFLINE_V2_PROFILE_ID,
+    argumentProfile: G06_CAST_OFFLINE_V2_ARGUMENT_PROFILE,
+    networkMode: G06_CAST_OFFLINE_V2_NETWORK_MODE,
     expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
     sourceRevision: 'a'.repeat(40),
     bundleSha256: 'b'.repeat(64),
@@ -85,6 +85,7 @@ function serverSummary() {
     serverResultStatus: 'SUCCESS',
     allowedCallCount: 1,
     deniedCallCount: 0,
+    argumentMatch: true,
     results: [
       {
         sequenceIndex: 0,
@@ -145,8 +146,8 @@ test('G06 offline Codex invocation is ephemeral and exposes only the fixed tool'
     false,
   );
   assert.equal(
-    JSON.stringify(G06_CAST_OFFLINE_EXPECTED_ARGUMENTS),
-    '{"subjectId":990804,"limit":2}',
+    JSON.stringify(G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS),
+    '{"subjectId":990805,"limit":2}',
   );
 });
 
@@ -187,7 +188,7 @@ test('G06 offline runner matches the MCP event summary field and rejects wrong o
         type: 'mcp_tool_call',
         server: SERVER_ID,
         tool: TOOL_NAME,
-        arguments: G06_CAST_OFFLINE_EXPECTED_ARGUMENTS,
+        arguments: G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS,
         status: 'completed',
         result: { isError: false },
       },
@@ -198,7 +199,7 @@ test('G06 offline runner matches the MCP event summary field and rejects wrong o
   assert.deepEqual(events.toolCalls, [
     {
       name: TOOL_NAME,
-      arguments: G06_CAST_OFFLINE_EXPECTED_ARGUMENTS,
+      arguments: G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS,
       state: 'DONE',
     },
   ]);
