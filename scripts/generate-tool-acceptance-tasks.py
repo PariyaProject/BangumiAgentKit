@@ -5344,6 +5344,68 @@ CODEX_G01_RENDER_QUERY_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'CODEX_G01_RENDER_QUERY_OFFLINE_REPORT_RELATIVE_PATH',
     ),
 }
+# PR #216 keeps the terminal v1 identity but parameterizes its implementation
+# alongside v2. Retain the legacy marker set above for historical v1 revisions.
+CODEX_G01_RENDER_QUERY_OFFLINE_MERGED_V1_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "g01-render-query-subjects-offline-agent-mcp-v1"',
+        '"epochId": "run95-g01-render-query-subjects-offline-matrix-20261017"',
+        '"networkMode": "run95-g01-render-query-subjects-synthetic-offline-v1"',
+        'run95 g01 synthetic render query offline 20261017',
+    ),
+    'scripts/lib/g01-render-query-subjects-offline-profile.mjs': (
+        "const V1_ID = 'g01-render-query-subjects-offline-agent-mcp-v1'",
+        'G01_RENDER_QUERY_OFFLINE_EXPECTED_ARGUMENTS = EXPECTED_ARGUMENTS_BY_ID.get(V1_ID)',
+        'export function assertG01RenderQueryOfflineProfile(profile)',
+    ),
+    'scripts/lib/g01-render-query-subjects-offline-fixture.mjs': (
+        'export function createG01RenderQueryOfflineFetch(',
+        'getG01RenderQueryOfflineProfileSpec(profile)',
+        'spec.syntheticSubjectId',
+        'authorizationHeaderCount',
+        'rawFixturePayloadStored',
+    ),
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        'isG01RenderQueryOfflineProfileId(profileId)',
+        'artifactSummary',
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        'getG01RenderQueryOfflineProfileSpec(config.profile)',
+        'createG01RenderQueryOfflineFetch(config.profile)',
+        'isG01RenderQueryOfflineProfileId(config.profile?.id)',
+    ),
+    'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
+        'assertG01RenderQueryOfflineProfile(profile)',
+    ),
+    'scripts/acceptance/run-g01-render-query-subjects-offline-agent-mcp.mjs': (
+        'const PROFILE_ID = profileIdFromArgs(process.argv.slice(2))',
+        'assertG01RenderQueryCandidateReviewGate(',
+        'function runG01RenderQueryOffline({ runNumber })',
+    ),
+    'scripts/acceptance/write-g01-render-query-subjects-offline-agent-mcp-report.mjs': (
+        "const RECEIPT_KIND_V1 = 'g01-render-query-offline-runner-receipt-v1'",
+        'export function validateG01RenderQueryOfflineProfileReport(',
+        "openSync(path.join(ROOT, reportProfile.reportPath), 'wx', 0o600)",
+    ),
+    'scripts/agent-harness.mjs': (
+        'G01_RENDER_QUERY_OFFLINE_PROFILE_ID,',
+        'assertG01RenderQueryOfflineProfileReconciledBeforeMerge(',
+        'getG01RenderQueryOfflineProfileSpec(candidate)?.epochId === epoch.epoch_id',
+    ),
+    'docs/product/frontier-ledger.json': (
+        'docs/research/run95-g01-render-query-subjects-offline-matrix-contract-2026-10-17.md',
+        'Keep G01 PARTIAL.',
+    ),
+    'docs/research/run95-g01-render-query-subjects-offline-matrix-contract-2026-10-17.md': (
+        'The closed fixture permits exactly one anonymous',
+        'It does not answer the G01 July harem scenario',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'CODEX_G01_RENDER_QUERY_OFFLINE_PROFILE_ID_V2',
+        'def codex_g01_render_query_offline_profile_revision_has_implementation(',
+        'CODEX_G01_RENDER_QUERY_OFFLINE_REPORT_RELATIVE_PATH',
+    ),
+}
 CODEX_G01_RENDER_QUERY_OFFLINE_V2_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/agent-mcp-profile-registry.json': (
         '"id": "g01-render-query-subjects-offline-agent-mcp-v2"',
@@ -8868,19 +8930,23 @@ def codex_g01_render_query_offline_profile_revision_has_implementation(
 ) -> bool:
     if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
         return False
-    markers = (
-        CODEX_G01_RENDER_QUERY_OFFLINE_V2_PROBE_IMPLEMENTATION_MARKERS
-        if profile_id == CODEX_G01_RENDER_QUERY_OFFLINE_PROFILE_ID_V2
-        else CODEX_G01_RENDER_QUERY_OFFLINE_PROBE_IMPLEMENTATION_MARKERS
+    marker_sets = (
+        (
+            CODEX_G01_RENDER_QUERY_OFFLINE_PROBE_IMPLEMENTATION_MARKERS,
+            CODEX_G01_RENDER_QUERY_OFFLINE_MERGED_V1_PROBE_IMPLEMENTATION_MARKERS,
+        )
         if profile_id == CODEX_G01_RENDER_QUERY_OFFLINE_PROFILE_ID
-        else None
+        else (CODEX_G01_RENDER_QUERY_OFFLINE_V2_PROBE_IMPLEMENTATION_MARKERS,)
+        if profile_id == CODEX_G01_RENDER_QUERY_OFFLINE_PROFILE_ID_V2
+        else ()
     )
-    if markers is None:
+    if not marker_sets:
         return False
     return (
         codex_probe_revision_has_implementation(revision)
-        and _codex_revision_has_markers(
-            str(ROOT), revision, markers,
+        and any(
+            _codex_revision_has_markers(str(ROOT), revision, markers)
+            for markers in marker_sets
         )
     )
 

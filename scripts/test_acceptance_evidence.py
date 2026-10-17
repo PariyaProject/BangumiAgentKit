@@ -9028,7 +9028,7 @@ class P06OfflineProfileReportValidationTests(unittest.TestCase):
 
 
 class G01OfflineProfileStaticMarkerTests(unittest.TestCase):
-    def test_v1_base_and_current_v2_have_their_exact_report_revision_markers(self):
+    def test_v1_and_v2_have_exact_report_revision_markers_on_base_and_current(self):
         head = subprocess.run(
             ['git', 'rev-parse', 'HEAD'],
             cwd=GENERATOR.ROOT,
@@ -9049,18 +9049,18 @@ class G01OfflineProfileStaticMarkerTests(unittest.TestCase):
         self.assertEqual(base_result.returncode, 0, base_result.stderr)
         base = base_result.stdout.strip()
         self.assertRegex(base, r'^[0-9a-f]{40}$')
-        self.assertTrue(
-            GENERATOR.codex_g01_render_query_offline_profile_revision_has_implementation(
-                base,
-                'g01-render-query-subjects-offline-agent-mcp-v1',
-            ),
-        )
-        self.assertTrue(
-            GENERATOR.codex_g01_render_query_offline_profile_revision_has_implementation(
-                candidate,
-                'g01-render-query-subjects-offline-agent-mcp-v2',
-            ),
-        )
+        for revision in (base, candidate):
+            with self.subTest(revision=revision):
+                for profile_id in (
+                    'g01-render-query-subjects-offline-agent-mcp-v1',
+                    'g01-render-query-subjects-offline-agent-mcp-v2',
+                ):
+                    self.assertTrue(
+                        GENERATOR.codex_g01_render_query_offline_profile_revision_has_implementation(
+                            revision,
+                            profile_id,
+                        ),
+                    )
 
     def test_synthetic_query_subjects_implementation_keeps_g01_partial_without_matrix_credit(self):
         frontier = json.loads(

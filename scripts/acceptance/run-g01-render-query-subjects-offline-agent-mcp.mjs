@@ -189,8 +189,11 @@ function fetchCurrentMaster() {
 export function assertG01RenderQueryCandidateReviewGate(
   status,
   pr,
-  { sourceRevision, currentBaseSha, readGit = gitText },
+  { sourceRevision, currentBaseSha, readGit = gitText, profile = PROFILE },
 ) {
+  if (!assertG01RenderQueryOfflineProfile(profile)) {
+    throw new Error('G01 render-query review gate requires an exact registered profile.');
+  }
   const epochView = status?.epoch;
   const epoch = epochView?.state;
   const run = status?.run?.state;
@@ -211,7 +214,7 @@ export function assertG01RenderQueryCandidateReviewGate(
     run?.active_epoch_pr === epochView?.number,
     run?.pending_epoch == null,
     epochView?.github_state === 'OPEN',
-    epoch?.epoch_id === PROFILE.epochId,
+    epoch?.epoch_id === profile.epochId,
     Number.isSafeInteger(epochView?.number) && epochView.number > 0,
     epoch?.pr_number === epochView?.number,
     epoch?.base_branch === 'master',
