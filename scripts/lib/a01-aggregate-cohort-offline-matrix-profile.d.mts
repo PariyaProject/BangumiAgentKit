@@ -1,0 +1,31 @@
+export const A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID: string;
+export const A01_AGGREGATE_COHORT_OFFLINE_EPOCH_ID: string;
+export const A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE: string;
+export const A01_AGGREGATE_COHORT_TOOL: 'bangumi.aggregate_subject_cohort';
+export const A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS: Readonly<{
+  cohort: {
+    label: string;
+    query: {
+      keyword: string;
+      media: 'anime';
+      resultMode: 'all';
+      limit: 1;
+    };
+  };
+  maxSubjects: 1;
+}>;
+
+export function assertA01AggregateCohortOfflineProfile(profile: unknown): true;
+
+export function createA01AggregateCohortOfflineFetch(): {
+  fetchFn(input: string | URL | Request, init?: RequestInit): Promise<Response>;
+  snapshot(): {
+    profile: string;
+    requestCount: number;
+    searchRequestCount: number;
+    detailRequestCount: number;
+    unexpectedRequestCount: number;
+    authorizationHeaderCount: number;
+    expectedOperationsComplete: boolean;
+  };
+};

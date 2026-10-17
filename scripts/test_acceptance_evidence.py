@@ -11413,6 +11413,169 @@ class A01RenderCohortAggregationMatrixProfileTests(unittest.TestCase):
             )
 
 
+class A01AggregateCohortOfflineMatrixProfileTests(unittest.TestCase):
+    def setUp(self):
+        self.tool_name = GENERATOR.CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME
+        self.profile = GENERATOR.CODEX_A01_AGGREGATE_MATRIX_PROFILE
+        self.current_tool = {
+            'name': self.tool_name,
+            'auth': 'none',
+            'risk': 'read',
+            'inputSchema': {'type': 'object'},
+        }
+        self.report = {
+            'toolName': self.tool_name,
+            'argumentProfile': GENERATOR.CODEX_A01_AGGREGATE_MATRIX_ARGUMENT_PROFILE,
+            'profileId': GENERATOR.CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+        }
+
+    def test_frontier_remains_unassessed_and_requires_contract_reference(self):
+        self.assertEqual(self.profile['toolName'], 'bangumi.aggregate_subject_cohort')
+        self.assertEqual(self.profile['acceptanceScope'], 'agent-mcp-matrix-only')
+        self.assertTrue(GENERATOR.codex_a01_aggregate_matrix_profile_frontier_is_unassessed())
+
+    def test_routes_only_the_exact_aggregate_matrix_profile(self):
+        with patch.object(
+            GENERATOR,
+            'codex_a01_aggregate_matrix_profile_report_is_valid',
+            return_value=True,
+        ):
+            self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
+                self.report,
+                {self.tool_name: self.current_tool},
+                {self.tool_name: self.current_tool},
+            ))
+            for changed in [
+                dict(self.report, toolName='bangumi.render_subject_cohort_aggregation'),
+                dict(self.report, profileId='a01-rating-dispersion-1998-spring-v1'),
+                dict(self.report, acceptanceScope='agent-mcp-scenario-and-matrix'),
+            ]:
+                self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+                    changed,
+                    {self.tool_name: self.current_tool},
+                    {self.tool_name: self.current_tool},
+                ))
+
+    def test_routes_a_valid_report_only_to_aggregate_subject_cohort(self):
+        catalog = [self.current_tool]
+        catalog_bytes = json.dumps(catalog, ensure_ascii=False).encode('utf-8')
+        base_report = {
+            **self.report,
+            'evidenceKind': GENERATOR.CODEX_A01_AGGREGATE_MATRIX_EVIDENCE_KIND,
+            'frontierId': 'A01',
+            'scenarioId': None,
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+        }
+        expected_path = GENERATOR.CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH
+
+        def collect_sources(report, report_relative_path=expected_path, current_catalog=catalog):
+            with tempfile.TemporaryDirectory(prefix='a01-aggregate-matrix-report-routing-') as temp:
+                root = Path(temp)
+                live_probe_dir = root / 'docs/live-probes'
+                live_probe_dir.mkdir(parents=True)
+                report_path = root / report_relative_path
+                report_path.parent.mkdir(parents=True, exist_ok=True)
+                report_path.write_text(json.dumps(report), encoding='utf-8')
+                catalog_path = root / 'docs/tool-catalog.json'
+                catalog_path.parent.mkdir(parents=True, exist_ok=True)
+                catalog_path.write_bytes(json.dumps(current_catalog, ensure_ascii=False).encode('utf-8'))
+                frontier_path = root / 'docs/product/frontier-ledger.json'
+                frontier_path.parent.mkdir(parents=True, exist_ok=True)
+                frontier_path.write_text(json.dumps({
+                    'records': [{
+                        'id': 'A01',
+                        'status': 'UNASSESSED',
+                        'source_refs': [GENERATOR.CODEX_A01_AGGREGATE_MATRIX_SELECTION_EVIDENCE_RELATIVE_PATH],
+                    }],
+                }), encoding='utf-8')
+                with (
+                    patch.object(GENERATOR, 'ROOT', root),
+                    patch.object(GENERATOR, 'LIVE_PROBE_DIR', live_probe_dir),
+                    patch.object(GENERATOR, 'CATALOG', catalog_path),
+                    patch.object(
+                        GENERATOR,
+                        'codex_a01_aggregate_matrix_profile_report_is_valid',
+                        return_value=True,
+                    ) as report_validator,
+                ):
+                    sources = GENERATOR.model_mcp_e2e_sources(current_catalog)
+                    frontier_is_unassessed = GENERATOR.codex_a01_aggregate_matrix_profile_frontier_is_unassessed()
+                return sources, report_validator.call_args_list, frontier_is_unassessed
+
+        sources, calls, frontier_is_unassessed = collect_sources(base_report)
+        self.assertEqual(sources, {self.tool_name: {expected_path}})
+        self.assertNotIn('bangumi.compare_subject_cohorts', sources)
+        self.assertTrue(frontier_is_unassessed)
+        self.assertEqual(len(calls), 1)
+
+        invalid = dict(base_report, scenarioId='A01')
+        sources, calls, frontier_is_unassessed = collect_sources(invalid)
+        self.assertEqual(sources, {})
+        self.assertEqual(calls, [])
+        self.assertTrue(frontier_is_unassessed)
+
+    def test_candidate_refresh_is_limited_to_report_matrix_and_frontier(self):
+        source_candidate = 'a' * 40
+        refreshed_candidate = 'd' * 40
+        base_sha = 'b' * 40
+        branch = 'codex/epoch-run95-a01-aggregate-cohort-offline-matrix-20261018'
+        reviewer_id = 'gpt-6-luna-max-run95-pr231-round1'
+        report = {
+            'prNumber': 231,
+            'sourceRevision': source_candidate,
+            'baseSha': base_sha,
+            'reviewerId': reviewer_id,
+            'mcpBundleSha256': 'c' * 64,
+        }
+        status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 231},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base_sha,
+                'pr_head_ref_name': branch,
+                'pr_head_sha': refreshed_candidate,
+                'pr_is_draft': False,
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_A01_AGGREGATE_MATRIX_EPOCH_ID,
+                    'pr_number': 231,
+                    'state': 'REVIEW_READY',
+                    'branch': branch,
+                    'base_branch': 'master',
+                    'base_sha': base_sha,
+                    'reviewed_base_sha': base_sha,
+                    'candidate_sha': refreshed_candidate,
+                    'review_history': [{
+                        'candidate_sha': source_candidate,
+                        'reviewed_base_sha': base_sha,
+                        'reviewer_id': reviewer_id,
+                        'verdict': 'PASS',
+                    }],
+                },
+            },
+        }
+        valid_paths = '\n'.join([
+            GENERATOR.CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH,
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+        ]) + '\n'
+        with patch.object(
+            GENERATOR,
+            '_run_repository_git',
+            side_effect=[
+                subprocess.CompletedProcess(['git'], 0, stdout=valid_paths, stderr=''),
+                subprocess.CompletedProcess(['git'], 0, stdout='', stderr=''),
+            ],
+        ):
+            self.assertTrue(GENERATOR.codex_a01_aggregate_matrix_profile_candidate_binding_is_current(
+                report, status, report['mcpBundleSha256'],
+            ))
+
+
 class LocalToolAuthDenialEvidenceTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='local-auth-denial-evidence-test-')

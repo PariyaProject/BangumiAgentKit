@@ -14,9 +14,7 @@ const agentMcpProfiles = JSON.parse(
 ).profiles;
 
 function assertOneShotRuntimeIsHarnessOwned(record) {
-  const guidance = [record.next_action, record.evidence?.source_contract]
-    .filter(Boolean)
-    .join(' ');
+  const guidance = [record.next_action, record.evidence?.source_contract].filter(Boolean).join(' ');
   assert.match(guidance, /active Harness Run\/Epoch/u);
   assert.match(guidance, /never retry a consumed claim/u);
   assert.doesNotMatch(
@@ -58,7 +56,11 @@ test('G04 terminal Run 95 one-shot remains partial and cannot be retried', () =>
   assert.doesNotMatch(record.next_action, /one-shot query may run|Run the fixed query/iu);
 
   const reportPath = 'docs/live-probes/g04-person-activity-run95.json';
-  assert.equal(existsSync(path.join(root, reportPath)), false, 'the terminal Run #95 claim wrote no report');
+  assert.equal(
+    existsSync(path.join(root, reportPath)),
+    false,
+    'the terminal Run #95 claim wrote no report',
+  );
   const disposition = readFileSync(path.join(root, dispositionPath), 'utf8');
   assert.match(disposition, /06c1915e64e466dc3543b46d58801eb767e9a161/u);
   assert.match(disposition, /51126320202c653d48e7d62461575a10988b1dbb/u);
@@ -130,7 +132,11 @@ test('R01 frontier keeps source limits separate from Harness runtime state', () 
     'tests/harness/write-r01-relations-offline-agent-mcp-report.test.mjs',
   ]) {
     assert.ok(record.source_refs.includes(source), `R01 source reference missing: ${source}`);
-    assert.equal(existsSync(path.join(root, source)), true, `R01 source reference is missing: ${source}`);
+    assert.equal(
+      existsSync(path.join(root, source)),
+      true,
+      `R01 source reference is missing: ${source}`,
+    );
   }
   const matrixReport = 'docs/live-probes/r01-relations-offline-agent-mcp-run95.json';
   if (record.source_refs.includes(matrixReport)) {
@@ -176,7 +182,11 @@ test('R03 bounded rating evidence is partial and does not credit Agent/MCP', () 
     'tests/integration/subject-relations-analysis-presenter.test.ts',
   ]) {
     assert.ok(record.source_refs.includes(source), `R03 source reference missing: ${source}`);
-    assert.equal(existsSync(path.join(root, source)), true, `R03 source reference is missing: ${source}`);
+    assert.equal(
+      existsSync(path.join(root, source)),
+      true,
+      `R03 source reference is missing: ${source}`,
+    );
   }
   const matrixReport = 'docs/live-probes/r03-direct-relations-agent-mcp-matrix-v2-run95.json';
   if (record.source_refs.includes(matrixReport)) {
@@ -234,10 +244,7 @@ test('A01 public matrix evidence remains direct-only and does not promote the sc
 
   const reportText = readFileSync(path.join(root, evidence.report), 'utf8');
   const report = JSON.parse(reportText);
-  assert.equal(
-    evidence.report_sha256,
-    createHash('sha256').update(reportText).digest('hex'),
-  );
+  assert.equal(evidence.report_sha256, createHash('sha256').update(reportText).digest('hex'));
   assert.equal(report.scopeId, evidence.scope_id);
   assert.equal(evidence.request_count, 19);
   assert.deepEqual(
@@ -250,35 +257,33 @@ test('A01 public matrix evidence remains direct-only and does not promote the sc
       .every(({ assertions }) => assertions.passed === true),
     true,
   );
-  assert.match(
-    evidence.acceptance_boundary,
-    /does not answer the A01 cohort-analysis question/u,
-  );
+  assert.match(evidence.acceptance_boundary, /does not answer the A01 cohort-analysis question/u);
   assert.match(evidence.acceptance_boundary, /change A01 from UNASSESSED/u);
   assert.match(evidence.acceptance_boundary, /add Agent\/MCP or one-shot credit/u);
 });
 
-test('A01 render aggregation profile is matrix-only and must run before integration', () => {
+test('A01 aggregate cohort offline profile is distinct and remains matrix-only', () => {
   const record = ledger.records.find(({ id }) => id === 'A01');
   const profile = agentMcpProfiles.find(
-    ({ id }) => id === 'a01-render-cohort-aggregation-agent-mcp-offline-v1',
+    ({ id }) => id === 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1',
   );
   assert.ok(record);
   assert.ok(profile);
   assert.equal(record.status, 'UNASSESSED');
-  assert.equal(profile.epochId, 'run95-a01-render-cohort-aggregation-exec-20261017');
+  assert.equal(profile.epochId, 'run95-a01-aggregate-cohort-offline-matrix-20261018');
   assert.equal(profile.acceptanceScope, 'agent-mcp-matrix-only');
-  assert.equal(profile.toolName, 'bangumi.render_subject_cohort_aggregation');
-  assert.ok(record.source_refs.includes('tests/harness/frontier-ledger-data.test.mjs'));
-  assert.match(
-    record.next_action,
-    /one-shot only after its unique Epoch is an open active PR/u,
+  assert.equal(profile.toolName, 'bangumi.aggregate_subject_cohort');
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-a01-aggregate-subject-cohort-offline-agent-mcp-contract-2026-10-18.md',
+    ),
   );
   assert.match(
     record.next_action,
-    /keep the PR active until a signed report or terminal no-retry disposition is recorded/u,
+    /new a01-aggregate-cohort-offline-agent-mcp-matrix-v1 profile is distinct synthetic offline Agent\/MCP evidence/u,
   );
-  assert.match(record.next_action, /no public or scenario evidence is added/u);
+  assert.match(record.next_action, /a valid signed report can credit that one matrix cell/u);
+  assert.match(record.next_action, /not the A01 scenario, public API/u);
   assertOneShotRuntimeIsHarnessOwned(record);
 });
 
@@ -286,10 +291,7 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   const readBoundReport = (record, evidence) => {
     assert.ok(record.source_refs.includes(evidence.report));
     const reportText = readFileSync(path.join(root, evidence.report), 'utf8');
-    assert.equal(
-      evidence.report_sha256,
-      createHash('sha256').update(reportText).digest('hex'),
-    );
+    assert.equal(evidence.report_sha256, createHash('sha256').update(reportText).digest('hex'));
     const report = JSON.parse(reportText);
     assert.equal(report.scopeId, evidence.scope_id);
     return report;
@@ -392,7 +394,10 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   }
   assert.match(p02Evidence.privacy_clarification, /fixed public query input personId=13684/u);
   assert.match(p02Evidence.privacy_clarification, /response-derived identifiers/u);
-  assert.match(p02Evidence.acceptance_boundary, /do not establish career-wide first\/latest participation/u);
+  assert.match(
+    p02Evidence.acceptance_boundary,
+    /do not establish career-wide first\/latest participation/u,
+  );
   assert.match(p02Evidence.acceptance_boundary, /change P02 from PARTIAL/u);
 
   const r04 = ledger.records.find(({ id }) => id === 'R04');
@@ -402,14 +407,8 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
     r04.next_action,
     /existing get_series_watch_order offline profile is terminal INCONCLUSIVE/u,
   );
-  assert.match(
-    r04.next_action,
-    /distinct matrix-only render_series_watch_order profile/u,
-  );
-  assert.match(
-    r04.next_action,
-    /keep the R04 theatrical-film scenario UNASSESSED/u,
-  );
+  assert.match(r04.next_action, /distinct matrix-only render_series_watch_order profile/u);
+  assert.match(r04.next_action, /keep the R04 theatrical-film scenario UNASSESSED/u);
   assert.match(r04.next_action, /do not claim canonical order or visual quality/u);
   for (const source of [
     'scripts/lib/r04-render-series-watch-order-offline-fixture.mjs',
@@ -432,10 +431,20 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
     'scripts/acceptance/validate-r02-positive-direct-relations-agent-mcp-report.mjs',
   ]) {
     assert.ok(r02.source_refs.includes(source), `R02 source reference missing: ${source}`);
-    assert.equal(existsSync(path.join(root, source)), true, `R02 source reference is missing: ${source}`);
+    assert.equal(
+      existsSync(path.join(root, source)),
+      true,
+      `R02 source reference is missing: ${source}`,
+    );
   }
-  assert.match(r02.next_action, /Keep R02 UNASSESSED until an exact-Candidate signed report is accepted/u);
-  assert.match(r02.next_action, /does not establish reverse\/transitive edges or graph completeness/u);
+  assert.match(
+    r02.next_action,
+    /Keep R02 UNASSESSED until an exact-Candidate signed report is accepted/u,
+  );
+  assert.match(
+    r02.next_action,
+    /does not establish reverse\/transitive edges or graph completeness/u,
+  );
 
   const s05 = ledger.records.find(({ id }) => id === 'S05');
   assert.ok(s05, 'S05 must remain in the canonical frontier');
@@ -641,9 +650,7 @@ test('P05 records its bounded live report as partial returned-row evidence', () 
   assert.ok(
     record.source_refs.includes('docs/live-probes/p05-person-media-public-probe-run95.json'),
   );
-  assert.ok(
-    record.source_refs.includes('scripts/acceptance/run-p05-person-media-public-probe.ts'),
-  );
+  assert.ok(record.source_refs.includes('scripts/acceptance/run-p05-person-media-public-probe.ts'));
   assert.ok(record.source_refs.includes('scripts/lib/p05-one-shot-claim.mjs'));
   assert.ok(record.source_refs.includes('tests/harness/agent-harness-cli.test.mjs'));
 
@@ -674,7 +681,10 @@ test('P05 records its bounded live report as partial returned-row evidence', () 
     },
     claim_limit: 'Returned relation rows only; upstream completeness is undocumented.',
   });
-  assert.match(evidence.runner_contract.repository_global_claim, /repository-scoped create-only GitHub label/u);
+  assert.match(
+    evidence.runner_contract.repository_global_claim,
+    /repository-scoped create-only GitHub label/u,
+  );
   assert.match(evidence.runner_contract.repository_global_claim, /active-PR claim.*read back/u);
   assert.equal(
     evidence.official_source_contract.pagination_total_order_or_completeness_documented,
@@ -682,7 +692,10 @@ test('P05 records its bounded live report as partial returned-row evidence', () 
   );
   assert.match(evidence.official_source_contract.claim_limit, /returned relation rows only/u);
   assert.match(record.next_action, /same-identity GPT-6 Luna Max review/u);
-  assert.match(record.next_action, /does not support platform or exhaustive career-wide distribution/u);
+  assert.match(
+    record.next_action,
+    /does not support platform or exhaustive career-wide distribution/u,
+  );
   assert.match(record.next_action, /Never retry the consumed P05 claim/u);
   const reportPath = path.join(root, evidence.observed_result.report);
   assert.equal(existsSync(reportPath), true, 'the accepted one-shot report must be committed');
@@ -753,10 +766,18 @@ test('R05 terminal no-report profile remains unassessed and cannot be retried', 
   const record = ledger.records.find(({ id }) => id === 'R05');
   assert.ok(record, 'R05 must remain in the canonical frontier');
   assert.equal(record.status, 'UNASSESSED');
-  assert.equal(record.evidence, undefined, 'R05 has no accepted report evidence or capability credit');
+  assert.equal(
+    record.evidence,
+    undefined,
+    'R05 has no accepted report evidence or capability credit',
+  );
 
   const reportPath = 'docs/live-probes/r05-k-on-season-shared-person-agent-mcp-run95.json';
-  assert.equal(existsSync(path.join(root, reportPath)), false, 'the terminal claim wrote no report');
+  assert.equal(
+    existsSync(path.join(root, reportPath)),
+    false,
+    'the terminal claim wrote no report',
+  );
   const dispositionPath = 'docs/research/run95-r05-profile-terminal-disposition-2026-10-15.md';
   assert.ok(record.source_refs.includes(dispositionPath));
   assert.ok(
@@ -818,7 +839,8 @@ test('G15 merged corrective implementation does not credit or retry the failed a
   assert.equal(report.reviewDisposition.retryPerformed, false);
   assert.equal(report.reviewDisposition.additionalPublicCallPerformed, false);
 
-  const dispositionPath = 'docs/research/run95-g15-terminal-disposition-reconciliation-2026-10-15.md';
+  const dispositionPath =
+    'docs/research/run95-g15-terminal-disposition-reconciliation-2026-10-15.md';
   assert.ok(record.source_refs.includes(dispositionPath));
   const disposition = readFileSync(path.join(root, dispositionPath), 'utf8');
   assert.match(disposition, /PR #94/u);
@@ -952,8 +974,7 @@ test('A05 and D02 terminal one-shot dispositions remain unassessed and cannot be
     {
       id: 'A05',
       noRetry: /one-shot claim is consumed and must never be retried/u,
-      staleInvitation:
-        /Use its existing one-tool Agent\/MCP runner|If the report is accepted/iu,
+      staleInvitation: /Use its existing one-tool Agent\/MCP runner|If the report is accepted/iu,
     },
     {
       id: 'D02',
@@ -975,15 +996,9 @@ test('A05 and D02 terminal one-shot dispositions remain unassessed and cannot be
   }
 
   const note = readFileSync(path.join(root, dispositionPath), 'utf8');
-  assert.match(
-    note,
-    /PR #146 merged at `9bf2db2b15d8508a7abff605dd10730edc2e12e8`/u,
-  );
+  assert.match(note, /PR #146 merged at `9bf2db2b15d8508a7abff605dd10730edc2e12e8`/u);
   assert.match(note, /2026-10-13T00:59:31Z.*INCONCLUSIVE/u);
-  assert.match(
-    note,
-    /b3bdea257b4a17d47198b9ee01f956211dcd34be4a09280d4674331d7cf8a566/u,
-  );
+  assert.match(note, /b3bdea257b4a17d47198b9ee01f956211dcd34be4a09280d4674331d7cf8a566/u);
   assert.match(
     note,
     /Run #95 Issue #95's later budget-extension history at `2026-10-13T09:39:55Z`/u,

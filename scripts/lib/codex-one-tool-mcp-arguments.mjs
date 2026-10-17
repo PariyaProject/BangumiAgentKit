@@ -23,6 +23,10 @@ import {
   R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE,
 } from './r02-positive-direct-relations-profile.mjs';
 import { assertA01RenderCohortAggregationOfflineProfile } from './a01-render-cohort-aggregation-offline-fixture.mjs';
+import {
+  A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+  assertA01AggregateCohortOfflineProfile,
+} from './a01-aggregate-cohort-offline-matrix-profile.mjs';
 import { assertR04RenderSeriesWatchOrderOfflineProfile } from './r04-render-series-watch-order-offline-fixture.mjs';
 import {
   assertTitleQueryRenderPublicProfile,
@@ -131,23 +135,28 @@ export function parseCodexOneToolMcpArguments(argv) {
     }
     let registeredNetworkMode;
     if (profile.networkMode !== undefined) {
-      const approved =
-        assertG06SubjectCastOfflineProfile(profile) ||
-        assertC04CohortComparisonPublicProfile(profile) ||
-        assertTitleQueryRenderPublicProfile(profile) ||
-        assertS05PersonActivityProfile(profile) ||
-        assertC07RenderComparisonOfflineProfile(profile) ||
-        assertG01RenderQueryOfflineProfile(profile) ||
-        assertG01QuerySubjectsOfflineProfile(profile) ||
-        assertP06RenderPersonProfileOfflineProfile(profile) ||
-        assertP02PersonProfileOfflineProfile(profile) ||
-        assertR04SeriesWatchOrderOfflineProfile(profile) ||
-        assertR01RelationsOfflineProfile(profile) ||
-        assertR03RelationsOfflineProfile(profile) ||
-        assertR02PositiveDirectRelationsProfile(profile) ||
-        assertA01RatingDispersionProfile(profile) ||
-        assertA01RenderCohortAggregationOfflineProfile(profile) ||
-        assertR04RenderSeriesWatchOrderOfflineProfile(profile);
+      let approved;
+      if (profile.id === A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID) {
+        approved = assertA01AggregateCohortOfflineProfile(profile);
+      } else {
+        approved =
+          assertG06SubjectCastOfflineProfile(profile) ||
+          assertC04CohortComparisonPublicProfile(profile) ||
+          assertTitleQueryRenderPublicProfile(profile) ||
+          assertS05PersonActivityProfile(profile) ||
+          assertC07RenderComparisonOfflineProfile(profile) ||
+          assertG01RenderQueryOfflineProfile(profile) ||
+          assertG01QuerySubjectsOfflineProfile(profile) ||
+          assertP06RenderPersonProfileOfflineProfile(profile) ||
+          assertP02PersonProfileOfflineProfile(profile) ||
+          assertR04SeriesWatchOrderOfflineProfile(profile) ||
+          assertR01RelationsOfflineProfile(profile) ||
+          assertR03RelationsOfflineProfile(profile) ||
+          assertR02PositiveDirectRelationsProfile(profile) ||
+          assertA01RatingDispersionProfile(profile) ||
+          assertA01RenderCohortAggregationOfflineProfile(profile) ||
+          assertR04RenderSeriesWatchOrderOfflineProfile(profile);
+      }
       if (!approved) {
         throw new Error('Registered profile network mode is not supported.');
       }

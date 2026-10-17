@@ -173,6 +173,7 @@ import { validateR02SanitizedReportFile } from './acceptance/write-r02-positive-
 import { validateC02SanitizedReportFile } from './acceptance/write-c02-tv-movie-comparison-report.mjs';
 import { validateM07SanitizedReportFile } from './acceptance/write-m07-manage-index-agent-mcp-report.mjs';
 import { validateA01RenderCohortAggregationSanitizedReportFile } from './acceptance/write-a01-render-cohort-aggregation-agent-mcp-report.mjs';
+import { validateA01AggregateCohortProfileReportFile } from './acceptance/write-a01-aggregate-cohort-offline-agent-mcp-report.mjs';
 import { validateA01RatingDispersionSanitizedReportFile } from './acceptance/write-a01-rating-dispersion-agent-mcp-report.mjs';
 import {
   G06_CAST_OFFLINE_ARGUMENT_PROFILE,
@@ -3881,6 +3882,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateM07SanitizedReportFile(claim, root, reportPath);
     case 'a01-render-cohort-aggregation-agent-mcp-offline-v1':
       return validateA01RenderCohortAggregationSanitizedReportFile(claim, root, reportPath);
+    case 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1':
+      return validateA01AggregateCohortProfileReportFile(claim, root, reportPath);
     case 'a01-rating-dispersion-1998-spring-v1':
       return validateA01RatingDispersionSanitizedReportFile(claim, root, reportPath);
     case G06_CAST_OFFLINE_PROFILE_ID:
