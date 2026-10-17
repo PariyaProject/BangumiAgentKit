@@ -8846,6 +8846,8 @@ class G01OfflineProfileStaticMarkerTests(unittest.TestCase):
         )
         self.assertIn('adds no matrix credit by itself', evidence['acceptance_boundary'])
         self.assertIn('65/65', record['next_action'])
+        self.assertIn('never retry the consumed one-shot', record['next_action'])
+        self.assertIn('do not replay the consumed G01 Agent/MCP canary', record['next_action'])
 
 
 class C07RenderComparisonOfflineProfileReportValidationTests(unittest.TestCase):

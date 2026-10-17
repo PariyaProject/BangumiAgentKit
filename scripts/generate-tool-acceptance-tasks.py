@@ -5258,7 +5258,7 @@ CODEX_G01_RENDER_QUERY_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         "'g01-render-query-subjects-offline-agent-mcp-v1'",
     ),
     'docs/product/frontier-ledger.json': (
-        'A separate Run #95 Epoch may use its exact registered synthetic render-query profile once',
+        'A distinct synthetic offline Agent/MCP profile now targets bangumi.query_subjects once against an exact local fixture',
         'Keep G01 PARTIAL.',
     ),
     'docs/research/run95-g01-render-query-subjects-offline-matrix-contract-2026-10-17.md': (
