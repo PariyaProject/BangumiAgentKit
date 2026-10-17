@@ -2274,6 +2274,25 @@ test('A01 ambiguous reconciliation terminalizes a matching claim that races term
       'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED',
     );
     assert.equal(JSON.parse(repeated.stdout).claimId, claim.claimId);
+
+    const terminalLabelName = A01_AGGREGATE_PROFILE.claimLabelName.replace(
+      /-claimed$/u,
+      '-terminal',
+    );
+    const missingTerminalLabel = environment.readState();
+    delete missingTerminalLabel.repositoryLabels[terminalLabelName];
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(missingTerminalLabel, null, 2)}\n`);
+
+    const missingStatus = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(missingStatus.status, 0, missingStatus.stderr);
+    assert.equal(JSON.parse(missingStatus.stdout).state, 'TERMINAL_LATCH_MISMATCH');
+
+    const missingLabelRepeat = environment.execute([
+      'epoch:agent-mcp-profile-reconcile-ambiguous',
+      ...runArgs,
+    ]);
+    assert.equal(missingLabelRepeat.status, 2, missingLabelRepeat.stdout);
+    assert.match(missingLabelRepeat.stderr, /^AGENT_MCP_PROFILE_DISPOSITION_NOT_AMBIGUOUS:/u);
   } finally {
     environment.cleanup();
   }
