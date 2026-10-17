@@ -19,6 +19,7 @@ import {
 
 const PROFILE = getAgentMcpProfileById('g01-render-query-subjects-offline-agent-mcp-v1');
 const PROFILE_V2 = getAgentMcpProfileById(G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID);
+const IMPLEMENTATION_EPOCH_ID = 'run95-g01-render-query-offline-matrix-v2-20261018';
 const SOURCE_SHA = 'a'.repeat(40);
 const BASE_SHA = 'b'.repeat(40);
 const BUNDLE_SHA = 'c'.repeat(64);
@@ -302,6 +303,7 @@ test('G01 v2 Candidate gate binds only to its separate Invocation Epoch', () => 
   assert.equal(PROFILE_V2.epochId, 'run95-g01-render-query-offline-matrix-v2-call-20261018');
 
   const implementationStatus = statusFixture();
+  implementationStatus.epoch.state.epoch_id = IMPLEMENTATION_EPOCH_ID;
   assert.throws(() =>
     assertG01RenderQueryCandidateReviewGate(implementationStatus, pullRequestFixture(), {
       sourceRevision: SOURCE_SHA,
