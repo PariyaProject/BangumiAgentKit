@@ -101,9 +101,16 @@
         "docs/research/run95-g01-query-subjects-offline-agent-mcp-contract-2026-10-17.md",
         "scripts/acceptance/agent-mcp-profile-registry.json",
         "scripts/lib/g01-query-subjects-offline-matrix-fixture.mjs",
-        "tests/integration/tool-direct-execute-discovery.test.ts"
+        "tests/integration/tool-direct-execute-discovery.test.ts",
+        "scripts/lib/g01-query-subjects-offline-matrix-profile.mjs",
+        "scripts/acceptance/run-g01-query-subjects-offline-agent-mcp.mjs",
+        "scripts/acceptance/write-g01-query-subjects-offline-agent-mcp-report.mjs",
+        "tests/harness/g01-query-subjects-offline-matrix-fixture.test.mjs",
+        "tests/harness/run-g01-query-subjects-offline-agent-mcp.test.mjs",
+        "tests/harness/write-g01-query-subjects-offline-agent-mcp-report.test.mjs",
+        "tests/harness/agent-mcp-profile-claims.test.mjs"
       ],
-      "next_action": "A distinct synthetic offline Agent/MCP profile now targets bangumi.query_subjects once against an exact local fixture with a new keyword and synthetic subject. It can credit only the Agent/MCP matrix row; it does not answer the July 2026 harem question, establish search completeness, or add public API evidence. The direct ToolRegistry integration test checks one local search request. Code and fixture tests alone are not Agent/MCP runtime evidence; any matrix credit requires the separate claim-bound signed report accepted through Harness. Keep G01 PARTIAL; never retry the consumed one-shot or any prior terminal profile; do not replay the consumed G01 Agent/MCP canary (the original July 2026 input). Preserve the public API target at 65/65.",
+      "next_action": "A distinct synthetic offline Agent/MCP profile now targets bangumi.query_subjects once against an exact local fixture with a new keyword and synthetic subject. It can credit only the Agent/MCP matrix row; it does not answer the July 2026 harem question, establish search completeness, or add public API evidence. The direct ToolRegistry integration test checks one local search request. Code and fixture tests alone are not Agent/MCP runtime evidence; any matrix credit requires the separate claim-bound signed report accepted through Harness. Keep G01 PARTIAL; never retry the consumed one-shot or any prior terminal profile; do not replay the consumed G01 Agent/MCP canary (the original July 2026 input). Preserve the public API target at 65/65. Run #95 selected g01-query-subjects-offline-agent-mcp-matrix-v1 with fixed synthetic keyword run95 synthetic query subjects matrix offline 20261017 and synthetic subject ID 990930. It remains unclaimed with no report or matrix credit until exact Candidate/Base/seven-check CI, same-identity GPT-6 Luna Max PASS, one-shot claim, and signed report validation through Harness.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {

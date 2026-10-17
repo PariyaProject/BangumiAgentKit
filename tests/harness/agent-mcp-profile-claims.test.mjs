@@ -120,6 +120,19 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(g01QuerySubjects.calls.length, 1);
   assert.equal(g01QuerySubjects.acceptanceScope, 'agent-mcp-matrix-only');
   assert.equal(g01QuerySubjects.networkMode, 'run95-g01-query-subjects-synthetic-offline-v1');
+  assert.equal(
+    g01QuerySubjects.argumentProfile,
+    'fixed-g01-synthetic-query-subjects-one-result-v1',
+  );
+  assert.deepEqual(g01QuerySubjects.calls[0].arguments, {
+    keyword: 'run95 synthetic query subjects matrix offline 20261017',
+    media: 'anime',
+    resultMode: 'top',
+    limit: 1,
+    sort: 'relevance',
+    explain: 'none',
+    nsfw: false,
+  });
   assert.notDeepEqual(
     g01QuerySubjects.calls[0].arguments,
     getAgentMcpProfileById('query-render-title-agent-mcp-v1').calls[0].arguments,
