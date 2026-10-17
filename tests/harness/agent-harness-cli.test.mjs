@@ -2044,6 +2044,123 @@ test('C03 Harness profile status, create-once claim, and terminal result are dur
   }
 });
 
+test('A01 ambiguous profile latch reconciliation is terminal, bounded, and idempotent', () => {
+  const { environment } = agentMcpProfileReviewReadyEnvironment(A01_AGGREGATE_PROFILE, {
+    repositoryLabels: {
+      [A01_AGGREGATE_PROFILE.claimLabelName]: {
+        name: A01_AGGREGATE_PROFILE.claimLabelName,
+        description: agentMcpProfileClaimLabelDescription(A01_AGGREGATE_PROFILE),
+      },
+    },
+  });
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', A01_AGGREGATE_PROFILE.id];
+  try {
+    const ambiguous = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(ambiguous.status, 0, ambiguous.stderr);
+    assert.equal(JSON.parse(ambiguous.stdout).state, 'AMBIGUOUS');
+
+    const reconciled = environment.execute([
+      'epoch:agent-mcp-profile-reconcile-ambiguous',
+      ...runArgs,
+    ]);
+    assert.equal(reconciled.status, 0, reconciled.stderr);
+    assert.deepEqual(JSON.parse(reconciled.stdout), {
+      state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
+      run: 95,
+      pr: 42,
+      profileId: A01_AGGREGATE_PROFILE.id,
+      resultState: 'INCONCLUSIVE',
+      retryAllowed: false,
+    });
+
+    const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(status.status, 0, status.stderr);
+    const profileStatus = JSON.parse(status.stdout);
+    assert.equal(profileStatus.state, 'INCONCLUSIVE');
+    assert.equal(profileStatus.retry_allowed, false);
+    assert.equal(profileStatus.disposition.ambiguousLatchReconciled, true);
+    assert.equal(profileStatus.disposition.claimIdentityRecovered, false);
+    assert.equal(profileStatus.disposition.claimId, null);
+    assert.deepEqual(profileStatus.disposition.failureDiagnostics, {
+      schemaVersion: 1,
+      reasonCode: 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
+      checks: { invocationStateUnknown: true },
+      counters: {},
+    });
+
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[A01_AGGREGATE_PROFILE.id].state,
+      'INCONCLUSIVE',
+    );
+    assert.equal(
+      environment.readState().repositoryLabels[
+        A01_AGGREGATE_PROFILE.claimLabelName.replace(/-claimed$/u, '-terminal')
+      ].description,
+      'Run95 A01 INCONCLUSIVE no-report',
+    );
+
+    const repeated = environment.execute([
+      'epoch:agent-mcp-profile-reconcile-ambiguous',
+      ...runArgs,
+    ]);
+    assert.equal(repeated.status, 0, repeated.stderr);
+    assert.equal(
+      JSON.parse(repeated.stdout).state,
+      'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED',
+    );
+
+    const noSecondClaim = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      'gpt-6-luna-max-run95-pr42-round1',
+      '--runner-public-key',
+      'A'.repeat(43),
+    ]);
+    assert.equal(noSecondClaim.status, 2);
+    assert.match(noSecondClaim.stderr, /^AGENT_MCP_PROFILE_CLAIM_GATE_FAILED:/u);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('A01 ambiguous profile latch reconciliation requires the exact permanent latch', () => {
+  const { environment } = agentMcpProfileReviewReadyEnvironment(A01_AGGREGATE_PROFILE, {
+    repositoryLabels: {
+      [A01_AGGREGATE_PROFILE.claimLabelName]: {
+        name: A01_AGGREGATE_PROFILE.claimLabelName,
+        description: 'unexpected profile latch metadata',
+      },
+    },
+  });
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', A01_AGGREGATE_PROFILE.id];
+  try {
+    const rejected = environment.execute([
+      'epoch:agent-mcp-profile-reconcile-ambiguous',
+      ...runArgs,
+    ]);
+    assert.equal(rejected.status, 2);
+    assert.match(rejected.stderr, /^AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_UNCONFIRMED:/u);
+    const state = environment.readState();
+    assert.equal(
+      state.repositoryLabels[
+        A01_AGGREGATE_PROFILE.claimLabelName.replace(/-claimed$/u, '-terminal')
+      ],
+      undefined,
+    );
+    const stored = parseControlBlock(state.prBody, EPOCH_MARKER);
+    assert.equal(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions?.[A01_AGGREGATE_PROFILE.id],
+      undefined,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('C02 Harness claim rejects reviewer substitution before creating the permanent latch', () => {
   const { environment, epoch, reviewerId } = agentMcpProfileReviewReadyEnvironment(C02_PROFILE);
   const laterReviewerId = 'gpt-6-luna-max-run95-pr42-round2';

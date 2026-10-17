@@ -806,6 +806,7 @@ Usage: pnpm harness <command> [options]
   epoch:g04-legacy-claim-reconcile --run <issue> --pr <number> --source-pr <number>
   epoch:g16-one-shot-run --run <issue>
   epoch:agent-mcp-profile-status --run <issue> --pr <number> --profile-id <id>
+  epoch:agent-mcp-profile-reconcile-ambiguous --run <issue> --pr <number> --profile-id <id>
   epoch:agent-mcp-profile-claim --run <issue> --pr <number> --profile-id <id> --bundle-sha256 <sha> --reviewer-id <id> --runner-public-key <base64>
   epoch:agent-mcp-profile-result --run <issue> --pr <number> --profile-id <id> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN> [--report-sha256 <sha>] [--diagnostics-json <allowlisted-json>]
   epoch:r01-one-shot-run --run <issue>
@@ -3644,6 +3645,161 @@ function commandEpochAgentMcpProfileStatus(options) {
     review_gate: reviewGate,
     disposition,
     issue_state: runResult.state.state,
+  });
+}
+
+function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = required(options, 'run');
+  const prNumber = required(options, 'pr');
+  const profileId = required(options, 'profile-id');
+  const profile = getAgentMcpProfileById(profileId);
+  if (!profile) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_UNKNOWN',
+      'Unknown profile id; the registered profile set is closed.',
+      { profileId },
+    );
+  }
+  if (
+    Number(runNumber) !== 95 ||
+    !Number.isSafeInteger(Number(prNumber)) ||
+    Number(prNumber) < 1 ||
+    profile.id !== 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1'
+  ) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_RECONCILE_INVALID',
+      'Ambiguous-latch reconciliation is limited to the Run #95 A01 offline aggregate profile.',
+    );
+  }
+
+  const runResult = issueState(runNumber);
+  const epochResult = epochState(prNumber);
+  const run = runResult.state;
+  const epoch = epochResult.state;
+  const pr = epochResult.view;
+  if (
+    run.state !== 'EPOCH_ACTIVE' ||
+    run.active_epoch_pr !== Number(prNumber) ||
+    run.pending_epoch != null ||
+    epoch.pr_number !== Number(prNumber) ||
+    epoch.epoch_id !== profile.epochId ||
+    !epoch.advances_frontier_ids?.includes(profile.frontierId) ||
+    epoch.adversarial_preflight?.completed !== true ||
+    pr.state !== 'OPEN' ||
+    pr.isDraft
+  ) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_RECONCILE_EPOCH_MISMATCH',
+      'Ambiguous-latch reconciliation must match the active A01 profile Epoch.',
+      { runNumber: Number(runNumber), prNumber: Number(prNumber), profileId },
+    );
+  }
+
+  const labels = readAgentMcpProfileLabels();
+  const claimLabel = labels.find((label) => label.name === profile.claimLabelName);
+  if (claimLabel?.description !== agentMcpProfileClaimLabelDescription(profile)) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_UNCONFIRMED',
+      'The exact permanent profile claim latch is not present; refusing reconciliation.',
+      { profileId },
+    );
+  }
+  const terminalDescription = agentMcpProfileTerminalLabelDescription(profile, 'INCONCLUSIVE');
+  const terminalLabelName = agentMcpProfileTerminalLabelName(profile);
+  const terminalLabel = labels.find((label) => label.name === terminalLabelName);
+  if (terminalLabel && terminalLabel.description !== terminalDescription) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_AMBIGUOUS_TERMINAL_CONFLICT',
+      'A different terminal profile latch already exists; refusing reconciliation.',
+      { profileId },
+    );
+  }
+
+  const dispositions = agentMcpProfileClaims(epoch);
+  const current = dispositions[profile.id];
+  if (current) {
+    if (
+      current.state === 'INCONCLUSIVE' &&
+      current.ambiguousLatchReconciled === true &&
+      current.claimIdentityRecovered === false &&
+      current.terminalLabelDescription === terminalDescription &&
+      terminalLabel?.description === terminalDescription
+    ) {
+      print({
+        state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED',
+        run: 95,
+        pr: Number(prNumber),
+        profileId,
+        resultState: 'INCONCLUSIVE',
+        retryAllowed: false,
+      });
+      return;
+    }
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_DISPOSITION_NOT_AMBIGUOUS',
+      'A durable profile disposition already exists; refusing ambiguous-latch reconciliation.',
+      { profileId, currentState: current.state },
+    );
+  }
+  if (fs.existsSync(path.join(root, profile.reportPath))) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_AMBIGUOUS_REPORT_PRESENT',
+      'A profile report exists without a durable claim; refusing to overwrite or reinterpret it.',
+      { profileId },
+    );
+  }
+
+  const terminal = acquireAgentMcpProfileTerminalGitHubLatch(gh, profile, 'INCONCLUSIVE');
+  const failureDiagnostics = normalizeAgentMcpProfileDiagnostics({
+    schemaVersion: 1,
+    reasonCode: 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
+    checks: { invocationStateUnknown: true },
+    counters: {},
+  });
+  const nextEpoch = structuredClone(epoch);
+  const disposition = {
+    schemaVersion: 1,
+    claimId: null,
+    claimIdentityRecovered: false,
+    ambiguousLatchReconciled: true,
+    state: 'INCONCLUSIVE',
+    profileId: profile.id,
+    frontierId: profile.frontierId,
+    epochId: profile.epochId,
+    runNumber: 95,
+    prNumber: Number(prNumber),
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
+    expectedArguments: profile.calls.map((call) => structuredClone(call.arguments)),
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+    registrySha256: agentMcpProfileRegistrySha256(profile.id),
+    sourceCandidateSha: null,
+    baseSha: null,
+    ciSha: null,
+    ciStatus: 'UNKNOWN',
+    reviewerId: null,
+    bundleSha256: null,
+    reportWritten: false,
+    failureDiagnostics,
+    terminalLabel: terminal.name,
+    terminalLabelDescription: terminal.description,
+    retryAllowed: false,
+    finishedAt: new Date().toISOString(),
+  };
+  nextEpoch.adversarial_preflight.agent_mcp_profile_dispositions = {
+    ...dispositions,
+    [profile.id]: disposition,
+  };
+  updatePr(prNumber, nextEpoch);
+  print({
+    state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
+    run: 95,
+    pr: Number(prNumber),
+    profileId,
+    resultState: 'INCONCLUSIVE',
+    retryAllowed: false,
   });
 }
 
@@ -8418,6 +8574,7 @@ const commands = {
   'epoch:g04-legacy-claim-reconcile': commandEpochG04LegacyClaimReconcile,
   'epoch:g16-one-shot-run': commandEpochG16OneShotRun,
   'epoch:agent-mcp-profile-status': commandEpochAgentMcpProfileStatus,
+  'epoch:agent-mcp-profile-reconcile-ambiguous': commandEpochAgentMcpProfileReconcileAmbiguous,
   'epoch:agent-mcp-profile-claim': commandEpochAgentMcpProfileClaim,
   'epoch:agent-mcp-profile-result': commandEpochAgentMcpProfileResult,
   'epoch:r01-one-shot-run': commandEpochR01OneShotRun,

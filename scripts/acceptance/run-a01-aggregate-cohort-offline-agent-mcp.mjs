@@ -361,6 +361,18 @@ function durableClaimStatus(prNumber) {
   return readProfileStatus(prNumber);
 }
 
+function reconcileAmbiguousLatch(prNumber) {
+  return runHarness([
+    'epoch:agent-mcp-profile-reconcile-ambiguous',
+    '--run',
+    '95',
+    '--pr',
+    String(prNumber),
+    '--profile-id',
+    PROFILE.id,
+  ]);
+}
+
 function recoverClaim(gate, bundleSha256, keyPair, expectedClaimId = null) {
   const status = durableClaimStatus(gate.prNumber);
   const disposition = status?.disposition;
@@ -620,6 +632,102 @@ function terminalResult(claim, state, diag, unacceptedReportSha256 = null) {
   }
 }
 
+function reconcileClaimCommandFailure(deps, { prNumber, gate, bundleSha256, keyPair }) {
+  let status;
+  try {
+    status = deps.durableClaimStatus(prNumber);
+  } catch {
+    return { state: 'UNCERTAIN', retryAllowed: false };
+  }
+
+  if (['AMBIGUOUS', 'AMBIGUOUS_TERMINAL_LATCH'].includes(status?.state)) {
+    try {
+      const result = deps.reconcileAmbiguousLatch(prNumber);
+      if (
+        result?.state === 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED' ||
+        result?.state === 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED'
+      ) {
+        return {
+          state: 'INCONCLUSIVE',
+          reasonCode: 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
+          invocationState: 'UNKNOWN',
+          retryAllowed: false,
+        };
+      }
+    } catch {
+      // The durable latch may still be reconciled on a later read; never retry the claim here.
+    }
+    return { state: 'UNCERTAIN', retryAllowed: false };
+  }
+
+  if (status?.state === 'CLAIMED' && gate && keyPair && bundleSha256) {
+    let claim = null;
+    try {
+      claim = deps.recoverClaim(gate, bundleSha256, keyPair);
+    } catch {
+      claim = null;
+    }
+    if (!claim) return { state: 'UNCERTAIN', retryAllowed: false };
+    const failureDiagnostics = {
+      schemaVersion: 1,
+      reasonCode: 'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED',
+      checks: { invocationAttempted: false, claimReadbackValid: true, privacyPreserved: true },
+      counters: {},
+    };
+    let persisted = false;
+    try {
+      persisted = deps.terminalResult(claim, 'INCONCLUSIVE', failureDiagnostics);
+    } catch {
+      persisted = false;
+    }
+    return persisted
+      ? {
+          state: 'INCONCLUSIVE',
+          reasonCode: 'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED',
+          invocationState: 'NOT_ATTEMPTED',
+          retryAllowed: false,
+        }
+      : { state: 'UNCERTAIN', retryAllowed: false };
+  }
+
+  if (status?.state === 'UNCLAIMED') {
+    return {
+      state: 'CLAIM_NOT_AUTHORIZED',
+      reasonCode: 'A01_AGGREGATE_MATRIX_PREINVOCATION_GATE_FAILED',
+      invocationState: 'NOT_ATTEMPTED',
+      retryAllowed: true,
+    };
+  }
+
+  return status?.state === 'INCONCLUSIVE' || status?.state === 'REPORT_WRITTEN'
+    ? {
+        state: status.state,
+        reasonCode: 'A01_AGGREGATE_MATRIX_PREINVOCATION_GATE_FAILED',
+        invocationState: 'UNKNOWN',
+        retryAllowed: false,
+      }
+    : { state: 'UNCERTAIN', retryAllowed: false };
+}
+
+function writeClaimRecoveryOutcome(deps, outcome) {
+  const terminal = outcome.state === 'INCONCLUSIVE' || outcome.state === 'REPORT_WRITTEN';
+  deps.writeOutput(
+    `${JSON.stringify({
+      passed: false,
+      state: terminal
+        ? outcome.state
+        : outcome.state === 'CLAIM_NOT_AUTHORIZED'
+          ? outcome.state
+          : 'RESULT_PERSISTENCE_UNCERTAIN',
+      profileId: PROFILE.id,
+      reasonCode: outcome.reasonCode ?? 'A01_AGGREGATE_MATRIX_CLAIM_READBACK_FAILED',
+      invocationState: outcome.invocationState ?? 'UNKNOWN',
+      retryAllowed: outcome.retryAllowed === true,
+    })}\n`,
+  );
+  return terminal ? 1 : outcome.state === 'CLAIM_NOT_AUTHORIZED' ? 1 : 2;
+}
+
 function runA01AggregateCohortOfflineAgentMcpWithDependencies({
   prNumber,
   dependencies = {},
@@ -640,6 +748,7 @@ function runA01AggregateCohortOfflineAgentMcpWithDependencies({
     claimProfile,
     recoverClaim,
     durableClaimStatus,
+    reconcileAmbiguousLatch,
     invokeCodex,
     persistResult,
     terminalResult,
@@ -652,6 +761,18 @@ function runA01AggregateCohortOfflineAgentMcpWithDependencies({
   const candidateSha = deps.gitText(['rev-parse', 'HEAD']);
   if (!/^[0-9a-f]{40}$/u.test(candidateSha) || deps.reportExists(REPORT_PATH)) {
     throw new Error('A01 aggregate matrix Candidate/report is invalid; refusing to run or retry.');
+  }
+  const startupProfileStatus = deps.durableClaimStatus(prNumber);
+  if (['AMBIGUOUS', 'AMBIGUOUS_TERMINAL_LATCH'].includes(startupProfileStatus?.state)) {
+    return writeClaimRecoveryOutcome(
+      deps,
+      reconcileClaimCommandFailure(deps, {
+        prNumber,
+        gate: null,
+        bundleSha256: null,
+        keyPair: null,
+      }),
+    );
   }
   const initialGate = deps.assertCurrentGate(prNumber, candidateSha);
   const codexCliVersion = deps.codexVersion();
@@ -710,6 +831,17 @@ function runA01AggregateCohortOfflineAgentMcpWithDependencies({
         claim = deps.recoverClaim(currentGate, bundleSha256, keyPair, confirmedClaimId);
       } catch {
         claim = null;
+      }
+      if (!claim && !confirmedClaimId) {
+        return writeClaimRecoveryOutcome(
+          deps,
+          reconcileClaimCommandFailure(deps, {
+            prNumber,
+            gate: currentGate,
+            bundleSha256,
+            keyPair,
+          }),
+        );
       }
       if (!claim && confirmedClaimId) {
         let candidateBundleCurrent = false;

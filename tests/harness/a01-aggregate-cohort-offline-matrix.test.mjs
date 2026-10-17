@@ -317,6 +317,7 @@ test('confirmed claim readback failure terminalizes without invoking Codex', () 
   let codexInvocations = 0;
   const terminalResults = [];
   let output = '';
+  let durableStatusReads = 0;
   const exitCode = runA01AggregateCohortOfflineAgentMcpForTest({
     prNumber: 218,
     dependencies: {
@@ -341,7 +342,10 @@ test('confirmed claim readback failure terminalizes without invoking Codex', () 
         readbackAttempts += 1;
         return null;
       },
-      durableClaimStatus: () => null,
+      durableClaimStatus() {
+        durableStatusReads += 1;
+        return durableStatusReads === 1 ? { state: 'UNCLAIMED' } : null;
+      },
       invokeCodex() {
         codexInvocations += 1;
         throw new Error('Codex must not be invoked before claim readback.');
@@ -372,10 +376,132 @@ test('confirmed claim readback failure terminalizes without invoking Codex', () 
   assert.equal(JSON.parse(output).retryAllowed, false);
 });
 
+test('lost claim response with a failed first readback reconciles an ambiguous latch without retry or invocation', () => {
+  let claimAttempts = 0;
+  let readbackAttempts = 0;
+  let latchStatusReads = 0;
+  let reconciliationAttempts = 0;
+  let codexInvocations = 0;
+  let output = '';
+  const exitCode = runA01AggregateCohortOfflineAgentMcpForTest({
+    prNumber: 218,
+    dependencies: {
+      gitText(args) {
+        return args[0] === 'status' ? '' : candidateSha;
+      },
+      reportExists: () => false,
+      assertCurrentGate: () => ({
+        candidateSha,
+        baseSha: 'c'.repeat(40),
+        reviewerId: 'gpt-6-luna-max-run95-pr218-round1',
+        prNumber: 218,
+      }),
+      durableClaimStatus() {
+        latchStatusReads += 1;
+        return { state: latchStatusReads === 1 ? 'UNCLAIMED' : 'AMBIGUOUS' };
+      },
+      reconcileAmbiguousLatch(prNumber) {
+        reconciliationAttempts += 1;
+        assert.equal(prNumber, 218);
+        return {
+          state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
+          profileId: A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+          resultState: 'INCONCLUSIVE',
+          retryAllowed: false,
+        };
+      },
+      codexVersion: () => '1.2.14',
+      buildExactCandidateBundle: () => bundleSha256,
+      currentCandidateBundleMatches: () => true,
+      claimProfile() {
+        claimAttempts += 1;
+        throw new Error('Harness claim response lost after latch acquisition');
+      },
+      recoverClaim() {
+        readbackAttempts += 1;
+        throw new Error('first status readback unavailable');
+      },
+      invokeCodex() {
+        codexInvocations += 1;
+        throw new Error('Codex must not run after an ambiguous claim response.');
+      },
+      writeOutput(value) {
+        output += value;
+      },
+    },
+  });
+
+  assert.equal(claimAttempts, 1);
+  assert.equal(readbackAttempts, 1);
+  assert.equal(latchStatusReads, 2);
+  assert.equal(reconciliationAttempts, 1);
+  assert.equal(codexInvocations, 0);
+  assert.equal(exitCode, 1);
+  assert.deepEqual(JSON.parse(output), {
+    passed: false,
+    state: 'INCONCLUSIVE',
+    profileId: A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+    reasonCode: 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
+    invocationState: 'UNKNOWN',
+    retryAllowed: false,
+  });
+});
+
+test('startup reconciles an ambiguous A01 latch before the initial candidate gate', () => {
+  let candidateGateChecks = 0;
+  let claimAttempts = 0;
+  let reconciliationAttempts = 0;
+  let codexInvocations = 0;
+  let output = '';
+  const exitCode = runA01AggregateCohortOfflineAgentMcpForTest({
+    prNumber: 218,
+    dependencies: {
+      gitText(args) {
+        return args[0] === 'status' ? '' : candidateSha;
+      },
+      reportExists: () => false,
+      durableClaimStatus: () => ({ state: 'AMBIGUOUS' }),
+      reconcileAmbiguousLatch() {
+        reconciliationAttempts += 1;
+        return {
+          state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
+          profileId: A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+          resultState: 'INCONCLUSIVE',
+          retryAllowed: false,
+        };
+      },
+      assertCurrentGate() {
+        candidateGateChecks += 1;
+        throw new Error('Candidate gate must not run after finding an ambiguous latch.');
+      },
+      claimProfile() {
+        claimAttempts += 1;
+        throw new Error('The profile may not be claimed again.');
+      },
+      invokeCodex() {
+        codexInvocations += 1;
+        throw new Error('Codex must not be invoked during ambiguous-latch recovery.');
+      },
+      writeOutput(value) {
+        output += value;
+      },
+    },
+  });
+
+  assert.equal(candidateGateChecks, 0);
+  assert.equal(claimAttempts, 0);
+  assert.equal(reconciliationAttempts, 1);
+  assert.equal(codexInvocations, 0);
+  assert.equal(exitCode, 1);
+  assert.equal(JSON.parse(output).state, 'INCONCLUSIVE');
+  assert.equal(JSON.parse(output).retryAllowed, false);
+});
+
 test('recovered claim readback failure before Codex terminalizes without invoking Codex', () => {
   const confirmedClaimId = `profile-run-95-pr-218-${candidateSha.slice(0, 12)}-124`;
   const reviewerId = 'gpt-6-luna-max-run95-pr218-round1';
   let gateChecks = 0;
+  let durableStatusReads = 0;
   let codexInvocations = 0;
   const terminalResults = [];
   let output = '';
@@ -407,6 +533,8 @@ test('recovered claim readback failure before Codex terminalizes without invokin
       },
       recoverClaim: () => null,
       durableClaimStatus() {
+        durableStatusReads += 1;
+        if (durableStatusReads === 1) return { state: 'UNCLAIMED' };
         throw new Error('durable profile readback unavailable');
       },
       invokeCodex() {
