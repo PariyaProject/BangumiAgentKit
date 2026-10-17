@@ -277,6 +277,7 @@ const G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
   'tests/harness/g09-public-watch-order-evidence.test.mjs',
   'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
   'tests/harness/public-probe-coverage.test.mjs',
+  'tests/integration/tool-e2e-acceptance.test.ts',
 ]);
 const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'p06-render-person-profile-offline-agent-mcp-v1',

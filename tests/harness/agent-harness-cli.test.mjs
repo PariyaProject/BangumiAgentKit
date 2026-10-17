@@ -3359,6 +3359,7 @@ function g06V2ReportRefreshEnvironment(disposition, overrides = {}, epochOverrid
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
     'tests/harness/public-probe-coverage.test.mjs',
+    'tests/integration/tool-e2e-acceptance.test.ts',
   ];
   const ciRunId = '39077898683';
   const ciRunUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
@@ -6916,6 +6917,7 @@ test('G06 v2 merge gate permits its exact verifier refresh and rejects runtime c
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
     'tests/harness/public-probe-coverage.test.mjs',
+    'tests/integration/tool-e2e-acceptance.test.ts',
   ];
   const acceptedScope = g06CastOfflineMergeEnvironment({
     terminal: true,

@@ -8431,6 +8431,7 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
             'tests/harness/g09-public-watch-order-evidence.test.mjs',
             'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
             'tests/harness/public-probe-coverage.test.mjs',
+            'tests/integration/tool-e2e-acceptance.test.ts',
         })
         self.assertTrue(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
             base_paths | verifier_paths,
@@ -8491,6 +8492,20 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         self.assertTrue(GENERATOR.codex_g06_cast_offline_profile_candidate_binding_is_valid(
             report, epoch_status, paths, 'c' * 64,
         ))
+        with (
+            patch.object(
+                GENERATOR,
+                '_codex_g06_cast_offline_report_candidate_paths',
+                return_value=paths,
+            ) as candidate_paths,
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
+        ):
+            self.assertTrue(
+                GENERATOR.codex_g06_cast_offline_profile_report_candidate_binding_is_current(
+                    report, epoch_status,
+                ),
+            )
+            candidate_paths.assert_called_once_with(source_revision, current_head)
 
         epoch_status['epoch']['state']['candidate_sha'] = 'd' * 40
         self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_candidate_binding_is_valid(

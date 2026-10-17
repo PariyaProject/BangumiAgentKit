@@ -356,7 +356,8 @@ the G06-specific acceptance verifier, its tests, and this Harness documentation:
 isolation regressions in `tests/harness/g01-public-query-render-evidence.test.mjs`,
 `tests/harness/g09-public-watch-order-evidence.test.mjs`,
 `tests/harness/g09-public-watch-order-render-evidence.test.mjs`, and
-`tests/harness/public-probe-coverage.test.mjs`. Both Harness and the acceptance
+`tests/harness/public-probe-coverage.test.mjs`, plus
+`tests/integration/tool-e2e-acceptance.test.ts`. Both Harness and the acceptance
 generator enforce that exact G06 v2-only file set; tool runtime, MCP sources,
 profile registry, or unrelated paths remain outside the refresh. The report
 credits one Agent/MCP matrix cell only and leaves G06 `PARTIAL`.

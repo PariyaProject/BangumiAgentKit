@@ -2953,6 +2953,7 @@ CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = {
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
     'tests/harness/public-probe-coverage.test.mjs',
+    'tests/integration/tool-e2e-acceptance.test.ts',
 }
 CODEX_G06_CAST_OFFLINE_PROFILE_IDS = (
     CODEX_G06_CAST_OFFLINE_PROFILE_ID,
@@ -14788,11 +14789,19 @@ def _codex_g06_cast_offline_report_candidate_paths(
 def codex_g06_cast_offline_profile_report_candidate_binding_is_current(
     report: dict[str, object], epoch_status: object,
 ) -> bool:
+    profile = codex_g06_cast_offline_profile_spec(report.get('profileId'))
+    if profile is None:
+        return False
     candidate = None
     if isinstance(epoch_status, dict):
         epoch_result = epoch_status.get('epoch')
         epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
-        candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
+        if isinstance(epoch_result, dict) and isinstance(epoch, dict):
+            candidate = (
+                epoch_result.get('pr_head_sha')
+                if profile['id'] == CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID
+                else epoch.get('candidate_sha')
+            )
     paths = _codex_g06_cast_offline_report_candidate_paths(report.get('sourceRevision'), candidate)
     try:
         bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
