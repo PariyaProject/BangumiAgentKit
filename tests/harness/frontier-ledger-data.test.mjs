@@ -368,11 +368,12 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
 
   const s05 = ledger.records.find(({ id }) => id === 'S05');
   assert.ok(s05, 'S05 must remain in the canonical frontier');
-  assert.deepEqual(s05.source_refs, ['docs/research/user-scenario-catalog.md']);
-  assert.equal(
-    s05.next_action,
-    'Assess current capability coverage, bounded scope salvage, and direct evidence.',
-  );
+  assert.deepEqual(s05.source_refs, [
+    'docs/research/user-scenario-catalog.md',
+    'docs/research/run95-s05-six-month-non-tv-source-contract-2026-10-17.md',
+  ]);
+  assert.match(s05.next_action, /S05 remains UNASSESSED until the exact one-shot report is accepted/u);
+  assert.match(s05.next_action, /cannot establish that all recent voice work was non-TV/u);
   assert.doesNotMatch(s05.next_action, /R02/u);
   assert.equal(
     s05.source_refs.some((source) => source.includes('r02-positive-direct-relations')),

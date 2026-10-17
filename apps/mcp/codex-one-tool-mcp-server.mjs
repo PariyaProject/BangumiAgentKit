@@ -125,6 +125,7 @@ function createTitleQueryRenderOfflineAssetResolver() {
 }
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const P07_PERSON_SEASON_PROFILE_ID = 'p07-person-season-distribution-agent-mcp-v1';
+const S05_NON_TV_VOICE_PROFILE_ID = 's05-bounded-non-tv-voice-agent-mcp-v1';
 
 class MemoryArtifactStore {
   constructor() {
@@ -694,6 +695,29 @@ async function main(argv = process.argv.slice(2)) {
           const text = JSON.stringify(safeProjection);
           return {
             content: [{ type: 'text', text }],
+            structuredContent: safeProjection,
+          };
+        }
+        if (config.profile?.id === S05_NON_TV_VOICE_PROFILE_ID) {
+          const safeProjection = summary.results[sequenceIndex]?.resultSummary;
+          if (!safeProjection) {
+            summary = {
+              ...summary,
+              serverResultStatus: 'ERROR',
+              results: [
+                { sequenceIndex, status: 'ERROR', errorCode: 'S05_POSITIVE_SUMMARY_UNAVAILABLE' },
+              ],
+            };
+            persistSummary();
+            return {
+              content: [
+                { type: 'text', text: 'S05 positive non-TV sample summary is unavailable.' },
+              ],
+              isError: true,
+            };
+          }
+          return {
+            content: [{ type: 'text', text: JSON.stringify(safeProjection) }],
             structuredContent: safeProjection,
           };
         }

@@ -92,7 +92,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 19);
+  assert.equal(listAgentMcpProfiles().length, 20);
   const c07RenderComparison = getAgentMcpProfileById(
     'c07-render-comparison-offline-agent-mcp-matrix-v1',
   );
@@ -176,6 +176,30 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(p07.calls[0].arguments.kind, 'staff');
   assert.equal(p07.calls[0].arguments.media, 'anime');
   assert.equal(p07.calls[0].arguments.maxRows, 8);
+  const s05 = getAgentMcpProfileById('s05-bounded-non-tv-voice-agent-mcp-v1');
+  assert.ok(s05);
+  assert.equal(s05.frontierId, 'S05');
+  assert.equal(s05.epochId, 'run95-s05-bounded-non-tv-voice-agent-mcp-20261017');
+  assert.equal(s05.toolName, 'bangumi.get_person_activity');
+  assert.deepEqual(s05.calls, [
+    {
+      toolName: 'bangumi.get_person_activity',
+      arguments: {
+        personId: 3474,
+        kind: 'voice',
+        media: 'anime',
+        windowMonths: 6,
+        maxRelations: 48,
+        maxSubjectDetails: 16,
+        maxRows: 8,
+      },
+    },
+  ]);
+  assert.notDeepEqual(s05.calls, p07.calls);
+  assert.ok(s05.claimLabelName.length <= 50);
+  assert.ok(agentMcpProfileTerminalLabelName(s05).length <= 50);
+  assert.match(agentMcpProfileArgumentsSha256(s05), /^[0-9a-f]{64}$/u);
+  assert.match(agentMcpProfileRegistrySha256(s05.id), /^[0-9a-f]{64}$/u);
   const r05 = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
   assert.ok(r05);
   assert.equal(r05.frontierId, 'R05');
@@ -521,6 +545,28 @@ test('profile failure diagnostics keep only bounded allowlisted checks and count
     checks: { answerValid: true, eventStreamParsed: false },
     counters: { codexErrorItems: 0, nonMcpToolEvents: 3 },
   });
+  for (const reasonCode of [
+    'S05_AGENT_MCP_ASSERTION_FAILED',
+    'S05_ACTIVE_GATE_CHANGED_DURING_QUERY',
+    'S05_CLAIM_READBACK_MISMATCH',
+    'S05_PREINVOKE_GATE_MISMATCH',
+    'S05_REPORT_FIELDS_INVALID',
+    'S05_REPORT_IDENTITY_INVALID',
+    'S05_REPORT_RESULT_SUMMARY_INVALID',
+    'S05_REPORT_ALREADY_EXISTS_OR_UNWRITABLE',
+    'S05_ANSWER_CHECKS_FAILED',
+    'S05_RUNNER_FAILED_AFTER_CLAIM',
+  ]) {
+    assert.equal(
+      normalizeAgentMcpProfileDiagnostics({
+        schemaVersion: 1,
+        reasonCode,
+        checks: { resultProjectionValid: false },
+        counters: {},
+      }).reasonCode,
+      reasonCode,
+    );
+  }
   assert.equal(
     normalizeAgentMcpProfileDiagnostics({
       schemaVersion: 1,

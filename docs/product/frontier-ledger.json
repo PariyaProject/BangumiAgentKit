@@ -2539,8 +2539,11 @@
       "user_question": "某声优最近半年有没有只参与非 TV 媒介？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-s05-six-month-non-tv-source-contract-2026-10-17.md"
+      ],
+      "next_action": "The first-party contract supports only a positive bounded variant: report an observed anime voice credit whose listed platform is explicitly classified as non-TV in the six-calendar-month sample. Person ID 3474 is the fixed voice-profile input already used by S02 and P05; the S05 call uses kind=voice, media=anime, windowMonths=6, maxRelations=48, maxSubjectDetails=16, maxRows=8. S05 remains UNASSESSED until the exact one-shot report is accepted. A bounded sample cannot establish that all recent voice work was non-TV; no match, unknown platform, or partial coverage must not be turned into a negative conclusion. The profile is selected in Run #95 Epoch run95-s05-bounded-non-tv-voice-agent-mcp-20261017 and has not been claimed or run. Keep any accepted positive result PARTIAL and preserve the source-completeness caveat. See docs/research/run95-s05-six-month-non-tv-source-contract-2026-10-17.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

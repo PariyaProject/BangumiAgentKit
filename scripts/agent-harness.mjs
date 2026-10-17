@@ -150,6 +150,7 @@ import { validateC01SanitizedReportFile } from './acceptance/write-c01-rating-co
 import { validateC03SanitizedReportFile } from './acceptance/write-c03-profile-report.mjs';
 import { validateP03SanitizedReportFile } from './acceptance/write-p03-person-name-cn-report.mjs';
 import { validateP07SanitizedReportFile } from './acceptance/write-p07-person-season-report.mjs';
+import { validateS05SanitizedReportFile } from './acceptance/write-s05-person-activity-report.mjs';
 import { validateR05SanitizedReportFile } from './acceptance/write-r05-shared-person-overlap-report.mjs';
 import { validateP06SanitizedReportFile } from './acceptance/write-p06-render-person-profile-agent-mcp-report.mjs';
 import { validateC07RenderComparisonOfflineSanitizedReportFile } from './acceptance/write-c07-render-comparison-offline-agent-mcp-report.mjs';
@@ -3821,6 +3822,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateP03SanitizedReportFile(claim, root, reportPath);
     case 'p07-person-season-distribution-agent-mcp-v1':
       return validateP07SanitizedReportFile(claim, root, reportPath);
+    case 's05-bounded-non-tv-voice-agent-mcp-v1':
+      return validateS05SanitizedReportFile(claim, root, reportPath);
     case 'r05-k-on-season-shared-person-v1':
       return validateR05SanitizedReportFile(claim, root, reportPath);
     case 'c03-voice-actor-comparison-v1':

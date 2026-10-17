@@ -3249,6 +3249,46 @@ CODEX_P07_RECEIPT_PAYLOAD_FIELDS = {
     'eventStreamSha256', 'serverSummarySha256', 'answerSha256', 'answerChecksSha256',
     'resultSummarySha256',
 }
+CODEX_S05_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 's05-bounded-non-tv-voice-agent-mcp-v1'
+)
+CODEX_S05_PROFILE_ID = CODEX_S05_PROFILE['id']
+CODEX_S05_EPOCH_ID = CODEX_S05_PROFILE['epochId']
+CODEX_S05_TOOL_NAME = CODEX_S05_PROFILE['toolName']
+CODEX_S05_ARGUMENT_PROFILE = CODEX_S05_PROFILE['argumentProfile']
+CODEX_S05_EXPECTED_CALLS = CODEX_S05_PROFILE['calls']
+CODEX_S05_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_S05_EXPECTED_CALLS],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_S05_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_S05_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_S05_REPORT_RELATIVE_PATH = CODEX_S05_PROFILE['reportPath']
+CODEX_S05_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_S05_PROFILE['selectionEvidencePath']
+CODEX_S05_EVIDENCE_KIND = CODEX_S05_PROFILE['evidenceKind']
+CODEX_S05_ANSWER_CHECK_METHOD = CODEX_S05_PROFILE['answerCheckMethod']
+CODEX_S05_EVIDENCE_REFRESH_PATHS = {
+    CODEX_S05_REPORT_RELATIVE_PATH,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+}
+CODEX_S05_REPORT_FIELDS = set(CODEX_P07_REPORT_FIELDS)
+CODEX_S05_ANSWER_CHECK_FIELDS = {
+    'validJsonShape', 'validSourceSummary', 'exactBoundedObservation',
+    'positiveNonTvEvidence', 'noExclusivityClaim', 'noCareerCompletenessClaim',
+    'exactWindowAndCoverage', 'fixedCaveat', 'noIdentityOrRawRows',
+}
+CODEX_S05_PRIVACY_FIELDS = set(CODEX_P07_PRIVACY_FIELDS)
+CODEX_S05_RECEIPT_FIELDS = set(CODEX_P07_RECEIPT_FIELDS)
+CODEX_S05_RECEIPT_PAYLOAD_FIELDS = set(CODEX_P07_RECEIPT_PAYLOAD_FIELDS)
+
 CODEX_G06_EXPECTED_ARGUMENTS = {'subjectId': 218707, 'limit': 100}
 CODEX_G06_REPORT_RELATIVE_PATH = 'docs/live-probes/g06-subject-cast-agent-mcp-run95.json'
 CODEX_D07_EXPECTED_YEARS = tuple(range(2016, 2026))
@@ -5828,6 +5868,86 @@ CODEX_P07_PROFILE_IMPLEMENTATION_MARKERS = {
         'CODEX_P07_REPORT_RELATIVE_PATH',
     ),
 }
+CODEX_S05_PROFILE_IMPLEMENTATION_MARKERS = {
+    'docs/research/run95-s05-six-month-non-tv-source-contract-2026-10-17.md': (
+        'positive-only anime variant',
+        'No qualifying row, an unknown platform, or partial coverage',
+        'Keep S05 **UNASSESSED** and add no acceptance credit.',
+    ),
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "s05-bounded-non-tv-voice-agent-mcp-v1"',
+        '"argumentProfile": "fixed-s05-person-3474-voice-anime-6m-48r-16d-8rows-v1"',
+        '"reportPath": "docs/live-probes/s05-bounded-non-tv-voice-agent-mcp-run95.json"',
+    ),
+    'scripts/lib/s05-person-activity-evidence.mjs': (
+        'export function summarizeS05PersonActivityToolResult(',
+        'export function validateS05PersonActivitySummary(',
+        'export function verifyS05PersonActivityAnswer(',
+        "conclusion: 'positive_non_tv_observation_in_bounded_sample'",
+    ),
+    'scripts/lib/s05-person-activity-evidence.d.mts': (
+        'export const S05_EXPECTED_ARGUMENTS:',
+        'export function validateS05PersonActivitySummary(',
+    ),
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        'S05_PROFILE_ID,',
+        'summarizeS05PersonActivityToolResult,',
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        "const S05_NON_TV_VOICE_PROFILE_ID = 's05-bounded-non-tv-voice-agent-mcp-v1'",
+        'S05_POSITIVE_SUMMARY_UNAVAILABLE',
+        'structuredContent: safeProjection,',
+    ),
+    'scripts/acceptance/run-s05-person-activity-agent-mcp.mjs': (
+        'export function validateS05RunnerArgs(',
+        'export function assertS05CandidateReviewGate(',
+        'export function buildS05CodexExecArgs(',
+        'export function validateS05ServerSummary(',
+        "const SERVER_ID = 'bgk_s05_non_tv_voice'",
+        "'features.shell_tool=false'",
+        "'features.multi_agent=false'",
+    ),
+    'scripts/acceptance/write-s05-person-activity-report.mjs': (
+        'export function buildS05RunnerReceiptPayload(',
+        'export function validateS05ProfileReport(',
+        'export function validateS05SanitizedReportFile(',
+        "openSync(reportPath, 'wx', 0o600)",
+    ),
+    'scripts/acceptance/validate-s05-person-activity-report.mjs': (
+        'validateS05ProfileReport(',
+    ),
+    'scripts/agent-harness.mjs': (
+        "case 's05-bounded-non-tv-voice-agent-mcp-v1'",
+        'validateS05SanitizedReportFile(',
+    ),
+    'docs/product/frontier-ledger.json': (
+        'S05 remains UNASSESSED until the exact one-shot report is accepted.',
+        'A bounded sample cannot establish that all recent voice work was non-TV.',
+    ),
+    'tests/unit/s05-person-activity-evidence.test.ts': (
+        "describe('S05 positive non-TV activity evidence'",
+        'rejects zero positive evidence rather than turning it into a negative conclusion',
+    ),
+    'tests/harness/run-s05-person-activity-agent-mcp.test.mjs': (
+        'S05 Codex config is ephemeral/read-only and exposes exactly the fixed MCP tool',
+        'S05 profile summary dispatch drops raw titles and returned subject IDs',
+    ),
+    'tests/harness/write-s05-person-activity-report.test.mjs': (
+        'S05 report stores only a signed sanitized result summary bound to the one-shot claim',
+        'S05 report writer rejects a universal non-TV exclusivity claim',
+    ),
+    'scripts/test_acceptance_evidence.py': (
+        'class S05ProfileEvidenceTests(unittest.TestCase):',
+        'def test_s05_partial_credit_requires_positive_report_reference(self):',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_s05_profile_report_is_valid(',
+        'def codex_s05_profile_report_matches_candidate_revision(',
+        'def codex_s05_frontier_is_partial(',
+        'CODEX_S05_REPORT_RELATIVE_PATH',
+    ),
+}
+
 CODEX_G06_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/g06-subject-cast-answer-check.mjs': (
         'export const G06_EXPECTED_QUERY_ARGUMENTS',
@@ -15693,6 +15813,399 @@ def codex_p07_profile_report_is_valid(
     return result.get('passed') is True and result.get('reportSha256') == report_sha256
 
 
+
+def codex_s05_profile_revision_has_implementation(revision: object) -> bool:
+    """Bind S05 evidence to the exact fixed profile, safe MCP projection, runner, and writer."""
+    if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_S05_PROFILE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
+def codex_s05_profile_report_matches_candidate_revision(
+    report_path: Path, revision: object,
+) -> bool:
+    """Bind the S05 report to the exact pre-query reviewed Candidate commit."""
+    if not codex_s05_profile_revision_has_implementation(revision):
+        return False
+    return _codex_relations_report_matches_candidate_revision(
+        report_path, revision, CODEX_S05_REPORT_RELATIVE_PATH,
+    )
+
+
+def codex_s05_profile_evidence_refresh_paths_are_valid(paths: object) -> bool:
+    return (
+        isinstance(paths, (list, tuple, set, frozenset))
+        and CODEX_S05_REPORT_RELATIVE_PATH in paths
+        and all(isinstance(item, str) and item in CODEX_S05_EVIDENCE_REFRESH_PATHS for item in paths)
+    )
+
+
+def codex_s05_profile_candidate_binding_is_valid(
+    report: object,
+    epoch_status: object,
+    changed_paths: object,
+    current_bundle_sha256: object,
+) -> bool:
+    """Require the report's reviewed Candidate and a narrow evidence-only Candidate refresh."""
+    if not isinstance(report, dict) or not isinstance(epoch_status, dict):
+        return False
+    run = epoch_status.get('run')
+    epoch_result = epoch_status.get('epoch')
+    if not isinstance(run, dict) or not isinstance(epoch_result, dict):
+        return False
+    run_state = run.get('state')
+    epoch = epoch_result.get('state')
+    if not isinstance(run_state, dict) or not isinstance(epoch, dict):
+        return False
+    candidate_sha = epoch.get('candidate_sha')
+    pr_number = report.get('prNumber')
+    branch = epoch.get('branch')
+    reviews = epoch.get('review_history', [])
+    latest_review = reviews[-1] if isinstance(reviews, list) and reviews else None
+    active_pr = (
+        run_state.get('state') == 'EPOCH_ACTIVE'
+        and run_state.get('active_epoch_pr') == pr_number
+        and epoch_result.get('github_state') == 'OPEN'
+        and epoch.get('state') != 'MERGED'
+    )
+    merged_pr = (
+        epoch.get('state') == 'MERGED'
+        and epoch_result.get('github_state') == 'MERGED'
+        and isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == candidate_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+    )
+    source_revision = report.get('sourceRevision')
+    return (
+        type(pr_number) is int
+        and pr_number > 0
+        and run.get('number') == 95
+        and (active_pr or merged_pr)
+        and epoch.get('epoch_id') == CODEX_S05_EPOCH_ID
+        and epoch.get('pr_number') == pr_number
+        and epoch.get('base_branch') == 'master'
+        and isinstance(branch, str)
+        and epoch.get('base_sha') == report.get('baseSha')
+        and epoch_result.get('pr_base_ref_name') == 'master'
+        and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
+        and epoch_result.get('pr_head_ref_name') == branch
+        and epoch_result.get('pr_is_draft') is False
+        and isinstance(candidate_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
+        and epoch_result.get('pr_head_sha') == candidate_sha
+        and isinstance(source_revision, str)
+        and re.fullmatch(r'[0-9a-f]{40}', source_revision) is not None
+        and _run_repository_git(ROOT, 'merge-base', '--is-ancestor', source_revision, candidate_sha).returncode == 0
+        and codex_s05_profile_evidence_refresh_paths_are_valid(changed_paths)
+        and current_bundle_sha256 == report.get('mcpBundleSha256')
+    )
+
+
+def _codex_s05_profile_report_candidate_paths(
+    source_revision: object, candidate_sha: object,
+) -> set[str] | None:
+    if (
+        not isinstance(source_revision, str)
+        or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
+        or not isinstance(candidate_sha, str)
+        or re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is None
+        or _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', source_revision, candidate_sha,
+        ).returncode != 0
+    ):
+        return None
+    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
+    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
+    if diff.returncode != 0 or status.returncode != 0:
+        return None
+    paths = set(diff.stdout.splitlines())
+    for line in status.stdout.splitlines():
+        if len(line) < 4:
+            return None
+        paths.add(line[3:])
+    return paths
+
+
+def codex_s05_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
+    """Read the active Run #95 Epoch, exact Candidate, and linked PR from Harness."""
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                'node', str(ROOT / 'scripts/agent-harness.mjs'), 'status',
+                '--run', '95', '--pr', str(pr_number),
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_s05_profile_harness_status(pr_number: object) -> dict[str, object] | None:
+    """Read the exact S05 one-shot disposition and permanent claim/terminal labels."""
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                'node', str(ROOT / 'scripts/agent-harness.mjs'),
+                'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
+                '--profile-id', CODEX_S05_PROFILE_ID,
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_s05_profile_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+) -> dict[str, object] | None:
+    """Require the exact S05 report bytes to match its durable terminal Harness disposition."""
+    if not isinstance(harness_status, dict):
+        return None
+    receipt = report.get('runnerReceipt')
+    disposition = harness_status.get('disposition')
+    if (
+        harness_status.get('state') != 'REPORT_WRITTEN'
+        or harness_status.get('profile_id') != CODEX_S05_PROFILE_ID
+        or harness_status.get('pr') != report.get('prNumber')
+        or harness_status.get('tool_name') != CODEX_S05_TOOL_NAME
+        or harness_status.get('argument_profile') != CODEX_S05_ARGUMENT_PROFILE
+        or harness_status.get('expected_arguments_sha256') != CODEX_S05_EXPECTED_ARGUMENTS_SHA256
+        or harness_status.get('registry_sha256') != CODEX_S05_PROFILE_REGISTRY_SHA256
+        or harness_status.get('claim_label_present') is not True
+        or harness_status.get('terminal_label_present') is not True
+        or not isinstance(disposition, dict)
+        or not isinstance(receipt, dict)
+        or not isinstance(report_sha256, str)
+        or re.fullmatch(r'[0-9a-f]{64}', report_sha256) is None
+    ):
+        return None
+    expected = {
+        'claimId': report.get('claimId'),
+        'profileId': CODEX_S05_PROFILE_ID,
+        'frontierId': 'S05',
+        'epochId': CODEX_S05_EPOCH_ID,
+        'runNumber': 95,
+        'prNumber': report.get('prNumber'),
+        'state': 'REPORT_WRITTEN',
+        'sourceCandidateSha': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'ciSha': report.get('sourceRevision'),
+        'ciStatus': 'SUCCESS',
+        'reviewerId': report.get('reviewerId'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'registrySha256': CODEX_S05_PROFILE_REGISTRY_SHA256,
+        'toolName': CODEX_S05_TOOL_NAME,
+        'argumentProfile': CODEX_S05_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': CODEX_S05_EXPECTED_ARGUMENTS_SHA256,
+        'reportWritten': True,
+        'reportPath': CODEX_S05_REPORT_RELATIVE_PATH,
+        'reportSha256': report_sha256,
+        'retryAllowed': False,
+        'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
+        'runnerReceiptPublicKeySha256': receipt.get('publicKeySha256'),
+        'runnerReceiptSha256': _canonical_json_sha256(receipt),
+    }
+    if any(disposition.get(key) != value for key, value in expected.items()):
+        return None
+    return disposition
+
+
+def codex_s05_frontier_is_partial(require_report_ref: bool = False) -> bool:
+    """Allow only partial S05 credit for the positive non-TV sample, never full acceptance."""
+    try:
+        frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    records = frontier.get('records') if isinstance(frontier, dict) else None
+    record = next(
+        (item for item in records or [] if isinstance(item, dict) and item.get('id') == 'S05'),
+        None,
+    )
+    source_refs = record.get('source_refs') if isinstance(record, dict) else None
+    return bool(
+        isinstance(record, dict)
+        and record.get('status') == 'PARTIAL'
+        and isinstance(source_refs, list)
+        and CODEX_S05_SELECTION_EVIDENCE_RELATIVE_PATH in source_refs
+        and (not require_report_ref or CODEX_S05_REPORT_RELATIVE_PATH in source_refs)
+    )
+
+
+def codex_s05_profile_report_candidate_binding_is_current(
+    report: dict[str, object], epoch_status: object,
+) -> bool:
+    candidate = None
+    if isinstance(epoch_status, dict):
+        epoch_result = epoch_status.get('epoch')
+        epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
+        candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
+    paths = _codex_s05_profile_report_candidate_paths(report.get('sourceRevision'), candidate)
+    bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
+    return codex_s05_profile_candidate_binding_is_valid(
+        report, epoch_status, paths, bundle_sha256,
+    )
+
+
+def codex_s05_profile_report_is_valid(
+    report: object,
+    harness_status: object = None,
+    report_path: Path | None = None,
+    epoch_status: object = None,
+) -> bool:
+    """Validate the signed S05 report while preserving its partial scenario scope."""
+    if not isinstance(report, dict) or set(report) != CODEX_S05_REPORT_FIELDS:
+        return False
+    path = report_path or (LIVE_PROBE_DIR / Path(CODEX_S05_REPORT_RELATIVE_PATH).name)
+    try:
+        relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+        report_bytes = path.read_bytes()
+    except (OSError, ValueError):
+        return False
+    source_revision = report.get('sourceRevision')
+    pr_number = report.get('prNumber')
+    answer_checks = report.get('answerChecks')
+    privacy = report.get('privacy')
+    if (
+        relative_path != CODEX_S05_REPORT_RELATIVE_PATH
+        or len(report_bytes) > 64 * 1024
+        or type(report.get('schemaVersion')) is not int
+        or report.get('schemaVersion') != 1
+        or report.get('evidenceKind') != CODEX_S05_EVIDENCE_KIND
+        or type(report.get('runNumber')) is not int
+        or report.get('runNumber') != 95
+        or report.get('frontierId') != 'S05'
+        or report.get('scenarioId') != 'S05'
+        or report.get('epochId') != CODEX_S05_EPOCH_ID
+        or report.get('profileId') != CODEX_S05_PROFILE_ID
+        or report.get('profile') != 'codex-luna-max-agent-mcp-profile-v1'
+        or report.get('model') != 'gpt-6-luna'
+        or report.get('reasoningEffort') != 'max'
+        or not isinstance(report.get('reviewerId'), str)
+        or re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', report['reviewerId']) is None
+        or not isinstance(report.get('codexCliVersion'), str)
+        or re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion']) is None
+        or report.get('toolName') != CODEX_S05_TOOL_NAME
+        or report.get('argumentProfile') != CODEX_S05_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != CODEX_S05_EXPECTED_ARGUMENTS_SHA256
+        or report.get('registrySha256') != CODEX_S05_PROFILE_REGISTRY_SHA256
+        or not isinstance(source_revision, str)
+        or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
+        or not codex_s05_profile_revision_has_implementation(source_revision)
+        or not codex_s05_frontier_is_partial(require_report_ref=True)
+        or not isinstance(report.get('baseSha'), str)
+        or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
+        or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', report['baseSha'], source_revision).returncode != 0
+        or report.get('ciSha') != source_revision
+        or report.get('ciStatus') != 'SUCCESS'
+        or type(pr_number) is not int
+        or pr_number < 1
+        or not isinstance(report.get('claimId'), str)
+        or re.fullmatch(rf'profile-run-95-pr-{pr_number}-{source_revision[:12]}-\d+', report['claimId']) is None
+        or report.get('mcpBundleSha256') != codex_g26_candidate_bundle_sha256(source_revision)
+        or report.get('resultStatus') != 'SUCCESS'
+        or type(report.get('processExitCode')) is not int
+        or report.get('processExitCode') != 0
+        or report.get('mcpTextProjectionValid') is not True
+        or report.get('eventStreamParsed') is not True
+        or report.get('turnCompleted') is not True
+        or type(report.get('codexMcpToolEventCount')) is not int
+        or report.get('codexMcpToolEventCount') != 1
+        or type(report.get('codexErrorItemCount')) is not int
+        or report.get('codexErrorItemCount') != 0
+        or type(report.get('nonMcpToolEventCount')) is not int
+        or report.get('nonMcpToolEventCount') != 0
+        or report.get('nonMcpToolTypes') != []
+        or type(report.get('shellToolCallCount')) is not int
+        or report.get('shellToolCallCount') != 0
+        or type(report.get('allowedCallCount')) is not int
+        or report.get('allowedCallCount') != 1
+        or type(report.get('deniedCallCount')) is not int
+        or report.get('deniedCallCount') != 0
+        or report.get('serverToolNames') != [CODEX_S05_TOOL_NAME]
+        or type(report.get('serverToolCount')) is not int
+        or report.get('serverToolCount') != 1
+        or report.get('mcpServerNames') != ['bgk_s05_non_tv_voice']
+        or report.get('answerCheckMethod') != CODEX_S05_ANSWER_CHECK_METHOD
+        or not isinstance(report.get('answerSha256'), str)
+        or re.fullmatch(r'[0-9a-f]{64}', report['answerSha256']) is None
+        or type(report.get('answerUtf8Bytes')) is not int
+        or not 0 < report['answerUtf8Bytes'] <= CODEX_S05_PROFILE['maxAnswerBytes']
+        or not isinstance(answer_checks, dict)
+        or set(answer_checks) != CODEX_S05_ANSWER_CHECK_FIELDS
+        or any(value is not True for value in answer_checks.values())
+        or not isinstance(privacy, dict)
+        or set(privacy) != CODEX_S05_PRIVACY_FIELDS
+        or any(value is not False for value in privacy.values())
+        or _contains_forbidden_codex_content(report)
+    ):
+        return False
+
+    try:
+        catalog_bytes = CATALOG.read_bytes()
+        catalog = json.loads(catalog_bytes)
+        catalog_tool = next(
+            (item for item in catalog if isinstance(item, dict) and item.get('name') == CODEX_S05_TOOL_NAME),
+            None,
+        )
+    except (OSError, ValueError):
+        return False
+    if (
+        not isinstance(catalog_tool, dict)
+        or catalog_tool.get('auth') != 'none'
+        or catalog_tool.get('risk') != 'read'
+        or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+        or report.get('toolDescriptionSha256') != hashlib.sha256(catalog_tool.get('description', '').encode('utf-8')).hexdigest()
+        or report.get('inputSchemaSha256') != _canonical_json_sha256(catalog_tool.get('inputSchema'))
+    ):
+        return False
+
+    report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+    current_epoch_status = epoch_status or codex_s05_profile_epoch_harness_status(pr_number)
+    if not codex_s05_profile_report_candidate_binding_is_current(report, current_epoch_status):
+        return False
+    status = harness_status or codex_s05_profile_harness_status(pr_number)
+    disposition = codex_s05_profile_disposition_matches_report(report, status, report_sha256)
+    if disposition is None:
+        return False
+    validation = subprocess.run(
+        ['node', str(ROOT / 'scripts/acceptance/validate-s05-person-activity-report.mjs')],
+        cwd=ROOT,
+        input=json.dumps({
+            'claim': disposition,
+            'reportBytesBase64': base64.b64encode(report_bytes).decode('ascii'),
+        }),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if validation.returncode != 0:
+        return False
+    try:
+        result = json.loads(validation.stdout)
+    except (TypeError, ValueError):
+        return False
+    return result.get('passed') is True and result.get('reportSha256') == report_sha256
+
+
 def codex_g19_report_is_valid(report: object) -> bool:
     """Validate one exact-Candidate, bounded G19 public Agent/MCP observation."""
     if not isinstance(report, dict) or set(report) != CODEX_G19_REPORT_FIELDS:
@@ -18729,6 +19242,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
         LIVE_PROBE_DIR / CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH.split('/')[-1],
     )
     report_paths.append(LIVE_PROBE_DIR / CODEX_P07_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(LIVE_PROBE_DIR / CODEX_S05_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(
         LIVE_PROBE_DIR / CODEX_TITLE_QUERY_RENDER_REPORT_RELATIVE_PATH.split('/')[-1],
     )
@@ -19074,6 +19588,21 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             source_ref = report_source_ref(path)
             for tool_name in codex_title_query_render_profile_matrix_targets(report):
                 sources.setdefault(tool_name, set()).add(source_ref)
+            continue
+        if report.get('evidenceKind') == CODEX_S05_EVIDENCE_KIND:
+            current_status = codex_s05_profile_harness_status(report.get('prNumber'))
+            current_epoch_status = codex_s05_profile_epoch_harness_status(report.get('prNumber'))
+            if (
+                path.name != Path(CODEX_S05_REPORT_RELATIVE_PATH).name
+                or not codex_s05_profile_report_is_valid(
+                    report, current_status, path, current_epoch_status,
+                )
+                or not codex_s05_profile_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault(CODEX_S05_TOOL_NAME, set()).add(report_source_ref(path))
             continue
         if report.get('evidenceKind') == CODEX_P07_EVIDENCE_KIND:
             current_status = codex_p07_profile_harness_status(report.get('prNumber'))
