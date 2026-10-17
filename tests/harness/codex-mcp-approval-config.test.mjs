@@ -1,32 +1,41 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  codexMcpExactToolApprovalConfig,
+  codexMcpExactToolAccessConfig,
   summarizeCodexErrorItems,
 } from '../../scripts/lib/codex-mcp-approval-config.mjs';
 
-test('Codex MCP approval is scoped to exact enabled tools with quoted dotted names', () => {
+test('Codex MCP approval is server-wide and constrained by the exact enabled-tools allowlist', () => {
   assert.deepEqual(
-    codexMcpExactToolApprovalConfig('bgk_r01_relations', ['bangumi.get_subject_relations']),
-    ['mcp_servers.bgk_r01_relations.tools."bangumi.get_subject_relations".approval_mode="approve"'],
+    codexMcpExactToolAccessConfig('bgk_r01_relations', ['bangumi.get_subject_relations']),
+    [
+      'mcp_servers.bgk_r01_relations.enabled_tools=["bangumi.get_subject_relations"]',
+      'mcp_servers.bgk_r01_relations.default_tools_approval_mode="approve"',
+    ],
   );
   assert.deepEqual(
-    codexMcpExactToolApprovalConfig('bgk_c04', [
+    codexMcpExactToolAccessConfig('bgk_c04', [
       'bangumi.compare_subject_cohorts',
       'bangumi.render_subject_cohort_comparison',
     ]),
     [
-      'mcp_servers.bgk_c04.tools."bangumi.compare_subject_cohorts".approval_mode="approve"',
-      'mcp_servers.bgk_c04.tools."bangumi.render_subject_cohort_comparison".approval_mode="approve"',
+      'mcp_servers.bgk_c04.enabled_tools=["bangumi.compare_subject_cohorts","bangumi.render_subject_cohort_comparison"]',
+      'mcp_servers.bgk_c04.default_tools_approval_mode="approve"',
     ],
+  );
+  assert.equal(
+    codexMcpExactToolAccessConfig('bgk_r01_relations', ['bangumi.get_subject_relations']).some(
+      (setting) => setting.includes('.tools.'),
+    ),
+    false,
   );
 });
 
 test('Codex MCP approval config rejects broad or ambiguous tool sets', () => {
-  assert.throws(() => codexMcpExactToolApprovalConfig('*', ['bangumi.get_subject_relations']));
-  assert.throws(() => codexMcpExactToolApprovalConfig('bgk_r01', ['*']));
+  assert.throws(() => codexMcpExactToolAccessConfig('*', ['bangumi.get_subject_relations']));
+  assert.throws(() => codexMcpExactToolAccessConfig('bgk_r01', ['*']));
   assert.throws(() =>
-    codexMcpExactToolApprovalConfig('bgk_r01', [
+    codexMcpExactToolAccessConfig('bgk_r01', [
       'bangumi.get_subject_relations',
       'bangumi.get_subject_relations',
     ]),

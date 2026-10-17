@@ -53,12 +53,16 @@ test('R02 Codex invocation is strict, ephemeral, read-only, and allows one exact
   assert.equal(args.at(-1).includes(R02_POSITIVE_DIRECT_RELATIONS_ACKNOWLEDGEMENT), true);
   const config = args.filter((value, index) => args[index - 1] === '--config');
   assert.ok(
-    config.includes('mcp_servers.bgk_r02_direct_relations.default_tools_approval_mode="prompt"'),
+    config.includes('mcp_servers.bgk_r02_direct_relations.default_tools_approval_mode="approve"'),
   );
   assert.ok(
     config.includes(
-      'mcp_servers.bgk_r02_direct_relations.tools."bangumi.get_subject_relations".approval_mode="approve"',
+      'mcp_servers.bgk_r02_direct_relations.enabled_tools=["bangumi.get_subject_relations"]',
     ),
+  );
+  assert.equal(
+    config.some((setting) => setting.includes('mcp_servers.bgk_r02_direct_relations.tools.')),
+    false,
   );
   assert.ok(config.includes('features.shell_tool=false'));
   assert.ok(config.includes('features.multi_agent=false'));

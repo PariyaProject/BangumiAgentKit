@@ -247,10 +247,13 @@ test('R03 Codex invocation is ephemeral, read-only, and exposes only the fixed r
     'features.web_search=false',
     `mcp_servers.${SERVER_ID}.required=true`,
     `mcp_servers.${SERVER_ID}.enabled_tools=["${PROFILE.toolName}"]`,
-    `mcp_servers.${SERVER_ID}.default_tools_approval_mode="prompt"`,
-    `mcp_servers.${SERVER_ID}.tools."${PROFILE.toolName}".approval_mode="approve"`,
+    `mcp_servers.${SERVER_ID}.default_tools_approval_mode="approve"`,
   ])
     assert.ok(args.includes(setting), `missing ${setting}`);
+  assert.equal(
+    args.some((setting) => setting.includes(`mcp_servers.${SERVER_ID}.tools.`)),
+    false,
+  );
   assert.equal(
     args
       .at(-1)
