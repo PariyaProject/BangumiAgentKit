@@ -8,6 +8,15 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const probePath = 'docs/live-probes/public-tools-2026-10-08-234356643-30762.json';
 const g19ProbePath = 'docs/live-probes/public-tools-2026-10-11-103934803-2116.json';
 const g19AgentReportPath = 'docs/live-probes/g19-person-origin-agent-mcp-run95.json';
+const g06CastOfflineV2ReportPath = 'docs/live-probes/g06-subject-cast-offline-agent-mcp-run95-v2.json';
+const acceptedAgentReports = new Map([
+  ['bangumi.get_person_activity', g19AgentReportPath],
+  ['bangumi.get_subject_cast', g06CastOfflineV2ReportPath],
+]);
+const acceptedAgentReportKinds = new Map([
+  ['bangumi.get_person_activity', 'codex_g19_person_origin_agent_mcp'],
+  ['bangumi.get_subject_cast', 'codex_cli_g06_subject_cast_offline_agent_mcp_v2'],
+]);
 const expectedTools = [
   'bangumi.get_person_activity',
   'bangumi.get_series_watch_order',
@@ -43,10 +52,14 @@ test('selected public probes do not promote stale evidence to Agent/MCP or clien
     // The evidence-derived matrix may demote a probe when its source or the
     // catalogued tool contract has changed since the report was produced.
     assert.ok(cells[6] === '⬜' || cells[6].startsWith('◐'), `${result.tool} public API status`);
-    if (result.tool === 'bangumi.get_person_activity' && cells[9].startsWith('✅')) {
-      assert.ok(existsSync(path.join(root, g19AgentReportPath)), 'matrix credit requires an accepted G19 Agent/MCP report');
+    if (cells[9].startsWith('✅')) {
+      const reportPath = acceptedAgentReports.get(result.tool);
+      assert.ok(reportPath, `${result.tool} Agent/MCP credit must come from a dedicated report`);
+      assert.ok(existsSync(path.join(root, reportPath)), 'matrix credit requires an accepted Agent/MCP report');
+      const agentReport = JSON.parse(readFileSync(path.join(root, reportPath), 'utf8'));
+      assert.equal(agentReport.evidenceKind, acceptedAgentReportKinds.get(result.tool));
     } else {
-      assert.equal(cells[9], '⬜', `${result.tool} Agent/MCP must remain unchecked when no current report is accepted`);
+      assert.equal(cells[9], '⬜', `${result.tool} Agent/MCP must remain unchecked without a current report`);
     }
     assert.equal(cells[10], '⬜', `${result.tool} QQ must remain pending`);
     assert.equal(cells[11], '⬜', `${result.tool} TIM must remain pending`);

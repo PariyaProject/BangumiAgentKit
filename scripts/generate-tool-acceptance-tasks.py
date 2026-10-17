@@ -2942,6 +2942,18 @@ CODEX_G06_CAST_OFFLINE_V2_EVIDENCE_REFRESH_PATHS = {
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
     'docs/product/frontier-ledger.json',
 }
+CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = {
+    'docs/agent/HARNESS.md',
+    'scripts/check-tool-acceptance-table.py',
+    'scripts/test_acceptance_evidence.py',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/agent-harness.mjs',
+    'tests/harness/agent-harness-cli.test.mjs',
+    'tests/harness/g01-public-query-render-evidence.test.mjs',
+    'tests/harness/g09-public-watch-order-evidence.test.mjs',
+    'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
+    'tests/harness/public-probe-coverage.test.mjs',
+}
 CODEX_G06_CAST_OFFLINE_PROFILE_IDS = (
     CODEX_G06_CAST_OFFLINE_PROFILE_ID,
     CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
@@ -14630,12 +14642,15 @@ def codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
     paths: object, profile_id: object = None,
 ) -> bool:
     profile = codex_g06_cast_offline_profile_spec(profile_id)
+    allowed_paths = set(profile['evidenceRefreshPaths']) if profile is not None else set()
+    if profile_id == CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID:
+        allowed_paths.update(CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS)
     return bool(
         profile is not None
         and isinstance(paths, (list, tuple, set, frozenset))
         and profile['reportPath'] in paths
         and all(
-            isinstance(item, str) and item in profile['evidenceRefreshPaths']
+            isinstance(item, str) and item in allowed_paths
             for item in paths
         )
     )
@@ -14690,7 +14705,13 @@ def codex_g06_cast_offline_profile_candidate_binding_is_valid(
     epoch = epoch_result.get('state')
     if not isinstance(run_state, dict) or not isinstance(epoch, dict):
         return False
-    candidate_sha = epoch.get('candidate_sha')
+    harness_candidate_sha = epoch.get('candidate_sha')
+    # CI can evaluate a pushed refresh before candidate:check persists its new SHA.
+    candidate_sha = (
+        epoch_result.get('pr_head_sha')
+        if profile['id'] == CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID
+        else harness_candidate_sha
+    )
     pr_number = report.get('prNumber')
     branch = epoch.get('branch')
     reviews = epoch.get('review_history', [])
@@ -14726,6 +14747,10 @@ def codex_g06_cast_offline_profile_candidate_binding_is_valid(
         and isinstance(candidate_sha, str)
         and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
         and epoch_result.get('pr_head_sha') == candidate_sha
+        and (
+            profile['id'] != CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID
+            or harness_candidate_sha in {report.get('sourceRevision'), candidate_sha}
+        )
         and isinstance(report.get('sourceRevision'), str)
         and re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision']) is not None
         and codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(

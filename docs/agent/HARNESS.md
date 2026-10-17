@@ -347,6 +347,20 @@ claim and terminal labels, Candidate/Base/CI/reviewer/bundle binding, and the
 digest of the canonical report bytes. Missing, inconclusive, conflicting, or
 unreadable control-plane state leaves the tool uncredited.
 
+The Run #95 G06 v2 synthetic cast matrix report uses the same source-Candidate
+and unchanged-MCP-bundle binding. Its one evidence refresh may also update only
+the G06-specific acceptance verifier, its tests, and this Harness documentation:
+`scripts/check-tool-acceptance-table.py`, `scripts/test_acceptance_evidence.py`,
+`scripts/generate-tool-acceptance-tasks.py`, `scripts/agent-harness.mjs`, and
+`tests/harness/agent-harness-cli.test.mjs`, plus the matrix-count and public-probe
+isolation regressions in `tests/harness/g01-public-query-render-evidence.test.mjs`,
+`tests/harness/g09-public-watch-order-evidence.test.mjs`,
+`tests/harness/g09-public-watch-order-render-evidence.test.mjs`, and
+`tests/harness/public-probe-coverage.test.mjs`. Both Harness and the acceptance
+generator enforce that exact G06 v2-only file set; tool runtime, MCP sources,
+profile registry, or unrelated paths remain outside the refresh. The report
+credits one Agent/MCP matrix cell only and leaves G06 `PARTIAL`.
+
 The runner re-reads the durable claim immediately before invoking Codex and
 again before writing a report. Runner completion and recovery compete for one
 second permanent, create-only terminal label whose description binds the

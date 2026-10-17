@@ -504,6 +504,7 @@
         "docs/live-probes/public-tools-2026-10-13-094144522-15089.json",
         "docs/live-probes/public-tools-2026-10-15-092632892-50913.json",
         "docs/research/run95-g06-subject-cast-offline-agent-mcp-matrix-contract-2026-10-17.md",
+        "docs/live-probes/g06-subject-cast-offline-agent-mcp-run95-v2.json",
         "apps/mcp/src/result-presenter.ts",
         "tests/integration/mcp-result-presenter.test.ts",
         "scripts/acceptance/subject-cast-answer-check.mjs",
@@ -539,7 +540,7 @@
         "tests/harness/agent-harness-cli.test.mjs",
         "docs/research/run95-g06-subject-cast-offline-agent-mcp-matrix-v2-2026-10-18.md"
       ],
-      "next_action": "Never rerun the G06 profile v1 {subjectId:990804,limit:2} or the real-cast scenario {subjectId:218707,limit:100}; both are terminal. The current direct-public get_subject_cast cell is separately covered by docs/live-probes/public-tools-2026-10-15-092632892-50913.json and does not count as Agent/MCP answer acceptance. do not claim a complete cast/CV list. The v2 selection contract is a distinct synthetic offline matrix profile for bangumi.get_subject_cast only; it cannot answer the G06 cast/CV question or establish complete source coverage. Only a fresh Harness UNCLAIMED state, exact active Candidate/Base/seven-check CI/same-identity Luna Max PASS, and a Harness-accepted REPORT_WRITTEN v2 report may credit the Agent/MCP matrix row. Any claimed INCONCLUSIVE result is final/no-retry. Preserve public 65/65 and keep OAuth/account/community/QQ/TIM passive.",
+      "next_action": "Never rerun the G06 profile v1 {subjectId:990804,limit:2} or the real-cast scenario {subjectId:218707,limit:100}; both are terminal. The current direct-public get_subject_cast cell is separately covered by docs/live-probes/public-tools-2026-10-15-092632892-50913.json and does not count as Agent/MCP answer acceptance. do not claim a complete cast/CV list. The v2 selection contract is a distinct synthetic offline matrix-only profile for bangumi.get_subject_cast; it cannot answer the G06 cast/CV question or establish complete source coverage. Its single Run #95 attempt is now Harness REPORT_WRITTEN with signed report sha256 fea032eb233871994ab332ecd91ab2fa95a34c641228f7098aab60fd45092292, bound to source Candidate e619eb6530335ba82b4ded0ecba00953a6b2c94c and CI run 39077898683. Credit only the Agent/MCP matrix row after this bounded G06 v2 acceptance-verifier/report/frontier/table refresh passes exact Candidate CI, same-identity review, and merge; never rerun the claim. Any claimed INCONCLUSIVE result is final/no-retry. Preserve G06 PARTIAL, public 65/65, and keep OAuth/account/community/QQ/TIM passive.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -710,6 +711,18 @@
           "scope": "Agent/MCP matrix only",
           "network": "exact one-request local fixture; no Bangumi request",
           "status_boundary": "selection contract only; adds no scenario or matrix credit unless a separately claimed, signed report is accepted"
+        },
+        "g06_offline_matrix_v2_report": {
+          "profile_id": "g06-cast-offline-agent-mcp-matrix-v2",
+          "report": "docs/live-probes/g06-subject-cast-offline-agent-mcp-run95-v2.json",
+          "report_sha256": "fea032eb233871994ab332ecd91ab2fa95a34c641228f7098aab60fd45092292",
+          "source_candidate_sha": "e619eb6530335ba82b4ded0ecba00953a6b2c94c",
+          "base_sha": "ca3d04f1f77bb594538d79be1303cecd6e431ea2",
+          "ci_run_id": "39077898683",
+          "state": "REPORT_WRITTEN",
+          "retry_allowed": false,
+          "acceptance_scope": "one Agent/MCP matrix cell only; no scenario, public API, OAuth/account, QQ, or TIM credit",
+          "matrix_credit": "pending exact G06 v2 acceptance-verifier/report/frontier/table refresh, exact Candidate CI, same-identity review, and merge"
         }
       }
     },

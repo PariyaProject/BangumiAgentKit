@@ -8320,6 +8320,194 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         )
         self.assertIn('does not contain evidence for bangumi.render_query_subjects', error)
 
+    def write_g06_cast_offline_v2_report(
+        self, relative_path=TABLE_CHECKER.G06_CAST_OFFLINE_V2_REPORT_PATH, **overrides,
+    ):
+        acknowledgement = 'G06_SYNTHETIC_CAST_MATRIX_EXECUTED'
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': TABLE_CHECKER.G06_CAST_OFFLINE_V2_REPORT_KIND,
+            'runNumber': 95,
+            'frontierId': 'G06',
+            'scenarioId': None,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+            'epochId': TABLE_CHECKER.G06_CAST_OFFLINE_V2_EPOCH_ID,
+            'profileId': TABLE_CHECKER.G06_CAST_OFFLINE_V2_PROFILE['id'],
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'toolName': TABLE_CHECKER.G06_CAST_OFFLINE_V2_TOOL_NAME,
+            'argumentProfile': TABLE_CHECKER.G06_CAST_OFFLINE_V2_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': TABLE_CHECKER.G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS_SHA256,
+            'registrySha256': TABLE_CHECKER.G06_CAST_OFFLINE_V2_REGISTRY_SHA256,
+            'serverToolNames': [TABLE_CHECKER.G06_CAST_OFFLINE_V2_TOOL_NAME],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_g06_cast_offline_profile'],
+            'resultStatus': 'SUCCESS',
+            'processExitCode': 0,
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'networkMode': TABLE_CHECKER.G06_CAST_OFFLINE_V2_NETWORK_MODE,
+            'sourceRevision': 'e' * 40,
+            'baseSha': 'a' * 40,
+            'ciSha': 'e' * 40,
+            'ciStatus': 'SUCCESS',
+            'ciRunId': '39077898683',
+            'ciChecks': [
+                {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+                for name in TABLE_CHECKER.G06_CAST_OFFLINE_V2_REQUIRED_CI_CHECKS
+            ],
+            'prNumber': 221,
+            'claimId': f'profile-run-95-pr-221-{"e" * 12}-1234567890',
+            'mcpBundleSha256': 'f' * 64,
+            'answerCheckMethod': TABLE_CHECKER.G06_CAST_OFFLINE_V2_ANSWER_CHECK_METHOD,
+            'answerSha256': hashlib.sha256(acknowledgement.encode()).hexdigest(),
+            'answerUtf8Bytes': len(acknowledgement.encode()),
+            'answerChecks': {
+                field: True for field in TABLE_CHECKER.G06_CAST_OFFLINE_V2_ANSWER_CHECK_FIELDS
+            },
+            'toolResultSummary': TABLE_CHECKER.G06_CAST_OFFLINE_V2_TOOL_RESULT_SUMMARY,
+            'offlineFixture': TABLE_CHECKER.G06_CAST_OFFLINE_V2_FIXTURE,
+            'networkBoundary': TABLE_CHECKER.G06_CAST_OFFLINE_V2_NETWORK_BOUNDARY,
+            'privacy': TABLE_CHECKER.G06_CAST_OFFLINE_V2_PRIVACY,
+            'selectionEvidenceSha256': '1' * 64,
+            'runnerReceipt': {
+                'kind': 'g06-cast-offline-agent-mcp-runner-receipt-v1',
+                'payload': {},
+                'signature': 'synthetic-test-signature',
+            },
+        }
+        report.update(overrides)
+        path = self.root / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(report), encoding='utf-8')
+        return relative_path
+
+    def test_g06_v2_offline_report_maps_only_get_subject_cast_agent_mcp(self):
+        relative_path = self.write_g06_cast_offline_v2_report()
+        cell = f'✅<br>`{relative_path}`'
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_cast', cell, 'agent_mcp',
+        ))
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject', cell, 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject', error)
+        public_error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_cast', f'◐<br>`{relative_path}`', 'public',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_cast', public_error)
+
+    def test_g06_v2_offline_report_rejects_wrong_path_and_fixture(self):
+        wrong_path = self.write_g06_cast_offline_v2_report(
+            'docs/live-probes/copied-g06-v2-report.json',
+        )
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_cast', f'✅<br>`{wrong_path}`', 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_cast', error)
+
+    def test_g06_v2_report_refresh_allows_only_its_acceptance_verifier_files(self):
+        profile = GENERATOR.codex_g06_cast_offline_profile_spec(
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        )
+        base_paths = set(profile['evidenceRefreshPaths'])
+        verifier_paths = GENERATOR.CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS
+        self.assertEqual(verifier_paths, {
+            'docs/agent/HARNESS.md',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/test_acceptance_evidence.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/agent-harness.mjs',
+            'tests/harness/agent-harness-cli.test.mjs',
+            'tests/harness/g01-public-query-render-evidence.test.mjs',
+            'tests/harness/g09-public-watch-order-evidence.test.mjs',
+            'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
+            'tests/harness/public-probe-coverage.test.mjs',
+        })
+        self.assertTrue(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
+            base_paths | verifier_paths,
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        ))
+        self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
+            (base_paths | verifier_paths) | {'apps/mcp/src/tools/subject-cast.ts'},
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        ))
+        self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
+            verifier_paths,
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        ))
+        self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
+            base_paths | verifier_paths,
+            GENERATOR.CODEX_G06_CAST_OFFLINE_PROFILE_ID,
+        ))
+
+    def test_g06_v2_report_refresh_binds_live_pr_head_before_harness_candidate_update(self):
+        profile = GENERATOR.codex_g06_cast_offline_profile_spec(
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        )
+        source_revision = 'e' * 40
+        current_head = 'f' * 40
+        base_sha = 'a' * 40
+        branch = 'codex/epoch-run95-g06-cast-offline-matrix-v2-20261018'
+        report = {
+            'profileId': profile['id'],
+            'prNumber': 221,
+            'sourceRevision': source_revision,
+            'baseSha': base_sha,
+            'mcpBundleSha256': 'c' * 64,
+        }
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 221},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'epoch_id': profile['epochId'],
+                    'pr_number': 221,
+                    'base_branch': 'master',
+                    'base_sha': base_sha,
+                    'candidate_sha': source_revision,
+                    'branch': branch,
+                },
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base_sha,
+                'pr_head_ref_name': branch,
+                'pr_is_draft': False,
+                'pr_head_sha': current_head,
+            },
+        }
+        paths = set(GENERATOR.codex_g06_cast_offline_profile_spec(profile['id'])['evidenceRefreshPaths'])
+        paths.update(GENERATOR.CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS)
+        self.assertTrue(GENERATOR.codex_g06_cast_offline_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, 'c' * 64,
+        ))
+
+        epoch_status['epoch']['state']['candidate_sha'] = 'd' * 40
+        self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, 'c' * 64,
+        ))
+
+        relative_path = self.write_g06_cast_offline_v2_report(
+            offlineFixture={
+                **TABLE_CHECKER.G06_CAST_OFFLINE_V2_FIXTURE,
+                'requestCount': 2,
+            },
+        )
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_cast', f'✅<br>`{relative_path}`', 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_cast', error)
+
     def write_r01_offline_report(
         self, relative_path=TABLE_CHECKER.R01_OFFLINE_REPORT_PATH, **overrides,
     ):
