@@ -295,6 +295,7 @@ export class SubjectRelationsAnalysisService {
     let intermediateRelationRowsObserved = 0;
     let intermediateRelationRowsSelected = 0;
     let intermediateRelationSchemaDriftRows = 0;
+    let stopAfterRateLimit = false;
     const depth2RowsInSourceOrder: SubjectRelationItem[] = [];
     const depth2IdSet = new Set<number>();
     const intermediateSourceRows = new Map<number, SubjectRelationItem[]>();
@@ -346,6 +347,12 @@ export class SubjectRelationsAnalysisService {
         operation.failureCode = failureCode;
         warnings.push(`Intermediate relation request failed (${failureCode}).`);
         addPartialReason(partialReasons, 'intermediate_relation_request_failed');
+        if (failureCode === 'RATE_LIMITED') {
+          stopAfterRateLimit = true;
+          warnings.push('Stopped remaining traversal requests after a rate-limit response.');
+          addPartialReason(partialReasons, 'upstream_rate_limited');
+          break;
+        }
       }
     }
 
@@ -402,9 +409,11 @@ export class SubjectRelationsAnalysisService {
 
     let detailRequestsSucceeded = 0;
     let detailRequestsFailed = 0;
+    let detailRequestsAttempted = 0;
     let usableRatings = 0;
     let missingRatings = 0;
     for (const [candidateId, candidate] of candidates) {
+      if (stopAfterRateLimit) break;
       const operation = recordOperation(
         'GET /v0/subjects/{subject_id}',
         candidateId,
@@ -413,6 +422,7 @@ export class SubjectRelationsAnalysisService {
           0,
         ),
       );
+      detailRequestsAttempted += 1;
       try {
         const subject = await this.subjectService.getSubjectById(candidateId, {
           maxResponseBytes: limits.maxResponseBytesPerRequest,
@@ -439,6 +449,12 @@ export class SubjectRelationsAnalysisService {
         missingRatings += 1;
         warnings.push(`Candidate detail request failed (${failureCode}).`);
         addPartialReason(partialReasons, 'candidate_detail_request_failed');
+        if (failureCode === 'RATE_LIMITED') {
+          stopAfterRateLimit = true;
+          warnings.push('Stopped remaining traversal requests after a rate-limit response.');
+          addPartialReason(partialReasons, 'upstream_rate_limited');
+          break;
+        }
       }
     }
 
@@ -535,7 +551,7 @@ export class SubjectRelationsAnalysisService {
         depth2CandidatesObserved: depth2IdSet.size,
         depth2CandidatesSelected: depth2Ids.length,
         depth2CandidatesOmitted: Math.max(0, depth2IdSet.size - depth2Ids.length),
-        detailRequestsAttempted: candidates.size,
+        detailRequestsAttempted,
         detailRequestsSucceeded,
         detailRequestsFailed,
         usableRatings,
@@ -552,6 +568,7 @@ export class SubjectRelationsAnalysisService {
         '仅表示本次请求实际读取到的出向关系和成功取得评分的条目；官方关系响应无分页、总数或图完整性承诺。',
         '“最高”只指本次有界且成功评分的观察样本；未观察到的反向/隐藏/截断路径可能改变结果。',
         '关系行按来源响应顺序应用本地上限；该顺序不具有官方排序语义。',
+        '重复关系行计数按单个响应统计，只覆盖应用本地行上限后返回的行；不包含被上限裁剪的行或跨响应重复项。',
         '并列项仅表示观察到的数值同分；为稳定展示按条目 ID 排列，不代表官方优先级。',
         '评分来自 subject detail 响应，受官方缓存影响，不构成同步实时快照。',
       ],

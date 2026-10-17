@@ -332,6 +332,122 @@ describe('bangumi.get_subject_relations observed two-hop rating mode', () => {
     expect(result.coverage.partialReasons).toContain('candidate_rating_unavailable');
   });
 
+  it('stops traversal and detail reads when an intermediate relation read exhausts 429 retries', async () => {
+    const urls: string[] = [];
+    const fetchFn: typeof fetch = async (inputUrl) => {
+      const url = String(inputUrl);
+      urls.push(new URL(url).pathname);
+      const relationSubjectId = relationPath(url);
+      if (relationSubjectId === ROOT_ID) return jsonResponse([relation(501), relation(502)]);
+      if (relationSubjectId === 501) return new Response('rate limited', { status: 429 });
+      if (relationSubjectId === 502) return jsonResponse([]);
+      return new Response('unexpected request after rate limit', { status: 404 });
+    };
+
+    const result = (await getTool(fetchFn).execute(
+      { subjectId: ROOT_ID, analysisMode: ANALYSIS_MODE },
+      context,
+    )) as {
+      state: string;
+      ratingAnalysis: { topScore: number | null; topCandidates: unknown[] };
+      coverage: {
+        detailRequestsAttempted: number;
+        partialReasons: string[];
+        requestBudget: { logicalRequestsAttempted: number };
+      };
+      source: { operations: Array<{ status: string; failureCode?: string }> };
+    };
+
+    expect(urls).toEqual([
+      `/v0/subjects/${ROOT_ID}/subjects`,
+      '/v0/subjects/501/subjects',
+      '/v0/subjects/501/subjects',
+      '/v0/subjects/501/subjects',
+    ]);
+    expect(result).toMatchObject({
+      state: 'not_computable',
+      ratingAnalysis: { topScore: null, topCandidates: [] },
+      coverage: {
+        detailRequestsAttempted: 0,
+        partialReasons: expect.arrayContaining([
+          'intermediate_relation_request_failed',
+          'upstream_rate_limited',
+        ]),
+        requestBudget: { logicalRequestsAttempted: 2 },
+      },
+      source: {
+        operations: [{ status: 'succeeded' }, { status: 'failed', failureCode: 'RATE_LIMITED' }],
+      },
+    });
+  });
+
+  it('stops later candidate details when a detail read exhausts 429 retries', async () => {
+    const urls: string[] = [];
+    const fetchFn: typeof fetch = async (inputUrl) => {
+      const url = String(inputUrl);
+      const pathname = new URL(url).pathname;
+      urls.push(pathname);
+      const relationSubjectId = relationPath(url);
+      if (relationSubjectId === ROOT_ID) {
+        return jsonResponse([relation(501), relation(502), relation(503)]);
+      }
+      if (relationSubjectId === 501 || relationSubjectId === 502) return jsonResponse([]);
+      const detailSubjectId = detailPath(url);
+      if (detailSubjectId === 501) return jsonResponse(subject(501, 8.4, 70));
+      if (detailSubjectId === 502) return new Response('rate limited', { status: 429 });
+      return new Response('unexpected request after rate limit', { status: 404 });
+    };
+
+    const result = (await getTool(fetchFn).execute(
+      { subjectId: ROOT_ID, analysisMode: ANALYSIS_MODE },
+      context,
+    )) as {
+      state: string;
+      ratingAnalysis: { topScore: number | null; topCandidates: Array<{ id: number }> };
+      coverage: {
+        detailRequestsAttempted: number;
+        detailRequestsSucceeded: number;
+        detailRequestsFailed: number;
+        partialReasons: string[];
+        requestBudget: { logicalRequestsAttempted: number };
+      };
+      source: { operations: Array<{ status: string; failureCode?: string }> };
+    };
+
+    expect(urls).toEqual([
+      `/v0/subjects/${ROOT_ID}/subjects`,
+      '/v0/subjects/501/subjects',
+      '/v0/subjects/502/subjects',
+      '/v0/subjects/501',
+      '/v0/subjects/502',
+      '/v0/subjects/502',
+      '/v0/subjects/502',
+    ]);
+    expect(result).toMatchObject({
+      state: 'partial',
+      ratingAnalysis: { topScore: 8.4, topCandidates: [{ id: 501 }] },
+      coverage: {
+        detailRequestsAttempted: 2,
+        detailRequestsSucceeded: 1,
+        detailRequestsFailed: 1,
+        partialReasons: expect.arrayContaining([
+          'candidate_detail_request_failed',
+          'upstream_rate_limited',
+        ]),
+        requestBudget: { logicalRequestsAttempted: 5 },
+      },
+      source: {
+        operations: [
+          { status: 'succeeded' },
+          { status: 'succeeded' },
+          { status: 'succeeded' },
+          { status: 'succeeded' },
+          { status: 'failed', failureCode: 'RATE_LIMITED' },
+        ],
+      },
+    });
+  });
+
   it('fails closed on an oversized root response and preserves intermediate/detail failures', async () => {
     const oversizedBody = ' '.repeat(1024 * 1024 + 1);
     const oversizedResponse = () =>
