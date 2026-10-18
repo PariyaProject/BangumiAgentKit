@@ -62,5 +62,5 @@ test('G09 direct-public watch-order evidence stays separate from its consumed Ag
   assert.equal(Number(publicEvidenceSummary[1]), publicEvidenceRows);
   assert.equal(Number(publicEvidenceSummary[1]), 65);
   assert.match(acceptance, /匿名可用的公开 API 工具有逐项实测：65\/65；待补 0/u);
-  assert.match(acceptance, /Agent→MCP 模型调用证据：81\/96/);
+  assert.match(acceptance, /Agent→MCP 模型调用证据：83\/96/);
 });
