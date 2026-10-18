@@ -1,6 +1,6 @@
 # Run #95 C02: bounded TV and theatrical comparison source contract
 
-Status: source-only preparation for the C02 Agent/MCP scenario. No Bangumi API, ToolRegistry, Agent/MCP, account, OAuth, community, QQ, or TIM call has been made. No claim has been created.
+Status as prepared on 2026-10-16: source-only preparation for the C02 Agent/MCP scenario. At that time no Bangumi API, ToolRegistry, Agent/MCP, account, OAuth, community, QQ, or TIM call had been made, and no claim had been created. The later live Run #95 profile disposition is recorded in [the 2026-10-18 terminal-disposition report](run95-c02-profile-terminal-disposition-2026-10-18.md); this source contract is historical preparation, not current claim status.
 
 ## Fixed pair and relationship evidence
 
