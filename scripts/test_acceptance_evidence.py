@@ -10347,6 +10347,194 @@ class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
         }))
 
 
+class R04RenderSeriesWatchOrderV2ProfileReportValidationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='r04-render-v2-profile-evidence-test-')
+        self.root = Path(self.temp_dir.name)
+        self.report_path = self.root / GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH
+        self.report_path.parent.mkdir(parents=True)
+        selection_path = self.root / GENERATOR.CODEX_R04_RENDER_V2_SELECTION_EVIDENCE_RELATIVE_PATH
+        selection_path.parent.mkdir(parents=True)
+        selection_path.write_text(
+            'R04 remains UNASSESSED; synthetic renderer matrix fixture only.\n', encoding='utf-8',
+        )
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier_path.parent.mkdir(parents=True)
+        frontier_path.write_text(json.dumps({
+            'records': [{
+                'id': 'R04',
+                'status': 'UNASSESSED',
+                'source_refs': [
+                    GENERATOR.CODEX_R04_RENDER_V2_SELECTION_EVIDENCE_RELATIVE_PATH,
+                    GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
+                ],
+            }],
+        }), encoding='utf-8')
+        self.catalog_path = self.root / 'docs/tool-catalog.json'
+        self.catalog_path.parent.mkdir(parents=True, exist_ok=True)
+        catalog = json.loads(GENERATOR.CATALOG.read_text(encoding='utf-8'))
+        self.tool = next(
+            item for item in catalog
+            if item.get('name') == GENERATOR.CODEX_R04_RENDER_V2_TOOL_NAME
+        )
+        self.catalog_path.write_text(json.dumps([self.tool]), encoding='utf-8')
+        self.report = self.build_report()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def build_report(self):
+        catalog_bytes = self.catalog_path.read_bytes()
+        selection_bytes = (
+            self.root / GENERATOR.CODEX_R04_RENDER_V2_SELECTION_EVIDENCE_RELATIVE_PATH
+        ).read_bytes()
+        answer = b'R04_RENDER_V2_SYNTHETIC_CARD_READY'
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': GENERATOR.CODEX_R04_RENDER_V2_EVIDENCE_KIND,
+            'runNumber': 95,
+            'frontierId': 'R04',
+            'scenarioId': None,
+            'epochId': GENERATOR.CODEX_R04_RENDER_V2_EPOCH_ID,
+            'profileId': GENERATOR.CODEX_R04_RENDER_V2_PROFILE_ID,
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
+            'codexCliVersion': '0.162.0-alpha.17.2',
+            'observedAt': '2026-10-18T03:00:00.000Z',
+            'sourceRevision': 'a' * 40,
+            'baseSha': 'b' * 40,
+            'ciSha': 'a' * 40,
+            'ciStatus': 'SUCCESS',
+            'ciRunId': '39092463148',
+            'ciChecks': [
+                {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+                for name in GENERATOR.CODEX_R04_REQUIRED_CI_CHECKS
+            ],
+            'prNumber': 222,
+            'claimId': 'profile-run-95-pr-222-aaaaaaaaaaaa-1792200000000',
+            'mcpBundleSha256': 'c' * 64,
+            'registrySha256': GENERATOR.CODEX_R04_RENDER_V2_PROFILE_REGISTRY_SHA256,
+            'selectionEvidenceSha256': hashlib.sha256(selection_bytes).hexdigest(),
+            'toolName': GENERATOR.CODEX_R04_RENDER_V2_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_R04_RENDER_V2_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_R04_RENDER_V2_EXPECTED_ARGUMENTS_SHA256,
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(self.tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(self.tool['inputSchema']),
+            'serverToolNames': [GENERATOR.CODEX_R04_RENDER_V2_TOOL_NAME],
+            'serverToolCount': 1,
+            'networkMode': GENERATOR.CODEX_R04_RENDER_V2_NETWORK_MODE,
+            'mcpServerNames': ['bgk_r04_render_watch_order_v2'],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 0,
+            'mcpToolErrorResultCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'answerCheckMethod': GENERATOR.CODEX_R04_RENDER_V2_ANSWER_CHECK_METHOD,
+            'answerSha256': hashlib.sha256(answer).hexdigest(),
+            'answerUtf8Bytes': len(answer),
+            'answerChecks': {
+                key: True for key in GENERATOR.CODEX_R04_RENDER_V2_ANSWER_CHECK_FIELDS
+            },
+            'resultSummary': {
+                'resultState': 'artifact_returned',
+                'artifact': {
+                    'returned': True,
+                    'persisted': False,
+                    'mimeType': 'image/png',
+                    'width': 720,
+                    'height': 480,
+                    'byteLength': 1024,
+                    'sha256': 'e' * 64,
+                    'pngSignatureValid': True,
+                    'decoded': True,
+                    'dimensionsMatch': True,
+                },
+            },
+            'offlineFixture': {
+                'profile': GENERATOR.CODEX_R04_RENDER_V2_NETWORK_MODE,
+                'requestCount': 2,
+                'subjectRequestCount': 1,
+                'relationsRequestCount': 1,
+                'duplicateRequestCount': 0,
+                'unexpectedRequestCount': 0,
+                'authorizationHeaderCount': 0,
+                'expectedOperationsComplete': True,
+            },
+            'rendererAssetBoundary': {'requestCount': 0},
+            'networkBoundary': {
+                'liveBangumiApiRequestCount': 0,
+                'rendererAssetRequestCount': 0,
+                'fullCodexHarnessNetworkSandboxed': False,
+            },
+            'privacy': {
+                'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+                'writesAttempted': False, 'communityRead': False, 'qqPipelineTested': False,
+                'timClientTested': False, 'promptStored': False, 'answerStored': False,
+                'rawFixtureRowsStored': False, 'rawToolResultStored': False,
+                'artifactImageBytesStored': False, 'credentialsStored': False,
+            },
+            'runnerReceipt': {
+                'schemaVersion': 1,
+                'kind': 'r04-render-series-watch-order-offline-agent-mcp-v2-runner-receipt-v1',
+                'publicKeyBase64': 'AQ==',
+                'publicKeySha256': 'd' * 64,
+                'payload': {
+                    field: None
+                    for field in GENERATOR.CODEX_R04_RENDER_V2_RECEIPT_PAYLOAD_FIELDS
+                },
+                'signature': 'AA==',
+            },
+        }
+
+    def validate_report(self, report):
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        report_bytes = self.report_path.read_bytes()
+
+        def validate_embedded_report(args, **kwargs):
+            payload = json.loads(kwargs['input'])
+            embedded = base64.b64decode(payload['reportBytesBase64'])
+            return subprocess.CompletedProcess(
+                args, 0,
+                json.dumps({'passed': True, 'reportSha256': hashlib.sha256(embedded).hexdigest()}),
+                '',
+            )
+
+        with (
+            patch.object(GENERATOR, 'ROOT', self.root),
+            patch.object(GENERATOR, 'LIVE_PROBE_DIR', self.root / 'docs/live-probes'),
+            patch.object(GENERATOR, 'CATALOG', self.catalog_path),
+            patch.object(GENERATOR, 'codex_r04_render_v2_profile_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
+            patch.object(GENERATOR, 'codex_r04_render_v2_profile_report_candidate_binding_is_current', return_value=True),
+            patch.object(GENERATOR, 'codex_r04_render_v2_profile_disposition_matches_report', return_value={'state': 'REPORT_WRITTEN'}),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+        ):
+            return GENERATOR.codex_r04_render_v2_profile_report_is_valid(
+                report,
+                harness_status={'fixture': True},
+                report_path=self.report_path,
+                epoch_status={'fixture': True},
+            )
+
+    def test_accepts_ephemeral_artifact_in_signed_matrix_report(self):
+        self.assertTrue(self.validate_report(self.report))
+
+    def test_rejects_report_that_claims_artifact_was_persisted(self):
+        persisted_report = json.loads(json.dumps(self.report))
+        persisted_report['resultSummary']['artifact']['persisted'] = True
+        self.assertFalse(self.validate_report(persisted_report))
+
+
 class R01OfflineRelationsProfileReportValidationTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='r01-offline-profile-evidence-test-')

@@ -16403,7 +16403,7 @@ def codex_r04_render_v2_profile_report_is_valid(
         or result_summary.get('resultState') != 'artifact_returned'
         or not isinstance(artifact, dict)
         or set(artifact) != {'returned', 'persisted', 'mimeType', 'width', 'height', 'byteLength', 'sha256', 'pngSignatureValid', 'decoded', 'dimensionsMatch'}
-        or artifact.get('returned') is not True or artifact.get('persisted') is not True
+        or artifact.get('returned') is not True or artifact.get('persisted') is not False
         or artifact.get('mimeType') != 'image/png'
         or type(artifact.get('width')) is not int or not 320 <= artifact['width'] <= 1200
         or type(artifact.get('height')) is not int or artifact['height'] <= 0
