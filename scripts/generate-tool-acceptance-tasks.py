@@ -16169,15 +16169,39 @@ def codex_r04_render_v2_profile_candidate_binding_is_valid(
     epoch = epoch_result.get('state')
     if not isinstance(run_state, dict) or not isinstance(epoch, dict):
         return False
-    # GitHub runs acceptance CI on the pushed report commit before
-    # candidate:check can persist that new SHA in the Harness epoch. Bind to
-    # the live PR head and accept the old Harness Candidate only when it is
-    # exactly the report's source revision.
+    # GitHub runs acceptance CI before candidate:check persists the pushed
+    # SHA. A corrective verdict also clears the current Candidate, so retain
+    # the signed report only when its exact source Candidate has a matching
+    # prior PASS and the source-to-head diff stays inside R04's refresh set.
     harness_candidate_sha = epoch.get('candidate_sha')
     candidate_sha = epoch_result.get('pr_head_sha')
     pr_number = report.get('prNumber')
     reviews = epoch.get('review_history', [])
     latest_review = reviews[-1] if isinstance(reviews, list) and reviews else None
+    source_revision = report.get('sourceRevision')
+    source_candidate_passed = (
+        isinstance(reviews, list)
+        and any(
+            isinstance(review, dict)
+            and review.get('candidate_sha') == source_revision
+            and review.get('reviewed_base_sha') == report.get('baseSha')
+            and review.get('reviewer_id') == report.get('reviewerId')
+            and review.get('verdict') == 'PASS'
+            for review in reviews
+        )
+    )
+    harness_candidate_matches = (
+        isinstance(harness_candidate_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', harness_candidate_sha) is not None
+        and isinstance(source_revision, str)
+        and isinstance(candidate_sha, str)
+        and harness_candidate_sha in {source_revision, candidate_sha}
+    )
+    cleared_candidate_preserves_source_pass = (
+        harness_candidate_sha is None
+        and epoch.get('state') in {'CORRECTIVE_REQUIRED', 'FINAL_CORRECTIVE_REQUIRED'}
+        and source_candidate_passed
+    )
     active_pr = (
         run_state.get('state') == 'EPOCH_ACTIVE'
         and run_state.get('active_epoch_pr') == pr_number
@@ -16192,6 +16216,11 @@ def codex_r04_render_v2_profile_candidate_binding_is_valid(
         and latest_review.get('reviewed_base_sha') == report.get('baseSha')
         and latest_review.get('verdict') == 'PASS'
     )
+    candidate_sha_is_current = (
+        isinstance(candidate_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
+        and epoch_result.get('pr_head_sha') == candidate_sha
+    )
     return (
         type(pr_number) is int and pr_number > 0
         and run.get('number') == 95 and (active_pr or merged_pr)
@@ -16202,11 +16231,8 @@ def codex_r04_render_v2_profile_candidate_binding_is_valid(
         and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
         and epoch_result.get('pr_head_ref_name') == epoch.get('branch')
         and epoch_result.get('pr_is_draft') is False
-        and isinstance(harness_candidate_sha, str)
-        and re.fullmatch(r'[0-9a-f]{40}', harness_candidate_sha) is not None
-        and harness_candidate_sha in {report.get('sourceRevision'), candidate_sha}
-        and isinstance(candidate_sha, str) and re.fullmatch(r'[0-9a-f]{40}', candidate_sha)
-        and epoch_result.get('pr_head_sha') == candidate_sha
+        and (harness_candidate_matches or cleared_candidate_preserves_source_pass)
+        and candidate_sha_is_current
         and isinstance(report.get('sourceRevision'), str)
         and codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(changed_paths)
         and current_bundle_sha256 == report.get('mcpBundleSha256')

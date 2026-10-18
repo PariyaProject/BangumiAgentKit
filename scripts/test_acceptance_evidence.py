@@ -10382,6 +10382,7 @@ class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
             'sourceRevision': source_sha,
             'baseSha': base_sha,
             'prNumber': 222,
+            'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
             'mcpBundleSha256': bundle_sha,
         }
         epoch_status = {
@@ -10405,11 +10406,44 @@ class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
                     'branch': branch,
                     'candidate_sha': source_sha,
                     'state': 'REVIEW_PASSED',
+                    'review_history': [
+                        {
+                            'candidate_sha': source_sha,
+                            'reviewed_base_sha': base_sha,
+                            'reviewer_id': report['reviewerId'],
+                            'verdict': 'PASS',
+                        },
+                    ],
                 },
             },
         }
         paths = GENERATOR.CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS
         self.assertTrue(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, bundle_sha,
+        ))
+
+        epoch_status['epoch']['state']['candidate_sha'] = None
+        epoch_status['epoch']['state']['state'] = 'FINAL_CORRECTIVE_REQUIRED'
+        epoch_status['epoch']['state']['review_history'].append({
+            'candidate_sha': refreshed_sha,
+            'reviewed_base_sha': base_sha,
+            'reviewer_id': report['reviewerId'],
+            'verdict': 'CORRECTIVE_REQUIRED',
+        })
+        self.assertTrue(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, bundle_sha,
+        ))
+        epoch_status['epoch']['state']['review_history'].pop(0)
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, bundle_sha,
+        ))
+        epoch_status['epoch']['state']['review_history'].insert(0, {
+            'candidate_sha': source_sha,
+            'reviewed_base_sha': 'f' * 40,
+            'reviewer_id': report['reviewerId'],
+            'verdict': 'PASS',
+        })
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
             report, epoch_status, paths, bundle_sha,
         ))
 
