@@ -16,16 +16,16 @@ import {
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import { P06_REQUIRED_CI_CHECKS } from '../../scripts/lib/p06-ci-run-evidence.mjs';
 import {
-  G06_CAST_OFFLINE_NETWORK_MODE,
   G06_CAST_OFFLINE_PROFILE_ID,
   G06_CAST_OFFLINE_REPORT_PATH,
+  G06_CAST_OFFLINE_V2_PROFILE_ID,
 } from '../../scripts/lib/g06-subject-cast-offline-profile.mjs';
 
 const TOOL_NAME = 'bangumi.get_subject_cast';
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
-function fixture() {
-  const profile = getAgentMcpProfileById(G06_CAST_OFFLINE_PROFILE_ID);
+function fixture(profileId = G06_CAST_OFFLINE_PROFILE_ID) {
+  const profile = getAgentMcpProfileById(profileId);
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
   const publicKeyDer = publicKey.export({ type: 'spki', format: 'der' });
   const publicKeyBase64 = publicKeyDer.toString('base64');
@@ -62,7 +62,7 @@ function fixture() {
     (item) => item.name === TOOL_NAME,
   );
   const offlineFixture = {
-    profile: G06_CAST_OFFLINE_NETWORK_MODE,
+    profile: profile.networkMode,
     requestCount: 1,
     allowedRequestCount: 1,
     duplicateRequestCount: 0,
@@ -79,6 +79,7 @@ function fixture() {
     serverResultStatus: 'SUCCESS',
     allowedCallCount: 1,
     deniedCallCount: 0,
+    argumentMatch: true,
     catalogSha256: sha256(readFileSync('docs/tool-catalog.json')),
     toolDescriptionSha256: sha256(tool.description),
     inputSchemaSha256: sha256(canonicalAgentMcpProfileJson(tool.inputSchema)),
@@ -202,6 +203,38 @@ test('G06 offline report cannot be overwritten', () => {
     assert.throws(() =>
       writeG06SubjectCastOfflineReport(input, { privateKey, publicKeyBase64, reportPath }),
     );
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test('G06 v2 report accepts bounded non-fatal Codex error counts with exact server proof', () => {
+  const temp = mkdtempSync(path.join(os.tmpdir(), 'g06-cast-offline-v2-report-test-'));
+  try {
+    const { privateKey, publicKeyBase64, claim, input } = fixture(G06_CAST_OFFLINE_V2_PROFILE_ID);
+    input.events.codexErrorItemCount = 3;
+    const reportPath = path.join(temp, 'g06-subject-cast-v2.json');
+    const written = writeG06SubjectCastOfflineReport(input, {
+      privateKey,
+      publicKeyBase64,
+      reportPath,
+    });
+    assert.equal(written.passed, true);
+    const bytes = readFileSync(reportPath);
+    const report = JSON.parse(bytes.toString('utf8'));
+    assert.equal(report.profileId, G06_CAST_OFFLINE_V2_PROFILE_ID);
+    assert.equal(report.codexErrorItemCount, 3);
+    assert.equal(validateG06SubjectCastOfflineReport(report, claim, bytes).passed, true);
+    assert.equal(bytes.toString('utf8').includes('990805'), false);
+    assert.equal(bytes.toString('utf8').includes('Synthetic Character'), false);
+
+    input.events.codexErrorItemCount = 10_000_001;
+    const overflow = writeG06SubjectCastOfflineReport(input, {
+      privateKey,
+      publicKeyBase64,
+      reportPath: path.join(temp, 'g06-subject-cast-v2-overflow.json'),
+    });
+    assert.equal(overflow.passed, false);
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }

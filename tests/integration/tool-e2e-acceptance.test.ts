@@ -55,6 +55,12 @@ const S04_REPORT_PATH = join(
 const S04_REPORT = existsSync(S04_REPORT_PATH)
   ? JSON.parse(readFileSync(S04_REPORT_PATH, 'utf8'))
   : null;
+const G06_CAST_OFFLINE_V2_REPORT_PATH =
+  'docs/live-probes/g06-subject-cast-offline-agent-mcp-run95-v2.json';
+const G06_CAST_OFFLINE_V2_REPORT_FILE = join(ROOT, G06_CAST_OFFLINE_V2_REPORT_PATH);
+const G06_CAST_OFFLINE_V2_REPORT = existsSync(G06_CAST_OFFLINE_V2_REPORT_FILE)
+  ? JSON.parse(readFileSync(G06_CAST_OFFLINE_V2_REPORT_FILE, 'utf8'))
+  : null;
 const FULL_OPERATION_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   .filter(
     (name) => name.startsWith('pariya-agent-full-operation-qa-e2e-') && name.endsWith('.json'),
@@ -418,6 +424,62 @@ function statusMark(cell: string | undefined): string | undefined {
   return cell?.split('<br>', 1)[0];
 }
 
+function isCurrentG06CastOfflineV2Report(report: any): boolean {
+  const row = rowsByTool().get('bangumi.get_subject_cast');
+  const checks = report?.ciChecks;
+  const answerChecks = report?.answerChecks;
+  return Boolean(
+    report?.schemaVersion === 1 &&
+    report?.evidenceKind === 'codex_cli_g06_subject_cast_offline_agent_mcp_v2' &&
+    report?.runNumber === 95 &&
+    report?.frontierId === 'G06' &&
+    report?.scenarioId === null &&
+    report?.acceptanceScope === 'agent-mcp-matrix-only' &&
+    report?.profileId === 'g06-cast-offline-agent-mcp-matrix-v2' &&
+    report?.epochId === 'run95-g06-cast-offline-matrix-v2-20261018' &&
+    report?.model === 'gpt-6-luna' &&
+    report?.reasoningEffort === 'max' &&
+    report?.toolName === 'bangumi.get_subject_cast' &&
+    report?.processExitCode === 0 &&
+    report?.resultStatus === 'SUCCESS' &&
+    report?.codexMcpToolEventCount === 1 &&
+    report?.nonMcpToolEventCount === 0 &&
+    report?.shellToolCallCount === 0 &&
+    report?.allowedCallCount === 1 &&
+    report?.deniedCallCount === 0 &&
+    /^[0-9a-f]{40}$/u.test(report?.sourceRevision ?? '') &&
+    report?.ciSha === report?.sourceRevision &&
+    report?.ciStatus === 'SUCCESS' &&
+    Array.isArray(checks) &&
+    checks.length === 7 &&
+    checks.every((check: any) => check.status === 'COMPLETED' && check.conclusion === 'SUCCESS') &&
+    answerChecks &&
+    Object.values(answerChecks).length === 10 &&
+    Object.values(answerChecks).every((value) => value === true) &&
+    report?.offlineFixture?.requestCount === 1 &&
+    report?.offlineFixture?.unexpectedRequestCount === 0 &&
+    report?.networkBoundary?.liveBangumiApiRequestCount === 0 &&
+    report?.networkBoundary?.externalProductRequestCount === 0 &&
+    report?.privacy?.authProfile === 'anonymous' &&
+    report?.privacy?.oauthAttempted === false &&
+    report?.privacy?.accountDataRead === false &&
+    report?.privacy?.writesAttempted === false &&
+    report?.privacy?.qqPipelineTested === false &&
+    report?.privacy?.timClientTested === false &&
+    typeof report?.runnerReceipt?.signature === 'string' &&
+    toolContractMatchesCurrent(report, 'bangumi.get_subject_cast') &&
+    statusMark(row?.[9]) === '✅' &&
+    row?.[9]?.includes(G06_CAST_OFFLINE_V2_REPORT_PATH),
+  );
+}
+
+const CURRENT_G06_CAST_OFFLINE_V2_REPORT = isCurrentG06CastOfflineV2Report(
+  G06_CAST_OFFLINE_V2_REPORT,
+)
+  ? G06_CAST_OFFLINE_V2_REPORT
+  : null;
+const CURRENT_CAST_AGENT_MCP_REPORT = CURRENT_G06_CAST_OFFLINE_V2_REPORT ?? CURRENT_S04_REPORT;
+
 function expectClientEvidenceCell(cell: string | undefined, label: string): void {
   const mark = statusMark(cell);
   expect(['✅', '⬜'], label).toContain(mark);
@@ -686,7 +748,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         ),
       ),
       ...(CURRENT_D05_REPORT ? ['bangumi.query_subjects'] : []),
-      ...(CURRENT_S04_REPORT ? ['bangumi.get_subject_cast'] : []),
+      ...(CURRENT_CAST_AGENT_MCP_REPORT ? ['bangumi.get_subject_cast'] : []),
       ...(CURRENT_P06_AGENT_MCP_MATRIX ? ['bangumi.render_person_profile'] : []),
     ];
 
@@ -706,7 +768,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     expect(uncoveredNames).toEqual(
       [
         ...(CURRENT_D05_REPORT ? [] : ['bangumi.query_subjects']),
-        ...(CURRENT_S04_REPORT ? [] : ['bangumi.get_subject_cast']),
+        ...(CURRENT_CAST_AGENT_MCP_REPORT ? [] : ['bangumi.get_subject_cast']),
         'bangumi.aggregate_subject_cohort',
         'bangumi.compare_subject_cohorts',
         'bangumi.get_person_activity',
@@ -755,7 +817,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_revision',
         'bangumi.get_revision_intelligence',
         'bangumi.get_subject',
-        ...(CURRENT_S04_REPORT ? ['bangumi.get_subject_cast'] : []),
+        ...(CURRENT_CAST_AGENT_MCP_REPORT ? ['bangumi.get_subject_cast'] : []),
         ...(CURRENT_P06_AGENT_MCP_MATRIX ? ['bangumi.render_person_profile'] : []),
         'bangumi.get_subject_comparison',
         'bangumi.get_subject_identity',
@@ -810,7 +872,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.update_collection',
         'bangumi.update_episode_progress',
         ...(CURRENT_D05_REPORT ? ['bangumi.query_subjects'] : []),
-        ...(CURRENT_S04_REPORT ? ['bangumi.get_subject_cast'] : []),
         ...(CURRENT_P06_AGENT_MCP_MATRIX ? ['bangumi.render_person_profile'] : []),
       ].sort(),
     );
@@ -884,11 +945,10 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
           continue;
         }
         if (call.name === 'bangumi.get_subject_cast') {
-          // The S04 feature changes this tool's current catalog contract.
-          // Only its exact post-gate one-shot report can refresh old cast calls.
-          if (CURRENT_S04_REPORT) {
-            expect(CURRENT_S04_REPORT.toolName).toBe(call.name);
-            expect(toolContractMatchesCurrent(CURRENT_S04_REPORT, call.name)).toBe(true);
+          // Current, exact-contract reports can refresh old calls for this tool.
+          if (CURRENT_CAST_AGENT_MCP_REPORT) {
+            expect(CURRENT_CAST_AGENT_MCP_REPORT.toolName).toBe(call.name);
+            expect(toolContractMatchesCurrent(CURRENT_CAST_AGENT_MCP_REPORT, call.name)).toBe(true);
           }
           continue;
         }

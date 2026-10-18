@@ -129,6 +129,61 @@ R01_OFFLINE_EPOCH_ID = 'run95-r01-subject-relations-matrix-offline-20261016'
 R01_OFFLINE_ARGUMENT_PROFILE = 'fixed-r01-offline-relations-990902-one-row-v1'
 R01_OFFLINE_ANSWER_CHECK_METHOD = 'r01-synthetic-direct-relation-execution-only-v1'
 R01_OFFLINE_NETWORK_MODE = 'run95-r01-relations-offline-v1'
+G06_CAST_OFFLINE_V2_PROFILE = next(
+    profile for profile in PROFILE_REGISTRY.get('profiles', [])
+    if isinstance(profile, dict) and profile.get('id') == 'g06-cast-offline-agent-mcp-matrix-v2'
+)
+G06_CAST_OFFLINE_V2_TOOL_NAME = G06_CAST_OFFLINE_V2_PROFILE['toolName']
+G06_CAST_OFFLINE_V2_REPORT_PATH = G06_CAST_OFFLINE_V2_PROFILE['reportPath']
+G06_CAST_OFFLINE_V2_REPORT_KIND = G06_CAST_OFFLINE_V2_PROFILE['evidenceKind']
+G06_CAST_OFFLINE_V2_EPOCH_ID = G06_CAST_OFFLINE_V2_PROFILE['epochId']
+G06_CAST_OFFLINE_V2_ARGUMENT_PROFILE = G06_CAST_OFFLINE_V2_PROFILE['argumentProfile']
+G06_CAST_OFFLINE_V2_ANSWER_CHECK_METHOD = G06_CAST_OFFLINE_V2_PROFILE['answerCheckMethod']
+G06_CAST_OFFLINE_V2_NETWORK_MODE = G06_CAST_OFFLINE_V2_PROFILE['networkMode']
+G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in G06_CAST_OFFLINE_V2_PROFILE['calls']],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+G06_CAST_OFFLINE_V2_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    G06_CAST_OFFLINE_V2_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+G06_CAST_OFFLINE_V2_REQUIRED_CI_CHECKS = [
+    'harness-control', 'sqlite-default', 'host-integration', 'standalone-release-smoke',
+    'postgres-compat', 'provider-foundation', 'discovery-foundation',
+]
+G06_CAST_OFFLINE_V2_ANSWER_CHECK_FIELDS = {
+    'exactRegisteredProfile', 'oneAllowedMcpTool', 'fixedArguments', 'exactCandidateBundle',
+    'offlineFixtureOnly', 'singleExpectedLocalResponse', 'boundedResultSummary',
+    'exactAcknowledgement', 'noRealSourceClaim', 'privacyPreserved',
+}
+G06_CAST_OFFLINE_V2_TOOL_RESULT_SUMMARY = {
+    'status': 'ok', 'subjectIdMatches': True, 'rowsObserved': 2, 'rowsReturned': 2,
+    'multiRoleVoiceActorCount': 1, 'truncated': False, 'schemaDriftRows': 0,
+    'invalidActorIdRows': 0, 'sourceStatus': 'observed', 'paginationAvailable': False,
+    'totalCountAvailable': False,
+}
+G06_CAST_OFFLINE_V2_FIXTURE = {
+    'profile': G06_CAST_OFFLINE_V2_NETWORK_MODE, 'requestCount': 1,
+    'allowedRequestCount': 1, 'duplicateRequestCount': 0, 'unexpectedRequestCount': 0,
+    'authorizationHeaderCount': 0, 'queryParameterCount': 0, 'requestBodyCount': 0,
+    'rowsReturned': 2, 'expectedOperationComplete': True,
+}
+G06_CAST_OFFLINE_V2_NETWORK_BOUNDARY = {
+    'liveBangumiApiRequestCount': 0, 'externalProductRequestCount': 0,
+    'rendererAssetRequestCount': 0, 'fullCodexHarnessNetworkSandboxed': False,
+}
+G06_CAST_OFFLINE_V2_PRIVACY = {
+    'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+    'writesAttempted': False, 'communityRead': False, 'qqPipelineTested': False,
+    'timClientTested': False, 'promptStored': False, 'answerStored': False,
+    'syntheticNamesOrIdsStored': False, 'rawFixtureRowsStored': False,
+    'rawToolResultStored': False, 'artifactImageBytesStored': False, 'credentialsStored': False,
+}
 R02_POSITIVE_TOOL_NAME = 'bangumi.get_subject_relations'
 R02_POSITIVE_REPORT_PATH = 'docs/live-probes/r02-positive-direct-relations-agent-mcp-run95.json'
 R02_POSITIVE_REPORT_KIND = 'codex_cli_r02_positive_direct_relations_agent_mcp'
@@ -426,6 +481,88 @@ def r01_offline_agent_mcp_matches(name: str, relative_path: str, report: object)
         and isinstance(answer_checks, dict)
         and set(answer_checks) == R01_OFFLINE_ANSWER_CHECK_FIELDS
         and all(value is True for value in answer_checks.values())
+    )
+
+
+def g06_cast_offline_v2_agent_mcp_matches(
+    name: str, relative_path: str, report: object,
+) -> bool:
+    """Map only the signed synthetic G06 v2 result to get_subject_cast Agent/MCP."""
+    if not isinstance(report, dict):
+        return False
+    source_revision = report.get('sourceRevision')
+    base_sha = report.get('baseSha')
+    pr_number = report.get('prNumber')
+    claim_id = report.get('claimId')
+    error_count = report.get('codexErrorItemCount')
+    answer_checks = report.get('answerChecks')
+    receipt = report.get('runnerReceipt')
+    acknowledgement = 'G06_SYNTHETIC_CAST_MATRIX_EXECUTED'
+    return bool(
+        name == G06_CAST_OFFLINE_V2_TOOL_NAME
+        and relative_path == G06_CAST_OFFLINE_V2_REPORT_PATH
+        and type(report.get('schemaVersion')) is int and report.get('schemaVersion') == 1
+        and report.get('evidenceKind') == G06_CAST_OFFLINE_V2_REPORT_KIND
+        and type(report.get('runNumber')) is int and report.get('runNumber') == 95
+        and report.get('frontierId') == 'G06' and report.get('scenarioId') is None
+        and report.get('acceptanceScope') == 'agent-mcp-matrix-only'
+        and report.get('epochId') == G06_CAST_OFFLINE_V2_EPOCH_ID
+        and report.get('profileId') == G06_CAST_OFFLINE_V2_PROFILE['id']
+        and report.get('profile') == 'codex-luna-max-offline-agent-mcp-matrix-v2'
+        and report.get('model') == 'gpt-6-luna'
+        and report.get('reasoningEffort') == 'max'
+        and report.get('toolName') == G06_CAST_OFFLINE_V2_TOOL_NAME
+        and report.get('argumentProfile') == G06_CAST_OFFLINE_V2_ARGUMENT_PROFILE
+        and report.get('expectedArgumentsSha256') == G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS_SHA256
+        and report.get('registrySha256') == G06_CAST_OFFLINE_V2_REGISTRY_SHA256
+        and report.get('serverToolNames') == [G06_CAST_OFFLINE_V2_TOOL_NAME]
+        and type(report.get('serverToolCount')) is int and report.get('serverToolCount') == 1
+        and report.get('mcpServerNames') == ['bgk_g06_cast_offline_profile']
+        and report.get('resultStatus') == 'SUCCESS'
+        and type(report.get('processExitCode')) is int and report.get('processExitCode') == 0
+        and report.get('eventStreamParsed') is True and report.get('turnCompleted') is True
+        and type(report.get('codexMcpToolEventCount')) is int
+        and report.get('codexMcpToolEventCount') == 1
+        and type(error_count) is int and 0 <= error_count <= 10_000_000
+        and type(report.get('nonMcpToolEventCount')) is int
+        and report.get('nonMcpToolEventCount') == 0
+        and report.get('nonMcpToolTypes') == []
+        and type(report.get('shellToolCallCount')) is int and report.get('shellToolCallCount') == 0
+        and type(report.get('allowedCallCount')) is int and report.get('allowedCallCount') == 1
+        and type(report.get('deniedCallCount')) is int and report.get('deniedCallCount') == 0
+        and report.get('networkMode') == G06_CAST_OFFLINE_V2_NETWORK_MODE
+        and report.get('ciStatus') == 'SUCCESS'
+        and report.get('ciChecks') == [
+            {'name': check, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+            for check in G06_CAST_OFFLINE_V2_REQUIRED_CI_CHECKS
+        ]
+        and isinstance(report.get('ciRunId'), str)
+        and re.fullmatch(r'[1-9][0-9]{3,}', report['ciRunId']) is not None
+        and isinstance(source_revision, str)
+        and re.fullmatch(r'[0-9a-f]{40}', source_revision) is not None
+        and isinstance(base_sha, str) and re.fullmatch(r'[0-9a-f]{40}', base_sha) is not None
+        and report.get('ciSha') == source_revision
+        and type(pr_number) is int and pr_number > 0
+        and isinstance(claim_id, str)
+        and re.fullmatch(rf'profile-run-95-pr-{pr_number}-{source_revision[:12]}-[0-9]+', claim_id) is not None
+        and isinstance(report.get('mcpBundleSha256'), str)
+        and re.fullmatch(r'[0-9a-f]{64}', report['mcpBundleSha256']) is not None
+        and report.get('answerCheckMethod') == G06_CAST_OFFLINE_V2_ANSWER_CHECK_METHOD
+        and report.get('answerSha256') == hashlib.sha256(acknowledgement.encode()).hexdigest()
+        and report.get('answerUtf8Bytes') == len(acknowledgement.encode())
+        and isinstance(answer_checks, dict)
+        and set(answer_checks) == G06_CAST_OFFLINE_V2_ANSWER_CHECK_FIELDS
+        and all(value is True for value in answer_checks.values())
+        and report.get('toolResultSummary') == G06_CAST_OFFLINE_V2_TOOL_RESULT_SUMMARY
+        and report.get('offlineFixture') == G06_CAST_OFFLINE_V2_FIXTURE
+        and report.get('networkBoundary') == G06_CAST_OFFLINE_V2_NETWORK_BOUNDARY
+        and report.get('privacy') == G06_CAST_OFFLINE_V2_PRIVACY
+        and isinstance(report.get('selectionEvidenceSha256'), str)
+        and re.fullmatch(r'[0-9a-f]{64}', report['selectionEvidenceSha256']) is not None
+        and isinstance(receipt, dict)
+        and receipt.get('kind') == 'g06-cast-offline-agent-mcp-runner-receipt-v1'
+        and isinstance(receipt.get('payload'), dict)
+        and isinstance(receipt.get('signature'), str)
     )
 
 
@@ -739,13 +876,16 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
             r01_offline_matches = r01_offline_agent_mcp_matches(
                 name, relative_path, report,
             )
+            g06_cast_offline_v2_matches = g06_cast_offline_v2_agent_mcp_matches(
+                name, relative_path, report,
+            )
             r02_positive_matches = r02_positive_agent_mcp_matches(
                 name, relative_path, report,
             )
             matches = (
                 scenario_matches or c04_matches or title_query_render_matches
                 or g01_render_query_matches or g01_query_subjects_offline_matches
-                or r01_offline_matches or r02_positive_matches
+                or r01_offline_matches or g06_cast_offline_v2_matches or r02_positive_matches
             )
         else:
             try:

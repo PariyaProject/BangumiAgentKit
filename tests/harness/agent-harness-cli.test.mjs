@@ -98,9 +98,8 @@ import {
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
-  G06_CAST_OFFLINE_ARGUMENT_PROFILE,
-  G06_CAST_OFFLINE_EPOCH_ID,
   G06_CAST_OFFLINE_PROFILE_ID,
+  G06_CAST_OFFLINE_V2_PROFILE_ID,
 } from '../../scripts/lib/g06-subject-cast-offline-profile.mjs';
 import {
   C07_RENDER_COMPARISON_OFFLINE_ARGUMENT_PROFILE,
@@ -140,6 +139,7 @@ const A01_AGGREGATE_PROFILE = getAgentMcpProfileById(
 const P03_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
 const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const P06_PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
+const G06_V2_PROFILE = getAgentMcpProfileById(G06_CAST_OFFLINE_V2_PROFILE_ID);
 const P02_PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
 const R04_PROFILE = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v1');
 const R04_RENDER_PROFILE = getAgentMcpProfileById(
@@ -1689,6 +1689,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
     C04_PROFILE.id,
     TITLE_QUERY_RENDER_PROFILE.id,
     A01_PROFILE.id,
+    G06_V2_PROFILE.id,
   ];
   const checks = exactCiProfileIds.includes(profile.id)
     ? mandatoryChecks.map((name, index) => ({
@@ -2454,6 +2455,40 @@ test('P06 Harness profile claim persists the exact successful CI run and check i
   }
 });
 
+test('G06 v2 Harness profile claim persists the exact successful CI run and check identities', () => {
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(G06_V2_PROFILE);
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', G06_V2_PROFILE.id];
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    assert.equal(claimResult.profileId, G06_V2_PROFILE.id);
+    assert.equal(claimResult.ciRunId, '38806371672');
+    assert.deepEqual(
+      claimResult.ciChecks.map(({ name, status, conclusion }) => ({ name, status, conclusion })),
+      mandatoryChecks.map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' })),
+    );
+
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    const disposition =
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[G06_V2_PROFILE.id];
+    assert.equal(disposition.ciRunId, claimResult.ciRunId);
+    assert.deepEqual(disposition.ciChecks, claimResult.ciChecks);
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('P02 Harness profile claim persists the exact successful CI run and check identities', () => {
   const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(P02_PROFILE);
   const keyPair = generateG04RunnerReceiptKeyPair();
@@ -2618,6 +2653,53 @@ test('P06 Harness claim rejects required checks attached to a different Actions 
     assert.equal(
       stored.adversarial_preflight.agent_mcp_profile_dispositions?.[P06_PROFILE.id],
       undefined,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('G06 v2 Harness claim rejects required checks attached to a different Actions run', () => {
+  const ciRunId = '38806371672';
+  const runUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
+  const mismatchedChecks = mandatoryChecks.map((name, index) => ({
+    name,
+    status: 'COMPLETED',
+    conclusion: 'SUCCESS',
+    detailsUrl: `${runUrl}/job/${116668186145 + index}`,
+  }));
+  mismatchedChecks[0].detailsUrl =
+    'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/99999999999/job/1';
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(G06_V2_PROFILE, {
+    checks: mismatchedChecks,
+  });
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  try {
+    const rejected = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--profile-id',
+      G06_V2_PROFILE.id,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(rejected.status, 2);
+    assert.match(rejected.stderr, /^AGENT_MCP_PROFILE_CLAIM_GATE_FAILED:/u);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions?.[G06_V2_PROFILE.id],
+      undefined,
+    );
+    assert.equal(
+      Object.hasOwn(environment.readState().repositoryLabels ?? {}, G06_V2_PROFILE.claimLabelName),
+      false,
     );
   } finally {
     environment.cleanup();
@@ -3232,6 +3314,79 @@ function c03ReportRefreshEnvironment(disposition, overrides = {}, epochOverrides
   return { environment, run, epoch };
 }
 
+function g06V2ReportWrittenDisposition() {
+  return {
+    claimId: 'profile-run-95-pr-42-bbbbbbbbbbbb-1700000000000',
+    profileId: G06_V2_PROFILE.id,
+    state: 'REPORT_WRITTEN',
+    sourceCandidateSha: sha('b'),
+    bundleSha256: 'c'.repeat(64),
+    reportPath: G06_V2_PROFILE.reportPath,
+    reportSha256: 'd'.repeat(64),
+    reportWritten: true,
+    retryAllowed: false,
+  };
+}
+
+function g06V2ReportRefreshEnvironment(disposition, overrides = {}, epochOverrides = {}) {
+  const { run, epoch } = passedCandidateFixture();
+  Object.assign(epoch, epochOverrides);
+  epoch.epoch_id = G06_V2_PROFILE.epochId;
+  epoch.branch = `codex/epoch-${G06_V2_PROFILE.epochId}`;
+  epoch.base_branch = 'master';
+  epoch.pr_number = 42;
+  epoch.base_sha = sha('a');
+  epoch.candidate_sha = sha('d');
+  epoch.review_pass_sha = null;
+  epoch.state = 'CORRECTIVE_REQUIRED';
+  epoch.advances_frontier_ids = [];
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'Preserve the terminal G06 v2 report while validating its acceptance mapping.',
+    agent_mcp_profile_dispositions: { [G06_V2_PROFILE.id]: structuredClone(disposition) },
+  };
+  const refreshPaths = [
+    G06_V2_PROFILE.reportPath,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+    '.github/workflows/ci.yml',
+    'docs/agent/HARNESS.md',
+    'scripts/check-tool-acceptance-table.py',
+    'scripts/test_acceptance_evidence.py',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/agent-harness.mjs',
+    'tests/harness/agent-harness-cli.test.mjs',
+    'tests/harness/g01-public-query-render-evidence.test.mjs',
+    'tests/harness/g09-public-watch-order-evidence.test.mjs',
+    'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
+    'tests/harness/public-probe-coverage.test.mjs',
+    'tests/integration/tool-e2e-acceptance.test.ts',
+  ];
+  const ciRunId = '39077898683';
+  const ciRunUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
+  epoch.ci = { sha: sha('e'), status: 'SUCCESS', url: ciRunUrl };
+  const environment = createMockEnvironment({
+    runIssueNumber: 95,
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch: epoch.branch,
+    featureBranch: epoch.branch,
+    featureHeadSha: sha('e'),
+    baseSha: sha('a'),
+    candidateRefreshRange: `${sha('b')}...${sha('e')}`,
+    candidateRefreshPaths: refreshPaths,
+    checks: mandatoryChecks.map((name, index) => ({
+      name,
+      status: 'COMPLETED',
+      conclusion: 'SUCCESS',
+      detailsUrl: `${ciRunUrl}/job/${117528756049 + index}`,
+    })),
+    draft: false,
+    ...overrides,
+  });
+  return { environment, run, epoch };
+}
+
 test('C03 report Candidate refresh accepts only the report and bounded acceptance evidence', () => {
   const disposition = c03ReportWrittenDisposition();
   const { environment } = c03ReportRefreshEnvironment(disposition);
@@ -3336,6 +3491,86 @@ test('C03 report Candidate refresh rejects an MCP bundle change', () => {
     assert.equal(
       parseControlBlock(environment.readState().prBody, EPOCH_MARKER).candidate_sha,
       sha('b'),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('G06 v2 report Candidate refresh accepts only its exact acceptance verifier updates', () => {
+  const disposition = g06V2ReportWrittenDisposition();
+  const { environment } = g06V2ReportRefreshEnvironment(disposition);
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('e'),
+        ci: {
+          url: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/39077898683',
+        },
+        candidate_refresh_reason: 'Record the G06 v2 report with its exact acceptance verifier.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Preserve the terminal G06 v2 report while validating its acceptance mapping.',
+          agent_mcp_profile_dispositions: { [G06_V2_PROFILE.id]: disposition },
+        },
+      }),
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_READY');
+    assert.equal(stored.candidate_sha, sha('e'));
+    assert.deepEqual(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[G06_V2_PROFILE.id],
+      disposition,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('G06 v2 report Candidate refresh rejects product code and unrelated validation paths', () => {
+  const disposition = g06V2ReportWrittenDisposition();
+  const { environment } = g06V2ReportRefreshEnvironment(disposition, {
+    candidateRefreshPaths: [
+      G06_V2_PROFILE.reportPath,
+      'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+      'docs/product/frontier-ledger.json',
+      'scripts/check-tool-acceptance-table.py',
+      'scripts/test_acceptance_evidence.py',
+      'scripts/generate-tool-acceptance-tasks.py',
+      'scripts/agent-harness.mjs',
+      'tests/harness/agent-harness-cli.test.mjs',
+      'apps/mcp/src/tools/subject-cast.ts',
+    ],
+  });
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('e'),
+        ci: {
+          url: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/39077898683',
+        },
+        candidate_refresh_reason: 'Attempt to change the tool after its terminal report.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Preserve the terminal G06 v2 report while validating its acceptance mapping.',
+          agent_mcp_profile_dispositions: { [G06_V2_PROFILE.id]: disposition },
+        },
+      }),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).candidate_sha,
+      sha('d'),
     );
   } finally {
     environment.cleanup();
@@ -6470,19 +6705,25 @@ function mergeReadyEnvironment(overrides = {}) {
   });
 }
 
-function g06CastOfflineMergeEnvironment({ terminal = false, unacceptedReportSha256 = null } = {}) {
+function g06CastOfflineMergeEnvironment({
+  terminal = false,
+  reportWritten = false,
+  unacceptedReportSha256 = null,
+  profileId = G06_CAST_OFFLINE_PROFILE_ID,
+  changedPaths = [],
+} = {}) {
   const { run, epoch } = controlFixture();
   const prNumber = 222;
   const reviewerId = `gpt-6-luna-max-run95-pr${prNumber}-round1`;
-  const profile = getAgentMcpProfileById(G06_CAST_OFFLINE_PROFILE_ID);
+  const profile = getAgentMcpProfileById(profileId);
   run.state = 'EPOCH_ACTIVE';
   run.active_epoch_pr = prNumber;
   run.outer_sol.consumed = 1;
   run.outer_sol.product.consumed = 1;
-  epoch.epoch_id = G06_CAST_OFFLINE_EPOCH_ID;
+  epoch.epoch_id = profile.epochId;
   epoch.base_sha = sha('a');
   epoch.base_branch = 'master';
-  epoch.branch = 'codex/epoch-run95-g06-subject-cast-offline-agent-mcp-matrix-20261017';
+  epoch.branch = 'codex/epoch-' + profile.epochId;
   epoch.pr_number = prNumber;
   epoch.state = 'REVIEW_PASSED';
   epoch.candidate_sha = sha('b');
@@ -6502,21 +6743,24 @@ function g06CastOfflineMergeEnvironment({ terminal = false, unacceptedReportSha2
       ? {
           agent_mcp_profile_dispositions: {
             [profile.id]: {
-              state: 'INCONCLUSIVE',
-              reportWritten: false,
+              state: reportWritten ? 'REPORT_WRITTEN' : 'INCONCLUSIVE',
+              reportWritten,
               retryAllowed: false,
               profileId: profile.id,
               frontierId: 'G06',
-              epochId: G06_CAST_OFFLINE_EPOCH_ID,
+              epochId: profile.epochId,
               runNumber: 95,
               prNumber,
               toolName: profile.toolName,
-              argumentProfile: G06_CAST_OFFLINE_ARGUMENT_PROFILE,
+              argumentProfile: profile.argumentProfile,
               expectedArguments: profile.calls.map((call) => call.arguments),
               expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
               registrySha256: agentMcpProfileRegistrySha256(profile.id),
               claimId: `profile-run-95-pr-${prNumber}-${sha('b').slice(0, 12)}-1792200000000`,
               sourceCandidateSha: sha('b'),
+              ...(reportWritten
+                ? { reportPath: profile.reportPath, reportSha256: 'd'.repeat(64) }
+                : {}),
               ...(unacceptedReportSha256 ? { unacceptedReportSha256 } : {}),
               baseSha: sha('a'),
               ciSha: sha('b'),
@@ -6560,8 +6804,8 @@ function g06CastOfflineMergeEnvironment({ terminal = false, unacceptedReportSha2
           color: '0e8a16',
           description: agentMcpProfileTerminalLabelDescription(
             profile,
-            'INCONCLUSIVE',
-            unacceptedReportSha256,
+            reportWritten ? 'REPORT_WRITTEN' : 'INCONCLUSIVE',
+            reportWritten ? 'd'.repeat(64) : unacceptedReportSha256,
           ),
         },
       }
@@ -6577,7 +6821,7 @@ function g06CastOfflineMergeEnvironment({ terminal = false, unacceptedReportSha2
     baseSha: sha('a'),
     featureHeadSha: sha('b'),
     mergeSha: sha('c'),
-    changedPaths: [],
+    changedPaths,
     dirty: '',
     repositoryLabels,
   });
@@ -6626,6 +6870,91 @@ test('G06 offline matrix Epoch can merge after removing an unaccepted inconclusi
     assert.equal(parseControlBlock(environment.readState().prBody, EPOCH_MARKER).state, 'MERGED');
   } finally {
     environment.cleanup();
+  }
+});
+
+test('G06 v2 offline matrix Epoch requires and reconciles its own terminal profile result', () => {
+  const unclaimed = g06CastOfflineMergeEnvironment({
+    profileId: G06_CAST_OFFLINE_V2_PROFILE_ID,
+  });
+  try {
+    const result = unclaimed.execute(['epoch:merge', '--run', '95', '--pr', '222']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G06_CAST_OFFLINE_RECONCILIATION_REQUIRED:/u);
+    assert.equal(unclaimed.readState().prState, 'OPEN');
+  } finally {
+    unclaimed.cleanup();
+  }
+
+  const terminal = g06CastOfflineMergeEnvironment({
+    terminal: true,
+    profileId: G06_CAST_OFFLINE_V2_PROFILE_ID,
+  });
+  const reportRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'g06-v2-merge-report-'));
+  try {
+    const result = terminal.execute(['epoch:merge', '--run', '95', '--pr', '222'], {
+      HARNESS_G06_REPORT_ROOT: reportRoot,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(parseControlBlock(terminal.readState().prBody, EPOCH_MARKER).state, 'MERGED');
+  } finally {
+    terminal.cleanup();
+    fs.rmSync(reportRoot, { recursive: true, force: true });
+  }
+});
+
+test('G06 v2 merge gate permits its exact verifier refresh and rejects runtime changes', () => {
+  const refreshPaths = [
+    G06_V2_PROFILE.reportPath,
+    'docs/product/frontier-ledger.json',
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    '.github/workflows/ci.yml',
+    'docs/agent/HARNESS.md',
+    'scripts/check-tool-acceptance-table.py',
+    'scripts/test_acceptance_evidence.py',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/agent-harness.mjs',
+    'tests/harness/agent-harness-cli.test.mjs',
+    'tests/harness/g01-public-query-render-evidence.test.mjs',
+    'tests/harness/g09-public-watch-order-evidence.test.mjs',
+    'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
+    'tests/harness/public-probe-coverage.test.mjs',
+    'tests/integration/tool-e2e-acceptance.test.ts',
+  ];
+  const acceptedScope = g06CastOfflineMergeEnvironment({
+    terminal: true,
+    reportWritten: true,
+    profileId: G06_CAST_OFFLINE_V2_PROFILE_ID,
+    changedPaths: refreshPaths,
+  });
+  try {
+    const result = acceptedScope.execute(['epoch:merge', '--run', '95', '--pr', '222']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G06_CAST_OFFLINE_REPORT_INVALID:/u);
+  } finally {
+    acceptedScope.cleanup();
+  }
+
+  const rejectedScope = g06CastOfflineMergeEnvironment({
+    terminal: true,
+    reportWritten: true,
+    profileId: G06_CAST_OFFLINE_V2_PROFILE_ID,
+    changedPaths: [...refreshPaths, 'apps/mcp/src/tools/subject-cast.ts'],
+  });
+  try {
+    const result = rejectedScope.execute(['epoch:merge', '--run', '95', '--pr', '222']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G06_CAST_OFFLINE_REFRESH_SCOPE_INVALID:/u);
+    assert.equal(
+      rejectedScope
+        .readState()
+        .calls.some(
+          (call) => call.tool === 'gh' && call.args[0] === 'pr' && call.args[1] === 'merge',
+        ),
+      false,
+    );
+  } finally {
+    rejectedScope.cleanup();
   }
 });
 

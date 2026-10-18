@@ -7,12 +7,17 @@ import {
   buildG06CastOfflineCodexExecArgs,
   validateG06CastOfflineRunnerArgs,
   validateG06CastOfflineServerSummary,
+  validateG06CastOfflineToolEvent,
 } from '../../scripts/acceptance/run-g06-subject-cast-offline-agent-mcp.mjs';
 import {
-  G06_CAST_OFFLINE_EXPECTED_ARGUMENTS,
-  G06_CAST_OFFLINE_NETWORK_MODE,
-  G06_CAST_OFFLINE_PROFILE_ID,
-  G06_CAST_OFFLINE_ARGUMENT_PROFILE,
+  hasExactCompletedCodexToolCalls,
+  summarizeCodexEvents,
+} from '../../scripts/acceptance/run-g26-codex-agent-mcp.mjs';
+import {
+  G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS,
+  G06_CAST_OFFLINE_V2_NETWORK_MODE,
+  G06_CAST_OFFLINE_V2_PROFILE_ID,
+  G06_CAST_OFFLINE_V2_ARGUMENT_PROFILE,
 } from '../../scripts/lib/g06-subject-cast-offline-profile.mjs';
 import {
   agentMcpProfileArgumentsSha256,
@@ -42,7 +47,7 @@ function expectedToolSummary() {
 
 function expectedFixture() {
   return {
-    profile: G06_CAST_OFFLINE_NETWORK_MODE,
+    profile: G06_CAST_OFFLINE_V2_NETWORK_MODE,
     requestCount: 1,
     allowedRequestCount: 1,
     duplicateRequestCount: 0,
@@ -59,12 +64,12 @@ function serverSummary() {
   const catalogBytes = readFileSync(path.join(ROOT, 'docs/tool-catalog.json'));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
   const tool = catalog.find((item) => item.name === TOOL_NAME);
-  const profile = getAgentMcpProfileById(G06_CAST_OFFLINE_PROFILE_ID);
+  const profile = getAgentMcpProfileById(G06_CAST_OFFLINE_V2_PROFILE_ID);
   return {
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
-    profileId: G06_CAST_OFFLINE_PROFILE_ID,
-    argumentProfile: G06_CAST_OFFLINE_ARGUMENT_PROFILE,
-    networkMode: G06_CAST_OFFLINE_NETWORK_MODE,
+    profileId: G06_CAST_OFFLINE_V2_PROFILE_ID,
+    argumentProfile: G06_CAST_OFFLINE_V2_ARGUMENT_PROFILE,
+    networkMode: G06_CAST_OFFLINE_V2_NETWORK_MODE,
     expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
     sourceRevision: 'a'.repeat(40),
     bundleSha256: 'b'.repeat(64),
@@ -80,6 +85,7 @@ function serverSummary() {
     serverResultStatus: 'SUCCESS',
     allowedCallCount: 1,
     deniedCallCount: 0,
+    argumentMatch: true,
     results: [
       {
         sequenceIndex: 0,
@@ -140,8 +146,8 @@ test('G06 offline Codex invocation is ephemeral and exposes only the fixed tool'
     false,
   );
   assert.equal(
-    JSON.stringify(G06_CAST_OFFLINE_EXPECTED_ARGUMENTS),
-    '{"subjectId":990804,"limit":2}',
+    JSON.stringify(G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS),
+    '{"subjectId":990805,"limit":2}',
   );
 });
 
@@ -169,4 +175,44 @@ test('G06 offline server summary requires exactly one bounded synthetic response
     validateG06CastOfflineServerSummary(wrongTool, 'a'.repeat(40), 'b'.repeat(64)),
     false,
   );
+});
+
+test('G06 offline runner matches the MCP event summary field and rejects wrong or extra calls', () => {
+  const events = summarizeCodexEvents([
+    { type: 'thread.started' },
+    { type: 'turn.started' },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'synthetic-call',
+        type: 'mcp_tool_call',
+        server: SERVER_ID,
+        tool: TOOL_NAME,
+        arguments: G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS,
+        status: 'completed',
+        result: { isError: false },
+      },
+    },
+    { type: 'turn.completed' },
+  ]);
+
+  assert.deepEqual(events.toolCalls, [
+    {
+      name: TOOL_NAME,
+      arguments: G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS,
+      state: 'DONE',
+    },
+  ]);
+  assert.equal(hasExactCompletedCodexToolCalls(events.toolCalls, [TOOL_NAME]), true);
+  assert.equal(validateG06CastOfflineToolEvent(events), true);
+
+  const wrongTool = structuredClone(events);
+  wrongTool.toolCalls[0].name = 'bangumi.get_person';
+  assert.equal(hasExactCompletedCodexToolCalls(wrongTool.toolCalls, [TOOL_NAME]), false);
+  assert.equal(validateG06CastOfflineToolEvent(wrongTool), false);
+
+  const duplicate = structuredClone(events);
+  duplicate.toolCalls.push(duplicate.toolCalls[0]);
+  assert.equal(hasExactCompletedCodexToolCalls(duplicate.toolCalls, [TOOL_NAME]), false);
+  assert.equal(validateG06CastOfflineToolEvent(duplicate), false);
 });

@@ -83,6 +83,7 @@ import {
   assertG06SubjectCastOfflineProfile,
   createG06SubjectCastOfflineFetch,
   G06_CAST_OFFLINE_NETWORK_MODE,
+  G06_CAST_OFFLINE_V2_NETWORK_MODE,
 } from '../../scripts/lib/g06-subject-cast-offline-profile.mjs';
 import {
   assertR04SeriesWatchOrderOfflineProfile,
@@ -290,7 +291,9 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE) {
     assertG01QuerySubjectsOfflineFixtureProfile(config.profile);
   }
-  if (config.networkMode === G06_CAST_OFFLINE_NETWORK_MODE) {
+  if (
+    [G06_CAST_OFFLINE_NETWORK_MODE, G06_CAST_OFFLINE_V2_NETWORK_MODE].includes(config.networkMode)
+  ) {
     assertG06SubjectCastOfflineProfile(config.profile);
   }
   if (config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE) {
@@ -388,8 +391,10 @@ async function main(argv = process.argv.slice(2)) {
                   ? createG01QuerySubjectsOfflineFetch()
                   : config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE
                     ? createP02PersonProfileOfflineFetch()
-                    : config.networkMode === G06_CAST_OFFLINE_NETWORK_MODE
-                      ? createG06SubjectCastOfflineFetch()
+                    : [G06_CAST_OFFLINE_NETWORK_MODE, G06_CAST_OFFLINE_V2_NETWORK_MODE].includes(
+                          config.networkMode,
+                        )
+                      ? createG06SubjectCastOfflineFetch(config.profile)
                       : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
                         ? createR04SeriesWatchOrderOfflineFetch()
                         : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE

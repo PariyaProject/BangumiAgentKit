@@ -8,6 +8,7 @@ import {
   parseCodexJsonl,
   safeCodexNonMcpEventSummary,
   summarizeCodexEvents,
+  hasExactCompletedCodexToolCalls,
 } from './run-g26-codex-agent-mcp.mjs';
 import {
   agentMcpProfileArgumentsSha256,
@@ -760,10 +761,7 @@ function runR05Profile({ runNumber }) {
       call?.tool === PROFILE.toolName &&
       canonicalAgentMcpProfileJson(call?.arguments) ===
         canonicalAgentMcpProfileJson(PROFILE.calls[0].arguments);
-    const exactToolEvents =
-      events.toolCalls.length === 1 &&
-      events.toolCalls[0]?.tool === PROFILE.toolName &&
-      events.toolCalls[0]?.state === 'DONE';
+    const exactToolEvents = hasExactCompletedCodexToolCalls(events.toolCalls, [PROFILE.toolName]);
     const structuredReadback = Boolean(call?.result?.structuredContent);
     const resultSummary = serverSummary?.results?.[0]?.resultSummary;
     const mcpText = call?.result?.content?.find((item) => item?.type === 'text')?.text;

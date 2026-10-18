@@ -9,6 +9,7 @@ import {
   parseCodexJsonl,
   safeCodexNonMcpEventSummary,
   summarizeCodexEvents,
+  hasExactCompletedCodexToolCalls,
 } from './run-g26-codex-agent-mcp.mjs';
 import {
   computeMcpBundleSha256,
@@ -630,10 +631,7 @@ function runP06({ runNumber }) {
       actualCall?.tool === PROFILE.toolName &&
       canonicalAgentMcpProfileJson(actualCall?.arguments) ===
         canonicalAgentMcpProfileJson(P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS);
-    const exactToolEvent =
-      events.toolCalls.length === 1 &&
-      events.toolCalls[0]?.tool === PROFILE.toolName &&
-      events.toolCalls[0]?.state === 'DONE';
+    const exactToolEvent = hasExactCompletedCodexToolCalls(events.toolCalls, [PROFILE.toolName]);
     const safeEvents = {
       processExitCode: execution.exitCode,
       eventStreamParsed: parsed.parsed === true && events.eventStreamComplete === true,

@@ -8320,6 +8320,233 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         )
         self.assertIn('does not contain evidence for bangumi.render_query_subjects', error)
 
+    def write_g06_cast_offline_v2_report(
+        self, relative_path=TABLE_CHECKER.G06_CAST_OFFLINE_V2_REPORT_PATH, **overrides,
+    ):
+        acknowledgement = 'G06_SYNTHETIC_CAST_MATRIX_EXECUTED'
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': TABLE_CHECKER.G06_CAST_OFFLINE_V2_REPORT_KIND,
+            'runNumber': 95,
+            'frontierId': 'G06',
+            'scenarioId': None,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+            'epochId': TABLE_CHECKER.G06_CAST_OFFLINE_V2_EPOCH_ID,
+            'profileId': TABLE_CHECKER.G06_CAST_OFFLINE_V2_PROFILE['id'],
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'toolName': TABLE_CHECKER.G06_CAST_OFFLINE_V2_TOOL_NAME,
+            'argumentProfile': TABLE_CHECKER.G06_CAST_OFFLINE_V2_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': TABLE_CHECKER.G06_CAST_OFFLINE_V2_EXPECTED_ARGUMENTS_SHA256,
+            'registrySha256': TABLE_CHECKER.G06_CAST_OFFLINE_V2_REGISTRY_SHA256,
+            'serverToolNames': [TABLE_CHECKER.G06_CAST_OFFLINE_V2_TOOL_NAME],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_g06_cast_offline_profile'],
+            'resultStatus': 'SUCCESS',
+            'processExitCode': 0,
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'networkMode': TABLE_CHECKER.G06_CAST_OFFLINE_V2_NETWORK_MODE,
+            'sourceRevision': 'e' * 40,
+            'baseSha': 'a' * 40,
+            'ciSha': 'e' * 40,
+            'ciStatus': 'SUCCESS',
+            'ciRunId': '39077898683',
+            'ciChecks': [
+                {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+                for name in TABLE_CHECKER.G06_CAST_OFFLINE_V2_REQUIRED_CI_CHECKS
+            ],
+            'prNumber': 221,
+            'claimId': f'profile-run-95-pr-221-{"e" * 12}-1234567890',
+            'mcpBundleSha256': 'f' * 64,
+            'answerCheckMethod': TABLE_CHECKER.G06_CAST_OFFLINE_V2_ANSWER_CHECK_METHOD,
+            'answerSha256': hashlib.sha256(acknowledgement.encode()).hexdigest(),
+            'answerUtf8Bytes': len(acknowledgement.encode()),
+            'answerChecks': {
+                field: True for field in TABLE_CHECKER.G06_CAST_OFFLINE_V2_ANSWER_CHECK_FIELDS
+            },
+            'toolResultSummary': TABLE_CHECKER.G06_CAST_OFFLINE_V2_TOOL_RESULT_SUMMARY,
+            'offlineFixture': TABLE_CHECKER.G06_CAST_OFFLINE_V2_FIXTURE,
+            'networkBoundary': TABLE_CHECKER.G06_CAST_OFFLINE_V2_NETWORK_BOUNDARY,
+            'privacy': TABLE_CHECKER.G06_CAST_OFFLINE_V2_PRIVACY,
+            'selectionEvidenceSha256': '1' * 64,
+            'runnerReceipt': {
+                'kind': 'g06-cast-offline-agent-mcp-runner-receipt-v1',
+                'payload': {},
+                'signature': 'synthetic-test-signature',
+            },
+        }
+        report.update(overrides)
+        path = self.root / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(report), encoding='utf-8')
+        return relative_path
+
+    def test_g06_v2_offline_report_maps_only_get_subject_cast_agent_mcp(self):
+        relative_path = self.write_g06_cast_offline_v2_report()
+        cell = f'✅<br>`{relative_path}`'
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_cast', cell, 'agent_mcp',
+        ))
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject', cell, 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject', error)
+        public_error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_cast', f'◐<br>`{relative_path}`', 'public',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_cast', public_error)
+
+    def test_g06_v2_offline_report_rejects_wrong_path_and_fixture(self):
+        wrong_path = self.write_g06_cast_offline_v2_report(
+            'docs/live-probes/copied-g06-v2-report.json',
+        )
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_cast', f'✅<br>`{wrong_path}`', 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_cast', error)
+
+    def test_g06_v2_report_refresh_allows_only_its_acceptance_verifier_files(self):
+        profile = GENERATOR.codex_g06_cast_offline_profile_spec(
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        )
+        base_paths = set(profile['evidenceRefreshPaths'])
+        verifier_paths = GENERATOR.CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS
+        self.assertEqual(verifier_paths, {
+            '.github/workflows/ci.yml',
+            'docs/agent/HARNESS.md',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/test_acceptance_evidence.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/agent-harness.mjs',
+            'tests/harness/agent-harness-cli.test.mjs',
+            'tests/harness/g01-public-query-render-evidence.test.mjs',
+            'tests/harness/g09-public-watch-order-evidence.test.mjs',
+            'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
+            'tests/harness/public-probe-coverage.test.mjs',
+            'tests/integration/tool-e2e-acceptance.test.ts',
+        })
+        self.assertTrue(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
+            base_paths | verifier_paths,
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        ))
+        self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
+            (base_paths | verifier_paths) | {'apps/mcp/src/tools/subject-cast.ts'},
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        ))
+        self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
+            verifier_paths,
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        ))
+        self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
+            base_paths | verifier_paths,
+            GENERATOR.CODEX_G06_CAST_OFFLINE_PROFILE_ID,
+        ))
+
+    def test_g06_v2_acceptance_ci_reads_harness_state_with_scoped_read_only_token(self):
+        workflow = (GENERATOR.ROOT / '.github/workflows/ci.yml').read_text(encoding='utf-8')
+        harness_job = workflow.split('  harness-control:\n', 1)[1].split(
+            '\n  sqlite-default:\n', 1,
+        )[0]
+        self.assertIn(
+            '    permissions:\n'
+            '      contents: read\n'
+            '      checks: read\n'
+            '      issues: read\n'
+            '      pull-requests: read\n',
+            harness_job,
+        )
+        self.assertIn(
+            '      - name: Validate tool acceptance evidence and matrix\n'
+            '        env:\n'
+            '          GH_TOKEN: ${{ github.token }}\n'
+            '        run: pnpm acceptance:check',
+            harness_job,
+        )
+        self.assertEqual(workflow.count('GH_TOKEN: ${{ github.token }}'), 1)
+        self.assertNotIn('write', harness_job)
+
+    def test_g06_v2_report_refresh_binds_live_pr_head_before_harness_candidate_update(self):
+        profile = GENERATOR.codex_g06_cast_offline_profile_spec(
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        )
+        source_revision = 'e' * 40
+        current_head = 'f' * 40
+        base_sha = 'a' * 40
+        branch = 'codex/epoch-run95-g06-cast-offline-matrix-v2-20261018'
+        report = {
+            'profileId': profile['id'],
+            'prNumber': 221,
+            'sourceRevision': source_revision,
+            'baseSha': base_sha,
+            'mcpBundleSha256': 'c' * 64,
+        }
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 221},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'epoch_id': profile['epochId'],
+                    'pr_number': 221,
+                    'base_branch': 'master',
+                    'base_sha': base_sha,
+                    'candidate_sha': source_revision,
+                    'branch': branch,
+                },
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base_sha,
+                'pr_head_ref_name': branch,
+                'pr_is_draft': False,
+                'pr_head_sha': current_head,
+            },
+        }
+        paths = set(GENERATOR.codex_g06_cast_offline_profile_spec(profile['id'])['evidenceRefreshPaths'])
+        paths.update(GENERATOR.CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS)
+        self.assertTrue(GENERATOR.codex_g06_cast_offline_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, 'c' * 64,
+        ))
+        with (
+            patch.object(
+                GENERATOR,
+                '_codex_g06_cast_offline_report_candidate_paths',
+                return_value=paths,
+            ) as candidate_paths,
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
+        ):
+            self.assertTrue(
+                GENERATOR.codex_g06_cast_offline_profile_report_candidate_binding_is_current(
+                    report, epoch_status,
+                ),
+            )
+            candidate_paths.assert_called_once_with(source_revision, current_head)
+
+        epoch_status['epoch']['state']['candidate_sha'] = 'd' * 40
+        self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, 'c' * 64,
+        ))
+
+        relative_path = self.write_g06_cast_offline_v2_report(
+            offlineFixture={
+                **TABLE_CHECKER.G06_CAST_OFFLINE_V2_FIXTURE,
+                'requestCount': 2,
+            },
+        )
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject_cast', f'✅<br>`{relative_path}`', 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject_cast', error)
+
     def write_r01_offline_report(
         self, relative_path=TABLE_CHECKER.R01_OFFLINE_REPORT_PATH, **overrides,
     ):
@@ -9541,11 +9768,12 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
         self.root = Path(self.temp_dir.name)
         self.report_path = self.root / GENERATOR.CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH
         self.report_path.parent.mkdir(parents=True)
-        selection_path = self.root / GENERATOR.CODEX_G06_CAST_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH
-        selection_path.parent.mkdir(parents=True, exist_ok=True)
-        selection_path.write_bytes(
-            (GENERATOR.ROOT / GENERATOR.CODEX_G06_CAST_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes(),
-        )
+        for profile in GENERATOR.CODEX_G06_CAST_OFFLINE_PROFILE_SPECS.values():
+            selection_path = self.root / profile['selectionEvidencePath']
+            selection_path.parent.mkdir(parents=True, exist_ok=True)
+            selection_path.write_bytes(
+                (GENERATOR.ROOT / profile['selectionEvidencePath']).read_bytes(),
+            )
         self.catalog_path = self.root / 'docs/tool-catalog.json'
         self.catalog_path.parent.mkdir(parents=True, exist_ok=True)
         self.catalog_path.write_bytes(GENERATOR.CATALOG.read_bytes())
@@ -9553,8 +9781,9 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
         frontier_path.parent.mkdir(parents=True, exist_ok=True)
         frontier = json.loads((GENERATOR.ROOT / 'docs/product/frontier-ledger.json').read_text())
         g06 = next(record for record in frontier['records'] if record['id'] == 'G06')
-        g06['source_refs'].append(GENERATOR.CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH)
-        g06['source_refs'].append(GENERATOR.CODEX_G06_CAST_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH)
+        for profile in GENERATOR.CODEX_G06_CAST_OFFLINE_PROFILE_SPECS.values():
+            g06['source_refs'].append(profile['reportPath'])
+            g06['source_refs'].append(profile['selectionEvidencePath'])
         frontier_path.write_text(json.dumps(frontier), encoding='utf-8')
         self.originals = (GENERATOR.ROOT, GENERATOR.CATALOG, GENERATOR.LIVE_PROBE_DIR)
         GENERATOR.ROOT = self.root
@@ -9665,7 +9894,10 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
         }
 
     def validate_report(self, report):
-        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        profile = GENERATOR.codex_g06_cast_offline_profile_spec(report.get('profileId'))
+        report_path = self.root / profile['reportPath']
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
 
         def validate_embedded_report(args, **kwargs):
             payload = json.loads(kwargs['input'])
@@ -9688,13 +9920,142 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
             return GENERATOR.codex_g06_cast_offline_profile_report_is_valid(
                 report,
                 harness_status={'fixture': True},
-                report_path=self.report_path,
+                report_path=report_path,
                 epoch_status={'fixture': True},
             )
+
+    def build_v2_report(self):
+        profile = GENERATOR.codex_g06_cast_offline_profile_spec(
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        )
+        report = json.loads(json.dumps(self.report))
+        report.update({
+            'evidenceKind': profile['evidenceKind'],
+            'epochId': profile['epochId'],
+            'profileId': profile['id'],
+            'profile': profile['reportProfile'],
+            'registrySha256': profile['registrySha256'],
+            'selectionEvidenceSha256': hashlib.sha256(
+                (self.root / profile['selectionEvidencePath']).read_bytes(),
+            ).hexdigest(),
+            'argumentProfile': profile['argumentProfile'],
+            'expectedArgumentsSha256': profile['expectedArgumentsSha256'],
+            'networkMode': profile['networkMode'],
+            'answerCheckMethod': profile['answerCheckMethod'],
+            'codexErrorItemCount': 3,
+        })
+        report['offlineFixture']['profile'] = profile['networkMode']
+        report_path = self.root / profile['reportPath']
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        return report, report_path, profile
+
+    def report_written_harness_status(self, report, report_path, profile):
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        report_bytes = report_path.read_bytes()
+        receipt = report['runnerReceipt']
+        disposition = {
+            'claimId': report['claimId'],
+            'profileId': profile['id'],
+            'frontierId': profile['frontierId'],
+            'epochId': profile['epochId'],
+            'runNumber': 95,
+            'prNumber': report['prNumber'],
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'ciRunId': report['ciRunId'],
+            'ciChecks': report['ciChecks'],
+            'reviewerId': report['reviewerId'],
+            'bundleSha256': report['mcpBundleSha256'],
+            'registrySha256': profile['registrySha256'],
+            'toolName': profile['toolName'],
+            'argumentProfile': profile['argumentProfile'],
+            'expectedArgumentsSha256': profile['expectedArgumentsSha256'],
+            'reportWritten': True,
+            'reportPath': profile['reportPath'],
+            'reportSha256': hashlib.sha256(report_bytes).hexdigest(),
+            'retryAllowed': False,
+            'runnerReceiptPublicKey': receipt['publicKeyBase64'],
+            'runnerReceiptPublicKeySha256': receipt['publicKeySha256'],
+            'runnerReceiptSha256': GENERATOR._canonical_json_sha256(receipt),
+        }
+        return {
+            'state': 'REPORT_WRITTEN',
+            'profile_id': profile['id'],
+            'pr': report['prNumber'],
+            'tool_name': profile['toolName'],
+            'argument_profile': profile['argumentProfile'],
+            'expected_arguments_sha256': profile['expectedArgumentsSha256'],
+            'registry_sha256': profile['registrySha256'],
+            'claim_label_present': True,
+            'terminal_label_present': True,
+            'disposition': disposition,
+        }
+
+    def run_v2_sources(self, report, report_path, profile, harness_status):
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        report_bytes = report_path.read_bytes()
+
+        def validate_embedded_report(args, **kwargs):
+            payload = json.loads(kwargs['input'])
+            embedded = base64.b64decode(payload['reportBytesBase64'])
+            return subprocess.CompletedProcess(
+                args, 0,
+                json.dumps({'passed': True, 'reportSha256': hashlib.sha256(embedded).hexdigest()}),
+                '',
+            )
+
+        with (
+            patch.object(GENERATOR, 'codex_g06_cast_offline_profile_harness_status', return_value=harness_status),
+            patch.object(GENERATOR, 'codex_g06_cast_offline_profile_epoch_harness_status', return_value={'fixture': True}),
+            patch.object(GENERATOR, 'codex_g06_cast_offline_profile_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g06_cast_offline_profile_report_matches_candidate_revision', return_value=True),
+            patch.object(GENERATOR, 'codex_g06_cast_offline_profile_report_candidate_binding_is_current', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+        ):
+            sources = GENERATOR.model_mcp_e2e_sources(json.loads(self.catalog_path.read_text()))
+        return sources, report_bytes
 
     def test_accepts_only_the_synthetic_agent_mcp_matrix_cell_while_G06_remains_partial(self):
         self.assertTrue(GENERATOR.codex_g06_cast_offline_frontier_is_partial())
         self.assertTrue(self.validate_report(self.report))
+
+    def test_v2_report_accepts_bounded_error_items_and_routes_only_after_harness_acceptance(self):
+        report, report_path, profile = self.build_v2_report()
+        self.assertTrue(GENERATOR.codex_g06_cast_offline_frontier_is_partial(
+            profile_id=profile['id'],
+        ))
+        self.assertTrue(self.validate_report(report))
+
+        accepted_status = self.report_written_harness_status(report, report_path, profile)
+        sources, _ = self.run_v2_sources(report, report_path, profile, accepted_status)
+        self.assertEqual(
+            sources,
+            {
+                profile['toolName']: {
+                    profile['reportPath'],
+                },
+            },
+        )
+
+        inconclusive_status = {'state': 'INCONCLUSIVE'}
+        sources, _ = self.run_v2_sources(report, report_path, profile, inconclusive_status)
+        self.assertNotIn(profile['toolName'], sources)
+
+    def test_v2_rejects_unbounded_error_counts_and_v1_still_requires_zero(self):
+        report, _, _ = self.build_v2_report()
+        for invalid_count in (-1, 10_000_001, True):
+            with self.subTest(error_item_count=invalid_count):
+                invalid = json.loads(json.dumps(report))
+                invalid['codexErrorItemCount'] = invalid_count
+                self.assertFalse(self.validate_report(invalid))
+
+        v1_with_error = json.loads(json.dumps(self.report))
+        v1_with_error['codexErrorItemCount'] = 1
+        self.assertFalse(self.validate_report(v1_with_error))
 
     def test_rejects_scenario_credit_raw_content_and_fixture_expansion(self):
         scenario_credit = json.loads(json.dumps(self.report))
