@@ -3206,6 +3206,8 @@ CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS = {
     'scripts/check-tool-acceptance-table.py',
     'scripts/generate-tool-acceptance-tasks.py',
     'scripts/test_acceptance_evidence.py',
+    'scripts/agent-harness.mjs',
+    'tests/harness/agent-harness-cli.test.mjs',
     'tests/harness/g01-public-query-render-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-render-evidence.test.mjs',

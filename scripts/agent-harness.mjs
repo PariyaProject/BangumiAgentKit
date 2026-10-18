@@ -281,6 +281,19 @@ const G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
   'tests/harness/public-probe-coverage.test.mjs',
   'tests/integration/tool-e2e-acceptance.test.ts',
 ]);
+const R04_RENDER_V2_PROFILE_ID = 'r04-render-series-watch-order-offline-agent-mcp-matrix-v2';
+const R04_RENDER_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
+  'scripts/check-tool-acceptance-table.py',
+  'scripts/generate-tool-acceptance-tasks.py',
+  'scripts/test_acceptance_evidence.py',
+  'scripts/agent-harness.mjs',
+  'tests/harness/agent-harness-cli.test.mjs',
+  'tests/harness/g01-public-query-render-evidence.test.mjs',
+  'tests/harness/g09-public-watch-order-evidence.test.mjs',
+  'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
+  'tests/harness/public-probe-coverage.test.mjs',
+  'tests/integration/tool-e2e-acceptance.test.ts',
+]);
 const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'p06-render-person-profile-offline-agent-mcp-v1',
   'c07-render-comparison-offline-agent-mcp-matrix-v1',
@@ -3569,6 +3582,7 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
       ...(profile.id === G06_CAST_OFFLINE_V2_PROFILE_ID
         ? G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS
         : []),
+      ...(profile.id === R04_RENDER_V2_PROFILE_ID ? R04_RENDER_V2_ACCEPTANCE_REFRESH_PATHS : []),
     ]);
     if (
       !changedSinceReport.includes(profile.reportPath) ||
@@ -3579,7 +3593,9 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
         'AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID',
         profile.id === G06_CAST_OFFLINE_V2_PROFILE_ID
           ? 'A G06 v2 report refresh may include only its report, acceptance matrix, frontier evidence, and exact acceptance verifier files, with the MCP bundle unchanged.'
-          : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
+          : profile.id === R04_RENDER_V2_PROFILE_ID
+            ? 'An R04 v2 report refresh may include only its report, acceptance matrix, frontier evidence, and exact acceptance verifier files, with the MCP bundle unchanged.'
+            : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
         { profileId: profile.id, changedPaths: changedSinceReport },
       );
     }

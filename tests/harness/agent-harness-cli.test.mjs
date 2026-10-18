@@ -3474,6 +3474,80 @@ function g06V2ReportRefreshEnvironment(disposition, overrides = {}, epochOverrid
   return { environment, run, epoch };
 }
 
+function r04RenderV2ReportWrittenDisposition() {
+  return {
+    claimId: 'profile-run-95-pr-42-bbbbbbbbbbbb-1700000000000',
+    profileId: R04_RENDER_V2_PROFILE.id,
+    state: 'REPORT_WRITTEN',
+    sourceCandidateSha: sha('b'),
+    bundleSha256: 'c'.repeat(64),
+    reportPath: R04_RENDER_V2_PROFILE.reportPath,
+    reportSha256: 'd'.repeat(64),
+    reportWritten: true,
+    retryAllowed: false,
+  };
+}
+
+function r04RenderV2ReportRefreshEnvironment(disposition, overrides = {}, epochOverrides = {}) {
+  const { run, epoch } = passedCandidateFixture();
+  Object.assign(epoch, epochOverrides);
+  epoch.epoch_id = R04_RENDER_V2_PROFILE.epochId;
+  epoch.branch = `codex/epoch-${R04_RENDER_V2_PROFILE.epochId}`;
+  epoch.base_branch = 'master';
+  epoch.pr_number = 42;
+  epoch.base_sha = sha('a');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.candidate_sha = sha('d');
+  epoch.review_pass_sha = null;
+  epoch.state = 'CORRECTIVE_REQUIRED';
+  epoch.advances_frontier_ids = [];
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'Preserve the terminal R04 v2 report while validating its acceptance mapping.',
+    agent_mcp_profile_dispositions: {
+      [R04_RENDER_V2_PROFILE.id]: structuredClone(disposition),
+    },
+  };
+  const refreshPaths = [
+    R04_RENDER_V2_PROFILE.reportPath,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+    'scripts/check-tool-acceptance-table.py',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/test_acceptance_evidence.py',
+    'scripts/agent-harness.mjs',
+    'tests/harness/agent-harness-cli.test.mjs',
+    'tests/harness/g01-public-query-render-evidence.test.mjs',
+    'tests/harness/g09-public-watch-order-evidence.test.mjs',
+    'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
+    'tests/harness/public-probe-coverage.test.mjs',
+    'tests/integration/tool-e2e-acceptance.test.ts',
+  ];
+  const ciRunId = '39096913171';
+  const ciRunUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
+  epoch.ci = { sha: sha('e'), status: 'SUCCESS', url: ciRunUrl };
+  const environment = createMockEnvironment({
+    runIssueNumber: 95,
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch: epoch.branch,
+    featureBranch: epoch.branch,
+    featureHeadSha: sha('e'),
+    baseSha: sha('a'),
+    candidateRefreshRange: `${sha('b')}...${sha('e')}`,
+    candidateRefreshPaths: refreshPaths,
+    checks: mandatoryChecks.map((name, index) => ({
+      name,
+      status: 'COMPLETED',
+      conclusion: 'SUCCESS',
+      detailsUrl: `${ciRunUrl}/job/${117585166608 + index}`,
+    })),
+    draft: false,
+    ...overrides,
+  });
+  return { environment, run, epoch };
+}
+
 test('C03 report Candidate refresh accepts only the report and bounded acceptance evidence', () => {
   const disposition = c03ReportWrittenDisposition();
   const { environment } = c03ReportRefreshEnvironment(disposition);
@@ -3650,6 +3724,91 @@ test('G06 v2 report Candidate refresh rejects product code and unrelated validat
           completed: true,
           summary: 'Preserve the terminal G06 v2 report while validating its acceptance mapping.',
           agent_mcp_profile_dispositions: { [G06_V2_PROFILE.id]: disposition },
+        },
+      }),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).candidate_sha,
+      sha('d'),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('R04 v2 report Candidate refresh accepts its exact acceptance verifier paths', () => {
+  const disposition = r04RenderV2ReportWrittenDisposition();
+  const { environment } = r04RenderV2ReportRefreshEnvironment(disposition);
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('e'),
+        ci: {
+          url: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/39096913171',
+        },
+        candidate_refresh_reason: 'Record the R04 v2 report with its exact acceptance verifiers.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Preserve the terminal R04 v2 report while validating its acceptance mapping.',
+          agent_mcp_profile_dispositions: {
+            [R04_RENDER_V2_PROFILE.id]: disposition,
+          },
+        },
+      }),
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_READY');
+    assert.equal(stored.candidate_sha, sha('e'));
+    assert.deepEqual(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[R04_RENDER_V2_PROFILE.id],
+      disposition,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('R04 v2 report Candidate refresh rejects runtime and unrelated validation paths', () => {
+  const disposition = r04RenderV2ReportWrittenDisposition();
+  const { environment } = r04RenderV2ReportRefreshEnvironment(disposition, {
+    candidateRefreshPaths: [
+      R04_RENDER_V2_PROFILE.reportPath,
+      'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+      'docs/product/frontier-ledger.json',
+      'scripts/check-tool-acceptance-table.py',
+      'scripts/generate-tool-acceptance-tasks.py',
+      'scripts/test_acceptance_evidence.py',
+      'scripts/agent-harness.mjs',
+      'tests/harness/agent-harness-cli.test.mjs',
+      'tests/integration/tool-e2e-acceptance.test.ts',
+      'apps/mcp/src/tools/render-presentation-tools.ts',
+    ],
+  });
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('e'),
+        ci: {
+          url: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/39096913171',
+        },
+        candidate_refresh_reason: 'Reject any renderer runtime change after the R04 report.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Preserve the terminal R04 v2 report while validating its acceptance mapping.',
+          agent_mcp_profile_dispositions: {
+            [R04_RENDER_V2_PROFILE.id]: disposition,
+          },
         },
       }),
     ]);
