@@ -197,6 +197,17 @@ confirmation rule; the report-bound `docs/tool-catalog.json` snapshot remains
 unchanged to preserve the existing 65/65 public evidence without replaying old
 probes.
 
+The selected OP-009 visual acceptance also added truthful callback states and a
+first-party `auth_status` sentence, then reviewed the account-protected
+collection progress and intelligence cards with synthetic data only. Four
+callback states and nine renderer cases produced 65 PNGs across
+320/360/520/640/960 CSS px. Each image was individually inspected; the report
+records dimensions, SHA-256, layout checks, and findings in
+`docs/research/run95-ux001-auth-status-and-render-visual-review-2026-10-18.md`.
+This improves the candidate's offline status/error/partial/empty presentation
+but does not prove real OAuth, personal-account requests, or QQ/TIM delivery;
+OP-009 remains PARTIAL.
+
 ---
 
 ## OP-010 Collection Weekly Schedule

@@ -66,10 +66,8 @@ describe('OAuth callback across MCP SQLite and local callback server', () => {
     const tokenEncryptionKey =
       process.env.PARIYA_RUNNER_TOKEN_ENCRYPTION_KEY || TOKEN_ENCRYPTION_KEY;
     const principalProvider = process.env.PARIYA_MCP_IDENTITY_PROVIDER || 'qq';
-    const botInstanceId =
-      process.env.PARIYA_MCP_BOT_INSTANCE_ID || 'pariya-qq:synthetic-bot';
-    const externalUserId =
-      process.env.PARIYA_MCP_EXTERNAL_USER_ID || 'synthetic-qq-user';
+    const botInstanceId = process.env.PARIYA_MCP_BOT_INSTANCE_ID || 'pariya-qq:synthetic-bot';
+    const externalUserId = process.env.PARIYA_MCP_EXTERNAL_USER_ID || 'synthetic-qq-user';
     const conversationId =
       process.env.PARIYA_MCP_CONVERSATION_ID || 'pariya-qq:private:synthetic-qq-user';
     let tokenRequests = 0;
@@ -186,8 +184,19 @@ describe('OAuth callback across MCP SQLite and local callback server', () => {
       const before = (await mcp.getRegistry().executeTool('bangumi.auth_status', {}, context)) as {
         bound: boolean;
         accountCount: number;
+        message: string;
       };
-      expect(before).toMatchObject({ bound: false, accountCount: 0 });
+      expect(before).toMatchObject({
+        bound: false,
+        accountCount: 0,
+        message: '尚未绑定 Bangumi 账号。需要个人收藏功能时，再发起授权；公开查询无需绑定。',
+      });
+
+      const cancelledStart = (await mcp
+        .getRegistry()
+        .executeTool('bangumi.auth_start', {}, context)) as { authorizationUrl: string };
+      const cancelledState = new URL(cancelledStart.authorizationUrl).searchParams.get('state');
+      expect(cancelledState).toMatch(/^[a-f0-9]{48}$/u);
 
       const started = (await mcp.getRegistry().executeTool('bangumi.auth_start', {}, context)) as {
         authorizationUrl: string;
@@ -203,6 +212,28 @@ describe('OAuth callback across MCP SQLite and local callback server', () => {
       mcp = undefined;
       mcpStorage = undefined;
 
+      const deniedUrl = new URL(callbackUrl);
+      deniedUrl.searchParams.set('error', 'access_denied');
+      deniedUrl.searchParams.set('error_description', 'synthetic provider detail must not render');
+      deniedUrl.searchParams.set('state', cancelledState!);
+      const denied = await fetch(deniedUrl);
+      const denialHtml = await denied.text();
+      expect(denied.status, denialHtml).toBe(200);
+      expect(denialHtml).toContain('授权已取消');
+      expect(denialHtml).toContain('已有绑定状态没有改变');
+      expect(denialHtml).toContain('name="viewport"');
+      expect(denialHtml).not.toContain(cancelledState!);
+      expect(denialHtml).not.toContain('synthetic provider detail');
+      expect(denialHtml).not.toContain(ACCESS_TOKEN);
+      expect(denied.headers.get('cache-control')).toBe('no-store');
+      expect(tokenRequests).toBe(0);
+      expect(profileRequests).toBe(0);
+
+      const deniedReplay = await fetch(deniedUrl);
+      expect(deniedReplay.status).toBe(400);
+      expect(tokenRequests).toBe(0);
+      expect(profileRequests).toBe(0);
+
       // The real browser returns to the separate loopback API after consent.
       const completedUrl = new URL(callbackUrl);
       completedUrl.searchParams.set('code', 'synthetic-one-time-code');
@@ -210,8 +241,10 @@ describe('OAuth callback across MCP SQLite and local callback server', () => {
       const completed = await fetch(completedUrl);
       const completionHtml = await completed.text();
       expect(completed.status).toBe(200);
-      expect(completionHtml).toContain('Bangumi 账号绑定成功');
+      expect(completionHtml).toContain('绑定成功');
       expect(completionHtml).toContain('Synthetic User');
+      expect(completionHtml).toContain('name="viewport"');
+      expect(completed.headers.get('content-security-policy')).toContain("frame-ancestors 'none'");
       expect(completionHtml).not.toContain(state!);
       expect(completionHtml).not.toContain(ACCESS_TOKEN);
 

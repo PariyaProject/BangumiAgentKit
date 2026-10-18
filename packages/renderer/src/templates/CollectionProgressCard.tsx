@@ -11,12 +11,14 @@ export interface CollectionProgressCardProps {
   viewModel: CollectionProgressViewModel;
   theme: ThemeTokens;
   resolvedImages?: Record<string, string>;
+  width?: number;
 }
 
 export const CollectionProgressCard: React.FC<CollectionProgressCardProps> = ({
   viewModel,
   theme,
   resolvedImages = {},
+  width,
 }) => {
   const {
     subject,
@@ -27,47 +29,80 @@ export const CollectionProgressCard: React.FC<CollectionProgressCardProps> = ({
     comment,
     progressPercentage,
   } = viewModel;
-
   const coverSrc = subject.image ? resolvedImages[subject.image] || subject.image : undefined;
+  const narrowWidth = width !== undefined && width <= 360;
+  const coverWidth = narrowWidth ? 100 : 120;
+  const coverHeight = narrowWidth ? 138 : 165;
 
   return (
-    <CardFrame theme={theme}>
-      <div style={{ display: 'flex', gap: theme.spacing.lg, alignItems: 'flex-start' }}>
-        <CoverImage src={coverSrc} alt={subject.nameCn || subject.name} theme={theme} width={120} height={165} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md, flex: 1 }}>
-          <TitleBlock title={subject.nameCn || subject.name} subtitle={subject.name} theme={theme} />
+    <CardFrame theme={theme} width={width}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: narrowWidth ? 'minmax(0, 1fr)' : `${coverWidth}px minmax(0, 1fr)`,
+          gap: narrowWidth ? theme.spacing.md : theme.spacing.lg,
+          alignItems: 'start',
+          minWidth: 0,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: narrowWidth ? 'center' : 'flex-start',
+            minWidth: 0,
+          }}
+        >
+          <CoverImage
+            src={coverSrc}
+            alt={subject.nameCn || subject.name}
+            theme={theme}
+            width={coverWidth}
+            height={coverHeight}
+          />
+        </div>
+        <div style={{ gridColumn: narrowWidth ? '1 / -1' : undefined, minWidth: 0 }}>
+          <TitleBlock
+            title={subject.nameCn || subject.name}
+            subtitle={subject.name}
+            theme={theme}
+            titleFontSize={width && width > 320 && width <= 360 ? '22px' : undefined}
+          />
+        </div>
 
-          <div
-            style={{
-              display: 'flex',
-              gap: theme.spacing.md,
-              alignItems: 'center',
-              backgroundColor: theme.surfaceAlt,
-              padding: `${theme.spacing.xs} ${theme.spacing.md}`,
-              borderRadius: theme.radius.sm,
-              border: `1px solid ${theme.border}`,
-              fontSize: '14px',
-            }}
-          >
-            <span style={{ color: theme.accent, fontWeight: 700 }}>{statusLabel}</span>
-            <span style={{ color: theme.textMuted }}>•</span>
-            <span style={{ color: theme.text }}>
-              已看 {watchedEpisodes} {totalEpisodes ? `/ ${totalEpisodes}` : ''} 集
+        <div
+          style={{
+            gridColumn: '1 / -1',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: theme.spacing.sm,
+            alignItems: 'center',
+            minWidth: 0,
+            width: '100%',
+            backgroundColor: theme.surfaceAlt,
+            padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+            borderRadius: theme.radius.sm,
+            border: `1px solid ${theme.border}`,
+            fontSize: '14px',
+          }}
+        >
+          <span style={{ color: theme.accent, fontWeight: 700, whiteSpace: 'nowrap' }}>
+            {statusLabel}
+          </span>
+          <span style={{ color: theme.text, whiteSpace: 'nowrap' }}>
+            已看 {watchedEpisodes} {totalEpisodes ? `/ ${totalEpisodes}` : ''} 集
+          </span>
+          {rating !== undefined && (
+            <span style={{ color: theme.score, fontWeight: 700, whiteSpace: 'nowrap' }}>
+              ★ {rating} / 10
             </span>
-            {rating !== undefined && (
-              <>
-                <span style={{ color: theme.textMuted }}>•</span>
-                <span style={{ color: theme.score, fontWeight: 700 }}>
-                  ★ {rating} / 10
-                </span>
-              </>
-            )}
-          </div>
-
-          {progressPercentage !== undefined && (
-            <ProgressBar percentage={progressPercentage} label="观看进度" theme={theme} />
           )}
         </div>
+
+        {progressPercentage !== undefined && (
+          <div style={{ gridColumn: '1 / -1', minWidth: 0, width: '100%' }}>
+            <ProgressBar percentage={progressPercentage} label="观看进度" theme={theme} />
+          </div>
+        )}
       </div>
 
       {comment && (
@@ -81,6 +116,7 @@ export const CollectionProgressCard: React.FC<CollectionProgressCardProps> = ({
             fontSize: '14px',
             lineHeight: 1.5,
             color: theme.text,
+            overflowWrap: 'anywhere',
           }}
         >
           <div style={{ fontSize: '12px', color: theme.textMuted, marginBottom: '4px' }}>

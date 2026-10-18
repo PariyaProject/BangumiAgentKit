@@ -1,6 +1,7 @@
 export * from './token-crypto.js';
 export * from './state-store.js';
 export * from './token-broker.js';
+export * from './auth-status-message.js';
 export * from './oauth-service.js';
 export * from './oauth-client.js';
 export * from './client-provider.js';

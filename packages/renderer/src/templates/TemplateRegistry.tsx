@@ -128,8 +128,13 @@ registerTemplate<CastCardViewModel>({
 registerTemplate<CollectionProgressViewModel>({
   id: 'collection-progress',
   version: 1,
-  render: (vm, theme, resolvedImages) => (
-    <CollectionProgressCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} />
+  render: (vm, theme, resolvedImages, width) => (
+    <CollectionProgressCard
+      viewModel={vm}
+      theme={theme}
+      resolvedImages={resolvedImages}
+      width={width}
+    />
   ),
 });
 

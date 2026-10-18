@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
-import { TokenBroker, OAuthService } from '@bangumi-agent-kit/auth';
+import { TokenBroker, OAuthService, formatAuthStatusMessage } from '@bangumi-agent-kit/auth';
 
 export function createAuthTools(tokenBroker: TokenBroker, oauthService: OAuthService) {
   const authStatus = defineTool({
@@ -11,7 +11,8 @@ export function createAuthTools(tokenBroker: TokenBroker, oauthService: OAuthSer
     scopes: [],
     risk: 'read',
     execute: async (_input, context) => {
-      return await tokenBroker.getAuthStatus(context.principalId);
+      const status = await tokenBroker.getAuthStatus(context.principalId);
+      return { ...status, message: formatAuthStatusMessage(status) };
     },
   });
 

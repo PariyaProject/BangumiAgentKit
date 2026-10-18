@@ -54,14 +54,20 @@ export async function createApiApp(options: ApiAppOptions = {}): Promise<ApiAppI
   });
 
   app.get(BANGUMI_OAUTH_CALLBACK_PATH, async (req, reply) => {
-    const { code, state } = req.query as { code?: string; state?: string };
-    const res = await oauthHandler(code, state);
+    const query = req.query as Record<string, unknown>;
+    const code = typeof query.code === 'string' ? query.code : undefined;
+    const state = typeof query.state === 'string' ? query.state : undefined;
+    const providerError = typeof query.error === 'string' ? query.error : undefined;
+    const res = await oauthHandler(code, state, providerError);
     return reply.status(res.statusCode).headers(res.headers).send(res.body);
   });
 
   app.get('/oauth/callback', async (req, reply) => {
-    const { code, state } = req.query as { code?: string; state?: string };
-    const res = await oauthHandler(code, state);
+    const query = req.query as Record<string, unknown>;
+    const code = typeof query.code === 'string' ? query.code : undefined;
+    const state = typeof query.state === 'string' ? query.state : undefined;
+    const providerError = typeof query.error === 'string' ? query.error : undefined;
+    const res = await oauthHandler(code, state, providerError);
     return reply.status(res.statusCode).headers(res.headers).send(res.body);
   });
 

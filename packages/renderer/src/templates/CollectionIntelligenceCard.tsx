@@ -21,6 +21,69 @@ function formatAverage(value?: number): string {
   return value === undefined ? '未知' : value.toFixed(2);
 }
 
+function missingFieldLabel(field: string): string {
+  const labels: Record<string, string> = {
+    'item.status': '收藏状态',
+    'item.status.invalid': '收藏状态',
+    'item.subject_type': '媒介',
+    'item.rating': '评分',
+    'item.rating.invalid': '评分',
+    'item.tags': '标签',
+    'item.ep_status': '已看集数',
+    'item.ep_status.invalid': '已看集数',
+    'item.updated_at': '更新时间',
+    'item.updated_at.invalid': '更新时间',
+  };
+  return labels[field] || '其他字段';
+}
+
+function warningSummaries(viewModel: CollectionIntelligenceViewModel): string[] {
+  const summaries: string[] = [];
+  const codes = new Set(viewModel.warnings.map((warning) => warning.code));
+
+  if (codes.has('PARTIAL_SCAN')) {
+    const sourceTotal = viewModel.coverage.sourceTotal;
+    summaries.push(
+      `当前为有界样本：已观察 ${viewModel.coverage.observedRows} 行、去重 ${viewModel.coverage.uniqueItems} 条，源报告 ${sourceTotal === undefined ? '未知' : `${sourceTotal} 条`}。未观察到的收藏未计入统计。`,
+    );
+  }
+  if (codes.has('UPSTREAM_PAGE_FAILURE')) {
+    summaries.push('有收藏页面读取失败；结果只包含成功读取的数据，没有补齐缺失记录。');
+  }
+  if (codes.has('PAGINATION_STALLED')) {
+    summaries.push('收藏分页没有继续返回新记录；结果只包含已读取的数据。');
+  }
+  if (codes.has('SOURCE_TOTAL_CHANGED')) {
+    summaries.push('读取期间源记录总数发生变化；结果只代表本次观察到的样本。');
+  }
+  if (codes.has('DUPLICATE_ROWS')) {
+    summaries.push(`发现 ${viewModel.coverage.duplicateRows} 行重复收藏，已按条目去重。`);
+  }
+  if (codes.has('OUTPUT_TRUNCATED')) {
+    summaries.push('部分过长标签未纳入标签统计。');
+  }
+  if (codes.has('MISSING_FIELD')) {
+    const fields = Object.entries(viewModel.coverage.missingFields)
+      .filter(([, count]) => count > 0)
+      .map(([field]) => missingFieldLabel(field));
+    const uniqueFields = [...new Set(fields)];
+    const fieldSummary = uniqueFields.slice(0, 3).join('、');
+    const additionalFields =
+      uniqueFields.length > 3 ? `等 ${uniqueFields.length} 类字段` : fieldSummary;
+    summaries.push(
+      `部分收藏记录缺少${additionalFields || '可选字段'}；对应统计只采用有值的数据，没有补猜。`,
+    );
+  }
+
+  return summaries;
+}
+
+const STATISTICAL_NOTES = [
+  '只统计本次读取到的收藏；部分覆盖时不代表完整收藏。',
+  '进度只显示已看集数，不计算完成率；最近更新时间由 Bangumi 提供，可能不会随评分或观看状态更新。',
+  '不会读取收藏评论、推测口味、比较不同账号或修改收藏。',
+];
+
 function typeLabel(value: string): string {
   return (
     (
@@ -47,6 +110,14 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
     viewModel.coverage.sourceTotal === undefined ? '未知' : String(viewModel.coverage.sourceTotal);
   const ratingMax = Math.max(1, ...viewModel.ratings.distribution.map((item) => item.count));
   const hasData = totalObserved > 0 && viewModel.state !== 'unavailable';
+  const completeEmptyResult =
+    totalObserved === 0 &&
+    viewModel.state === 'complete' &&
+    viewModel.coverage.sourceExhausted &&
+    viewModel.coverage.sourceTotal === 0;
+  const unconfirmedEmptyResult =
+    totalObserved === 0 && viewModel.state !== 'unavailable' && !completeEmptyResult;
+  const summarizedWarnings = viewModel.state === 'unavailable' ? [] : warningSummaries(viewModel);
 
   return (
     <CardFrame theme={theme} width={width}>
@@ -56,14 +127,14 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
         theme={theme}
       />
 
-      <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
-        覆盖：源报告 {sourceTotal} 条 · 观察 {viewModel.coverage.observedRows} 行 · 去重后{' '}
-        {viewModel.coverage.uniqueItems} 条 · {viewModel.coverage.pagesSucceeded}/
-        {viewModel.coverage.pagesAttempted} 页{viewModel.coverage.truncated ? ' · 有界样本' : ''}
+      <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>
+        覆盖：源报告 {sourceTotal} 条 · 已读取 {viewModel.coverage.observedRows} 行 · 去重后{' '}
+        {viewModel.coverage.uniqueItems} 条 · 成功读取 {viewModel.coverage.pagesSucceeded}/
+        {viewModel.coverage.pagesAttempted} 页{viewModel.coverage.truncated ? ' · 部分样本' : ''}
       </div>
 
       {viewModel.presentation.state === 'partial' ? (
-        <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
+        <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.5 }}>
           展示省略：标签 {viewModel.presentation.tags.omitted} 个 · 最近更新{' '}
           {viewModel.presentation.recentUpdates.omitted} 条（源覆盖状态不变）
         </div>
@@ -77,11 +148,49 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
             border: `1px solid ${theme.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
-            fontSize: '12px',
+            fontSize: '13px',
             lineHeight: 1.5,
           }}
         >
-          官方收藏源暂时不可用，未生成猜测的收藏统计。
+          官方收藏暂时不可读取，因此没有可用统计；未用猜测填补结果。请稍后重试。
+        </div>
+      ) : null}
+
+      {completeEmptyResult ? (
+        <div
+          style={{
+            color: theme.text,
+            backgroundColor: theme.surfaceAlt,
+            border: `1px solid ${theme.border}`,
+            borderRadius: theme.radius.md,
+            padding: theme.spacing.md,
+            fontSize: '13px',
+            lineHeight: 1.6,
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>暂无收藏条目</div>
+          <div style={{ color: theme.textMuted }}>
+            Bangumi 已返回完整的空收藏结果，当前统计为 0 条。
+          </div>
+        </div>
+      ) : null}
+
+      {unconfirmedEmptyResult ? (
+        <div
+          style={{
+            color: theme.text,
+            backgroundColor: theme.surfaceAlt,
+            border: `1px solid ${theme.border}`,
+            borderRadius: theme.radius.md,
+            padding: theme.spacing.md,
+            fontSize: '13px',
+            lineHeight: 1.6,
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>本次未观察到收藏条目</div>
+          <div style={{ color: theme.textMuted }}>
+            收藏读取未完整，不能确认收藏为空。请重试后再查看。
+          </div>
         </div>
       ) : null}
 
@@ -96,7 +205,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
           >
             {[
               ['观察条目', String(totalObserved)],
-              ['待看/搁置 backlog', String(viewModel.backlog.total)],
+              ['待看 / 搁置', String(viewModel.backlog.total)],
               [
                 '已评分',
                 `${viewModel.ratings.rated} · 均分 ${formatAverage(viewModel.ratings.average)}`,
@@ -113,7 +222,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
                   minWidth: 0,
                 }}
               >
-                <div style={{ color: theme.textMuted, fontSize: '10px' }}>{label}</div>
+                <div style={{ color: theme.textMuted, fontSize: '11px' }}>{label}</div>
                 <div
                   style={{
                     color: theme.text,
@@ -128,8 +237,8 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
             ))}
           </div>
 
-          <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-            待看/搁置 backlog = wish + on_hold；进行中 {viewModel.backlog.doing} 条另计。
+          <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.45 }}>
+            待看与搁置合计；进行中 {viewModel.backlog.doing} 条另计。
           </div>
 
           <div
@@ -174,7 +283,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
                     key={item.rating}
                     style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
                   >
-                    <span style={{ width: '20px', color: theme.textMuted, fontSize: '10px' }}>
+                    <span style={{ width: '20px', color: theme.textMuted, fontSize: '11px' }}>
                       {item.rating}
                     </span>
                     <div
@@ -185,7 +294,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
                         borderRadius: '4px',
                       }}
                     />
-                    <span style={{ color: theme.textMuted, fontSize: '10px' }}>{item.count}</span>
+                    <span style={{ color: theme.textMuted, fontSize: '11px' }}>{item.count}</span>
                   </div>
                 ))}
               </div>
@@ -216,8 +325,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
                   .join(' · ') || '媒介未知'}
               </div>
               <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
-                有进度记录 {viewModel.progress.itemsWithProgress} 条；仅统计
-                ep_status，未计算完成百分比。
+                有进度记录 {viewModel.progress.itemsWithProgress} 条；只显示已看集数，不计算完成率。
               </div>
             </section>
             <section>
@@ -234,7 +342,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
                   ? viewModel.tags.top.map((item) => `${item.tag} ×${item.count}`).join(' · ')
                   : '没有观察到标签'}
               </div>
-              <div style={{ color: theme.textMuted, fontSize: '10px' }}>
+              <div style={{ color: theme.textMuted, fontSize: '11px' }}>
                 不同标签 {viewModel.tags.distinct} · 有标签记录 {viewModel.tags.itemsWithTags}
               </div>
             </section>
@@ -242,7 +350,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
 
           <section>
             <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>
-              观察样本中的 source-reported updated_at
+              最近更新（当前观察到的条目）
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '6px' }}>
               {viewModel.latestObservedUpdates.length ? (
@@ -275,19 +383,38 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
         </>
       ) : null}
 
-      {viewModel.warnings.length > 0 && (
-        <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
-          {viewModel.warnings.map((warning) => warning.message).join('；')}
+      {summarizedWarnings.length > 0 && (
+        <div
+          style={{
+            color: theme.text,
+            backgroundColor: theme.surfaceAlt,
+            border: `1px solid ${theme.border}`,
+            borderRadius: theme.radius.md,
+            padding: theme.spacing.md,
+            fontSize: '12px',
+            lineHeight: 1.55,
+          }}
+        >
+          <div style={{ color: theme.accent, fontWeight: 700, marginBottom: theme.spacing.xs }}>
+            数据说明
+          </div>
+          {summarizedWarnings.map((summary) => (
+            <div key={summary}>{summary}</div>
+          ))}
         </div>
       )}
       {viewModel.limitations.length > 0 && (
-        <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-          限制：{viewModel.limitations.join('；')}
+        <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.6 }}>
+          <div style={{ color: theme.text, fontWeight: 700, marginBottom: theme.spacing.xs }}>
+            统计口径
+          </div>
+          {STATISTICAL_NOTES.map((note) => (
+            <div key={note}>· {note}</div>
+          ))}
         </div>
       )}
-      <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-        公式：{viewModel.evidence.formulaVersion || '未生成'} · 账号范围：
-        {viewModel.evidence.authScope}
+      <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+        统计版本：{viewModel.evidence.formulaVersion || '未生成'} · 范围：当前授权账号
         {viewModel.source.retrievedAt ? ` · ${viewModel.source.retrievedAt}` : ''}
       </div>
       <Footer theme={theme} />

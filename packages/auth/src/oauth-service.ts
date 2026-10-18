@@ -76,10 +76,12 @@ export class OAuthService {
   }
 
   async handleCallback(code: string, state: string): Promise<AuthorizedAccount> {
-    const oauthConfig = this.requireOAuthConfig();
-
     // 1. Consume state safely & atomically
     const session = await this.stateStore.consumeState(state);
+
+    // A callback attempt is single-use even if the server configuration was
+    // removed after the authorization URL was created.
+    const oauthConfig = this.requireOAuthConfig();
 
     // 2. Exchange code for access_token
     const tokenData = await this.oauthClient.exchangeAuthorizationCode(
@@ -145,6 +147,10 @@ export class OAuthService {
       nickname: accountRecord.nickname,
       principalId: session.principalId,
     };
+  }
+
+  async consumeCallbackState(state: string): Promise<void> {
+    await this.stateStore.consumeState(state);
   }
 
   private requireOAuthConfig(): { clientId: string; clientSecret: string; redirectUri: string } {

@@ -67,7 +67,11 @@ describe('MCP host confirmation contract', () => {
         arguments: {},
       });
       const statusText = (status.content as Array<{ text: string }>)[0]!.text;
-      expect(JSON.parse(statusText)).toEqual({ bound: false, accountCount: 0 });
+      expect(JSON.parse(statusText)).toEqual({
+        bound: false,
+        accountCount: 0,
+        message: '尚未绑定 Bangumi 账号。需要个人收藏功能时，再发起授权；公开查询无需绑定。',
+      });
 
       const start = await client.callTool({
         name: 'bangumi.auth_start',
