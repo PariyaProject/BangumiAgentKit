@@ -1116,6 +1116,7 @@
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
       "source_refs": [
+        "docs/research/run95-query-subjects-fresh-public-matrix-contract-2026-10-19.md",
         "docs/research/user-scenario-catalog.md",
         "docs/live-probes/discovery-scenarios-run66-d1a5a03-2026-10-03.json",
         "tests/integration/tool-e2e-acceptance.test.ts",

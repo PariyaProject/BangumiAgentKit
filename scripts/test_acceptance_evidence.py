@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -12207,6 +12208,147 @@ class R02PositiveDirectRelationsProfileReportValidationTests(unittest.TestCase):
         self.assertEqual(sources, {
             GENERATOR.CODEX_R02_TOOL_NAME: {GENERATOR.CODEX_R02_REPORT_RELATIVE_PATH},
         })
+
+
+class FreshQuerySubjectsPublicMatrixProfileTests(unittest.TestCase):
+    def setUp(self):
+        self.original_root = GENERATOR.ROOT
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='fresh-query-subjects-matrix-test-')
+        GENERATOR.ROOT = Path(self.temp_dir.name)
+        self.frontier_path = GENERATOR.ROOT / 'docs/product/frontier-ledger.json'
+        self.frontier_path.parent.mkdir(parents=True, exist_ok=True)
+        self.frontier = {
+            'records': [{
+                'id': 'G14',
+                'status': 'PARTIAL',
+                'source_refs': [
+                    GENERATOR.CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_SELECTION_EVIDENCE_RELATIVE_PATH,
+                ],
+            }],
+        }
+        self.frontier_path.write_text(json.dumps(self.frontier), encoding='utf-8')
+
+    def tearDown(self):
+        GENERATOR.ROOT = self.original_root
+        self.temp_dir.cleanup()
+
+    def test_profile_is_one_fresh_public_matrix_call_and_does_not_close_g14(self):
+        profile = GENERATOR.CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE
+        self.assertEqual(profile['id'], 'query-subjects-fresh-public-matrix-v1')
+        self.assertEqual(profile['frontierId'], 'G14')
+        self.assertEqual(profile['acceptanceScope'], 'agent-mcp-matrix-only')
+        self.assertEqual(profile['model'], 'gpt-6-luna')
+        self.assertEqual(profile['reasoningEffort'], 'max')
+        self.assertEqual(len(profile['calls']), 1)
+        self.assertEqual(profile['calls'][0]['toolName'], 'bangumi.query_subjects')
+        self.assertEqual(profile['calls'][0]['arguments']['keyword'], '进击的巨人')
+        self.assertTrue(GENERATOR.codex_query_subjects_fresh_public_frontier_is_partial())
+        self.frontier['records'][0]['status'] = 'CLOSED'
+        self.frontier_path.write_text(json.dumps(self.frontier), encoding='utf-8')
+        self.assertFalse(GENERATOR.codex_query_subjects_fresh_public_frontier_is_partial())
+
+    def test_python_and_node_report_schemas_match_and_registry_markers_are_present(self):
+        report_script = (
+            self.original_root / 'scripts/acceptance/write-query-subjects-fresh-public-agent-mcp-report.mjs'
+        ).read_text(encoding='utf-8')
+        keys_match = re.search(r'const REQUIRED_REPORT_KEYS = \[(.*?)\n\];', report_script, re.S)
+        self.assertIsNotNone(keys_match)
+        node_keys = set(re.findall(r"'([^']+)'", keys_match.group(1)))
+        self.assertEqual(node_keys, GENERATOR.CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_FIELDS)
+        for relative_path, markers in GENERATOR.CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_IMPLEMENTATION_MARKERS.items():
+            body = (self.original_root / relative_path).read_text(encoding='utf-8')
+            for marker in markers:
+                self.assertIn(marker, body, f'{relative_path}: {marker}')
+
+    def test_report_binding_allows_only_the_current_candidate_or_evidence_only_refresh(self):
+        source_sha = 'a' * 40
+        candidate_sha = 'b' * 40
+        base_sha = 'c' * 40
+        reviewer_id = 'gpt-6-luna-max-run95-pr241-round1'
+        report = {
+            'prNumber': 241,
+            'sourceRevision': source_sha,
+            'baseSha': base_sha,
+            'reviewerId': reviewer_id,
+            'mcpBundleSha256': 'd' * 64,
+        }
+        branch = 'codex/epoch-run95-query-subjects-fresh-public-matrix-20261019'
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 241},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base_sha,
+                'pr_head_ref_name': branch,
+                'pr_head_sha': candidate_sha,
+                'pr_is_draft': False,
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EPOCH_ID,
+                    'pr_number': 241,
+                    'branch': branch,
+                    'base_branch': 'master',
+                    'base_sha': base_sha,
+                    'candidate_sha': candidate_sha,
+                    'state': 'REVIEW_PASSED',
+                    'advances_frontier_ids': ['G14'],
+                    'scope_closure': {'related_work_remaining': False},
+                    'adversarial_preflight': {'completed': True},
+                    'review_history': [
+                        {
+                            'candidate_sha': source_sha,
+                            'reviewed_base_sha': base_sha,
+                            'reviewer_id': reviewer_id,
+                            'verdict': 'PASS',
+                        },
+                        {
+                            'candidate_sha': candidate_sha,
+                            'reviewed_base_sha': base_sha,
+                            'reviewer_id': 'gpt-6-luna-max-run95-pr241-round2',
+                            'verdict': 'PASS',
+                        },
+                    ],
+                },
+            },
+        }
+        with (
+            patch.object(
+                GENERATOR,
+                'codex_r02_profile_candidate_paths',
+                return_value={GENERATOR.CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_RELATIVE_PATH},
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_g26_candidate_bundle_sha256',
+                return_value=report['mcpBundleSha256'],
+            ),
+        ):
+            self.assertTrue(
+                GENERATOR.codex_query_subjects_fresh_public_profile_candidate_binding_is_current(
+                    report,
+                    epoch_status,
+                ),
+            )
+        with (
+            patch.object(
+                GENERATOR,
+                'codex_r02_profile_candidate_paths',
+                return_value={'scripts/agent-harness.mjs'},
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_g26_candidate_bundle_sha256',
+                return_value=report['mcpBundleSha256'],
+            ),
+        ):
+            self.assertFalse(
+                GENERATOR.codex_query_subjects_fresh_public_profile_candidate_binding_is_current(
+                    report,
+                    epoch_status,
+                ),
+            )
 
 
 class A01RenderCohortAggregationMatrixProfileTests(unittest.TestCase):

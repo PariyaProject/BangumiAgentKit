@@ -44,6 +44,10 @@ import { R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID } from './r04-render-series-wa
 import { R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID } from './r04-render-series-watch-order-offline-v2-fixture.mjs';
 import { TITLE_QUERY_RENDER_PROFILE_ID } from './title-query-render-agent-mcp-profile.mjs';
 import {
+  QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID,
+  summarizeQuerySubjectsFreshPublicResult,
+} from './query-subjects-fresh-public-matrix-profile.mjs';
+import {
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
 } from './c07-render-comparison-offline-profile.mjs';
@@ -447,6 +451,11 @@ export function summarizeProfileToolResult(
     return toolName === 'bangumi.render_query_subjects'
       ? summarizeTitleQueryRenderArtifact(result, artifactSummary)
       : summarizeTitleQueryResult(result);
+  }
+  if (profileId === QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID) {
+    return toolName === 'bangumi.query_subjects'
+      ? summarizeQuerySubjectsFreshPublicResult(result)
+      : { resultState: 'unexpected_tool' };
   }
   if (profileId === C04_COHORT_COMPARISON_PROFILE_ID) {
     return toolName === 'bangumi.render_subject_cohort_comparison'

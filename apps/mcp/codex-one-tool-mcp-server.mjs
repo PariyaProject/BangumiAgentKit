@@ -140,6 +140,11 @@ import {
   TITLE_QUERY_RENDER_PROFILE_ID,
 } from '../../scripts/lib/title-query-render-agent-mcp-profile.mjs';
 import {
+  assertQuerySubjectsFreshPublicProfile,
+  createQuerySubjectsFreshPublicFetch,
+  QUERY_SUBJECTS_FRESH_PUBLIC_NETWORK_MODE,
+} from '../../scripts/lib/query-subjects-fresh-public-matrix-profile.mjs';
+import {
   A01_RATING_DISPERSION_NETWORK_MODE,
   A01_RATING_DISPERSION_PROFILE_ID,
   assertA01RatingDispersionProfile,
@@ -351,6 +356,11 @@ async function main(argv = process.argv.slice(2)) {
       );
     }
   }
+  if (config.networkMode === QUERY_SUBJECTS_FRESH_PUBLIC_NETWORK_MODE) {
+    if (!assertQuerySubjectsFreshPublicProfile(config.profile)) {
+      throw new Error('The fresh query_subjects profile does not match its fixed contract.');
+    }
+  }
   if (config.networkMode === A01_RATING_DISPERSION_NETWORK_MODE) {
     if (!assertA01RatingDispersionProfile(config.profile)) {
       throw new Error(
@@ -402,6 +412,10 @@ async function main(argv = process.argv.slice(2)) {
   const titleQueryRenderPublicFetch =
     config.networkMode === TITLE_QUERY_RENDER_NETWORK_MODE
       ? createTitleQueryRenderPublicFetch()
+      : null;
+  const querySubjectsFreshPublicFetch =
+    config.networkMode === QUERY_SUBJECTS_FRESH_PUBLIC_NETWORK_MODE
+      ? createQuerySubjectsFreshPublicFetch({ maxRequests: config.profile?.maxRequests })
       : null;
   const a01RatingDispersionPublicFetch =
     config.networkMode === A01_RATING_DISPERSION_NETWORK_MODE
@@ -487,11 +501,13 @@ async function main(argv = process.argv.slice(2)) {
         ? { fetchFn: a01RatingDispersionPublicFetch.fetchFn }
         : c04PublicFetch
           ? { fetchFn: c04PublicFetch.fetchFn }
-          : titleQueryRenderPublicFetch
-            ? { fetchFn: titleQueryRenderPublicFetch.fetchFn }
-            : r02PublicFetch
-              ? { fetchFn: r02PublicFetch.fetchFn }
-              : {}),
+          : querySubjectsFreshPublicFetch
+            ? { fetchFn: querySubjectsFreshPublicFetch.fetchFn }
+            : titleQueryRenderPublicFetch
+              ? { fetchFn: titleQueryRenderPublicFetch.fetchFn }
+              : r02PublicFetch
+                ? { fetchFn: r02PublicFetch.fetchFn }
+                : {}),
   });
   const dependencies = createRuntimeDependenciesWithStorage(storage, {
     publicHttpClient,
@@ -593,6 +609,9 @@ async function main(argv = process.argv.slice(2)) {
     ...(titleQueryRenderPublicFetch
       ? { publicRequestScope: titleQueryRenderPublicFetch.snapshot() }
       : {}),
+    ...(querySubjectsFreshPublicFetch
+      ? { publicRequestScope: querySubjectsFreshPublicFetch.snapshot() }
+      : {}),
     ...(titleQueryRenderAssetResolver
       ? {
           rendererAssetBoundary: {
@@ -607,7 +626,8 @@ async function main(argv = process.argv.slice(2)) {
     a01RatingDispersionPublicFetch ||
     c04PublicFetch ||
     r02PublicFetch ||
-    titleQueryRenderPublicFetch;
+    titleQueryRenderPublicFetch ||
+    querySubjectsFreshPublicFetch;
   const persistSummary = () =>
     writeSanitizedSummary(
       config.summaryPath,

@@ -3735,6 +3735,72 @@ CODEX_R02_RECEIPT_PAYLOAD_FIELDS = {
     'allowedCallCount', 'deniedCallCount', 'publicRequestScopeSha256', 'resultSummarySha256',
     'networkBoundarySha256', 'answerSha256', 'eventStreamSha256', 'serverSummarySha256',
 }
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'query-subjects-fresh-public-matrix-v1'
+)
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['id']
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EPOCH_ID = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['epochId']
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_TOOL_NAME = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['toolName']
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ARGUMENT_PROFILE = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['argumentProfile']
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_CALLS = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['calls']
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_CALLS],
+    sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE,
+    sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_RELATIVE_PATH = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['reportPath']
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['selectionEvidencePath']
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EVIDENCE_KIND = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['evidenceKind']
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_NETWORK_MODE = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['networkMode']
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_SERVER_ID = 'bgk_query_subjects_fresh_public_matrix'
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ACKNOWLEDGEMENT = b'QUERY_SUBJECTS_PUBLIC_MATRIX_OK'
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_MAX_REQUESTS = 8
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REQUIRED_CI_CHECKS = CODEX_P06_REQUIRED_CI_CHECKS
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EVIDENCE_REFRESH_PATHS = {
+    CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_RELATIVE_PATH,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+}
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'profileId', 'acceptanceScope', 'runNumber',
+    'frontierId', 'epochId', 'model', 'reasoningEffort', 'claimId', 'prNumber',
+    'reviewerId', 'toolName', 'argumentProfile', 'expectedArgumentsSha256',
+    'registrySha256', 'selectionEvidenceSha256', 'sourceRevision', 'baseSha', 'ciSha',
+    'ciStatus', 'ciRunId', 'ciChecks', 'mcpBundleSha256', 'catalogSha256',
+    'toolDescriptionSha256', 'inputSchemaSha256', 'networkMode', 'serverId',
+    'serverToolNames', 'serverToolCount', 'mcpServerNames', 'expectedCallCount',
+    'argumentMatch', 'processExitCode', 'eventStreamSha256', 'serverSummarySha256',
+    'eventStreamParsed', 'turnCompleted', 'codexMcpToolEventCount', 'codexErrorItemCount',
+    'blockedWebSearchErrorItemCount', 'unexpectedCodexErrorItemCount',
+    'nonMcpToolEventCount', 'nonMcpToolTypes', 'shellToolCallCount', 'allowedCallCount',
+    'deniedCallCount', 'resultSummary', 'publicRequestScope', 'answerUtf8Bytes',
+    'answerSha256', 'answerAcknowledgementMatched', 'privacy', 'retryAllowed',
+    'reportWritten', 'observedAt', 'codexCliVersion', 'runnerReceipt',
+}
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_RESULT_SUMMARY_FIELDS = {
+    'resultState', 'returnedItems', 'coverageState', 'pagesRequested', 'pagesScanned',
+    'totalKind', 'warningCount',
+}
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REQUEST_SCOPE_FIELDS = {
+    'requestCount', 'allowedRequestCount', 'deniedRequestCount', 'credentialAttemptCount',
+    'unexpectedRouteCount', 'budgetExceeded', 'maxRequests', 'anonymousOnly',
+    'officialV0Only', 'redirectPolicy',
+}
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PRIVACY = {
+    'promptPersisted': False, 'answerPersisted': False, 'subjectNamesPersisted': False,
+    'subjectIdsPersisted': False, 'accountDataPersisted': False, 'credentialsPersisted': False,
+    'communityDataPersisted': False,
+}
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_RECEIPT_FIELDS = {
+    'kind', 'publicKeyBase64', 'publicKeySha256', 'signature',
+}
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_RECEIPT_KIND = (
+    'query-subjects-fresh-public-agent-mcp-runner-receipt-v1'
+)
 CODEX_P07_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'p07-person-season-distribution-agent-mcp-v1'
@@ -6829,6 +6895,65 @@ CODEX_R02_PROFILE_IMPLEMENTATION_MARKERS = {
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_r02_profile_report_is_valid(',
         'CODEX_R02_REPORT_RELATIVE_PATH',
+    ),
+}
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "query-subjects-fresh-public-matrix-v1"',
+        '"keyword": "进击的巨人"',
+        '"networkMode": "run95-query-subjects-fresh-public-matrix-v1"',
+    ),
+    'scripts/lib/query-subjects-fresh-public-matrix-profile.mjs': (
+        'QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID =',
+        'export function createQuerySubjectsFreshPublicFetch(',
+        "url.origin === 'https://api.bgm.tv'",
+        'QUERY_SUBJECTS_FRESH_PUBLIC_MAX_REQUESTS = 8',
+    ),
+    'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
+        'assertQuerySubjectsFreshPublicProfile(profile)',
+    ),
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        'QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID',
+        'summarizeQuerySubjectsFreshPublicResult(result)',
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        'createQuerySubjectsFreshPublicFetch({ maxRequests: config.profile?.maxRequests })',
+        'assertQuerySubjectsFreshPublicProfile(config.profile)',
+    ),
+    'scripts/acceptance/run-query-subjects-fresh-public-agent-mcp.mjs': (
+        'export function assertQuerySubjectsFreshPublicCandidateReviewGate(',
+        'export function buildQuerySubjectsFreshPublicCodexExecArgs(',
+        '0.163.0 or later before claim',
+        'function runQuerySubjectsFreshPublic(',
+        'codexMcpExactToolAccessConfig(SERVER_ID, [PROFILE.toolName])',
+    ),
+    'scripts/acceptance/write-query-subjects-fresh-public-agent-mcp-report.mjs': (
+        'export function buildQuerySubjectsFreshPublicProfileReport(',
+        'export function validateQuerySubjectsFreshPublicProfileReport(',
+        'export function validateQuerySubjectsFreshPublicSanitizedReportFile(',
+        "openSync(filePath, 'wx', 0o600)",
+    ),
+    'scripts/acceptance/validate-query-subjects-fresh-public-agent-mcp-report.mjs': (
+        'validateQuerySubjectsFreshPublicProfileReport(',
+    ),
+    'scripts/agent-harness.mjs': (
+        "case 'query-subjects-fresh-public-matrix-v1'",
+        'validateQuerySubjectsFreshPublicSanitizedReportFile(',
+        'CANDIDATE_EXACT_CI_RUN_EVIDENCE_REQUIRED',
+    ),
+    'docs/research/run95-query-subjects-fresh-public-matrix-contract-2026-10-19.md': (
+        'G14 remains `PARTIAL`',
+        'at most eight pages',
+        'it does not store',
+    ),
+    'tests/harness/query-subjects-fresh-public-matrix-profile.test.mjs': (
+        'public fetch denies altered routes, arguments, credentials and over-budget calls',
+        'candidate gate binds one fresh Epoch to current Base, exact seven-check CI, and Luna Max PASS',
+        'sanitized report is claim-bound, signed, and rejects altered summary values',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_query_subjects_fresh_public_profile_report_is_valid(',
+        'CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_RELATIVE_PATH',
     ),
 }
 CODEX_C04_PROFILE_IMPLEMENTATION_MARKERS = {
@@ -18498,6 +18623,402 @@ def codex_r02_profile_report_is_valid(
     return result.get('passed') is True and result.get('reportSha256') == report_sha256
 
 
+def codex_query_subjects_fresh_public_profile_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
+def codex_query_subjects_fresh_public_profile_report_matches_candidate_revision(
+    report_path: Path, revision: object,
+) -> bool:
+    if not codex_query_subjects_fresh_public_profile_revision_has_implementation(revision):
+        return False
+    try:
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+        relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
+    except (OSError, ValueError):
+        return False
+    return (
+        report.get('sourceRevision') == revision
+        and relative_path == CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_RELATIVE_PATH
+    )
+
+
+def codex_query_subjects_fresh_public_profile_candidate_binding_is_current(
+    report: dict[str, object], epoch_status: object,
+) -> bool:
+    if not isinstance(epoch_status, dict):
+        return False
+    run = epoch_status.get('run')
+    epoch_result = epoch_status.get('epoch')
+    if not isinstance(run, dict) or not isinstance(epoch_result, dict):
+        return False
+    run_state = run.get('state')
+    epoch = epoch_result.get('state')
+    if not isinstance(run_state, dict) or not isinstance(epoch, dict):
+        return False
+    candidate_sha = epoch.get('candidate_sha')
+    pr_number = report.get('prNumber')
+    branch = epoch.get('branch')
+    reviews = epoch.get('review_history', [])
+    latest_review = reviews[-1] if isinstance(reviews, list) and reviews else None
+    matching_source_review = (
+        any(
+            isinstance(review, dict)
+            and review.get('candidate_sha') == report.get('sourceRevision')
+            and review.get('reviewed_base_sha') == report.get('baseSha')
+            and review.get('reviewer_id') == report.get('reviewerId')
+            and review.get('verdict') == 'PASS'
+            for review in reviews
+        )
+        if isinstance(reviews, list)
+        else False
+    )
+    current_candidate_review = (
+        isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == candidate_sha
+        and latest_review.get('verdict') == 'PASS'
+    )
+    active_pr = (
+        run_state.get('state') == 'EPOCH_ACTIVE'
+        and run_state.get('active_epoch_pr') == pr_number
+        and epoch_result.get('github_state') == 'OPEN'
+        and epoch.get('state') == 'REVIEW_PASSED'
+    )
+    merged_pr = (
+        epoch.get('state') == 'MERGED'
+        and epoch_result.get('github_state') == 'MERGED'
+        and isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == candidate_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+    )
+    if (
+        type(pr_number) is not int or pr_number < 1
+        or run.get('number') != 95
+        or not (active_pr or merged_pr)
+        or epoch.get('epoch_id') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EPOCH_ID
+        or epoch.get('pr_number') != pr_number
+        or epoch.get('base_branch') != 'master'
+        or not isinstance(branch, str)
+        or epoch.get('base_sha') != report.get('baseSha')
+        or epoch_result.get('pr_base_ref_name') != 'master'
+        or (not merged_pr and epoch_result.get('pr_base_sha') != report.get('baseSha'))
+        or epoch_result.get('pr_head_ref_name') != branch
+        or epoch_result.get('pr_is_draft') is not False
+        or not isinstance(candidate_sha, str)
+        or re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is None
+        or epoch_result.get('pr_head_sha') != candidate_sha
+        or not matching_source_review
+        or not current_candidate_review
+        or not isinstance(epoch.get('scope_closure'), dict)
+        or epoch['scope_closure'].get('related_work_remaining') is not False
+        or not isinstance(epoch.get('adversarial_preflight'), dict)
+        or epoch['adversarial_preflight'].get('completed') is not True
+        or epoch.get('advances_frontier_ids') != ['G14']
+    ):
+        return False
+    changed_paths = codex_r02_profile_candidate_paths(report.get('sourceRevision'), candidate_sha)
+    return bool(
+        isinstance(changed_paths, set)
+        and changed_paths.issubset(CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EVIDENCE_REFRESH_PATHS)
+        and codex_g26_candidate_bundle_sha256(candidate_sha) == report.get('mcpBundleSha256')
+    )
+
+
+def codex_query_subjects_fresh_public_profile_epoch_harness_status(
+    pr_number: object,
+) -> dict[str, object] | None:
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            ['node', str(ROOT / 'scripts/agent-harness.mjs'), 'status', '--run', '95', '--pr', str(pr_number)],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_query_subjects_fresh_public_profile_harness_status(
+    pr_number: object,
+) -> dict[str, object] | None:
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                'node', str(ROOT / 'scripts/agent-harness.mjs'),
+                'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
+                '--profile-id', CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID,
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_query_subjects_fresh_public_profile_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+) -> dict[str, object] | None:
+    if not isinstance(harness_status, dict):
+        return None
+    receipt = report.get('runnerReceipt')
+    disposition = harness_status.get('disposition')
+    if (
+        harness_status.get('state') != 'REPORT_WRITTEN'
+        or harness_status.get('profile_id') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID
+        or harness_status.get('pr') != report.get('prNumber')
+        or harness_status.get('tool_name') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_TOOL_NAME
+        or harness_status.get('argument_profile') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ARGUMENT_PROFILE
+        or harness_status.get('expected_arguments_sha256') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_ARGUMENTS_SHA256
+        or harness_status.get('registry_sha256') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_REGISTRY_SHA256
+        or harness_status.get('claim_label_present') is not True
+        or harness_status.get('terminal_label_present') is not True
+        or not isinstance(disposition, dict)
+        or not isinstance(receipt, dict)
+        or not isinstance(report_sha256, str)
+        or re.fullmatch(r'[0-9a-f]{64}', report_sha256) is None
+    ):
+        return None
+    expected = {
+        'claimId': report.get('claimId'),
+        'profileId': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID,
+        'frontierId': 'G14',
+        'epochId': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EPOCH_ID,
+        'runNumber': 95,
+        'prNumber': report.get('prNumber'),
+        'state': 'REPORT_WRITTEN',
+        'sourceCandidateSha': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'ciSha': report.get('ciSha'),
+        'ciStatus': 'SUCCESS',
+        'ciRunId': report.get('ciRunId'),
+        'ciChecks': report.get('ciChecks'),
+        'reviewerId': report.get('reviewerId'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'registrySha256': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_REGISTRY_SHA256,
+        'toolName': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_TOOL_NAME,
+        'argumentProfile': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_ARGUMENTS_SHA256,
+        'reportWritten': True,
+        'reportPath': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_RELATIVE_PATH,
+        'reportSha256': report_sha256,
+        'retryAllowed': False,
+        'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
+        'runnerReceiptPublicKeySha256': receipt.get('publicKeySha256'),
+        'runnerReceiptSha256': _canonical_json_sha256(receipt),
+    }
+    return disposition if all(disposition.get(key) == value for key, value in expected.items()) else None
+
+
+def codex_query_subjects_fresh_public_frontier_is_partial() -> bool:
+    try:
+        frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    records = frontier.get('records') if isinstance(frontier, dict) else None
+    record = next(
+        (item for item in records or [] if isinstance(item, dict) and item.get('id') == 'G14'),
+        None,
+    )
+    source_refs = record.get('source_refs') if isinstance(record, dict) else None
+    return bool(
+        isinstance(record, dict)
+        and record.get('status') == 'PARTIAL'
+        and isinstance(source_refs, list)
+        and CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_SELECTION_EVIDENCE_RELATIVE_PATH in source_refs
+    )
+
+
+def codex_query_subjects_fresh_public_profile_report_is_valid(
+    report: object, harness_status: object = None, report_path: Path | None = None,
+    epoch_status: object = None,
+) -> bool:
+    """Validate a claim-bound, one-call anonymous query_subjects matrix report."""
+    if not isinstance(report, dict) or set(report) != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_FIELDS:
+        return False
+    path = report_path or (
+        LIVE_PROBE_DIR / Path(CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_RELATIVE_PATH).name
+    )
+    try:
+        relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+        report_bytes = path.read_bytes()
+        selection_bytes = (
+            ROOT / CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_SELECTION_EVIDENCE_RELATIVE_PATH
+        ).read_bytes()
+        catalog_bytes = CATALOG.read_bytes()
+        catalog = json.loads(catalog_bytes)
+    except (OSError, ValueError):
+        return False
+    source_revision = report.get('sourceRevision')
+    pr_number = report.get('prNumber')
+    result_summary = report.get('resultSummary')
+    request_scope = report.get('publicRequestScope')
+    receipt = report.get('runnerReceipt')
+    version_match = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)', str(report.get('codexCliVersion', '')))
+    supported_version = bool(version_match and tuple(map(int, version_match.groups())) >= (0, 163, 0))
+    catalog_tool = next(
+        (item for item in catalog if isinstance(item, dict)
+         and item.get('name') == CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_TOOL_NAME),
+        None,
+    )
+    if (
+        relative_path != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_RELATIVE_PATH
+        or len(report_bytes) > 32_768
+        or type(report.get('schemaVersion')) is not int or report.get('schemaVersion') != 1
+        or report.get('evidenceKind') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EVIDENCE_KIND
+        or report.get('profileId') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID
+        or report.get('acceptanceScope') != 'agent-mcp-matrix-only'
+        or type(report.get('runNumber')) is not int or report.get('runNumber') != 95
+        or report.get('frontierId') != 'G14'
+        or report.get('epochId') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EPOCH_ID
+        or report.get('model') != 'gpt-6-luna' or report.get('reasoningEffort') != 'max'
+        or type(pr_number) is not int or pr_number < 1
+        or not isinstance(report.get('reviewerId'), str)
+        or re.fullmatch(
+            rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*',
+            report['reviewerId'],
+        ) is None
+        or not supported_version
+        or not isinstance(report.get('observedAt'), str)
+        or re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', report['observedAt']) is None
+        or not isinstance(source_revision, str)
+        or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
+        or not codex_query_subjects_fresh_public_profile_revision_has_implementation(source_revision)
+        or not codex_query_subjects_fresh_public_frontier_is_partial()
+        or not isinstance(report.get('baseSha'), str)
+        or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
+        or report.get('ciSha') != source_revision or report.get('ciStatus') != 'SUCCESS'
+        or not isinstance(report.get('ciRunId'), str)
+        or re.fullmatch(r'[1-9]\d{3,}', report['ciRunId']) is None
+        or report.get('ciChecks') != [
+            {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+            for name in CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REQUIRED_CI_CHECKS
+        ]
+        or not isinstance(report.get('claimId'), str)
+        or not report['claimId'].startswith(f'profile-run-95-pr-{pr_number}-{source_revision[:12]}-')
+        or report.get('mcpBundleSha256') != codex_g26_candidate_bundle_sha256(source_revision)
+        or report.get('toolName') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_TOOL_NAME
+        or report.get('argumentProfile') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_ARGUMENTS_SHA256
+        or report.get('registrySha256') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_REGISTRY_SHA256
+        or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
+        or report.get('networkMode') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_NETWORK_MODE
+        or report.get('serverId') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_SERVER_ID
+        or report.get('serverToolNames') != [CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_TOOL_NAME]
+        or type(report.get('serverToolCount')) is not int or report.get('serverToolCount') != 1
+        or report.get('mcpServerNames') != [CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_SERVER_ID]
+        or type(report.get('expectedCallCount')) is not int or report.get('expectedCallCount') != 1
+        or report.get('argumentMatch') is not True
+        or type(report.get('processExitCode')) is not int or report.get('processExitCode') != 0
+        or not isinstance(report.get('eventStreamSha256'), str)
+        or re.fullmatch(r'[0-9a-f]{64}', report['eventStreamSha256']) is None
+        or not isinstance(report.get('serverSummarySha256'), str)
+        or re.fullmatch(r'[0-9a-f]{64}', report['serverSummarySha256']) is None
+        or report.get('eventStreamParsed') is not True or report.get('turnCompleted') is not True
+        or type(report.get('codexMcpToolEventCount')) is not int or report.get('codexMcpToolEventCount') != 1
+        or type(report.get('codexErrorItemCount')) is not int or report.get('codexErrorItemCount') != 0
+        or type(report.get('blockedWebSearchErrorItemCount')) is not int or report.get('blockedWebSearchErrorItemCount') != 0
+        or type(report.get('unexpectedCodexErrorItemCount')) is not int or report.get('unexpectedCodexErrorItemCount') != 0
+        or type(report.get('nonMcpToolEventCount')) is not int or report.get('nonMcpToolEventCount') != 0
+        or report.get('nonMcpToolTypes') != []
+        or type(report.get('shellToolCallCount')) is not int or report.get('shellToolCallCount') != 0
+        or type(report.get('allowedCallCount')) is not int or report.get('allowedCallCount') != 1
+        or type(report.get('deniedCallCount')) is not int or report.get('deniedCallCount') != 0
+        or report.get('answerAcknowledgementMatched') is not True
+        or report.get('answerSha256') != hashlib.sha256(
+            CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ACKNOWLEDGEMENT,
+        ).hexdigest()
+        or type(report.get('answerUtf8Bytes')) is not int
+        or report.get('answerUtf8Bytes') != len(CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ACKNOWLEDGEMENT)
+        or report.get('retryAllowed') is not False or report.get('reportWritten') is not True
+        or not isinstance(result_summary, dict)
+        or set(result_summary) != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_RESULT_SUMMARY_FIELDS
+        or result_summary.get('resultState') not in {'ok', 'partial'}
+        or type(result_summary.get('returnedItems')) is not int
+        or not 0 <= result_summary['returnedItems'] <= 1
+        or result_summary.get('coverageState') not in {'complete', 'partial', 'unavailable', 'not_computable', 'unknown'}
+        or any(
+            value is not None and (type(value) is not int or not 0 <= value <= CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_MAX_REQUESTS)
+            for value in (result_summary.get('pagesRequested'), result_summary.get('pagesScanned'))
+        )
+        or result_summary.get('totalKind') not in {'exact', 'estimated', 'unknown', 'unavailable'}
+        or type(result_summary.get('warningCount')) is not int
+        or not 0 <= result_summary['warningCount'] <= 8
+        or not isinstance(request_scope, dict)
+        or set(request_scope) != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REQUEST_SCOPE_FIELDS
+        or type(request_scope.get('requestCount')) is not int
+        or not 1 <= request_scope['requestCount'] <= CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_MAX_REQUESTS
+        or type(request_scope.get('allowedRequestCount')) is not int
+        or request_scope.get('allowedRequestCount') != request_scope.get('requestCount')
+        or type(request_scope.get('deniedRequestCount')) is not int
+        or request_scope.get('deniedRequestCount') != 0
+        or type(request_scope.get('credentialAttemptCount')) is not int
+        or request_scope.get('credentialAttemptCount') != 0
+        or type(request_scope.get('unexpectedRouteCount')) is not int
+        or request_scope.get('unexpectedRouteCount') != 0
+        or request_scope.get('budgetExceeded') is not False
+        or type(request_scope.get('maxRequests')) is not int
+        or request_scope.get('maxRequests') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_MAX_REQUESTS
+        or request_scope.get('anonymousOnly') is not True
+        or request_scope.get('officialV0Only') is not True
+        or request_scope.get('redirectPolicy') != 'error'
+        or report.get('privacy') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PRIVACY
+        or not isinstance(receipt, dict)
+        or set(receipt) != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_RECEIPT_FIELDS
+        or receipt.get('kind') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_RECEIPT_KIND
+        or catalog_tool is None
+        or catalog_tool.get('auth') != 'none' or catalog_tool.get('risk') != 'read'
+        or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+        or report.get('toolDescriptionSha256') != hashlib.sha256(
+            catalog_tool.get('description', '').encode('utf-8'),
+        ).hexdigest()
+        or report.get('inputSchemaSha256') != _canonical_json_sha256(catalog_tool.get('inputSchema'))
+    ):
+        return False
+    report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+    current_epoch_status = epoch_status or codex_query_subjects_fresh_public_profile_epoch_harness_status(pr_number)
+    if not codex_query_subjects_fresh_public_profile_candidate_binding_is_current(report, current_epoch_status):
+        return False
+    status = harness_status or codex_query_subjects_fresh_public_profile_harness_status(pr_number)
+    disposition = codex_query_subjects_fresh_public_profile_disposition_matches_report(
+        report, status, report_sha256,
+    )
+    if disposition is None:
+        return False
+    validation = subprocess.run(
+        ['node', str(ROOT / 'scripts/acceptance/validate-query-subjects-fresh-public-agent-mcp-report.mjs')],
+        cwd=ROOT,
+        input=json.dumps({
+            'claim': disposition,
+            'reportBytesBase64': base64.b64encode(report_bytes).decode('ascii'),
+        }),
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    if validation.returncode != 0:
+        return False
+    try:
+        result = json.loads(validation.stdout)
+    except (TypeError, ValueError):
+        return False
+    return result.get('passed') is True and result.get('reportSha256') == report_sha256
+
+
 def codex_c04_profile_revision_has_implementation(revision: object) -> bool:
     """Bind C04 matrix evidence to its exact registered multi-tool runner and public guard."""
     if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
@@ -23359,6 +23880,9 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(LIVE_PROBE_DIR / CODEX_R01_OFFLINE_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R02_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(
+        LIVE_PROBE_DIR / CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_RELATIVE_PATH.split('/')[-1],
+    )
     report_paths.append(LIVE_PROBE_DIR / CODEX_C04_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(
         LIVE_PROBE_DIR / CODEX_A01_RATING_DISPERSION_REPORT_RELATIVE_PATH.split('/')[-1],
@@ -23813,6 +24337,27 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             ):
                 continue
             sources.setdefault(CODEX_R02_TOOL_NAME, set()).add(report_source_ref(path))
+            continue
+        if report.get('evidenceKind') == CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EVIDENCE_KIND:
+            current_status = codex_query_subjects_fresh_public_profile_harness_status(
+                report.get('prNumber'),
+            )
+            current_epoch_status = codex_query_subjects_fresh_public_profile_epoch_harness_status(
+                report.get('prNumber'),
+            )
+            if (
+                path.name != Path(CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_RELATIVE_PATH).name
+                or not codex_query_subjects_fresh_public_profile_report_is_valid(
+                    report, current_status, path, current_epoch_status,
+                )
+                or not codex_query_subjects_fresh_public_profile_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault(CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_TOOL_NAME, set()).add(
+                report_source_ref(path),
+            )
             continue
         if report.get('evidenceKind') == CODEX_C04_EVIDENCE_KIND:
             current_status = codex_c04_profile_harness_status(report.get('prNumber'))

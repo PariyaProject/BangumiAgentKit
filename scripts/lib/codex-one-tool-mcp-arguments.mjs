@@ -38,6 +38,10 @@ import {
   TITLE_QUERY_RENDER_NETWORK_MODE,
 } from './title-query-render-agent-mcp-profile.mjs';
 import {
+  assertQuerySubjectsFreshPublicProfile,
+  QUERY_SUBJECTS_FRESH_PUBLIC_NETWORK_MODE,
+} from './query-subjects-fresh-public-matrix-profile.mjs';
+import {
   A01_RATING_DISPERSION_NETWORK_MODE,
   assertA01RatingDispersionProfile,
 } from './a01-rating-dispersion-profile.mjs';
@@ -52,6 +56,7 @@ const ANONYMOUS_PUBLIC_NETWORK_MODES = new Set([
   C04_COHORT_COMPARISON_NETWORK_MODE,
   A01_RATING_DISPERSION_NETWORK_MODE,
   TITLE_QUERY_RENDER_NETWORK_MODE,
+  QUERY_SUBJECTS_FRESH_PUBLIC_NETWORK_MODE,
   R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE,
   S05_NETWORK_MODE,
 ]);
@@ -159,6 +164,7 @@ export function parseCodexOneToolMcpArguments(argv) {
           assertR01RelationsOfflineProfile(profile) ||
           assertR03RelationsOfflineProfile(profile) ||
           assertR02PositiveDirectRelationsProfile(profile) ||
+          assertQuerySubjectsFreshPublicProfile(profile) ||
           assertA01RatingDispersionProfile(profile) ||
           (profile.id === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID &&
             assertA01RenderCohortAggregationOfflineProfile(profile)) ||
