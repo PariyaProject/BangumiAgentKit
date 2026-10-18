@@ -377,7 +377,16 @@ export function agentMcpProfileClaimLabelDescription(profile) {
   ) {
     throw new AgentMcpProfileClaimError('PROFILE_NOT_REGISTERED', 'Unknown one-shot profile.');
   }
-  return `Run 95 ${profile.frontierId} profile ${profile.id}; permanent one-shot latch.`;
+  const description = `Run 95 ${profile.frontierId} profile ${profile.id}; permanent one-shot latch.`;
+  const compactDescription = `Run 95 ${profile.frontierId} ${profile.id}; permanent one-shot latch.`;
+  const boundedDescription = description.length <= 100 ? description : compactDescription;
+  if (boundedDescription.length > 100) {
+    throw new AgentMcpProfileClaimError(
+      'PROFILE_LATCH_INVALID',
+      'Profile claim label description exceeds the GitHub 100-character limit.',
+    );
+  }
+  return boundedDescription;
 }
 
 export function agentMcpProfileTerminalLabelName(profile) {

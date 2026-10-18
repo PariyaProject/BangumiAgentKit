@@ -40,6 +40,7 @@ import {
   A01_RATING_DISPERSION_PROFILE_ID,
 } from './a01-rating-dispersion-profile.mjs';
 import { R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID } from './r04-render-series-watch-order-offline-fixture.mjs';
+import { R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID } from './r04-render-series-watch-order-offline-v2-fixture.mjs';
 import { TITLE_QUERY_RENDER_PROFILE_ID } from './title-query-render-agent-mcp-profile.mjs';
 import {
   isG01RenderQueryOfflineProfileId,
@@ -457,7 +458,8 @@ export function summarizeProfileToolResult(
     profileId === 'p06-render-person-profile-offline-agent-mcp-v1' ||
     profileId === 'c07-render-comparison-offline-agent-mcp-matrix-v1' ||
     profileId === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID ||
-    profileId === R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID
+    profileId === R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID ||
+    profileId === R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID
   ) {
     const artifact = artifactSummary && typeof artifactSummary === 'object' ? artifactSummary : {};
     return {

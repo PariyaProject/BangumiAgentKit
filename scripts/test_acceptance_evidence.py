@@ -10319,6 +10319,398 @@ class R04RenderSeriesWatchOrderMatrixProfileTests(unittest.TestCase):
         }))
 
 
+class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
+    def test_v2_is_separately_keyed_and_keeps_the_r04_scenario_unassessed(self):
+        self.assertEqual(
+            GENERATOR.CODEX_R04_RENDER_V2_PROFILE_ID,
+            'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
+        )
+        self.assertEqual(
+            GENERATOR.CODEX_R04_RENDER_V2_TOOL_NAME,
+            'bangumi.render_series_watch_order',
+        )
+        self.assertEqual(
+            GENERATOR.CODEX_R04_RENDER_V2_EXPECTED_ARGUMENTS['subjectId'],
+            990803,
+        )
+        self.assertNotEqual(
+            GENERATOR.CODEX_R04_RENDER_V2_PROFILE_ID,
+            GENERATOR.CODEX_R04_RENDER_PROFILE_ID,
+        )
+        self.assertTrue(GENERATOR.codex_r04_render_v2_frontier_is_unassessed())
+
+    def test_v2_implementation_markers_match_the_reviewed_candidate(self):
+        head = GENERATOR._run_repository_git(
+            GENERATOR.ROOT, 'rev-parse', 'HEAD',
+        ).stdout.strip()
+        self.assertTrue(GENERATOR.codex_r04_render_v2_profile_revision_has_implementation(head))
+
+    def test_v2_report_refresh_allows_only_report_and_acceptance_reconciliation_paths(self):
+        allowed_paths = GENERATOR.CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS
+        self.assertEqual(allowed_paths, {
+            GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'scripts/agent-harness.mjs',
+            'tests/harness/agent-harness-cli.test.mjs',
+            'tests/harness/g01-public-query-render-evidence.test.mjs',
+            'tests/harness/g09-public-watch-order-evidence.test.mjs',
+            'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
+            'tests/harness/public-probe-coverage.test.mjs',
+            'tests/integration/tool-e2e-acceptance.test.ts',
+        })
+        self.assertTrue(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(
+            allowed_paths,
+        ))
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(
+            allowed_paths | {'apps/mcp/src/tools/rendering.ts'},
+        ))
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(
+            allowed_paths - {GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH},
+        ))
+
+    def test_v2_report_candidate_binding_accepts_pushed_refresh_before_harness_candidate_check(self):
+        source_sha = 'a' * 40
+        refreshed_sha = 'b' * 40
+        base_sha = 'c' * 40
+        bundle_sha = 'd' * 64
+        branch = 'codex/epoch-run95-r04-render-series-watch-order-offline-matrix-v2-20261018'
+        report = {
+            'sourceRevision': source_sha,
+            'baseSha': base_sha,
+            'prNumber': 222,
+            'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
+            'mcpBundleSha256': bundle_sha,
+        }
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 222},
+            },
+            'epoch': {
+                'number': 222,
+                'github_state': 'OPEN',
+                'pr_head_ref_name': branch,
+                'pr_head_sha': refreshed_sha,
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base_sha,
+                'pr_is_draft': False,
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_R04_RENDER_V2_EPOCH_ID,
+                    'pr_number': 222,
+                    'base_branch': 'master',
+                    'base_sha': base_sha,
+                    'branch': branch,
+                    'candidate_sha': source_sha,
+                    'state': 'REVIEW_PASSED',
+                    'review_history': [
+                        {
+                            'candidate_sha': source_sha,
+                            'reviewed_base_sha': base_sha,
+                            'reviewer_id': report['reviewerId'],
+                            'verdict': 'PASS',
+                        },
+                    ],
+                },
+            },
+        }
+        paths = GENERATOR.CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS
+        self.assertTrue(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, bundle_sha,
+        ))
+
+        epoch_status['epoch']['state']['candidate_sha'] = None
+        epoch_status['epoch']['state']['state'] = 'FINAL_CORRECTIVE_REQUIRED'
+        epoch_status['epoch']['state']['review_history'].append({
+            'candidate_sha': refreshed_sha,
+            'reviewed_base_sha': base_sha,
+            'reviewer_id': report['reviewerId'],
+            'verdict': 'CORRECTIVE_REQUIRED',
+        })
+        self.assertTrue(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, bundle_sha,
+        ))
+        epoch_status['epoch']['state']['review_history'].pop(0)
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, bundle_sha,
+        ))
+        epoch_status['epoch']['state']['review_history'].insert(0, {
+            'candidate_sha': source_sha,
+            'reviewed_base_sha': 'f' * 40,
+            'reviewer_id': report['reviewerId'],
+            'verdict': 'PASS',
+        })
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, bundle_sha,
+        ))
+
+        epoch_status['epoch']['state']['candidate_sha'] = refreshed_sha
+        self.assertTrue(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, bundle_sha,
+        ))
+        epoch_status['epoch']['state']['candidate_sha'] = 'e' * 40
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, bundle_sha,
+        ))
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths | {'packages/tools/src/definitions/render-presentation-tools.ts'}, bundle_sha,
+        ))
+
+    def test_v2_report_candidate_paths_use_live_pr_head_before_harness_candidate_check(self):
+        source_sha = 'a' * 40
+        pr_head_sha = 'b' * 40
+        report = {'sourceRevision': source_sha}
+        epoch_status = {
+            'epoch': {
+                'state': {'candidate_sha': source_sha},
+                'pr_head_sha': pr_head_sha,
+            },
+        }
+        paths = GENERATOR.CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS
+        bundle_sha = 'c' * 64
+        with (
+            patch.object(
+                GENERATOR, 'codex_r04_render_v2_profile_report_candidate_paths',
+                return_value=paths,
+            ) as candidate_paths,
+            patch.object(
+                GENERATOR, 'codex_g26_candidate_bundle_sha256',
+                return_value=bundle_sha,
+            ) as bundle_digest,
+            patch.object(
+                GENERATOR, 'codex_r04_render_v2_profile_candidate_binding_is_valid',
+                return_value=True,
+            ) as validate_binding,
+        ):
+            self.assertTrue(
+                GENERATOR.codex_r04_render_v2_profile_report_candidate_binding_is_current(
+                    report, epoch_status,
+                ),
+            )
+        candidate_paths.assert_called_once_with(source_sha, pr_head_sha)
+        bundle_digest.assert_called_once_with(pr_head_sha)
+        validate_binding.assert_called_once_with(report, epoch_status, paths, bundle_sha)
+
+    def test_report_maps_only_to_the_render_series_watch_order_agent_mcp_cell(self):
+        report_path = GENERATOR.ROOT / GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+        self.assertTrue(TABLE_CHECKER.r04_render_v2_agent_mcp_matches(
+            GENERATOR.CODEX_R04_RENDER_V2_TOOL_NAME,
+            GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
+            report,
+        ))
+        self.assertFalse(TABLE_CHECKER.r04_render_v2_agent_mcp_matches(
+            'bangumi.render_subject_card',
+            GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
+            report,
+        ))
+        changed = json.loads(json.dumps(report))
+        changed['privacy']['qqPipelineTested'] = True
+        self.assertFalse(TABLE_CHECKER.r04_render_v2_agent_mcp_matches(
+            GENERATOR.CODEX_R04_RENDER_V2_TOOL_NAME,
+            GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
+            changed,
+        ))
+
+    def test_unbound_or_malformed_v2_report_never_earns_matrix_credit(self):
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_report_is_valid({}))
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_report_is_valid({
+            'evidenceKind': GENERATOR.CODEX_R04_RENDER_V2_EVIDENCE_KIND,
+            'profileId': GENERATOR.CODEX_R04_RENDER_V2_PROFILE_ID,
+        }))
+
+
+class R04RenderSeriesWatchOrderV2ProfileReportValidationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='r04-render-v2-profile-evidence-test-')
+        self.root = Path(self.temp_dir.name)
+        self.report_path = self.root / GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH
+        self.report_path.parent.mkdir(parents=True)
+        selection_path = self.root / GENERATOR.CODEX_R04_RENDER_V2_SELECTION_EVIDENCE_RELATIVE_PATH
+        selection_path.parent.mkdir(parents=True)
+        selection_path.write_text(
+            'R04 remains UNASSESSED; synthetic renderer matrix fixture only.\n', encoding='utf-8',
+        )
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier_path.parent.mkdir(parents=True)
+        frontier_path.write_text(json.dumps({
+            'records': [{
+                'id': 'R04',
+                'status': 'UNASSESSED',
+                'source_refs': [
+                    GENERATOR.CODEX_R04_RENDER_V2_SELECTION_EVIDENCE_RELATIVE_PATH,
+                    GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
+                ],
+            }],
+        }), encoding='utf-8')
+        self.catalog_path = self.root / 'docs/tool-catalog.json'
+        self.catalog_path.parent.mkdir(parents=True, exist_ok=True)
+        catalog = json.loads(GENERATOR.CATALOG.read_text(encoding='utf-8'))
+        self.tool = next(
+            item for item in catalog
+            if item.get('name') == GENERATOR.CODEX_R04_RENDER_V2_TOOL_NAME
+        )
+        self.catalog_path.write_text(json.dumps([self.tool]), encoding='utf-8')
+        self.report = self.build_report()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def build_report(self):
+        catalog_bytes = self.catalog_path.read_bytes()
+        selection_bytes = (
+            self.root / GENERATOR.CODEX_R04_RENDER_V2_SELECTION_EVIDENCE_RELATIVE_PATH
+        ).read_bytes()
+        answer = b'R04_RENDER_V2_SYNTHETIC_CARD_READY'
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': GENERATOR.CODEX_R04_RENDER_V2_EVIDENCE_KIND,
+            'runNumber': 95,
+            'frontierId': 'R04',
+            'scenarioId': None,
+            'epochId': GENERATOR.CODEX_R04_RENDER_V2_EPOCH_ID,
+            'profileId': GENERATOR.CODEX_R04_RENDER_V2_PROFILE_ID,
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
+            'codexCliVersion': '0.162.0-alpha.17.2',
+            'observedAt': '2026-10-18T03:00:00.000Z',
+            'sourceRevision': 'a' * 40,
+            'baseSha': 'b' * 40,
+            'ciSha': 'a' * 40,
+            'ciStatus': 'SUCCESS',
+            'ciRunId': '39092463148',
+            'ciChecks': [
+                {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+                for name in GENERATOR.CODEX_R04_REQUIRED_CI_CHECKS
+            ],
+            'prNumber': 222,
+            'claimId': 'profile-run-95-pr-222-aaaaaaaaaaaa-1792200000000',
+            'mcpBundleSha256': 'c' * 64,
+            'registrySha256': GENERATOR.CODEX_R04_RENDER_V2_PROFILE_REGISTRY_SHA256,
+            'selectionEvidenceSha256': hashlib.sha256(selection_bytes).hexdigest(),
+            'toolName': GENERATOR.CODEX_R04_RENDER_V2_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_R04_RENDER_V2_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_R04_RENDER_V2_EXPECTED_ARGUMENTS_SHA256,
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(self.tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(self.tool['inputSchema']),
+            'serverToolNames': [GENERATOR.CODEX_R04_RENDER_V2_TOOL_NAME],
+            'serverToolCount': 1,
+            'networkMode': GENERATOR.CODEX_R04_RENDER_V2_NETWORK_MODE,
+            'mcpServerNames': ['bgk_r04_render_watch_order_v2'],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 0,
+            'mcpToolErrorResultCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'answerCheckMethod': GENERATOR.CODEX_R04_RENDER_V2_ANSWER_CHECK_METHOD,
+            'answerSha256': hashlib.sha256(answer).hexdigest(),
+            'answerUtf8Bytes': len(answer),
+            'answerChecks': {
+                key: True for key in GENERATOR.CODEX_R04_RENDER_V2_ANSWER_CHECK_FIELDS
+            },
+            'resultSummary': {
+                'resultState': 'artifact_returned',
+                'artifact': {
+                    'returned': True,
+                    'persisted': False,
+                    'mimeType': 'image/png',
+                    'width': 720,
+                    'height': 480,
+                    'byteLength': 1024,
+                    'sha256': 'e' * 64,
+                    'pngSignatureValid': True,
+                    'decoded': True,
+                    'dimensionsMatch': True,
+                },
+            },
+            'offlineFixture': {
+                'profile': GENERATOR.CODEX_R04_RENDER_V2_NETWORK_MODE,
+                'requestCount': 2,
+                'subjectRequestCount': 1,
+                'relationsRequestCount': 1,
+                'duplicateRequestCount': 0,
+                'unexpectedRequestCount': 0,
+                'authorizationHeaderCount': 0,
+                'expectedOperationsComplete': True,
+            },
+            'rendererAssetBoundary': {'requestCount': 0},
+            'networkBoundary': {
+                'liveBangumiApiRequestCount': 0,
+                'rendererAssetRequestCount': 0,
+                'fullCodexHarnessNetworkSandboxed': False,
+            },
+            'privacy': {
+                'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+                'writesAttempted': False, 'communityRead': False, 'qqPipelineTested': False,
+                'timClientTested': False, 'promptStored': False, 'answerStored': False,
+                'rawFixtureRowsStored': False, 'rawToolResultStored': False,
+                'artifactImageBytesStored': False, 'credentialsStored': False,
+            },
+            'runnerReceipt': {
+                'schemaVersion': 1,
+                'kind': 'r04-render-series-watch-order-offline-agent-mcp-v2-runner-receipt-v1',
+                'publicKeyBase64': 'AQ==',
+                'publicKeySha256': 'd' * 64,
+                'payload': {
+                    field: None
+                    for field in GENERATOR.CODEX_R04_RENDER_V2_RECEIPT_PAYLOAD_FIELDS
+                },
+                'signature': 'AA==',
+            },
+        }
+
+    def validate_report(self, report):
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        report_bytes = self.report_path.read_bytes()
+
+        def validate_embedded_report(args, **kwargs):
+            payload = json.loads(kwargs['input'])
+            embedded = base64.b64decode(payload['reportBytesBase64'])
+            return subprocess.CompletedProcess(
+                args, 0,
+                json.dumps({'passed': True, 'reportSha256': hashlib.sha256(embedded).hexdigest()}),
+                '',
+            )
+
+        with (
+            patch.object(GENERATOR, 'ROOT', self.root),
+            patch.object(GENERATOR, 'LIVE_PROBE_DIR', self.root / 'docs/live-probes'),
+            patch.object(GENERATOR, 'CATALOG', self.catalog_path),
+            patch.object(GENERATOR, 'codex_r04_render_v2_profile_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
+            patch.object(GENERATOR, 'codex_r04_render_v2_profile_report_candidate_binding_is_current', return_value=True),
+            patch.object(GENERATOR, 'codex_r04_render_v2_profile_disposition_matches_report', return_value={'state': 'REPORT_WRITTEN'}),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+        ):
+            return GENERATOR.codex_r04_render_v2_profile_report_is_valid(
+                report,
+                harness_status={'fixture': True},
+                report_path=self.report_path,
+                epoch_status={'fixture': True},
+            )
+
+    def test_accepts_ephemeral_artifact_in_signed_matrix_report(self):
+        self.assertTrue(self.validate_report(self.report))
+
+    def test_rejects_report_that_claims_artifact_was_persisted(self):
+        persisted_report = json.loads(json.dumps(self.report))
+        persisted_report['resultSummary']['artifact']['persisted'] = True
+        self.assertFalse(self.validate_report(persisted_report))
+
+
 class R01OfflineRelationsProfileReportValidationTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='r01-offline-profile-evidence-test-')

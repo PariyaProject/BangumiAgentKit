@@ -61,6 +61,12 @@ const G06_CAST_OFFLINE_V2_REPORT_FILE = join(ROOT, G06_CAST_OFFLINE_V2_REPORT_PA
 const G06_CAST_OFFLINE_V2_REPORT = existsSync(G06_CAST_OFFLINE_V2_REPORT_FILE)
   ? JSON.parse(readFileSync(G06_CAST_OFFLINE_V2_REPORT_FILE, 'utf8'))
   : null;
+const R04_RENDER_V2_REPORT_PATH =
+  'docs/live-probes/r04-render-series-watch-order-offline-agent-mcp-v2-run95.json';
+const R04_RENDER_V2_REPORT_FILE = join(ROOT, R04_RENDER_V2_REPORT_PATH);
+const R04_RENDER_V2_REPORT = existsSync(R04_RENDER_V2_REPORT_FILE)
+  ? JSON.parse(readFileSync(R04_RENDER_V2_REPORT_FILE, 'utf8'))
+  : null;
 const FULL_OPERATION_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   .filter(
     (name) => name.startsWith('pariya-agent-full-operation-qa-e2e-') && name.endsWith('.json'),
@@ -480,6 +486,75 @@ const CURRENT_G06_CAST_OFFLINE_V2_REPORT = isCurrentG06CastOfflineV2Report(
   : null;
 const CURRENT_CAST_AGENT_MCP_REPORT = CURRENT_G06_CAST_OFFLINE_V2_REPORT ?? CURRENT_S04_REPORT;
 
+function isCurrentR04RenderV2Report(report: any): boolean {
+  const row = rowsByTool().get('bangumi.render_series_watch_order');
+  const artifact = report?.resultSummary?.artifact;
+  const checks = report?.answerChecks;
+  return Boolean(
+    report?.schemaVersion === 1 &&
+    report?.evidenceKind === 'codex_cli_r04_render_series_watch_order_offline_agent_mcp_v2' &&
+    report?.runNumber === 95 &&
+    report?.frontierId === 'R04' &&
+    report?.scenarioId === null &&
+    report?.profileId === 'r04-render-series-watch-order-offline-agent-mcp-matrix-v2' &&
+    report?.epochId === 'run95-r04-render-series-watch-order-offline-matrix-v2-20261018' &&
+    report?.model === 'gpt-6-luna' &&
+    report?.reasoningEffort === 'max' &&
+    report?.toolName === 'bangumi.render_series_watch_order' &&
+    report?.resultStatus === 'SUCCESS' &&
+    report?.processExitCode === 0 &&
+    report?.codexMcpToolEventCount === 1 &&
+    report?.mcpToolErrorResultCount === 0 &&
+    report?.nonMcpToolEventCount === 0 &&
+    report?.shellToolCallCount === 0 &&
+    report?.allowedCallCount === 1 &&
+    report?.deniedCallCount === 0 &&
+    /^[0-9a-f]{40}$/u.test(report?.sourceRevision ?? '') &&
+    report?.ciSha === report?.sourceRevision &&
+    report?.ciStatus === 'SUCCESS' &&
+    Array.isArray(report?.ciChecks) &&
+    report.ciChecks.length === 7 &&
+    report.ciChecks.every(
+      (check: any) => check.status === 'COMPLETED' && check.conclusion === 'SUCCESS',
+    ) &&
+    report?.offlineFixture?.requestCount === 2 &&
+    report?.offlineFixture?.duplicateRequestCount === 0 &&
+    report?.offlineFixture?.unexpectedRequestCount === 0 &&
+    report?.offlineFixture?.authorizationHeaderCount === 0 &&
+    report?.rendererAssetBoundary?.requestCount === 0 &&
+    report?.networkBoundary?.liveBangumiApiRequestCount === 0 &&
+    report?.networkBoundary?.rendererAssetRequestCount === 0 &&
+    report?.privacy?.authProfile === 'anonymous' &&
+    report?.privacy?.oauthAttempted === false &&
+    report?.privacy?.accountDataRead === false &&
+    report?.privacy?.writesAttempted === false &&
+    report?.privacy?.qqPipelineTested === false &&
+    report?.privacy?.timClientTested === false &&
+    report?.privacy?.artifactImageBytesStored === false &&
+    artifact?.returned === true &&
+    artifact?.persisted === false &&
+    artifact?.mimeType === 'image/png' &&
+    Number.isInteger(artifact?.width) &&
+    artifact.width > 0 &&
+    Number.isInteger(artifact?.height) &&
+    artifact.height > 0 &&
+    artifact?.pngSignatureValid === true &&
+    artifact?.decoded === true &&
+    artifact?.dimensionsMatch === true &&
+    checks &&
+    Object.keys(checks).length === 11 &&
+    Object.values(checks).every((value) => value === true) &&
+    typeof report?.runnerReceipt?.signature === 'string' &&
+    toolContractMatchesCurrent(report, 'bangumi.render_series_watch_order') &&
+    statusMark(row?.[9]) === '✅' &&
+    row?.[9]?.includes(R04_RENDER_V2_REPORT_PATH),
+  );
+}
+
+const CURRENT_R04_RENDER_V2_REPORT = isCurrentR04RenderV2Report(R04_RENDER_V2_REPORT)
+  ? R04_RENDER_V2_REPORT
+  : null;
+
 function expectClientEvidenceCell(cell: string | undefined, label: string): void {
   const mark = statusMark(cell);
   expect(['✅', '⬜'], label).toContain(mark);
@@ -750,6 +825,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       ...(CURRENT_D05_REPORT ? ['bangumi.query_subjects'] : []),
       ...(CURRENT_CAST_AGENT_MCP_REPORT ? ['bangumi.get_subject_cast'] : []),
       ...(CURRENT_P06_AGENT_MCP_MATRIX ? ['bangumi.render_person_profile'] : []),
+      ...(CURRENT_R04_RENDER_V2_REPORT ? ['bangumi.render_series_watch_order'] : []),
     ];
 
     expect(rows.size).toBe(96);
@@ -778,7 +854,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         ...(CURRENT_C07_RENDERER_REPORT ? [] : ['bangumi.render_subject_cohort_comparison']),
         'bangumi.render_query_subjects',
         ...(CURRENT_P06_AGENT_MCP_MATRIX ? [] : ['bangumi.render_person_profile']),
-        'bangumi.render_series_watch_order',
+        ...(CURRENT_R04_RENDER_V2_REPORT ? [] : ['bangumi.render_series_watch_order']),
         'bangumi.auth_start',
         'bangumi.manage_index',
         ...(currentG20Evidence ? [] : ['bangumi.get_subject_relations']),
@@ -819,6 +895,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject',
         ...(CURRENT_CAST_AGENT_MCP_REPORT ? ['bangumi.get_subject_cast'] : []),
         ...(CURRENT_P06_AGENT_MCP_MATRIX ? ['bangumi.render_person_profile'] : []),
+        ...(CURRENT_R04_RENDER_V2_REPORT ? ['bangumi.render_series_watch_order'] : []),
         'bangumi.get_subject_comparison',
         'bangumi.get_subject_identity',
         'bangumi.get_subject_index_membership',

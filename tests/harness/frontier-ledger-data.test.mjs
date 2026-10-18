@@ -417,7 +417,15 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
     r04.next_action,
     /existing get_series_watch_order offline profile is terminal INCONCLUSIVE/u,
   );
+  assert.ok(
+    r04.next_action.includes(
+      'earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry',
+    ),
+    'the spent R04 renderer v1 profile must stay terminal and non-retriable',
+  );
   assert.match(r04.next_action, /distinct matrix-only render_series_watch_order profile/u);
+  assert.match(r04.next_action, /separately keyed R04 renderer v2 profile/u);
+  assert.match(r04.next_action, /synthetic subjectId=990803/u);
   assert.match(r04.next_action, /keep the R04 theatrical-film scenario UNASSESSED/u);
   assert.match(r04.next_action, /do not claim canonical order or visual quality/u);
   for (const source of [
@@ -426,6 +434,14 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
     'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-report.mjs',
     'scripts/acceptance/validate-r04-render-series-watch-order-offline-agent-mcp-report.mjs',
     'docs/research/run95-r04-render-series-watch-order-offline-matrix-contract-2026-10-17.md',
+    'scripts/lib/r04-render-series-watch-order-offline-v2-fixture.mjs',
+    'scripts/acceptance/run-r04-render-series-watch-order-offline-agent-mcp-v2.mjs',
+    'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs',
+    'scripts/acceptance/validate-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs',
+    'docs/research/run95-r04-render-series-watch-order-offline-matrix-v2-contract-2026-10-18.md',
+    'tests/harness/r04-render-series-watch-order-offline-v2-fixture.test.mjs',
+    'tests/harness/run-r04-render-series-watch-order-offline-agent-mcp-v2.test.mjs',
+    'tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs',
   ]) {
     assert.ok(r04.source_refs.includes(source), `R04 source reference missing: ${source}`);
   }

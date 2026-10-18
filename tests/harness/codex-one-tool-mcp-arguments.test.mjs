@@ -112,3 +112,24 @@ test('G01 query-subjects profile is fixed to one exact synthetic offline read', 
     /cannot be combined/u,
   );
 });
+
+test('R04 v2 render profile is fixed to the new offline matrix input', () => {
+  const profile = getAgentMcpProfileById(
+    'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
+  );
+  assert.ok(profile);
+  const config = parseCodexOneToolMcpArguments([
+    '--profile-id',
+    profile.id,
+    '--summary-file',
+    '/tmp/r04-render-v2-mcp-summary.json',
+    '--candidate-sha',
+    'a'.repeat(40),
+    '--bundle-sha256',
+    'b'.repeat(64),
+  ]);
+  assert.equal(config.profile.id, profile.id);
+  assert.equal(config.toolName, 'bangumi.render_series_watch_order');
+  assert.deepEqual(config.expectedArgumentSequence, [profile.calls[0].arguments]);
+  assert.equal(config.networkMode, 'run95-r04-render-series-watch-order-offline-v2');
+});

@@ -540,7 +540,7 @@
         "tests/harness/agent-harness-cli.test.mjs",
         "docs/research/run95-g06-subject-cast-offline-agent-mcp-matrix-v2-2026-10-18.md"
       ],
-      "next_action": "Never rerun the G06 profile v1 {subjectId:990804,limit:2} or the real-cast scenario {subjectId:218707,limit:100}; both are terminal. The current direct-public get_subject_cast cell is separately covered by docs/live-probes/public-tools-2026-10-15-092632892-50913.json and does not count as Agent/MCP answer acceptance. do not claim a complete cast/CV list. The v2 selection contract is a distinct synthetic offline matrix-only profile for bangumi.get_subject_cast; it cannot answer the G06 cast/CV question or establish complete source coverage. Its single Run #95 attempt is now Harness REPORT_WRITTEN with signed report sha256 fea032eb233871994ab332ecd91ab2fa95a34c641228f7098aab60fd45092292, bound to source Candidate e619eb6530335ba82b4ded0ecba00953a6b2c94c and CI run 39077898683. Credit only the Agent/MCP matrix row after this bounded G06 v2 acceptance-verifier/report/frontier/table refresh passes exact Candidate CI, same-identity review, and merge; never rerun the claim. Any claimed INCONCLUSIVE result is final/no-retry. Preserve G06 PARTIAL, public 65/65, and keep OAuth/account/community/QQ/TIM passive.",
+      "next_action": "Never rerun the G06 profile v1 {subjectId:990804,limit:2} or the real-cast scenario {subjectId:218707,limit:100}; both are terminal. The current direct-public get_subject_cast cell is separately covered by docs/live-probes/public-tools-2026-10-15-092632892-50913.json and does not count as Agent/MCP answer acceptance. do not claim a complete cast/CV list. The single v2 synthetic offline matrix-only report (sha256 fea032eb233871994ab332ecd91ab2fa95a34c641228f7098aab60fd45092292; source Candidate e619eb6530335ba82b4ded0ecba00953a6b2c94c; CI 39077898683) was accepted and merged via PR #221 at 26c9285e6501a7d2c44cf40e0dda236a737a25b8. Master now has 82/96 Agent/MCP rows; credit only get_subject_cast matrix coverage. G06 remains PARTIAL with no full-cast scenario credit; preserve retryAllowed=false and keep OAuth/account/community/QQ/TIM passive.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -722,7 +722,7 @@
           "state": "REPORT_WRITTEN",
           "retry_allowed": false,
           "acceptance_scope": "one Agent/MCP matrix cell only; no scenario, public API, OAuth/account, QQ, or TIM credit",
-          "matrix_credit": "pending exact G06 v2 acceptance-verifier/report/frontier/table refresh, exact Candidate CI, same-identity review, and merge"
+          "matrix_credit": "Accepted: one get_subject_cast Agent/MCP matrix row is present on master after PR #221 merged at 26c9285e6501a7d2c44cf40e0dda236a737a25b8. No scenario/public/auth/QQ/TIM credit; G06 remains PARTIAL; retryAllowed=false."
         }
       }
     },
@@ -3528,9 +3528,21 @@
         "tests/harness/r04-render-series-watch-order-offline-fixture.test.mjs",
         "tests/harness/run-r04-render-series-watch-order-offline-agent-mcp.test.mjs",
         "tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-report.test.mjs",
-        "docs/research/run95-r04-render-series-watch-order-offline-matrix-contract-2026-10-17.md"
+        "docs/research/run95-r04-render-series-watch-order-offline-matrix-contract-2026-10-17.md",
+        "docs/research/run95-r04-render-series-watch-order-offline-matrix-v2-contract-2026-10-18.md",
+        "docs/live-probes/r04-render-series-watch-order-offline-agent-mcp-v2-run95.json",
+        "scripts/lib/r04-render-series-watch-order-offline-v2-fixture.mjs",
+        "scripts/acceptance/run-r04-render-series-watch-order-offline-agent-mcp-v2.mjs",
+        "scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs",
+        "scripts/acceptance/validate-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs",
+        "tests/harness/r04-render-series-watch-order-offline-v2-fixture.test.mjs",
+        "tests/harness/run-r04-render-series-watch-order-offline-agent-mcp-v2.test.mjs",
+        "tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs",
+        "tests/harness/codex-one-tool-mcp-arguments.test.mjs",
+        "tests/harness/agent-harness-cli.test.mjs",
+        "tests/harness/agent-mcp-profile-claims.test.mjs"
       ],
-      "next_action": "The existing get_series_watch_order offline profile is terminal INCONCLUSIVE and retryAllowed=false; never rerun it. A distinct matrix-only render_series_watch_order profile uses only synthetic subjectId 990802 and local fixture responses. If its signed, exact-Candidate report is accepted, credit only that renderer Agent/MCP row; keep the R04 theatrical-film scenario UNASSESSED, do not claim canonical order or visual quality, and keep account/community/QQ/TIM paths out of scope.",
+      "next_action": "The existing get_series_watch_order offline profile is terminal INCONCLUSIVE with no report and retryAllowed=false; never rerun it. The earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry and must remain untouched. 2026-10-18: a distinct matrix-only render_series_watch_order profile v2 (separately keyed R04 renderer v2 profile) with synthetic subjectId=990803 and two fixed local GET fixtures was invoked exactly once after exact Candidate CI, same-identity Luna Max PASS, and fresh Harness eligibility. Harness disposition is REPORT_WRITTEN with retryAllowed=false; report SHA-256 36426cd2733cec03f6d8619f80d6ee7a34b9e9d83657d2d194c7825e778d6498 is bound to Candidate 7139342cfc8bc69e4d696e601d0b74568a5f2756, Base 26c9285e6501a7d2c44cf40e0dda236a737a25b8, and CI 39094417232. The returned PNG metadata is 720x2414 / 303431 bytes and hashes to 2a9516624d4b7c15b62a93d8ec38bff8712eb9d4838a595ec14e97bfcc3849e1; no image bytes are stored, so this is Agent/MCP matrix evidence only and not visual-quality proof. The R04 report is accepted locally and the existing G06 matrix cell remains valid; current source master is 82/96 and this Candidate acceptance matrix is 83/96. Require a fresh exact Candidate CI/review and Harness integration before the new credit reaches master. keep the R04 theatrical-film scenario UNASSESSED, G09 unchanged, and do not claim canonical order or visual quality; keep account/community/QQ/TIM passive and never rerun this one-shot.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

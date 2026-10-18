@@ -22,6 +22,9 @@ const PROFILE = getAgentMcpProfile(
   'fixed-c03-voice-pair-4765-17075-tv-36m-48r-16d-8rows-v1',
 );
 const C04_PROFILE = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
+const R04_V2_PROFILE = getAgentMcpProfileById(
+  'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
+);
 
 test('C04 matrix profile binds its two exact read-only tools in order', () => {
   assert.ok(C04_PROFILE);
@@ -92,7 +95,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 27);
+  assert.equal(listAgentMcpProfiles().length, 28);
   const g06CastMatrixV2 = getAgentMcpProfileById('g06-cast-offline-agent-mcp-matrix-v2');
   assert.ok(g06CastMatrixV2);
   assert.equal(g06CastMatrixV2.epochId, 'run95-g06-cast-offline-matrix-v2-20261018');
@@ -188,7 +191,22 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
     maxNodes: 1,
     media: 'anime',
   });
+  const r04RenderV2 = getAgentMcpProfileById(
+    'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
+  );
+  assert.ok(r04RenderV2);
+  assert.equal(r04RenderV2.frontierId, 'R04');
+  assert.equal(r04RenderV2.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(r04RenderV2.toolName, 'bangumi.render_series_watch_order');
+  assert.notEqual(r04RenderV2.id, r04Render.id);
+  assert.deepEqual(r04RenderV2.calls[0].arguments, {
+    subjectId: 990803,
+    depth: 0,
+    maxNodes: 1,
+    media: 'anime',
+  });
   assert.notDeepEqual(r04Render.calls[0].arguments, r04Get.calls[0].arguments);
+  assert.notDeepEqual(r04RenderV2.calls[0].arguments, r04Render.calls[0].arguments);
   const c01 = getAgentMcpProfileById('c01-rating-count-gap-v1');
   assert.ok(c01);
   assert.equal(c01.frontierId, 'C01');
@@ -459,6 +477,35 @@ test('profile latch uses deterministic permanent metadata and rejects an existin
     calls[1][1],
     `repos/{owner}/{repo}/labels/${encodeURIComponent(PROFILE.claimLabelName)}`,
   );
+});
+
+test('all claim label descriptions fit the GitHub API limit', () => {
+  for (const profile of listAgentMcpProfiles()) {
+    assert.ok(profile);
+    const description = agentMcpProfileClaimLabelDescription(profile);
+    assert.ok(
+      description.length <= 100,
+      `${profile.id} label description must be at most 100 characters`,
+    );
+  }
+
+  const calls = [];
+  const gh = (...args) => {
+    calls.push(args);
+    if (args[0] === 'api' && args[1] === 'repos/{owner}/{repo}/labels') {
+      const label = JSON.parse(args.at(-1).input);
+      assert.ok(
+        label.description.length <= 100,
+        'GitHub label descriptions are limited to 100 characters',
+      );
+      return JSON.stringify(label);
+    }
+    throw new Error('label was not found');
+  };
+
+  assert.ok(R04_V2_PROFILE);
+  assert.equal(acquireAgentMcpProfileGitHubLatch(gh, R04_V2_PROFILE), true);
+  assert.equal(calls.length, 1);
 });
 
 test('profile latch fails closed on ambiguous or mismatched GitHub state', () => {

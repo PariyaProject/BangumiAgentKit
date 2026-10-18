@@ -184,6 +184,43 @@ G06_CAST_OFFLINE_V2_PRIVACY = {
     'syntheticNamesOrIdsStored': False, 'rawFixtureRowsStored': False,
     'rawToolResultStored': False, 'artifactImageBytesStored': False, 'credentialsStored': False,
 }
+R04_RENDER_V2_PROFILE = next(
+    profile for profile in PROFILE_REGISTRY.get('profiles', [])
+    if isinstance(profile, dict)
+    and profile.get('id') == 'r04-render-series-watch-order-offline-agent-mcp-matrix-v2'
+)
+R04_RENDER_V2_TOOL_NAME = R04_RENDER_V2_PROFILE['toolName']
+R04_RENDER_V2_REPORT_PATH = R04_RENDER_V2_PROFILE['reportPath']
+R04_RENDER_V2_REPORT_KIND = R04_RENDER_V2_PROFILE['evidenceKind']
+R04_RENDER_V2_PROFILE_ID = R04_RENDER_V2_PROFILE['id']
+R04_RENDER_V2_EPOCH_ID = R04_RENDER_V2_PROFILE['epochId']
+R04_RENDER_V2_ARGUMENT_PROFILE = R04_RENDER_V2_PROFILE['argumentProfile']
+R04_RENDER_V2_NETWORK_MODE = R04_RENDER_V2_PROFILE['networkMode']
+R04_RENDER_V2_ANSWER_CHECK_METHOD = R04_RENDER_V2_PROFILE['answerCheckMethod']
+R04_RENDER_V2_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in R04_RENDER_V2_PROFILE['calls']],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+R04_RENDER_V2_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    R04_RENDER_V2_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+R04_RENDER_V2_ANSWER_CHECK_FIELDS = {
+    'exactRegisteredProfile', 'oneAllowedMcpTool', 'fixedArguments', 'exactCandidateBundle',
+    'offlineFixtureOnly', 'twoExpectedLocalResponses', 'noRendererAssetRequests',
+    'artifactMetadataVerified', 'safeTextReadback', 'exactAcknowledgement', 'privacyPreserved',
+}
+R04_RENDER_V2_PRIVACY = {
+    'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+    'writesAttempted': False, 'communityRead': False, 'qqPipelineTested': False,
+    'timClientTested': False, 'promptStored': False, 'answerStored': False,
+    'rawFixtureRowsStored': False, 'rawToolResultStored': False,
+    'artifactImageBytesStored': False, 'credentialsStored': False,
+}
 R02_POSITIVE_TOOL_NAME = 'bangumi.get_subject_relations'
 R02_POSITIVE_REPORT_PATH = 'docs/live-probes/r02-positive-direct-relations-agent-mcp-run95.json'
 R02_POSITIVE_REPORT_KIND = 'codex_cli_r02_positive_direct_relations_agent_mcp'
@@ -566,6 +603,97 @@ def g06_cast_offline_v2_agent_mcp_matches(
     )
 
 
+def r04_render_v2_agent_mcp_matches(
+    name: str, relative_path: str, report: object,
+) -> bool:
+    """Map only the signed synthetic R04 v2 render result to its renderer matrix cell."""
+    if not isinstance(report, dict):
+        return False
+    result = report.get('resultSummary')
+    artifact = result.get('artifact') if isinstance(result, dict) else None
+    fixture = report.get('offlineFixture')
+    checks = report.get('answerChecks')
+    receipt = report.get('runnerReceipt')
+    acknowledgement = 'R04_RENDER_V2_SYNTHETIC_CARD_READY'
+    return bool(
+        name == R04_RENDER_V2_TOOL_NAME
+        and relative_path == R04_RENDER_V2_REPORT_PATH
+        and report.get('schemaVersion') == 1
+        and report.get('evidenceKind') == R04_RENDER_V2_REPORT_KIND
+        and report.get('runNumber') == 95
+        and report.get('frontierId') == 'R04'
+        and report.get('scenarioId') is None
+        and report.get('epochId') == R04_RENDER_V2_EPOCH_ID
+        and report.get('profileId') == R04_RENDER_V2_PROFILE_ID
+        and report.get('profile') == 'codex-luna-max-offline-agent-mcp-matrix-v2'
+        and report.get('model') == 'gpt-6-luna'
+        and report.get('reasoningEffort') == 'max'
+        and report.get('toolName') == R04_RENDER_V2_TOOL_NAME
+        and report.get('argumentProfile') == R04_RENDER_V2_ARGUMENT_PROFILE
+        and report.get('expectedArgumentsSha256') == R04_RENDER_V2_EXPECTED_ARGUMENTS_SHA256
+        and report.get('registrySha256') == R04_RENDER_V2_REGISTRY_SHA256
+        and report.get('networkMode') == R04_RENDER_V2_NETWORK_MODE
+        and report.get('ciStatus') == 'SUCCESS'
+        and report.get('ciSha') == report.get('sourceRevision')
+        and report.get('resultStatus') == 'SUCCESS'
+        and report.get('processExitCode') == 0
+        and report.get('eventStreamParsed') is True
+        and report.get('turnCompleted') is True
+        and report.get('codexMcpToolEventCount') == 1
+        and report.get('mcpToolErrorResultCount') == 0
+        and report.get('nonMcpToolEventCount') == 0
+        and report.get('nonMcpToolTypes') == []
+        and report.get('shellToolCallCount') == 0
+        and report.get('allowedCallCount') == 1
+        and report.get('deniedCallCount') == 0
+        and report.get('serverToolNames') == [R04_RENDER_V2_TOOL_NAME]
+        and report.get('serverToolCount') == 1
+        and report.get('mcpServerNames') == ['bgk_r04_render_watch_order_v2']
+        and report.get('answerCheckMethod') == R04_RENDER_V2_ANSWER_CHECK_METHOD
+        and report.get('answerSha256') == hashlib.sha256(acknowledgement.encode()).hexdigest()
+        and report.get('answerUtf8Bytes') == len(acknowledgement.encode())
+        and fixture == {
+            'profile': R04_RENDER_V2_NETWORK_MODE,
+            'requestCount': 2,
+            'subjectRequestCount': 1,
+            'relationsRequestCount': 1,
+            'duplicateRequestCount': 0,
+            'unexpectedRequestCount': 0,
+            'authorizationHeaderCount': 0,
+            'expectedOperationsComplete': True,
+        }
+        and report.get('rendererAssetBoundary') == {'requestCount': 0}
+        and report.get('networkBoundary') == {
+            'liveBangumiApiRequestCount': 0,
+            'rendererAssetRequestCount': 0,
+            'fullCodexHarnessNetworkSandboxed': False,
+        }
+        and isinstance(result, dict)
+        and set(result) == {'resultState', 'artifact'}
+        and result.get('resultState') == 'artifact_returned'
+        and isinstance(artifact, dict)
+        and artifact.get('returned') is True
+        and artifact.get('persisted') is False
+        and artifact.get('mimeType') == 'image/png'
+        and type(artifact.get('width')) is int and 320 <= artifact['width'] <= 1200
+        and type(artifact.get('height')) is int and artifact['height'] > 0
+        and type(artifact.get('byteLength')) is int and 8 < artifact['byteLength'] <= 5_000_000
+        and isinstance(artifact.get('sha256'), str)
+        and re.fullmatch(r'[0-9a-f]{64}', artifact['sha256']) is not None
+        and artifact.get('pngSignatureValid') is True
+        and artifact.get('decoded') is True
+        and artifact.get('dimensionsMatch') is True
+        and report.get('privacy') == R04_RENDER_V2_PRIVACY
+        and isinstance(checks, dict)
+        and set(checks) == R04_RENDER_V2_ANSWER_CHECK_FIELDS
+        and all(value is True for value in checks.values())
+        and isinstance(receipt, dict)
+        and receipt.get('kind') == 'r04-render-series-watch-order-offline-v2-runner-receipt-v1'
+        and isinstance(receipt.get('signature'), str)
+        and isinstance(receipt.get('publicKeyBase64'), str)
+    )
+
+
 def r02_positive_agent_mcp_matches(name: str, relative_path: str, report: object) -> bool:
     """Accept the exact bounded R02 report only for get_subject_relations Agent/MCP."""
     if not isinstance(report, dict):
@@ -876,6 +1004,9 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
             r01_offline_matches = r01_offline_agent_mcp_matches(
                 name, relative_path, report,
             )
+            r04_render_v2_matches = r04_render_v2_agent_mcp_matches(
+                name, relative_path, report,
+            )
             g06_cast_offline_v2_matches = g06_cast_offline_v2_agent_mcp_matches(
                 name, relative_path, report,
             )
@@ -885,7 +1016,8 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
             matches = (
                 scenario_matches or c04_matches or title_query_render_matches
                 or g01_render_query_matches or g01_query_subjects_offline_matches
-                or r01_offline_matches or g06_cast_offline_v2_matches or r02_positive_matches
+                or r01_offline_matches or r04_render_v2_matches
+                or g06_cast_offline_v2_matches or r02_positive_matches
             )
         else:
             try:

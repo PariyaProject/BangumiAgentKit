@@ -98,6 +98,13 @@ import {
   R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID,
 } from '../../scripts/lib/r04-render-series-watch-order-offline-fixture.mjs';
 import {
+  assertR04RenderV2SeriesWatchOrderOfflineV2Profile,
+  createR04RenderV2SeriesWatchOrderV2AssetFence,
+  createR04RenderV2SeriesWatchOrderOfflineV2Fetch,
+  R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE,
+  R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID,
+} from '../../scripts/lib/r04-render-series-watch-order-offline-v2-fixture.mjs';
+import {
   assertR01RelationsOfflineFixture,
   createR01RelationsOfflineFetch,
 } from '../../scripts/lib/r01-relations-offline-fixture.mjs';
@@ -157,6 +164,10 @@ function createTitleQueryRenderOfflineAssetResolver() {
 }
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const P07_PERSON_SEASON_PROFILE_ID = 'p07-person-season-distribution-agent-mcp-v1';
+const R04_RENDER_ARTIFACT_PROFILE_IDS = new Set([
+  R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID,
+  R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID,
+]);
 
 class MemoryArtifactStore {
   constructor() {
@@ -302,6 +313,9 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE) {
     assertR04RenderSeriesWatchOrderOfflineProfile(config.profile);
   }
+  if (config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE) {
+    assertR04RenderV2SeriesWatchOrderOfflineV2Profile(config.profile);
+  }
   if (config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE) {
     assertR01RelationsOfflineFixture(config.profile);
   }
@@ -399,15 +413,19 @@ async function main(argv = process.argv.slice(2)) {
                         ? createR04SeriesWatchOrderOfflineFetch()
                         : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
                           ? createR04RenderSeriesWatchOrderOfflineFetch()
-                          : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
-                            ? createR01RelationsOfflineFetch()
-                            : config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE
-                              ? createR03RelationsOfflineFetch()
-                              : null;
+                          : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE
+                            ? createR04RenderV2SeriesWatchOrderOfflineV2Fetch()
+                            : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
+                              ? createR01RelationsOfflineFetch()
+                              : config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE
+                                ? createR03RelationsOfflineFetch()
+                                : null;
   const r04RenderAssetFence =
     config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
       ? createR04RenderSeriesWatchOrderAssetFence()
-      : null;
+      : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE
+        ? createR04RenderV2SeriesWatchOrderV2AssetFence()
+        : null;
   const p06AssetGuard =
     config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
       ? createP06RenderPersonProfileAssetGuard()
@@ -680,7 +698,7 @@ async function main(argv = process.argv.slice(2)) {
               ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
               : config.profile.id === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID
                 ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
-                : config.profile.id === R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID
+                : R04_RENDER_ARTIFACT_PROFILE_IDS.has(config.profile.id)
                   ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
                   : config.profile.id === C04_COHORT_COMPARISON_PROFILE_ID &&
                       expectedToolName === 'bangumi.render_subject_cohort_comparison'
@@ -821,7 +839,7 @@ async function main(argv = process.argv.slice(2)) {
             structuredContent: safeProjection,
           };
         }
-        if (config.profile?.id === R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID) {
+        if (R04_RENDER_ARTIFACT_PROFILE_IDS.has(config.profile?.id)) {
           const safeProjection = summary.results[sequenceIndex]?.resultSummary;
           if (!safeProjection) {
             summary = {
