@@ -6,9 +6,9 @@ Scope: the `bangumi.render_person_profile` presentation only. This review used e
 
 ## Method
 
-The renderer was invoked locally with a synthetic person (990602), one synthetic subject (990604), and one synthetic character (990605). The five PNGs were opened and inspected individually at CSS viewport widths 320, 360, 520, 640, and 960 pixels. No Bangumi account, OAuth token, live API response, or remote image was used.
+The registered v2 fixture was passed through the local `HttpClient`, `PersonService`, view-model builder, and renderer with a synthetic person (990602), one synthetic subject (990604), and one synthetic character (990605). The five PNGs were opened and inspected individually at CSS viewport widths 320, 360, 520, 640, and 960 pixels. The local fixture completed exactly three expected reads, observed no authorization header, and produced no image URL; the renderer made zero asset requests. No Bangumi account, OAuth token, live API response, or remote image was used. The person fixture's Chinese display name comes from the `简体中文名` infobox entry consumed by `PersonService.mapPerson`.
 
-The same fixture was rendered at 640 and 960 pixel image widths and 320, 360, and 520 pixel CSS widths. The test also measured the document scroll width at 320, 360, and 520 pixels.
+The same view-model was rendered at 320, 360, 520, 640, and 960 pixel widths. Existing regression checks also measure the document scroll width at 320, 360, and 520 pixels.
 
 ## Findings and changes
 
@@ -16,7 +16,7 @@ The first 320-pixel render showed the distribution lists extending beyond the ca
 
 The profile card exposed raw English role/media labels and internal keys (`voice actor`, `anime`, `main`, `Person ID`, and `v0`), showed `(null)` for the missing blood type, and repeated untranslated field names in a warning. The card now localizes known labels, displays the official type code with a Chinese label, suppresses null blood type, and removes the redundant raw-key warning. Long mixed Chinese/Japanese text wraps without visible horizontal spill at the reviewed widths.
 
-The no-image state remains explicit. The card is tall at narrow widths because the fixture intentionally includes a long summary, a subject, a character, and source limitations; all sections remain readable and the five images showed no clipped right edge after the fix.
+The no-image state remains explicit. The card is tall at narrow widths because the fixture includes a long mixed Chinese/Japanese summary, a subject, a character, and source limitations. At 320 and 360 pixels the Chinese display name wraps cleanly and the Japanese original remains visible as secondary text. All sections remain readable, and none of the five images showed a clipped right edge after the fix.
 
 ## Render samples
 
@@ -24,11 +24,11 @@ The PNGs were generated in `/tmp` and are deliberately not committed. Their dime
 
 | CSS width | PNG dimensions | SHA-256                                                            |
 | --------: | -------------: | ------------------------------------------------------------------ |
-|       320 |     320 × 2007 | `de48c35e5941245d71cd90868d8e1da6dea8000c236c1148a97713949374e424` |
-|       360 |     360 × 1865 | `efdf7a9436d13b11e0ac5382481caac2b4f18846dd17740f08d4b28cfac2f06b` |
-|       520 |     520 × 1550 | `e2149214048eb61d3b9f4e2c728c4ac4a9e4cbb63d213f410aaba803994fe9be` |
-|       640 |     640 × 1201 | `5ad7e59e8fe40d407c1113606a383d98ad8dce27807ede43e63e6c65e555252a` |
-|       960 |      960 × 957 | `cf3dee7f05403f40f5eee5c7986e67f5c6d7020bf28bdf2e271f234ce5f04109` |
+|       320 |     320 × 1968 | `41a2e36db98e880b99507eb95788b9e7387c02814d9c15c9d96baceb4093874b` |
+|       360 |     360 × 1865 | `99b4bc012941c35d41e27aba52882f5e254f745d5b36d170a4844fdcbc3d6d09` |
+|       520 |     520 × 1550 | `4c8b6ec523d00483365589f9a5ad88e16c3ae5d5611d1759903c039a007bced2` |
+|       640 |     640 × 1198 | `d8ee18d29ef4501b6149f6d1a9b5f8f85e43764d503fd46aafb225a215ccc062` |
+|       960 |      960 × 957 | `070291163b917b432a8729d391cdbfd31d252db94d925d5bb8beb88df29bebb2` |
 
 ## Limits
 

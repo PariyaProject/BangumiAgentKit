@@ -109,7 +109,12 @@ test('P06 v2 fixture uses a distinct synthetic identity and exact offline reads'
   const subjects = await fixture.fetchFn('https://api.bgm.tv/v0/persons/990602/subjects');
   const characters = await fixture.fetchFn('https://api.bgm.tv/v0/persons/990602/characters');
 
-  assert.equal((await person.json()).id, 990602);
+  const personValue = await person.json();
+  assert.equal(personValue.id, 990602);
+  assert.deepEqual(personValue.infobox, [
+    { key: '简体中文名', value: '合成声优人员 990602（长标题换行检查）' },
+  ]);
+  assert.equal('name_cn' in personValue, false);
   assert.equal((await subjects.json())[0].id, 990604);
   assert.equal((await characters.json())[0].id, 990605);
   assert.deepEqual(fixture.snapshot(), {

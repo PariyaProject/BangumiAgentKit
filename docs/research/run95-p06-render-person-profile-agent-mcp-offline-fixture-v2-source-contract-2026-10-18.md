@@ -22,7 +22,7 @@ The profile allows exactly one Agent/MCP call:
 }
 ```
 
-The offline fixture returns exactly three local GET responses: the synthetic person 990602, one synthetic subject 990604, and one synthetic character 990605. It rejects duplicates, query strings, non-GET methods, unexpected paths or origins, request bodies, and authorization headers. The asset resolver makes no network requests; non-empty image URLs are rejected. No account, OAuth, live Bangumi response, community content, write operation, QQ/TIM action, or persistent artifact is part of this profile.
+The offline fixture returns exactly three local GET responses: the synthetic person 990602, one synthetic subject 990604, and one synthetic character 990605. The person's Chinese display name is supplied through the v0 `infobox` entry `简体中文名`, which is the field consumed by `PersonService.mapPerson`; it is not sent through an unsupported top-level `name_cn` property. It rejects duplicates, query strings, non-GET methods, unexpected paths or origins, request bodies, and authorization headers. The asset resolver makes no network requests; non-empty image URLs are rejected. No account, OAuth, live Bangumi response, community content, write operation, QQ/TIM action, or persistent artifact is part of this profile.
 
 ## Renderer QA and evidence boundary
 

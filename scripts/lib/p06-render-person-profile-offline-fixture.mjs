@@ -141,7 +141,6 @@ function syntheticPerson(config) {
     return {
       id: config.syntheticPersonId,
       name: '合成声优人物の日本語名 990602',
-      name_cn: '合成声优人员 990602（长标题换行检查）',
       type: 1,
       career: ['voice actor'],
       gender: 'unknown',
@@ -149,6 +148,7 @@ function syntheticPerson(config) {
       short_summary:
         '仅供离线验收的合成资料；用于检查中文、日文混排、长文本换行和摘要截断。'.repeat(5),
       images: { large: '', medium: '', small: '', grid: '' },
+      infobox: [{ key: '简体中文名', value: '合成声优人员 990602（长标题换行检查）' }],
     };
   }
   return {

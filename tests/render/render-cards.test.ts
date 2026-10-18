@@ -689,10 +689,10 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
       state: 'partial',
       person: {
         id: 990602,
-        name: 'Synthetic Person 長い日本語の人物名 990602',
+        name: '合成声优人物の日本語名 990602',
         nameCn: '合成声优人员 990602（长标题换行检查）',
         career: ['voice actor'],
-        summary: '这是用于检查中文、日文混排、长文本换行和摘要截断的合成简介。'.repeat(8),
+        summary: '仅供离线验收的合成资料；用于检查中文、日文混排、长文本换行和摘要截断。'.repeat(8),
         gender: 'unknown',
         bloodType: null,
         identityMissingFields: ['person.birth_year', 'person.blood_type'],
@@ -711,7 +711,7 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
       subjectCredits: [
         {
           id: 990604,
-          name: 'Synthetic Work 長い日本語タイトル',
+          name: '合成作品の日本語原名 990604',
           nameCn: '合成作品：一个很长的中文条目标题用于移动端换行检查',
           nameCnSource: '合成作品：一个很长的中文条目标题用于移动端换行检查',
           role: 'voice actor',
@@ -720,7 +720,7 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
       characterCredits: [
         {
           id: 990605,
-          name: 'Synthetic Character 長い日本語名',
+          name: '合成角色の長い日本語名',
           role: 'main',
           subjectNameCn: '合成作品：一个很长的中文条目标题用于移动端换行检查',
         },
@@ -744,6 +744,9 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
 
     const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, 320);
     expect(html).toContain('人物编号 990602');
+    expect(html).toContain('合成声优人员 990602（长标题换行检查）');
+    expect(html).toContain('合成声优人物の日本語名 990602');
+    expect(html).not.toContain('Synthetic');
     expect(html).toContain('声优');
     expect(html).toContain('动画');
     expect(html).toContain('主役');
