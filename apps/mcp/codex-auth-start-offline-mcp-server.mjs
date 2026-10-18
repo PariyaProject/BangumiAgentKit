@@ -14,7 +14,7 @@ import {
   computeMcpBundleSha256,
   gitRepositoryText,
   readG26McpBundleAttestation,
-} from '../scripts/lib/g26-mcp-bundle.mjs';
+} from '../../scripts/lib/g26-mcp-bundle.mjs';
 import {
   AUTH_START_EXPECTED_ARGUMENTS,
   AUTH_START_EXPECTED_QUERY_KEYS,
@@ -27,9 +27,9 @@ import {
   AUTH_START_SYNTHETIC_PRINCIPAL,
   AUTH_START_TOOL_NAME,
   sameAuthStartArguments,
-} from '../scripts/lib/auth-start-offline-agent-mcp-profile.mjs';
+} from '../../scripts/lib/auth-start-offline-agent-mcp-profile.mjs';
 
-const PRODUCT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const PRODUCT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const FIXTURE_BOT_INSTANCE = 'run95-auth-start-synthetic-bot';
 const FIXTURE_CONVERSATION = 'run95-auth-start-synthetic-conversation';
 const SYNTHETIC_SECRET_KEY = 'run95-auth-start-local-encryption-key-only-0123456789';
