@@ -156,6 +156,23 @@ describe('collection-series renderer', () => {
       expect(unresolvedHtml).not.toContain('未归组条目');
     }
 
+    const zeroUngroupedViewModel = buildCollectionSeriesViewModel(result, { maxUngrouped: 0 });
+    expect(zeroUngroupedViewModel.presentation.ungrouped).toEqual({
+      available: 1,
+      rendered: 0,
+      omitted: 1,
+    });
+    for (const width of [320, 360, 520, 640, 960]) {
+      const zeroUngroupedHtml = renderHtmlTemplate(
+        zeroUngroupedViewModel,
+        'bangumi-dark',
+        {},
+        width,
+      );
+      expect(zeroUngroupedHtml).toContain('另有 1 个已确认未归组条目未展示');
+      expect(zeroUngroupedHtml).not.toContain('未归入系列组（展示 0/1）');
+    }
+
     const privateCache = new RendererLruCache<RenderResult>(2);
     const privateRenderService = new RenderService(undefined, privateCache);
     await privateRenderService.renderCard(viewModel, { width: 640 });

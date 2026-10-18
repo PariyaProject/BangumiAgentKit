@@ -218,6 +218,12 @@ export const CollectionSeriesCard: React.FC<CollectionSeriesCardProps> = ({
         </section>
       ) : null}
 
+      {viewModel.presentation.ungrouped.omitted > 0 ? (
+        <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
+          {'另有 ' + viewModel.presentation.ungrouped.omitted + ' 个已确认未归组条目未展示。'}
+        </div>
+      ) : null}
+
       {viewModel.presentation.unresolved.omitted > 0 ? (
         <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
           关系待确认条目展示 {viewModel.presentation.unresolved.rendered}/
