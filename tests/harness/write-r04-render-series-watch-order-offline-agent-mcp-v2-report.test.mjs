@@ -77,7 +77,7 @@ function makeInput(root = ROOT) {
     resultState: 'artifact_returned',
     artifact: {
       returned: true,
-      persisted: true,
+      persisted: false,
       mimeType: 'image/png',
       width: 360,
       height: 272,
@@ -177,6 +177,7 @@ test('R04 render report signs only artifact metadata and matrix evidence', (t) =
   assert.equal(validation.passed, true, validation.reason);
   assert.equal(validation.reportSha256, result.reportSha256);
   assert.equal(validation.report.resultSummary.artifact.sha256, 'd'.repeat(64));
+  assert.equal(validation.report.resultSummary.artifact.persisted, false);
   assert.equal(validation.report.codexErrorItemCount, 3);
   assert.equal(validation.report.mcpToolErrorResultCount, 0);
   assert.equal('imageBytes' in validation.report.resultSummary.artifact, false);
@@ -219,6 +220,34 @@ test('R04 render report rejects external asset activity and altered readback evi
       { privateKey: input.keyPair.privateKey, root },
     );
     assert.equal(mcpError.passed, false);
+
+    const falselyPersisted = buildR04RenderV2ProfileReport(
+      {
+        claim: input.claim,
+        serverSummary: {
+          ...input.serverSummary,
+          results: [
+            {
+              ...input.serverSummary.results[0],
+              resultSummary: {
+                ...input.serverSummary.results[0].resultSummary,
+                artifact: {
+                  ...input.serverSummary.results[0].resultSummary.artifact,
+                  persisted: true,
+                },
+              },
+            },
+          ],
+        },
+        events: input.events,
+        answer: input.answer,
+        codexCliVersion: '0.1.0',
+        eventStreamSha256: 'e'.repeat(64),
+        serverSummarySha256: 'f'.repeat(64),
+      },
+      { privateKey: input.keyPair.privateKey, root },
+    );
+    assert.equal(falselyPersisted.passed, false);
 
     const reportPath = path.join(root, PROFILE.reportPath);
     mkdirSync(path.dirname(reportPath), { recursive: true });

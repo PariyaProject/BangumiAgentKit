@@ -370,7 +370,7 @@ function validArtifactSummary(summary) {
   return (
     summary?.resultState === 'artifact_returned' &&
     a?.returned === true &&
-    a?.persisted === true &&
+    a?.persisted === false &&
     a?.mimeType === 'image/png' &&
     Number.isInteger(a.width) &&
     a.width >= 320 &&

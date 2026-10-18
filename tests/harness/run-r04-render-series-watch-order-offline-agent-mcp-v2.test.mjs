@@ -24,7 +24,7 @@ function resultSummary() {
     resultState: 'artifact_returned',
     artifact: {
       returned: true,
-      persisted: true,
+      persisted: false,
       mimeType: 'image/png',
       width: 360,
       height: 272,
@@ -134,6 +134,25 @@ test('R04 renderer result can be read back from sanitized JSON text alone', () =
 test('R04 render server summary requires two local requests and a verified artifact', () => {
   const summary = serverSummary();
   assert.equal(validateR04RenderV2ServerSummary(summary, SOURCE_SHA, BUNDLE_SHA), true);
+  assert.equal(
+    validateR04RenderV2ServerSummary(
+      {
+        ...summary,
+        results: [
+          {
+            ...summary.results[0],
+            resultSummary: {
+              ...resultSummary(),
+              artifact: { ...resultSummary().artifact, persisted: true },
+            },
+          },
+        ],
+      },
+      SOURCE_SHA,
+      BUNDLE_SHA,
+    ),
+    false,
+  );
   assert.equal(
     validateR04RenderV2ServerSummary(
       {

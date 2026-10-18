@@ -267,7 +267,7 @@ function validArtifactSummary(summary) {
       ]),
     ) &&
     artifact.returned === true &&
-    artifact.persisted === true &&
+    artifact.persisted === false &&
     artifact.mimeType === 'image/png' &&
     Number.isInteger(artifact.width) &&
     artifact.width >= 320 &&
