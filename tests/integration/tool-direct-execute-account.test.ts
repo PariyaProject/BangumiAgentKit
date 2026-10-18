@@ -12,16 +12,22 @@ const context = {
 
 function createUnavailableClient() {
   return new HttpClient({
-    fetchFn: vi.fn(async () =>
-      new Response(JSON.stringify({ error: 'fixture unavailable' }), {
-        status: 400,
-        headers: { 'content-type': 'application/json' },
-      }),
+    fetchFn: vi.fn(
+      async () =>
+        new Response(JSON.stringify({ error: 'fixture unavailable' }), {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        }),
     ),
   });
 }
 
-async function expectControlled(tool: any, input: Record<string, unknown>, name: string, deps: any) {
+async function expectControlled(
+  tool: any,
+  input: Record<string, unknown>,
+  name: string,
+  deps: any,
+) {
   let result: any;
   try {
     result = await tool.execute(input, context, deps);
@@ -82,7 +88,12 @@ describe('direct execute coverage for auth, collection, and write tools', () => 
     ]);
 
     const status = await (authTools.get('bangumi.auth_status')!.execute as any)({}, context);
-    expect(status).toEqual({ bound: false, accountCount: 1 });
+    expect(status).toEqual({
+      bound: false,
+      accountCount: 1,
+      message:
+        '已绑定 1 个 Bangumi 账号，但当前没有激活账号。先查看或切换已绑定账号；个人收藏查询需要激活账号。',
+    });
     expect(tokenBroker.getAuthStatus).toHaveBeenCalledWith(context.principalId);
 
     const authStart = await (authTools.get('bangumi.auth_start')!.execute as any)({}, context);

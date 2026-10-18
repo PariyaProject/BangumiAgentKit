@@ -19,12 +19,14 @@ import {
   AssetHttpTransport,
   AssetNetworkResolver,
   AssetResolver,
-  DEFAULT_PLACEHOLDER_DATA_URL,
 } from '../../packages/renderer/src/internal/index.js';
 import { getSubjectOverview } from '../../packages/tools/src/subject-overview.js';
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-const VALID_PNG_BUFFER = Buffer.from(DEFAULT_PLACEHOLDER_DATA_URL.split(',')[1]!, 'base64');
+const VALID_PNG_BUFFER = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+6R0JggAAAABJRU5ErkJggg==',
+  'base64',
+);
 const LIMITS = { maxCast: 20, maxStaff: 24, maxRelations: 12 };
 
 type FixtureState = 'complete' | 'partial' | 'unavailable' | 'not_found';

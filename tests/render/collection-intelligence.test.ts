@@ -78,6 +78,10 @@ describe('collection-intelligence renderer', () => {
     expect(html).toContain('部分覆盖');
     expect(html).toContain('collection-intelligence-v1');
     expect(html).toContain('一个需要在紧凑卡片中安全换行的超长中文标题');
+    expect(html).toContain('统计口径');
+    expect(html).toContain('部分收藏记录缺少');
+    expect(html).not.toContain('item.rating');
+    expect(html).not.toContain('source-reported updated_at');
     expect(html).not.toContain('comment');
 
     const rendered = await renderService.renderCard(viewModel, { width: 640 });
@@ -92,10 +96,38 @@ describe('collection-intelligence renderer', () => {
     const unavailable = buildCollectionIntelligenceViewModel(unavailableResult);
     expect(unavailable.coverage.sourceTotal).toBeUndefined();
     const unavailableHtml = renderHtmlTemplate(unavailable, 'bangumi-light', {}, 960);
-    expect(unavailableHtml).toContain('官方收藏源暂时不可用');
+    expect(unavailableHtml).toContain('官方收藏暂时不可读取');
+    expect(unavailableHtml).toContain('未用猜测填补结果');
     expect(unavailableHtml).toContain('源报告 未知 条');
     expect(unavailableHtml).not.toContain('待看/搁置 backlog</div>');
-    expect(unavailableHtml).toContain('updated_at');
+    expect(unavailableHtml).not.toContain('updated_at');
+  });
+
+  it('explains a complete empty collection without presenting it as an error', () => {
+    const empty = buildCollectionIntelligence([], {
+      sourceTotal: 0,
+      requestedMaxItems: 20,
+      pageSize: 20,
+      pagesAttempted: 1,
+      pagesSucceeded: 1,
+      maxPages: 8,
+      sourceExhausted: true,
+      paginationStalled: false,
+      sourceTotalChanged: false,
+      attemptedAt: '2026-08-14T00:00:00.000Z',
+      retrievedAt: '2026-08-14T10:00:01.000Z',
+    });
+    const html = renderHtmlTemplate(
+      buildCollectionIntelligenceViewModel(empty),
+      'bangumi-dark',
+      {},
+      320,
+    );
+
+    expect(html).toContain('覆盖完整');
+    expect(html).toContain('暂无收藏条目');
+    expect(html).toContain('完整的空收藏结果');
+    expect(html).not.toContain('暂不可读取');
   });
 
   it('caps dense tags and recent updates while keeping the card readable', () => {
@@ -138,7 +170,7 @@ describe('collection-intelligence renderer', () => {
     });
     for (const width of [640, 960]) {
       const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
-      expect(html).toContain('待看/搁置 backlog = wish + on_hold');
+      expect(html).toContain('待看与搁置合计');
       expect(html).toContain('展示省略：标签 4 个 · 最近更新 2 条');
     }
   });

@@ -158,6 +158,7 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
       await expect(registry.executeTool('bangumi.auth_status', {}, context)).resolves.toEqual({
         bound: false,
         accountCount: 0,
+        message: '尚未绑定 Bangumi 账号。需要个人收藏功能时，再发起授权；公开查询无需绑定。',
       });
       await expect(registry.executeTool('bangumi.auth_start', {}, context)).rejects.toMatchObject({
         code: 'OAUTH_NOT_CONFIGURED',
@@ -168,7 +169,7 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
     }
   });
 
-  it('does not consume a pending OAuth state or exchange a code when app credentials are missing', async () => {
+  it('consumes a pending OAuth state but does not exchange a code when app credentials are missing', async () => {
     const storage = new MemoryStorage();
     const stateStore = new OAuthStateStore(storage);
     const { state } = await stateStore.generateState({ principalId: 'principal-no-oauth-app' });
@@ -196,7 +197,8 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
     await expect(oauthService.handleCallback('fixture-code', state)).rejects.toMatchObject({
       code: 'OAUTH_NOT_CONFIGURED',
     });
-    expect(consumeOAuthSession).not.toHaveBeenCalled();
+    expect(consumeOAuthSession).toHaveBeenCalledTimes(1);
+    await expect(stateStore.consumeState(state)).rejects.toThrow('OAUTH_STATE_REUSED');
     expect(exchangeAuthorizationCode).not.toHaveBeenCalled();
     expect(fetchFn).not.toHaveBeenCalled();
   });
@@ -248,10 +250,8 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
         message: 'Bangumi 账号授权暂不可用，服务尚未配置 OAuth 应用。',
         nextAction: '请由服务管理员配置 Bangumi OAuth 客户端 ID、密钥和回调地址后重试。',
       });
-      await expect(dependencies.oauthService.handleCallback('code', 'state')).rejects.toMatchObject(
-        {
-          code: 'OAUTH_NOT_CONFIGURED',
-        },
+      await expect(dependencies.oauthService.handleCallback('code', 'state')).rejects.toThrow(
+        'INVALID_OAUTH_STATE',
       );
     } finally {
       vi.unstubAllEnvs();

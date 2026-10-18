@@ -28,7 +28,7 @@ describe('H. Fastify API Integration Test', () => {
     // 3. GET /oauth/bangumi/callback missing code/state -> 400
     const missingRes = await app.inject({ method: 'GET', url: '/oauth/bangumi/callback' });
     expect(missingRes.statusCode).toBe(400);
-    expect(missingRes.payload).toContain('缺少必要的 code 或 state 参数');
+    expect(missingRes.payload).toContain('无法确认这次 Bangumi 授权请求');
 
     // 4. GET /oauth/bangumi/callback invalid state -> 400
     const invalidStateRes = await app.inject({
@@ -36,7 +36,7 @@ describe('H. Fastify API Integration Test', () => {
       url: '/oauth/bangumi/callback?code=mock_code&state=invalid_state_123',
     });
     expect(invalidStateRes.statusCode).toBe(400);
-    expect(invalidStateRes.payload).toContain('Bangumi 账号绑定失败');
+    expect(invalidStateRes.payload).toContain('授权未完成');
 
     // 5. Valid mocked OAuth callback -> 200
     vi.spyOn(deps.oauthService, 'handleCallback').mockResolvedValue({
@@ -51,7 +51,7 @@ describe('H. Fastify API Integration Test', () => {
       url: '/oauth/bangumi/callback?code=valid_code&state=valid_state',
     });
     expect(validRes.statusCode).toBe(200);
-    expect(validRes.payload).toContain('Bangumi 账号绑定成功！');
+    expect(validRes.payload).toContain('绑定成功');
     expect(validRes.payload).toContain('Test User');
   });
 });
