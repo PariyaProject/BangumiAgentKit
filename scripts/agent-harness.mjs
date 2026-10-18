@@ -164,6 +164,7 @@ import {
 import { validateP02SanitizedReportFile } from './acceptance/write-p02-person-profile-agent-mcp-report.mjs';
 import { validateG06SubjectCastOfflineSanitizedReportFile } from './acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs';
 import { validateR04SanitizedReportFile } from './acceptance/write-r04-series-watch-order-offline-agent-mcp-report.mjs';
+import { validateR04SeriesWatchOrderOfflineV2SanitizedReportFile } from './acceptance/write-r04-series-watch-order-offline-agent-mcp-v2-report.mjs';
 import { validateR04RenderSanitizedReportFile } from './acceptance/write-r04-render-series-watch-order-offline-agent-mcp-report.mjs';
 import { validateR04RenderV2SanitizedReportFile } from './acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs';
 import { validateR01RelationsOfflineSanitizedReportFile } from './acceptance/write-r01-relations-offline-agent-mcp-report.mjs';
@@ -300,6 +301,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'c07-render-comparison-offline-agent-mcp-matrix-v2',
   'p02-person-profile-offline-agent-mcp-v1',
   'r04-series-watch-order-offline-agent-mcp-v1',
+  'r04-series-watch-order-offline-agent-mcp-v2',
   'r04-render-series-watch-order-offline-agent-mcp-v1',
   'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
   'r01-subject-relations-offline-agent-mcp-v1',
@@ -4302,6 +4304,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateP02SanitizedReportFile(claim, root, reportPath);
     case 'r04-series-watch-order-offline-agent-mcp-v1':
       return validateR04SanitizedReportFile(claim, root, reportPath);
+    case 'r04-series-watch-order-offline-agent-mcp-v2':
+      return validateR04SeriesWatchOrderOfflineV2SanitizedReportFile(claim, root, reportPath);
     case 'r04-render-series-watch-order-offline-agent-mcp-v1':
       return validateR04RenderSanitizedReportFile(claim, root, reportPath);
     case 'r04-render-series-watch-order-offline-agent-mcp-matrix-v2':

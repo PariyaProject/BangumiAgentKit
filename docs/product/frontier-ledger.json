@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-18T06:57:24Z",
+  "updated_at": "2026-10-18T13:32:37Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -3528,9 +3528,19 @@
         "tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs",
         "tests/harness/codex-one-tool-mcp-arguments.test.mjs",
         "tests/harness/agent-harness-cli.test.mjs",
-        "tests/harness/agent-mcp-profile-claims.test.mjs"
+        "tests/harness/agent-mcp-profile-claims.test.mjs",
+        "scripts/lib/r04-series-watch-order-offline-v2-fixture.mjs",
+        "scripts/acceptance/run-r04-series-watch-order-offline-agent-mcp-v2.mjs",
+        "scripts/acceptance/write-r04-series-watch-order-offline-agent-mcp-v2-report.mjs",
+        "scripts/acceptance/validate-r04-series-watch-order-offline-agent-mcp-v2-report.mjs",
+        "docs/research/run95-r04-series-watch-order-offline-matrix-v2-contract-2026-10-18.md",
+        "docs/live-probes/r04-series-watch-order-offline-agent-mcp-v2-run95.json",
+        "tests/harness/r04-series-watch-order-offline-v2-fixture.test.mjs",
+        "tests/harness/run-r04-series-watch-order-offline-agent-mcp-v2.test.mjs",
+        "tests/harness/write-r04-series-watch-order-offline-agent-mcp-v2-report.test.mjs",
+        "tests/semantic/series-watch-order.test.ts"
       ],
-      "next_action": "The existing get_series_watch_order offline profile is terminal INCONCLUSIVE with no report and retryAllowed=false; never rerun it. The earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry and must remain untouched. 2026-10-18: a distinct matrix-only render_series_watch_order profile v2 (separately keyed R04 renderer v2 profile) with synthetic subjectId=990803 and two fixed local GET fixtures was invoked exactly once after exact Candidate CI, same-identity Luna Max PASS, and fresh Harness eligibility. Harness disposition is REPORT_WRITTEN with retryAllowed=false; report SHA-256 36426cd2733cec03f6d8619f80d6ee7a34b9e9d83657d2d194c7825e778d6498 is bound to Candidate 7139342cfc8bc69e4d696e601d0b74568a5f2756, Base 26c9285e6501a7d2c44cf40e0dda236a737a25b8, and CI 39094417232. The returned PNG metadata is 720x2414 / 303431 bytes and hashes to 2a9516624d4b7c15b62a93d8ec38bff8712eb9d4838a595ec14e97bfcc3849e1; no image bytes are stored, so this is Agent/MCP matrix evidence only and not visual-quality proof. The R04 report is accepted locally and the existing G06 matrix cell remains valid; current source master is 82/96 and this Candidate acceptance matrix is 83/96. Require a fresh exact Candidate CI/review and Harness integration before the new credit reaches master. keep the R04 theatrical-film scenario UNASSESSED, G09 unchanged, and do not claim canonical order or visual quality; keep account/community/QQ/TIM passive and never rerun this one-shot.",
+      "next_action": "The existing get_series_watch_order offline profile is terminal INCONCLUSIVE with no report and retryAllowed=false; never rerun it. The earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry and must remain untouched. 2026-10-18: a distinct matrix-only render_series_watch_order profile v2 (separately keyed R04 renderer v2 profile) with synthetic subjectId=990803 and two fixed local GET fixtures was invoked exactly once after exact Candidate CI, same-identity Luna Max PASS, and fresh Harness eligibility. Harness disposition is REPORT_WRITTEN with retryAllowed=false; report SHA-256 36426cd2733cec03f6d8619f80d6ee7a34b9e9d83657d2d194c7825e778d6498 is bound to Candidate 7139342cfc8bc69e4d696e601d0b74568a5f2756, Base 26c9285e6501a7d2c44cf40e0dda236a737a25b8, and CI 39094417232. The returned PNG metadata is 720x2414 / 303431 bytes and hashes to 2a9516624d4b7c15b62a93d8ec38bff8712eb9d4838a595ec14e97bfcc3849e1; no image bytes are stored, so this is Agent/MCP matrix evidence only and not visual-quality proof. The R04 report is accepted locally and the existing G06 matrix cell remains valid; current source master is 82/96 and this Candidate acceptance matrix is 83/96. Require a fresh exact Candidate CI/review and Harness integration before the new credit reaches master. keep the R04 theatrical-film scenario UNASSESSED, G09 unchanged, and do not claim canonical order or visual quality; keep account/community/QQ/TIM passive and never rerun this one-shot. 2026-10-18: a separately keyed R04 get_series_watch_order v2 Epoch is selected on Run #95 Base 3fcae76 with synthetic root 990817 and prequel 990818; this preserves the terminal v1 profile and adds no credit yet. Require exact Candidate CI, Harness Candidate PASS, same-identity Luna Max PASS, and live v2 UNCLAIMED status before its single offline call. It may credit only this Agent/MCP matrix cell; R04 remains UNASSESSED.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

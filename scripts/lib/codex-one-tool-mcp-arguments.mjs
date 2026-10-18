@@ -11,6 +11,7 @@ import { assertG01RenderQueryOfflineProfile } from './g01-render-query-subjects-
 import { assertG01QuerySubjectsOfflineProfile } from './g01-query-subjects-offline-matrix-profile.mjs';
 import { assertP02PersonProfileOfflineProfile } from './p02-person-profile-offline-fixture.mjs';
 import { assertR04SeriesWatchOrderOfflineProfile } from './r04-series-watch-order-offline-fixture.mjs';
+import { assertR04SeriesWatchOrderOfflineV2Profile } from './r04-series-watch-order-offline-v2-fixture.mjs';
 import { assertR01RelationsOfflineProfile } from './r01-relations-offline-profile.mjs';
 import { assertR03RelationsOfflineProfile } from './r03-relations-offline-profile.mjs';
 import {
@@ -154,6 +155,7 @@ export function parseCodexOneToolMcpArguments(argv) {
           assertP06RenderPersonProfileOfflineProfile(profile) ||
           assertP02PersonProfileOfflineProfile(profile) ||
           assertR04SeriesWatchOrderOfflineProfile(profile) ||
+          assertR04SeriesWatchOrderOfflineV2Profile(profile) ||
           assertR01RelationsOfflineProfile(profile) ||
           assertR03RelationsOfflineProfile(profile) ||
           assertR02PositiveDirectRelationsProfile(profile) ||

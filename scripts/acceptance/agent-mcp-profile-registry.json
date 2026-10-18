@@ -238,6 +238,34 @@
       ]
     },
     {
+      "id": "r04-series-watch-order-offline-agent-mcp-v2",
+      "frontierId": "R04",
+      "epochId": "run95-r04-series-watch-order-agent-mcp-offline-v2-20261018",
+      "toolName": "bangumi.get_series_watch_order",
+      "argumentProfile": "fixed-r04-synthetic-watch-order-990817-prequel-990818-depth1-max1-anime-v2",
+      "claimLabelName": "harness-r95-r04-watch-order-offline-v2-claimed",
+      "reportPath": "docs/live-probes/r04-series-watch-order-offline-agent-mcp-v2-run95.json",
+      "selectionEvidencePath": "docs/research/run95-r04-series-watch-order-offline-matrix-v2-contract-2026-10-18.md",
+      "evidenceKind": "codex_cli_r04_series_watch_order_offline_agent_mcp_v2",
+      "answerCheckMethod": "r04-exact-synthetic-watch-order-prequel-chain-v2",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-r04-series-watch-order-offline-prequel-v2",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 2048,
+      "calls": [
+        {
+          "toolName": "bangumi.get_series_watch_order",
+          "arguments": {
+            "subjectId": 990817,
+            "depth": 1,
+            "maxNodes": 1,
+            "media": "anime"
+          }
+        }
+      ]
+    },
+    {
       "id": "p07-person-season-distribution-agent-mcp-v1",
       "frontierId": "P07",
       "epochId": "run95-p07-observed-season-distribution-20261016",

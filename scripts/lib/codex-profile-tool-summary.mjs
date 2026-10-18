@@ -20,6 +20,7 @@ import {
   G06_CAST_OFFLINE_V2_PROFILE_ID,
 } from './g06-subject-cast-offline-profile.mjs';
 import { R04_SERIES_WATCH_ORDER_OFFLINE_PROFILE_ID } from './r04-series-watch-order-offline-fixture.mjs';
+import { R04_SERIES_WATCH_ORDER_V2_PROFILE_ID } from './r04-series-watch-order-offline-v2-fixture.mjs';
 import { C04_COHORT_COMPARISON_PROFILE_ID } from './c04-cohort-comparison-public-profile.mjs';
 import {
   R01_RELATIONS_OFFLINE_PROFILE_ID,
@@ -510,6 +511,39 @@ export function summarizeProfileToolResult(
         Number.isSafeInteger(result?.subjectId) && result.subjectId > 0 ? result.subjectId : null,
       watchOrderCount: Array.isArray(result?.watchOrder) ? result.watchOrder.length : null,
       relatedCount: Array.isArray(result?.related) ? result.related.length : null,
+      relationRequests: Number.isSafeInteger(coverage?.relationRequests)
+        ? coverage.relationRequests
+        : null,
+      relationRowsObserved: Number.isSafeInteger(coverage?.relationRowsObserved)
+        ? coverage.relationRowsObserved
+        : null,
+      detailsAttempted: Number.isSafeInteger(coverage?.detailsAttempted)
+        ? coverage.detailsAttempted
+        : null,
+    };
+  }
+  if (profileId === R04_SERIES_WATCH_ORDER_V2_PROFILE_ID) {
+    const coverage = result?.coverage;
+    const watchOrder = Array.isArray(result?.watchOrder) ? result.watchOrder.slice(0, 2) : [];
+    const related = Array.isArray(result?.related) ? result.related.slice(0, 1) : [];
+    const placement = (value) =>
+      ['root', 'before_root', 'after_root'].includes(value) ? value : 'unknown';
+    return {
+      state: ['complete', 'partial', 'not_computable'].includes(result?.state)
+        ? result.state
+        : 'unknown',
+      subjectId:
+        Number.isSafeInteger(result?.subjectId) && result.subjectId > 0 ? result.subjectId : null,
+      watchOrderCount: Array.isArray(result?.watchOrder) ? result.watchOrder.length : null,
+      watchOrder: watchOrder.map((item) => ({
+        id: Number.isSafeInteger(item?.id) && item.id > 0 ? item.id : null,
+        isRoot: typeof item?.isRoot === 'boolean' ? item.isRoot : null,
+        placement: placement(item?.placement),
+      })),
+      relatedCount: Array.isArray(result?.related) ? result.related.length : null,
+      relatedIds: related.map((item) =>
+        Number.isSafeInteger(item?.id) && item.id > 0 ? item.id : null,
+      ),
       relationRequests: Number.isSafeInteger(coverage?.relationRequests)
         ? coverage.relationRequests
         : null,
