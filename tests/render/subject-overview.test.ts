@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
@@ -26,6 +27,12 @@ const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const VALID_PNG_BUFFER = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+6R0JggAAAABJRU5ErkJggg==',
   'base64',
+);
+const SYNTHETIC_COVER_PNG_BUFFER = readFileSync(
+  new URL('./fixtures/subject-overview-cover.png', import.meta.url),
+);
+const SYNTHETIC_CHARACTER_PNG_BUFFER = readFileSync(
+  new URL('./fixtures/subject-overview-character.png', import.meta.url),
 );
 const LIMITS = { maxCast: 20, maxStaff: 24, maxRelations: 12 };
 
@@ -292,7 +299,9 @@ function createDeterministicRenderService(): { service: RenderService; requests:
       return {
         status: 200,
         headers: { 'content-type': 'image/png' },
-        buffer: VALID_PNG_BUFFER,
+        buffer: url.includes('/character-')
+          ? SYNTHETIC_CHARACTER_PNG_BUFFER
+          : SYNTHETIC_COVER_PNG_BUFFER,
         url,
       };
     },
@@ -354,12 +363,28 @@ describe('Subject Overview renderer', () => {
     expect(
       renderHtmlTemplate(buildSubjectOverviewViewModel(partial), 'bangumi-light', {}, 960),
     ).toContain('部分覆盖');
-    expect(
-      renderHtmlTemplate(buildSubjectOverviewViewModel(unavailable), 'bangumi-light', {}, 960),
-    ).toContain('不可用');
-    expect(
-      renderHtmlTemplate(buildSubjectOverviewViewModel(notFound), 'bangumi-light', {}, 960),
-    ).toContain('未找到');
+    const unavailableHtml = renderHtmlTemplate(
+      buildSubjectOverviewViewModel(unavailable),
+      'bangumi-light',
+      {},
+      960,
+    );
+    const notFoundHtml = renderHtmlTemplate(
+      buildSubjectOverviewViewModel(notFound),
+      'bangumi-light',
+      {},
+      960,
+    );
+    for (const html of [unavailableHtml, notFoundHtml]) {
+      expect(html).toContain('未知条目');
+      expect(html).toContain('条目 ID：123');
+      expect(html).toContain('类型: 未知媒介');
+      expect(html).not.toContain('Subject 123');
+      expect(html).not.toContain('Subject ID: 123');
+      expect(html).not.toContain('类型: unknown');
+    }
+    expect(unavailableHtml).toContain('不可用');
+    expect(notFoundHtml).toContain('未找到');
   });
 
   it('renders every returned staff member when the requested cap allows it', async () => {
@@ -478,7 +503,7 @@ describe('Subject Overview renderer', () => {
     }
   });
 
-  it('renders semantic complete, partial, unavailable, and not-found states at 720px and 960px', async () => {
+  it('renders semantic complete, partial, unavailable, and not-found states at five responsive widths', async () => {
     const variants = {
       complete: await semanticFixture('complete'),
       completeFailedImage: await semanticFixture('complete', 'failed'),
@@ -492,7 +517,7 @@ describe('Subject Overview renderer', () => {
     for (const [name, result] of Object.entries(variants)) {
       assertTruthfulFixture(result);
       const vm = buildSubjectOverviewViewModel(result);
-      for (const width of [360, 720, 960]) {
+      for (const width of [320, 360, 520, 640, 960]) {
         if (name === 'complete') {
           const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, width);
           expect(html.match(/本次范围内完整/gu), `complete labels at ${width}px`).toHaveLength(5);
@@ -502,7 +527,7 @@ describe('Subject Overview renderer', () => {
           expect(html, `raw role labels at ${width}px`).toContain('导演');
           expect(html, `raw role labels at ${width}px`).toContain('作画监督');
         }
-        const deviceScaleFactor = width === 720 ? 1 : 2;
+        const deviceScaleFactor = 1;
         const rendered = await renderService.renderCard(vm, {
           width,
           deviceScaleFactor,
@@ -512,7 +537,7 @@ describe('Subject Overview renderer', () => {
         expect(rendered.buffer.subarray(0, 8).equals(PNG_MAGIC), `${name} PNG`).toBe(true);
         expect(rendered.buffer.length, `${name} bytes`).toBeGreaterThan(1000);
         expect(rendered.height, `${name} height`).toBeLessThanOrEqual(8192);
-        if (width === 360 || width === 720) {
+        if (width <= 640) {
           expect(rendered.buffer.length, `${name} mobile payload`).toBeLessThan(1_000_000);
         }
         if (visualQaDir) {
