@@ -9051,7 +9051,7 @@ class P06OfflineProfileReportValidationTests(unittest.TestCase):
             'runNumber': 95, 'frontierId': 'P06', 'scenarioId': None,
             'epochId': GENERATOR.CODEX_P06_EPOCH_ID,
             'profileId': GENERATOR.CODEX_P06_PROFILE_ID,
-            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'profile': GENERATOR.CODEX_P06_PROFILE_LABEL,
             'model': 'gpt-6-luna', 'reasoningEffort': 'max',
             'reviewerId': 'gpt-6-luna-max-run95-pr222-round1', 'codexCliVersion': '1.2.14',
             'observedAt': '2026-10-16T05:00:00.000Z', 'sourceRevision': 'a' * 40,

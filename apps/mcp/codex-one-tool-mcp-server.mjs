@@ -47,9 +47,11 @@ import {
   createA01AggregateCohortOfflineFetch,
 } from '../../scripts/lib/a01-aggregate-cohort-offline-matrix-profile.mjs';
 import {
+  getP06RenderPersonProfileOfflineConfig,
   createP06RenderPersonProfileAssetGuard,
   createP06RenderPersonProfileOfflineFetch,
   P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+  P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
 } from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 import {
   assertC07RenderComparisonOfflineFixtureProfile,
@@ -395,8 +397,11 @@ async function main(argv = process.argv.slice(2)) {
         ? createA01RenderCohortAggregationOfflineFetch()
         : config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
           ? createC07CohortRenderOfflineFixtureFetch()
-          : config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
-            ? createP06RenderPersonProfileOfflineFetch()
+          : [
+                P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+                P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+              ].includes(config.networkMode)
+            ? createP06RenderPersonProfileOfflineFetch(config.profile?.id)
             : config.networkMode === C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE
               ? createC07RenderComparisonOfflineFetch()
               : getG01RenderQueryOfflineProfileSpec(config.profile)
@@ -427,7 +432,10 @@ async function main(argv = process.argv.slice(2)) {
         ? createR04RenderV2SeriesWatchOrderV2AssetFence()
         : null;
   const p06AssetGuard =
-    config.networkMode === P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE
+    [
+      P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+      P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+    ].includes(config.networkMode) && getP06RenderPersonProfileOfflineConfig(config.profile?.id)
       ? createP06RenderPersonProfileAssetGuard()
       : null;
   const c07RenderComparisonAssetGuard =
@@ -692,7 +700,7 @@ async function main(argv = process.argv.slice(2)) {
         }
         if (config.profile) {
           const artifactSummary =
-            config.profile.id === 'p06-render-person-profile-offline-agent-mcp-v1' ||
+            getP06RenderPersonProfileOfflineConfig(config.profile.id) ||
             config.profile.id === C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID ||
             isG01RenderQueryOfflineProfileId(config.profile.id)
               ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })

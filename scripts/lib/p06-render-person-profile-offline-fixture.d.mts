@@ -10,10 +10,38 @@ export const P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS: Readonly<{
   maxCredits: 1;
   includeChronology: false;
 }>;
+export const P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID: string;
+export const P06_RENDER_PERSON_PROFILE_OFFLINE_V2_EPOCH_ID: string;
+export const P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE: string;
+export const P06_RENDER_PERSON_PROFILE_V2_ARGUMENT_PROFILE: string;
+export const P06_RENDER_PERSON_PROFILE_V2_SYNTHETIC_ID: number;
+export const P06_RENDER_PERSON_PROFILE_V2_EXPECTED_ARGUMENTS: Readonly<{
+  personId: number;
+  maxSubjects: 1;
+  maxCharacters: 1;
+  maxCredits: 1;
+  includeChronology: false;
+}>;
+
+export function getP06RenderPersonProfileOfflineConfig(profileId: string): {
+  id: string;
+  epochId: string;
+  networkMode: string;
+  argumentProfile: string;
+  reportPath: string;
+  selectionEvidencePath: string;
+  evidenceKind: string;
+  answerCheckMethod: string;
+  syntheticPersonId: number;
+  subjectId: number;
+  characterId: number;
+  expectedArguments: Readonly<Record<string, number | boolean>>;
+  version: 1 | 2;
+} | null;
 
 export function assertP06RenderPersonProfileOfflineProfile(profile: unknown): boolean;
 
-export function createP06RenderPersonProfileOfflineFetch(): {
+export function createP06RenderPersonProfileOfflineFetch(profileId?: string): {
   fetchFn: typeof fetch;
   snapshot: () => {
     profile: string;

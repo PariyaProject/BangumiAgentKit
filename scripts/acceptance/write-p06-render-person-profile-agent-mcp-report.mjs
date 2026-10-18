@@ -12,13 +12,10 @@ import {
 import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   assertP06RenderPersonProfileOfflineProfile,
-  P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+  getP06RenderPersonProfileOfflineConfig,
 } from '../lib/p06-render-person-profile-offline-fixture.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
-const REPORT_RELATIVE_PATH = PROFILE?.reportPath;
-const REPORT_PATH = path.join(ROOT, REPORT_RELATIVE_PATH ?? 'invalid-p06-report-path');
 const RECEIPT_KIND = 'p06-render-person-profile-offline-runner-receipt-v1';
 const ACKNOWLEDGEMENT = 'P06_SYNTHETIC_PROFILE_RENDERED';
 const REPORT_FIELDS = new Set([
@@ -199,11 +196,11 @@ function exactKeys(value, fields) {
   );
 }
 
-function catalogEvidenceMatches(report) {
+function catalogEvidenceMatches(report, profile) {
   try {
     const catalogBytes = readFileSync(path.join(ROOT, 'docs/tool-catalog.json'));
     const catalog = JSON.parse(catalogBytes.toString('utf8'));
-    const tool = catalog.find((item) => item?.name === PROFILE?.toolName);
+    const tool = catalog.find((item) => item?.name === profile?.toolName);
     return (
       tool?.auth === 'none' &&
       tool?.risk === 'read' &&
@@ -238,6 +235,20 @@ function matchesClaim(report, claim) {
     report.argumentProfile === claim.argumentProfile &&
     report.expectedArgumentsSha256 === claim.expectedArgumentsSha256
   );
+}
+
+function p06RunnerProfileLabel(profile, profileConfig) {
+  if (!profile || !profileConfig) return null;
+  return `codex-luna-max-offline-agent-mcp-matrix-v${profileConfig.version}`;
+}
+
+function getP06ReportProfile(profileId) {
+  const profile = getAgentMcpProfileById(profileId);
+  const profileConfig = getP06RenderPersonProfileOfflineConfig(profileId);
+  if (!profile || !profileConfig || !assertP06RenderPersonProfileOfflineProfile(profile)) {
+    return null;
+  }
+  return { profile, profileConfig };
 }
 
 export function buildP06RunnerReceiptPayload(report, { eventStreamSha256, serverSummarySha256 }) {
@@ -315,6 +326,9 @@ function createRunnerReceipt(payload, { publicKeyBase64, privateKey }) {
 }
 
 export function validateP06ProfileReport(report, claim, reportBytes = null) {
+  const selected = getP06ReportProfile(claim?.profileId ?? report?.profileId);
+  const profile = selected?.profile;
+  const profileConfig = selected?.profileConfig;
   const claimStateValid =
     (claim?.state === 'CLAIMED' && claim.reportWritten === false) ||
     (claim?.state === 'REPORT_WRITTEN' &&
@@ -322,11 +336,11 @@ export function validateP06ProfileReport(report, claim, reportBytes = null) {
       Buffer.isBuffer(reportBytes) &&
       claim.reportSha256 === sha256(reportBytes));
   if (
-    !PROFILE ||
-    !assertP06RenderPersonProfileOfflineProfile(PROFILE) ||
+    !profile ||
+    !profileConfig ||
     !exactKeys(report, REPORT_FIELDS) ||
     !claim ||
-    claim.profileId !== PROFILE.id ||
+    claim.profileId !== profile.id ||
     !claimStateValid ||
     claim.retryAllowed !== false ||
     !isValidP06CiRunEvidence({ ciRunId: report.ciRunId, ciChecks: report.ciChecks }) ||
@@ -334,8 +348,8 @@ export function validateP06ProfileReport(report, claim, reportBytes = null) {
   ) {
     return { passed: false, reason: 'P06_REPORT_CLAIM_INVALID' };
   }
-  const profileRegistrySha256 = agentMcpProfileRegistrySha256(PROFILE.id);
-  const expectedArgumentsSha256 = agentMcpProfileArgumentsSha256(PROFILE);
+  const profileRegistrySha256 = agentMcpProfileRegistrySha256(profile.id);
+  const expectedArgumentsSha256 = agentMcpProfileArgumentsSha256(profile);
   const expectedPrivacy = {
     authProfile: 'anonymous',
     oauthAttempted: false,
@@ -352,7 +366,7 @@ export function validateP06ProfileReport(report, claim, reportBytes = null) {
     credentialsStored: false,
   };
   const expectedFixture = {
-    profile: P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+    profile: profileConfig.networkMode,
     requestCount: 3,
     personRequestCount: 1,
     subjectsRequestCount: 1,
@@ -378,26 +392,26 @@ export function validateP06ProfileReport(report, claim, reportBytes = null) {
 
   if (
     report.schemaVersion !== 1 ||
-    report.evidenceKind !== PROFILE.evidenceKind ||
+    report.evidenceKind !== profile.evidenceKind ||
     report.runNumber !== 95 ||
     report.frontierId !== 'P06' ||
     report.scenarioId !== null ||
-    report.epochId !== PROFILE.epochId ||
-    report.profile !== 'codex-luna-max-offline-agent-mcp-matrix-v1' ||
-    report.model !== PROFILE.model ||
-    report.reasoningEffort !== PROFILE.reasoningEffort ||
+    report.epochId !== profile.epochId ||
+    report.profile !== p06RunnerProfileLabel(profile, profileConfig) ||
+    report.model !== profile.model ||
+    report.reasoningEffort !== profile.reasoningEffort ||
     !/^gpt-6-luna-max-run95-pr\d+-round[1-9]\d*$/u.test(report.reviewerId ?? '') ||
     !/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/u.test(report.codexCliVersion ?? '') ||
     !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(report.observedAt ?? '') ||
     report.registrySha256 !== profileRegistrySha256 ||
     !/^[0-9a-f]{64}$/u.test(report.selectionEvidenceSha256 ?? '') ||
-    !catalogEvidenceMatches(report) ||
-    report.toolName !== PROFILE.toolName ||
-    report.argumentProfile !== PROFILE.argumentProfile ||
+    !catalogEvidenceMatches(report, profile) ||
+    report.toolName !== profile.toolName ||
+    report.argumentProfile !== profile.argumentProfile ||
     report.expectedArgumentsSha256 !== expectedArgumentsSha256 ||
-    report.networkMode !== P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE ||
+    report.networkMode !== profileConfig.networkMode ||
     report.serverToolNames?.length !== 1 ||
-    report.serverToolNames[0] !== PROFILE.toolName ||
+    report.serverToolNames[0] !== profile.toolName ||
     report.serverToolCount !== 1 ||
     report.mcpServerNames?.length !== 1 ||
     report.mcpServerNames[0] !== 'bgk_p06_profile' ||
@@ -413,7 +427,7 @@ export function validateP06ProfileReport(report, claim, reportBytes = null) {
     report.shellToolCallCount !== 0 ||
     report.allowedCallCount !== 1 ||
     report.deniedCallCount !== 0 ||
-    report.answerCheckMethod !== PROFILE.answerCheckMethod ||
+    report.answerCheckMethod !== profile.answerCheckMethod ||
     report.answerSha256 !== sha256(ACKNOWLEDGEMENT) ||
     report.answerUtf8Bytes !== Buffer.byteLength(ACKNOWLEDGEMENT, 'utf8') ||
     !exactKeys(report.offlineFixture, OFFLINE_FIXTURE_FIELDS) ||
@@ -483,7 +497,7 @@ export function validateP06ProfileReport(report, claim, reportBytes = null) {
   if (reportBytes && reportBytes.length > 64 * 1024) {
     return { passed: false, reason: 'P06_REPORT_TOO_LARGE' };
   }
-  return { passed: true, reportPath: REPORT_RELATIVE_PATH };
+  return { passed: true, reportPath: profileConfig.reportPath };
 }
 
 export function buildP06ProfileReport(
@@ -499,10 +513,12 @@ export function buildP06ProfileReport(
   },
   { privateKey } = {},
 ) {
+  const selected = getP06ReportProfile(claim?.profileId);
+  const profile = selected?.profile;
+  const profileConfig = selected?.profileConfig;
   if (
-    !PROFILE ||
-    !assertP06RenderPersonProfileOfflineProfile(PROFILE) ||
-    claim?.profileId !== PROFILE.id ||
+    !profile ||
+    !profileConfig ||
     claim.state !== 'CLAIMED' ||
     claim.retryAllowed !== false ||
     !isValidP06CiRunEvidence({ ciRunId: claim.ciRunId, ciChecks: claim.ciChecks }) ||
@@ -510,9 +526,9 @@ export function buildP06ProfileReport(
     !events ||
     !Array.isArray(completedMcpCalls) ||
     completedMcpCalls.length !== 1 ||
-    completedMcpCalls[0]?.tool !== PROFILE.toolName ||
+    completedMcpCalls[0]?.tool !== profile.toolName ||
     canonicalAgentMcpProfileJson(completedMcpCalls[0]?.arguments) !==
-      canonicalAgentMcpProfileJson(PROFILE.calls[0].arguments) ||
+      canonicalAgentMcpProfileJson(profile.calls[0].arguments) ||
     events.processExitCode !== 0 ||
     events.eventStreamParsed !== true ||
     events.turnCompleted !== true ||
@@ -524,15 +540,15 @@ export function buildP06ProfileReport(
     events.deniedCallCount !== 0 ||
     events.mcpServerNames?.length !== 1 ||
     events.mcpServerNames[0] !== 'bgk_p06_profile' ||
-    serverSummary.profileId !== PROFILE.id ||
+    serverSummary.profileId !== profile.id ||
     serverSummary.serverProfile !== 'closed-profile-sequence-anonymous-offline-v1' ||
-    serverSummary.networkMode !== P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE ||
+    serverSummary.networkMode !== profileConfig.networkMode ||
     serverSummary.sourceRevision !== claim.sourceCandidateSha ||
     serverSummary.bundleSha256 !== claim.bundleSha256 ||
-    serverSummary.toolName !== PROFILE.toolName ||
+    serverSummary.toolName !== profile.toolName ||
     serverSummary.serverToolCount !== 1 ||
     canonicalAgentMcpProfileJson(serverSummary.serverToolNames) !==
-      canonicalAgentMcpProfileJson([PROFILE.toolName]) ||
+      canonicalAgentMcpProfileJson([profile.toolName]) ||
     serverSummary.expectedCallCount !== 1 ||
     serverSummary.expectedArgumentsSha256 !== claim.expectedArgumentsSha256 ||
     serverSummary.argumentMatch !== true ||
@@ -555,18 +571,18 @@ export function buildP06ProfileReport(
   }
 
   const resultSummary = serverSummary.results[0].resultSummary;
-  const selectionEvidenceBytes = readFileSync(path.join(ROOT, PROFILE.selectionEvidencePath));
+  const selectionEvidenceBytes = readFileSync(path.join(ROOT, profile.selectionEvidencePath));
   const report = {
     schemaVersion: 1,
-    evidenceKind: PROFILE.evidenceKind,
+    evidenceKind: profile.evidenceKind,
     runNumber: claim.runNumber,
-    frontierId: PROFILE.frontierId,
+    frontierId: profile.frontierId,
     scenarioId: null,
-    epochId: PROFILE.epochId,
-    profileId: PROFILE.id,
-    profile: 'codex-luna-max-offline-agent-mcp-matrix-v1',
-    model: PROFILE.model,
-    reasoningEffort: PROFILE.reasoningEffort,
+    epochId: profile.epochId,
+    profileId: profile.id,
+    profile: p06RunnerProfileLabel(profile, profileConfig),
+    model: profile.model,
+    reasoningEffort: profile.reasoningEffort,
     reviewerId: claim.reviewerId,
     codexCliVersion,
     observedAt: new Date().toISOString(),
@@ -581,15 +597,15 @@ export function buildP06ProfileReport(
     mcpBundleSha256: claim.bundleSha256,
     registrySha256: claim.registrySha256,
     selectionEvidenceSha256: sha256(selectionEvidenceBytes),
-    toolName: PROFILE.toolName,
-    argumentProfile: PROFILE.argumentProfile,
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
     expectedArgumentsSha256: claim.expectedArgumentsSha256,
     catalogSha256: serverSummary.catalogSha256,
     toolDescriptionSha256: serverSummary.toolDescriptionSha256,
     inputSchemaSha256: serverSummary.inputSchemaSha256,
     serverToolNames: serverSummary.serverToolNames,
     serverToolCount: serverSummary.serverToolCount,
-    networkMode: P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+    networkMode: profileConfig.networkMode,
     mcpServerNames: events.mcpServerNames,
     processExitCode: events.processExitCode,
     resultStatus: serverSummary.serverResultStatus,
@@ -602,7 +618,7 @@ export function buildP06ProfileReport(
     shellToolCallCount: events.shellToolCallCount,
     allowedCallCount: serverSummary.allowedCallCount,
     deniedCallCount: serverSummary.deniedCallCount,
-    answerCheckMethod: PROFILE.answerCheckMethod,
+    answerCheckMethod: profile.answerCheckMethod,
     answerSha256: sha256(answer),
     answerUtf8Bytes: Buffer.byteLength(answer, 'utf8'),
     answerChecks: {
@@ -663,12 +679,15 @@ export function buildP06ProfileReport(
 export function writeP06ProfileReport(input, options = {}) {
   const built = buildP06ProfileReport(input, options);
   if (!built.passed) return built;
+  const profileConfig = getP06RenderPersonProfileOfflineConfig(built.report.profileId);
+  if (!profileConfig) return { passed: false, reason: 'P06_PROFILE_INVALID' };
+  const reportPath = path.join(ROOT, profileConfig.reportPath);
   const report = built.report;
   const bytes = Buffer.from(`${JSON.stringify(report, null, 2)}\n`, 'utf8');
   if (bytes.length > 64 * 1024) return { passed: false, reason: 'P06_REPORT_TOO_LARGE' };
   let descriptor;
   try {
-    descriptor = openSync(REPORT_PATH, 'wx', 0o600);
+    descriptor = openSync(reportPath, 'wx', 0o600);
     writeFileSync(descriptor, bytes);
     closeSync(descriptor);
   } catch {
@@ -683,22 +702,25 @@ export function writeP06ProfileReport(input, options = {}) {
   }
   return {
     passed: true,
-    reportPath: REPORT_RELATIVE_PATH,
+    reportPath: profileConfig.reportPath,
     reportSha256: sha256(bytes),
   };
 }
 
 export function validateP06SanitizedReportFile(claim, root = ROOT, reportPath = null) {
-  if (!PROFILE || !claim || claim.profileId !== PROFILE.id) {
+  const selected = getP06ReportProfile(claim?.profileId);
+  if (!selected || !claim) {
     return { passed: false, reason: 'P06_CLAIM_INVALID' };
   }
-  const absolutePath = reportPath ?? path.join(root, REPORT_RELATIVE_PATH);
+  const { profileConfig } = selected;
+  const rootPath = path.resolve(root);
+  const absolutePath = path.resolve(reportPath ?? path.join(rootPath, profileConfig.reportPath));
   try {
-    const relativePath = path.resolve(absolutePath).replace(`${path.resolve(root)}${path.sep}`, '');
-    const reportBytes = readFileSync(absolutePath);
-    if (relativePath !== REPORT_RELATIVE_PATH) {
+    const relativePath = path.relative(rootPath, absolutePath).split(path.sep).join('/');
+    if (relativePath !== profileConfig.reportPath || relativePath.startsWith('../')) {
       return { passed: false, reason: 'P06_REPORT_PATH_INVALID' };
     }
+    const reportBytes = readFileSync(absolutePath);
     const report = JSON.parse(reportBytes.toString('utf8'));
     const validation = validateP06ProfileReport(report, claim, reportBytes);
     return validation.passed

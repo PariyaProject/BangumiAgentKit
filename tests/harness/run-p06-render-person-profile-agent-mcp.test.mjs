@@ -4,7 +4,10 @@ import {
   agentMcpProfileArgumentsSha256,
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
-import { P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE } from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
+import {
+  P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+  P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+} from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 import {
   assertCandidateReviewGate,
   buildP06CodexExecArgs,
@@ -142,6 +145,15 @@ function serverSummaryFixture() {
 test('P06 runner accepts only its single governed Run #95 entry point', () => {
   assert.equal(validateP06RunnerArgs(['--help']), 'help');
   assert.equal(validateP06RunnerArgs(['--run', '95']), 'run');
+  assert.equal(
+    validateP06RunnerArgs([
+      '--run',
+      '95',
+      '--profile-id',
+      P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+    ]),
+    'run',
+  );
   for (const args of [[], ['--run', '94'], ['--run', '95', '--retry'], ['--help', '--run']]) {
     assert.throws(() => validateP06RunnerArgs(args));
   }

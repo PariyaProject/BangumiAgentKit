@@ -13,8 +13,8 @@ export interface PersonProfileCardProps {
   width?: number;
 }
 
-function bloodTypeLabel(value?: number): string | undefined {
-  return value === undefined
+function bloodTypeLabel(value?: number | null): string | undefined {
+  return value === undefined || value === null
     ? undefined
     : { 1: 'A', 2: 'B', 3: 'AB', 4: 'O' }[value] || `未知 (${value})`;
 }
@@ -29,6 +29,8 @@ const CAREER_LABELS: Record<string, string> = {
   artist: '歌手/艺术家',
   actor: '演员',
   seiyu: '声优',
+  'voice actor': '声优',
+  voice_actor: '声优',
   director: '导演',
   writer: '编剧',
   producer: '制作人',
@@ -36,6 +38,22 @@ const CAREER_LABELS: Record<string, string> = {
   illustrator: '插画家',
   composer: '作曲家',
   musician: '音乐人',
+};
+
+const MEDIA_LABELS: Record<string, string> = {
+  anime: '动画',
+  tv: '电视动画',
+  movie: '剧场版',
+  book: '书籍',
+  music: '音乐',
+  game: '游戏',
+  real: '真人作品',
+  other: '其他',
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  main: '主役',
+  assistant: '协役',
 };
 
 const IDENTITY_FIELD_LABELS: Record<string, string> = {
@@ -49,23 +67,37 @@ function humanizeGender(value?: string): string | undefined {
 }
 
 function humanizeCareer(value: string): string {
-  return CAREER_LABELS[value] || value;
+  return CAREER_LABELS[value.trim().toLowerCase()] || value;
+}
+
+function humanizeRole(value: string): string {
+  return ROLE_LABELS[value.trim().toLowerCase()] || humanizeCareer(value);
+}
+
+function humanizeDistributionLabel(label: string, kind: 'media' | 'role'): string {
+  const normalized = label.trim().toLowerCase();
+  if (kind === 'media') return MEDIA_LABELS[normalized] || label;
+  return humanizeRole(label);
 }
 
 function DistributionList({
   title,
   items,
   theme,
+  compact,
+  labelKind,
 }: {
   title: string;
   items: PersonProfileViewModel['mediaBreakdown'];
   theme: ThemeTokens;
+  compact: boolean;
+  labelKind: 'media' | 'role';
 }) {
   return (
     <div
       style={{
-        flex: 1,
-        minWidth: '260px',
+        flex: compact ? '1 1 100%' : 1,
+        minWidth: compact ? 0 : '260px',
         backgroundColor: theme.surfaceAlt,
         border: `1px solid ${theme.border}`,
         borderRadius: theme.radius.md,
@@ -91,7 +123,9 @@ function DistributionList({
               key={item.label}
               style={{ display: 'flex', justifyContent: 'space-between', gap: theme.spacing.sm }}
             >
-              <span style={{ color: theme.textMuted, fontSize: '13px' }}>{item.label}</span>
+              <span style={{ color: theme.textMuted, fontSize: '13px', overflowWrap: 'anywhere' }}>
+                {humanizeDistributionLabel(item.label, labelKind)}
+              </span>
               <span style={{ color: theme.accent, fontSize: '13px', fontWeight: 700 }}>
                 {item.count}
                 {item.uniqueSubjects > 0 && (
@@ -103,7 +137,7 @@ function DistributionList({
                 {item.rawCodes && item.rawCodes.length > 0 && (
                   <span style={{ color: theme.textMuted, fontWeight: 400, fontSize: '11px' }}>
                     {' '}
-                    · v0: {item.rawCodes.join(', ')}
+                    · 官方类型码：{item.rawCodes.join(', ')}
                   </span>
                 )}
               </span>
@@ -205,7 +239,11 @@ function CreditList({
                     overflowWrap: 'anywhere',
                   }}
                 >
-                  {[item.role, item.subjectNameCn || item.subjectName, item.eps]
+                  {[
+                    item.role ? humanizeRole(item.role) : undefined,
+                    item.subjectNameCn || item.subjectName,
+                    item.eps,
+                  ]
                     .filter(Boolean)
                     .join(' · ')}
                 </div>
@@ -252,7 +290,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
   const title = person.nameCn || person.name;
   const subtitle = [
     person.nameCn && person.nameCn !== person.name ? person.name : undefined,
-    `Person ID: ${person.id}`,
+    `人物编号 ${person.id}`,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -358,7 +396,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
           <div
             key={String(label)}
             style={{
-              flex: '1 1 140px',
+              flex: `1 1 ${compactLayout ? '84px' : '140px'}`,
               backgroundColor: theme.surfaceAlt,
               border: `1px solid ${theme.border}`,
               borderRadius: theme.radius.md,
@@ -373,21 +411,33 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-        <DistributionList title="作品媒介" items={viewModel.mediaBreakdown} theme={theme} />
+        <DistributionList
+          title="作品媒介"
+          items={viewModel.mediaBreakdown}
+          theme={theme}
+          compact={compactLayout}
+          labelKind="media"
+        />
         <DistributionList
           title="角色媒介"
           items={viewModel.characterMediaBreakdown}
           theme={theme}
+          compact={compactLayout}
+          labelKind="media"
         />
         <DistributionList
-          title="作品职位（原始标签）"
+          title="作品职位"
           items={viewModel.roleBreakdown}
           theme={theme}
+          compact={compactLayout}
+          labelKind="role"
         />
         <DistributionList
-          title="角色关系（原始标签）"
+          title="角色关系"
           items={viewModel.characterRoleBreakdown}
           theme={theme}
+          compact={compactLayout}
+          labelKind="role"
         />
       </div>
 
@@ -427,19 +477,22 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
           </div>
           {viewModel.releaseChronology.state === 'not_computable' ? (
             <div style={{ color: theme.textMuted }}>
-              已选取 {viewModel.releaseChronology.selectedSubjectDetails} 部动画作品详情，但没有可用的有效日期，无法计算样本极值。
+              已选取 {viewModel.releaseChronology.selectedSubjectDetails}{' '}
+              部动画作品详情，但没有可用的有效日期，无法计算样本极值。
             </div>
           ) : (
-            ([
-              {
-                label: '本次样本中最早日期',
-                extreme: viewModel.releaseChronology.earliestObserved,
-              },
-              {
-                label: '本次样本中最近日期',
-                extreme: viewModel.releaseChronology.latestObserved,
-              },
-            ] as const).map(({ label, extreme }) => {
+            (
+              [
+                {
+                  label: '本次样本中最早日期',
+                  extreme: viewModel.releaseChronology.earliestObserved,
+                },
+                {
+                  label: '本次样本中最近日期',
+                  extreme: viewModel.releaseChronology.latestObserved,
+                },
+              ] as const
+            ).map(({ label, extreme }) => {
               if (!extreme) return null;
               const visibleSubjects = extreme.subjects.slice(0, 3);
               return (
@@ -490,14 +543,16 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
         {viewModel.limitations.map((limitation) => (
           <div key={limitation}>• {limitation}</div>
         ))}
-        {viewModel.warnings.map((warning) => (
-          <div
-            key={warning.code}
-            style={{ color: warning.state === 'not_computable' ? theme.textMuted : stateColor }}
-          >
-            ⚠ {warning.message}
-          </div>
-        ))}
+        {viewModel.warnings
+          .filter((warning) => warning.code !== 'MISSING_IDENTITY_FIELDS')
+          .map((warning) => (
+            <div
+              key={warning.code}
+              style={{ color: warning.state === 'not_computable' ? theme.textMuted : stateColor }}
+            >
+              ⚠ {warning.message}
+            </div>
+          ))}
       </div>
 
       <Footer label={sourceLabel} theme={theme} />

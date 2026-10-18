@@ -655,6 +655,10 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(html).toContain('本次没有可用的中文名字段（缺失或值无效）');
     expect(html).toContain('另有 2 条已返回关系未展示');
     expect(html).toContain('另有 3 条关系未读取');
+    expect(html).toContain('人物编号 10868');
+    expect(html).not.toContain('Person ID:');
+    expect(html).toContain('Bangumi 官方 v0 · 人物资料');
+    expect(html).not.toContain('person.birth_year');
 
     const result = await renderService.renderCard(vm, { width: 640, deviceScaleFactor: 1 });
     assertValidPng(result.buffer);
@@ -662,9 +666,11 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(result.width).toBe(640);
     expect(result.height).toBeGreaterThan(300);
 
-    const mobileHtml = renderHtmlTemplate(vm, 'bangumi-dark', {}, 360);
-    const mobileLayout = await measureRenderRootLayout(mobileHtml, 360);
-    expect(mobileLayout).toMatchObject({ clientWidth: 360, scrollWidth: 360 });
+    for (const width of [320, 360, 520]) {
+      const mobileHtml = renderHtmlTemplate(vm, 'bangumi-dark', {}, width);
+      const mobileLayout = await measureRenderRootLayout(mobileHtml, width);
+      expect(mobileLayout).toMatchObject({ clientWidth: width, scrollWidth: width });
+    }
 
     const mobileResult = await renderService.renderCard(vm, {
       width: 360,
@@ -674,6 +680,86 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(mobileResult.width).toBe(720);
     expect(mobileResult.height).toBeLessThanOrEqual(8192);
     expect(mobileResult.buffer.length).toBeLessThan(5_000_000);
+  });
+
+  it('localizes profile labels and keeps sparse synthetic data inside 320px', async () => {
+    const vm = {
+      template: 'person-profile',
+      version: 1,
+      state: 'partial',
+      person: {
+        id: 990602,
+        name: 'Synthetic Person 長い日本語の人物名 990602',
+        nameCn: '合成声优人员 990602（长标题换行检查）',
+        career: ['voice actor'],
+        summary: '这是用于检查中文、日文混排、长文本换行和摘要截断的合成简介。'.repeat(8),
+        gender: 'unknown',
+        bloodType: null,
+        identityMissingFields: ['person.birth_year', 'person.blood_type'],
+      },
+      summary: {
+        uniqueSubjects: 1,
+        subjectCredits: 1,
+        uniqueCharacters: 1,
+        characterCredits: 1,
+        characterSubjects: 1,
+      },
+      mediaBreakdown: [{ label: 'anime', count: 1, uniqueSubjects: 1, rawCodes: [2] }],
+      characterMediaBreakdown: [{ label: 'anime', count: 1, uniqueSubjects: 1, rawCodes: [2] }],
+      roleBreakdown: [{ label: 'voice actor', count: 1, uniqueSubjects: 1 }],
+      characterRoleBreakdown: [{ label: 'main', count: 1, uniqueSubjects: 1 }],
+      subjectCredits: [
+        {
+          id: 990604,
+          name: 'Synthetic Work 長い日本語タイトル',
+          nameCn: '合成作品：一个很长的中文条目标题用于移动端换行检查',
+          nameCnSource: '合成作品：一个很长的中文条目标题用于移动端换行检查',
+          role: 'voice actor',
+        },
+      ],
+      characterCredits: [
+        {
+          id: 990605,
+          name: 'Synthetic Character 長い日本語名',
+          role: 'main',
+          subjectNameCn: '合成作品：一个很长的中文条目标题用于移动端换行检查',
+        },
+      ],
+      coverage: { state: 'partial', observed: 2, returned: 2, rendered: 2, unobserved: 0 },
+      limitations: ['作品和角色关系只代表接口返回样本；上游没有提供总数、分页或完整性承诺。'],
+      warnings: [
+        {
+          code: 'MISSING_IDENTITY_FIELDS',
+          state: 'partial',
+          message: '身份字段缺失：person.birth_year、person.blood_type',
+        },
+        {
+          code: 'NOT_COMPUTABLE',
+          state: 'not_computable',
+          message: '不可计算：最近活动、声优工作量时间窗口',
+        },
+      ],
+      source: { label: 'Bangumi 官方 v0 · 人物资料', retrievedAt: '2026-10-18T05:30:00Z' },
+    } as unknown as PersonProfileViewModel;
+
+    const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, 320);
+    expect(html).toContain('人物编号 990602');
+    expect(html).toContain('声优');
+    expect(html).toContain('动画');
+    expect(html).toContain('主役');
+    expect(html).toContain('官方类型码：2');
+    expect(html).not.toContain('Person ID:');
+    expect(html).not.toContain('voice actor');
+    expect(html).not.toContain('>anime<');
+    expect(html).not.toContain('(null)');
+    expect(html).not.toContain('person.birth_year');
+
+    const layout = await measureRenderRootLayout(html, 320);
+    expect(layout).toMatchObject({ clientWidth: 320, scrollWidth: 320 });
+
+    const result = await renderService.renderCard(vm, { width: 320, deviceScaleFactor: 1 });
+    assertValidPng(result.buffer);
+    expect(result.width).toBe(320);
   });
 
   it('keeps version-1 person profile coverage compatible with existing fields', () => {

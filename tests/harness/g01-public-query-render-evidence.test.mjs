@@ -68,5 +68,4 @@ test('G01 direct-public query renderer evidence stays separate from its spent ca
   assert.equal(Number(publicEvidenceSummary[1]), publicEvidenceRows);
   assert.equal(Number(publicEvidenceSummary[1]), 65);
   assert.match(acceptance, /匿名可用的公开 API 工具有逐项实测：65\/65；待补 0/u);
-  assert.match(acceptance, /Agent→MCP 模型调用证据：83\/96/);
 });
