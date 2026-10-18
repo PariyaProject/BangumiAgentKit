@@ -1092,6 +1092,38 @@
           }
         }
       ]
+    },
+    {
+      "id": "query-subjects-fresh-public-matrix-v1",
+      "frontierId": "G14",
+      "epochId": "run95-query-subjects-fresh-public-matrix-20261019",
+      "toolName": "bangumi.query_subjects",
+      "argumentProfile": "fixed-run95-query-subjects-attack-on-titan-public-v1",
+      "claimLabelName": "harness-r95-qsub-matrix-claimed",
+      "reportPath": "docs/live-probes/query-subjects-fresh-public-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-query-subjects-fresh-public-matrix-contract-2026-10-19.md",
+      "evidenceKind": "codex_cli_query_subjects_fresh_public_agent_mcp_matrix",
+      "answerCheckMethod": "query-subjects-exact-matrix-ack-v1",
+      "networkMode": "run95-query-subjects-fresh-public-matrix-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 128,
+      "maxRequests": 8,
+      "calls": [
+        {
+          "toolName": "bangumi.query_subjects",
+          "arguments": {
+            "keyword": "进击的巨人",
+            "media": "anime",
+            "resultMode": "top",
+            "limit": 1,
+            "sort": "relevance",
+            "explain": "compact",
+            "nsfw": false
+          }
+        }
+      ]
     }
   ]
 }
