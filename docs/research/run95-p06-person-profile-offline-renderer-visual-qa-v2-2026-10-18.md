@@ -32,4 +32,4 @@ The PNGs were generated in `/tmp` and are deliberately not committed. Their dime
 
 ## Limits
 
-This is synthetic offline renderer QA. It does not test OAuth, a signed-in account, a QQ/TIM client, remote asset delivery, real-person profile completeness, latest-20 ordering, ongoing-work classification, or the P06 user scenario. The P06 frontier must remain `UNASSESSED`; only a separately accepted P06 v2 Agent/MCP matrix report can add the `render_person_profile` matrix row.
+This is synthetic offline renderer QA. It does not test OAuth, a signed-in account, a QQ/TIM client, remote asset delivery, real-person profile completeness, latest-20 ordering, ongoing-work classification, or the P06 user scenario. The separately controlled P06 v2 Agent/MCP invocation later terminalized `INCONCLUSIVE` with no report and `retryAllowed=false`; it adds no matrix credit and must not be repeated. The P06 frontier remains `UNASSESSED`.
