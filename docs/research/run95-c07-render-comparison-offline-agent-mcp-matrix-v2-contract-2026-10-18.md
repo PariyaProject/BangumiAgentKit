@@ -18,8 +18,8 @@ unchanged and must never be retried.
 ## Exact bounded execution
 
 The one allowed MCP tool is `bangumi.render_subject_cohort_comparison`, called
-once with the exact registered profile arguments. Its closed local fetch fixture
-may answer one exact anonymous `POST /v0/search/subjects` and one exact
+once with the exact registered profile arguments. The closed local fetch fixture may answer one exact anonymous
+search `POST /v0/search/subjects` and one exact
 `GET /v0/subjects/991224`. The fixture rejects authorization, duplicate calls,
 query or method drift, any other origin/path, and unexpected requests. Renderer
 asset resolution is denied. No live Bangumi API, OAuth/account, community,
@@ -29,8 +29,7 @@ The signed report contains sanitized request counters, hashes, booleans, and
 bounded PNG metadata only. It does not contain raw cohort rows, labels/titles,
 subject IDs, prompt, full answer/tool result, credentials, or image bytes. A
 valid report can credit only the
-`bangumi.render_subject_cohort_comparison` Agent/MCP matrix cell. C07 remains
-`UNASSESSED`; this is not a C07 scenario result, does not credit
+`bangumi.render_subject_cohort_comparison` Agent/MCP matrix cell. C07 remains `UNASSESSED`; this is not a C07 scenario result, does not credit
 `bangumi.compare_subject_cohorts`, and does not add public API evidence.
 
 ## Visual inspection

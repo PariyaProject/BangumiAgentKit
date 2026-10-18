@@ -85,6 +85,13 @@ function retrievalDateLabel(value?: string): string {
   }).format(timestamp)} UTC`;
 }
 
+function cohortCalculationMethodLabel(formulaVersion: string): string {
+  if (formulaVersion === 'subject-cohort-comparison-v1') {
+    return '计算方法：群体均值与差值 v1';
+  }
+  return '计算方法：群体均值与差值（版本待确认）';
+}
+
 function deltaLabel(metric: SubjectCohortComparisonViewModel['metrics'][number]): string {
   if (metric.delta === undefined) return '不可计算';
   const value = numberLabel(metric.delta, metricDigits(metric.key));
@@ -402,6 +409,9 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
         </div>
       ) : null}
 
+      <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+        {cohortCalculationMethodLabel(viewModel.formulaVersion)}
+      </div>
       <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
         来源：Bangumi 公共条目 · {officialOperations} · {retrievalDateLabel(viewModel.retrievedAt)}
       </div>

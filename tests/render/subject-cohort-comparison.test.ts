@@ -23,6 +23,8 @@ describe('subject cohort comparison renderer', () => {
     expect(html).toContain('2026 春季');
     expect(html).toContain('评分总体标准差');
     expect(html).toContain('评分分布标准差');
+    expect(html).toContain('计算方法：群体均值与差值 v1');
+    expect(html).not.toContain('subject-cohort-comparison-v1');
     expect(html).not.toContain('bangumi.rating.population_sd.v1');
     expect(html).not.toContain('subject.rating.score');
     expect(html).not.toContain('searchSubjects');

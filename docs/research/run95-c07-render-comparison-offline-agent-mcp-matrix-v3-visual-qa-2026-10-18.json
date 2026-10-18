@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
   "profileId": "c07-render-comparison-offline-agent-mcp-matrix-v3",
-  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v3-visual-qa-candidate-bound-20261018",
+  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v3-visual-qa-candidate-bound-20261019-round2",
   "cssWidths": [320, 360, 520, 640, 960],
   "deviceScaleFactor": 1,
-  "buildBundleSha256": "41797e00c7bafdaa6a057c8030eaaccccd32fe3d3d71982033f227e9a715501c",
-  "generationSourceSha256": "cd55dad85793af20621850d72fcab9bec9ded2df867da6135a7efa3800d38ae2",
+  "buildBundleSha256": "048398b47fb3315e23315cfc4b9cd827f5584ade907ac75857652b1ec66fd2e7",
+  "generationSourceSha256": "d5ecc7aeae633c3d377a5c19194995b85119fc2898780745ed503f3306933e3e",
   "reviewAcknowledgement": {
     "decision": "PASS",
     "allImagesIndividuallyInspected": true,
     "reviewedBy": "Codex",
-    "reviewedAt": "2026-10-18T16:02:36.000Z",
-    "summary": "All ten final complete and partial PNGs were opened and checked individually after the renderer rebuild. No clipping or horizontal overflow was observed; the partial card clearly distinguishes a returned search row with unavailable details from an empty search result."
+    "reviewedAt": "2026-10-18T16:36:25.000Z",
+    "summary": "The complete case was built from the exact registered v3 query and the same closed local search/detail fixture used by its profile; the profile title and score 7, 10 ratings, collection total 3, one reported episode, and standard deviation 0 match. All ten complete and partial PNGs were opened individually after the renderer rebuild. No clipping or horizontal overflow was observed; partial status clearly distinguishes returned search data with unavailable details from an empty search."
   },
   "images": [
     {
@@ -19,12 +19,12 @@
       "file": "complete-single-cohort-e-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1225,
-      "byteLength": 109134,
-      "sha256": "604763667f01f01876786cd05ce3c0ebe150ba90b0217a87fd95d7eaa26601b0",
+      "pixelHeight": 1527,
+      "byteLength": 154836,
+      "sha256": "086c39ce7ff92ef098c1d41c287d5d9ad5a8ba5911d409ee8c029f2274222e39",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Single-column layout. The mixed Japanese, Chinese, and Latin title wraps without clipping; sample, four metrics, limits, and footer stay separated. Secondary captions are compact but readable."
+        "finding": "Opened individually after the rebuilt bundle. The long Japanese, Chinese, and Latin title wraps cleanly; sample values, four metrics, limits, method version, and footer fit without clipping. Compact captions remain readable."
       }
     },
     {
@@ -32,12 +32,12 @@
       "file": "complete-single-cohort-e-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1196,
-      "byteLength": 109699,
-      "sha256": "a4953dd346d5d89eb5b2a8ff26a7b2c3f0faa94c2dcbcd340f6dc0f1b03354e6",
+      "pixelHeight": 1468,
+      "byteLength": 155404,
+      "sha256": "7ff4352ac8d316744d00b29c4d2a2bff5c0289caaff10f1bfd5a01cdebd74506",
       "visualReview": {
         "decision": "PASS",
-        "finding": "The title and sample metadata wrap cleanly; the subject row and four metric cards remain distinct with no collision."
+        "finding": "Opened individually after the rebuilt bundle. The profile-matched title and sample metadata wrap without collision; all four metric cards and the source/footer remain inside the card."
       }
     },
     {
@@ -45,12 +45,12 @@
       "file": "complete-single-cohort-e-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1045,
-      "byteLength": 109773,
-      "sha256": "0b746deb23edeb2e11a98997056037206406a693f07e3114a1db292e534c074c",
+      "pixelHeight": 1243,
+      "byteLength": 155173,
+      "sha256": "f0c66409fabf1ab4d02006258dbd1c374b6f32173a0cbf2184c837d4de5f4824",
       "visualReview": {
         "decision": "PASS",
-        "finding": "The sample panel and four metric rows have clear separation; source labels and footer stay inside the card with no horizontal overflow."
+        "finding": "Opened individually after the rebuilt bundle. Sample facts and metric rows are distinct; the upstream-search warning, limits, calculation version, and footer remain legible with no horizontal overflow."
       }
     },
     {
@@ -58,12 +58,12 @@
       "file": "complete-single-cohort-e-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1031,
-      "byteLength": 111238,
-      "sha256": "c59c085e6b8a13fa77dee51cc302fbbb5eee66bf7a50c69ebc7d12eb20bfda53",
+      "pixelHeight": 1198,
+      "byteLength": 154735,
+      "sha256": "7179bcfa3a263660361eb28e89e9046ddea2ed6b8fdb2ce1883a591f41c8ae3a",
       "visualReview": {
         "decision": "PASS",
-        "finding": "The single cohort uses the full card width; metrics remain stacked and no unused comparison column or clipping appears."
+        "finding": "Opened individually after the rebuilt bundle. The single cohort uses the full card width and keeps metrics stacked; the long limitations and version/source labels fit without clipping."
       }
     },
     {
@@ -71,12 +71,12 @@
       "file": "complete-single-cohort-e-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 816,
-      "byteLength": 114528,
-      "sha256": "f952c5d90011c7d8a8e22947d44b36786887ac6a40890a8c5da68c627568a82f",
+      "pixelHeight": 953,
+      "byteLength": 160446,
+      "sha256": "9c16a95372c18e243b2bc4a90e70f1e4010b33a7999ebefbdd74f740b32702dc",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Metric values and complete-state labels align in separate columns; the wide layout has no overflow and the footer remains aligned."
+        "finding": "Opened individually after the rebuilt bundle. Metric values and complete-state labels align in separate columns; the mixed-script title, method version, and footer remain clear with no overflow."
       }
     },
     {
@@ -84,12 +84,12 @@
       "file": "partial-single-cohort-e-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1308,
-      "byteLength": 122137,
-      "sha256": "25620340221ec4c597c56076798ceeaf83936338989d7b4eb1d8c215485ef20a",
+      "pixelHeight": 1339,
+      "byteLength": 121633,
+      "sha256": "6cec3f2fe55541c2b87cc8ebcd053940d5be5d5fa7c43bf64b0d857801e973ad",
       "visualReview": {
         "decision": "PASS",
-        "finding": "The sample-display explanation says a search result was returned but details are unavailable and no subject row is shown. Unknown values and partial states remain visible; the dense footer fits without clipping."
+        "finding": "Opened individually after the rebuilt bundle. The red status clearly says one search row was returned, details are unavailable, and no subject row is shown. Unknown values, limits, method version, and footer fit without clipping."
       }
     },
     {
@@ -97,12 +97,12 @@
       "file": "partial-single-cohort-e-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1257,
-      "byteLength": 122914,
-      "sha256": "aa753578afa35b381d94d0093a7d984edde495569fb42e8beb0c96f9c1a6195b",
+      "pixelHeight": 1288,
+      "byteLength": 122548,
+      "sha256": "725898ce2e07dc89be232357938c970f848f33961a319f02d955767a99d0dc0e",
       "visualReview": {
         "decision": "PASS",
-        "finding": "The no-row explanation wraps cleanly and distinguishes missing details from no match; all four unknown metric states remain visible."
+        "finding": "Opened individually after the rebuilt bundle. The unavailable-detail status wraps cleanly and distinguishes a returned result from an empty search; all four unknown metric states remain separated."
       }
     },
     {
@@ -110,12 +110,12 @@
       "file": "partial-single-cohort-e-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1111,
-      "byteLength": 121931,
-      "sha256": "57c8030beedc6efde1762fdd027adab4c12996bd90b86b47f7453a839de1efe7",
+      "pixelHeight": 1142,
+      "byteLength": 121507,
+      "sha256": "be3b714ee59aab9eb6be98d3f281d874308ff09f51172daf00e1bef81630a929",
       "visualReview": {
         "decision": "PASS",
-        "finding": "The search/detail caveat, metric rows, missing-data explanation, limits, and source footer do not collide."
+        "finding": "Opened individually after the rebuilt bundle. The returned-row/no-detail status, four missing metrics, warning, limits, method version, and source footer do not collide."
       }
     },
     {
@@ -123,12 +123,12 @@
       "file": "partial-single-cohort-e-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1074,
-      "byteLength": 123535,
-      "sha256": "690e79e43e319b9c1ea1e05d6372798b9a4f4d0a424c8546adc4f4a14d45730c",
+      "pixelHeight": 1105,
+      "byteLength": 123139,
+      "sha256": "852341d21bedb4447233de64f1e8515b6d14be5876ec1253f67d06d669eab118",
       "visualReview": {
         "decision": "PASS",
-        "finding": "The single cohort uses the full card width; the partial state and unavailable-detail explanation remain distinct from all four metrics."
+        "finding": "Opened individually after the rebuilt bundle. The full-width single cohort keeps the unavailable-detail status distinct from each missing metric; the limits and footer fit with no clipping."
       }
     },
     {
@@ -136,12 +136,12 @@
       "file": "partial-single-cohort-e-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 859,
-      "byteLength": 127083,
-      "sha256": "5f3d7836d11e26598deddd9637449afa51b23a2de71869a6696a83acd8b3ef89",
+      "pixelHeight": 890,
+      "byteLength": 126729,
+      "sha256": "f5ea7a574e4b237fc880a986c627614aea7521968f4870b5a2b0f141cd57f1c3",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Unknown values and partial-state labels align in separate columns; the unavailable-detail caveat remains readable with no overflow."
+        "finding": "Opened individually after the rebuilt bundle. Unknown values and partial-state labels align in separate columns; the unavailable-detail caveat, method version, and footer remain readable without overflow."
       }
     }
   ]

@@ -9474,6 +9474,24 @@ class G01OfflineProfileStaticMarkerTests(unittest.TestCase):
         self.assertIn('do not replay the consumed G01 Agent/MCP canary', record['next_action'])
 
 
+class C07CurrentCandidateImplementationMarkerTests(unittest.TestCase):
+    def test_current_candidate_has_all_c07_report_gate_markers_without_mocks(self):
+        revision = subprocess.run(
+            ['git', 'rev-parse', 'HEAD'],
+            cwd=GENERATOR.ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+        self.assertRegex(revision, r'^[0-9a-f]{40}$')
+        self.assertTrue(
+            GENERATOR.codex_c07_render_comparison_offline_profile_revision_has_implementation(
+                revision,
+            ),
+        )
+
+
 class C07RenderComparisonOfflineProfileReportValidationTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='c07-render-comparison-offline-report-test-')
@@ -9659,7 +9677,7 @@ class C07RenderComparisonOfflineProfileReportValidationTests(unittest.TestCase):
         self.assertTrue(GENERATOR.codex_c07_render_comparison_offline_frontier_is_unassessed())
         self.assertTrue(self.validate_report(self.report))
 
-    def test_v3_report_accepts_only_bounded_disabled_web_search_error_counts(self):
+    def test_v3_report_accepts_only_bounded_safe_web_search_error_counts(self):
         profile = GENERATOR.CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V3
         report = self.build_v3_report()
         path = self.root / profile['reportPath']

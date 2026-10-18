@@ -2099,9 +2099,12 @@
         "tests/harness/c07-png-artifact-validation.test.mjs",
         "tests/integration/mcp-render-target.test.ts",
         "tests/integration/tool-e2e-acceptance.test.ts",
-        "tests/render/subject-cohort-comparison.test.ts"
+        "tests/render/subject-cohort-comparison.test.ts",
+        "packages/renderer/src/templates/SubjectCohortComparisonCard.tsx",
+        "scripts/lib/c07-render-comparison-offline-profile.mjs",
+        "scripts/lib/c07-render-comparison-offline-fixture.mjs"
       ],
-      "next_action": "The C07 v3 synthetic cohort E profile remains UNASSESSED and unclaimed while its exact Candidate is being corrected. Luna Max round 1 is Harness-persisted as CORRECTIVE_REQUIRED: use exact Web Search disabled/unavailable messages only; keep the fixed success acknowledgement scoped to the complete one-shot; distinguish unavailable subject details from an empty search; and keep all synthetic source timestamps consistent. The final complete/partial visuals were individually inspected at 320/360/520/640/960 CSS px after rebuild. The committed per-image QA receipt records explicit PASS, dimensions, hashes, and findings; the runner binds the receipt to the exact built MCP bundle and its generation inputs, then verifies all ten local PNGs before creating a permanent claim. Next: finish focused/full gates, exact-SHA CI, and same-identity corrective review. No v3 call or report exists yet. Keep C07 scenario UNASSESSED and do not infer public API, account-auth, community, QQ, or TIM coverage.",
+      "next_action": "The C07 v3 synthetic cohort E profile remains UNASSESSED and unclaimed while the exact Candidate is corrected. Luna Max round 1 is Harness-persisted as CORRECTIVE_REQUIRED; corrective round 2 is Harness-persisted as CORRECTIVE_REQUIRED. A fresh cohort E v3 profile (`c07-render-comparison-offline-agent-mcp-matrix-v3`) is a matrix-only visual and Agent/MCP acceptance check. Restore the implementation-marker contract and verify it against the exact committed Candidate; generate complete visuals from the registered v3 query through the same closed local search/detail fixture and display a reader-facing cohort calculation version. All ten complete/partial screenshots have been individually inspected at 320/360/520/640/960 CSS px; the runner binds the receipt to the exact built MCP bundle and the profile fixture, tool/data sources, and renderer inputs, including all ten image hashes and dimensions. Next: finish all gates, exact-SHA CI, Candidate readiness, and same-identity corrective review. No v3 call or report exists yet. Keep C07 UNASSESSED; do not claim compare_subject_cohorts. Keep C07 scenario UNASSESSED and do not infer public API, account-auth, community, QQ, or TIM coverage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

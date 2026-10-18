@@ -25,12 +25,12 @@ other origins, methods, paths or queries, renderer asset requests, and external
 fallback are rejected. The result artifact is copied only to an ignored local
 directory for visual inspection and is never stored in the signed report.
 
-The signed report can credit only this tool's Agent/MCP matrix cell. C07 remains
-`UNASSESSED`.
+The signed report can credit only this tool's Agent/MCP matrix cell. C07 remains `UNASSESSED`.
 
 ## Codex error classification
 
-The shared `summarizeCodexErrorItems` classifier retains only bounded counts. It
+Only the exact disabled/unavailable Web Search error category is eligible. The
+shared `summarizeCodexErrorItems` classifier retains only bounded counts. It
 accepts exactly two complete status messages: `The web search tool is disabled.`
 and `The web search tool is unavailable.` A near match, unrelated backend or
 request failure, or any unclassified error is unexpected. Up to three error
@@ -55,26 +55,20 @@ contains the explicit PASS acknowledgement, all ten image hashes/dimensions,
 and a finding for each image. The generated PNGs stay in the ignored local
 artifact directory and are not committed.
 
-| State    | Width | PNG dimensions | SHA-256                                                            | Individual visual finding                                                                                                                                                                                               |
-| -------- | ----: | -------------: | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Complete |   320 |       320×1225 | `604763667f01f01876786cd05ce3c0ebe150ba90b0217a87fd95d7eaa26601b0` | Single-column layout. The mixed Japanese, Chinese, and Latin title wraps without clipping; sample, four metrics, limits, and footer stay separated. Secondary captions are compact but readable.                        |
-| Complete |   360 |       360×1196 | `a4953dd346d5d89eb5b2a8ff26a7b2c3f0faa94c2dcbcd340f6dc0f1b03354e6` | The title and sample metadata wrap cleanly; the subject row and four metric cards remain distinct with no collision.                                                                                                    |
-| Complete |   520 |       520×1045 | `0b746deb23edeb2e11a98997056037206406a693f07e3114a1db292e534c074c` | The sample panel and four metric rows have clear separation; source labels and footer stay inside the card with no horizontal overflow.                                                                                 |
-| Complete |   640 |       640×1031 | `c59c085e6b8a13fa77dee51cc302fbbb5eee66bf7a50c69ebc7d12eb20bfda53` | The single cohort uses the full card width; metrics remain stacked and no unused comparison column or clipping appears.                                                                                                 |
-| Complete |   960 |        960×816 | `f952c5d90011c7d8a8e22947d44b36786887ac6a40890a8c5da68c627568a82f` | Metric values and complete-state labels align in separate columns; the wide layout has no overflow and the footer remains aligned.                                                                                      |
-| Partial  |   320 |       320×1308 | `25620340221ec4c597c56076798ceeaf83936338989d7b4eb1d8c215485ef20a` | The new sample-display explanation says a search result was returned but details are unavailable and no subject row is shown. Unknown values and partial states remain visible; the dense footer fits without clipping. |
-| Partial  |   360 |       360×1257 | `aa753578afa35b381d94d0093a7d984edde495569fb42e8beb0c96f9c1a6195b` | The no-row explanation wraps cleanly and distinguishes missing details from no match; all four unknown metric states remain visible.                                                                                    |
-| Partial  |   520 |       520×1111 | `57c8030beedc6efde1762fdd027adab4c12996bd90b86b47f7453a839de1efe7` | The search/detail caveat, metric rows, missing-data explanation, limits, and source footer do not collide.                                                                                                              |
-| Partial  |   640 |       640×1074 | `690e79e43e319b9c1ea1e05d6372798b9a4f4d0a424c8546adc4f4a14d45730c` | The single cohort uses the full card width; the partial state and unavailable-detail explanation remain distinct from all four metrics.                                                                                 |
-| Partial  |   960 |        960×859 | `5f3d7836d11e26598deddd9637449afa51b23a2de71869a6696a83acd8b3ef89` | Unknown values and partial-state labels align in separate columns; the unavailable-detail caveat remains readable with no overflow.                                                                                     |
+| State    | Width | PNG dimensions | SHA-256                                                          | Individual visual finding                                                                                                                                                                                                             |
+| -------- | ----: | -------------: | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Complete |   320 |       320×1527 | 086c39ce7ff92ef098c1d41c287d5d9ad5a8ba5911d409ee8c029f2274222e39 | Opened individually after the rebuilt bundle. The long Japanese, Chinese, and Latin title wraps cleanly; sample values, four metrics, limits, method version, and footer fit without clipping. Compact captions remain readable.      |
+| Complete |   360 |       360×1468 | 7ff4352ac8d316744d00b29c4d2a2bff5c0289caaff10f1bfd5a01cdebd74506 | Opened individually after the rebuilt bundle. The profile-matched title and sample metadata wrap without collision; all four metric cards and the source/footer remain inside the card.                                               |
+| Complete |   520 |       520×1243 | f0c66409fabf1ab4d02006258dbd1c374b6f32173a0cbf2184c837d4de5f4824 | Opened individually after the rebuilt bundle. Sample facts and metric rows are distinct; the upstream-search warning, limits, calculation version, and footer remain legible with no horizontal overflow.                             |
+| Complete |   640 |       640×1198 | 7179bcfa3a263660361eb28e89e9046ddea2ed6b8fdb2ce1883a591f41c8ae3a | Opened individually after the rebuilt bundle. The single cohort uses the full card width and keeps metrics stacked; the long limitations and version/source labels fit without clipping.                                              |
+| Complete |   960 |        960×953 | 9c16a95372c18e243b2bc4a90e70f1e4010b33a7999ebefbdd74f740b32702dc | Opened individually after the rebuilt bundle. Metric values and complete-state labels align in separate columns; the mixed-script title, method version, and footer remain clear with no overflow.                                    |
+| Partial  |   320 |       320×1339 | 6cec3f2fe55541c2b87cc8ebcd053940d5be5d5fa7c43bf64b0d857801e973ad | Opened individually after the rebuilt bundle. The red status clearly says one search row was returned, details are unavailable, and no subject row is shown. Unknown values, limits, method version, and footer fit without clipping. |
+| Partial  |   360 |       360×1288 | 725898ce2e07dc89be232357938c970f848f33961a319f02d955767a99d0dc0e | Opened individually after the rebuilt bundle. The unavailable-detail status wraps cleanly and distinguishes a returned result from an empty search; all four unknown metric states remain separated.                                  |
+| Partial  |   520 |       520×1142 | be3b714ee59aab9eb6be98d3f281d874308ff09f51172daf00e1bef81630a929 | Opened individually after the rebuilt bundle. The returned-row/no-detail status, four missing metrics, warning, limits, method version, and source footer do not collide.                                                             |
+| Partial  |   640 |       640×1105 | 852341d21bedb4447233de64f1e8515b6d14be5876ec1253f67d06d669eab118 | Opened individually after the rebuilt bundle. The full-width single cohort keeps the unavailable-detail status distinct from each missing metric; the limits and footer fit with no clipping.                                         |
+| Partial  |   960 |        960×890 | f5ea7a574e4b237fc880a986c627614aea7521968f4870b5a2b0f141cd57f1c3 | Opened individually after the rebuilt bundle. Unknown values and partial-state labels align in separate columns; the unavailable-detail caveat, method version, and footer remain readable without overflow.                          |
 
-Across all ten images, the hierarchy is title → cohort → sample-display status
-or returned row → aggregate metrics → data limits → source/footer. The partial
-case says one synthetic search result was returned, detail was unavailable, and
-no subject row is displayed; missing values are not zero and missing details do
-not imply that no match exists. No clipping or horizontal overflow was observed.
-The 320-pixel layouts are denser, but primary status and partial wording remain
-readable. Secondary source and coverage labels use the compact caption size.
+Across all ten images, the hierarchy is title → cohort → sample-display status or returned row → aggregate metrics → data limits → calculation method and source/footer. The complete case is built from the exact registered v3 query through the same closed local search/detail fixture as the profile; the long mixed-script title and the returned score, rating count, collection total, reported episodes, and rating-distribution standard deviation match that result. The partial case says one synthetic search result was returned, detail was unavailable, and no subject row is displayed; missing values are not zero and missing details do not imply that no match exists. No clipping or horizontal overflow was observed. The 320-pixel layouts are denser, but primary status and partial wording remain readable. Secondary source and coverage labels use the compact caption size.
 
 The plain-text `C07_SYNTHETIC_COHORT_RENDERED` acknowledgement confirms that the
 exact registered complete render call succeeded. It does not describe the
@@ -84,10 +78,10 @@ callback, account-message, `auth_status`, QQ/TIM, or C07 user-scenario evidence.
 Those account-auth message and rendering checks remain a separate UX-001 scope.
 
 Visual output path:
-`.artifacts/render/c07-cohort-comparison-v3-visual-qa-candidate-bound-20261018/`.
-The reviewed bundle SHA-256 is `41797e00c7bafdaa6a057c8030eaaccccd32fe3d3d71982033f227e9a715501c`; the
-generation source SHA-256 is `cd55dad85793af20621850d72fcab9bec9ded2df867da6135a7efa3800d38ae2`.
-The committed receipt SHA-256 is `7864091557b976b22ce252fbb3536b1d3593da1b0a26b7b16e0d962761d77287`.
+`.artifacts/render/c07-cohort-comparison-v3-visual-qa-candidate-bound-20261019-round2/`.
+The reviewed bundle SHA-256 is `048398b47fb3315e23315cfc4b9cd827f5584ade907ac75857652b1ec66fd2e7`; the
+generation source SHA-256 is `d5ecc7aeae633c3d377a5c19194995b85119fc2898780745ed503f3306933e3e`.
+The committed receipt SHA-256 is `f97423c73f54a53904ad7de9cfc982d124fdd2d4f425718c37524e66017d1c6c`.
 
 ## One-shot gates and terminal rule
 

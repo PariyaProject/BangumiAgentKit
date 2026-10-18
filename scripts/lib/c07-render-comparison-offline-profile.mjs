@@ -18,6 +18,8 @@ function createConfig({
   keyword,
   subjectId,
   cohortLabel,
+  subjectName,
+  subjectNameCn,
 }) {
   const expectedArguments = Object.freeze({
     cohorts: [
@@ -48,8 +50,8 @@ function createConfig({
     subjectId,
     cohortLabel,
     expectedArguments,
-    subjectName: `Synthetic Cohort ${cohortLabel.at(-1)} Work ${subjectId}`,
-    subjectNameCn: `${cohortLabel} 作品 ${subjectId}`,
+    subjectName: subjectName ?? `Synthetic Cohort ${cohortLabel.at(-1)} Work ${subjectId}`,
+    subjectNameCn: subjectNameCn ?? `${cohortLabel} 作品 ${subjectId}`,
     receiptKind: `c07-render-comparison-offline-runner-receipt-${id.endsWith('-v3') ? 'v3' : id.endsWith('-v2') ? 'v2' : 'v1'}`,
     acknowledgement: 'C07_SYNTHETIC_COHORT_RENDERED',
   });
@@ -111,6 +113,8 @@ const CONFIGS = new Map([
       keyword: 'run95 c07 synthetic cohort e offline matrix 20261018',
       subjectId: 991226,
       cohortLabel: '合成样本 E',
+      subjectName: 'Synthetic Work — Long English Title for Narrow-Width Wrapping Review',
+      subjectNameCn: '合成作品 E：日本語タイトル / 中文混排与 Latin wrapping 检查',
     }),
   ],
 ]);

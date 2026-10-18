@@ -5,7 +5,7 @@ import path from 'node:path';
 export const C07_V3_VISUAL_QA_MANIFEST_PATH =
   'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v3-visual-qa-2026-10-18.json';
 export const C07_V3_VISUAL_QA_ARTIFACT_DIRECTORY =
-  '.artifacts/render/c07-cohort-comparison-v3-visual-qa-candidate-bound-20261018';
+  '.artifacts/render/c07-cohort-comparison-v3-visual-qa-candidate-bound-20261019-round2';
 
 const PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v3';
 const WIDTHS = [320, 360, 520, 640, 960];
@@ -15,13 +15,30 @@ const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const MAX_IMAGE_HEIGHT = 5000;
 const SOURCE_INPUT_PATHS = [
   'pnpm-lock.yaml',
+  'packages/bangumi-core/package.json',
+  'packages/bangumi-openapi/package.json',
+  'packages/bangumi-transport/package.json',
+  'packages/discovery/package.json',
+  'packages/provider-core/package.json',
   'packages/renderer/package.json',
   'packages/renderer/tsconfig.json',
+  'packages/tools/package.json',
   'scripts/acceptance/generate-c07-render-comparison-offline-v3-visuals.ts',
-  'tests/render/fixtures/subject-cohort-comparison.fixture.ts',
+  'scripts/lib/c07-render-comparison-offline-fixture.d.mts',
+  'scripts/lib/c07-render-comparison-offline-fixture.mjs',
+  'scripts/lib/c07-render-comparison-offline-profile.d.mts',
+  'scripts/lib/c07-render-comparison-offline-profile.mjs',
   'tsconfig.base.json',
 ];
-const RENDERER_SOURCE_DIRECTORY = 'packages/renderer/src';
+const VIEW_MODEL_SOURCE_DIRECTORIES = [
+  'packages/bangumi-core/src',
+  'packages/bangumi-openapi/src',
+  'packages/bangumi-transport/src',
+  'packages/discovery/src',
+  'packages/provider-core/src',
+  'packages/renderer/src',
+  'packages/tools/src',
+];
 
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
@@ -38,7 +55,9 @@ export function computeC07V3VisualQaGenerationSourceSha256(root) {
   if (typeof root !== 'string') throw new TypeError('C07 visual QA source root is invalid.');
   const absoluteRoot = path.resolve(root);
   const files = [...SOURCE_INPUT_PATHS];
-  collectFiles(absoluteRoot, RENDERER_SOURCE_DIRECTORY, files);
+  for (const directory of VIEW_MODEL_SOURCE_DIRECTORIES) {
+    collectFiles(absoluteRoot, directory, files);
+  }
   files.sort();
   const digest = createHash('sha256');
   for (const relativePath of files) {

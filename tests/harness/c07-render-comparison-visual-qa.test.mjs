@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -34,12 +34,27 @@ function createFixture() {
   mkdirSync(path.dirname(manifestPath), { recursive: true });
   for (const sourcePath of [
     'pnpm-lock.yaml',
+    'packages/bangumi-core/package.json',
+    'packages/bangumi-openapi/package.json',
+    'packages/bangumi-transport/package.json',
+    'packages/discovery/package.json',
+    'packages/provider-core/package.json',
     'packages/renderer/package.json',
     'packages/renderer/tsconfig.json',
+    'packages/tools/package.json',
     'scripts/acceptance/generate-c07-render-comparison-offline-v3-visuals.ts',
-    'tests/render/fixtures/subject-cohort-comparison.fixture.ts',
+    'scripts/lib/c07-render-comparison-offline-fixture.d.mts',
+    'scripts/lib/c07-render-comparison-offline-fixture.mjs',
+    'scripts/lib/c07-render-comparison-offline-profile.d.mts',
+    'scripts/lib/c07-render-comparison-offline-profile.mjs',
     'tsconfig.base.json',
+    'packages/bangumi-core/src/fixture.ts',
+    'packages/bangumi-openapi/src/fixture.ts',
+    'packages/bangumi-transport/src/fixture.ts',
+    'packages/discovery/src/fixture.ts',
+    'packages/provider-core/src/fixture.ts',
     'packages/renderer/src/fixture.ts',
+    'packages/tools/src/fixture.ts',
   ]) {
     const absolutePath = path.join(root, sourcePath);
     mkdirSync(path.dirname(absolutePath), { recursive: true });
@@ -148,6 +163,29 @@ test('C07 v3 visual QA rejects generation inputs that no longer match the review
   );
 
   assert.equal(verify(fixture), false);
+});
+
+test('C07 v3 visual QA binds the profile config and server response fixture', (t) => {
+  const fixture = createFixture();
+  t.after(() => clean(fixture));
+  const originalSourceSha256 = fixture.manifest.generationSourceSha256;
+
+  for (const sourcePath of [
+    'scripts/lib/c07-render-comparison-offline-profile.mjs',
+    'scripts/lib/c07-render-comparison-offline-fixture.mjs',
+  ]) {
+    const absolutePath = path.join(fixture.root, sourcePath);
+    const original = readFileSync(absolutePath, 'utf8');
+    writeFileSync(absolutePath, `${original}\nchanged fixture input`);
+    assert.notEqual(
+      computeC07V3VisualQaGenerationSourceSha256(fixture.root),
+      originalSourceSha256,
+      `${sourcePath} must invalidate the reviewed visual receipt`,
+    );
+    writeFileSync(absolutePath, original);
+  }
+
+  assert.equal(verify(fixture), true);
 });
 
 test('C07 v3 visual QA rejects incomplete or inconsistent image manifests', (t) => {
