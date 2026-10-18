@@ -2581,6 +2581,8 @@ function presentCollectionSeries(value: Record<string, unknown>): string | undef
       humanField(summaryDetails.groupedItems ?? '?', 32) +
       ' · 未归组 ' +
       humanField(summaryDetails.ungroupedItems ?? '?', 32) +
+      ' · 关系待确认 ' +
+      humanField(summaryDetails.relationMembershipUnknownItems ?? '?', 32) +
       ' · 关系边 ' +
       humanField(summaryDetails.relationEdges ?? '?', 32),
   ];
@@ -2658,6 +2660,33 @@ function presentCollectionSeries(value: Record<string, unknown>): string | undef
     }
     if (ungrouped.length > 12) {
       lines.push('另有 ' + humanField(ungrouped.length - 12, 32) + ' 个未归组条目未展开。');
+    }
+  }
+
+  const unresolvedItems = value.unresolvedItems;
+  if (Array.isArray(unresolvedItems) && unresolvedItems.length > 0) {
+    lines.push('关系待确认条目: ' + humanField(unresolvedItems.length, 32));
+    lines.push('关系读取失败、未覆盖或已截断；不能据此判断这些条目没有系列关系。');
+    for (const itemCandidate of unresolvedItems.slice(0, 12)) {
+      if (!itemCandidate || typeof itemCandidate !== 'object') continue;
+      const item = itemCandidate as Record<string, unknown>;
+      lines.push(
+        '- ' +
+          humanField(
+            item.nameCn ||
+              item.subjectNameCn ||
+              item.subjectName ||
+              '#' + (item.subjectId || '?'),
+            100,
+          ) +
+          ' · ' +
+          humanField(item.statusLabel || item.status || '状态未知', 48),
+      );
+    }
+    if (unresolvedItems.length > 12) {
+      lines.push(
+        '另有 ' + humanField(unresolvedItems.length - 12, 32) + ' 个关系待确认条目未展开。',
+      );
     }
   }
 

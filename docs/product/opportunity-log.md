@@ -287,6 +287,16 @@ calendar/weekly-schedule join. The slice reuses the existing current-account
 Status:
 SELECTED_IN_HARNESS_V3_EPOCH / COLLECTION-DASHBOARD-V1
 
+Run #95 Epoch run95-collection-render-state-clarity-20261019 records a current
+candidate correction for the card's display-state wording: it names whether
+rows were omitted separately from the dashboard's source/data state. This is
+synthetic renderer evidence only. The frontier ledger keeps OP-011 PARTIAL;
+real account behavior and QQ/TIM delivery remain separate.
+Candidate 0f4e178 was also reviewed at 320/360/520/640/960 CSS px: all 35
+final Dashboard PNGs were opened individually and recorded in
+docs/research/run95-collection-dashboard-clarity-candidate-0f4e178-visual-qa-2026-10-19.md.
+This is candidate-only synthetic evidence, not a post-merge or real-client claim.
+
 User questions:
 
 “我的收藏概览、backlog 和未来七日播出计划能否一次给出？”
@@ -478,6 +488,16 @@ evidence, and a complete full-window workload claim is still unsupported.
 
 Status:
 DELIVERED_IN_PR-7G_RECOVERY
+
+This status records the historical bounded implementation. The current Run #95
+frontier record remains PARTIAL because the source and accepted Agent/MCP
+evidence do not establish an exhaustive or canonical viewing order. Epoch
+run95-collection-render-state-clarity-20261019 adds explicit unknown-membership
+handling to account-scoped collection grouping; it does not change that order
+boundary or add scenario/Agent/MCP credit.
+The same Candidate's 45 collection-series images were opened individually at
+320/360/520/640/960 CSS px; receipts and the no-canonical-order limitation are
+in docs/research/run95-collection-series-clarity-candidate-0f4e178-visual-qa-2026-10-19.md.
 
 User question:
 

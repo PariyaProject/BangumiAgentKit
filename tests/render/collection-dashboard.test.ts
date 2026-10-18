@@ -136,6 +136,7 @@ describe('collection-dashboard renderer', () => {
     for (const width of [640, 960]) {
       const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
       expect(html).toContain('我的收藏 Dashboard');
+      expect(html).toMatch(/展示内容：\s*无省略/u);
       expect(html).toContain('收藏概览');
       expect(html).toContain('七日播出计划');
       expect(html).toContain('collection-dashboard-v1');
@@ -178,6 +179,7 @@ describe('collection-dashboard renderer', () => {
     });
     for (const width of [640, 960]) {
       const denseHtml = renderHtmlTemplate(denseViewModel, 'bangumi-dark', {}, width);
+      expect(denseHtml).toMatch(/展示内容：\s*有条目省略/u);
       expect(denseHtml).toContain('省略 3 条');
       expect(denseHtml).toContain('活跃状态过滤：doing');
       expect(denseHtml).toContain('证据：');
@@ -209,6 +211,9 @@ describe('collection-dashboard renderer', () => {
       640,
     );
     expect(degradedHtml).toContain('需要授权');
+    expect(degradedHtml).toContain('部分覆盖');
+    expect(degradedHtml).toMatch(/展示内容：\s*无省略/u);
+    expect(degradedHtml).not.toContain('展示状态： 完整');
     expect(degradedHtml).toContain('无法计算');
     expect(degradedHtml).toContain('UPSTREAM_TIMEOUT');
 
