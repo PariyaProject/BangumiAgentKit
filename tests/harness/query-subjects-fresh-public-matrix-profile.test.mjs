@@ -17,6 +17,7 @@ import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool
 import { P06_REQUIRED_CI_CHECKS } from '../../scripts/lib/p06-ci-run-evidence.mjs';
 import {
   assertQuerySubjectsFreshPublicCandidateReviewGate,
+  buildQuerySubjectsFreshPublicRunnerReport,
   querySubjectsFreshPublicCodexCliVersionIsSupported,
   validateQuerySubjectsFreshPublicRunnerArgs,
 } from '../../scripts/acceptance/run-query-subjects-fresh-public-agent-mcp.mjs';
@@ -55,6 +56,11 @@ const REQUEST_BODY = {
   keyword: QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_ARGUMENTS.keyword,
   sort: 'match',
   filter: { type: [2], nsfw: false },
+};
+const PUBLIC_REQUEST_HEADERS = {
+  Accept: 'application/json',
+  'Content-Type': 'application/json',
+  'User-Agent': 'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)',
 };
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
@@ -120,7 +126,7 @@ test('public fetch permits only bounded anonymous official v0 subject search req
   });
   const response = await guarded.fetchFn(REQUEST_URL, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: PUBLIC_REQUEST_HEADERS,
     body: JSON.stringify(REQUEST_BODY),
   });
   assert.equal(response.status, 200);
@@ -162,6 +168,14 @@ test('public fetch denies altered routes, arguments, credentials and over-budget
       init: {
         method: 'POST',
         headers: { authorization: 'Bearer synthetic' },
+        body: JSON.stringify(REQUEST_BODY),
+      },
+    },
+    {
+      url: REQUEST_URL,
+      init: {
+        method: 'POST',
+        headers: { ...PUBLIC_REQUEST_HEADERS, 'X-Auth': 'synthetic-session' },
         body: JSON.stringify(REQUEST_BODY),
       },
     },
@@ -447,12 +461,13 @@ test('sanitized report is claim-bound, signed, and rejects altered summary value
   assert.equal(validateQuerySubjectsFreshPublicProfileReport(altered, input.claim), false);
 });
 
-test('report write is create-once and file validation rechecks the signed sanitized artifact', () => {
+test('runner report path binds the post-call Candidate gate and writes a validated artifact once', () => {
   const input = createSignedReportInput();
-  const built = buildQuerySubjectsFreshPublicProfileReport(input, {
-    privateKey: input.keys.privateKey,
-    publicKeyBase64: input.publicKeyBase64,
-  });
+  const { gate, ...runnerInput } = input;
+  const built = buildQuerySubjectsFreshPublicRunnerReport(
+    { ...runnerInput, postGate: gate },
+    { privateKey: input.keys.privateKey, publicKeyBase64: input.publicKeyBase64 },
+  );
   assert.equal(built.passed, true);
   const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'query-subjects-report-test-'));
   try {

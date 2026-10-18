@@ -71,6 +71,34 @@ export function querySubjectsFreshPublicCodexCliVersionIsSupported(version) {
   return major > 0 || minor > 163 || (minor === 163 && patch >= 0);
 }
 
+export function buildQuerySubjectsFreshPublicRunnerReport(
+  {
+    claim,
+    postGate,
+    serverSummary,
+    events,
+    answer,
+    codexCliVersion,
+    eventStreamSha256,
+    serverSummarySha256,
+  },
+  signingKeys,
+) {
+  return buildQuerySubjectsFreshPublicProfileReport(
+    {
+      claim,
+      gate: postGate,
+      serverSummary,
+      events,
+      answer,
+      codexCliVersion,
+      eventStreamSha256,
+      serverSummarySha256,
+    },
+    signingKeys,
+  );
+}
+
 function environment(source = process.env, allowGitHub = false) {
   const result = sanitizeGitRepositoryEnvironment(source);
   for (const key of Object.keys(result)) {
@@ -742,9 +770,10 @@ function runQuerySubjectsFreshPublic({ runNumber }) {
       recordInconclusive(prNumber, claimId, 'ACTIVE_GATE_CHANGED_DURING_QUERY');
       return 1;
     }
-    const report = buildQuerySubjectsFreshPublicProfileReport(
+    const report = buildQuerySubjectsFreshPublicRunnerReport(
       {
         claim,
+        postGate,
         serverSummary,
         events: safeEvents,
         answer: events.answer,

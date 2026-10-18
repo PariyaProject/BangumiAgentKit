@@ -15,6 +15,15 @@ export const QUERY_SUBJECTS_FRESH_PUBLIC_SERVER_ID = 'bgk_query_subjects_fresh_p
 export const QUERY_SUBJECTS_FRESH_PUBLIC_MAX_REQUESTS = 8;
 export const QUERY_SUBJECTS_FRESH_PUBLIC_ACKNOWLEDGEMENT = 'QUERY_SUBJECTS_PUBLIC_MATRIX_OK';
 
+const EXPECTED_PUBLIC_HEADERS = new Map([
+  ['accept', 'application/json'],
+  ['content-type', 'application/json'],
+  [
+    'user-agent',
+    'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)',
+  ],
+]);
+
 export const QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_ARGUMENTS = Object.freeze({
   keyword: '进击的巨人',
   media: 'anime',
@@ -147,12 +156,12 @@ export function createQuerySubjectsFreshPublicFetch({
     const headers = new Headers(init.headers ?? (requestObject ? input.headers : undefined));
     const credentialsMode = init.credentials ?? (requestObject ? input.credentials : undefined);
     const credentialedMode = credentialsMode !== undefined && credentialsMode !== 'omit';
+    // Treat any header outside the fixed public HttpClient set as potentially credential-bearing.
+    const hasUnsupportedHeaders = [...headers.entries()].some(
+      ([name, value]) => EXPECTED_PUBLIC_HEADERS.get(name) !== value,
+    );
     const hasCredentials =
-      [...headers.keys()].some((name) =>
-        /(?:authorization|cookie|token|secret|credential|api[_-]?key)/iu.test(name),
-      ) ||
-      Boolean(url.username || url.password) ||
-      credentialedMode;
+      hasUnsupportedHeaders || Boolean(url.username || url.password) || credentialedMode;
     const allowedRoute =
       url.hash === '' &&
       url.origin === 'https://api.bgm.tv' &&
