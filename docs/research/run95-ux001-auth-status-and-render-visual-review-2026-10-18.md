@@ -4,7 +4,7 @@
 
 ## 范围与结果
 
-全部 65 张 PNG 都由合成数据生成并逐张打开检查：4 种 OAuth 回调状态、9 种收藏渲染案例，各在 320/360/520/640/960 CSS px、DPR 1 下渲染。自动检查结果为无横向溢出、无缺少预期文案、无未加载的预期图片。纠正轮重新生成后，原有 60 张的 SHA-256 全部与本报告记录相同；新增的 5 张是“零观察行、源报告 3 条且读取失败”的部分空状态。原图保留在本机忽略目录，报告逐图记录 PNG 尺寸和 SHA-256；PNG 本身未加入 Git。
+全部 65 张 PNG 都由合成数据生成并逐张打开检查：4 种 OAuth 回调状态、9 种收藏渲染案例，各在 320/360/520/640/960 CSS px、DPR 1 下渲染。自动检查结果为无横向溢出、无缺少预期文案、无未加载的预期图片。后续修正重新生成部分空状态后，原有 60 张的 SHA-256 全部与本报告记录相同；对应的 5 张显示首个请求成功并返回空页，但 Bangumi 源报告 3 条，因此明确标记为部分覆盖，不能确认收藏为空。原图保留在本机忽略目录，报告逐图记录 PNG 尺寸和 SHA-256；PNG 本身未加入 Git。
 
 只用了本地 fixture：真实 OAuth/账号请求 0 次，QQ/TIM 操作 0 次。完成的仍是合成表达和图像验收，不计入真实账号、QQ/TIM 或 96 工具客户端覆盖。自动化清单：`.artifacts/render/ux001-auth-personal-visual-qa-2026-10-18/manifest.json`。生成器仅记录自动布局/文字/消息配对断言，不声称完成了人工视觉检查；逐张人工观察记录在本报告下表。
 
@@ -92,11 +92,11 @@
 | `collection-intelligence-partial-long-script` | 520 CSS px | `collection-intelligence-partial-long-script-w520.png` (520×1294) | `8cd03fe5e5181ba790f7d51e9ddf32309e8785ed8c9262883026e7b8a3109cf9` | 无溢出；预期文案齐全；图片元素 0 | 520px：部分覆盖与样本计数清楚；缺字段以短说明呈现，所有统计范围及不补猜口径都在卡片内。 |
 | `collection-intelligence-partial-long-script` | 640 CSS px | `collection-intelligence-partial-long-script-w640.png` (640×1240) | `439d5f9fad60451b5c14af72926eaee226d1a56a707a158d31fa943dcdbb59e8` | 无溢出；预期文案齐全；图片元素 0 | 640px：部分覆盖与样本计数清楚；缺字段以短说明呈现，所有统计范围及不补猜口径都在卡片内。 |
 | `collection-intelligence-partial-long-script` | 960 CSS px | `collection-intelligence-partial-long-script-w960.png` (960×927) | `0001ca583edc3db154827a8866796cc5ce8117b5976e0ba95b9f20ddd3106bea` | 无溢出；预期文案齐全；图片元素 0 | 960px：部分覆盖与样本计数清楚；缺字段以短说明呈现，所有统计范围及不补猜口径都在卡片内。 |
-| `collection-intelligence-partial-empty` | 320 CSS px | `collection-intelligence-partial-empty-w320.png` (320×900) | `1cafcdd0d58ccf1b291ea87ff791dc302d39ee156c65c8db14e559d629464178` | 无溢出；预期文案齐全；图片元素 0 | 320px：清楚显示“本次未观察到”与“不能确认收藏为空”；覆盖行说明 0/1 页读取并保留页面失败，不误报完整空收藏。 |
-| `collection-intelligence-partial-empty` | 360 CSS px | `collection-intelligence-partial-empty-w360.png` (360×900) | `4d520b4ea2dee20810690629e5a1f01872fc9803fc51326fb66dfb1b36318f2e` | 无溢出；预期文案齐全；图片元素 0 | 360px：标题、源报告 3 条、读取失败与不能确认空集合的提示层级清楚，说明文字正常换行。 |
-| `collection-intelligence-partial-empty` | 520 CSS px | `collection-intelligence-partial-empty-w520.png` (520×900) | `194d9962ec0cdb854d9ecdfebfd340da12aa2e852302d7c6482cd8a0486d4668` | 无溢出；预期文案齐全；图片元素 0 | 520px：部分空状态与读取失败说明分区明确；没有把 0 条观察样本改写成 0 条收藏。 |
-| `collection-intelligence-partial-empty` | 640 CSS px | `collection-intelligence-partial-empty-w640.png` (640×900) | `d9410dfef5dea49534be24537e512c51361bbaffba0042866a46a77173ed9d93` | 无溢出；预期文案齐全；图片元素 0 | 640px：状态、来源计数与失败原因横向清楚；“不能确认”提示保留，留白与其他窄幅卡片一致。 |
-| `collection-intelligence-partial-empty` | 960 CSS px | `collection-intelligence-partial-empty-w960.png` (960×900) | `ecb4970f57279ad32cd446a4e3c452319ebd52757835dd311242cb216d3e171c` | 无溢出；预期文案齐全；图片元素 0 | 960px：状态和失败说明在宽卡片内仍聚合成单一可扫读区块；没有扩散成误导性的成功空结果。 |
+| `collection-intelligence-partial-empty` | 320 CSS px | `collection-intelligence-partial-empty-w320.png` (320×900) | `c6a1777e772788c0fdce6a63b8bb0e6fcec6fb8f2f862c6713bed560e30653eb` | 无溢出；预期文案齐全；图片元素 0 | 320px：清楚显示“本次未观察到”与“不能确认收藏为空”；成功读取 1/1 页，但源报告 3 条，不误报完整空收藏。 |
+| `collection-intelligence-partial-empty` | 360 CSS px | `collection-intelligence-partial-empty-w360.png` (360×900) | `4ab9d2545fe17a7ebd1f9ab1e2e84877a5e047f86bf088ad2a0b8be1b2b2163b` | 无溢出；预期文案齐全；图片元素 0 | 360px：标题、源报告 3 条与成功读取 1/1 页的说明层级清楚，不能确认空集合的提示正常换行。 |
+| `collection-intelligence-partial-empty` | 520 CSS px | `collection-intelligence-partial-empty-w520.png` (520×900) | `445c20d9642065125394a738881bfba516fd503108ab46567364c940fb493810` | 无溢出；预期文案齐全；图片元素 0 | 520px：部分空状态与来源计数分区明确；没有把 0 条观察样本改写成 0 条收藏。 |
+| `collection-intelligence-partial-empty` | 640 CSS px | `collection-intelligence-partial-empty-w640.png` (640×900) | `a2e5cff4f589cfb5c8fc1ea59845ab74f1c6a47c1684d65d35a73f15bd87aa0b` | 无溢出；预期文案齐全；图片元素 0 | 640px：状态、来源计数与成功读取信息横向清楚；“不能确认”提示保留，留白与其他窄幅卡片一致。 |
+| `collection-intelligence-partial-empty` | 960 CSS px | `collection-intelligence-partial-empty-w960.png` (960×900) | `52ddd2dcc54662b53b2c81447bdbf85769d5dba0b190e1fb2068cabc58e8a26f` | 无溢出；预期文案齐全；图片元素 0 | 960px：状态与来源计数在宽卡片内仍聚合成单一可扫读区块；不把超出观察范围的条目误报为成功空结果。 |
 | `collection-intelligence-empty` | 320 CSS px | `collection-intelligence-empty-w320.png` (320×900) | `fb2c704d73f0607f454524a6c5bb309cf21b7b2ea8c96c60177b8a918066d035` | 无溢出；预期文案齐全；图片元素 0 | 320px：明确显示“暂无收藏条目”和完整空结果；没有将 0 条解释为服务失败。 |
 | `collection-intelligence-empty` | 360 CSS px | `collection-intelligence-empty-w360.png` (360×900) | `ffa381a2621c0ff60032fd449cc13eead39465e61bd801bf473c17e93625746a` | 无溢出；预期文案齐全；图片元素 0 | 360px：明确显示“暂无收藏条目”和完整空结果；没有将 0 条解释为服务失败。 |
 | `collection-intelligence-empty` | 520 CSS px | `collection-intelligence-empty-w520.png` (520×900) | `f7ebf56a89410763f0f31370779b9819581ccecd65d6270df059f3ed7980ffd9` | 无溢出；预期文案齐全；图片元素 0 | 520px：明确显示“暂无收藏条目”和完整空结果；没有将 0 条解释为服务失败。 |

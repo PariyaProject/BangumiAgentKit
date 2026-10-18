@@ -140,6 +140,25 @@ describe('CollectionIntelligenceService', () => {
     expect(JSON.stringify(result)).not.toContain('private comment');
   });
 
+  it('marks a successful empty first page partial when Bangumi reports more rows', async () => {
+    const fetchFn: typeof fetch = async () =>
+      new Response(JSON.stringify({ total: 3, limit: 20, offset: 0, data: [] }), { status: 200 });
+
+    const result = await new CollectionIntelligenceService(
+      buildClient(fetchFn),
+    ).getCollectionIntelligence('account-owner', { maxItems: 20 });
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage.sourceTotal).toBe(3);
+    expect(result.coverage.observedRows).toBe(0);
+    expect(result.coverage.pagesAttempted).toBe(1);
+    expect(result.coverage.pagesSucceeded).toBe(1);
+    expect(result.coverage.sourceExhausted).toBe(true);
+    expect(result.coverage.pageFailureOffset).toBeUndefined();
+    expect(result.warnings.map((warning) => warning.code)).toContain('PARTIAL_SCAN');
+    expect(result.warnings.map((warning) => warning.code)).not.toContain('UPSTREAM_PAGE_FAILURE');
+  });
+
   it('retains successful pages and marks a later upstream failure partial', async () => {
     const fetchFn: typeof fetch = async (input) => {
       const url = new URL(String(input));

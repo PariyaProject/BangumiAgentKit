@@ -89,11 +89,7 @@ function intelligenceCases(unavailable) {
   const complete = buildCollectionIntelligence(completeItems, sourceMetadata(2, 2, true));
   const partial = buildCollectionIntelligence(collectionItems(), sourceMetadata(80, 2, false));
   const empty = buildCollectionIntelligence([], sourceMetadata(0, 20, true));
-  const partialEmpty = buildCollectionIntelligence([], {
-    ...sourceMetadata(3, 20, false),
-    pagesSucceeded: 0,
-    pageFailureOffset: 0,
-  });
+  const partialEmpty = buildCollectionIntelligence([], sourceMetadata(3, 20, true));
   return [
     {
       id: 'collection-intelligence-complete',
@@ -332,6 +328,11 @@ function pairCollectionVisualCase(visualCase, authStatusFixture) {
     imageFacts.messageFacts = messageFacts;
   } else {
     const { coverage: sourceCoverage } = viewModel;
+    if (visualCase.id === 'collection-intelligence-partial-empty') {
+      assert.equal(sourceCoverage.pagesSucceeded, 1);
+      assert.equal(sourceCoverage.sourceExhausted, true);
+      assert.equal(sourceCoverage.pageFailureOffset, undefined);
+    }
     const sourceTotal =
       sourceCoverage.sourceTotal === undefined ? '未知' : sourceCoverage.sourceTotal;
     imageFacts = [

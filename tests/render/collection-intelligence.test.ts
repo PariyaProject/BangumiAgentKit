@@ -137,10 +137,9 @@ describe('collection-intelligence renderer', () => {
       requestedMaxItems: 20,
       pageSize: 20,
       pagesAttempted: 1,
-      pagesSucceeded: 0,
+      pagesSucceeded: 1,
       maxPages: 8,
-      sourceExhausted: false,
-      pageFailureOffset: 0,
+      sourceExhausted: true,
       paginationStalled: false,
       sourceTotalChanged: false,
       attemptedAt: '2026-08-14T00:00:00.000Z',
@@ -156,7 +155,8 @@ describe('collection-intelligence renderer', () => {
     expect(html).not.toContain('暂无收藏条目');
     expect(html).not.toContain('完整的空收藏结果');
     expect(message).toContain('源报告 3 条');
-    expect(message).toContain('成功读取 0/1 页');
+    expect(message).toContain('成功读取 1/1 页');
+    expect(message).not.toContain('读取失败');
     expect(message).toContain('不能确认收藏为空');
     expect(message).toContain('请重试以确认收藏范围');
   });
