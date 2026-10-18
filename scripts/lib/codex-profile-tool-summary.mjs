@@ -43,7 +43,10 @@ import {
 import { R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID } from './r04-render-series-watch-order-offline-fixture.mjs';
 import { R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID } from './r04-render-series-watch-order-offline-v2-fixture.mjs';
 import { TITLE_QUERY_RENDER_PROFILE_ID } from './title-query-render-agent-mcp-profile.mjs';
-import { C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID } from './c07-render-comparison-offline-profile.mjs';
+import {
+  C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+} from './c07-render-comparison-offline-profile.mjs';
 import {
   isG01RenderQueryOfflineProfileId,
   summarizeG01RenderQueryOfflineToolResult,
@@ -461,6 +464,7 @@ export function summarizeProfileToolResult(
     profileId === 'p06-render-person-profile-offline-agent-mcp-v2' ||
     profileId === 'c07-render-comparison-offline-agent-mcp-matrix-v1' ||
     profileId === C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID ||
+    profileId === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID ||
     profileId === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID ||
     profileId === R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID ||
     profileId === R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID

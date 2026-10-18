@@ -54,6 +54,30 @@ test('only blocked disabled web-search errors are classified as expected', () =>
     },
     {
       type: 'item.completed',
+      item: { id: 'web-2', type: 'error', message: 'The web search tool is unavailable.' },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'near-match-1',
+        type: 'error',
+        message: 'An unrelated backend request failed: Web Search is unavailable.',
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'near-match-2',
+        type: 'error',
+        message: 'The web search tool is unavailable while attempting a remote request.',
+      },
+    },
+    {
+      type: 'item.completed',
+      item: { id: 'near-match-3', type: 'error', message: 'The web-search tool is disabled.' },
+    },
+    {
+      type: 'item.completed',
       item: { id: 'unknown-1', type: 'error', message: 'MCP server did not start.' },
     },
     {
@@ -62,8 +86,8 @@ test('only blocked disabled web-search errors are classified as expected', () =>
     },
   ]);
   assert.deepEqual(summary, {
-    errorItemCount: 2,
-    blockedWebSearchErrorItemCount: 1,
-    unexpectedCodexErrorItemCount: 1,
+    errorItemCount: 6,
+    blockedWebSearchErrorItemCount: 2,
+    unexpectedCodexErrorItemCount: 4,
   });
 });

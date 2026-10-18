@@ -7,12 +7,14 @@ import {
 import {
   C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 import {
   assertC07RenderComparisonCandidateReviewGate,
   buildC07RenderComparisonOfflineCodexExecArgs,
   validateC07RenderComparisonOfflineRunnerArgs,
   validateC07RenderComparisonOfflineServerSummary,
+  isC07CodexErrorSummaryAcceptable,
 } from '../../scripts/acceptance/run-c07-render-comparison-offline-agent-mcp.mjs';
 
 const PROFILE = getAgentMcpProfileById('c07-render-comparison-offline-agent-mcp-matrix-v1');
@@ -157,6 +159,54 @@ test('C07 runner accepts only its single governed Run #95 entry point', () => {
   for (const args of [[], ['--run', '94'], ['--run', '95', '--retry'], ['--help', '--run']]) {
     assert.throws(() => validateC07RenderComparisonOfflineRunnerArgs(args));
   }
+});
+
+test('C07 v3 accepts only bounded classified disabled-web-search errors', () => {
+  const safe = {
+    errorItemCount: 3,
+    blockedWebSearchErrorItemCount: 3,
+    unexpectedCodexErrorItemCount: 0,
+  };
+  assert.equal(
+    isC07CodexErrorSummaryAcceptable(C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID, 3, safe),
+    true,
+  );
+  assert.equal(
+    isC07CodexErrorSummaryAcceptable(C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID, 3, safe),
+    false,
+  );
+  assert.equal(
+    isC07CodexErrorSummaryAcceptable(C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID, 4, {
+      ...safe,
+      errorItemCount: 4,
+      blockedWebSearchErrorItemCount: 4,
+    }),
+    false,
+  );
+  assert.equal(
+    isC07CodexErrorSummaryAcceptable(C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID, -1, {
+      errorItemCount: -1,
+      blockedWebSearchErrorItemCount: -1,
+      unexpectedCodexErrorItemCount: 0,
+    }),
+    false,
+  );
+  assert.equal(
+    isC07CodexErrorSummaryAcceptable(C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID, 2, {
+      errorItemCount: 2,
+      blockedWebSearchErrorItemCount: 1,
+      unexpectedCodexErrorItemCount: 1,
+    }),
+    false,
+  );
+  assert.equal(
+    isC07CodexErrorSummaryAcceptable(C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID, 1, {
+      errorItemCount: 0,
+      blockedWebSearchErrorItemCount: 0,
+      unexpectedCodexErrorItemCount: 0,
+    }),
+    false,
+  );
 });
 
 test('C07 Candidate gate requires exact CI, Base, and same-identity Luna Max PASS', () => {

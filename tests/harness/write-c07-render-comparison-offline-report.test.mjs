@@ -10,6 +10,7 @@ import {
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 import {
@@ -20,6 +21,7 @@ import {
 
 const PROFILE = getAgentMcpProfileById('c07-render-comparison-offline-agent-mcp-matrix-v1');
 const PROFILE_V2 = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID);
+const PROFILE_V3 = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID);
 const CI_RUN_ID = '38806371672';
 const CI_CHECKS = [
   'harness-control',
@@ -130,7 +132,14 @@ function fixtureInput(profile = PROFILE) {
     eventStreamParsed: true,
     turnCompleted: true,
     codexMcpToolEventCount: 1,
-    codexErrorItemCount: 0,
+    mcpToolErrorResultCount: 0,
+    codexErrorItemCount: profile.id === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID ? 3 : 0,
+    ...(profile.id === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID
+      ? {
+          blockedDisabledWebSearchErrorItemCount: 3,
+          unexpectedCodexErrorItemCount: 0,
+        }
+      : {}),
     nonMcpToolEventCount: 0,
     nonMcpToolTypes: [],
     shellToolCallCount: 0,
@@ -319,6 +328,51 @@ test('C07 v2 report is signed and validated against only the v2 profile identity
     );
     assert.equal(JSON.stringify(built.report).includes('合成样本 D'), false);
     assert.equal(JSON.stringify(built.report).includes('991224'), false);
+  } finally {
+    configureC07RenderComparisonOfflineReportProfile(PROFILE.id);
+  }
+});
+
+test('C07 v3 report signs only bounded disabled-web-search error counts', () => {
+  try {
+    const { input, keyPair } = fixtureInput(PROFILE_V3);
+    const built = buildC07RenderComparisonOfflineProfileReport(input, {
+      privateKey: keyPair.privateKey,
+    });
+    assert.equal(built.passed, true, JSON.stringify(built));
+    assert.equal(built.report.codexErrorItemCount, 3);
+    assert.equal(built.report.blockedDisabledWebSearchErrorItemCount, 3);
+    assert.equal(built.report.unexpectedCodexErrorItemCount, 0);
+    assert.equal(built.report.runnerReceipt.payload.blockedDisabledWebSearchErrorItemCount, 3);
+    assert.equal(
+      validateC07RenderComparisonOfflineProfileReport(built.report, input.claim).passed,
+      true,
+    );
+
+    const unexpected = {
+      ...input,
+      events: { ...input.events, unexpectedCodexErrorItemCount: 1 },
+    };
+    assert.equal(
+      buildC07RenderComparisonOfflineProfileReport(unexpected, {
+        privateKey: keyPair.privateKey,
+      }).passed,
+      false,
+    );
+    const overLimit = {
+      ...input,
+      events: {
+        ...input.events,
+        codexErrorItemCount: 4,
+        blockedDisabledWebSearchErrorItemCount: 4,
+      },
+    };
+    assert.equal(
+      buildC07RenderComparisonOfflineProfileReport(overLimit, {
+        privateKey: keyPair.privateKey,
+      }).passed,
+      false,
+    );
   } finally {
     configureC07RenderComparisonOfflineReportProfile(PROFILE.id);
   }

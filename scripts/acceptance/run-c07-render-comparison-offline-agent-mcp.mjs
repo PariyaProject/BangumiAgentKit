@@ -27,10 +27,13 @@ import { deriveP06CiRunEvidence as deriveProfileCiRunEvidence } from '../lib/p06
 import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
   assertC07RenderComparisonOfflineProfile,
   getC07RenderComparisonOfflineConfig,
 } from '../lib/c07-render-comparison-offline-profile.mjs';
+import { summarizeCodexErrorItems } from '../lib/codex-mcp-approval-config.mjs';
 import { persistC07OfflineVisualArtifactForInspection } from '../lib/c07-offline-visual-artifact-capture.mjs';
+import { validateC07V3VisualQaEvidence } from '../lib/c07-render-comparison-visual-qa.mjs';
 import {
   configureC07RenderComparisonOfflineReportProfile,
   validateC07RenderComparisonOfflineSanitizedReportFile,
@@ -47,6 +50,8 @@ const HARNESS_SCRIPT = path.join(ROOT, 'scripts/agent-harness.mjs');
 const MAX_STDOUT_BYTES = 8 * 1024 * 1024;
 const CODEX_TIMEOUT_MS = 10 * 60 * 1000;
 const BUILD_TIMEOUT_MS = 5 * 60 * 1000;
+const C07_V3_VISUAL_QA_MANIFEST_SHA256 =
+  'ce15f94b457a62a795a2ff26748e721be4e1ee9bd36bece1671f8d8246240c42';
 let CONFIG = getC07RenderComparisonOfflineConfig(C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID);
 let PROFILE = getAgentMcpProfileById(CONFIG.id);
 let ACKNOWLEDGEMENT = CONFIG.acknowledgement;
@@ -100,6 +105,25 @@ export function parseC07RenderComparisonOfflineRunnerArgs(args) {
 
 export function validateC07RenderComparisonOfflineRunnerArgs(args) {
   return parseC07RenderComparisonOfflineRunnerArgs(args).mode;
+}
+
+export function isC07CodexErrorSummaryAcceptable(profileId, eventCount, summary) {
+  if (
+    !Number.isSafeInteger(eventCount) ||
+    !Number.isSafeInteger(summary?.errorItemCount) ||
+    eventCount !== summary.errorItemCount
+  ) {
+    return false;
+  }
+  if (profileId !== C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID) {
+    return summary.errorItemCount === 0;
+  }
+  return (
+    summary.errorItemCount >= 0 &&
+    summary.errorItemCount <= 3 &&
+    summary.blockedWebSearchErrorItemCount === summary.errorItemCount &&
+    summary.unexpectedCodexErrorItemCount === 0
+  );
 }
 
 function environment(source = process.env, allowGitHub = false) {
@@ -475,7 +499,13 @@ function readProfileDisposition(prNumber) {
   return status.disposition;
 }
 
-function persistProfileResult(prNumber, claimId, state, reportSha256 = null) {
+function persistProfileResult(
+  prNumber,
+  claimId,
+  state,
+  reportSha256 = null,
+  failureDiagnostics = null,
+) {
   const args = [
     'epoch:agent-mcp-profile-result',
     '--run',
@@ -490,6 +520,7 @@ function persistProfileResult(prNumber, claimId, state, reportSha256 = null) {
     state,
   ];
   if (reportSha256) args.push('--report-sha256', reportSha256);
+  if (failureDiagnostics) args.push('--diagnostics-json', JSON.stringify(failureDiagnostics));
   return runHarness(args);
 }
 
@@ -502,8 +533,15 @@ function recordInconclusive(
   claimId,
   reportSha256 = null,
   reasonCode = 'C07_RENDER_COMPARISON_RUN_INCONCLUSIVE',
+  failureDiagnostics = null,
 ) {
-  const result = persistProfileResult(prNumber, claimId, 'INCONCLUSIVE', reportSha256);
+  const result = persistProfileResult(
+    prNumber,
+    claimId,
+    'INCONCLUSIVE',
+    reportSha256,
+    failureDiagnostics,
+  );
   if (result.exitCode !== 0) {
     printSafe({
       state: 'INCONCLUSIVE_ACK_PENDING',
@@ -639,6 +677,19 @@ function runC07RenderComparisonOffline({
       'C07_RENDER_COMPARISON active Epoch, Candidate, Base, or reviewer changed during preflight.',
     );
 
+  if (
+    CONFIG.id === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID &&
+    !validateC07V3VisualQaEvidence({
+      root: ROOT,
+      expectedManifestSha256: C07_V3_VISUAL_QA_MANIFEST_SHA256,
+      expectedBundleSha256: bundleSha256,
+    })
+  ) {
+    throw new Error(
+      'C07 v3 visual QA is missing, unreviewed, or stale; refusing the permanent one-shot claim.',
+    );
+  }
+
   const keyPair = generateKeyPairSync('ed25519');
   const publicKeyBase64 = keyPair.publicKey
     .export({ type: 'spki', format: 'der' })
@@ -706,9 +757,21 @@ function runC07RenderComparisonOffline({
     const execution = invokeCodex({ summaryPath, sourceRevision, bundleSha256 });
     const parsed = parseCodexJsonl(execution.stdout);
     const events = summarizeCodexEvents(parsed.events);
+    const codexErrorSummary = summarizeCodexErrorItems(parsed.events);
+    const codexErrorCountsMatch = codexErrorSummary.errorItemCount === events.codexErrorItemCount;
+    const safeWebSearchErrorClassification = isC07CodexErrorSummaryAcceptable(
+      CONFIG.id,
+      events.codexErrorItemCount,
+      codexErrorSummary,
+    );
     const serverSummaryBytes = existsSync(summaryPath) ? readFileSync(summaryPath) : null;
     const serverSummary = serverSummaryBytes ? readServerSummary(summaryPath) : null;
-    if (CONFIG.id === C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID) {
+    if (
+      [
+        C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+        C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+      ].includes(CONFIG.id)
+    ) {
       const artifact = serverSummary?.results?.[0]?.resultSummary?.artifact;
       localVisualArtifact = persistC07OfflineVisualArtifactForInspection({
         profileId: CONFIG.id,
@@ -731,6 +794,7 @@ function runC07RenderComparisonOffline({
       eventStreamParsed: parsed.parsed === true && events.eventStreamComplete === true,
       turnCompleted: events.turnCompleted === true,
       codexMcpToolEventCount: events.codexMcpToolEventCount,
+      mcpToolErrorResultCount: events.mcpToolErrorResultCount,
       codexErrorItemCount: events.codexErrorItemCount,
       nonMcpToolEventCount: events.nonMcpToolEventCount,
       nonMcpToolTypes: safeCodexNonMcpEventSummary(events).nonMcpToolTypes,
@@ -738,13 +802,21 @@ function runC07RenderComparisonOffline({
       mcpServerNames: events.mcpServerNames,
       allowedCallCount: serverSummary?.allowedCallCount ?? 0,
       deniedCallCount: serverSummary?.deniedCallCount ?? null,
+      ...(CONFIG.id === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID
+        ? {
+            blockedDisabledWebSearchErrorItemCount:
+              codexErrorSummary.blockedWebSearchErrorItemCount,
+            unexpectedCodexErrorItemCount: codexErrorSummary.unexpectedCodexErrorItemCount,
+          }
+        : {}),
     };
     const passed =
       !execution.failed &&
       safeEvents.eventStreamParsed &&
       safeEvents.turnCompleted &&
       safeEvents.codexMcpToolEventCount === 1 &&
-      safeEvents.codexErrorItemCount === 0 &&
+      safeEvents.mcpToolErrorResultCount === 0 &&
+      safeWebSearchErrorClassification &&
       safeEvents.nonMcpToolEventCount === 0 &&
       safeEvents.shellToolCallCount === 0 &&
       canonicalAgentMcpProfileJson(safeEvents.mcpServerNames) ===
@@ -752,7 +824,11 @@ function runC07RenderComparisonOffline({
       exactCall &&
       exactToolEvent &&
       events.answer === ACKNOWLEDGEMENT &&
-      (CONFIG.id !== C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID || localVisualArtifact !== null) &&
+      (![
+        C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+        C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+      ].includes(CONFIG.id) ||
+        localVisualArtifact !== null) &&
       validateC07RenderComparisonOfflineServerSummary(
         serverSummary,
         sourceRevision,
@@ -760,11 +836,52 @@ function runC07RenderComparisonOffline({
       ) &&
       assertCurrentCandidateBundle(sourceRevision, bundleSha256);
     if (!passed) {
+      const failureDiagnostics =
+        CONFIG.id === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID
+          ? {
+              schemaVersion: 1,
+              reasonCode: 'C07_RENDER_COMPARISON_AGENT_MCP_ASSERTION_FAILED',
+              checks: {
+                codexErrorCountsMatch,
+                safeWebSearchErrorClassification,
+                eventStreamParsed: safeEvents.eventStreamParsed,
+                turnCompleted: safeEvents.turnCompleted,
+                mcpToolErrorResultCountZero: safeEvents.mcpToolErrorResultCount === 0,
+                serverSummaryValid: validateC07RenderComparisonOfflineServerSummary(
+                  serverSummary,
+                  sourceRevision,
+                  bundleSha256,
+                ),
+                answerValid: events.answer === ACKNOWLEDGEMENT,
+                candidateBundleCurrent: assertCurrentCandidateBundle(sourceRevision, bundleSha256),
+                codexExecutionSucceeded: !execution.failed,
+                artifactValid: Boolean(localVisualArtifact),
+              },
+              counters: {
+                codexMcpToolEvents: events.codexMcpToolEventCount,
+                codexErrorItems: codexErrorSummary.errorItemCount,
+                mcpToolErrorResults: events.mcpToolErrorResultCount,
+                blockedDisabledWebSearchErrors: codexErrorSummary.blockedWebSearchErrorItemCount,
+                unexpectedCodexErrors: codexErrorSummary.unexpectedCodexErrorItemCount,
+                nonMcpToolEvents: events.nonMcpToolEventCount,
+                shellCalls: events.shellToolCallCount,
+                allowedToolCalls: serverSummary?.allowedCallCount ?? null,
+                deniedToolCalls: serverSummary?.deniedCallCount ?? null,
+                httpRequests: serverSummary?.offlineFixture?.requestCount ?? null,
+                artifactBytes:
+                  serverSummary?.results?.[0]?.resultSummary?.artifact?.byteLength ?? null,
+                artifactWidth: serverSummary?.results?.[0]?.resultSummary?.artifact?.width ?? null,
+                artifactHeight:
+                  serverSummary?.results?.[0]?.resultSummary?.artifact?.height ?? null,
+              },
+            }
+          : null;
       recordInconclusive(
         prNumber,
         claim.claimId,
         null,
         'C07_RENDER_COMPARISON_AGENT_MCP_ASSERTION_FAILED',
+        failureDiagnostics,
       );
       return 1;
     }

@@ -23,6 +23,28 @@ function assertOneShotRuntimeIsHarnessOwned(record) {
   );
 }
 
+test('C07 v3 renderer matrix selection keeps the scenario unassessed and binds its visual QA receipt', () => {
+  const record = ledger.records.find(({ id }) => id === 'C07');
+  assert.ok(record, 'C07 must remain in the canonical frontier');
+  assert.equal(record.status, 'UNASSESSED');
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v3-contract-2026-10-18.md',
+    ),
+  );
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v3-visual-qa-2026-10-18.json',
+    ),
+  );
+  assert.ok(record.source_refs.includes('docs/product/g26-mcp-bundle-attestation.json'));
+  assert.ok(record.source_refs.includes('scripts/lib/c07-render-comparison-visual-qa.mjs'));
+  assert.ok(record.source_refs.includes('scripts/lib/c07-render-comparison-visual-qa.d.mts'));
+  assert.match(record.next_action, /Luna Max round 1 is Harness-persisted as CORRECTIVE_REQUIRED/u);
+  assert.match(record.next_action, /binds the receipt to the exact built MCP bundle/u);
+  assert.match(record.next_action, /No v3 call or report exists yet/u);
+});
+
 test('consumed Run 95 S03 one-shot stays partial and cannot be retried', () => {
   const record = ledger.records.find(({ id }) => id === 'S03');
   assert.ok(record, 'S03 must remain in the canonical frontier');

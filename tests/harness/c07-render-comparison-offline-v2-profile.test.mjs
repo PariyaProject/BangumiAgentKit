@@ -8,6 +8,7 @@ import {
 import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
   assertC07RenderComparisonOfflineProfile,
   getC07RenderComparisonOfflineConfig,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
@@ -26,6 +27,8 @@ const REQUIRED = [
 const V1 = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID);
 const V2 = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID);
 const V2_CONFIG = getC07RenderComparisonOfflineConfig(V2.id);
+const V3 = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID);
+const V3_CONFIG = getC07RenderComparisonOfflineConfig(V3.id);
 
 test('C07 v2 is distinct and cannot accept v1 profile fields or arguments', () => {
   assert.equal(assertC07RenderComparisonOfflineProfile(V2), true);
@@ -69,7 +72,7 @@ test('C07 v2 MCP profile selects only its exact offline fixture route', async ()
   assert.equal(fixture.snapshot().expectedOperationsComplete, true);
 });
 
-test('C07 v2 runner and artifact projection recognize only the v2 registry identity', () => {
+test('C07 v2 and v3 runners recognize only their exact registry identities', async () => {
   assert.equal(
     validateC07RenderComparisonOfflineRunnerArgs([
       '--run',
@@ -79,14 +82,34 @@ test('C07 v2 runner and artifact projection recognize only the v2 registry ident
     ]),
     'run',
   );
-  assert.throws(() =>
+  assert.equal(
     validateC07RenderComparisonOfflineRunnerArgs([
       '--run',
       '95',
       '--profile-id',
-      'c07-render-comparison-offline-agent-mcp-matrix-v3',
+      C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
     ]),
+    'run',
   );
+  assert.equal(assertC07RenderComparisonOfflineProfile(V3), true);
+  assert.equal(V3_CONFIG.subjectId, 991226);
+  assert.notDeepEqual(V3.calls[0].arguments, V2.calls[0].arguments);
+  const v3ServerConfig = parseCodexOneToolMcpArguments(['--profile-id', V3.id, ...REQUIRED]);
+  assert.equal(v3ServerConfig.profile.id, V3.id);
+  assert.equal(v3ServerConfig.networkMode, V3_CONFIG.networkMode);
+  assert.deepEqual(v3ServerConfig.expectedArgumentSequence, [V3_CONFIG.expectedArguments]);
+  const v3Fixture = createC07RenderComparisonOfflineFetch(V3);
+  const v3Search = await v3Fixture.fetchFn(
+    'https://api.bgm.tv/v0/search/subjects?limit=20&offset=0',
+    {
+      method: 'POST',
+      body: JSON.stringify({ keyword: V3_CONFIG.keyword, sort: 'match', filter: { type: [2] } }),
+    },
+  );
+  const v3Detail = await v3Fixture.fetchFn(`https://api.bgm.tv/v0/subjects/${V3_CONFIG.subjectId}`);
+  assert.equal((await v3Search.json()).data[0].id, 991226);
+  assert.equal((await v3Detail.json()).id, 991226);
+  assert.equal(v3Fixture.snapshot().expectedOperationsComplete, true);
   const summary = summarizeProfileToolResult(
     { artifact: { id: 'ephemeral-v2-artifact' } },
     V2_CONFIG.expectedArguments,
@@ -106,4 +129,24 @@ test('C07 v2 runner and artifact projection recognize only the v2 registry ident
   assert.equal(summary.resultState, 'artifact_returned');
   assert.equal(summary.artifact.width, 640);
   assert.equal(JSON.stringify(summary).includes('ephemeral-v2-artifact'), false);
+
+  const v3Summary = summarizeProfileToolResult(
+    { artifact: { id: 'ephemeral-v3-artifact' } },
+    V3_CONFIG.expectedArguments,
+    V3.id,
+    {
+      returned: true,
+      persisted: false,
+      mimeType: 'image/png',
+      width: 640,
+      height: 480,
+      byteLength: 1234,
+      sha256: 'd'.repeat(64),
+      pngSignatureValid: true,
+    },
+    'bangumi.render_subject_cohort_comparison',
+  );
+  assert.equal(v3Summary.resultState, 'artifact_returned');
+  assert.equal(v3Summary.artifact.width, 640);
+  assert.equal(JSON.stringify(v3Summary).includes('ephemeral-v3-artifact'), false);
 });

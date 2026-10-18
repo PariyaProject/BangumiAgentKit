@@ -9474,6 +9474,24 @@ class G01OfflineProfileStaticMarkerTests(unittest.TestCase):
         self.assertIn('do not replay the consumed G01 Agent/MCP canary', record['next_action'])
 
 
+class C07CurrentCandidateImplementationMarkerTests(unittest.TestCase):
+    def test_current_candidate_has_all_c07_report_gate_markers_without_mocks(self):
+        revision = subprocess.run(
+            ['git', 'rev-parse', 'HEAD'],
+            cwd=GENERATOR.ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+        self.assertRegex(revision, r'^[0-9a-f]{40}$')
+        self.assertTrue(
+            GENERATOR.codex_c07_render_comparison_offline_profile_revision_has_implementation(
+                revision,
+            ),
+        )
+
+
 class C07RenderComparisonOfflineProfileReportValidationTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='c07-render-comparison-offline-report-test-')
@@ -9587,7 +9605,11 @@ class C07RenderComparisonOfflineProfileReportValidationTests(unittest.TestCase):
         }
 
     def validate_report(self, report):
-        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        return self.validate_report_at(report, self.report_path)
+
+    def validate_report_at(self, report, report_path):
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
 
         def validate_embedded_report(args, **kwargs):
             payload = json.loads(kwargs['input'])
@@ -9606,13 +9628,71 @@ class C07RenderComparisonOfflineProfileReportValidationTests(unittest.TestCase):
             patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
         ):
             return GENERATOR.codex_c07_render_comparison_offline_profile_report_is_valid(
-                report, harness_status={'fixture': True}, report_path=self.report_path,
+                report,
+                harness_status={'fixture': True},
+                report_path=report_path,
                 epoch_status={'fixture': True},
             )
+
+    def build_v3_report(self):
+        profile = GENERATOR.CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V3
+        report = json.loads(json.dumps(self.report))
+        registry_sha256, expected_arguments_sha256 = (
+            GENERATOR.codex_c07_render_comparison_offline_profile_hashes(profile)
+        )
+        selection_path = self.root / profile['selectionEvidencePath']
+        selection_path.parent.mkdir(parents=True, exist_ok=True)
+        selection_path.write_bytes(
+            (self.originals[0] / profile['selectionEvidencePath']).read_bytes(),
+        )
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier = json.loads(frontier_path.read_text(encoding='utf-8'))
+        c07 = next(record for record in frontier['records'] if record['id'] == 'C07')
+        c07['source_refs'].extend([profile['reportPath'], profile['selectionEvidencePath']])
+        frontier_path.write_text(json.dumps(frontier), encoding='utf-8')
+
+        report.update({
+            'evidenceKind': profile['evidenceKind'],
+            'epochId': profile['epochId'],
+            'profileId': profile['id'],
+            'argumentProfile': profile['argumentProfile'],
+            'expectedArgumentsSha256': expected_arguments_sha256,
+            'registrySha256': registry_sha256,
+            'selectionEvidenceSha256': hashlib.sha256(selection_path.read_bytes()).hexdigest(),
+            'networkMode': profile['networkMode'],
+            'answerCheckMethod': profile['answerCheckMethod'],
+            'codexErrorItemCount': 3,
+            'blockedDisabledWebSearchErrorItemCount': 3,
+            'unexpectedCodexErrorItemCount': 0,
+        })
+        report['runnerReceipt']['kind'] = 'c07-render-comparison-offline-runner-receipt-v3'
+        report['runnerReceipt']['payload'].update({
+            'blockedDisabledWebSearchErrorItemCount': 3,
+            'unexpectedCodexErrorItemCount': 0,
+        })
+        report['offlineFixture']['profile'] = profile['networkMode']
+        return report
 
     def test_accepts_one_synthetic_matrix_report_while_C07_remains_unassessed(self):
         self.assertTrue(GENERATOR.codex_c07_render_comparison_offline_frontier_is_unassessed())
         self.assertTrue(self.validate_report(self.report))
+
+    def test_v3_report_accepts_only_bounded_safe_web_search_error_counts(self):
+        profile = GENERATOR.CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V3
+        report = self.build_v3_report()
+        path = self.root / profile['reportPath']
+        self.assertTrue(self.validate_report_at(report, path))
+
+        unexpected = json.loads(json.dumps(report))
+        unexpected['unexpectedCodexErrorItemCount'] = 1
+        unexpected['runnerReceipt']['payload']['unexpectedCodexErrorItemCount'] = 1
+        self.assertFalse(self.validate_report_at(unexpected, path))
+
+        over_limit = json.loads(json.dumps(report))
+        over_limit['codexErrorItemCount'] = 4
+        over_limit['blockedDisabledWebSearchErrorItemCount'] = 4
+        over_limit['runnerReceipt']['payload']['blockedDisabledWebSearchErrorItemCount'] = 4
+        self.assertFalse(self.validate_report_at(over_limit, path))
 
     def test_rejects_scenario_credit_network_expansion_and_raw_fields(self):
         scenario_credit = json.loads(json.dumps(self.report))

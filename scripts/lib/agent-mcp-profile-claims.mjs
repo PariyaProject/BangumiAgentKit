@@ -33,6 +33,8 @@ const PROFILE_DIAGNOSTIC_CHECKS = new Set([
   'processSpawned',
   'processTimedOut',
   'invocationStateUnknown',
+  'codexErrorCountsMatch',
+  'safeWebSearchErrorClassification',
 ]);
 const PROFILE_DIAGNOSTIC_REASON_CODES = new Set([
   'A01_AGGREGATE_MATRIX_AGENT_MCP_ASSERTION_FAILED',
@@ -156,10 +158,14 @@ const PROFILE_DIAGNOSTIC_REASON_CODES = new Set([
   'G01_RENDER_QUERY_PREINVOKE_GATE_MISMATCH',
   'G01_RENDER_QUERY_REPORT_BUILD_FAILED',
   'G01_RENDER_QUERY_RUNNER_FAILED_AFTER_CLAIM',
+  'C07_RENDER_COMPARISON_AGENT_MCP_ASSERTION_FAILED',
+  'C07_RENDER_COMPARISON_REPORT_BUILD_FAILED',
 ]);
 const PROFILE_DIAGNOSTIC_COUNTERS = new Set([
   'codexMcpToolEvents',
   'codexErrorItems',
+  'blockedDisabledWebSearchErrors',
+  'unexpectedCodexErrors',
   'mcpToolErrorResults',
   'nonMcpToolEvents',
   'shellCalls',

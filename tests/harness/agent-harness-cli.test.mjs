@@ -104,6 +104,7 @@ import {
 import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 import {
@@ -7380,6 +7381,20 @@ test('C07 renderer matrix v2 Epoch uses its own profile and merges a terminal no
   const environment = c07RenderComparisonOfflineMergeEnvironment({
     terminal: true,
     profileId: C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(parseControlBlock(environment.readState().prBody, EPOCH_MARKER).state, 'MERGED');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C07 renderer matrix v3 Epoch uses its own profile and merges a terminal no-credit result', () => {
+  const environment = c07RenderComparisonOfflineMergeEnvironment({
+    terminal: true,
+    profileId: C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
   });
   try {
     const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);

@@ -69,6 +69,7 @@ import {
 } from '../../scripts/lib/g01-query-subjects-offline-matrix-fixture.mjs';
 import {
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
   isC07RenderComparisonOfflineNetworkMode,
   isC07RenderComparisonOfflineProfileId,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
@@ -715,7 +716,12 @@ async function main(argv = process.argv.slice(2)) {
             isError: true,
           };
         }
-        if (config.profile?.id === C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID) {
+        if (
+          [
+            C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+            C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+          ].includes(config.profile?.id)
+        ) {
           const pngBytes = artifactStore.copyPngBufferForLocalVisualInspection(
             result?.artifact?.id,
           );
