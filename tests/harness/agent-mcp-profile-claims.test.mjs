@@ -95,7 +95,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 29);
+  assert.equal(listAgentMcpProfiles().length, 30);
   const p06OfflineV2 = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v2');
   assert.ok(p06OfflineV2);
   assert.equal(p06OfflineV2.epochId, 'run95-p06-render-person-profile-visual-matrix-v2-20261018');
@@ -117,6 +117,19 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(c07RenderComparison.acceptanceScope, 'agent-mcp-matrix-only');
   assert.equal(c07RenderComparison.networkMode, 'run95-c07-render-comparison-synthetic-offline-v1');
   assert.equal(c07RenderComparison.claimLabelName, 'harness-r95-c07-cohort-render-offline-claimed');
+  const c07RenderComparisonV2 = getAgentMcpProfileById(
+    'c07-render-comparison-offline-agent-mcp-matrix-v2',
+  );
+  assert.ok(c07RenderComparisonV2);
+  assert.equal(
+    c07RenderComparisonV2.epochId,
+    'run95-c07-render-comparison-offline-agent-mcp-matrix-v2-20261018',
+  );
+  assert.equal(
+    c07RenderComparisonV2.argumentProfile,
+    'fixed-c07-synthetic-cohort-d-render-comparison-matrix-v2',
+  );
+  assert.notDeepEqual(c07RenderComparisonV2.calls, c07RenderComparison.calls);
   const g01RenderQuery = getAgentMcpProfileById('g01-render-query-subjects-offline-agent-mcp-v1');
   assert.ok(g01RenderQuery);
   assert.equal(g01RenderQuery.frontierId, 'G01');

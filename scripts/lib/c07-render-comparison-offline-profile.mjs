@@ -85,7 +85,7 @@ const CONFIGS = new Map([
       reportPath: 'docs/live-probes/c07-render-comparison-offline-agent-mcp-matrix-v2-run95.json',
       selectionEvidencePath:
         'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v2-contract-2026-10-18.md',
-      claimLabelName: 'harness-r95-c07-cohort-render-offline-matrix-v2-claimed',
+      claimLabelName: 'harness-r95-c07-render-v2-claimed',
       evidenceKind: 'codex_cli_c07_render_comparison_offline_agent_mcp_matrix_v2',
       answerCheckMethod: 'c07-exact-synthetic-render-comparison-execution-only-v2',
       keyword: 'run95 c07 synthetic cohort d offline matrix 20261018',

@@ -62,10 +62,14 @@ field/formula labels, and replace exposed warning codes with concise user
 language. It does not test OAuth, callback HTML, post-auth user messages, or
 QQ/TIM client display. No OAuth-specific image has been generated or inspected.
 
-The MCP result itself is a separate artifact: after the one permitted call,
-record its sanitized PNG metadata and inspect the local artifact once without
-persisting image bytes in the signed report. If the invocation is inconclusive,
-keep it terminal and no-credit; never rerun it to obtain a better-looking image.
+The MCP result itself is a separate artifact. For the exact v2 profile, the
+server writes a create-only PNG copy beside its temporary summary file. The
+runner verifies its byte length and SHA-256 against the sanitized summary, then
+copies it to ignored `.artifacts/render/` output and returns the local path for
+individual inspection. Those bytes never enter the signed report or Git. If
+capture or hash verification fails after the claim, the result is terminal
+INCONCLUSIVE/no-report/no-retry; never rerun the profile to obtain a better
+image.
 
 ## Gates and credit
 

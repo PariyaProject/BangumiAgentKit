@@ -68,9 +68,11 @@ import {
   createG01QuerySubjectsOfflineFetch,
 } from '../../scripts/lib/g01-query-subjects-offline-matrix-fixture.mjs';
 import {
+  C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   isC07RenderComparisonOfflineNetworkMode,
   isC07RenderComparisonOfflineProfileId,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
+import { writeC07OfflineVisualArtifactTempCopy } from '../../scripts/lib/c07-offline-visual-artifact-capture.mjs';
 import {
   getG01RenderQueryOfflineProfileSpec,
   isG01RenderQueryOfflineProfileId,
@@ -215,6 +217,12 @@ class MemoryArtifactStore {
 
   async resolveFilePath(_id) {
     return null;
+  }
+
+  copyPngBufferForLocalVisualInspection(id) {
+    const item = this.artifacts.get(id);
+    if (!item || item.mimeType !== 'image/png') return null;
+    return Buffer.from(item.buffer);
   }
 
   async cleanExpiredArtifacts() {
@@ -696,6 +704,23 @@ async function main(argv = process.argv.slice(2)) {
             ],
             isError: true,
           };
+        }
+        if (config.profile?.id === C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID) {
+          const pngBytes = artifactStore.copyPngBufferForLocalVisualInspection(
+            result?.artifact?.id,
+          );
+          if (!pngBytes) {
+            throw new Error('C07_LOCAL_VISUAL_ARTIFACT_CAPTURE_FAILED');
+          }
+          try {
+            writeC07OfflineVisualArtifactTempCopy({
+              profileId: config.profile.id,
+              summaryPath: config.summaryPath,
+              pngBytes,
+            });
+          } catch {
+            throw new Error('C07_LOCAL_VISUAL_ARTIFACT_CAPTURE_FAILED');
+          }
         }
         if (config.profile) {
           const artifactSummary =

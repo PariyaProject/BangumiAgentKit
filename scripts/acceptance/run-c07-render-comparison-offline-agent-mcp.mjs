@@ -26,9 +26,11 @@ import {
 import { deriveP06CiRunEvidence as deriveProfileCiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   assertC07RenderComparisonOfflineProfile,
   getC07RenderComparisonOfflineConfig,
 } from '../lib/c07-render-comparison-offline-profile.mjs';
+import { persistC07OfflineVisualArtifactForInspection } from '../lib/c07-offline-visual-artifact-capture.mjs';
 import {
   configureC07RenderComparisonOfflineReportProfile,
   validateC07RenderComparisonOfflineSanitizedReportFile,
@@ -680,6 +682,7 @@ function runC07RenderComparisonOffline({
   }
 
   let temporaryDirectory = null;
+  let localVisualArtifact = null;
   try {
     const beforeInvoke = readProfileStatus(prNumber);
     if (
@@ -705,6 +708,17 @@ function runC07RenderComparisonOffline({
     const events = summarizeCodexEvents(parsed.events);
     const serverSummaryBytes = existsSync(summaryPath) ? readFileSync(summaryPath) : null;
     const serverSummary = serverSummaryBytes ? readServerSummary(summaryPath) : null;
+    if (CONFIG.id === C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID) {
+      const artifact = serverSummary?.results?.[0]?.resultSummary?.artifact;
+      localVisualArtifact = persistC07OfflineVisualArtifactForInspection({
+        profileId: CONFIG.id,
+        summaryPath,
+        root: ROOT,
+        sourceRevision,
+        expectedSha256: artifact?.sha256,
+        expectedByteLength: artifact?.byteLength,
+      });
+    }
     const actualCall = events.completedMcpCalls[0];
     const exactCall =
       events.completedMcpCalls.length === 1 &&
@@ -738,6 +752,7 @@ function runC07RenderComparisonOffline({
       exactCall &&
       exactToolEvent &&
       events.answer === ACKNOWLEDGEMENT &&
+      (CONFIG.id !== C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID || localVisualArtifact !== null) &&
       validateC07RenderComparisonOfflineServerSummary(
         serverSummary,
         sourceRevision,
@@ -834,6 +849,7 @@ function runC07RenderComparisonOffline({
       claimId: claim.claimId,
       reportSha256: reportResult.reportSha256,
       retryAllowed: false,
+      ...(localVisualArtifact ? { visualInspectionPath: localVisualArtifact.relativePath } : {}),
     });
     return 0;
   } catch {

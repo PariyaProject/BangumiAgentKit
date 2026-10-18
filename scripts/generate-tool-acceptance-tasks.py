@@ -5492,6 +5492,11 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'authorizationHeaderCount',
         'rawFixturePayloadStored',
     ),
+    'scripts/lib/c07-offline-visual-artifact-capture.mjs': (
+        'writeC07OfflineVisualArtifactTempCopy(',
+        'persistC07OfflineVisualArtifactForInspection(',
+        'C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID',
+    ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
         "profileId === 'c07-render-comparison-offline-agent-mcp-matrix-v1'",
         'C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID',
@@ -5510,6 +5515,7 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'export function assertC07RenderComparisonCandidateReviewGate(',
         'export function buildC07RenderComparisonOfflineCodexExecArgs(',
         'export function validateC07RenderComparisonOfflineServerSummary(',
+        'persistC07OfflineVisualArtifactForInspection(',
         'function runC07RenderComparisonOffline(',
     ),
     'scripts/acceptance/write-c07-render-comparison-offline-agent-mcp-report.mjs': (
