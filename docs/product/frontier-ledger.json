@@ -2081,6 +2081,7 @@
         "docs/research/user-scenario-catalog.md",
         "docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-contract-2026-10-17.md",
         "docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v2-contract-2026-10-18.md",
+        "docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v3-contract-2026-10-18.md",
         "apps/mcp/codex-one-tool-mcp-server.mjs",
         "scripts/acceptance/run-c07-cohort-renderer-codex-agent-mcp.mjs",
         "scripts/lib/c07-cohort-render-offline-fixture.mjs",
