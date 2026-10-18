@@ -68,9 +68,11 @@ import {
   createG01QuerySubjectsOfflineFetch,
 } from '../../scripts/lib/g01-query-subjects-offline-matrix-fixture.mjs';
 import {
-  C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
-  C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  isC07RenderComparisonOfflineNetworkMode,
+  isC07RenderComparisonOfflineProfileId,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
+import { writeC07OfflineVisualArtifactTempCopy } from '../../scripts/lib/c07-offline-visual-artifact-capture.mjs';
 import {
   getG01RenderQueryOfflineProfileSpec,
   isG01RenderQueryOfflineProfileId,
@@ -217,6 +219,12 @@ class MemoryArtifactStore {
     return null;
   }
 
+  copyPngBufferForLocalVisualInspection(id) {
+    const item = this.artifacts.get(id);
+    if (!item || item.mimeType !== 'image/png') return null;
+    return Buffer.from(item.buffer);
+  }
+
   async cleanExpiredArtifacts() {
     return 0;
   }
@@ -295,7 +303,7 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE) {
     assertP02PersonProfileOfflineProfile(config.profile);
   }
-  if (config.networkMode === C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE) {
+  if (isC07RenderComparisonOfflineNetworkMode(config.networkMode)) {
     assertC07RenderComparisonOfflineFixtureProfile(config.profile);
   }
   if (getG01RenderQueryOfflineProfileSpec(config.profile)) {
@@ -402,8 +410,8 @@ async function main(argv = process.argv.slice(2)) {
                 P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
               ].includes(config.networkMode)
             ? createP06RenderPersonProfileOfflineFetch(config.profile?.id)
-            : config.networkMode === C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE
-              ? createC07RenderComparisonOfflineFetch()
+            : isC07RenderComparisonOfflineNetworkMode(config.networkMode)
+              ? createC07RenderComparisonOfflineFetch(config.profile)
               : getG01RenderQueryOfflineProfileSpec(config.profile)
                 ? createG01RenderQueryOfflineFetch(config.profile)
                 : config.networkMode === G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE
@@ -438,10 +446,9 @@ async function main(argv = process.argv.slice(2)) {
     ].includes(config.networkMode) && getP06RenderPersonProfileOfflineConfig(config.profile?.id)
       ? createP06RenderPersonProfileAssetGuard()
       : null;
-  const c07RenderComparisonAssetGuard =
-    config.profile?.id === C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID
-      ? createC07RenderComparisonOfflineAssetGuard()
-      : null;
+  const c07RenderComparisonAssetGuard = isC07RenderComparisonOfflineProfileId(config.profile?.id)
+    ? createC07RenderComparisonOfflineAssetGuard()
+    : null;
   const g01RenderQueryAssetResolver = isG01RenderQueryOfflineProfileId(config.profile?.id)
     ? createG01RenderQueryOfflineAssetResolver()
     : null;
@@ -698,10 +705,27 @@ async function main(argv = process.argv.slice(2)) {
             isError: true,
           };
         }
+        if (config.profile?.id === C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID) {
+          const pngBytes = artifactStore.copyPngBufferForLocalVisualInspection(
+            result?.artifact?.id,
+          );
+          if (!pngBytes) {
+            throw new Error('C07_LOCAL_VISUAL_ARTIFACT_CAPTURE_FAILED');
+          }
+          try {
+            writeC07OfflineVisualArtifactTempCopy({
+              profileId: config.profile.id,
+              summaryPath: config.summaryPath,
+              pngBytes,
+            });
+          } catch {
+            throw new Error('C07_LOCAL_VISUAL_ARTIFACT_CAPTURE_FAILED');
+          }
+        }
         if (config.profile) {
           const artifactSummary =
             getP06RenderPersonProfileOfflineConfig(config.profile.id) ||
-            config.profile.id === C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID ||
+            isC07RenderComparisonOfflineProfileId(config.profile.id) ||
             isG01RenderQueryOfflineProfileId(config.profile.id)
               ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
               : config.profile.id === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID

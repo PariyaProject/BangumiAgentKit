@@ -12,15 +12,31 @@ import {
 import { isValidP06CiRunEvidence as isValidProfileCiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   assertC07RenderComparisonOfflineProfile,
-  C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
+  C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
+  getC07RenderComparisonOfflineConfig,
 } from '../lib/c07-render-comparison-offline-profile.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const PROFILE = getAgentMcpProfileById('c07-render-comparison-offline-agent-mcp-matrix-v1');
-const REPORT_RELATIVE_PATH = PROFILE?.reportPath;
-const REPORT_PATH = path.join(ROOT, REPORT_RELATIVE_PATH ?? 'invalid-c07-report-path');
-const RECEIPT_KIND = 'c07-render-comparison-offline-runner-receipt-v1';
-const ACKNOWLEDGEMENT = 'C07_SYNTHETIC_COHORT_RENDERED';
+let CONFIG = getC07RenderComparisonOfflineConfig(C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID);
+let PROFILE = getAgentMcpProfileById(CONFIG.id);
+let REPORT_RELATIVE_PATH = PROFILE?.reportPath;
+let REPORT_PATH = path.join(ROOT, REPORT_RELATIVE_PATH ?? 'invalid-c07-report-path');
+let RECEIPT_KIND = CONFIG.receiptKind;
+let ACKNOWLEDGEMENT = CONFIG.acknowledgement;
+
+export function configureC07RenderComparisonOfflineReportProfile(profileId) {
+  const config = getC07RenderComparisonOfflineConfig(profileId);
+  const profile = config ? getAgentMcpProfileById(profileId) : null;
+  if (!config || !profile || !assertC07RenderComparisonOfflineProfile(profile)) {
+    throw new Error('C07 report writer requires an exact registered offline matrix profile.');
+  }
+  CONFIG = config;
+  PROFILE = profile;
+  REPORT_RELATIVE_PATH = profile.reportPath;
+  REPORT_PATH = path.join(ROOT, REPORT_RELATIVE_PATH);
+  RECEIPT_KIND = config.receiptKind;
+  ACKNOWLEDGEMENT = config.acknowledgement;
+}
 const REPORT_FIELDS = new Set([
   'schemaVersion',
   'evidenceKind',
@@ -322,6 +338,10 @@ function createRunnerReceipt(payload, { publicKeyBase64, privateKey }) {
 }
 
 export function validateC07RenderComparisonOfflineProfileReport(report, claim, reportBytes = null) {
+  const config = getC07RenderComparisonOfflineConfig(claim?.profileId);
+  if (config && PROFILE?.id !== config.id) {
+    configureC07RenderComparisonOfflineReportProfile(config.id);
+  }
   const claimStateValid =
     (claim?.state === 'CLAIMED' && claim.reportWritten === false) ||
     (claim?.state === 'REPORT_WRITTEN' &&
@@ -359,7 +379,7 @@ export function validateC07RenderComparisonOfflineProfileReport(report, claim, r
     credentialsStored: false,
   };
   const expectedFixture = {
-    profile: C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
+    profile: CONFIG.networkMode,
     requestCount: 2,
     searchRequestCount: 1,
     subjectDetailRequestCount: 1,
@@ -402,7 +422,7 @@ export function validateC07RenderComparisonOfflineProfileReport(report, claim, r
     report.toolName !== PROFILE.toolName ||
     report.argumentProfile !== PROFILE.argumentProfile ||
     report.expectedArgumentsSha256 !== expectedArgumentsSha256 ||
-    report.networkMode !== C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE ||
+    report.networkMode !== CONFIG.networkMode ||
     report.serverToolNames?.length !== 1 ||
     report.serverToolNames[0] !== PROFILE.toolName ||
     report.serverToolCount !== 1 ||
@@ -511,6 +531,10 @@ export function buildC07RenderComparisonOfflineProfileReport(
   },
   { privateKey } = {},
 ) {
+  const config = getC07RenderComparisonOfflineConfig(claim?.profileId);
+  if (config && PROFILE?.id !== config.id) {
+    configureC07RenderComparisonOfflineReportProfile(config.id);
+  }
   if (
     !PROFILE ||
     !assertC07RenderComparisonOfflineProfile(PROFILE) ||
@@ -538,7 +562,7 @@ export function buildC07RenderComparisonOfflineProfileReport(
     events.mcpServerNames[0] !== 'bgk_c07_render_comparison' ||
     serverSummary.profileId !== PROFILE.id ||
     serverSummary.serverProfile !== 'closed-profile-sequence-anonymous-offline-v1' ||
-    serverSummary.networkMode !== C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE ||
+    serverSummary.networkMode !== CONFIG.networkMode ||
     serverSummary.sourceRevision !== claim.sourceCandidateSha ||
     serverSummary.bundleSha256 !== claim.bundleSha256 ||
     serverSummary.toolName !== PROFILE.toolName ||
@@ -601,7 +625,7 @@ export function buildC07RenderComparisonOfflineProfileReport(
     inputSchemaSha256: serverSummary.inputSchemaSha256,
     serverToolNames: serverSummary.serverToolNames,
     serverToolCount: serverSummary.serverToolCount,
-    networkMode: C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
+    networkMode: CONFIG.networkMode,
     mcpServerNames: events.mcpServerNames,
     processExitCode: events.processExitCode,
     resultStatus: serverSummary.serverResultStatus,
@@ -709,6 +733,8 @@ export function validateC07RenderComparisonOfflineSanitizedReportFile(
   root = ROOT,
   reportPath = null,
 ) {
+  const config = getC07RenderComparisonOfflineConfig(claim?.profileId);
+  if (config) configureC07RenderComparisonOfflineReportProfile(config.id);
   if (!PROFILE || !claim || claim.profileId !== PROFILE.id) {
     return { passed: false, reason: 'C07_RENDER_COMPARISON_CLAIM_INVALID' };
   }

@@ -2457,6 +2457,17 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'c07-render-comparison-offline-agent-mcp-matrix-v1'
 )
+CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V2 = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'c07-render-comparison-offline-agent-mcp-matrix-v2'
+)
+CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILES = {
+    profile['id']: profile
+    for profile in (
+        CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE,
+        CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V2,
+    )
+}
 CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE['id']
 CODEX_C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE['epochId']
 CODEX_C07_RENDER_COMPARISON_OFFLINE_TOOL_NAME = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE['toolName']
@@ -2488,6 +2499,33 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_FIELDS = CODEX_P06_REPORT_FIELDS
 CODEX_C07_RENDER_COMPARISON_OFFLINE_ANSWER_CHECK_FIELDS = (
     CODEX_P06_ANSWER_CHECK_FIELDS - {'threeExpectedLocalResponses'}
 ) | {'twoExpectedLocalResponses'}
+
+
+def codex_c07_render_comparison_offline_profile_spec(profile: object) -> dict[str, object] | None:
+    profile_id = profile.get('profileId') if isinstance(profile, dict) and 'profileId' in profile else profile
+    return (
+        CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILES.get(profile_id)
+        if isinstance(profile_id, str)
+        else None
+    )
+
+
+def codex_c07_render_comparison_offline_profile_hashes(
+    profile: dict[str, object],
+) -> tuple[str, str]:
+    expected_arguments_sha256 = hashlib.sha256(json.dumps(
+        [call['arguments'] for call in profile['calls']],
+        sort_keys=True,
+        separators=(',', ':'),
+        ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+    registry_sha256 = hashlib.sha256(json.dumps(
+        profile,
+        sort_keys=True,
+        separators=(',', ':'),
+        ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+    return registry_sha256, expected_arguments_sha256
 CODEX_C07_RENDER_COMPARISON_OFFLINE_PRIVACY_FIELDS = CODEX_P06_PRIVACY_FIELDS
 CODEX_C07_RENDER_COMPARISON_OFFLINE_FIXTURE_FIELDS = {
     'profile', 'requestCount', 'searchRequestCount', 'subjectDetailRequestCount',
@@ -5436,12 +5474,17 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/agent-mcp-profile-registry.json': (
         '"id": "c07-render-comparison-offline-agent-mcp-matrix-v1"',
         '"networkMode": "run95-c07-render-comparison-synthetic-offline-v1"',
+        '"id": "c07-render-comparison-offline-agent-mcp-matrix-v2"',
+        '"networkMode": "run95-c07-render-comparison-synthetic-offline-matrix-v2"',
         '"toolName": "bangumi.render_subject_cohort_comparison"',
         'run95 c07 synthetic cohort c offline 20261017',
+        'run95 c07 synthetic cohort d offline matrix 20261018',
     ),
     'scripts/lib/c07-render-comparison-offline-profile.mjs': (
         'export function assertC07RenderComparisonOfflineProfile(',
         'C07_RENDER_COMPARISON_OFFLINE_EXPECTED_ARGUMENTS',
+        'C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID',
+        'C07_RENDER_COMPARISON_OFFLINE_V2_NETWORK_MODE',
     ),
     'scripts/lib/c07-render-comparison-offline-fixture.mjs': (
         'export function createC07RenderComparisonOfflineFetch(',
@@ -5449,14 +5492,20 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'authorizationHeaderCount',
         'rawFixturePayloadStored',
     ),
+    'scripts/lib/c07-offline-visual-artifact-capture.mjs': (
+        'writeC07OfflineVisualArtifactTempCopy(',
+        'persistC07OfflineVisualArtifactForInspection(',
+        'C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID',
+    ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
         "profileId === 'c07-render-comparison-offline-agent-mcp-matrix-v1'",
+        'C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID',
         'artifactSummary',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
-        'createC07RenderComparisonOfflineFetch()',
+        'createC07RenderComparisonOfflineFetch(config.profile)',
         'createC07RenderComparisonOfflineAssetGuard()',
-        'C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID',
+        'isC07RenderComparisonOfflineProfileId(config.profile?.id)',
     ),
     'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
         'assertC07RenderComparisonOfflineProfile(profile)',
@@ -5466,6 +5515,7 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'export function assertC07RenderComparisonCandidateReviewGate(',
         'export function buildC07RenderComparisonOfflineCodexExecArgs(',
         'export function validateC07RenderComparisonOfflineServerSummary(',
+        'persistC07OfflineVisualArtifactForInspection(',
         'function runC07RenderComparisonOffline(',
     ),
     'scripts/acceptance/write-c07-render-comparison-offline-agent-mcp-report.mjs': (
@@ -5479,6 +5529,7 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/agent-harness.mjs': (
         "case 'c07-render-comparison-offline-agent-mcp-matrix-v1'",
+        "case 'c07-render-comparison-offline-agent-mcp-matrix-v2'",
         'assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(',
     ),
     'docs/product/frontier-ledger.json': (
@@ -5488,6 +5539,10 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
     'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-contract-2026-10-17.md': (
         'The new closed fetch fixture will allow exactly one POST search and one GET subject detail response',
         'It does not answer the C07 scenario',
+    ),
+    'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v2-contract-2026-10-18.md': (
+        'The closed local fetch fixture may answer one exact anonymous',
+        'C07 remains `UNASSESSED`',
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_c07_render_comparison_offline_profile_report_is_valid(',
@@ -9077,23 +9132,30 @@ def codex_c07_render_comparison_offline_profile_revision_has_implementation(
 
 def codex_c07_render_comparison_offline_profile_report_matches_candidate_revision(
     report_path: Path, revision: object,
+    profile: dict[str, object] = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE,
 ) -> bool:
     if not codex_c07_render_comparison_offline_profile_revision_has_implementation(revision):
         return False
     return _codex_relations_report_matches_candidate_revision(
-        report_path, revision, CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_RELATIVE_PATH,
+        report_path, revision, profile['reportPath'],
     )
 
 
 def codex_c07_render_comparison_offline_profile_evidence_refresh_paths_are_valid(
     paths: object,
+    profile: dict[str, object] = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE,
 ) -> bool:
+    allowed_paths = {
+        profile['reportPath'],
+        'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+        'docs/product/frontier-ledger.json',
+    }
     return (
         isinstance(paths, (list, tuple, set, frozenset))
-        and CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_RELATIVE_PATH in paths
+        and profile['reportPath'] in paths
         and all(
             isinstance(item, str)
-            and item in CODEX_C07_RENDER_COMPARISON_OFFLINE_EVIDENCE_REFRESH_PATHS
+            and item in allowed_paths
             for item in paths
         )
     )
@@ -9104,6 +9166,7 @@ def codex_c07_render_comparison_offline_profile_candidate_binding_is_valid(
     epoch_status: object,
     changed_paths: object,
     current_bundle_sha256: object,
+    profile: dict[str, object] = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE,
 ) -> bool:
     if not isinstance(report, dict) or not isinstance(epoch_status, dict):
         return False
@@ -9140,7 +9203,7 @@ def codex_c07_render_comparison_offline_profile_candidate_binding_is_valid(
         and pr_number > 0
         and run.get('number') == 95
         and (active_pr or merged_pr)
-        and epoch.get('epoch_id') == CODEX_C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID
+        and epoch.get('epoch_id') == profile['epochId']
         and epoch.get('pr_number') == pr_number
         and epoch.get('base_branch') == 'master'
         and isinstance(branch, str)
@@ -9154,13 +9217,16 @@ def codex_c07_render_comparison_offline_profile_candidate_binding_is_valid(
         and epoch_result.get('pr_head_sha') == candidate_sha
         and isinstance(source_sha, str)
         and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
-        and codex_c07_render_comparison_offline_profile_evidence_refresh_paths_are_valid(changed_paths)
+        and codex_c07_render_comparison_offline_profile_evidence_refresh_paths_are_valid(
+            changed_paths, profile,
+        )
         and current_bundle_sha256 == report.get('mcpBundleSha256')
     )
 
 
 def codex_c07_render_comparison_offline_profile_report_candidate_binding_is_current(
     report: dict[str, object], epoch_status: object,
+    profile: dict[str, object] = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE,
 ) -> bool:
     candidate = None
     if isinstance(epoch_status, dict):
@@ -9170,7 +9236,7 @@ def codex_c07_render_comparison_offline_profile_report_candidate_binding_is_curr
     paths = _codex_p06_profile_report_candidate_paths(report.get('sourceRevision'), candidate)
     bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
     return codex_c07_render_comparison_offline_profile_candidate_binding_is_valid(
-        report, epoch_status, paths, bundle_sha256,
+        report, epoch_status, paths, bundle_sha256, profile,
     )
 
 
@@ -9194,6 +9260,7 @@ def codex_c07_render_comparison_offline_profile_epoch_harness_status(
 
 def codex_c07_render_comparison_offline_profile_harness_status(
     pr_number: object,
+    profile: dict[str, object] = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE,
 ) -> dict[str, object] | None:
     if type(pr_number) is not int or pr_number < 1:
         return None
@@ -9202,7 +9269,7 @@ def codex_c07_render_comparison_offline_profile_harness_status(
             [
                 'node', str(ROOT / 'scripts/agent-harness.mjs'),
                 'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
-                '--profile-id', CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
+                '--profile-id', profile['id'],
             ],
             cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
         )
@@ -9216,19 +9283,23 @@ def codex_c07_render_comparison_offline_profile_harness_status(
 
 def codex_c07_render_comparison_offline_profile_disposition_matches_report(
     report: dict[str, object], harness_status: object, report_sha256: object,
+    profile: dict[str, object] = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE,
 ) -> dict[str, object] | None:
     if not isinstance(harness_status, dict):
         return None
     receipt = report.get('runnerReceipt')
     disposition = harness_status.get('disposition')
+    registry_sha256, expected_arguments_sha256 = codex_c07_render_comparison_offline_profile_hashes(
+        profile,
+    )
     if (
         harness_status.get('state') != 'REPORT_WRITTEN'
-        or harness_status.get('profile_id') != CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID
+        or harness_status.get('profile_id') != profile['id']
         or harness_status.get('pr') != report.get('prNumber')
-        or harness_status.get('tool_name') != CODEX_C07_RENDER_COMPARISON_OFFLINE_TOOL_NAME
-        or harness_status.get('argument_profile') != CODEX_C07_RENDER_COMPARISON_OFFLINE_ARGUMENT_PROFILE
-        or harness_status.get('expected_arguments_sha256') != CODEX_C07_RENDER_COMPARISON_OFFLINE_EXPECTED_ARGUMENTS_SHA256
-        or harness_status.get('registry_sha256') != CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_REGISTRY_SHA256
+        or harness_status.get('tool_name') != profile['toolName']
+        or harness_status.get('argument_profile') != profile['argumentProfile']
+        or harness_status.get('expected_arguments_sha256') != expected_arguments_sha256
+        or harness_status.get('registry_sha256') != registry_sha256
         or harness_status.get('claim_label_present') is not True
         or harness_status.get('terminal_label_present') is not True
         or not isinstance(disposition, dict)
@@ -9239,9 +9310,9 @@ def codex_c07_render_comparison_offline_profile_disposition_matches_report(
         return None
     expected = {
         'claimId': report.get('claimId'),
-        'profileId': CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
+        'profileId': profile['id'],
         'frontierId': 'C07',
-        'epochId': CODEX_C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID,
+        'epochId': profile['epochId'],
         'runNumber': 95,
         'prNumber': report.get('prNumber'),
         'state': 'REPORT_WRITTEN',
@@ -9253,12 +9324,12 @@ def codex_c07_render_comparison_offline_profile_disposition_matches_report(
         'ciChecks': report.get('ciChecks'),
         'reviewerId': report.get('reviewerId'),
         'bundleSha256': report.get('mcpBundleSha256'),
-        'registrySha256': CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_REGISTRY_SHA256,
-        'toolName': CODEX_C07_RENDER_COMPARISON_OFFLINE_TOOL_NAME,
-        'argumentProfile': CODEX_C07_RENDER_COMPARISON_OFFLINE_ARGUMENT_PROFILE,
-        'expectedArgumentsSha256': CODEX_C07_RENDER_COMPARISON_OFFLINE_EXPECTED_ARGUMENTS_SHA256,
+        'registrySha256': registry_sha256,
+        'toolName': profile['toolName'],
+        'argumentProfile': profile['argumentProfile'],
+        'expectedArgumentsSha256': expected_arguments_sha256,
         'reportWritten': True,
-        'reportPath': CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_RELATIVE_PATH,
+        'reportPath': profile['reportPath'],
         'reportSha256': report_sha256,
         'retryAllowed': False,
         'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
@@ -12354,7 +12425,9 @@ def codex_p06_profile_report_is_valid(
     return result.get('passed') is True and result.get('reportSha256') == report_sha256
 
 
-def codex_c07_render_comparison_offline_frontier_is_unassessed() -> bool:
+def codex_c07_render_comparison_offline_frontier_is_unassessed(
+    profile: dict[str, object] = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE,
+) -> bool:
     try:
         frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -12369,8 +12442,8 @@ def codex_c07_render_comparison_offline_frontier_is_unassessed() -> bool:
         isinstance(record, dict)
         and record.get('status') == 'UNASSESSED'
         and isinstance(source_refs, list)
-        and CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_RELATIVE_PATH in source_refs
-        and CODEX_C07_RENDER_COMPARISON_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH in source_refs
+        and profile['reportPath'] in source_refs
+        and profile['selectionEvidencePath'] in source_refs
     )
 
 
@@ -12381,19 +12454,24 @@ def codex_c07_render_comparison_offline_profile_report_is_valid(
     epoch_status: object = None,
 ) -> bool:
     """Validate signed synthetic C07 renderer evidence for its Agent/MCP matrix cell only."""
+    profile = codex_c07_render_comparison_offline_profile_spec(report)
     if (
         not isinstance(report, dict)
+        or profile is None
         or set(report) != CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_FIELDS
     ):
         return False
+    registry_sha256, expected_arguments_sha256 = codex_c07_render_comparison_offline_profile_hashes(
+        profile,
+    )
     path = report_path or (
-        LIVE_PROBE_DIR / Path(CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_RELATIVE_PATH).name
+        LIVE_PROBE_DIR / Path(str(profile['reportPath'])).name
     )
     try:
         relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
         report_bytes = path.read_bytes()
         selection_bytes = (
-            ROOT / CODEX_C07_RENDER_COMPARISON_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH
+            ROOT / str(profile['selectionEvidencePath'])
         ).read_bytes()
     except (OSError, ValueError):
         return False
@@ -12407,17 +12485,17 @@ def codex_c07_render_comparison_offline_profile_report_is_valid(
     privacy = report.get('privacy')
     acknowledgement = b'C07_SYNTHETIC_COHORT_RENDERED'
     if (
-        relative_path != CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_RELATIVE_PATH
+        relative_path != profile['reportPath']
         or len(report_bytes) > 64 * 1024
         or type(report.get('schemaVersion')) is not int
         or report.get('schemaVersion') != 1
-        or report.get('evidenceKind') != CODEX_C07_RENDER_COMPARISON_OFFLINE_EVIDENCE_KIND
+        or report.get('evidenceKind') != profile['evidenceKind']
         or type(report.get('runNumber')) is not int
         or report.get('runNumber') != 95
         or report.get('frontierId') != 'C07'
         or report.get('scenarioId') is not None
-        or report.get('epochId') != CODEX_C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID
-        or report.get('profileId') != CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID
+        or report.get('epochId') != profile['epochId']
+        or report.get('profileId') != profile['id']
         or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v1'
         or report.get('model') != 'gpt-6-luna'
         or report.get('reasoningEffort') != 'max'
@@ -12427,16 +12505,16 @@ def codex_c07_render_comparison_offline_profile_report_is_valid(
         or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
         or not isinstance(observed_at, str)
         or re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', observed_at) is None
-        or report.get('registrySha256') != CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_REGISTRY_SHA256
+        or report.get('registrySha256') != registry_sha256
         or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
-        or report.get('toolName') != CODEX_C07_RENDER_COMPARISON_OFFLINE_TOOL_NAME
-        or report.get('argumentProfile') != CODEX_C07_RENDER_COMPARISON_OFFLINE_ARGUMENT_PROFILE
-        or report.get('expectedArgumentsSha256') != CODEX_C07_RENDER_COMPARISON_OFFLINE_EXPECTED_ARGUMENTS_SHA256
-        or report.get('networkMode') != CODEX_C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE
+        or report.get('toolName') != profile['toolName']
+        or report.get('argumentProfile') != profile['argumentProfile']
+        or report.get('expectedArgumentsSha256') != expected_arguments_sha256
+        or report.get('networkMode') != profile['networkMode']
         or not isinstance(source_revision, str)
         or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
         or not codex_c07_render_comparison_offline_profile_revision_has_implementation(source_revision)
-        or not codex_c07_render_comparison_offline_frontier_is_unassessed()
+        or not codex_c07_render_comparison_offline_frontier_is_unassessed(profile)
         or not isinstance(report.get('baseSha'), str)
         or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
         or report.get('ciSha') != source_revision
@@ -12470,11 +12548,11 @@ def codex_c07_render_comparison_offline_profile_report_is_valid(
         or report.get('allowedCallCount') != 1
         or type(report.get('deniedCallCount')) is not int
         or report.get('deniedCallCount') != 0
-        or report.get('serverToolNames') != [CODEX_C07_RENDER_COMPARISON_OFFLINE_TOOL_NAME]
+        or report.get('serverToolNames') != [profile['toolName']]
         or type(report.get('serverToolCount')) is not int
         or report.get('serverToolCount') != 1
         or report.get('mcpServerNames') != ['bgk_c07_render_comparison']
-        or report.get('answerCheckMethod') != CODEX_C07_RENDER_COMPARISON_OFFLINE_ANSWER_CHECK_METHOD
+        or report.get('answerCheckMethod') != profile['answerCheckMethod']
         or report.get('answerSha256') != hashlib.sha256(acknowledgement).hexdigest()
         or report.get('answerUtf8Bytes') != len(acknowledgement)
     ):
@@ -12487,7 +12565,7 @@ def codex_c07_render_comparison_offline_profile_report_is_valid(
         or not isinstance(fixture, dict)
         or set(fixture) != CODEX_C07_RENDER_COMPARISON_OFFLINE_FIXTURE_FIELDS
         or fixture != {
-            'profile': CODEX_C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
+            'profile': profile['networkMode'],
             'requestCount': 2,
             'searchRequestCount': 1,
             'subjectDetailRequestCount': 1,
@@ -12552,7 +12630,7 @@ def codex_c07_render_comparison_offline_profile_report_is_valid(
         catalog_bytes = CATALOG.read_bytes()
         catalog = json.loads(catalog_bytes)
         catalog_tool = next(
-            (item for item in catalog if isinstance(item, dict) and item.get('name') == CODEX_C07_RENDER_COMPARISON_OFFLINE_TOOL_NAME),
+            (item for item in catalog if isinstance(item, dict) and item.get('name') == profile['toolName']),
             None,
         )
     except (OSError, ValueError):
@@ -12572,12 +12650,14 @@ def codex_c07_render_comparison_offline_profile_report_is_valid(
     report_sha256 = hashlib.sha256(report_bytes).hexdigest()
     current_epoch_status = epoch_status or codex_c07_render_comparison_offline_profile_epoch_harness_status(pr_number)
     if not codex_c07_render_comparison_offline_profile_report_candidate_binding_is_current(
-        report, current_epoch_status,
+        report, current_epoch_status, profile,
     ):
         return False
-    status = harness_status or codex_c07_render_comparison_offline_profile_harness_status(pr_number)
+    status = harness_status or codex_c07_render_comparison_offline_profile_harness_status(
+        pr_number, profile,
+    )
     disposition = codex_c07_render_comparison_offline_profile_disposition_matches_report(
-        report, status, report_sha256,
+        report, status, report_sha256, profile,
     )
     if disposition is None:
         return False
@@ -22620,9 +22700,8 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(LIVE_PROBE_DIR / CODEX_G16_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_C03_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_P06_REPORT_RELATIVE_PATH.split('/')[-1])
-    report_paths.append(
-        LIVE_PROBE_DIR / CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_RELATIVE_PATH.split('/')[-1],
-    )
+    for c07_profile in CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILES.values():
+        report_paths.append(LIVE_PROBE_DIR / Path(str(c07_profile['reportPath'])).name)
     for g01_render_query_profile in CODEX_G01_RENDER_QUERY_OFFLINE_PROFILES.values():
         report_paths.append(LIVE_PROBE_DIR / Path(str(g01_render_query_profile['reportPath'])).name)
     report_paths.append(
@@ -22894,24 +22973,30 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 continue
             sources.setdefault(CODEX_P06_TOOL_NAME, set()).add(report_source_ref(path))
             continue
-        if report.get('evidenceKind') == CODEX_C07_RENDER_COMPARISON_OFFLINE_EVIDENCE_KIND:
+        if report.get('evidenceKind') in {
+            profile.get('evidenceKind')
+            for profile in CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILES.values()
+        }:
+            c07_profile = codex_c07_render_comparison_offline_profile_spec(report)
+            if c07_profile is None:
+                continue
             current_status = codex_c07_render_comparison_offline_profile_harness_status(
-                report.get('prNumber'),
+                report.get('prNumber'), c07_profile,
             )
             current_epoch_status = codex_c07_render_comparison_offline_profile_epoch_harness_status(
                 report.get('prNumber'),
             )
             if (
-                path.name != Path(CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_RELATIVE_PATH).name
+                path.name != Path(str(c07_profile['reportPath'])).name
                 or not codex_c07_render_comparison_offline_profile_report_is_valid(
                     report, current_status, path, current_epoch_status,
                 )
                 or not codex_c07_render_comparison_offline_profile_report_matches_candidate_revision(
-                    path, report.get('sourceRevision'),
+                    path, report.get('sourceRevision'), c07_profile,
                 )
             ):
                 continue
-            sources.setdefault(CODEX_C07_RENDER_COMPARISON_OFFLINE_TOOL_NAME, set()).add(
+            sources.setdefault(str(c07_profile['toolName']), set()).add(
                 report_source_ref(path),
             )
             continue

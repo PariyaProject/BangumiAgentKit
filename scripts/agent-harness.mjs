@@ -184,11 +184,9 @@ import {
   getG06CastOfflineProfileSpec,
 } from './lib/g06-subject-cast-offline-profile.mjs';
 import {
-  C07_RENDER_COMPARISON_OFFLINE_ARGUMENT_PROFILE,
-  C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID,
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
-  C07_RENDER_COMPARISON_OFFLINE_REPORT_PATH,
-  C07_RENDER_COMPARISON_OFFLINE_SELECTION_EVIDENCE_PATH,
+  C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  getC07RenderComparisonOfflineConfig,
 } from './lib/c07-render-comparison-offline-profile.mjs';
 import {
   G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
@@ -298,6 +296,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'p06-render-person-profile-offline-agent-mcp-v1',
   'p06-render-person-profile-offline-agent-mcp-v2',
   'c07-render-comparison-offline-agent-mcp-matrix-v1',
+  'c07-render-comparison-offline-agent-mcp-matrix-v2',
   'p02-person-profile-offline-agent-mcp-v1',
   'r04-series-watch-order-offline-agent-mcp-v1',
   'r04-render-series-watch-order-offline-agent-mcp-v1',
@@ -4291,6 +4290,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'p06-render-person-profile-offline-agent-mcp-v2':
       return validateP06SanitizedReportFile(claim, root, reportPath);
     case 'c07-render-comparison-offline-agent-mcp-matrix-v1':
+    case 'c07-render-comparison-offline-agent-mcp-matrix-v2':
       return validateC07RenderComparisonOfflineSanitizedReportFile(claim, root, reportPath);
     case 'g01-render-query-subjects-offline-agent-mcp-v1':
     case 'g01-render-query-subjects-offline-agent-mcp-v2':
@@ -8038,9 +8038,15 @@ function assertG06CastOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNu
   }
 }
 
-function assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber) {
-  const profile = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID);
-  const disposition = agentMcpProfileClaims(epoch)[C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID];
+function assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(
+  epoch,
+  runNumber,
+  prNumber,
+  profileId = C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
+) {
+  const config = getC07RenderComparisonOfflineConfig(profileId);
+  const profile = getAgentMcpProfileById(profileId);
+  const disposition = agentMcpProfileClaims(epoch)[profileId];
   const latestReview = epoch.review_history?.at(-1);
   const terminalState = disposition?.state;
   const reportWritten = terminalState === 'REPORT_WRITTEN';
@@ -8054,17 +8060,18 @@ function assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(epoch, run
       review?.verdict === 'PASS',
   );
   if (
-    epoch.epoch_id !== C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID ||
+    !config ||
+    epoch.epoch_id !== config.epochId ||
     epoch.state !== 'REVIEW_PASSED' ||
     epoch.pr_number !== Number(prNumber) ||
     !profile ||
-    disposition?.profileId !== C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID ||
+    disposition?.profileId !== profileId ||
     disposition.frontierId !== 'C07' ||
-    disposition.epochId !== C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID ||
+    disposition.epochId !== config.epochId ||
     disposition.runNumber !== Number(runNumber) ||
     disposition.prNumber !== Number(prNumber) ||
     disposition.toolName !== 'bangumi.render_subject_cohort_comparison' ||
-    disposition.argumentProfile !== C07_RENDER_COMPARISON_OFFLINE_ARGUMENT_PROFILE ||
+    disposition.argumentProfile !== config.argumentProfile ||
     disposition.expectedArgumentsSha256 !== agentMcpProfileArgumentsSha256(profile) ||
     disposition.registrySha256 !== agentMcpProfileRegistrySha256(profile.id) ||
     disposition.retryAllowed !== false ||
@@ -8122,7 +8129,7 @@ function assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(epoch, run
   if (
     record?.status !== 'UNASSESSED' ||
     !Array.isArray(sourceRefs) ||
-    !sourceRefs.includes(C07_RENDER_COMPARISON_OFFLINE_SELECTION_EVIDENCE_PATH)
+    !sourceRefs.includes(config.selectionEvidencePath)
   ) {
     throw new HarnessInvariantError(
       'C07_RENDER_COMPARISON_OFFLINE_FRONTIER_INVALID',
@@ -8130,10 +8137,10 @@ function assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(epoch, run
     );
   }
 
-  const reportPath = path.join(root, C07_RENDER_COMPARISON_OFFLINE_REPORT_PATH);
+  const reportPath = path.join(root, config.reportPath);
   const changed = new Set(changedPaths(disposition.sourceCandidateSha));
   const allowedRefreshPaths = new Set([
-    C07_RENDER_COMPARISON_OFFLINE_REPORT_PATH,
+    config.reportPath,
     'docs/product/frontier-ledger.json',
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
   ]);
@@ -8147,12 +8154,12 @@ function assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(epoch, run
 
   if (reportWritten) {
     if (
-      disposition.reportPath !== C07_RENDER_COMPARISON_OFFLINE_REPORT_PATH ||
+      disposition.reportPath !== config.reportPath ||
       !/^[0-9a-f]{64}$/u.test(disposition.reportSha256 ?? '') ||
       (disposition.unacceptedReportSha256 !== null &&
         disposition.unacceptedReportSha256 !== undefined) ||
-      !sourceRefs.includes(C07_RENDER_COMPARISON_OFFLINE_REPORT_PATH) ||
-      !changed.has(C07_RENDER_COMPARISON_OFFLINE_REPORT_PATH) ||
+      !sourceRefs.includes(config.reportPath) ||
+      !changed.has(config.reportPath) ||
       !changed.has('docs/product/frontier-ledger.json') ||
       !changed.has('docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md')
     ) {
@@ -8524,8 +8531,23 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
   } else if ([G06_CAST_OFFLINE_EPOCH_ID, G06_CAST_OFFLINE_V2_EPOCH_ID].includes(epoch.epoch_id)) {
     assertG06CastOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber);
     ensureCleanWorkingTree();
-  } else if (epoch.epoch_id === C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID) {
-    assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber);
+  } else if (
+    [C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID, C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID].some(
+      (profileId) => getC07RenderComparisonOfflineConfig(profileId)?.epochId === epoch.epoch_id,
+    )
+  ) {
+    const profileId = [
+      C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
+      C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+    ].find(
+      (candidate) => getC07RenderComparisonOfflineConfig(candidate)?.epochId === epoch.epoch_id,
+    );
+    assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(
+      epoch,
+      runNumber,
+      prNumber,
+      profileId,
+    );
     ensureCleanWorkingTree();
   } else if (
     [G01_RENDER_QUERY_OFFLINE_PROFILE_ID, G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID].some(

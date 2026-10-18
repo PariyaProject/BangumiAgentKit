@@ -4,7 +4,10 @@ import {
   agentMcpProfileArgumentsSha256,
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
-import { C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
+import {
+  C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
+  C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+} from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 import {
   assertC07RenderComparisonCandidateReviewGate,
   buildC07RenderComparisonOfflineCodexExecArgs,
@@ -142,6 +145,15 @@ function serverSummaryFixture() {
 test('C07 runner accepts only its single governed Run #95 entry point', () => {
   assert.equal(validateC07RenderComparisonOfflineRunnerArgs(['--help']), 'help');
   assert.equal(validateC07RenderComparisonOfflineRunnerArgs(['--run', '95']), 'run');
+  assert.equal(
+    validateC07RenderComparisonOfflineRunnerArgs([
+      '--run',
+      '95',
+      '--profile-id',
+      C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+    ]),
+    'run',
+  );
   for (const args of [[], ['--run', '94'], ['--run', '95', '--retry'], ['--help', '--run']]) {
     assert.throws(() => validateC07RenderComparisonOfflineRunnerArgs(args));
   }

@@ -9,16 +9,17 @@ import {
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
-  C07_RENDER_COMPARISON_OFFLINE_EXPECTED_ARGUMENTS,
-  C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
+  C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  getC07RenderComparisonOfflineConfig,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 import {
   buildC07RenderComparisonOfflineProfileReport,
+  configureC07RenderComparisonOfflineReportProfile,
   validateC07RenderComparisonOfflineProfileReport,
 } from '../../scripts/acceptance/write-c07-render-comparison-offline-agent-mcp-report.mjs';
 
 const PROFILE = getAgentMcpProfileById('c07-render-comparison-offline-agent-mcp-matrix-v1');
-const ACKNOWLEDGEMENT = 'C07_SYNTHETIC_COHORT_RENDERED';
+const PROFILE_V2 = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID);
 const CI_RUN_ID = '38806371672';
 const CI_CHECKS = [
   'harness-control',
@@ -31,7 +32,9 @@ const CI_CHECKS = [
 ].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
-function fixtureInput() {
+function fixtureInput(profile = PROFILE) {
+  configureC07RenderComparisonOfflineReportProfile(profile.id);
+  const config = getC07RenderComparisonOfflineConfig(profile.id);
   const keyPair = generateKeyPairSync('ed25519');
   const publicKeyBase64 = keyPair.publicKey
     .export({ type: 'spki', format: 'der' })
@@ -41,16 +44,16 @@ function fixtureInput() {
     schemaVersion: 1,
     claimId: 'profile-run-95-pr-222-0123456789ab-1792100000000',
     state: 'CLAIMED',
-    profileId: PROFILE.id,
+    profileId: profile.id,
     frontierId: 'C07',
-    epochId: PROFILE.epochId,
+    epochId: profile.epochId,
     runNumber: 95,
     prNumber: 222,
-    toolName: PROFILE.toolName,
-    argumentProfile: PROFILE.argumentProfile,
-    expectedArguments: [C07_RENDER_COMPARISON_OFFLINE_EXPECTED_ARGUMENTS],
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
-    registrySha256: agentMcpProfileRegistrySha256(PROFILE.id),
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
+    expectedArguments: [config.expectedArguments],
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+    registrySha256: agentMcpProfileRegistrySha256(profile.id),
     sourceCandidateSha: '0'.repeat(40),
     baseSha: '1'.repeat(40),
     ciSha: '0'.repeat(40),
@@ -65,7 +68,7 @@ function fixtureInput() {
     retryAllowed: false,
   };
   const offlineFixture = {
-    profile: C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
+    profile: config.networkMode,
     requestCount: 2,
     searchRequestCount: 1,
     subjectDetailRequestCount: 1,
@@ -92,19 +95,19 @@ function fixtureInput() {
   };
   const catalogBytes = readFileSync(new URL('../../docs/tool-catalog.json', import.meta.url));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
-  const catalogTool = catalog.find((item) => item.name === PROFILE.toolName);
+  const catalogTool = catalog.find((item) => item.name === profile.toolName);
   const serverSummary = {
-    profileId: PROFILE.id,
-    argumentProfile: PROFILE.argumentProfile,
-    networkMode: C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
+    profileId: profile.id,
+    argumentProfile: profile.argumentProfile,
+    networkMode: config.networkMode,
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
     sourceRevision: claim.sourceCandidateSha,
     bundleSha256: claim.bundleSha256,
     catalogSha256: sha256(catalogBytes),
-    toolName: PROFILE.toolName,
+    toolName: profile.toolName,
     toolDescriptionSha256: sha256(catalogTool.description),
     inputSchemaSha256: sha256(canonicalAgentMcpProfileJson(catalogTool.inputSchema)),
-    serverToolNames: [PROFILE.toolName],
+    serverToolNames: [profile.toolName],
     serverToolCount: 1,
     expectedArgumentsSha256: claim.expectedArgumentsSha256,
     expectedCallCount: 1,
@@ -140,10 +143,8 @@ function fixtureInput() {
       claim,
       serverSummary,
       events,
-      completedMcpCalls: [
-        { tool: PROFILE.toolName, arguments: C07_RENDER_COMPARISON_OFFLINE_EXPECTED_ARGUMENTS },
-      ],
-      answer: ACKNOWLEDGEMENT,
+      completedMcpCalls: [{ tool: profile.toolName, arguments: config.expectedArguments }],
+      answer: config.acknowledgement,
       codexCliVersion: '1.2.14',
       eventStreamSha256: '7'.repeat(64),
       serverSummarySha256: '8'.repeat(64),
@@ -242,7 +243,7 @@ test('C07 report validator rejects changed fixture counters and any modified sig
 test('C07 report builder fails closed for a changed one-tool argument object', () => {
   const { input, keyPair } = fixtureInput();
   input.completedMcpCalls[0].arguments = {
-    ...C07_RENDER_COMPARISON_OFFLINE_EXPECTED_ARGUMENTS,
+    ...getC07RenderComparisonOfflineConfig(PROFILE.id).expectedArguments,
     includeChronology: true,
   };
   const result = buildC07RenderComparisonOfflineProfileReport(input, {
@@ -298,4 +299,27 @@ test('C07 report validator accepts only the exact durable REPORT_WRITTEN disposi
     ).passed,
     false,
   );
+});
+
+test('C07 v2 report is signed and validated against only the v2 profile identity', () => {
+  try {
+    const { input, keyPair } = fixtureInput(PROFILE_V2);
+    const built = buildC07RenderComparisonOfflineProfileReport(input, {
+      privateKey: keyPair.privateKey,
+    });
+    assert.equal(built.passed, true, JSON.stringify(built));
+    assert.equal(built.report.profileId, PROFILE_V2.id);
+    assert.equal(
+      built.report.networkMode,
+      getC07RenderComparisonOfflineConfig(PROFILE_V2.id).networkMode,
+    );
+    assert.equal(
+      validateC07RenderComparisonOfflineProfileReport(built.report, input.claim).passed,
+      true,
+    );
+    assert.equal(JSON.stringify(built.report).includes('合成样本 D'), false);
+    assert.equal(JSON.stringify(built.report).includes('991224'), false);
+  } finally {
+    configureC07RenderComparisonOfflineReportProfile(PROFILE.id);
+  }
 });
