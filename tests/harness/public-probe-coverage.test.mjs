@@ -9,13 +9,20 @@ const probePath = 'docs/live-probes/public-tools-2026-10-08-234356643-30762.json
 const g19ProbePath = 'docs/live-probes/public-tools-2026-10-11-103934803-2116.json';
 const g19AgentReportPath = 'docs/live-probes/g19-person-origin-agent-mcp-run95.json';
 const g06CastOfflineV2ReportPath = 'docs/live-probes/g06-subject-cast-offline-agent-mcp-run95-v2.json';
+const r04RenderOfflineV2ReportPath =
+  'docs/live-probes/r04-render-series-watch-order-offline-agent-mcp-v2-run95.json';
 const acceptedAgentReports = new Map([
   ['bangumi.get_person_activity', g19AgentReportPath],
   ['bangumi.get_subject_cast', g06CastOfflineV2ReportPath],
+  ['bangumi.render_series_watch_order', r04RenderOfflineV2ReportPath],
 ]);
 const acceptedAgentReportKinds = new Map([
   ['bangumi.get_person_activity', 'codex_g19_person_origin_agent_mcp'],
   ['bangumi.get_subject_cast', 'codex_cli_g06_subject_cast_offline_agent_mcp_v2'],
+  [
+    'bangumi.render_series_watch_order',
+    'codex_cli_r04_render_series_watch_order_offline_agent_mcp_v2',
+  ],
 ]);
 const expectedTools = [
   'bangumi.get_person_activity',

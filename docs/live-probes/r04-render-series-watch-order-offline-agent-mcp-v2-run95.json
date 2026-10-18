@@ -1,0 +1,237 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "codex_cli_r04_render_series_watch_order_offline_agent_mcp_v2",
+  "runNumber": 95,
+  "frontierId": "R04",
+  "scenarioId": null,
+  "epochId": "run95-r04-render-series-watch-order-offline-matrix-v2-20261018",
+  "profileId": "r04-render-series-watch-order-offline-agent-mcp-matrix-v2",
+  "profile": "codex-luna-max-offline-agent-mcp-matrix-v2",
+  "model": "gpt-6-luna",
+  "reasoningEffort": "max",
+  "reviewerId": "gpt-6-luna-max-run95-pr222-round1",
+  "codexCliVersion": "0.163.0-alpha.10.2",
+  "observedAt": "2026-10-18T03:49:30.712Z",
+  "sourceRevision": "7139342cfc8bc69e4d696e601d0b74568a5f2756",
+  "baseSha": "26c9285e6501a7d2c44cf40e0dda236a737a25b8",
+  "ciSha": "7139342cfc8bc69e4d696e601d0b74568a5f2756",
+  "ciStatus": "SUCCESS",
+  "ciRunId": "39094417232",
+  "ciChecks": [
+    {
+      "name": "harness-control",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "sqlite-default",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "host-integration",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "standalone-release-smoke",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "postgres-compat",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "provider-foundation",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "discovery-foundation",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    }
+  ],
+  "prNumber": 222,
+  "claimId": "profile-run-95-pr-222-7139342cfc8b-1792295343532",
+  "mcpBundleSha256": "461638b89271179c828456c4b1399a7c1ed9c1c6bfbe7212170826784c52d4ba",
+  "registrySha256": "150e5a784187060b108049346396a0455107249282050804ab01013e571e7cbe",
+  "selectionEvidenceSha256": "7750760cc56e306de72b629a4ec315bd139d05baec9d62d4f3a32fb4b4ffe1f7",
+  "toolName": "bangumi.render_series_watch_order",
+  "argumentProfile": "fixed-r04-render-synthetic-watch-order-990803-depth0-max1-anime-v2",
+  "expectedArgumentsSha256": "d9b59a2e8df58e82397c3998de44ab30dfe3d7e705654873f9af32c0e4608a9d",
+  "catalogSha256": "85b7f0e436815ecda6c3b3f69817bb12ed21942d3b12a41743f18133e41ae173",
+  "toolDescriptionSha256": "983575ef5678fef1f760370ce0e3d63145c8966eedb50358138405da676c7352",
+  "inputSchemaSha256": "9980d169286790b5592a38d5274e5c5c285b41dea4b782d35573e96aa2e5c6fe",
+  "serverToolNames": [
+    "bangumi.render_series_watch_order"
+  ],
+  "serverToolCount": 1,
+  "networkMode": "run95-r04-render-series-watch-order-offline-v2",
+  "mcpServerNames": [
+    "bgk_r04_render_watch_order_v2"
+  ],
+  "processExitCode": 0,
+  "resultStatus": "SUCCESS",
+  "eventStreamParsed": true,
+  "turnCompleted": true,
+  "codexMcpToolEventCount": 1,
+  "codexErrorItemCount": 0,
+  "mcpToolErrorResultCount": 0,
+  "nonMcpToolEventCount": 0,
+  "nonMcpToolTypes": [],
+  "shellToolCallCount": 0,
+  "allowedCallCount": 1,
+  "deniedCallCount": 0,
+  "answerCheckMethod": "r04-render-series-watch-order-synthetic-artifact-readback-v2",
+  "answerSha256": "1ec29abe272bf0c2df16254ebea16b0b48351c422bddf2e98243c1126e1ed21d",
+  "answerUtf8Bytes": 34,
+  "answerChecks": {
+    "exactRegisteredProfile": true,
+    "oneAllowedMcpTool": true,
+    "fixedArguments": true,
+    "exactCandidateBundle": true,
+    "offlineFixtureOnly": true,
+    "twoExpectedLocalResponses": true,
+    "noRendererAssetRequests": true,
+    "artifactMetadataVerified": true,
+    "safeTextReadback": true,
+    "exactAcknowledgement": true,
+    "privacyPreserved": true
+  },
+  "resultSummary": {
+    "resultState": "artifact_returned",
+    "artifact": {
+      "returned": true,
+      "persisted": false,
+      "mimeType": "image/png",
+      "width": 720,
+      "height": 2414,
+      "byteLength": 303431,
+      "sha256": "2a9516624d4b7c15b62a93d8ec38bff8712eb9d4838a595ec14e97bfcc3849e1",
+      "pngSignatureValid": true,
+      "decoded": true,
+      "dimensionsMatch": true
+    }
+  },
+  "offlineFixture": {
+    "profile": "run95-r04-render-series-watch-order-offline-v2",
+    "requestCount": 2,
+    "subjectRequestCount": 1,
+    "relationsRequestCount": 1,
+    "duplicateRequestCount": 0,
+    "unexpectedRequestCount": 0,
+    "authorizationHeaderCount": 0,
+    "expectedOperationsComplete": true
+  },
+  "rendererAssetBoundary": {
+    "requestCount": 0
+  },
+  "networkBoundary": {
+    "liveBangumiApiRequestCount": 0,
+    "rendererAssetRequestCount": 0,
+    "fullCodexHarnessNetworkSandboxed": false
+  },
+  "privacy": {
+    "authProfile": "anonymous",
+    "oauthAttempted": false,
+    "accountDataRead": false,
+    "writesAttempted": false,
+    "communityRead": false,
+    "qqPipelineTested": false,
+    "timClientTested": false,
+    "promptStored": false,
+    "answerStored": false,
+    "rawFixtureRowsStored": false,
+    "rawToolResultStored": false,
+    "artifactImageBytesStored": false,
+    "credentialsStored": false
+  },
+  "runnerReceipt": {
+    "schemaVersion": 1,
+    "kind": "r04-render-series-watch-order-offline-v2-runner-receipt-v1",
+    "publicKeyBase64": "MCowBQYDK2VwAyEA5uwq4Ny5y89yzQfOJa/Xyq87dpzj8wXpdW6DMaTSP30=",
+    "publicKeySha256": "2f30ce1e401ece4d18a1596499b7f1e8e7657626f5d811abe5c5d2760bc24ef7",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "r04-render-series-watch-order-offline-v2-runner-receipt-v1",
+      "sanitizedReportSha256": "8f3f5ad18ed627fefb4a028b3ffe32f1c76d34e5d01e061d1778024ac43dde87",
+      "claimId": "profile-run-95-pr-222-7139342cfc8b-1792295343532",
+      "profileId": "r04-render-series-watch-order-offline-agent-mcp-matrix-v2",
+      "runNumber": 95,
+      "frontierId": "R04",
+      "epochId": "run95-r04-render-series-watch-order-offline-matrix-v2-20261018",
+      "prNumber": 222,
+      "sourceRevision": "7139342cfc8bc69e4d696e601d0b74568a5f2756",
+      "baseSha": "26c9285e6501a7d2c44cf40e0dda236a737a25b8",
+      "ciSha": "7139342cfc8bc69e4d696e601d0b74568a5f2756",
+      "ciStatus": "SUCCESS",
+      "ciRunId": "39094417232",
+      "ciChecks": [
+        {
+          "name": "harness-control",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "sqlite-default",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "host-integration",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "standalone-release-smoke",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "postgres-compat",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "provider-foundation",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "discovery-foundation",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        }
+      ],
+      "reviewerId": "gpt-6-luna-max-run95-pr222-round1",
+      "bundleSha256": "461638b89271179c828456c4b1399a7c1ed9c1c6bfbe7212170826784c52d4ba",
+      "registrySha256": "150e5a784187060b108049346396a0455107249282050804ab01013e571e7cbe",
+      "selectionEvidenceSha256": "7750760cc56e306de72b629a4ec315bd139d05baec9d62d4f3a32fb4b4ffe1f7",
+      "toolName": "bangumi.render_series_watch_order",
+      "argumentProfile": "fixed-r04-render-synthetic-watch-order-990803-depth0-max1-anime-v2",
+      "expectedArgumentsSha256": "d9b59a2e8df58e82397c3998de44ab30dfe3d7e705654873f9af32c0e4608a9d",
+      "codexCliVersion": "0.163.0-alpha.10.2",
+      "processExitCode": 0,
+      "resultStatus": "SUCCESS",
+      "eventStreamParsed": true,
+      "turnCompleted": true,
+      "codexMcpToolEventCount": 1,
+      "codexErrorItemCount": 0,
+      "mcpToolErrorResultCount": 0,
+      "nonMcpToolEventCount": 0,
+      "shellToolCallCount": 0,
+      "allowedCallCount": 1,
+      "deniedCallCount": 0,
+      "offlineFixtureSha256": "15ddc7cf282cdb24a2a7b1c0fd04ff7acd4fe4b1bf23f858f146312cd47edbe6",
+      "rendererAssetBoundarySha256": "a509711755cc9e02b835919f4fbd28db8b9658abbc1648cfe42c71c86a71bbef",
+      "networkBoundarySha256": "39fcf06c70e97a0442bfb3ad8264daba9244071153a9f82e5df83c662ab888fa",
+      "answerSha256": "1ec29abe272bf0c2df16254ebea16b0b48351c422bddf2e98243c1126e1ed21d",
+      "eventStreamSha256": "06d4df19567ae56cc9482175bbae7564b667e139c051b06c06aefd0d11491e18",
+      "serverSummarySha256": "8718850e2448a2011ce7b56c7d038feb7d0f51b9cad352fb6bdb1106268eb745"
+    },
+    "signature": "CA+/TdYfLvqCSOGJD1w4+lkMeAxEHzFXRJjYlVGI9n8WAaM/yhktvW3MhxS2DrspzwY398NfY6go0ZQh7nb3Ag=="
+  }
+}

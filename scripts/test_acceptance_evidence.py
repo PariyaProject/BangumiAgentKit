@@ -8423,6 +8423,7 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         self.assertEqual(verifier_paths, {
             '.github/workflows/ci.yml',
             'docs/agent/HARNESS.md',
+            'docs/live-probes/r04-render-series-watch-order-offline-agent-mcp-v2-run95.json',
             'scripts/check-tool-acceptance-table.py',
             'scripts/test_acceptance_evidence.py',
             'scripts/generate-tool-acceptance-tasks.py',
@@ -10338,6 +10339,57 @@ class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
             GENERATOR.CODEX_R04_RENDER_PROFILE_ID,
         )
         self.assertTrue(GENERATOR.codex_r04_render_v2_frontier_is_unassessed())
+
+    def test_v2_implementation_markers_match_the_reviewed_candidate(self):
+        head = GENERATOR._run_repository_git(
+            GENERATOR.ROOT, 'rev-parse', 'HEAD',
+        ).stdout.strip()
+        self.assertTrue(GENERATOR.codex_r04_render_v2_profile_revision_has_implementation(head))
+
+    def test_v2_report_refresh_allows_only_report_and_acceptance_reconciliation_paths(self):
+        allowed_paths = GENERATOR.CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS
+        self.assertEqual(allowed_paths, {
+            GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/harness/g01-public-query-render-evidence.test.mjs',
+            'tests/harness/g09-public-watch-order-evidence.test.mjs',
+            'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
+            'tests/harness/public-probe-coverage.test.mjs',
+        })
+        self.assertTrue(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(
+            allowed_paths,
+        ))
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(
+            allowed_paths | {'apps/mcp/src/tools/rendering.ts'},
+        ))
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(
+            allowed_paths - {GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH},
+        ))
+
+    def test_report_maps_only_to_the_render_series_watch_order_agent_mcp_cell(self):
+        report_path = GENERATOR.ROOT / GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+        self.assertTrue(TABLE_CHECKER.r04_render_v2_agent_mcp_matches(
+            GENERATOR.CODEX_R04_RENDER_V2_TOOL_NAME,
+            GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
+            report,
+        ))
+        self.assertFalse(TABLE_CHECKER.r04_render_v2_agent_mcp_matches(
+            'bangumi.render_subject_card',
+            GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
+            report,
+        ))
+        changed = json.loads(json.dumps(report))
+        changed['privacy']['qqPipelineTested'] = True
+        self.assertFalse(TABLE_CHECKER.r04_render_v2_agent_mcp_matches(
+            GENERATOR.CODEX_R04_RENDER_V2_TOOL_NAME,
+            GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
+            changed,
+        ))
 
     def test_unbound_or_malformed_v2_report_never_earns_matrix_credit(self):
         self.assertFalse(GENERATOR.codex_r04_render_v2_profile_report_is_valid({}))

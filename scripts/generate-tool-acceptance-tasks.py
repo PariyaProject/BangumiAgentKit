@@ -2945,6 +2945,7 @@ CODEX_G06_CAST_OFFLINE_V2_EVIDENCE_REFRESH_PATHS = {
 CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = {
     '.github/workflows/ci.yml',
     'docs/agent/HARNESS.md',
+    'docs/live-probes/r04-render-series-watch-order-offline-agent-mcp-v2-run95.json',
     'scripts/check-tool-acceptance-table.py',
     'scripts/test_acceptance_evidence.py',
     'scripts/generate-tool-acceptance-tasks.py',
@@ -3202,6 +3203,13 @@ CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS = {
     CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
     'docs/product/frontier-ledger.json',
+    'scripts/check-tool-acceptance-table.py',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/test_acceptance_evidence.py',
+    'tests/harness/g01-public-query-render-evidence.test.mjs',
+    'tests/harness/g09-public-watch-order-evidence.test.mjs',
+    'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
+    'tests/harness/public-probe-coverage.test.mjs',
 }
 CODEX_R04_RENDER_V2_REPORT_FIELDS = {
     'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
@@ -6253,13 +6261,13 @@ CODEX_R04_RENDER_V2_PROFILE_IMPLEMENTATION_MARKERS = {
         'validateR04RenderV2ProfileReport(',
     ),
     'docs/research/run95-r04-render-series-watch-order-offline-matrix-v2-contract-2026-10-18.md': (
-        'does not answer the R04 theatrical-film scenario',
-        'does not prove visual quality',
-        'synthetic `subjectId=990803`',
+        'It does not answer the R04 theatrical film question',
+        'establish canonical order or visual quality',
+        'subjectId: 990803',
     ),
     'docs/product/frontier-ledger.json': (
         'separately keyed R04 renderer v2 profile',
-        'Keep the R04 theatrical-film scenario UNASSESSED',
+        'keep the R04 theatrical-film scenario UNASSESSED',
     ),
     'tests/harness/frontier-ledger-data.test.mjs': (
         'separately keyed R04 renderer v2 profile',
@@ -6272,8 +6280,8 @@ CODEX_R04_RENDER_V2_PROFILE_IMPLEMENTATION_MARKERS = {
         'R04 render fixture denies query strings, bodies, methods, and foreign origins',
     ),
     'tests/harness/run-r04-render-series-watch-order-offline-agent-mcp-v2.test.mjs': (
-        'R04 render Codex config uses an exact per-tool grant without deprecated feature keys',
-        'R04 renderer result can be read back from the sanitized JSON text alone',
+        'R04 render Codex config approves only exact enabled tools without deprecated feature keys',
+        'R04 renderer result can be read back from sanitized JSON text alone',
     ),
     'tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs': (
         'R04 render report signs only artifact metadata and matrix evidence',
@@ -6281,8 +6289,8 @@ CODEX_R04_RENDER_V2_PROFILE_IMPLEMENTATION_MARKERS = {
         'R04 render report rejects candidate, base, CI, reviewer, bundle, profile, and claim mismatches',
     ),
     'scripts/test_acceptance_evidence.py': (
-        'class R04RenderV2SeriesWatchOrderMatrixProfileTests(unittest.TestCase):',
-        'unbound or malformed render profile report never earns matrix credit',
+        'class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):',
+        'def test_unbound_or_malformed_v2_report_never_earns_matrix_credit(',
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_r04_render_v2_profile_report_is_valid(',
