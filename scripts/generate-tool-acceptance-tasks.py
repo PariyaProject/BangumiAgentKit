@@ -2943,6 +2943,7 @@ CODEX_G06_CAST_OFFLINE_V2_EVIDENCE_REFRESH_PATHS = {
     'docs/product/frontier-ledger.json',
 }
 CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = {
+    '.github/workflows/ci.yml',
     'docs/agent/HARNESS.md',
     'scripts/check-tool-acceptance-table.py',
     'scripts/test_acceptance_evidence.py',

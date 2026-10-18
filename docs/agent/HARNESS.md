@@ -357,10 +357,13 @@ isolation regressions in `tests/harness/g01-public-query-render-evidence.test.mj
 `tests/harness/g09-public-watch-order-evidence.test.mjs`,
 `tests/harness/g09-public-watch-order-render-evidence.test.mjs`, and
 `tests/harness/public-probe-coverage.test.mjs`, plus
-`tests/integration/tool-e2e-acceptance.test.ts`. Both Harness and the acceptance
-generator enforce that exact G06 v2-only file set; tool runtime, MCP sources,
-profile registry, or unrelated paths remain outside the refresh. The report
-credits one Agent/MCP matrix cell only and leaves G06 `PARTIAL`.
+`tests/integration/tool-e2e-acceptance.test.ts` and `.github/workflows/ci.yml`.
+The workflow gives only the acceptance-validation step a token with read-only
+contents/checks/issues/pull-requests permissions so it can verify durable Harness
+state in GitHub. Both Harness and the acceptance generator enforce that exact G06
+v2-only file set; tool runtime, MCP sources, profile registry, or unrelated paths
+remain outside the refresh. The report credits one Agent/MCP matrix cell only and
+leaves G06 `PARTIAL`.
 
 The runner re-reads the durable claim immediately before invoking Codex and
 again before writing a report. Runner completion and recovery compete for one

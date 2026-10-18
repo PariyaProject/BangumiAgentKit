@@ -267,6 +267,7 @@ import {
 
 const root = path.resolve(import.meta.dirname, '..');
 const G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
+  '.github/workflows/ci.yml',
   'docs/agent/HARNESS.md',
   'scripts/check-tool-acceptance-table.py',
   'scripts/test_acceptance_evidence.py',

@@ -8421,6 +8421,7 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         base_paths = set(profile['evidenceRefreshPaths'])
         verifier_paths = GENERATOR.CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS
         self.assertEqual(verifier_paths, {
+            '.github/workflows/ci.yml',
             'docs/agent/HARNESS.md',
             'scripts/check-tool-acceptance-table.py',
             'scripts/test_acceptance_evidence.py',
@@ -8449,6 +8450,29 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
             base_paths | verifier_paths,
             GENERATOR.CODEX_G06_CAST_OFFLINE_PROFILE_ID,
         ))
+
+    def test_g06_v2_acceptance_ci_reads_harness_state_with_scoped_read_only_token(self):
+        workflow = (GENERATOR.ROOT / '.github/workflows/ci.yml').read_text(encoding='utf-8')
+        harness_job = workflow.split('  harness-control:\n', 1)[1].split(
+            '\n  sqlite-default:\n', 1,
+        )[0]
+        self.assertIn(
+            '    permissions:\n'
+            '      contents: read\n'
+            '      checks: read\n'
+            '      issues: read\n'
+            '      pull-requests: read\n',
+            harness_job,
+        )
+        self.assertIn(
+            '      - name: Validate tool acceptance evidence and matrix\n'
+            '        env:\n'
+            '          GH_TOKEN: ${{ github.token }}\n'
+            '        run: pnpm acceptance:check',
+            harness_job,
+        )
+        self.assertEqual(workflow.count('GH_TOKEN: ${{ github.token }}'), 1)
+        self.assertNotIn('write', harness_job)
 
     def test_g06_v2_report_refresh_binds_live_pr_head_before_harness_candidate_update(self):
         profile = GENERATOR.codex_g06_cast_offline_profile_spec(

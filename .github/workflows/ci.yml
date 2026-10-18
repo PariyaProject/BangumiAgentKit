@@ -10,6 +10,11 @@ on:
 jobs:
   harness-control:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read
+      issues: read
+      pull-requests: read
 
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +31,8 @@ jobs:
         run: pnpm harness:test
 
       - name: Validate tool acceptance evidence and matrix
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: pnpm acceptance:check
 
       - name: Reject legacy runtime-state changes in V3 Product PRs
