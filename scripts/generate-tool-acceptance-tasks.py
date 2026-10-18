@@ -2945,7 +2945,6 @@ CODEX_G06_CAST_OFFLINE_V2_EVIDENCE_REFRESH_PATHS = {
 CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = {
     '.github/workflows/ci.yml',
     'docs/agent/HARNESS.md',
-    'docs/live-probes/r04-render-series-watch-order-offline-agent-mcp-v2-run95.json',
     'scripts/check-tool-acceptance-table.py',
     'scripts/test_acceptance_evidence.py',
     'scripts/generate-tool-acceptance-tasks.py',
