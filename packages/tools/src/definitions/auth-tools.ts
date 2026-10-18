@@ -5,8 +5,7 @@ import { TokenBroker, OAuthService, formatAuthStatusMessage } from '@bangumi-age
 export function createAuthTools(tokenBroker: TokenBroker, oauthService: OAuthService) {
   const authStatus = defineTool({
     name: 'bangumi.auth_status',
-    description:
-      '查询当前平台用户与 Bangumi 账号的绑定及授权凭证状态，并返回可直接呈现的状态说明。不会暴露任何明文 Token；本地状态不代表个人数据请求已成功。',
+    description: '查询当前平台用户与 Bangumi 账号的绑定及授权凭证状态。不会暴露任何明文 Token。',
     input: z.object({}),
     auth: 'none',
     scopes: [],
