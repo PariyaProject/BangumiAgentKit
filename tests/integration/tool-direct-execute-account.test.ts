@@ -92,7 +92,7 @@ describe('direct execute coverage for auth, collection, and write tools', () => 
       bound: false,
       accountCount: 1,
       message:
-        '已绑定 1 个 Bangumi 账号，但当前没有激活账号。先查看或切换已绑定账号；个人收藏查询需要激活账号。',
+        '检测到 1 条 Bangumi 账号绑定记录，但当前无法确认可用的活动账号资料。请检查绑定状态，必要时重新授权；个人收藏查询暂不可用。',
     });
     expect(tokenBroker.getAuthStatus).toHaveBeenCalledWith(context.principalId);
 
