@@ -8,6 +8,9 @@ import {
   P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS,
   P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
   P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID,
+  P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+  P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+  P06_RENDER_PERSON_PROFILE_V2_EXPECTED_ARGUMENTS,
 } from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 
 const PROFILE = getAgentMcpProfileById(P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID);
@@ -91,6 +94,39 @@ test('P06 fixture rejects duplicate, query, method, authenticated, and wrong-ori
     unexpectedRequestCount: 5,
     authorizationHeaderCount: 1,
     expectedOperationsComplete: false,
+  });
+});
+
+test('P06 v2 fixture uses a distinct synthetic identity and exact offline reads', async () => {
+  const config = getAgentMcpProfileById(P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
+  assert.equal(assertP06RenderPersonProfileOfflineProfile(config), true);
+  assert.deepEqual(config.calls[0].arguments, P06_RENDER_PERSON_PROFILE_V2_EXPECTED_ARGUMENTS);
+
+  const fixture = createP06RenderPersonProfileOfflineFetch(
+    P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+  );
+  const person = await fixture.fetchFn('https://api.bgm.tv/v0/persons/990602');
+  const subjects = await fixture.fetchFn('https://api.bgm.tv/v0/persons/990602/subjects');
+  const characters = await fixture.fetchFn('https://api.bgm.tv/v0/persons/990602/characters');
+
+  const personValue = await person.json();
+  assert.equal(personValue.id, 990602);
+  assert.deepEqual(personValue.infobox, [
+    { key: '简体中文名', value: '合成声优人员 990602（长标题换行检查）' },
+  ]);
+  assert.equal('name_cn' in personValue, false);
+  assert.equal((await subjects.json())[0].id, 990604);
+  assert.equal((await characters.json())[0].id, 990605);
+  assert.deepEqual(fixture.snapshot(), {
+    profile: P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+    requestCount: 3,
+    personRequestCount: 1,
+    subjectsRequestCount: 1,
+    charactersRequestCount: 1,
+    duplicateRequestCount: 0,
+    unexpectedRequestCount: 0,
+    authorizationHeaderCount: 0,
+    expectedOperationsComplete: true,
   });
 });
 

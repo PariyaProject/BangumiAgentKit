@@ -15,42 +15,99 @@ export const P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS = Object.freeze({
   includeChronology: false,
 });
 
-const SUBJECT_ID = 990602;
-const CHARACTER_ID = 990603;
+export const P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID =
+  'p06-render-person-profile-offline-agent-mcp-v2';
+export const P06_RENDER_PERSON_PROFILE_OFFLINE_V2_EPOCH_ID =
+  'run95-p06-render-person-profile-visual-matrix-v2-20261018';
+export const P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE =
+  'run95-p06-render-person-profile-offline-v2';
+export const P06_RENDER_PERSON_PROFILE_V2_ARGUMENT_PROFILE =
+  'fixed-p06-synthetic-person-990602-one-subject-one-character-v2';
+export const P06_RENDER_PERSON_PROFILE_V2_SYNTHETIC_ID = 990602;
+export const P06_RENDER_PERSON_PROFILE_V2_EXPECTED_ARGUMENTS = Object.freeze({
+  personId: P06_RENDER_PERSON_PROFILE_V2_SYNTHETIC_ID,
+  maxSubjects: 1,
+  maxCharacters: 1,
+  maxCredits: 1,
+  includeChronology: false,
+});
+
+const P06_OFFLINE_PROFILE_CONFIGS = new Map([
+  [
+    P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID,
+    Object.freeze({
+      id: P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID,
+      epochId: P06_RENDER_PERSON_PROFILE_OFFLINE_EPOCH_ID,
+      networkMode: P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+      argumentProfile: P06_RENDER_PERSON_PROFILE_ARGUMENT_PROFILE,
+      reportPath: 'docs/live-probes/p06-render-person-profile-agent-mcp-run95.json',
+      selectionEvidencePath:
+        'docs/research/run95-p06-render-person-profile-agent-mcp-offline-fixture-source-contract-2026-10-16.md',
+      evidenceKind: 'codex_cli_p06_render_person_profile_offline_agent_mcp',
+      answerCheckMethod: 'p06-exact-synthetic-renderer-execution-only-v1',
+      syntheticPersonId: P06_RENDER_PERSON_PROFILE_SYNTHETIC_ID,
+      subjectId: 990602,
+      characterId: 990603,
+      expectedArguments: P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS,
+      version: 1,
+    }),
+  ],
+  [
+    P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+    Object.freeze({
+      id: P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+      epochId: P06_RENDER_PERSON_PROFILE_OFFLINE_V2_EPOCH_ID,
+      networkMode: P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+      argumentProfile: P06_RENDER_PERSON_PROFILE_V2_ARGUMENT_PROFILE,
+      reportPath: 'docs/live-probes/p06-render-person-profile-agent-mcp-v2-run95.json',
+      selectionEvidencePath:
+        'docs/research/run95-p06-render-person-profile-agent-mcp-offline-fixture-v2-source-contract-2026-10-18.md',
+      evidenceKind: 'codex_cli_p06_render_person_profile_offline_agent_mcp_v2',
+      answerCheckMethod: 'p06-exact-synthetic-renderer-execution-only-v2',
+      syntheticPersonId: P06_RENDER_PERSON_PROFILE_V2_SYNTHETIC_ID,
+      subjectId: 990604,
+      characterId: 990605,
+      expectedArguments: P06_RENDER_PERSON_PROFILE_V2_EXPECTED_ARGUMENTS,
+      version: 2,
+    }),
+  ],
+]);
+
+export function getP06RenderPersonProfileOfflineConfig(profileId) {
+  return P06_OFFLINE_PROFILE_CONFIGS.get(profileId) ?? null;
+}
+
 const ORIGIN = 'https://api.bgm.tv';
 
-function matchesExpectedArguments(value) {
+function matchesExpectedArguments(value, expectedArguments) {
   return (
     value &&
     typeof value === 'object' &&
     !Array.isArray(value) &&
-    Object.keys(value).sort().join(',') ===
-      Object.keys(P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS).sort().join(',') &&
-    Object.entries(P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS).every(
-      ([key, expected]) => value[key] === expected,
-    )
+    Object.keys(value).sort().join(',') === Object.keys(expectedArguments).sort().join(',') &&
+    Object.entries(expectedArguments).every(([key, expected]) => value[key] === expected)
   );
 }
 
 export function assertP06RenderPersonProfileOfflineProfile(profile) {
-  if (profile?.id !== P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID) return false;
+  const config = getP06RenderPersonProfileOfflineConfig(profile?.id);
+  if (!config) return false;
   if (
-    profile.networkMode !== P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE ||
+    profile.networkMode !== config.networkMode ||
     profile.toolName !== 'bangumi.render_person_profile' ||
     profile.frontierId !== 'P06' ||
-    profile.epochId !== P06_RENDER_PERSON_PROFILE_OFFLINE_EPOCH_ID ||
-    profile.argumentProfile !== P06_RENDER_PERSON_PROFILE_ARGUMENT_PROFILE ||
+    profile.epochId !== config.epochId ||
+    profile.argumentProfile !== config.argumentProfile ||
     profile.acceptanceScope !== 'agent-mcp-matrix-only' ||
-    profile.reportPath !== 'docs/live-probes/p06-render-person-profile-agent-mcp-run95.json' ||
-    profile.selectionEvidencePath !==
-      'docs/research/run95-p06-render-person-profile-agent-mcp-offline-fixture-source-contract-2026-10-16.md' ||
-    profile.evidenceKind !== 'codex_cli_p06_render_person_profile_offline_agent_mcp' ||
-    profile.answerCheckMethod !== 'p06-exact-synthetic-renderer-execution-only-v1' ||
+    profile.reportPath !== config.reportPath ||
+    profile.selectionEvidencePath !== config.selectionEvidencePath ||
+    profile.evidenceKind !== config.evidenceKind ||
+    profile.answerCheckMethod !== config.answerCheckMethod ||
     profile.model !== 'gpt-6-luna' ||
     profile.reasoningEffort !== 'max' ||
     profile.calls?.length !== 1 ||
     profile.calls[0]?.toolName !== 'bangumi.render_person_profile' ||
-    !matchesExpectedArguments(profile.calls[0]?.arguments)
+    !matchesExpectedArguments(profile.calls[0]?.arguments, config.expectedArguments)
   ) {
     throw new Error('P06 offline mode only accepts its immutable registered renderer profile.');
   }
@@ -79,9 +136,23 @@ function requestHeaders(input, init) {
   return new Headers(init?.headers ?? input?.headers ?? {});
 }
 
-function syntheticPerson() {
+function syntheticPerson(config) {
+  if (config.version === 2) {
+    return {
+      id: config.syntheticPersonId,
+      name: '合成声优人物の日本語名 990602',
+      type: 1,
+      career: ['voice actor'],
+      gender: 'unknown',
+      blood_type: null,
+      short_summary:
+        '仅供离线验收的合成资料；用于检查中文、日文混排、长文本换行和摘要截断。'.repeat(5),
+      images: { large: '', medium: '', small: '', grid: '' },
+      infobox: [{ key: '简体中文名', value: '合成声优人员 990602（长标题换行检查）' }],
+    };
+  }
   return {
-    id: P06_RENDER_PERSON_PROFILE_SYNTHETIC_ID,
+    id: config.syntheticPersonId,
     name: 'Synthetic Person 990601',
     type: 1,
     career: ['voice actor'],
@@ -91,45 +162,55 @@ function syntheticPerson() {
   };
 }
 
-function syntheticSubjects() {
+function syntheticSubjects(config) {
   return [
     {
-      id: SUBJECT_ID,
+      id: config.subjectId,
       type: 2,
-      name: 'Synthetic Work 990602',
-      name_cn: '合成作品 990602',
-      staff: '合成配音',
+      name: config.version === 2 ? '合成作品の日本語原名 990604' : 'Synthetic Work 990602',
+      name_cn:
+        config.version === 2
+          ? '合成作品：一个很长的中文条目标题用于移动端换行检查'
+          : '合成作品 990602',
+      staff: config.version === 2 ? 'voice actor' : '合成配音',
       eps: '12',
       image: '',
     },
   ];
 }
 
-function syntheticCharacters() {
+function syntheticCharacters(config) {
   return [
     {
-      id: CHARACTER_ID,
+      id: config.characterId,
       type: 1,
-      name: 'Synthetic Character 990603',
+      name: config.version === 2 ? '合成角色の長い日本語名' : 'Synthetic Character 990603',
       images: { large: '', medium: '', small: '', grid: '' },
-      subject_id: SUBJECT_ID,
+      subject_id: config.subjectId,
       subject_type: 2,
-      subject_name: 'Synthetic Work 990602',
-      subject_name_cn: '合成作品 990602',
-      staff: '合成角色',
+      subject_name: config.version === 2 ? '合成作品の日本語原名 990604' : 'Synthetic Work 990602',
+      subject_name_cn:
+        config.version === 2
+          ? '合成作品：一个很长的中文条目标题用于移动端换行检查'
+          : '合成作品 990602',
+      staff: config.version === 2 ? 'main' : '合成角色',
     },
   ];
 }
 
-export function createP06RenderPersonProfileOfflineFetch() {
+export function createP06RenderPersonProfileOfflineFetch(
+  profileId = P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID,
+) {
+  const config = getP06RenderPersonProfileOfflineConfig(profileId);
+  if (!config) throw new Error('P06 offline fixture requires a registered P06 profile.');
   const operations = new Map([
-    [`/v0/persons/${P06_RENDER_PERSON_PROFILE_SYNTHETIC_ID}`, syntheticPerson],
-    [`/v0/persons/${P06_RENDER_PERSON_PROFILE_SYNTHETIC_ID}/subjects`, syntheticSubjects],
-    [`/v0/persons/${P06_RENDER_PERSON_PROFILE_SYNTHETIC_ID}/characters`, syntheticCharacters],
+    [`/v0/persons/${config.syntheticPersonId}`, () => syntheticPerson(config)],
+    [`/v0/persons/${config.syntheticPersonId}/subjects`, () => syntheticSubjects(config)],
+    [`/v0/persons/${config.syntheticPersonId}/characters`, () => syntheticCharacters(config)],
   ]);
   const observed = new Set();
   const counters = {
-    profile: P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+    profile: config.networkMode,
     requestCount: 0,
     personRequestCount: 0,
     subjectsRequestCount: 0,

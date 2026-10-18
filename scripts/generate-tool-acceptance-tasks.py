@@ -2358,7 +2358,7 @@ CODEX_C03_RECEIPT_PAYLOAD_FIELDS = {
 }
 CODEX_P06_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
-    if profile.get('id') == 'p06-render-person-profile-offline-agent-mcp-v1'
+    if profile.get('id') == 'p06-render-person-profile-offline-agent-mcp-v2'
 )
 CODEX_P06_PROFILE_ID = CODEX_P06_PROFILE['id']
 CODEX_P06_EPOCH_ID = CODEX_P06_PROFILE['epochId']
@@ -2382,6 +2382,8 @@ CODEX_P06_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_P06_PROFILE['selectionEvidenc
 CODEX_P06_EVIDENCE_KIND = CODEX_P06_PROFILE['evidenceKind']
 CODEX_P06_ANSWER_CHECK_METHOD = CODEX_P06_PROFILE['answerCheckMethod']
 CODEX_P06_NETWORK_MODE = CODEX_P06_PROFILE['networkMode']
+CODEX_P06_PROFILE_VERSION = 2
+CODEX_P06_PROFILE_LABEL = f'codex-luna-max-offline-agent-mcp-matrix-v{CODEX_P06_PROFILE_VERSION}'
 CODEX_P06_EVIDENCE_REFRESH_PATHS = {
     CODEX_P06_REPORT_RELATIVE_PATH,
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
@@ -5353,30 +5355,32 @@ CODEX_R05_PROBE_IMPLEMENTATION_MARKERS = {
 }
 CODEX_P06_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/agent-mcp-profile-registry.json': (
-        '"id": "p06-render-person-profile-offline-agent-mcp-v1"',
-        '"networkMode": "run95-p06-render-person-profile-offline-v1"',
+        '"id": "p06-render-person-profile-offline-agent-mcp-v2"',
+        '"networkMode": "run95-p06-render-person-profile-offline-v2"',
         '"toolName": "bangumi.render_person_profile"',
-        '"personId": 990601',
+        '"personId": 990602',
     ),
     'scripts/lib/p06-render-person-profile-offline-fixture.mjs': (
         'export function assertP06RenderPersonProfileOfflineProfile(',
         'export function createP06RenderPersonProfileOfflineFetch(',
         'export function createP06RenderPersonProfileAssetGuard(',
         'authorizationHeaderCount',
+        'if (config.version === 2)',
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
-        "profileId === 'p06-render-person-profile-offline-agent-mcp-v1'",
+        "profileId === 'p06-render-person-profile-offline-agent-mcp-v2'",
         'artifactSummary',
     ),
     'docs/product/frontier-ledger.json': (
-        'Run #95 selected a distinct fixed synthetic offline render_person_profile Agent/MCP profile solely for the tool matrix',
+        'Run #95 selected synthetic offline render_person_profile Agent/MCP profiles v1 and v2 solely for the tool matrix',
+        'docs/research/run95-p06-render-person-profile-agent-mcp-offline-fixture-v2-source-contract-2026-10-18.md',
         'does not establish real-person data',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
         'parseCodexOneToolMcpArguments(argv)',
-        'createP06RenderPersonProfileOfflineFetch()',
+        'createP06RenderPersonProfileOfflineFetch(config.profile?.id)',
         'createP06RenderPersonProfileAssetGuard()',
-        "'p06-render-person-profile-offline-agent-mcp-v1'",
+        'P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE',
     ),
     'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
         'export function parseCodexOneToolMcpArguments(',
@@ -5385,6 +5389,7 @@ CODEX_P06_PROBE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/acceptance/run-p06-render-person-profile-agent-mcp.mjs': (
         'export function validateP06RunnerArgs(',
+        "args[3] === P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID",
         'export function assertCandidateReviewGate(',
         'export function buildP06CodexExecArgs(',
         'export function validateServerSummary(',
@@ -5394,13 +5399,14 @@ CODEX_P06_PROBE_IMPLEMENTATION_MARKERS = {
         'export function buildP06RunnerReceiptPayload(',
         'export function validateP06ProfileReport(',
         'export function validateP06SanitizedReportFile(',
-        'openSync(REPORT_PATH, \'wx\', 0o600)',
+        'function getP06ReportProfile(profileId)',
+        'openSync(reportPath, \'wx\', 0o600)',
     ),
     'scripts/acceptance/validate-p06-render-person-profile-agent-mcp-report.mjs': (
         'validateP06ProfileReport(',
     ),
     'scripts/agent-harness.mjs': (
-        "case 'p06-render-person-profile-offline-agent-mcp-v1'",
+        "case 'p06-render-person-profile-offline-agent-mcp-v2'",
         'validateP06SanitizedReportFile(',
     ),
     'tests/harness/codex-one-tool-mcp-server-p06-profile.test.mjs': (
@@ -12127,7 +12133,6 @@ def codex_p06_frontier_is_unassessed() -> bool:
         isinstance(record, dict)
         and record.get('status') == 'UNASSESSED'
         and isinstance(source_refs, list)
-        and CODEX_P06_REPORT_RELATIVE_PATH in source_refs
         and CODEX_P06_SELECTION_EVIDENCE_RELATIVE_PATH in source_refs
     )
 
@@ -12168,7 +12173,7 @@ def codex_p06_profile_report_is_valid(
         or report.get('scenarioId') is not None
         or report.get('epochId') != CODEX_P06_EPOCH_ID
         or report.get('profileId') != CODEX_P06_PROFILE_ID
-        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v1'
+        or report.get('profile') != CODEX_P06_PROFILE_LABEL
         or report.get('model') != 'gpt-6-luna'
         or report.get('reasoningEffort') != 'max'
         or not isinstance(report.get('reviewerId'), str)

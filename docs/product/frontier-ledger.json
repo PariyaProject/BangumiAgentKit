@@ -2413,9 +2413,11 @@
         "docs/research/user-scenario-catalog.md",
         "docs/research/run95-p06-render-person-profile-public-probe-2026-10-16.md",
         "docs/research/run95-p06-render-person-profile-agent-mcp-offline-fixture-source-contract-2026-10-16.md",
+        "docs/research/run95-p06-render-person-profile-agent-mcp-offline-fixture-v2-source-contract-2026-10-18.md",
+        "docs/research/run95-p06-person-profile-offline-renderer-visual-qa-v2-2026-10-18.md",
         "docs/live-probes/public-tools-2026-10-15-154413213-10706.json"
       ],
-      "next_action": "Keep UNASSESSED. The anonymous public render_person_profile observation for personId=13684 is limited to its public/API matrix row, has a four-request combined API+asset budget, and does not establish latest-20 recency or ongoing status. Run #95 selected a distinct fixed synthetic offline render_person_profile Agent/MCP profile solely for the tool matrix; it must use its own permanent one-shot claim and exact reviewed Candidate. Even if accepted, that profile is not P06 scenario evidence and does not establish real-person data, latest-20 ordering, ongoing status, or visual quality. Do not repeat the public input or infer scenario completion.",
+      "next_action": "Keep UNASSESSED. The anonymous public render_person_profile observation for personId=13684 is limited to its public/API matrix row, has a four-request combined API+asset budget, and does not establish latest-20 recency or ongoing status. Run #95 selected synthetic offline render_person_profile Agent/MCP profiles v1 and v2 solely for the tool matrix; both are terminal INCONCLUSIVE/no-report/no-retry. V2 claim profile-run-95-pr-223-a034e51bd933-1792304891062 ended with reason code P06_AGENT_MCP_ASSERTION_FAILED; the sanitized record does not identify the individual failed assertion. Do not retry either profile and do not add Agent/MCP matrix credit for v2. The v2 local visual QA at 320/360/520/640/960 widths is documented separately. The synthetic visual QA does not establish real-person data. Neither it nor the matrix report establishes latest-20 ordering, ongoing status, or P06 scenario completion. Do not repeat the public input or infer scenario completion.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "evidence": {
         "fresh_render_person_profile_public_observation_2026_10_16": {

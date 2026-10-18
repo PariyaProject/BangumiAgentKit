@@ -95,7 +95,12 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 28);
+  assert.equal(listAgentMcpProfiles().length, 29);
+  const p06OfflineV2 = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v2');
+  assert.ok(p06OfflineV2);
+  assert.equal(p06OfflineV2.epochId, 'run95-p06-render-person-profile-visual-matrix-v2-20261018');
+  assert.equal(p06OfflineV2.calls[0].arguments.personId, 990602);
+  assert.equal(p06OfflineV2.acceptanceScope, 'agent-mcp-matrix-only');
   const g06CastMatrixV2 = getAgentMcpProfileById('g06-cast-offline-agent-mcp-matrix-v2');
   assert.ok(g06CastMatrixV2);
   assert.equal(g06CastMatrixV2.epochId, 'run95-g06-cast-offline-matrix-v2-20261018');

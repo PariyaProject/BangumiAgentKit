@@ -634,6 +634,9 @@ test('P06 offline renderer matrix evidence cannot close the latest-20 scenario',
   assert.equal(record.status, 'UNASSESSED');
   assert.match(record.next_action, /Keep UNASSESSED/u);
   assert.match(record.next_action, /synthetic offline render_person_profile Agent\/MCP/u);
+  assert.match(record.next_action, /both are terminal INCONCLUSIVE\/no-report\/no-retry/u);
+  assert.match(record.next_action, /P06_AGENT_MCP_ASSERTION_FAILED/u);
+  assert.match(record.next_action, /do not add Agent\/MCP matrix credit for v2/u);
   assert.match(record.next_action, /does not establish real-person data/u);
   assert.ok(
     record.source_refs.includes(

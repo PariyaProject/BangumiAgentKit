@@ -10,14 +10,15 @@ import {
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
   P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS,
-  P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+  P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+  getP06RenderPersonProfileOfflineConfig,
 } from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 import {
   buildP06ProfileReport,
   validateP06ProfileReport,
 } from '../../scripts/acceptance/write-p06-render-person-profile-agent-mcp-report.mjs';
 
-const PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
+const DEFAULT_PROFILE_ID = 'p06-render-person-profile-offline-agent-mcp-v1';
 const ACKNOWLEDGEMENT = 'P06_SYNTHETIC_PROFILE_RENDERED';
 const CI_RUN_ID = '38806371672';
 const CI_CHECKS = [
@@ -31,7 +32,11 @@ const CI_CHECKS = [
 ].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
-function fixtureInput() {
+function fixtureInput(profileId = DEFAULT_PROFILE_ID) {
+  const PROFILE = getAgentMcpProfileById(profileId);
+  const profileConfig = getP06RenderPersonProfileOfflineConfig(profileId);
+  const expectedArguments = profileConfig.expectedArguments;
+  const networkMode = profileConfig.networkMode;
   const keyPair = generateKeyPairSync('ed25519');
   const publicKeyBase64 = keyPair.publicKey
     .export({ type: 'spki', format: 'der' })
@@ -48,7 +53,7 @@ function fixtureInput() {
     prNumber: 222,
     toolName: PROFILE.toolName,
     argumentProfile: PROFILE.argumentProfile,
-    expectedArguments: [P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS],
+    expectedArguments: [expectedArguments],
     expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
     registrySha256: agentMcpProfileRegistrySha256(PROFILE.id),
     sourceCandidateSha: '0'.repeat(40),
@@ -65,7 +70,7 @@ function fixtureInput() {
     retryAllowed: false,
   };
   const offlineFixture = {
-    profile: P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+    profile: networkMode,
     requestCount: 3,
     personRequestCount: 1,
     subjectsRequestCount: 1,
@@ -96,7 +101,7 @@ function fixtureInput() {
   const serverSummary = {
     profileId: PROFILE.id,
     argumentProfile: PROFILE.argumentProfile,
-    networkMode: P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+    networkMode,
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
     sourceRevision: claim.sourceCandidateSha,
     bundleSha256: claim.bundleSha256,
@@ -140,9 +145,7 @@ function fixtureInput() {
       claim,
       serverSummary,
       events,
-      completedMcpCalls: [
-        { tool: PROFILE.toolName, arguments: P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS },
-      ],
+      completedMcpCalls: [{ tool: PROFILE.toolName, arguments: expectedArguments }],
       answer: ACKNOWLEDGEMENT,
       codexCliVersion: '1.2.14',
       eventStreamSha256: '7'.repeat(64),
@@ -182,6 +185,18 @@ test('P06 report builder signs only sanitized matrix evidence with no scenario c
   assert.equal(Object.hasOwn(built.report, 'prompt'), false);
   assert.equal(Object.hasOwn(built.report, 'answer'), false);
   assert.equal(Object.hasOwn(built.report.artifact, 'id'), false);
+});
+
+test('P06 v2 report binds the distinct offline profile without claiming scenario completion', () => {
+  const { input, keyPair } = fixtureInput(P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
+  const built = buildP06ProfileReport(input, { privateKey: keyPair.privateKey });
+
+  assert.equal(built.passed, true, JSON.stringify(built));
+  assert.equal(built.report.profileId, P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
+  assert.equal(built.report.profile, 'codex-luna-max-offline-agent-mcp-matrix-v2');
+  assert.equal(built.report.scenarioId, null);
+  assert.equal(built.report.networkMode, input.serverSummary.networkMode);
+  assert.equal(validateP06ProfileReport(built.report, input.claim).passed, true);
 });
 
 test('P06 report validator rejects changed fixture counters and any modified signed evidence', () => {

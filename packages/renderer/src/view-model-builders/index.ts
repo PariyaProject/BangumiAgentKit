@@ -2470,6 +2470,12 @@ const NOT_COMPUTABLE_LABELS: Record<string, string> = {
   collaboration_count: '合作人数与共同作品',
 };
 
+const PERSON_PROFILE_IDENTITY_FIELD_LABELS: Record<string, string> = {
+  'person.gender': '性别',
+  'person.birth_year': '出生日期',
+  'person.blood_type': '血型',
+};
+
 export function buildPersonProfileViewModel(
   profile: PersonActivityProfile,
   options: {
@@ -2509,6 +2515,9 @@ export function buildPersonProfileViewModel(
     profile.person.birthYear === undefined ? 'person.birth_year' : undefined,
     profile.person.bloodType === undefined ? 'person.blood_type' : undefined,
   ].filter((field): field is string => field !== undefined);
+  const identityMissingLabels = identityMissingFields.map(
+    (field) => PERSON_PROFILE_IDENTITY_FIELD_LABELS[field] || field,
+  );
   const birthDate = [
     profile.person.birthYear,
     profile.person.birthMonth,
@@ -2533,12 +2542,13 @@ export function buildPersonProfileViewModel(
     identityMissingFields.length > 0 ||
     profile.releaseChronology !== undefined;
   const defaultLimitations = [
-    '人物作品关系接口没有分页、总数或完整性承诺；本次返回范围未截断只表示本地没有截断收到的关系行，不代表完整人物作品表。空、缺失或无效的官方 name_cn 不证明该作品没有中文名。',
+    '作品和角色关系只代表接口返回样本；上游没有提供总数、分页或完整性承诺。',
+    '空、缺失或无效的官方中文名字段，不代表该作品没有中文名。',
     profile.releaseChronology
-      ? '可选日期只覆盖受限动画样本；关系顺序和完整性未说明，因此不能推断完整生涯的最近活动或时间窗口工作量。'
-      : '关系接口没有作品日期，因此不能从此卡片推断最近活动或时间窗口工作量。',
+      ? '日期只覆盖受限动画样本；不能据此推断完整生涯的最近活动或时间窗口工作量。'
+      : '作品关系没有日期，不能据此推断最近活动或时间窗口工作量。',
     '没有历史快照，因此不显示增长或趋势结论。',
-    '关系明细按官方接口返回顺序展示，仅作为样本，不代表最新或优先级排序。',
+    '关系明细沿用接口返回顺序，不代表最新或优先级排序。',
   ];
 
   return {
@@ -2592,14 +2602,17 @@ export function buildPersonProfileViewModel(
       unobserved: Math.max(0, observed - returned),
     },
     ...(profile.releaseChronology ? { releaseChronology: profile.releaseChronology } : {}),
-    limitations: [...(options.limitations || defaultLimitations), ...(profile.releaseChronology?.limitations || [])],
+    limitations: [
+      ...(options.limitations || defaultLimitations),
+      ...(profile.releaseChronology?.limitations || []),
+    ],
     warnings: [
       ...(identityMissingFields.length > 0
         ? [
             {
               code: 'MISSING_IDENTITY_FIELDS',
               state: 'partial' as const,
-              message: `身份字段缺失：${identityMissingFields.join(', ')}`,
+              message: `身份字段缺失：${identityMissingLabels.join('、')}`,
             },
           ]
         : []),
@@ -2612,7 +2625,7 @@ export function buildPersonProfileViewModel(
       },
     ],
     source: {
-      label: options.sourceLabel || 'Bangumi v0 · PersonProfile',
+      label: options.sourceLabel || 'Bangumi 官方 v0 · 人物资料',
       retrievedAt: options.retrievedAt,
     },
   };

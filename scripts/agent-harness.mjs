@@ -296,6 +296,7 @@ const R04_RENDER_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
 ]);
 const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'p06-render-person-profile-offline-agent-mcp-v1',
+  'p06-render-person-profile-offline-agent-mcp-v2',
   'c07-render-comparison-offline-agent-mcp-matrix-v1',
   'p02-person-profile-offline-agent-mcp-v1',
   'r04-series-watch-order-offline-agent-mcp-v1',
@@ -4287,6 +4288,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'c03-voice-actor-comparison-v1':
       return validateC03SanitizedReportFile(claim, root, reportPath);
     case 'p06-render-person-profile-offline-agent-mcp-v1':
+    case 'p06-render-person-profile-offline-agent-mcp-v2':
       return validateP06SanitizedReportFile(claim, root, reportPath);
     case 'c07-render-comparison-offline-agent-mcp-matrix-v1':
       return validateC07RenderComparisonOfflineSanitizedReportFile(claim, root, reportPath);

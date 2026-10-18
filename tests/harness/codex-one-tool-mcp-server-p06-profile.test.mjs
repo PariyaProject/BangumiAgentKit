@@ -5,6 +5,9 @@ import {
   P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS,
   P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
   P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID,
+  P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+  P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+  P06_RENDER_PERSON_PROFILE_V2_EXPECTED_ARGUMENTS,
 } from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 
 const REQUIRED = [
@@ -26,6 +29,20 @@ test('registered P06 profile selects only its immutable offline network mode', (
   assert.equal(config.profile.id, P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID);
   assert.equal(config.networkMode, P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE);
   assert.deepEqual(config.expectedArgumentSequence, [P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS]);
+});
+
+test('registered P06 v2 profile selects only its distinct offline network mode and arguments', () => {
+  const config = parseCodexOneToolMcpArguments([
+    '--profile-id',
+    P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+    ...REQUIRED,
+  ]);
+  assert.equal(config.toolName, 'bangumi.render_person_profile');
+  assert.equal(config.profile.id, P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
+  assert.equal(config.networkMode, P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE);
+  assert.deepEqual(config.expectedArgumentSequence, [
+    P06_RENDER_PERSON_PROFILE_V2_EXPECTED_ARGUMENTS,
+  ]);
 });
 
 test('P06 registered profile rejects arbitrary arguments and caller-selected network modes', () => {
