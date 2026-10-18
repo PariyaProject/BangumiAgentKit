@@ -1976,31 +1976,10 @@
         "tests/harness/run-c02-tv-movie-comparison-agent-mcp.test.mjs",
         "tests/harness/write-c02-tv-movie-comparison-report.test.mjs"
       ],
-      "next_action": "2026-10-18T06:57:24Z: Keep C02 UNASSESSED. Live Harness status on PR #194 for c02-cardcaptor-tv-movie-v1 is terminal INCONCLUSIVE, reportWritten=false, retryAllowed=false; claim and terminal labels are present, and no failure diagnostics were retained. Never run or recreate this profile, claim, or fixed argument set. No accepted C02 scenario answer or additional Agent/MCP matrix credit exists; bangumi.get_subject_comparison already has generic matrix credit. Continue on another genuinely unspent frontier. Disposition: docs/research/run95-c02-profile-terminal-disposition-2026-10-18.md.",
+      "next_action": "Keep C02 UNASSESSED. No accepted scenario answer exists, and no additional Agent/MCP matrix credit exists; continue with another eligible frontier. The prior attempt's Harness control record is referenced by docs/research/run95-c02-profile-terminal-disposition-2026-10-18.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "evidence": {
-        "capabilities": ["bangumi.get_subject_comparison"],
-        "profile_preparation": {
-          "state": "TERMINAL_INCONCLUSIVE_NO_REPORT",
-          "profileId": "c02-cardcaptor-tv-movie-v1",
-          "epochId": "run95-c02-cardcaptor-tv-movie-comparison",
-          "toolName": "bangumi.get_subject_comparison",
-          "argumentProfile": "fixed-c02-cardcaptor-1940-tv-1941-movie-v1",
-          "arguments": {
-            "subjectIds": [1940, 1941],
-            "maxCast": 1,
-            "maxStaff": 1,
-            "maxRelations": 1
-          },
-          "acceptanceScope": "frontier-scenario-only",
-          "scenarioAcceptance": "NOT_ACCEPTED",
-          "claimId": "profile-run-95-pr-194-538c828a6446-1792153173496",
-          "reportWritten": false,
-          "retryAllowed": false,
-          "statusCheckedAt": "2026-10-18T06:57:24Z",
-          "terminalDispositionPath": "docs/research/run95-c02-profile-terminal-disposition-2026-10-18.md",
-          "reportPath": "docs/live-probes/c02-tv-movie-comparison-agent-mcp-run95.json"
-        }
+        "capabilities": ["bangumi.get_subject_comparison"]
       },
       "related_ids": []
     },
