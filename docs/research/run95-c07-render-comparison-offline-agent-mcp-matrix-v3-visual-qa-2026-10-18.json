@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "profileId": "c07-render-comparison-offline-agent-mcp-matrix-v3",
+  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v3-visual-qa-candidate-bound-20261018",
+  "cssWidths": [320, 360, 520, 640, 960],
+  "deviceScaleFactor": 1,
+  "buildBundleSha256": "41797e00c7bafdaa6a057c8030eaaccccd32fe3d3d71982033f227e9a715501c",
+  "generationSourceSha256": "cd55dad85793af20621850d72fcab9bec9ded2df867da6135a7efa3800d38ae2",
+  "reviewAcknowledgement": {
+    "decision": "PASS",
+    "allImagesIndividuallyInspected": true,
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-10-18T16:02:36.000Z",
+    "summary": "All ten final complete and partial PNGs were opened and checked individually after the renderer rebuild. No clipping or horizontal overflow was observed; the partial card clearly distinguishes a returned search row with unavailable details from an empty search result."
+  },
+  "images": [
+    {
+      "case": "complete-single-cohort-e",
+      "file": "complete-single-cohort-e-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1225,
+      "byteLength": 109134,
+      "sha256": "604763667f01f01876786cd05ce3c0ebe150ba90b0217a87fd95d7eaa26601b0",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Single-column layout. The mixed Japanese, Chinese, and Latin title wraps without clipping; sample, four metrics, limits, and footer stay separated. Secondary captions are compact but readable."
+      }
+    },
+    {
+      "case": "complete-single-cohort-e",
+      "file": "complete-single-cohort-e-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1196,
+      "byteLength": 109699,
+      "sha256": "a4953dd346d5d89eb5b2a8ff26a7b2c3f0faa94c2dcbcd340f6dc0f1b03354e6",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "The title and sample metadata wrap cleanly; the subject row and four metric cards remain distinct with no collision."
+      }
+    },
+    {
+      "case": "complete-single-cohort-e",
+      "file": "complete-single-cohort-e-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1045,
+      "byteLength": 109773,
+      "sha256": "0b746deb23edeb2e11a98997056037206406a693f07e3114a1db292e534c074c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "The sample panel and four metric rows have clear separation; source labels and footer stay inside the card with no horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-single-cohort-e",
+      "file": "complete-single-cohort-e-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1031,
+      "byteLength": 111238,
+      "sha256": "c59c085e6b8a13fa77dee51cc302fbbb5eee66bf7a50c69ebc7d12eb20bfda53",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "The single cohort uses the full card width; metrics remain stacked and no unused comparison column or clipping appears."
+      }
+    },
+    {
+      "case": "complete-single-cohort-e",
+      "file": "complete-single-cohort-e-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 816,
+      "byteLength": 114528,
+      "sha256": "f952c5d90011c7d8a8e22947d44b36786887ac6a40890a8c5da68c627568a82f",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Metric values and complete-state labels align in separate columns; the wide layout has no overflow and the footer remains aligned."
+      }
+    },
+    {
+      "case": "partial-single-cohort-e",
+      "file": "partial-single-cohort-e-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1308,
+      "byteLength": 122137,
+      "sha256": "25620340221ec4c597c56076798ceeaf83936338989d7b4eb1d8c215485ef20a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "The sample-display explanation says a search result was returned but details are unavailable and no subject row is shown. Unknown values and partial states remain visible; the dense footer fits without clipping."
+      }
+    },
+    {
+      "case": "partial-single-cohort-e",
+      "file": "partial-single-cohort-e-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1257,
+      "byteLength": 122914,
+      "sha256": "aa753578afa35b381d94d0093a7d984edde495569fb42e8beb0c96f9c1a6195b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "The no-row explanation wraps cleanly and distinguishes missing details from no match; all four unknown metric states remain visible."
+      }
+    },
+    {
+      "case": "partial-single-cohort-e",
+      "file": "partial-single-cohort-e-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1111,
+      "byteLength": 121931,
+      "sha256": "57c8030beedc6efde1762fdd027adab4c12996bd90b86b47f7453a839de1efe7",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "The search/detail caveat, metric rows, missing-data explanation, limits, and source footer do not collide."
+      }
+    },
+    {
+      "case": "partial-single-cohort-e",
+      "file": "partial-single-cohort-e-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1074,
+      "byteLength": 123535,
+      "sha256": "690e79e43e319b9c1ea1e05d6372798b9a4f4d0a424c8546adc4f4a14d45730c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "The single cohort uses the full card width; the partial state and unavailable-detail explanation remain distinct from all four metrics."
+      }
+    },
+    {
+      "case": "partial-single-cohort-e",
+      "file": "partial-single-cohort-e-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 859,
+      "byteLength": 127083,
+      "sha256": "5f3d7836d11e26598deddd9637449afa51b23a2de71869a6696a83acd8b3ef89",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Unknown values and partial-state labels align in separate columns; the unavailable-detail caveat remains readable with no overflow."
+      }
+    }
+  ]
+}

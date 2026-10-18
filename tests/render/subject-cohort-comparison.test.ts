@@ -105,6 +105,20 @@ describe('subject cohort comparison renderer', () => {
     expect(html).not.toContain('SYNTHETIC_PARTIAL_FIXTURE');
   });
 
+  it('explains when search returned a row but no subject detail can be displayed', () => {
+    const partial = buildSubjectCohortComparisonViewModel({
+      ...result,
+      state: 'partial',
+      cohorts: [{ ...result.cohorts[0]!, subjects: [] }],
+    });
+    const html = renderHtmlTemplate(partial, 'bangumi-dark', {}, 360);
+
+    expect(html).toContain('样本显示情况');
+    expect(html).toContain('检索返回');
+    expect(html).toContain('本图不显示作品行');
+    expect(html).not.toContain('返回样本');
+  });
+
   it('shows invalid discovery counts and score-versus-histogram conflict values', () => {
     const diagnosticResult: SubjectCohortComparisonResult = {
       ...result,

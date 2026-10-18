@@ -33,6 +33,7 @@ import {
 } from '../lib/c07-render-comparison-offline-profile.mjs';
 import { summarizeCodexErrorItems } from '../lib/codex-mcp-approval-config.mjs';
 import { persistC07OfflineVisualArtifactForInspection } from '../lib/c07-offline-visual-artifact-capture.mjs';
+import { validateC07V3VisualQaEvidence } from '../lib/c07-render-comparison-visual-qa.mjs';
 import {
   configureC07RenderComparisonOfflineReportProfile,
   validateC07RenderComparisonOfflineSanitizedReportFile,
@@ -49,6 +50,8 @@ const HARNESS_SCRIPT = path.join(ROOT, 'scripts/agent-harness.mjs');
 const MAX_STDOUT_BYTES = 8 * 1024 * 1024;
 const CODEX_TIMEOUT_MS = 10 * 60 * 1000;
 const BUILD_TIMEOUT_MS = 5 * 60 * 1000;
+const C07_V3_VISUAL_QA_MANIFEST_SHA256 =
+  '7864091557b976b22ce252fbb3536b1d3593da1b0a26b7b16e0d962761d77287';
 let CONFIG = getC07RenderComparisonOfflineConfig(C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID);
 let PROFILE = getAgentMcpProfileById(CONFIG.id);
 let ACKNOWLEDGEMENT = CONFIG.acknowledgement;
@@ -673,6 +676,19 @@ function runC07RenderComparisonOffline({
     throw new Error(
       'C07_RENDER_COMPARISON active Epoch, Candidate, Base, or reviewer changed during preflight.',
     );
+
+  if (
+    CONFIG.id === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID &&
+    !validateC07V3VisualQaEvidence({
+      root: ROOT,
+      expectedManifestSha256: C07_V3_VISUAL_QA_MANIFEST_SHA256,
+      expectedBundleSha256: bundleSha256,
+    })
+  ) {
+    throw new Error(
+      'C07 v3 visual QA is missing, unreviewed, or stale; refusing the permanent one-shot claim.',
+    );
+  }
 
   const keyPair = generateKeyPairSync('ed25519');
   const publicKeyBase64 = keyPair.publicKey

@@ -27,9 +27,17 @@ export function codexMcpExactToolAccessConfig(serverName, toolNames) {
   ];
 }
 
+const EXPECTED_BLOCKED_WEB_SEARCH_MESSAGES = new Set([
+  'The web search tool is disabled.',
+  'The web search tool is unavailable.',
+]);
+
 function isBlockedDisabledWebSearchError(item) {
-  if (item?.type !== 'error' || typeof item.message !== 'string') return false;
-  return /web[\s_-]?search/iu.test(item.message) && /(?:disabled|unavailable)/iu.test(item.message);
+  return (
+    item?.type === 'error' &&
+    typeof item.message === 'string' &&
+    EXPECTED_BLOCKED_WEB_SEARCH_MESSAGES.has(item.message)
+  );
 }
 
 /** Summarize error events without retaining their messages or other CLI output. */

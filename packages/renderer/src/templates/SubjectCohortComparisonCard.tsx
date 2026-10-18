@@ -220,11 +220,13 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                   marginTop: theme.spacing.sm,
                 }}
               >
-                返回样本
+                {cohort.subjects.length === 0 ? '样本显示情况' : '返回样本'}
               </div>
               {cohort.subjects.length === 0 ? (
                 <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
-                  没有可展示的条目；空结果不证明目录中不存在匹配项。
+                  {queryCoverage.returned > 0
+                    ? `检索返回 ${queryCoverage.returned} 条结果，但作品详情暂不可用；本图不显示作品行。详情缺失不代表没有匹配项。`
+                    : '本次检索没有可展示的条目；空结果不证明目录中不存在匹配项。'}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>

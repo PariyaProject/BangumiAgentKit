@@ -7,10 +7,15 @@ import {
   extractImageUrls,
 } from '@bangumi-agent-kit/renderer';
 import { cohortComparisonResult } from '../../tests/render/fixtures/subject-cohort-comparison.fixture';
+import { computeMcpBundleSha256, readG26McpBundleAttestation } from '../lib/g26-mcp-bundle.mjs';
+import { computeC07V3VisualQaGenerationSourceSha256 } from '../lib/c07-render-comparison-visual-qa.mjs';
 
-const OUTPUT_DIR = path.resolve('.artifacts/render/c07-cohort-comparison-v3-visual-qa');
+const OUTPUT_DIR = path.resolve(
+  '.artifacts/render/c07-cohort-comparison-v3-visual-qa-candidate-bound-20261018',
+);
 const WIDTHS = [320, 360, 520, 640, 960];
 const SYNTHETIC_KEYWORD = 'run95 c07 synthetic cohort e offline matrix 20261018';
+const SYNTHETIC_RETRIEVED_AT = '2026-10-18T14:00:00.000Z';
 
 const baseCohort = cohortComparisonResult.cohorts[0];
 if (!baseCohort) throw new Error('C07 v3 visual fixture is missing its base cohort.');
@@ -83,13 +88,14 @@ const complete = {
   source: {
     official: {
       ...cohortComparisonResult.source.official,
-      retrievedAt: '2026-10-18T14:00:00.000Z',
+      retrievedAt: SYNTHETIC_RETRIEVED_AT,
     },
     derived: {
       ...cohortComparisonResult.source.derived,
-      retrievedAt: '2026-10-18T14:00:00.000Z',
+      retrievedAt: SYNTHETIC_RETRIEVED_AT,
     },
   },
+  retrievedAt: SYNTHETIC_RETRIEVED_AT,
   warnings: [],
   limitations: [
     '本图只展示一条合成作品样本，不能代表 Bangumi 全部条目。',
@@ -173,6 +179,11 @@ const partial = {
       cohort: '合成样本 E · 单组结果',
     },
   ],
+  limitations: [
+    '检索返回一条合成作品结果，但作品详情暂不可用，因此本图不显示作品行。',
+    '详情缺失不等于数值为 0，也不能据此判断该作品不存在或未匹配。',
+    '本图使用本地合成数据，不代表 Bangumi 全部条目。',
+  ],
 };
 
 const cases = [
@@ -224,9 +235,24 @@ async function main() {
     await renderer.close();
   }
 
+  const buildBundleSha256 = computeMcpBundleSha256(process.cwd());
+  if (readG26McpBundleAttestation(process.cwd()) !== buildBundleSha256) {
+    throw new Error('C07 v3 visual QA requires a current exact renderer bundle attestation.');
+  }
+  const generationSourceSha256 = computeC07V3VisualQaGenerationSourceSha256(process.cwd());
+
   await writeFile(
     path.join(OUTPUT_DIR, 'manifest.json'),
-    `${JSON.stringify({ generatedAt: new Date().toISOString(), files: manifest }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        buildBundleSha256,
+        generationSourceSha256,
+        files: manifest,
+      },
+      null,
+      2,
+    )}\n`,
     { flag: 'wx' },
   );
   process.stdout.write(`${JSON.stringify({ outputDir: OUTPUT_DIR, files: manifest.length })}\n`);
