@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-18T20:56:01Z",
+  "updated_at": "2026-10-19T00:00:00Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1116,6 +1116,7 @@
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
       "source_refs": [
+        "docs/research/run95-query-subjects-fresh-public-matrix-v2-contract-2026-10-19.md",
         "docs/research/run95-query-subjects-fresh-public-matrix-contract-2026-10-19.md",
         "docs/research/user-scenario-catalog.md",
         "docs/live-probes/discovery-scenarios-run66-d1a5a03-2026-10-03.json",
@@ -1129,7 +1130,7 @@
         "tests/discovery/engine.test.ts",
         "tests/discovery/scenario-cases.test.ts"
       ],
-      "next_action": "Run 66 verified 2026 spring TV results with exact 原创 meta-tag, score descending, ratingCount descending within ties, stable provider order last, and a single experimental-source warning across two pages. Direct ToolRegistry and one-tool Agent/MCP calls passed; the 360 CSS px/2x card was visually checked. Seven rows exhausted the observed pages, but the official source is experimental with estimated totals. Keep PARTIAL until completeness is supportable.",
+      "next_action": "Run #95 PR #232 query_subjects v1 is terminal INCONCLUSIVE/no-report/no-retry and earns no Agent/MCP credit; never invoke it again. A local stable-Codex diagnostic with a synthetic MCP stub found three verbose web-search-disabled errors, but retained no raw messages and made no Bangumi request. The distinct v2 Epoch uses a fresh fixed input and narrowly classifies only explicit disabled-web-search errors; it may add only the query_subjects Agent/MCP cell after its exact Candidate, seven-check CI, same-identity Luna Max review, one-shot, and REPORT_WRITTEN gates pass. Keep G14 PARTIAL: a bounded search does not establish annual ranking or catalog completeness; it adds no renderer, OAuth/account, QQ, or TIM evidence. See docs/research/run95-query-subjects-fresh-public-matrix-v2-contract-2026-10-19.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

@@ -1124,6 +1124,38 @@
           }
         }
       ]
+    },
+    {
+      "id": "query-subjects-fresh-public-matrix-v2",
+      "frontierId": "G14",
+      "epochId": "run95-query-subjects-fresh-public-matrix-v2-20261019",
+      "toolName": "bangumi.query_subjects",
+      "argumentProfile": "fixed-run95-query-subjects-castle-in-the-sky-public-v2",
+      "claimLabelName": "harness-r95-qsub-matrix-v2-claimed",
+      "reportPath": "docs/live-probes/query-subjects-fresh-public-agent-mcp-v2-run95.json",
+      "selectionEvidencePath": "docs/research/run95-query-subjects-fresh-public-matrix-v2-contract-2026-10-19.md",
+      "evidenceKind": "codex_cli_query_subjects_fresh_public_agent_mcp_matrix_v2",
+      "answerCheckMethod": "query-subjects-exact-matrix-ack-v2",
+      "networkMode": "run95-query-subjects-fresh-public-matrix-v2",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 128,
+      "maxRequests": 8,
+      "calls": [
+        {
+          "toolName": "bangumi.query_subjects",
+          "arguments": {
+            "keyword": "天空之城",
+            "media": "anime",
+            "resultMode": "top",
+            "limit": 1,
+            "sort": "relevance",
+            "explain": "compact",
+            "nsfw": false
+          }
+        }
+      ]
     }
   ]
 }

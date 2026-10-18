@@ -48,6 +48,10 @@ import {
   summarizeQuerySubjectsFreshPublicResult,
 } from './query-subjects-fresh-public-matrix-profile.mjs';
 import {
+  QUERY_SUBJECTS_FRESH_PUBLIC_V2_PROFILE_ID,
+  summarizeQuerySubjectsFreshPublicV2Result,
+} from './query-subjects-fresh-public-matrix-v2-profile.mjs';
+import {
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
 } from './c07-render-comparison-offline-profile.mjs';
@@ -455,6 +459,11 @@ export function summarizeProfileToolResult(
   if (profileId === QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID) {
     return toolName === 'bangumi.query_subjects'
       ? summarizeQuerySubjectsFreshPublicResult(result)
+      : { resultState: 'unexpected_tool' };
+  }
+  if (profileId === QUERY_SUBJECTS_FRESH_PUBLIC_V2_PROFILE_ID) {
+    return toolName === 'bangumi.query_subjects'
+      ? summarizeQuerySubjectsFreshPublicV2Result(result)
       : { resultState: 'unexpected_tool' };
   }
   if (profileId === C04_COHORT_COMPARISON_PROFILE_ID) {

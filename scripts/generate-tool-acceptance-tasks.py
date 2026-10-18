@@ -3737,15 +3737,15 @@ CODEX_R02_RECEIPT_PAYLOAD_FIELDS = {
 }
 CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
-    if profile.get('id') == 'query-subjects-fresh-public-matrix-v1'
+    if profile.get('id') == 'query-subjects-fresh-public-matrix-v2'
 )
-CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['id']
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_PROFILE_ID = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['id']
 CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EPOCH_ID = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['epochId']
 CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_TOOL_NAME = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['toolName']
 CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ARGUMENT_PROFILE = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['argumentProfile']
-CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_CALLS = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['calls']
-CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
-    [call['arguments'] for call in CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_CALLS],
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_EXPECTED_CALLS = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['calls']
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_EXPECTED_CALLS],
     sort_keys=True, separators=(',', ':'), ensure_ascii=False,
 ).encode('utf-8')).hexdigest()
 CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
@@ -3755,10 +3755,10 @@ CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.
 CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_RELATIVE_PATH = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['reportPath']
 CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['selectionEvidencePath']
 CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EVIDENCE_KIND = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['evidenceKind']
-CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_NETWORK_MODE = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['networkMode']
-CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_SERVER_ID = 'bgk_query_subjects_fresh_public_matrix'
-CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ACKNOWLEDGEMENT = b'QUERY_SUBJECTS_PUBLIC_MATRIX_OK'
-CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_MAX_REQUESTS = 8
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_NETWORK_MODE = CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE['networkMode']
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_SERVER_ID = 'bgk_query_subjects_fresh_public_matrix_v2'
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_ACKNOWLEDGEMENT = b'QUERY_SUBJECTS_PUBLIC_MATRIX_V2_OK'
+CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_MAX_REQUESTS = 8
 CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REQUIRED_CI_CHECKS = CODEX_P06_REQUIRED_CI_CHECKS
 CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EVIDENCE_REFRESH_PATHS = {
     CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_RELATIVE_PATH,
@@ -3799,7 +3799,7 @@ CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_RECEIPT_FIELDS = {
     'kind', 'publicKeyBase64', 'publicKeySha256', 'signature',
 }
 CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_RECEIPT_KIND = (
-    'query-subjects-fresh-public-agent-mcp-runner-receipt-v1'
+    'query-subjects-fresh-public-agent-mcp-v2-runner-receipt-v1'
 )
 CODEX_P07_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
@@ -6899,54 +6899,54 @@ CODEX_R02_PROFILE_IMPLEMENTATION_MARKERS = {
 }
 CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/agent-mcp-profile-registry.json': (
-        '"id": "query-subjects-fresh-public-matrix-v1"',
-        '"keyword": "进击的巨人"',
-        '"networkMode": "run95-query-subjects-fresh-public-matrix-v1"',
+        '"id": "query-subjects-fresh-public-matrix-v2"',
+        '"keyword": "天空之城"',
+        '"networkMode": "run95-query-subjects-fresh-public-matrix-v2"',
     ),
-    'scripts/lib/query-subjects-fresh-public-matrix-profile.mjs': (
-        'QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID =',
-        'export function createQuerySubjectsFreshPublicFetch(',
+    'scripts/lib/query-subjects-fresh-public-matrix-v2-profile.mjs': (
+        'QUERY_SUBJECTS_FRESH_PUBLIC_V2_PROFILE_ID =',
+        'export function createQuerySubjectsFreshPublicV2Fetch(',
         "url.origin === 'https://api.bgm.tv'",
-        'QUERY_SUBJECTS_FRESH_PUBLIC_MAX_REQUESTS = 8',
+        'QUERY_SUBJECTS_FRESH_PUBLIC_V2_MAX_REQUESTS = 8',
     ),
     'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
-        'assertQuerySubjectsFreshPublicProfile(profile)',
+        'assertQuerySubjectsFreshPublicV2Profile(profile)',
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
-        'QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID',
-        'summarizeQuerySubjectsFreshPublicResult(result)',
+        'QUERY_SUBJECTS_FRESH_PUBLIC_V2_PROFILE_ID',
+        'summarizeQuerySubjectsFreshPublicV2Result(result)',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
-        'createQuerySubjectsFreshPublicFetch({ maxRequests: config.profile?.maxRequests })',
-        'assertQuerySubjectsFreshPublicProfile(config.profile)',
+        'createQuerySubjectsFreshPublicV2Fetch({ maxRequests: config.profile?.maxRequests })',
+        'assertQuerySubjectsFreshPublicV2Profile(config.profile)',
     ),
-    'scripts/acceptance/run-query-subjects-fresh-public-agent-mcp.mjs': (
+    'scripts/acceptance/run-query-subjects-fresh-public-agent-mcp-v2.mjs': (
         'export function assertQuerySubjectsFreshPublicCandidateReviewGate(',
         'export function buildQuerySubjectsFreshPublicCodexExecArgs(',
         '0.163.0 or later before claim',
         'function runQuerySubjectsFreshPublic(',
         'codexMcpExactToolAccessConfig(SERVER_ID, [PROFILE.toolName])',
     ),
-    'scripts/acceptance/write-query-subjects-fresh-public-agent-mcp-report.mjs': (
+    'scripts/acceptance/write-query-subjects-fresh-public-agent-mcp-v2-report.mjs': (
         'export function buildQuerySubjectsFreshPublicProfileReport(',
         'export function validateQuerySubjectsFreshPublicProfileReport(',
         'export function validateQuerySubjectsFreshPublicSanitizedReportFile(',
         "openSync(filePath, 'wx', 0o600)",
     ),
-    'scripts/acceptance/validate-query-subjects-fresh-public-agent-mcp-report.mjs': (
+    'scripts/acceptance/validate-query-subjects-fresh-public-agent-mcp-v2-report.mjs': (
         'validateQuerySubjectsFreshPublicProfileReport(',
     ),
     'scripts/agent-harness.mjs': (
-        "case 'query-subjects-fresh-public-matrix-v1'",
-        'validateQuerySubjectsFreshPublicSanitizedReportFile(',
+        "case 'query-subjects-fresh-public-matrix-v2'",
+        'validateQuerySubjectsFreshPublicV2SanitizedReportFile(',
         'CANDIDATE_EXACT_CI_RUN_EVIDENCE_REQUIRED',
     ),
-    'docs/research/run95-query-subjects-fresh-public-matrix-contract-2026-10-19.md': (
+    'docs/research/run95-query-subjects-fresh-public-matrix-v2-contract-2026-10-19.md': (
         'G14 remains `PARTIAL`',
         'at most eight pages',
         'it does not store',
     ),
-    'tests/harness/query-subjects-fresh-public-matrix-profile.test.mjs': (
+    'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs': (
         'public fetch denies altered routes, arguments, credentials and over-budget calls',
         'candidate gate binds one fresh Epoch to current Base, exact seven-check CI, and Luna Max PASS',
         'sanitized report is claim-bound, signed, and rejects altered summary values',
@@ -18760,7 +18760,7 @@ def codex_query_subjects_fresh_public_profile_harness_status(
             [
                 'node', str(ROOT / 'scripts/agent-harness.mjs'),
                 'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
-                '--profile-id', CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID,
+                '--profile-id', CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_PROFILE_ID,
             ],
             cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
         )
@@ -18781,11 +18781,11 @@ def codex_query_subjects_fresh_public_profile_disposition_matches_report(
     disposition = harness_status.get('disposition')
     if (
         harness_status.get('state') != 'REPORT_WRITTEN'
-        or harness_status.get('profile_id') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID
+        or harness_status.get('profile_id') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_PROFILE_ID
         or harness_status.get('pr') != report.get('prNumber')
         or harness_status.get('tool_name') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_TOOL_NAME
         or harness_status.get('argument_profile') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ARGUMENT_PROFILE
-        or harness_status.get('expected_arguments_sha256') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_ARGUMENTS_SHA256
+        or harness_status.get('expected_arguments_sha256') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_EXPECTED_ARGUMENTS_SHA256
         or harness_status.get('registry_sha256') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_REGISTRY_SHA256
         or harness_status.get('claim_label_present') is not True
         or harness_status.get('terminal_label_present') is not True
@@ -18797,7 +18797,7 @@ def codex_query_subjects_fresh_public_profile_disposition_matches_report(
         return None
     expected = {
         'claimId': report.get('claimId'),
-        'profileId': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID,
+        'profileId': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_PROFILE_ID,
         'frontierId': 'G14',
         'epochId': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EPOCH_ID,
         'runNumber': 95,
@@ -18814,7 +18814,7 @@ def codex_query_subjects_fresh_public_profile_disposition_matches_report(
         'registrySha256': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_REGISTRY_SHA256,
         'toolName': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_TOOL_NAME,
         'argumentProfile': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ARGUMENT_PROFILE,
-        'expectedArgumentsSha256': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_ARGUMENTS_SHA256,
+        'expectedArgumentsSha256': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_EXPECTED_ARGUMENTS_SHA256,
         'reportWritten': True,
         'reportPath': CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REPORT_RELATIVE_PATH,
         'reportSha256': report_sha256,
@@ -18882,7 +18882,7 @@ def codex_query_subjects_fresh_public_profile_report_is_valid(
         or len(report_bytes) > 32_768
         or type(report.get('schemaVersion')) is not int or report.get('schemaVersion') != 1
         or report.get('evidenceKind') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EVIDENCE_KIND
-        or report.get('profileId') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID
+        or report.get('profileId') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_PROFILE_ID
         or report.get('acceptanceScope') != 'agent-mcp-matrix-only'
         or type(report.get('runNumber')) is not int or report.get('runNumber') != 95
         or report.get('frontierId') != 'G14'
@@ -18915,10 +18915,10 @@ def codex_query_subjects_fresh_public_profile_report_is_valid(
         or report.get('mcpBundleSha256') != codex_g26_candidate_bundle_sha256(source_revision)
         or report.get('toolName') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_TOOL_NAME
         or report.get('argumentProfile') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ARGUMENT_PROFILE
-        or report.get('expectedArgumentsSha256') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_EXPECTED_ARGUMENTS_SHA256
+        or report.get('expectedArgumentsSha256') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_EXPECTED_ARGUMENTS_SHA256
         or report.get('registrySha256') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_REGISTRY_SHA256
         or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
-        or report.get('networkMode') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_NETWORK_MODE
+        or report.get('networkMode') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_NETWORK_MODE
         or report.get('serverId') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_SERVER_ID
         or report.get('serverToolNames') != [CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_TOOL_NAME]
         or type(report.get('serverToolCount')) is not int or report.get('serverToolCount') != 1
@@ -18932,8 +18932,9 @@ def codex_query_subjects_fresh_public_profile_report_is_valid(
         or re.fullmatch(r'[0-9a-f]{64}', report['serverSummarySha256']) is None
         or report.get('eventStreamParsed') is not True or report.get('turnCompleted') is not True
         or type(report.get('codexMcpToolEventCount')) is not int or report.get('codexMcpToolEventCount') != 1
-        or type(report.get('codexErrorItemCount')) is not int or report.get('codexErrorItemCount') != 0
-        or type(report.get('blockedWebSearchErrorItemCount')) is not int or report.get('blockedWebSearchErrorItemCount') != 0
+        or type(report.get('codexErrorItemCount')) is not int or not 0 <= report['codexErrorItemCount'] <= 3
+        or type(report.get('blockedWebSearchErrorItemCount')) is not int
+        or report.get('blockedWebSearchErrorItemCount') != report.get('codexErrorItemCount')
         or type(report.get('unexpectedCodexErrorItemCount')) is not int or report.get('unexpectedCodexErrorItemCount') != 0
         or type(report.get('nonMcpToolEventCount')) is not int or report.get('nonMcpToolEventCount') != 0
         or report.get('nonMcpToolTypes') != []
@@ -18942,10 +18943,10 @@ def codex_query_subjects_fresh_public_profile_report_is_valid(
         or type(report.get('deniedCallCount')) is not int or report.get('deniedCallCount') != 0
         or report.get('answerAcknowledgementMatched') is not True
         or report.get('answerSha256') != hashlib.sha256(
-            CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ACKNOWLEDGEMENT,
+            CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_ACKNOWLEDGEMENT,
         ).hexdigest()
         or type(report.get('answerUtf8Bytes')) is not int
-        or report.get('answerUtf8Bytes') != len(CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_ACKNOWLEDGEMENT)
+        or report.get('answerUtf8Bytes') != len(CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_ACKNOWLEDGEMENT)
         or report.get('retryAllowed') is not False or report.get('reportWritten') is not True
         or not isinstance(result_summary, dict)
         or set(result_summary) != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_RESULT_SUMMARY_FIELDS
@@ -18954,7 +18955,7 @@ def codex_query_subjects_fresh_public_profile_report_is_valid(
         or not 0 <= result_summary['returnedItems'] <= 1
         or result_summary.get('coverageState') not in {'complete', 'partial', 'unavailable', 'not_computable', 'unknown'}
         or any(
-            value is not None and (type(value) is not int or not 0 <= value <= CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_MAX_REQUESTS)
+            value is not None and (type(value) is not int or not 0 <= value <= CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_MAX_REQUESTS)
             for value in (result_summary.get('pagesRequested'), result_summary.get('pagesScanned'))
         )
         or result_summary.get('totalKind') not in {'exact', 'estimated', 'unknown', 'unavailable'}
@@ -18963,7 +18964,7 @@ def codex_query_subjects_fresh_public_profile_report_is_valid(
         or not isinstance(request_scope, dict)
         or set(request_scope) != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_REQUEST_SCOPE_FIELDS
         or type(request_scope.get('requestCount')) is not int
-        or not 1 <= request_scope['requestCount'] <= CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_MAX_REQUESTS
+        or not 1 <= request_scope['requestCount'] <= CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_MAX_REQUESTS
         or type(request_scope.get('allowedRequestCount')) is not int
         or request_scope.get('allowedRequestCount') != request_scope.get('requestCount')
         or type(request_scope.get('deniedRequestCount')) is not int
@@ -18974,7 +18975,7 @@ def codex_query_subjects_fresh_public_profile_report_is_valid(
         or request_scope.get('unexpectedRouteCount') != 0
         or request_scope.get('budgetExceeded') is not False
         or type(request_scope.get('maxRequests')) is not int
-        or request_scope.get('maxRequests') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_MAX_REQUESTS
+        or request_scope.get('maxRequests') != CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_V2_MAX_REQUESTS
         or request_scope.get('anonymousOnly') is not True
         or request_scope.get('officialV0Only') is not True
         or request_scope.get('redirectPolicy') != 'error'
@@ -19002,7 +19003,7 @@ def codex_query_subjects_fresh_public_profile_report_is_valid(
     if disposition is None:
         return False
     validation = subprocess.run(
-        ['node', str(ROOT / 'scripts/acceptance/validate-query-subjects-fresh-public-agent-mcp-report.mjs')],
+        ['node', str(ROOT / 'scripts/acceptance/validate-query-subjects-fresh-public-agent-mcp-v2-report.mjs')],
         cwd=ROOT,
         input=json.dumps({
             'claim': disposition,

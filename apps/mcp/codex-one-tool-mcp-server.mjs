@@ -145,6 +145,11 @@ import {
   QUERY_SUBJECTS_FRESH_PUBLIC_NETWORK_MODE,
 } from '../../scripts/lib/query-subjects-fresh-public-matrix-profile.mjs';
 import {
+  assertQuerySubjectsFreshPublicV2Profile,
+  createQuerySubjectsFreshPublicV2Fetch,
+  QUERY_SUBJECTS_FRESH_PUBLIC_V2_NETWORK_MODE,
+} from '../../scripts/lib/query-subjects-fresh-public-matrix-v2-profile.mjs';
+import {
   A01_RATING_DISPERSION_NETWORK_MODE,
   A01_RATING_DISPERSION_PROFILE_ID,
   assertA01RatingDispersionProfile,
@@ -361,6 +366,11 @@ async function main(argv = process.argv.slice(2)) {
       throw new Error('The fresh query_subjects profile does not match its fixed contract.');
     }
   }
+  if (config.networkMode === QUERY_SUBJECTS_FRESH_PUBLIC_V2_NETWORK_MODE) {
+    if (!assertQuerySubjectsFreshPublicV2Profile(config.profile)) {
+      throw new Error('The fresh query_subjects v2 profile does not match its fixed contract.');
+    }
+  }
   if (config.networkMode === A01_RATING_DISPERSION_NETWORK_MODE) {
     if (!assertA01RatingDispersionProfile(config.profile)) {
       throw new Error(
@@ -416,7 +426,9 @@ async function main(argv = process.argv.slice(2)) {
   const querySubjectsFreshPublicFetch =
     config.networkMode === QUERY_SUBJECTS_FRESH_PUBLIC_NETWORK_MODE
       ? createQuerySubjectsFreshPublicFetch({ maxRequests: config.profile?.maxRequests })
-      : null;
+      : config.networkMode === QUERY_SUBJECTS_FRESH_PUBLIC_V2_NETWORK_MODE
+        ? createQuerySubjectsFreshPublicV2Fetch({ maxRequests: config.profile?.maxRequests })
+        : null;
   const a01RatingDispersionPublicFetch =
     config.networkMode === A01_RATING_DISPERSION_NETWORK_MODE
       ? createA01RatingDispersionPublicFetch()
