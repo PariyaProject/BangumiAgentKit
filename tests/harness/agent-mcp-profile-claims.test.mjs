@@ -22,6 +22,9 @@ const PROFILE = getAgentMcpProfile(
   'fixed-c03-voice-pair-4765-17075-tv-36m-48r-16d-8rows-v1',
 );
 const C04_PROFILE = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
+const R04_V2_PROFILE = getAgentMcpProfileById(
+  'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
+);
 
 test('C04 matrix profile binds its two exact read-only tools in order', () => {
   assert.ok(C04_PROFILE);
@@ -474,6 +477,35 @@ test('profile latch uses deterministic permanent metadata and rejects an existin
     calls[1][1],
     `repos/{owner}/{repo}/labels/${encodeURIComponent(PROFILE.claimLabelName)}`,
   );
+});
+
+test('all claim label descriptions fit the GitHub API limit', () => {
+  for (const profile of listAgentMcpProfiles()) {
+    assert.ok(profile);
+    const description = agentMcpProfileClaimLabelDescription(profile);
+    assert.ok(
+      description.length <= 100,
+      `${profile.id} label description must be at most 100 characters`,
+    );
+  }
+
+  const calls = [];
+  const gh = (...args) => {
+    calls.push(args);
+    if (args[0] === 'api' && args[1] === 'repos/{owner}/{repo}/labels') {
+      const label = JSON.parse(args.at(-1).input);
+      assert.ok(
+        label.description.length <= 100,
+        'GitHub label descriptions are limited to 100 characters',
+      );
+      return JSON.stringify(label);
+    }
+    throw new Error('label was not found');
+  };
+
+  assert.ok(R04_V2_PROFILE);
+  assert.equal(acquireAgentMcpProfileGitHubLatch(gh, R04_V2_PROFILE), true);
+  assert.equal(calls.length, 1);
 });
 
 test('profile latch fails closed on ambiguous or mismatched GitHub state', () => {
