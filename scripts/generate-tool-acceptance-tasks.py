@@ -6287,7 +6287,7 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function assertR04CandidateReviewGate(',
         'export function buildR04CodexExecArgs(',
         'export function validateR04ServerSummary(',
-        'fourExpectedLocalResponses',
+        'fixture.expectedOperationsComplete === true',
         'function runR04(',
     ),
     'scripts/acceptance/write-r04-series-watch-order-offline-agent-mcp-report.mjs': (
@@ -6330,8 +6330,8 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
         'A valid signed report can credit only',
     ),
     'docs/product/frontier-ledger.json': (
-        'R04 stays UNASSESSED',
-        'Only a valid signed REPORT_WRITTEN report may credit this one Agent/MCP cell',
+        'R04 remains UNASSESSED.',
+        'It may credit only this Agent/MCP matrix cell',
     ),
     'tests/harness/r04-series-watch-order-offline-fixture.test.mjs': (
         'R04 profile binds one exact synthetic offline watch-order matrix call',
@@ -6365,6 +6365,7 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/test_acceptance_evidence.py': (
         'def test_v2_profile_is_distinct_and_keeps_consumed_v1_arguments_unchanged(',
+        'def test_v2_implementation_markers_match_the_exact_candidate_without_mocking(',
         'R04OfflineProfileReportValidationTests',
     ),
     'scripts/generate-tool-acceptance-tasks.py': (

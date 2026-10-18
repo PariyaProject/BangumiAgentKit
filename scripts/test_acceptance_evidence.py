@@ -10310,6 +10310,16 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
             {'subjectId': 990817, 'depth': 1, 'maxNodes': 1, 'media': 'anime'},
         )
 
+    def test_v2_implementation_markers_match_the_exact_candidate_without_mocking(self):
+        revision = GENERATOR._run_repository_git(
+            GENERATOR.ROOT, 'rev-parse', 'HEAD',
+        ).stdout.strip()
+        self.assertRegex(revision, r'^[0-9a-f]{40}$')
+        self.assertTrue(
+            GENERATOR.codex_r04_profile_revision_has_implementation(revision),
+            'R04 report eligibility markers must match every file in the exact candidate commit',
+        )
+
     def build_report(self):
         catalog_bytes = self.catalog_path.read_bytes()
         selection_bytes = (self.root / GENERATOR.CODEX_R04_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
