@@ -159,4 +159,77 @@ describe('Series / Watch-Order semantic contracts', () => {
       false,
     );
   });
+
+  it('places a bounded synthetic prequel before its root using one-hop relations', async () => {
+    const requests: string[] = [];
+    const fixture = new Map<string, unknown>([
+      [
+        'https://api.bgm.tv/v0/subjects/990817',
+        {
+          id: 990817,
+          type: 2,
+          name: 'Synthetic Watch-Order Root 990817',
+          name_cn: '合成观看顺序起点 990817',
+          date: '2020-01-01',
+          platform: 'TV',
+        },
+      ],
+      [
+        'https://api.bgm.tv/v0/subjects/990817/subjects',
+        [
+          {
+            id: 990818,
+            type: 2,
+            name: 'Synthetic Watch-Order Prequel 990818',
+            name_cn: '合成前传 990818',
+            relation: '前传',
+          },
+        ],
+      ],
+      ['https://api.bgm.tv/v0/subjects/990818/subjects', []],
+      [
+        'https://api.bgm.tv/v0/subjects/990818',
+        {
+          id: 990818,
+          type: 2,
+          name: 'Synthetic Watch-Order Prequel 990818',
+          name_cn: '合成前传 990818',
+          date: '2019-01-01',
+          platform: 'TV',
+        },
+      ],
+    ]);
+    const fetchFn = vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      requests.push(url);
+      const body = fixture.get(url);
+      return body === undefined
+        ? new Response('unexpected route', { status: 599 })
+        : new Response(JSON.stringify(body), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+    });
+    const client = new HttpClient({ fetchFn: fetchFn as typeof fetch });
+    const tool = createReadTools(client)[3];
+    expect(tool?.name).toBe('bangumi.get_series_watch_order');
+    const result = await tool!.execute(
+      { subjectId: 990817, depth: 1, maxNodes: 1, media: 'anime' },
+      { principalId: 'synthetic', botInstanceId: 'synthetic', conversationId: 'synthetic' },
+      { publicHttpClient: client },
+    );
+
+    expect(result).toMatchObject({
+      state: 'complete',
+      subjectId: 990817,
+      watchOrder: [
+        { id: 990818, isRoot: false, placement: 'before_root' },
+        { id: 990817, isRoot: true, placement: 'root' },
+      ],
+      related: [{ id: 990818, includedInWatchOrder: true }],
+      coverage: { relationRequests: 2, relationRowsObserved: 1, detailsAttempted: 1 },
+    });
+    expect(requests).toHaveLength(4);
+    expect(new Set(requests)).toEqual(new Set(fixture.keys()));
+  });
 });

@@ -95,7 +95,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 31);
+  assert.equal(listAgentMcpProfiles().length, 32);
   const p06OfflineV2 = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v2');
   assert.ok(p06OfflineV2);
   assert.equal(p06OfflineV2.epochId, 'run95-p06-render-person-profile-visual-matrix-v2-20261018');
@@ -382,6 +382,31 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(
     agentMcpProfileClaimLabelDescription(r04),
     'Run 95 R04 profile r04-series-watch-order-offline-agent-mcp-v1; permanent one-shot latch.',
+  );
+  const r04V2 = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v2');
+  assert.ok(r04V2);
+  assert.notEqual(r04V2.id, r04.id);
+  assert.notEqual(r04V2.argumentProfile, r04.argumentProfile);
+  assert.equal(r04V2.frontierId, 'R04');
+  assert.equal(r04V2.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(r04V2.networkMode, 'run95-r04-series-watch-order-offline-prequel-v2');
+  assert.equal(r04V2.toolName, 'bangumi.get_series_watch_order');
+  assert.deepEqual(r04V2.calls, [
+    {
+      toolName: 'bangumi.get_series_watch_order',
+      arguments: {
+        subjectId: 990817,
+        depth: 1,
+        maxNodes: 1,
+        media: 'anime',
+      },
+    },
+  ]);
+  assert.match(agentMcpProfileArgumentsSha256(r04V2), /^[0-9a-f]{64}$/u);
+  assert.match(agentMcpProfileRegistrySha256(r04V2.id), /^[0-9a-f]{64}$/u);
+  assert.equal(
+    agentMcpProfileClaimLabelDescription(r04V2),
+    'Run 95 R04 profile r04-series-watch-order-offline-agent-mcp-v2; permanent one-shot latch.',
   );
   const r01Offline = getAgentMcpProfileById('r01-subject-relations-offline-agent-mcp-v1');
   assert.ok(r01Offline);

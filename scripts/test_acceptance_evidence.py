@@ -10294,6 +10294,32 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    def test_v2_profile_is_distinct_and_keeps_consumed_v1_arguments_unchanged(self):
+        self.assertEqual(
+            GENERATOR.CODEX_R04_TERMINAL_V1_PROFILE['id'],
+            'r04-series-watch-order-offline-agent-mcp-v1',
+        )
+        self.assertEqual(
+            GENERATOR.CODEX_R04_TERMINAL_V1_PROFILE['calls'][0]['arguments']['subjectId'],
+            990801,
+        )
+        self.assertEqual(GENERATOR.CODEX_R04_PROFILE_ID, 'r04-series-watch-order-offline-agent-mcp-v2')
+        self.assertNotEqual(GENERATOR.CODEX_R04_PROFILE_ID, GENERATOR.CODEX_R04_TERMINAL_V1_PROFILE['id'])
+        self.assertEqual(
+            GENERATOR.CODEX_R04_EXPECTED_CALLS[0]['arguments'],
+            {'subjectId': 990817, 'depth': 1, 'maxNodes': 1, 'media': 'anime'},
+        )
+
+    def test_v2_implementation_markers_match_the_exact_candidate_without_mocking(self):
+        revision = GENERATOR._run_repository_git(
+            GENERATOR.ROOT, 'rev-parse', 'HEAD',
+        ).stdout.strip()
+        self.assertRegex(revision, r'^[0-9a-f]{40}$')
+        self.assertTrue(
+            GENERATOR.codex_r04_profile_revision_has_implementation(revision),
+            'R04 report eligibility markers must match every file in the exact candidate commit',
+        )
+
     def build_report(self):
         catalog_bytes = self.catalog_path.read_bytes()
         selection_bytes = (self.root / GENERATOR.CODEX_R04_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
@@ -10307,7 +10333,7 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
             'scenarioId': None,
             'epochId': GENERATOR.CODEX_R04_EPOCH_ID,
             'profileId': GENERATOR.CODEX_R04_PROFILE_ID,
-            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
             'model': 'gpt-6-luna',
             'reasoningEffort': 'max',
             'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
@@ -10336,7 +10362,7 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
             'serverToolNames': [GENERATOR.CODEX_R04_TOOL_NAME],
             'serverToolCount': 1,
             'networkMode': GENERATOR.CODEX_R04_NETWORK_MODE,
-            'mcpServerNames': ['bgk_r04_watch_order'],
+            'mcpServerNames': ['bgk_r04_watch_order_v2'],
             'processExitCode': 0,
             'resultStatus': 'SUCCESS',
             'eventStreamParsed': True,
@@ -10349,19 +10375,23 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
             'allowedCallCount': 1,
             'deniedCallCount': 0,
             'answerCheckMethod': GENERATOR.CODEX_R04_ANSWER_CHECK_METHOD,
-            'answerSha256': hashlib.sha256(b'R04_SYNTHETIC_WATCH_ORDER_READ').hexdigest(),
-            'answerUtf8Bytes': len(b'R04_SYNTHETIC_WATCH_ORDER_READ'),
+            'answerSha256': hashlib.sha256(b'R04_SYNTHETIC_WATCH_ORDER_PREQUEL_CHAIN_READ').hexdigest(),
+            'answerUtf8Bytes': len(b'R04_SYNTHETIC_WATCH_ORDER_PREQUEL_CHAIN_READ'),
             'answerChecks': {key: True for key in GENERATOR.CODEX_R04_ANSWER_CHECK_FIELDS},
             'resultSummary': {
-                'state': 'complete', 'subjectId': 990801, 'watchOrderCount': 1,
-                'relatedCount': 0, 'relationRequests': 1, 'relationRowsObserved': 0,
-                'detailsAttempted': 0,
+                'state': 'complete', 'subjectId': 990817, 'watchOrderCount': 2,
+                'watchOrder': [
+                    {'id': 990818, 'isRoot': False, 'placement': 'before_root'},
+                    {'id': 990817, 'isRoot': True, 'placement': 'root'},
+                ],
+                'relatedCount': 1, 'relatedIds': [990818], 'relationRequests': 2,
+                'relationRowsObserved': 1, 'detailsAttempted': 1,
             },
             'offlineFixture': {
                 'profile': GENERATOR.CODEX_R04_NETWORK_MODE,
-                'requestCount': 2,
-                'subjectRequestCount': 1,
-                'relationsRequestCount': 1,
+                'requestCount': 4,
+                'subjectRequestCount': 2,
+                'relationsRequestCount': 2,
                 'duplicateRequestCount': 0,
                 'unexpectedRequestCount': 0,
                 'authorizationHeaderCount': 0,
@@ -10381,7 +10411,7 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
             },
             'runnerReceipt': {
                 'schemaVersion': 1,
-                'kind': 'r04-series-watch-order-offline-runner-receipt-v1',
+                'kind': 'r04-series-watch-order-offline-v2-runner-receipt-v1',
                 'publicKeyBase64': 'AQ==',
                 'publicKeySha256': 'd' * 64,
                 'payload': receipt_payload,

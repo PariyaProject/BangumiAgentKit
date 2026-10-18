@@ -428,6 +428,11 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   assert.match(r04.next_action, /synthetic subjectId=990803/u);
   assert.match(r04.next_action, /keep the R04 theatrical-film scenario UNASSESSED/u);
   assert.match(r04.next_action, /do not claim canonical order or visual quality/u);
+  assert.match(
+    r04.next_action,
+    /separately keyed R04 get_series_watch_order v2 Epoch is selected.*synthetic root 990817 and prequel 990818/u,
+  );
+  assert.match(r04.next_action, /preserves the terminal v1 profile and adds no credit yet/u);
   for (const source of [
     'scripts/lib/r04-render-series-watch-order-offline-fixture.mjs',
     'scripts/acceptance/run-r04-render-series-watch-order-offline-agent-mcp.mjs',
@@ -442,6 +447,14 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
     'tests/harness/r04-render-series-watch-order-offline-v2-fixture.test.mjs',
     'tests/harness/run-r04-render-series-watch-order-offline-agent-mcp-v2.test.mjs',
     'tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs',
+    'scripts/lib/r04-series-watch-order-offline-v2-fixture.mjs',
+    'scripts/acceptance/run-r04-series-watch-order-offline-agent-mcp-v2.mjs',
+    'scripts/acceptance/write-r04-series-watch-order-offline-agent-mcp-v2-report.mjs',
+    'scripts/acceptance/validate-r04-series-watch-order-offline-agent-mcp-v2-report.mjs',
+    'docs/research/run95-r04-series-watch-order-offline-matrix-v2-contract-2026-10-18.md',
+    'tests/harness/r04-series-watch-order-offline-v2-fixture.test.mjs',
+    'tests/harness/run-r04-series-watch-order-offline-agent-mcp-v2.test.mjs',
+    'tests/harness/write-r04-series-watch-order-offline-agent-mcp-v2-report.test.mjs',
   ]) {
     assert.ok(r04.source_refs.includes(source), `R04 source reference missing: ${source}`);
   }

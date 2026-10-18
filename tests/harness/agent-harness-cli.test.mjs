@@ -142,6 +142,7 @@ const P06_PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-ag
 const G06_V2_PROFILE = getAgentMcpProfileById(G06_CAST_OFFLINE_V2_PROFILE_ID);
 const P02_PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
 const R04_PROFILE = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v1');
+const R04_V2_PROFILE = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v2');
 const R04_RENDER_PROFILE = getAgentMcpProfileById(
   'r04-render-series-watch-order-offline-agent-mcp-v1',
 );
@@ -1494,7 +1495,7 @@ test('CLI Candidate gate makes the Draft PR ready and refreshes its human-readab
 });
 
 test('CLI Candidate gate requires exact Actions-run evidence for R04 profiles', () => {
-  for (const profile of [R04_PROFILE, R04_RENDER_PROFILE, R04_RENDER_V2_PROFILE]) {
+  for (const profile of [R04_PROFILE, R04_V2_PROFILE, R04_RENDER_PROFILE, R04_RENDER_V2_PROFILE]) {
     const { environment, ciRunUrl } = r04CandidateCheckEnvironment(profile);
     try {
       const missingRunUrl = environment.execute([

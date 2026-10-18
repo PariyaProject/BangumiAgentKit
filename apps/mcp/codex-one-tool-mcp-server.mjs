@@ -95,6 +95,11 @@ import {
   R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE,
 } from '../../scripts/lib/r04-series-watch-order-offline-fixture.mjs';
 import {
+  assertR04SeriesWatchOrderOfflineV2Profile,
+  createR04SeriesWatchOrderOfflineV2Fetch,
+  R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE,
+} from '../../scripts/lib/r04-series-watch-order-offline-v2-fixture.mjs';
+import {
   assertR04RenderSeriesWatchOrderOfflineProfile,
   createR04RenderSeriesWatchOrderAssetFence,
   createR04RenderSeriesWatchOrderOfflineFetch,
@@ -320,6 +325,9 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE) {
     assertR04SeriesWatchOrderOfflineProfile(config.profile);
   }
+  if (config.networkMode === R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE) {
+    assertR04SeriesWatchOrderOfflineV2Profile(config.profile);
+  }
   if (config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE) {
     assertR04RenderSeriesWatchOrderOfflineProfile(config.profile);
   }
@@ -424,15 +432,17 @@ async function main(argv = process.argv.slice(2)) {
                       ? createG06SubjectCastOfflineFetch(config.profile)
                       : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
                         ? createR04SeriesWatchOrderOfflineFetch()
-                        : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
-                          ? createR04RenderSeriesWatchOrderOfflineFetch()
-                          : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE
-                            ? createR04RenderV2SeriesWatchOrderOfflineV2Fetch()
-                            : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
-                              ? createR01RelationsOfflineFetch()
-                              : config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE
-                                ? createR03RelationsOfflineFetch()
-                                : null;
+                        : config.networkMode === R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE
+                          ? createR04SeriesWatchOrderOfflineV2Fetch()
+                          : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
+                            ? createR04RenderSeriesWatchOrderOfflineFetch()
+                            : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE
+                              ? createR04RenderV2SeriesWatchOrderOfflineV2Fetch()
+                              : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
+                                ? createR01RelationsOfflineFetch()
+                                : config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE
+                                  ? createR03RelationsOfflineFetch()
+                                  : null;
   const r04RenderAssetFence =
     config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
       ? createR04RenderSeriesWatchOrderAssetFence()
