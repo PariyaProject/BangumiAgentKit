@@ -59,7 +59,7 @@ export function assertQuerySubjectsFreshPublicProfile(profile) {
     profile.reportPath !== 'docs/live-probes/query-subjects-fresh-public-agent-mcp-run95.json' ||
     profile.selectionEvidencePath !==
       'docs/research/run95-query-subjects-fresh-public-matrix-contract-2026-10-19.md' ||
-    profile.claimLabelName !== 'harness-r95-query-subjects-fresh-public-matrix-claimed' ||
+    profile.claimLabelName !== 'harness-r95-qsub-matrix-claimed' ||
     profile.evidenceKind !== 'codex_cli_query_subjects_fresh_public_agent_mcp_matrix' ||
     profile.answerCheckMethod !== 'query-subjects-exact-matrix-ack-v1' ||
     profile.model !== 'gpt-6-luna' ||

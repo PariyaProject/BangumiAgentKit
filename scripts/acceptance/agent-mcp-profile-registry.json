@@ -1099,7 +1099,7 @@
       "epochId": "run95-query-subjects-fresh-public-matrix-20261019",
       "toolName": "bangumi.query_subjects",
       "argumentProfile": "fixed-run95-query-subjects-attack-on-titan-public-v1",
-      "claimLabelName": "harness-r95-query-subjects-fresh-public-matrix-claimed",
+      "claimLabelName": "harness-r95-qsub-matrix-claimed",
       "reportPath": "docs/live-probes/query-subjects-fresh-public-agent-mcp-run95.json",
       "selectionEvidencePath": "docs/research/run95-query-subjects-fresh-public-matrix-contract-2026-10-19.md",
       "evidenceKind": "codex_cli_query_subjects_fresh_public_agent_mcp_matrix",

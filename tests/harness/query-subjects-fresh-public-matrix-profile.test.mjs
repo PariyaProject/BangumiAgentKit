@@ -61,6 +61,7 @@ const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
 test('profile uses a unique fixed query_subjects input and one anonymous read-only tool', () => {
   assert.equal(assertQuerySubjectsFreshPublicProfile(PROFILE), true);
+  assert.ok(PROFILE.claimLabelName.length <= 50);
   assert.equal(PROFILE.calls.length, 1);
   assert.deepEqual(PROFILE.calls[0], {
     toolName: 'bangumi.query_subjects',
