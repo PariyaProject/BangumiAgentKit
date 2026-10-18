@@ -35,6 +35,7 @@ const SYNTHETIC_CHARACTER_PNG_BUFFER = readFileSync(
   path.resolve(process.cwd(), 'tests/render/fixtures/subject-overview-character.png'),
 );
 const LIMITS = { maxCast: 20, maxStaff: 24, maxRelations: 12 };
+const VISUAL_FIXTURE_RETRIEVED_AT = '2026-08-14T00:00:00.000Z';
 
 type FixtureState = 'complete' | 'partial' | 'unavailable' | 'not_found';
 type ImageMode = 'valid' | 'failed' | 'ssrf';
@@ -196,6 +197,15 @@ async function semanticFixture(
     client: buildSemanticClient(state, imageMode),
     providerRegistry: buildStatsProvider(),
   });
+}
+
+function pinVisualFixtureRetrievedAt(result: SubjectOverviewResult): SubjectOverviewResult {
+  return {
+    ...result,
+    evidence: result.evidence.map((item) =>
+      item.retrievedAt ? { ...item, retrievedAt: VISUAL_FIXTURE_RETRIEVED_AT } : item,
+    ),
+  };
 }
 
 function assertTruthfulFixture(result: SubjectOverviewResult): void {
@@ -388,7 +398,7 @@ describe('Subject Overview renderer', () => {
   });
 
   it('renders every returned staff member when the requested cap allows it', async () => {
-    const complete = await semanticFixture('complete');
+    const complete = pinVisualFixtureRetrievedAt(await semanticFixture('complete'));
     const templateMember = complete.staff.items[0];
     expect(templateMember).toBeDefined();
     if (!templateMember) throw new Error('semantic fixture must include a staff member');
@@ -420,6 +430,7 @@ describe('Subject Overview renderer', () => {
       maxStaffGroups: 100,
       maxStaffMembersPerGroup: 100,
     });
+    expect(viewModel.source.retrievedAt).toBe(VISUAL_FIXTURE_RETRIEVED_AT);
 
     expect(viewModel.staff.groups).toHaveLength(12);
     expect(viewModel.staff.groups.flatMap((group) => group.members)).toHaveLength(87);
@@ -505,11 +516,11 @@ describe('Subject Overview renderer', () => {
 
   it('renders semantic complete, partial, unavailable, and not-found states at five responsive widths', async () => {
     const variants = {
-      complete: await semanticFixture('complete'),
-      completeFailedImage: await semanticFixture('complete', 'failed'),
-      partial: await semanticFixture('partial'),
-      unavailable: await semanticFixture('unavailable'),
-      notFound: await semanticFixture('not_found'),
+      complete: pinVisualFixtureRetrievedAt(await semanticFixture('complete')),
+      completeFailedImage: pinVisualFixtureRetrievedAt(await semanticFixture('complete', 'failed')),
+      partial: pinVisualFixtureRetrievedAt(await semanticFixture('partial')),
+      unavailable: pinVisualFixtureRetrievedAt(await semanticFixture('unavailable')),
+      notFound: pinVisualFixtureRetrievedAt(await semanticFixture('not_found')),
     };
     const visualQaDir = process.env.SUBJECT_OVERVIEW_VISUAL_QA_DIR;
     if (visualQaDir) await mkdir(visualQaDir, { recursive: true });
@@ -517,6 +528,15 @@ describe('Subject Overview renderer', () => {
     for (const [name, result] of Object.entries(variants)) {
       assertTruthfulFixture(result);
       const vm = buildSubjectOverviewViewModel(result);
+      if (result.subject) {
+        expect(vm.source.retrievedAt, `${name} visual fixture timestamp`).toBe(
+          VISUAL_FIXTURE_RETRIEVED_AT,
+        );
+        expect(
+          renderHtmlTemplate(vm, 'bangumi-dark', {}, 960),
+          `${name} deterministic source footer`,
+        ).toContain(VISUAL_FIXTURE_RETRIEVED_AT);
+      }
       for (const width of [320, 360, 520, 640, 960]) {
         if (name === 'complete') {
           const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, width);
