@@ -10359,6 +10359,7 @@ class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
             'tests/harness/g09-public-watch-order-evidence.test.mjs',
             'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
             'tests/harness/public-probe-coverage.test.mjs',
+            'tests/integration/tool-e2e-acceptance.test.ts',
         })
         self.assertTrue(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(
             allowed_paths,
@@ -10369,6 +10370,94 @@ class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
         self.assertFalse(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(
             allowed_paths - {GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH},
         ))
+
+    def test_v2_report_candidate_binding_accepts_pushed_refresh_before_harness_candidate_check(self):
+        source_sha = 'a' * 40
+        refreshed_sha = 'b' * 40
+        base_sha = 'c' * 40
+        bundle_sha = 'd' * 64
+        branch = 'codex/epoch-run95-r04-render-series-watch-order-offline-matrix-v2-20261018'
+        report = {
+            'sourceRevision': source_sha,
+            'baseSha': base_sha,
+            'prNumber': 222,
+            'mcpBundleSha256': bundle_sha,
+        }
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 222},
+            },
+            'epoch': {
+                'number': 222,
+                'github_state': 'OPEN',
+                'pr_head_ref_name': branch,
+                'pr_head_sha': refreshed_sha,
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base_sha,
+                'pr_is_draft': False,
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_R04_RENDER_V2_EPOCH_ID,
+                    'pr_number': 222,
+                    'base_branch': 'master',
+                    'base_sha': base_sha,
+                    'branch': branch,
+                    'candidate_sha': source_sha,
+                    'state': 'REVIEW_PASSED',
+                },
+            },
+        }
+        paths = GENERATOR.CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS
+        self.assertTrue(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, bundle_sha,
+        ))
+
+        epoch_status['epoch']['state']['candidate_sha'] = refreshed_sha
+        self.assertTrue(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, bundle_sha,
+        ))
+        epoch_status['epoch']['state']['candidate_sha'] = 'e' * 40
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths, bundle_sha,
+        ))
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_candidate_binding_is_valid(
+            report, epoch_status, paths | {'packages/tools/src/definitions/render-presentation-tools.ts'}, bundle_sha,
+        ))
+
+    def test_v2_report_candidate_paths_use_live_pr_head_before_harness_candidate_check(self):
+        source_sha = 'a' * 40
+        pr_head_sha = 'b' * 40
+        report = {'sourceRevision': source_sha}
+        epoch_status = {
+            'epoch': {
+                'state': {'candidate_sha': source_sha},
+                'pr_head_sha': pr_head_sha,
+            },
+        }
+        paths = GENERATOR.CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS
+        bundle_sha = 'c' * 64
+        with (
+            patch.object(
+                GENERATOR, 'codex_r04_render_v2_profile_report_candidate_paths',
+                return_value=paths,
+            ) as candidate_paths,
+            patch.object(
+                GENERATOR, 'codex_g26_candidate_bundle_sha256',
+                return_value=bundle_sha,
+            ) as bundle_digest,
+            patch.object(
+                GENERATOR, 'codex_r04_render_v2_profile_candidate_binding_is_valid',
+                return_value=True,
+            ) as validate_binding,
+        ):
+            self.assertTrue(
+                GENERATOR.codex_r04_render_v2_profile_report_candidate_binding_is_current(
+                    report, epoch_status,
+                ),
+            )
+        candidate_paths.assert_called_once_with(source_sha, pr_head_sha)
+        bundle_digest.assert_called_once_with(pr_head_sha)
+        validate_binding.assert_called_once_with(report, epoch_status, paths, bundle_sha)
 
     def test_report_maps_only_to_the_render_series_watch_order_agent_mcp_cell(self):
         report_path = GENERATOR.ROOT / GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH

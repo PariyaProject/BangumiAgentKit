@@ -3210,6 +3210,7 @@ CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS = {
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
     'tests/harness/public-probe-coverage.test.mjs',
+    'tests/integration/tool-e2e-acceptance.test.ts',
 }
 CODEX_R04_RENDER_V2_REPORT_FIELDS = {
     'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
@@ -16167,7 +16168,12 @@ def codex_r04_render_v2_profile_candidate_binding_is_valid(
     epoch = epoch_result.get('state')
     if not isinstance(run_state, dict) or not isinstance(epoch, dict):
         return False
-    candidate_sha = epoch.get('candidate_sha')
+    # GitHub runs acceptance CI on the pushed report commit before
+    # candidate:check can persist that new SHA in the Harness epoch. Bind to
+    # the live PR head and accept the old Harness Candidate only when it is
+    # exactly the report's source revision.
+    harness_candidate_sha = epoch.get('candidate_sha')
+    candidate_sha = epoch_result.get('pr_head_sha')
     pr_number = report.get('prNumber')
     reviews = epoch.get('review_history', [])
     latest_review = reviews[-1] if isinstance(reviews, list) and reviews else None
@@ -16195,6 +16201,9 @@ def codex_r04_render_v2_profile_candidate_binding_is_valid(
         and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
         and epoch_result.get('pr_head_ref_name') == epoch.get('branch')
         and epoch_result.get('pr_is_draft') is False
+        and isinstance(harness_candidate_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', harness_candidate_sha) is not None
+        and harness_candidate_sha in {report.get('sourceRevision'), candidate_sha}
         and isinstance(candidate_sha, str) and re.fullmatch(r'[0-9a-f]{40}', candidate_sha)
         and epoch_result.get('pr_head_sha') == candidate_sha
         and isinstance(report.get('sourceRevision'), str)
@@ -16240,8 +16249,7 @@ def codex_r04_render_v2_profile_report_candidate_binding_is_current(
     candidate = None
     if isinstance(epoch_status, dict):
         epoch_result = epoch_status.get('epoch')
-        epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
-        candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
+        candidate = epoch_result.get('pr_head_sha') if isinstance(epoch_result, dict) else None
     paths = codex_r04_render_v2_profile_report_candidate_paths(report.get('sourceRevision'), candidate)
     bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
     return codex_r04_render_v2_profile_candidate_binding_is_valid(
