@@ -95,7 +95,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 30);
+  assert.equal(listAgentMcpProfiles().length, 31);
   const p06OfflineV2 = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v2');
   assert.ok(p06OfflineV2);
   assert.equal(p06OfflineV2.epochId, 'run95-p06-render-person-profile-visual-matrix-v2-20261018');
@@ -105,6 +105,14 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.ok(g06CastMatrixV2);
   assert.equal(g06CastMatrixV2.epochId, 'run95-g06-cast-offline-matrix-v2-20261018');
   assert.equal(g06CastMatrixV2.calls[0].arguments.subjectId, 990805);
+  const authStartOffline = getAgentMcpProfileById('auth-start-offline-agent-mcp-v1');
+  assert.ok(authStartOffline);
+  assert.equal(authStartOffline.frontierId, 'OP-009');
+  assert.equal(authStartOffline.toolName, 'bangumi.auth_start');
+  assert.deepEqual(authStartOffline.calls[0].arguments, {
+    capabilities: ['read:collection'],
+  });
+  assert.equal(authStartOffline.acceptanceScope, 'agent-mcp-matrix-only');
   const c07RenderComparison = getAgentMcpProfileById(
     'c07-render-comparison-offline-agent-mcp-matrix-v1',
   );

@@ -1,0 +1,37 @@
+export const AUTH_START_PROFILE_ID: string;
+export const AUTH_START_PROFILE: Readonly<{
+  id: string;
+  frontierId: string;
+  epochId: string;
+  toolName: string;
+  argumentProfile: string;
+  claimLabelName: string;
+  reportPath: string;
+  selectionEvidencePath: string;
+  evidenceKind: string;
+  answerCheckMethod: string;
+  acceptanceScope: string;
+  networkMode: string;
+  model: 'gpt-6-luna';
+  reasoningEffort: 'max';
+  maxAnswerBytes: number;
+  calls: Array<{ toolName: string; arguments: Record<string, unknown> }>;
+}>;
+export const AUTH_START_TOOL_NAME: 'bangumi.auth_start';
+export const AUTH_START_EXPECTED_ARGUMENTS: { capabilities: string[] };
+export const AUTH_START_SERVER_ID: string;
+export const AUTH_START_AUTHORIZATION_HOST: string;
+export const AUTH_START_AUTHORIZATION_PATH: string;
+export const AUTH_START_SYNTHETIC_CLIENT_ID: string;
+export const AUTH_START_SYNTHETIC_CLIENT_SECRET: string;
+export const AUTH_START_SYNTHETIC_CALLBACK: string;
+export const AUTH_START_SYNTHETIC_PRINCIPAL: string;
+export const AUTH_START_EXPECTED_ANSWER: string;
+export const AUTH_START_EXPECTED_QUERY_KEYS: readonly string[];
+export function canonicalAuthStartJson(value: unknown): string;
+export function authStartProfileSha256(value: unknown): string;
+export function sameAuthStartArguments(value: unknown): boolean;
+export function checkAuthStartOfflineAnswer(answer: unknown): {
+  passed: boolean;
+  checks: Record<string, boolean>;
+};

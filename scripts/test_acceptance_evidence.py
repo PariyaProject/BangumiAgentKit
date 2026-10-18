@@ -2951,6 +2951,170 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             frontier_path.write_text(json.dumps(missing_report), encoding='utf-8')
             self.assertFalse(GENERATOR.codex_m07_frontier_is_unassessed())
 
+    def test_auth_start_matrix_cell_requires_exact_profile_and_anonymous_read_policy(self):
+        tool_name = GENERATOR.CODEX_AUTH_START_TOOL_NAME
+        tool = {
+            'name': tool_name,
+            'auth': 'none',
+            'risk': 'read',
+            'description': 'Create a Bangumi OAuth URL.',
+            'inputSchema': {'type': 'object'},
+        }
+        report = {
+            'toolName': tool_name,
+            'argumentProfile': GENERATOR.CODEX_AUTH_START_ARGUMENT_PROFILE,
+            'profileId': GENERATOR.CODEX_AUTH_START_PROFILE_ID,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+        }
+        with patch.object(GENERATOR, 'codex_auth_start_profile_report_is_valid', return_value=True):
+            self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
+                report, {tool_name: tool}, {tool_name: tool},
+            ))
+            for invalid_tool in (
+                {**tool, 'auth': 'required'},
+                {**tool, 'risk': 'write'},
+            ):
+                self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+                    report, {tool_name: invalid_tool}, {tool_name: invalid_tool},
+                ))
+            for invalid_report in (
+                {**report, 'acceptanceScope': 'oauth-account'},
+                {**report, 'argumentProfile': 'different-input'},
+                {**report, 'profileId': 'another-profile'},
+            ):
+                self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+                    invalid_report, {tool_name: tool}, {tool_name: tool},
+                ))
+
+    def test_auth_start_profile_disposition_requires_exact_report_written_claim(self):
+        receipt = {'publicKeyBase64': 'synthetic-public-key', 'publicKeySha256': 'a' * 64}
+        report = {
+            'claimId': 'profile-run-95-pr999-0123456789ab-1792320000000',
+            'profileId': GENERATOR.CODEX_AUTH_START_PROFILE_ID,
+            'frontierId': 'OP-009',
+            'epochId': GENERATOR.CODEX_AUTH_START_EPOCH_ID,
+            'runNumber': 95,
+            'prNumber': 999,
+            'sourceRevision': '0' * 40,
+            'baseSha': '1' * 40,
+            'ciStatus': 'SUCCESS',
+            'reviewerId': 'gpt-6-luna-max-run95-pr999-round1',
+            'mcpBundleSha256': '2' * 64,
+            'toolName': GENERATOR.CODEX_AUTH_START_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_AUTH_START_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR.CODEX_AUTH_START_EXPECTED_ARGUMENTS_SHA256,
+            'registrySha256': GENERATOR.CODEX_AUTH_START_PROFILE_REGISTRY_SHA256,
+            'runnerReceipt': receipt,
+        }
+        report_sha256 = '3' * 64
+        disposition = {
+            'claimId': report['claimId'],
+            'profileId': report['profileId'],
+            'frontierId': report['frontierId'],
+            'epochId': report['epochId'],
+            'runNumber': 95,
+            'prNumber': report['prNumber'],
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'reviewerId': report['reviewerId'],
+            'bundleSha256': report['mcpBundleSha256'],
+            'registrySha256': report['registrySha256'],
+            'toolName': report['toolName'],
+            'argumentProfile': report['argumentProfile'],
+            'expectedArgumentsSha256': report['expectedArgumentsSha256'],
+            'reportWritten': True,
+            'reportPath': GENERATOR.CODEX_AUTH_START_REPORT_RELATIVE_PATH,
+            'reportSha256': report_sha256,
+            'retryAllowed': False,
+            'runnerReceiptPublicKey': receipt['publicKeyBase64'],
+            'runnerReceiptPublicKeySha256': receipt['publicKeySha256'],
+            'runnerReceiptSha256': GENERATOR._canonical_json_sha256(receipt),
+        }
+        status = {
+            'state': 'REPORT_WRITTEN',
+            'profile_id': report['profileId'],
+            'pr': report['prNumber'],
+            'tool_name': report['toolName'],
+            'argument_profile': report['argumentProfile'],
+            'expected_arguments_sha256': report['expectedArgumentsSha256'],
+            'registry_sha256': report['registrySha256'],
+            'claim_label_present': True,
+            'terminal_label_present': True,
+            'disposition': disposition,
+        }
+        self.assertIsNotNone(GENERATOR.codex_auth_start_profile_disposition_matches_report(
+            report, status, report_sha256,
+        ))
+        self.assertIsNone(GENERATOR.codex_auth_start_profile_disposition_matches_report(
+            report, dict(status, state='INCONCLUSIVE'), report_sha256,
+        ))
+        self.assertIsNone(GENERATOR.codex_auth_start_profile_disposition_matches_report(
+            report, dict(status, claim_label_present=False), report_sha256,
+        ))
+
+    def test_auth_start_frontier_stays_partial_and_requires_both_contract_and_report(self):
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier_path.parent.mkdir(parents=True, exist_ok=True)
+        refs = [
+            GENERATOR.CODEX_AUTH_START_SELECTION_EVIDENCE_RELATIVE_PATH,
+            GENERATOR.CODEX_AUTH_START_REPORT_RELATIVE_PATH,
+        ]
+        frontier = {'records': [{'id': 'OP-009', 'status': 'PARTIAL', 'source_refs': refs}]}
+        frontier_path.write_text(json.dumps(frontier), encoding='utf-8')
+        with patch.object(GENERATOR, 'ROOT', self.root):
+            self.assertTrue(GENERATOR.codex_auth_start_frontier_is_partial())
+            complete = json.loads(json.dumps(frontier))
+            complete['records'][0]['status'] = 'DELIVERED'
+            frontier_path.write_text(json.dumps(complete), encoding='utf-8')
+            self.assertFalse(GENERATOR.codex_auth_start_frontier_is_partial())
+            missing_report = json.loads(json.dumps(frontier))
+            missing_report['records'][0]['source_refs'].remove(
+                GENERATOR.CODEX_AUTH_START_REPORT_RELATIVE_PATH,
+            )
+            frontier_path.write_text(json.dumps(missing_report), encoding='utf-8')
+            self.assertFalse(GENERATOR.codex_auth_start_frontier_is_partial())
+
+    def test_auth_start_profile_report_dispatch_adds_only_the_auth_start_matrix_row(self):
+        tool_name = GENERATOR.CODEX_AUTH_START_TOOL_NAME
+        tool = {
+            'name': tool_name,
+            'auth': 'none',
+            'risk': 'read',
+            'description': 'Generate an OAuth URL without accessing account data.',
+            'inputSchema': {'type': 'object', 'properties': {'capabilities': {'type': 'array'}}},
+        }
+        catalog = [tool]
+        catalog_bytes = json.dumps(catalog, ensure_ascii=False).encode('utf-8')
+        catalog_path = self.root / 'docs/tool-catalog.json'
+        catalog_path.parent.mkdir(parents=True, exist_ok=True)
+        catalog_path.write_bytes(catalog_bytes)
+        report = {
+            'evidenceKind': GENERATOR.CODEX_AUTH_START_EVIDENCE_KIND,
+            'profileId': GENERATOR.CODEX_AUTH_START_PROFILE_ID,
+            'toolName': tool_name,
+            'argumentProfile': GENERATOR.CODEX_AUTH_START_ARGUMENT_PROFILE,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'prNumber': 999,
+        }
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_AUTH_START_REPORT_RELATIVE_PATH).name
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        current_by_name = {tool_name: tool}
+        with (
+            patch.object(GENERATOR, 'ROOT', self.root),
+            patch.object(GENERATOR, 'CATALOG', catalog_path),
+            patch.object(GENERATOR, 'LIVE_PROBE_DIR', self.live_probe_dir),
+            patch.object(GENERATOR, 'codex_auth_start_profile_harness_status', return_value={}),
+            patch.object(GENERATOR, 'codex_auth_start_profile_epoch_harness_status', return_value={}),
+            patch.object(GENERATOR, 'codex_auth_start_profile_report_is_valid', return_value=True),
+        ):
+            sources = GENERATOR.model_mcp_e2e_sources(catalog)
+        self.assertEqual(set(sources), {tool_name})
+        self.assertEqual(len(sources[tool_name]), 1)
+
     def test_accepts_only_bounded_renderer_report_without_changing_frontier_status(self):
         report = self.write_c07_renderer_report()
         current_by_name = {item['name']: item for item in self.catalog}
