@@ -5,6 +5,7 @@ const SUBJECT_TYPE_LABELS: Record<string, string> = {
   game: '游戏',
   real: '三次元',
   other: '其他',
+  unknown: '未知媒介',
 };
 
 export function subjectTypeLabel(value?: string): string {

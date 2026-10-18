@@ -777,7 +777,7 @@ export function buildSubjectOverviewViewModel(
     state: result.state,
     subject: {
       id: result.subjectId,
-      name: subject?.name || `Subject ${result.subjectId}`,
+      name: subject?.name || '未知条目',
       nameCn: subject?.nameCn,
       type: subject?.type || 'unknown',
       date: subject?.date,

@@ -255,7 +255,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
   const cover = subject.image ? resolvedImages[subject.image] : undefined;
   const title = subject.nameCn || subject.name;
   const subtitle =
-    subject.nameCn && subject.nameCn !== subject.name ? subject.name : `Subject ID: ${subject.id}`;
+    subject.nameCn && subject.nameCn !== subject.name ? subject.name : `条目 ID：${subject.id}`;
   const hasCoverageNotes = viewModel.warnings.length > 0 || viewModel.limitations.length > 0;
   const sourceLabel = viewModel.source.retrievedAt
     ? `${viewModel.source.label} · ${viewModel.source.retrievedAt}`
