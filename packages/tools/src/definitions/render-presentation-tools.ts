@@ -71,6 +71,8 @@ import {
   buildSubjectIndexMembershipViewModel,
   buildSubjectStatsHistoryViewModel,
   buildCollectionIntelligenceViewModel,
+  buildCollectionIntelligenceMessage,
+  buildCollectionProgressMessage,
   buildCollectionBacklogViewModel,
   buildCollectionScheduleViewModel,
   buildCollectionDashboardViewModel,
@@ -406,10 +408,13 @@ export function createRenderPresentationTools(
         },
       );
 
-      return await executeRenderAndSave(
-        viewModel,
-        _context.artifactPrincipalKey || _context.principalId,
-      );
+      return {
+        ...(await executeRenderAndSave(
+          viewModel,
+          _context.artifactPrincipalKey || _context.principalId,
+        )),
+        message: buildCollectionProgressMessage(viewModel),
+      };
     },
   });
 
@@ -1269,10 +1274,14 @@ export function createRenderPresentationTools(
         username,
         { maxItems: input.maxItems },
       );
-      return await executeRenderAndSave(
-        buildCollectionIntelligenceViewModel(result),
-        context.artifactPrincipalKey || context.principalId,
-      );
+      const viewModel = buildCollectionIntelligenceViewModel(result);
+      return {
+        ...(await executeRenderAndSave(
+          viewModel,
+          context.artifactPrincipalKey || context.principalId,
+        )),
+        message: buildCollectionIntelligenceMessage(viewModel),
+      };
     },
   });
 

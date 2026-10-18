@@ -6,6 +6,7 @@ import {
   OAuthStateStore,
   TokenBroker,
   OAuthService,
+  formatAuthStatusMessage,
 } from '@bangumi-agent-kit/auth';
 import { HttpClient, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
@@ -88,6 +89,30 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
     const authed = await broker.requireAuthenticatedClient(principal.id);
     expect(authed.account.username).toBe('user_a');
     expect(authed.client).toBeDefined();
+  });
+
+  it('does not call a missing active account record an inactive binding', async () => {
+    const storage = new MemoryStorage();
+    const principal = await storage.findOrCreatePrincipal({
+      provider: 'qq-official',
+      botInstanceId: 'bot_missing_account',
+      externalUserId: 'qq_user_missing_account',
+    });
+    await storage.upsertBangumiAccount({
+      id: 'stored-account',
+      bangumiUserId: 4321,
+      username: 'stored-user',
+      nickname: 'Stored User',
+    });
+    await storage.replaceActiveBinding(principal.id, 'missing-account-record');
+
+    const broker = new TokenBroker(storage, { secretKey: SECRET_KEY });
+    const status = await broker.getAuthStatus(principal.id);
+    const message = formatAuthStatusMessage(status);
+
+    expect(status).toMatchObject({ bound: false, accountCount: 1 });
+    expect(message).toContain('无法确认可用的活动账号资料');
+    expect(message).not.toContain('当前没有激活账号');
   });
 
   it('optional auth falls back to the public client when identity or binding is absent', async () => {

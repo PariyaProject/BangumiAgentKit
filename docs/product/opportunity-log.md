@@ -200,7 +200,7 @@ probes.
 The selected OP-009 visual acceptance also added truthful callback states and a
 first-party `auth_status` sentence, then reviewed the account-protected
 collection progress and intelligence cards with synthetic data only. Four
-callback states and eight renderer cases produced 60 PNGs across
+callback states and nine renderer cases produced 65 PNGs across
 320/360/520/640/960 CSS px. Each image was individually inspected; the report
 records dimensions, SHA-256, layout checks, and findings in
 `docs/research/run95-ux001-auth-status-and-render-visual-review-2026-10-18.md`.

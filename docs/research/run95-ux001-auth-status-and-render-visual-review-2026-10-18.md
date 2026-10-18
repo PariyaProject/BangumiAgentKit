@@ -4,9 +4,9 @@
 
 ## 范围与结果
 
-全部 60 张 PNG 都由合成数据生成并逐张打开检查：4 种 OAuth 回调状态、8 种收藏渲染案例，各在 320/360/520/640/960 CSS px、DPR 1 下渲染。自动检查结果为无横向溢出、无缺少预期文案、无未加载的预期图片。原图保留在本机忽略目录，报告逐图记录 PNG 尺寸和 SHA-256；PNG 本身未加入 Git。
+全部 65 张 PNG 都由合成数据生成并逐张打开检查：4 种 OAuth 回调状态、9 种收藏渲染案例，各在 320/360/520/640/960 CSS px、DPR 1 下渲染。自动检查结果为无横向溢出、无缺少预期文案、无未加载的预期图片。纠正轮重新生成后，原有 60 张的 SHA-256 全部与本报告记录相同；新增的 5 张是“零观察行、源报告 3 条且读取失败”的部分空状态。原图保留在本机忽略目录，报告逐图记录 PNG 尺寸和 SHA-256；PNG 本身未加入 Git。
 
-只用了本地 fixture：真实 OAuth/账号请求 0 次，QQ/TIM 操作 0 次。完成的仍是合成表达和图像验收，不计入真实账号、QQ/TIM 或 96 工具客户端覆盖。自动化清单：`.artifacts/render/ux001-auth-personal-visual-qa-2026-10-18/manifest.json`。清单内 `manualVisualReview` 保持为 pending 是刻意的；逐张人工观察记录在本报告下表。
+只用了本地 fixture：真实 OAuth/账号请求 0 次，QQ/TIM 操作 0 次。完成的仍是合成表达和图像验收，不计入真实账号、QQ/TIM 或 96 工具客户端覆盖。自动化清单：`.artifacts/render/ux001-auth-personal-visual-qa-2026-10-18/manifest.json`。生成器仅记录自动布局/文字/消息配对断言，不声称完成了人工视觉检查；逐张人工观察记录在本报告下表。
 
 ## 四种 auth_status 消息
 
@@ -15,9 +15,17 @@
 | 合成状态 | 实际消息 | 观察 |
 | --- | --- | --- |
 | `unbound` | 尚未绑定 Bangumi 账号。需要个人收藏功能时，再发起授权；公开查询无需绑定。 | 公共查询仍可用，个人功能需要时再授权。 |
-| `inactive` | 已绑定 2 个 Bangumi 账号，但当前没有激活账号。先查看或切换已绑定账号；个人收藏查询需要激活账号。 | 已绑定账号但无当前激活账号；指引查看或切换账号。 |
+| `bindingNeedsAttention` | 检测到 2 条 Bangumi 账号绑定记录，但当前无法确认可用的活动账号资料。请检查绑定状态，必要时重新授权；个人收藏查询暂不可用。 | 当前状态不能区分“没有活动绑定”和“活动绑定的账号资料缺失”，因此不给出错误的切换账号结论。 |
 | `boundWithoutCredential` | 已绑定 合成账号 (@synthetic-user)，但本地缺少授权凭证记录。请重新授权后再使用个人收藏功能。 | 显示本地凭证记录缺失并建议重新授权，不声称已登录成功。 |
 | `boundWithCredential` | 已绑定 合成账号 (@synthetic-user)。本地凭证记录显示到期时间 2026-10-20T10:00:00.000Z，刷新状态：可刷新。这只反映本地记录，不代表个人数据请求已成功；需要个人收藏时可继续查询，若请求提示授权失效再重新授权。 | 仅报告本地到期/刷新记录，并明确其不证明上游个人数据请求成功。 |
+
+## 收藏图片与配图消息配对
+
+45 张收藏渲染图（9 个案例 × 5 个宽度）都绑定到同一合成 `boundWithCredential` 状态，并为每张图片使用渲染工具实际返回的 companion message 生成器。Progress caption 从同一个 progress ViewModel 读取条目名、收藏状态、集数和评分，不复制评论；intelligence caption 从同一个 ViewModel 读取状态、sourceTotal、已读/去重行数、页进度和已看集数。生成器断言每条 caption 都含有对应 ViewModel 的事实及下一步，并把 auth_status id/message、caption、状态、覆盖、进度和断言结果写入逐图 manifest；PNG 的自动文字检查也逐项核对对应事实。缺少数据的空/不可用图片不会被 caption 补成“已看 0 集”。
+
+生成器还逐页统计链接、按钮、输入框和显式 tab-stop；当前 65 张均为 0 个交互控件，因此键盘焦点环对这些只读页面不适用。未来若页面加入交互控件，生成器会在它们没有显式焦点可见性检查时失败。层级与小屏可读性仍由下方逐图视觉观察记录覆盖。
+
+这项配对证据覆盖本地合成工具输出及 Renderer，不等于验证了 Agent 在真实对话中把 auth_status 文本和 Artifact 按预期组合，也不等于 QQ/TIM 客户端布局验收。
 
 ## 历史版本对照
 
@@ -84,6 +92,11 @@
 | `collection-intelligence-partial-long-script` | 520 CSS px | `collection-intelligence-partial-long-script-w520.png` (520×1294) | `8cd03fe5e5181ba790f7d51e9ddf32309e8785ed8c9262883026e7b8a3109cf9` | 无溢出；预期文案齐全；图片元素 0 | 520px：部分覆盖与样本计数清楚；缺字段以短说明呈现，所有统计范围及不补猜口径都在卡片内。 |
 | `collection-intelligence-partial-long-script` | 640 CSS px | `collection-intelligence-partial-long-script-w640.png` (640×1240) | `439d5f9fad60451b5c14af72926eaee226d1a56a707a158d31fa943dcdbb59e8` | 无溢出；预期文案齐全；图片元素 0 | 640px：部分覆盖与样本计数清楚；缺字段以短说明呈现，所有统计范围及不补猜口径都在卡片内。 |
 | `collection-intelligence-partial-long-script` | 960 CSS px | `collection-intelligence-partial-long-script-w960.png` (960×927) | `0001ca583edc3db154827a8866796cc5ce8117b5976e0ba95b9f20ddd3106bea` | 无溢出；预期文案齐全；图片元素 0 | 960px：部分覆盖与样本计数清楚；缺字段以短说明呈现，所有统计范围及不补猜口径都在卡片内。 |
+| `collection-intelligence-partial-empty` | 320 CSS px | `collection-intelligence-partial-empty-w320.png` (320×900) | `1cafcdd0d58ccf1b291ea87ff791dc302d39ee156c65c8db14e559d629464178` | 无溢出；预期文案齐全；图片元素 0 | 320px：清楚显示“本次未观察到”与“不能确认收藏为空”；覆盖行说明 0/1 页读取并保留页面失败，不误报完整空收藏。 |
+| `collection-intelligence-partial-empty` | 360 CSS px | `collection-intelligence-partial-empty-w360.png` (360×900) | `4d520b4ea2dee20810690629e5a1f01872fc9803fc51326fb66dfb1b36318f2e` | 无溢出；预期文案齐全；图片元素 0 | 360px：标题、源报告 3 条、读取失败与不能确认空集合的提示层级清楚，说明文字正常换行。 |
+| `collection-intelligence-partial-empty` | 520 CSS px | `collection-intelligence-partial-empty-w520.png` (520×900) | `194d9962ec0cdb854d9ecdfebfd340da12aa2e852302d7c6482cd8a0486d4668` | 无溢出；预期文案齐全；图片元素 0 | 520px：部分空状态与读取失败说明分区明确；没有把 0 条观察样本改写成 0 条收藏。 |
+| `collection-intelligence-partial-empty` | 640 CSS px | `collection-intelligence-partial-empty-w640.png` (640×900) | `d9410dfef5dea49534be24537e512c51361bbaffba0042866a46a77173ed9d93` | 无溢出；预期文案齐全；图片元素 0 | 640px：状态、来源计数与失败原因横向清楚；“不能确认”提示保留，留白与其他窄幅卡片一致。 |
+| `collection-intelligence-partial-empty` | 960 CSS px | `collection-intelligence-partial-empty-w960.png` (960×900) | `ecb4970f57279ad32cd446a4e3c452319ebd52757835dd311242cb216d3e171c` | 无溢出；预期文案齐全；图片元素 0 | 960px：状态和失败说明在宽卡片内仍聚合成单一可扫读区块；没有扩散成误导性的成功空结果。 |
 | `collection-intelligence-empty` | 320 CSS px | `collection-intelligence-empty-w320.png` (320×900) | `fb2c704d73f0607f454524a6c5bb309cf21b7b2ea8c96c60177b8a918066d035` | 无溢出；预期文案齐全；图片元素 0 | 320px：明确显示“暂无收藏条目”和完整空结果；没有将 0 条解释为服务失败。 |
 | `collection-intelligence-empty` | 360 CSS px | `collection-intelligence-empty-w360.png` (360×900) | `ffa381a2621c0ff60032fd449cc13eead39465e61bd801bf473c17e93625746a` | 无溢出；预期文案齐全；图片元素 0 | 360px：明确显示“暂无收藏条目”和完整空结果；没有将 0 条解释为服务失败。 |
 | `collection-intelligence-empty` | 520 CSS px | `collection-intelligence-empty-w520.png` (520×900) | `f7ebf56a89410763f0f31370779b9819581ccecd65d6270df059f3ed7980ffd9` | 无溢出；预期文案齐全；图片元素 0 | 520px：明确显示“暂无收藏条目”和完整空结果；没有将 0 条解释为服务失败。 |
@@ -97,4 +110,4 @@
 
 ## 覆盖边界与结论
 
-在已打开的同路径旧版截图与当前合成候选之间，回调更明确地区分绑定成功、主动取消、状态无效和内部失败；进度卡保留 poster、收藏状态、集数、评分、评论及可计算时的进度，同时修复 320/360px 的卡片与断行。智能概览将原始 warning/limitation 代码压成可读说明，并保留来源计数。以上结论只涵盖上表逐张检查的页面和合成数据，不代表完整旧机器人功能 parity，也不代表当前 QQ/TIM 客户端像素表现。UX-001 仍为 `ACTIVE 3/4`；真实账户与客户端证据待独立验收。
+在已打开的同路径旧版截图与当前合成候选之间，回调更明确地区分绑定成功、主动取消、状态无效和内部失败；进度卡保留 poster、收藏状态、集数、评分、评论及可计算时的进度，同时修复 320/360px 的卡片与断行。智能概览将原始 warning/limitation 代码压成可读说明，并保留来源计数。新增的部分空图片明确区分“0 条观察样本”和“完整空收藏”，避免假报。以上结论只涵盖上表逐张检查的页面和合成数据，不代表完整旧机器人功能 parity，也不代表 Agent 在真实对话中的消息组合或当前 QQ/TIM 客户端像素表现。UX-001 仍为 `ACTIVE 3/4`；真实账户与客户端证据待独立验收。

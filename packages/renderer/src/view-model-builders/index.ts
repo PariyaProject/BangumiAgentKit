@@ -222,6 +222,49 @@ export function buildCollectionIntelligenceViewModel(
   };
 }
 
+export function buildCollectionIntelligenceMessage(
+  viewModel: CollectionIntelligenceViewModel,
+): string {
+  const { coverage } = viewModel;
+  const sourceTotal = coverage.sourceTotal === undefined ? '未知' : String(coverage.sourceTotal);
+  const coverageSummary = `源报告 ${sourceTotal} 条，已读取 ${coverage.observedRows} 行、去重后 ${coverage.uniqueItems} 条，成功读取 ${coverage.pagesSucceeded}/${coverage.pagesAttempted} 页`;
+  const completedEpisodes = `累计已看 ${viewModel.progress.completedEpisodes} 集`;
+  const scanIncomplete =
+    coverage.sourceTotal === undefined ||
+    !coverage.sourceExhausted ||
+    coverage.truncated ||
+    coverage.pagesSucceeded < coverage.pagesAttempted ||
+    coverage.pageFailureOffset !== undefined ||
+    (coverage.sourceTotal !== undefined && coverage.sourceTotal > coverage.observedRows);
+  const stateText =
+    viewModel.state === 'complete'
+      ? '覆盖完整'
+      : viewModel.state === 'partial'
+        ? '部分覆盖'
+        : '暂不可用';
+
+  if (viewModel.state === 'unavailable') {
+    return `当前账号的 Bangumi 收藏暂不可读取（状态：${stateText}）；没有生成统计。${coverageSummary}。下一步：请稍后重试。`;
+  }
+
+  if (viewModel.state === 'partial' && coverage.uniqueItems === 0) {
+    return `当前为${stateText}；本次未观察到收藏条目；${coverageSummary}。不能确认收藏为空。下一步：请重试以确认收藏范围。`;
+  }
+
+  if (viewModel.state === 'partial') {
+    const limitation = scanIncomplete
+      ? '覆盖不完整，未观察到的收藏未计入统计。下一步：如需完整范围，请重试。'
+      : '本次读取范围已结束，但部分字段或记录存在缺失。下一步：查看图片中的字段提示。';
+    return `当前为${stateText}；本次观察到 ${coverage.uniqueItems} 条收藏；${coverageSummary}。${completedEpisodes}。${limitation}`;
+  }
+
+  if (coverage.uniqueItems === 0) {
+    return `当前为${stateText}；收藏已完整读取，Bangumi 报告 0 条；${coverageSummary}。图片展示确认的空收藏结果。下一步：暂无收藏可分析。`;
+  }
+
+  return `当前为${stateText}；收藏已完整读取 ${coverage.uniqueItems} 条；${coverageSummary}。${completedEpisodes}。下一步：查看图片中的收藏状态、评分、标签和最近更新。`;
+}
+
 export function buildCollectionBacklogViewModel(
   result: CollectionBacklogResult,
   options: { sourceLabel?: string; maxItems?: number } = {},
@@ -2104,6 +2147,16 @@ export function buildCollectionProgressViewModel(
     comment: truncatedComment || undefined,
     progressPercentage,
   };
+}
+
+export function buildCollectionProgressMessage(viewModel: CollectionProgressViewModel): string {
+  const title = viewModel.subject.nameCn || viewModel.subject.name;
+  const progress = viewModel.totalEpisodes
+    ? `已看 ${viewModel.watchedEpisodes} / ${viewModel.totalEpisodes} 集`
+    : `已看 ${viewModel.watchedEpisodes} 集`;
+  const rating = viewModel.rating === undefined ? '' : `，评分 ${viewModel.rating} / 10`;
+  const ratingNextStep = viewModel.rating === undefined ? '' : '与评分';
+  return `当前账号收藏《${title}》：${viewModel.statusLabel}，${progress}${rating}。下一步：查看图片中的收藏状态、进度${ratingNextStep}。`;
 }
 
 export function buildCalendarViewModel(

@@ -4,7 +4,7 @@ export function formatAuthStatusMessage(status: AuthStatusResult): string {
   const accountCount = status.accountCount ?? 0;
   if (!status.bound) {
     if (accountCount > 0) {
-      return `已绑定 ${accountCount} 个 Bangumi 账号，但当前没有激活账号。先查看或切换已绑定账号；个人收藏查询需要激活账号。`;
+      return `检测到 ${accountCount} 条 Bangumi 账号绑定记录，但当前无法确认可用的活动账号资料。请检查绑定状态，必要时重新授权；个人收藏查询暂不可用。`;
     }
     return '尚未绑定 Bangumi 账号。需要个人收藏功能时，再发起授权；公开查询无需绑定。';
   }

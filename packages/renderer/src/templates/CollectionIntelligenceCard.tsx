@@ -110,7 +110,13 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
     viewModel.coverage.sourceTotal === undefined ? '未知' : String(viewModel.coverage.sourceTotal);
   const ratingMax = Math.max(1, ...viewModel.ratings.distribution.map((item) => item.count));
   const hasData = totalObserved > 0 && viewModel.state !== 'unavailable';
-  const emptyResult = totalObserved === 0 && viewModel.state !== 'unavailable';
+  const completeEmptyResult =
+    totalObserved === 0 &&
+    viewModel.state === 'complete' &&
+    viewModel.coverage.sourceExhausted &&
+    viewModel.coverage.sourceTotal === 0;
+  const unconfirmedEmptyResult =
+    totalObserved === 0 && viewModel.state !== 'unavailable' && !completeEmptyResult;
   const summarizedWarnings = viewModel.state === 'unavailable' ? [] : warningSummaries(viewModel);
 
   return (
@@ -150,7 +156,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
         </div>
       ) : null}
 
-      {emptyResult ? (
+      {completeEmptyResult ? (
         <div
           style={{
             color: theme.text,
@@ -165,6 +171,25 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
           <div style={{ fontWeight: 700 }}>暂无收藏条目</div>
           <div style={{ color: theme.textMuted }}>
             Bangumi 已返回完整的空收藏结果，当前统计为 0 条。
+          </div>
+        </div>
+      ) : null}
+
+      {unconfirmedEmptyResult ? (
+        <div
+          style={{
+            color: theme.text,
+            backgroundColor: theme.surfaceAlt,
+            border: `1px solid ${theme.border}`,
+            borderRadius: theme.radius.md,
+            padding: theme.spacing.md,
+            fontSize: '13px',
+            lineHeight: 1.6,
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>本次未观察到收藏条目</div>
+          <div style={{ color: theme.textMuted }}>
+            收藏读取未完整，不能确认收藏为空。请重试后再查看。
           </div>
         </div>
       ) : null}

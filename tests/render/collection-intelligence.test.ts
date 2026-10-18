@@ -9,6 +9,7 @@ import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openap
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import {
   buildCollectionIntelligenceViewModel,
+  buildCollectionIntelligenceMessage,
   extractImageUrls,
   RenderService,
   renderHtmlTemplate,
@@ -128,6 +129,48 @@ describe('collection-intelligence renderer', () => {
     expect(html).toContain('暂无收藏条目');
     expect(html).toContain('完整的空收藏结果');
     expect(html).not.toContain('暂不可读取');
+  });
+
+  it('does not present a zero-row partial scan as a confirmed empty collection', () => {
+    const partialEmpty = buildCollectionIntelligence([], {
+      sourceTotal: 3,
+      requestedMaxItems: 20,
+      pageSize: 20,
+      pagesAttempted: 1,
+      pagesSucceeded: 0,
+      maxPages: 8,
+      sourceExhausted: false,
+      pageFailureOffset: 0,
+      paginationStalled: false,
+      sourceTotalChanged: false,
+      attemptedAt: '2026-08-14T00:00:00.000Z',
+      retrievedAt: '2026-08-14T10:00:01.000Z',
+    });
+    const viewModel = buildCollectionIntelligenceViewModel(partialEmpty);
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 320);
+    const message = buildCollectionIntelligenceMessage(viewModel);
+
+    expect(viewModel.state).toBe('partial');
+    expect(html).toContain('本次未观察到收藏条目');
+    expect(html).toContain('不能确认收藏为空');
+    expect(html).not.toContain('暂无收藏条目');
+    expect(html).not.toContain('完整的空收藏结果');
+    expect(message).toContain('源报告 3 条');
+    expect(message).toContain('成功读取 0/1 页');
+    expect(message).toContain('不能确认收藏为空');
+    expect(message).toContain('请重试以确认收藏范围');
+  });
+
+  it('pairs the collection intelligence caption with the same partial coverage and progress facts', () => {
+    const viewModel = buildCollectionIntelligenceViewModel(fixtureResult());
+    const message = buildCollectionIntelligenceMessage(viewModel);
+
+    expect(viewModel.state).toBe('partial');
+    expect(message).toContain(`源报告 ${viewModel.coverage.sourceTotal} 条`);
+    expect(message).toContain(`去重后 ${viewModel.coverage.uniqueItems} 条`);
+    expect(message).toContain(`累计已看 ${viewModel.progress.completedEpisodes} 集`);
+    expect(message).toContain('覆盖不完整');
+    expect(message).toContain('如需完整范围，请重试');
   });
 
   it('caps dense tags and recent updates while keeping the card readable', () => {

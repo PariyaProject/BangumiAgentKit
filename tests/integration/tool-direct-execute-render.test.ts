@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
+import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { ProviderRegistry } from '@bangumi-agent-kit/provider-core';
 import { createRenderPresentationTools } from '@bangumi-agent-kit/tools';
@@ -60,6 +61,8 @@ function createUnavailableDependencies() {
       width: 640,
       height: 320,
     })),
+    getArtifactForPrincipal: vi.fn(async () => null),
+    resolveFilePathForPrincipal: vi.fn(async () => null),
   };
   const renderService = {
     renderCard: vi.fn(async () => ({
@@ -116,7 +119,77 @@ describe('direct execute coverage for render tools', () => {
     );
     await run(tools.get('bangumi.render_collection_backlog')!, { maxItems: 1 }, 'bangumi.render_collection_backlog');
     await run(tools.get('bangumi.render_collection_entity_consistency')!, { maxSubjects: 1 }, 'bangumi.render_collection_entity_consistency');
-    await run(tools.get('bangumi.render_collection_intelligence')!, { maxItems: 1 }, 'bangumi.render_collection_intelligence');
+    const progressApi = new GeneratedBangumiOpenApiClient(new HttpClient({ fetchFn: vi.fn() }));
+    vi.spyOn(progressApi, 'getSubjectById').mockResolvedValue({
+      id: 103,
+      name: 'Synthetic English title',
+      name_cn: '合成条目',
+      type: 2,
+      total_episodes: 12,
+      eps: 12,
+    } as never);
+    vi.spyOn(progressApi, 'getUserCollection').mockResolvedValue({
+      subject_id: 103,
+      type: 3,
+      subject_type: 2,
+      subject: {
+        id: 103,
+        name: 'Synthetic English title',
+        name_cn: '合成条目',
+        type: 2,
+        total_episodes: 12,
+        eps: 12,
+      },
+      rate: 9,
+      comment: 'synthetic private comment',
+      tags: [],
+      ep_status: 6,
+      updated_at: '2026-10-18T00:00:00.000Z',
+    } as never);
+    const progressDependencies = {
+      ...dependencies,
+      clientProvider: {
+        ...dependencies.clientProvider,
+        requireAuthenticatedClient: async () => ({
+          client: progressApi,
+          account: { id: 'synthetic-account', username: 'synthetic-user', nickname: 'Synthetic' },
+        }),
+      },
+    };
+    const executeProgress = tools.get('bangumi.render_collection_progress')!.execute as unknown as (
+      input: { subjectId: number },
+      context: {
+        principalId: string;
+        artifactPrincipalKey: string;
+        botInstanceId: string;
+        conversationId: string;
+      },
+      deps?: unknown,
+    ) => Promise<unknown>;
+    const progressResult = await executeProgress({ subjectId: 103 }, context, progressDependencies);
+    expect(progressResult).toMatchObject({
+      artifact: { id: 'fixture-private-artifact' },
+      message: expect.stringContaining('当前账号收藏《合成条目》：在看'),
+    });
+    expect((progressResult as { message: string }).message).toContain('已看 6 / 12 集');
+    expect((progressResult as { message: string }).message).not.toContain('synthetic private comment');
+
+    const executeIntelligence = tools.get('bangumi.render_collection_intelligence')!.execute as unknown as (
+      input: { maxItems: number },
+      context: {
+        principalId: string;
+        artifactPrincipalKey: string;
+        botInstanceId: string;
+        conversationId: string;
+      },
+      deps?: unknown,
+    ) => Promise<unknown>;
+    const intelligenceResult = await executeIntelligence({ maxItems: 1 }, context, dependencies);
+    expect(intelligenceResult).toMatchObject({
+      artifact: { id: 'fixture-private-artifact' },
+      message: expect.stringContaining('当前账号的 Bangumi 收藏暂不可读取'),
+    });
+    expect((intelligenceResult as { message: string }).message).toContain('请稍后重试');
     await run(tools.get('bangumi.render_collection_schedule')!, { maxRows: 1 }, 'bangumi.render_collection_schedule');
     await run(tools.get('bangumi.render_collection_series_groups')!, { maxItems: 1, maxGroups: 1, maxEdges: 1 }, 'bangumi.render_collection_series_groups');
     await run(tools.get('bangumi.render_episode_guide')!, { subjectId: 1, maxEpisodes: 1 }, 'bangumi.render_episode_guide');

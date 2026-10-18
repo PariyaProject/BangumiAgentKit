@@ -8,10 +8,12 @@ describe('auth status message', () => {
     );
   });
 
-  it('asks the user to activate an existing binding when none is active', () => {
-    expect(formatAuthStatusMessage({ bound: false, accountCount: 2 })).toContain(
-      '已绑定 2 个 Bangumi 账号，但当前没有激活账号。',
-    );
+  it('uses neutral wording when account rows exist but the active account cannot be confirmed', () => {
+    const message = formatAuthStatusMessage({ bound: false, accountCount: 2 });
+
+    expect(message).toContain('检测到 2 条 Bangumi 账号绑定记录');
+    expect(message).toContain('无法确认可用的活动账号资料');
+    expect(message).not.toContain('当前没有激活账号');
   });
 
   it('does not imply personal API access when a bound account has no credential record', () => {
