@@ -178,9 +178,11 @@ describe('PR-6R-A SQLite Distribution & Concurrency Matrix', () => {
       url: BANGUMI_OAUTH_CALLBACK_PATH,
     });
 
-    // Should reach handler (400 due to missing code/state), proving route exists
+    // Should reach the callback handler and return its safe missing-state page.
     expect(res.statusCode).toBe(400);
-    expect(res.payload).toContain('code');
+    expect(res.headers['content-type']).toContain('text/html');
+    expect(res.payload).toContain('<h1>授权未完成</h1>');
+    expect(res.payload).toContain('无法确认这次 Bangumi 授权请求');
     await storage.close();
   });
 
