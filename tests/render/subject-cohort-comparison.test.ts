@@ -97,6 +97,16 @@ describe('subject cohort comparison renderer', () => {
             state: 'partial',
             message: '条目详情暂不可用；缺失字段不会按 0 计算。',
           },
+          {
+            code: 'EXPERIMENTAL_SOURCE',
+            state: 'partial',
+            message: 'Official v0 subject search is marked experimental upstream.',
+          },
+          {
+            code: 'FUTURE_PROVIDER_WARNING',
+            state: 'partial',
+            message: 'An unrecognized provider warning remains readable.',
+          },
         ],
       },
       'bangumi-dark',
@@ -104,7 +114,12 @@ describe('subject cohort comparison renderer', () => {
       360,
     );
     expect(html).toContain('条目详情暂不可用');
+    expect(html).toContain('官方作品搜索接口仍处于实验阶段。');
+    expect(html).not.toContain('Official v0 subject search is marked experimental upstream.');
+    expect(html).toContain('An unrecognized provider warning remains readable.');
     expect(html).not.toContain('SYNTHETIC_PARTIAL_FIXTURE');
+    expect(html).not.toContain('EXPERIMENTAL_SOURCE');
+    expect(html).not.toContain('FUTURE_PROVIDER_WARNING');
   });
 
   it('explains when search returned a row but no subject detail can be displayed', () => {

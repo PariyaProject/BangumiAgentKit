@@ -92,6 +92,16 @@ function cohortCalculationMethodLabel(formulaVersion: string): string {
   return '计算方法：群体均值与差值（版本待确认）';
 }
 
+function warningText(code: string, message: string): string {
+  if (
+    code === 'EXPERIMENTAL_SOURCE' &&
+    message === 'Official v0 subject search is marked experimental upstream.'
+  ) {
+    return '官方作品搜索接口仍处于实验阶段。';
+  }
+  return message || '部分数据无法确认；缺失值不会按 0 计算。';
+}
+
 function deltaLabel(metric: SubjectCohortComparisonViewModel['metrics'][number]): string {
   if (metric.delta === undefined) return '不可计算';
   const value = numberLabel(metric.delta, metricDigits(metric.key));
@@ -384,9 +394,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
         <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
           <div style={{ fontWeight: 700 }}>数据说明</div>
           {viewModel.warnings.slice(0, 3).map((warning, index) => (
-            <div key={`${warning.code}-${index}`}>
-              {warning.message || '部分数据无法确认；缺失值不会按 0 计算。'}
-            </div>
+            <div key={`${warning.code}-${index}`}>{warningText(warning.code, warning.message)}</div>
           ))}
           {viewModel.warnings.length > 3
             ? `卡片另有 ${viewModel.warnings.length - 3} 条告警。`

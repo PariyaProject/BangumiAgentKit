@@ -4,14 +4,14 @@
   "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v3-visual-qa-candidate-bound-20261019-round2",
   "cssWidths": [320, 360, 520, 640, 960],
   "deviceScaleFactor": 1,
-  "buildBundleSha256": "048398b47fb3315e23315cfc4b9cd827f5584ade907ac75857652b1ec66fd2e7",
-  "generationSourceSha256": "d5ecc7aeae633c3d377a5c19194995b85119fc2898780745ed503f3306933e3e",
+  "buildBundleSha256": "197bc34e49580b7d57a3a473c211043f027cb72881849d553ef386592287d746",
+  "generationSourceSha256": "bce99de566d476e73a1b43952be739ce4595633fd3897be1ab1a91a47e6fac49",
   "reviewAcknowledgement": {
     "decision": "PASS",
     "allImagesIndividuallyInspected": true,
     "reviewedBy": "Codex",
-    "reviewedAt": "2026-10-18T16:36:25.000Z",
-    "summary": "The complete case was built from the exact registered v3 query and the same closed local search/detail fixture used by its profile; the profile title and score 7, 10 ratings, collection total 3, one reported episode, and standard deviation 0 match. All ten complete and partial PNGs were opened individually after the renderer rebuild. No clipping or horizontal overflow was observed; partial status clearly distinguishes returned search data with unavailable details from an empty search."
+    "reviewedAt": "2026-10-18T17:13:19.385Z",
+    "summary": "All ten complete and partial PNGs were opened individually after the localization fix and bundle rebuild. The experimental-source warning is Chinese and readable at every width, including clean wrapping at 320px; the partial no-detail warning remains intact. No clipping or horizontal overflow was observed."
   },
   "images": [
     {
@@ -19,12 +19,12 @@
       "file": "complete-single-cohort-e-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1527,
-      "byteLength": 154836,
-      "sha256": "086c39ce7ff92ef098c1d41c287d5d9ad5a8ba5911d409ee8c029f2274222e39",
+      "pixelHeight": 1512,
+      "byteLength": 154376,
+      "sha256": "9538d7c249adacb2202d9ccafd71857d21a9b11dee41ebef610670e179343ff4",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Opened individually after the rebuilt bundle. The long Japanese, Chinese, and Latin title wraps cleanly; sample values, four metrics, limits, method version, and footer fit without clipping. Compact captions remain readable."
+        "finding": "Opened individually after localization. The Chinese experimental-source warning wraps cleanly at 320px; title, sample values, metrics, limits, method version, and footer fit without clipping."
       }
     },
     {
@@ -32,12 +32,12 @@
       "file": "complete-single-cohort-e-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1468,
-      "byteLength": 155404,
-      "sha256": "7ff4352ac8d316744d00b29c4d2a2bff5c0289caaff10f1bfd5a01cdebd74506",
+      "pixelHeight": 1453,
+      "byteLength": 154929,
+      "sha256": "8a0f3f6b33eee12a6aa5a5a35879bce6aaa62ed4774488cf7373793b2fa49ed6",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Opened individually after the rebuilt bundle. The profile-matched title and sample metadata wrap without collision; all four metric cards and the source/footer remain inside the card."
+        "finding": "Opened individually after localization. The Chinese warning is readable in the narrow card; mixed-script title, sample metadata, metrics, and footer remain inside the card."
       }
     },
     {
@@ -46,11 +46,11 @@
       "cssWidth": 520,
       "pixelWidth": 520,
       "pixelHeight": 1243,
-      "byteLength": 155173,
-      "sha256": "f0c66409fabf1ab4d02006258dbd1c374b6f32173a0cbf2184c837d4de5f4824",
+      "byteLength": 155018,
+      "sha256": "91111099344b9c01b59ade15e10f5c427b3efd2cdc9955eec32c551398c1b0de",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Opened individually after the rebuilt bundle. Sample facts and metric rows are distinct; the upstream-search warning, limits, calculation version, and footer remain legible with no horizontal overflow."
+        "finding": "Opened individually after localization. The Chinese warning is legible between metrics and limitations; the long fixture title and footer fit without horizontal overflow."
       }
     },
     {
@@ -59,11 +59,11 @@
       "cssWidth": 640,
       "pixelWidth": 640,
       "pixelHeight": 1198,
-      "byteLength": 154735,
-      "sha256": "7179bcfa3a263660361eb28e89e9046ddea2ed6b8fdb2ce1883a591f41c8ae3a",
+      "byteLength": 154571,
+      "sha256": "b3a3fd39d982d99da1b6f694d0246a4fc48a7a49d55ee16eff20c212010cde93",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Opened individually after the rebuilt bundle. The single cohort uses the full card width and keeps metrics stacked; the long limitations and version/source labels fit without clipping."
+        "finding": "Opened individually after localization. The Chinese warning and limitations remain distinct; all metric cards, methodology version, and footer fit without clipping."
       }
     },
     {
@@ -72,11 +72,11 @@
       "cssWidth": 960,
       "pixelWidth": 960,
       "pixelHeight": 953,
-      "byteLength": 160446,
-      "sha256": "9c16a95372c18e243b2bc4a90e70f1e4010b33a7999ebefbdd74f740b32702dc",
+      "byteLength": 160305,
+      "sha256": "89327e84416a3db38f0b1197f29328ed0a2be32fc2d51146f751c33e100bf903",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Opened individually after the rebuilt bundle. Metric values and complete-state labels align in separate columns; the mixed-script title, method version, and footer remain clear with no overflow."
+        "finding": "Opened individually after localization. The Chinese warning is clear at full width; metric columns, methodology version, and footer remain aligned with no overflow."
       }
     },
     {
@@ -89,7 +89,7 @@
       "sha256": "6cec3f2fe55541c2b87cc8ebcd053940d5be5d5fa7c43bf64b0d857801e973ad",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Opened individually after the rebuilt bundle. The red status clearly says one search row was returned, details are unavailable, and no subject row is shown. Unknown values, limits, method version, and footer fit without clipping."
+        "finding": "Opened individually after regeneration. The red text clearly distinguishes one returned search row from unavailable details and says no subject row is shown; no clipping."
       }
     },
     {
@@ -102,7 +102,7 @@
       "sha256": "725898ce2e07dc89be232357938c970f848f33961a319f02d955767a99d0dc0e",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Opened individually after the rebuilt bundle. The unavailable-detail status wraps cleanly and distinguishes a returned result from an empty search; all four unknown metric states remain separated."
+        "finding": "Opened individually after regeneration. The returned-row/no-detail caveat wraps cleanly and stays distinct from the empty-search case and metric states."
       }
     },
     {
@@ -115,7 +115,7 @@
       "sha256": "be3b714ee59aab9eb6be98d3f281d874308ff09f51172daf00e1bef81630a929",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Opened individually after the rebuilt bundle. The returned-row/no-detail status, four missing metrics, warning, limits, method version, and source footer do not collide."
+        "finding": "Opened individually after regeneration. The returned-row/no-detail caveat, missing metrics, warning, limitations, method version, and footer do not collide."
       }
     },
     {
@@ -128,7 +128,7 @@
       "sha256": "852341d21bedb4447233de64f1e8515b6d14be5876ec1253f67d06d669eab118",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Opened individually after the rebuilt bundle. The full-width single cohort keeps the unavailable-detail status distinct from each missing metric; the limits and footer fit with no clipping."
+        "finding": "Opened individually after regeneration. The unavailable-detail caveat remains separate from every missing metric; limitations and footer fit without clipping."
       }
     },
     {
@@ -141,7 +141,7 @@
       "sha256": "f5ea7a574e4b237fc880a986c627614aea7521968f4870b5a2b0f141cd57f1c3",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Opened individually after the rebuilt bundle. Unknown values and partial-state labels align in separate columns; the unavailable-detail caveat, method version, and footer remain readable without overflow."
+        "finding": "Opened individually after regeneration. Partial-state labels align in columns; unavailable-detail caveat, method version, and footer remain readable without overflow."
       }
     }
   ]
