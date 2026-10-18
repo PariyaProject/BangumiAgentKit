@@ -1003,6 +1003,31 @@
           }
         }
       ]
+    },
+    {
+      "id": "auth-start-offline-agent-mcp-v1",
+      "frontierId": "OP-009",
+      "epochId": "run95-auth-start-offline-agent-mcp-20261018",
+      "toolName": "bangumi.auth_start",
+      "argumentProfile": "fixed-auth-start-read-capability-offline-v1",
+      "claimLabelName": "harness-r95-auth-start-v1-claimed",
+      "reportPath": "docs/live-probes/auth-start-offline-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-auth-start-offline-agent-mcp-contract-2026-10-18.md",
+      "evidenceKind": "codex_cli_auth_start_offline_agent_mcp_v1",
+      "answerCheckMethod": "auth-start-synthetic-no-consent-no-url-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-auth-start-synthetic-offline-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 512,
+      "calls": [
+        {
+          "toolName": "bangumi.auth_start",
+          "arguments": {
+            "capabilities": ["read:collection"]
+          }
+        }
+      ]
     }
   ]
 }

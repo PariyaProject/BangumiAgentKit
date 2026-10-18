@@ -2785,6 +2785,44 @@ CODEX_M07_REPORT_FIELDS = {
     'observedAt', 'answerSha256', 'answerUtf8Bytes', 'answerChecks', 'privacy', 'scenarios',
     'retryAllowed', 'reportWritten', 'runnerReceipt',
 }
+CODEX_AUTH_START_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'auth-start-offline-agent-mcp-v1'
+)
+CODEX_AUTH_START_PROFILE_ID = CODEX_AUTH_START_PROFILE['id']
+CODEX_AUTH_START_EPOCH_ID = CODEX_AUTH_START_PROFILE['epochId']
+CODEX_AUTH_START_TOOL_NAME = CODEX_AUTH_START_PROFILE['toolName']
+CODEX_AUTH_START_ARGUMENT_PROFILE = CODEX_AUTH_START_PROFILE['argumentProfile']
+CODEX_AUTH_START_EXPECTED_ARGUMENTS = CODEX_AUTH_START_PROFILE['calls'][0]['arguments']
+CODEX_AUTH_START_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [CODEX_AUTH_START_EXPECTED_ARGUMENTS],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_AUTH_START_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_AUTH_START_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_AUTH_START_REPORT_RELATIVE_PATH = CODEX_AUTH_START_PROFILE['reportPath']
+CODEX_AUTH_START_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_AUTH_START_PROFILE['selectionEvidencePath']
+CODEX_AUTH_START_EVIDENCE_KIND = CODEX_AUTH_START_PROFILE['evidenceKind']
+CODEX_AUTH_START_NETWORK_MODE = CODEX_AUTH_START_PROFILE['networkMode']
+CODEX_AUTH_START_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
+    'profileId', 'profile', 'acceptanceScope', 'model', 'reasoningEffort', 'reviewerId',
+    'codexCliVersion', 'observedAt', 'sourceRevision', 'baseSha', 'ciSha', 'ciStatus',
+    'prNumber', 'claimId', 'mcpBundleSha256', 'registrySha256', 'selectionEvidenceSha256',
+    'toolName', 'argumentProfile', 'expectedArgumentsSha256', 'catalogSha256',
+    'toolDescriptionSha256', 'inputSchemaSha256', 'serverToolNames', 'serverToolCount',
+    'networkMode', 'mcpServerNames', 'processExitCode', 'resultStatus', 'eventStreamParsed',
+    'turnCompleted', 'codexMcpToolEventCount', 'codexErrorItemCount', 'nonMcpToolEventCount',
+    'shellToolCallCount', 'allowedCallCount', 'deniedCallCount', 'answerCheckMethod',
+    'answerSha256', 'answerUtf8Bytes', 'eventStreamSha256', 'serverSummarySha256',
+    'answerChecks', 'offlineFixture', 'privacy', 'retryAllowed', 'reportWritten', 'runnerReceipt',
+}
 CODEX_A01_RENDER_AGGREGATION_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'a01-render-cohort-aggregation-agent-mcp-offline-v1'
@@ -6046,6 +6084,68 @@ CODEX_M07_PROFILE_IMPLEMENTATION_MARKERS = {
         'def codex_m07_profile_disposition_matches_report(',
         'def codex_m07_frontier_is_unassessed(',
         'CODEX_M07_REPORT_RELATIVE_PATH',
+    ),
+}
+CODEX_AUTH_START_PROFILE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "auth-start-offline-agent-mcp-v1"',
+        '"toolName": "bangumi.auth_start"',
+        '"capabilities": ["read:collection"]',
+    ),
+    'scripts/lib/auth-start-offline-agent-mcp-profile.mjs': (
+        "export const AUTH_START_PROFILE_ID = 'auth-start-offline-agent-mcp-v1'",
+        'export function checkAuthStartOfflineAnswer(',
+        'omitsUrlAndState',
+    ),
+    'apps/mcp/codex-auth-start-offline-mcp-server.mjs': (
+        "import { MemoryStorage } from '@bangumi-agent-kit/db'",
+        'AUTH_START_SYNTHETIC_CLIENT_ID',
+        'fetchFn: async () =>',
+        "authorizationHost: parsed?.hostname ?? null",
+    ),
+    'scripts/acceptance/run-auth-start-offline-agent-mcp.mjs': (
+        'export function buildAuthStartCodexExecArgs(',
+        'export function runAuthStartOfflineAgentMcp(',
+        "finish('INCONCLUSIVE')",
+        "persistResult(claim, state, reportSha256)",
+    ),
+    'scripts/acceptance/write-auth-start-offline-agent-mcp-report.mjs': (
+        'export function validateAuthStartProfileRun(',
+        'export function validateAuthStartProfileReport(',
+        "openSync(REPORT_PATH, 'wx'",
+    ),
+    'scripts/acceptance/validate-auth-start-offline-agent-mcp-report.mjs': (
+        'validateAuthStartProfileReport(',
+    ),
+    'scripts/agent-harness.mjs': (
+        "case 'auth-start-offline-agent-mcp-v1':",
+        'validateAuthStartSanitizedReportFile(',
+    ),
+    'docs/research/run95-auth-start-offline-agent-mcp-contract-2026-10-18.md': (
+        'No real OAuth consent',
+        'does not invoke the provider HTTP client',
+        'no URL, OAuth state',
+    ),
+    'tests/unit/auth-start-offline-profile.test.ts': (
+        'creates one temporary OAuth state and URL without provider HTTP',
+        'expect(fetchFn).not.toHaveBeenCalled()',
+    ),
+    'tests/harness/auth-start-offline-agent-mcp.test.mjs': (
+        'auth_start report binds the exact one-shot result',
+        'validateAuthStartProfileReport(',
+    ),
+    'tests/harness/agent-mcp-profile-claims.test.mjs': (
+        'assert.equal(listAgentMcpProfiles().length, 31)',
+        "getAgentMcpProfileById('auth-start-offline-agent-mcp-v1')",
+    ),
+    'scripts/test_acceptance_evidence.py': (
+        'def test_auth_start_profile_report_dispatch_adds_only_the_auth_start_matrix_row(',
+        'test_auth_start_matrix_cell_requires_exact_profile_and_anonymous_read_policy',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_auth_start_profile_revision_has_implementation(',
+        'def codex_auth_start_profile_disposition_matches_report(',
+        'CODEX_AUTH_START_REPORT_RELATIVE_PATH',
     ),
 }
 CODEX_A01_RENDER_AGGREGATION_PROFILE_IMPLEMENTATION_MARKERS = {
@@ -13551,6 +13651,396 @@ def codex_m07_profile_report_is_valid(
             report, current_epoch_status, current_bundle_sha256,
         )
         and codex_m07_profile_disposition_matches_report(
+            report, current_harness_status, report_sha256,
+        ) is not None
+    )
+
+
+def codex_auth_start_profile_revision_has_implementation(revision: object) -> bool:
+    """Bind the synthetic auth_start matrix report to the exact reviewed fixture and runner."""
+    if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_AUTH_START_PROFILE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
+def codex_auth_start_profile_report_matches_candidate_revision(
+    report: object, revision: object,
+) -> bool:
+    if (
+        not isinstance(report, dict)
+        or not isinstance(revision, str)
+        or report.get('sourceRevision') != revision
+        or not codex_auth_start_profile_revision_has_implementation(revision)
+        or not re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
+        or _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', report['baseSha'], revision,
+        ).returncode != 0
+    ):
+        return False
+    try:
+        catalog = _run_repository_git(ROOT, 'show', f'{revision}:docs/tool-catalog.json')
+        selection = _run_repository_git(
+            ROOT, 'show', f'{revision}:{CODEX_AUTH_START_SELECTION_EVIDENCE_RELATIVE_PATH}',
+        )
+        return (
+            codex_g26_candidate_bundle_sha256(revision) == report.get('mcpBundleSha256')
+            and catalog.returncode == 0
+            and hashlib.sha256(catalog.stdout.encode('utf-8')).hexdigest()
+            == report.get('catalogSha256')
+            and selection.returncode == 0
+            and hashlib.sha256(selection.stdout.encode('utf-8')).hexdigest()
+            == report.get('selectionEvidenceSha256')
+        )
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return False
+
+
+def codex_auth_start_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                'node', str(ROOT / 'scripts/agent-harness.mjs'), 'status',
+                '--run', '95', '--pr', str(pr_number),
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_auth_start_profile_harness_status(pr_number: object) -> dict[str, object] | None:
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                'node', str(ROOT / 'scripts/agent-harness.mjs'),
+                'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
+                '--profile-id', CODEX_AUTH_START_PROFILE_ID,
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_auth_start_profile_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+) -> dict[str, object] | None:
+    """Require the exact durable one-shot REPORT_WRITTEN disposition and both latches."""
+    if not isinstance(harness_status, dict):
+        return None
+    receipt = report.get('runnerReceipt')
+    disposition = harness_status.get('disposition')
+    if (
+        harness_status.get('state') != 'REPORT_WRITTEN'
+        or harness_status.get('profile_id') != CODEX_AUTH_START_PROFILE_ID
+        or harness_status.get('pr') != report.get('prNumber')
+        or harness_status.get('tool_name') != CODEX_AUTH_START_TOOL_NAME
+        or harness_status.get('argument_profile') != CODEX_AUTH_START_ARGUMENT_PROFILE
+        or harness_status.get('expected_arguments_sha256') != CODEX_AUTH_START_EXPECTED_ARGUMENTS_SHA256
+        or harness_status.get('registry_sha256') != CODEX_AUTH_START_PROFILE_REGISTRY_SHA256
+        or harness_status.get('claim_label_present') is not True
+        or harness_status.get('terminal_label_present') is not True
+        or not isinstance(disposition, dict)
+        or not isinstance(receipt, dict)
+        or not isinstance(report_sha256, str)
+        or re.fullmatch(r'[0-9a-f]{64}', report_sha256) is None
+    ):
+        return None
+    expected = {
+        'claimId': report.get('claimId'),
+        'profileId': CODEX_AUTH_START_PROFILE_ID,
+        'frontierId': 'OP-009',
+        'epochId': CODEX_AUTH_START_EPOCH_ID,
+        'runNumber': 95,
+        'prNumber': report.get('prNumber'),
+        'state': 'REPORT_WRITTEN',
+        'sourceCandidateSha': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'ciSha': report.get('sourceRevision'),
+        'ciStatus': 'SUCCESS',
+        'reviewerId': report.get('reviewerId'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'registrySha256': CODEX_AUTH_START_PROFILE_REGISTRY_SHA256,
+        'toolName': CODEX_AUTH_START_TOOL_NAME,
+        'argumentProfile': CODEX_AUTH_START_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': CODEX_AUTH_START_EXPECTED_ARGUMENTS_SHA256,
+        'reportWritten': True,
+        'reportPath': CODEX_AUTH_START_REPORT_RELATIVE_PATH,
+        'reportSha256': report_sha256,
+        'retryAllowed': False,
+        'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
+        'runnerReceiptPublicKeySha256': receipt.get('publicKeySha256'),
+        'runnerReceiptSha256': _canonical_json_sha256(receipt),
+    }
+    return disposition if all(disposition.get(key) == value for key, value in expected.items()) else None
+
+
+def codex_auth_start_profile_candidate_binding_is_current(
+    report: dict[str, object], epoch_status: object, current_bundle_sha256: object,
+) -> bool:
+    if not isinstance(epoch_status, dict):
+        return False
+    run = epoch_status.get('run')
+    epoch_result = epoch_status.get('epoch')
+    if not isinstance(run, dict) or not isinstance(epoch_result, dict):
+        return False
+    run_state = run.get('state')
+    epoch = epoch_result.get('state')
+    if not isinstance(run_state, dict) or not isinstance(epoch, dict):
+        return False
+    candidate_sha = epoch.get('candidate_sha')
+    pr_number = report.get('prNumber')
+    branch = epoch.get('branch')
+    reviews = epoch.get('review_history', [])
+    if not isinstance(reviews, list):
+        return False
+    latest_review = reviews[-1] if reviews else None
+    active_pr = (
+        run_state.get('state') == 'EPOCH_ACTIVE'
+        and run_state.get('active_epoch_pr') == pr_number
+        and epoch_result.get('github_state') == 'OPEN'
+        and epoch.get('state') != 'MERGED'
+    )
+    merged_pr = epoch.get('state') == 'MERGED' and epoch_result.get('github_state') == 'MERGED'
+    source_review_passed = any(
+        isinstance(review, dict)
+        and review.get('candidate_sha') == report.get('sourceRevision')
+        and review.get('reviewed_base_sha') == report.get('baseSha')
+        and review.get('reviewer_id') == report.get('reviewerId')
+        and review.get('verdict') == 'PASS'
+        for review in reviews
+    )
+    if merged_pr and not (
+        isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == candidate_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+    ):
+        return False
+    candidate_paths = _codex_p02_profile_report_candidate_paths(report.get('sourceRevision'), candidate_sha)
+    allowed_paths = {
+        CODEX_AUTH_START_REPORT_RELATIVE_PATH,
+        'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+        'docs/product/frontier-ledger.json',
+    }
+    return bool(
+        type(pr_number) is int and pr_number > 0 and run.get('number') == 95
+        and (active_pr or merged_pr)
+        and epoch.get('epoch_id') == CODEX_AUTH_START_EPOCH_ID
+        and epoch.get('pr_number') == pr_number
+        and epoch.get('base_branch') == 'master'
+        and epoch.get('base_sha') == report.get('baseSha')
+        and epoch.get('reviewed_base_sha') == report.get('baseSha')
+        and epoch_result.get('pr_base_ref_name') == 'master'
+        and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
+        and epoch_result.get('pr_head_ref_name') == branch
+        and epoch_result.get('pr_is_draft') is False
+        and isinstance(candidate_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
+        and epoch_result.get('pr_head_sha') == candidate_sha
+        and source_review_passed
+        and isinstance(candidate_paths, set)
+        and CODEX_AUTH_START_REPORT_RELATIVE_PATH in candidate_paths
+        and candidate_paths <= allowed_paths
+        and current_bundle_sha256 == report.get('mcpBundleSha256')
+    )
+
+
+def codex_auth_start_frontier_is_partial() -> bool:
+    try:
+        frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    records = frontier.get('records') if isinstance(frontier, dict) else None
+    record = next((item for item in records or [] if isinstance(item, dict) and item.get('id') == 'OP-009'), None)
+    source_refs = record.get('source_refs') if isinstance(record, dict) else None
+    return bool(
+        isinstance(record, dict) and record.get('status') == 'PARTIAL'
+        and isinstance(source_refs, list)
+        and CODEX_AUTH_START_SELECTION_EVIDENCE_RELATIVE_PATH in source_refs
+        and CODEX_AUTH_START_REPORT_RELATIVE_PATH in source_refs
+    )
+
+
+def codex_auth_start_profile_report_is_valid(
+    report: object,
+    harness_status: object = None,
+    report_path: Path | None = None,
+    epoch_status: object = None,
+) -> bool:
+    """Validate only the signed, sanitized offline auth_start Agent/MCP matrix report."""
+    if not isinstance(report, dict) or set(report) != CODEX_AUTH_START_REPORT_FIELDS:
+        return False
+    if (
+        report.get('evidenceKind') != CODEX_AUTH_START_EVIDENCE_KIND
+        or report.get('runNumber') != 95
+        or report.get('frontierId') != 'OP-009'
+        or report.get('epochId') != CODEX_AUTH_START_EPOCH_ID
+        or report.get('profileId') != CODEX_AUTH_START_PROFILE_ID
+        or report.get('scenarioId') is not None
+        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v1'
+        or report.get('acceptanceScope') != 'agent-mcp-matrix-only'
+        or report.get('model') != 'gpt-6-luna'
+        or report.get('reasoningEffort') != 'max'
+        or report.get('toolName') != CODEX_AUTH_START_TOOL_NAME
+        or report.get('argumentProfile') != CODEX_AUTH_START_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != CODEX_AUTH_START_EXPECTED_ARGUMENTS_SHA256
+        or report.get('registrySha256') != CODEX_AUTH_START_PROFILE_REGISTRY_SHA256
+        or report.get('networkMode') != CODEX_AUTH_START_NETWORK_MODE
+        or report.get('resultStatus') != 'SUCCESS'
+        or report.get('processExitCode') != 0
+        or report.get('eventStreamParsed') is not True
+        or report.get('turnCompleted') is not True
+        or report.get('mcpServerNames') != ['bgk_auth_start_offline']
+        or report.get('serverToolNames') != [CODEX_AUTH_START_TOOL_NAME]
+        or report.get('serverToolCount') != 1
+        or report.get('codexMcpToolEventCount') != 1
+        or report.get('codexErrorItemCount') != 0
+        or report.get('nonMcpToolEventCount') != 0
+        or report.get('shellToolCallCount') != 0
+        or report.get('allowedCallCount') != 1
+        or report.get('deniedCallCount') != 0
+        or report.get('answerCheckMethod') != CODEX_AUTH_START_PROFILE['answerCheckMethod']
+        or not isinstance(report.get('answerSha256'), str)
+        or re.fullmatch(r'[0-9a-f]{64}', report['answerSha256']) is None
+        or not isinstance(report.get('eventStreamSha256'), str)
+        or re.fullmatch(r'[0-9a-f]{64}', report['eventStreamSha256']) is None
+        or not isinstance(report.get('serverSummarySha256'), str)
+        or re.fullmatch(r'[0-9a-f]{64}', report['serverSummarySha256']) is None
+        or report.get('retryAllowed') is not False
+        or report.get('reportWritten') is not True
+    ):
+        return False
+    fixture = report.get('offlineFixture')
+    if not isinstance(fixture, dict) or fixture != {
+        'authorizationHost': 'oauth.invalid',
+        'authorizationPath': '/authorize',
+        'queryParameterNames': ['client_id', 'redirect_uri', 'response_type', 'state'],
+        'providerScopeAbsent': True,
+        'oauthStateCount': 1,
+        'expiresAtWithinTenMinuteWindow': True,
+        'httpRequestCount': 0,
+        'accountWriteCount': 0,
+        'credentialWriteCount': 0,
+        'bindingWriteCount': 0,
+    }:
+        return False
+    privacy = report.get('privacy')
+    expected_privacy = {
+        'inheritedCredentialEnvironmentRead': False,
+        'productionDatabaseUsed': False,
+        'realBangumiRequestSent': False,
+        'browserOpened': False,
+        'authorizationUrlPersisted': False,
+        'oauthStatePersistedInReport': False,
+        'clientIdPersisted': False,
+        'principalIdPersisted': False,
+        'rawPromptOrAnswerPersisted': False,
+        'accountOrCredentialWritten': False,
+    }
+    if not isinstance(privacy, dict) or privacy != expected_privacy:
+        return False
+    answer_checks = report.get('answerChecks')
+    if not isinstance(answer_checks, dict) or set(answer_checks) != {
+        'exactArguments', 'oneMcpCall', 'successfulToolResult', 'urlIsSynthetic',
+        'serverSummaryValid', 'answerSemanticsValid', 'eventStreamClean', 'answer',
+    } or any(value is not True for key, value in answer_checks.items() if key != 'answer'):
+        return False
+    if not isinstance(answer_checks.get('answer'), dict) or set(answer_checks['answer']) != {
+        'boundedChineseText', 'exactExpectedCopy', 'identifiesSyntheticOfflineTest', 'saysLinkWasNotOpened',
+        'saysConsentWasNotCompleted', 'saysAccountDataWasNotAccessed',
+        'distinguishesLocalCapabilityTag', 'omitsUrlAndState', 'noUnsupportedSuccessClaim',
+    } or any(
+        value is not True for value in answer_checks['answer'].values()
+    ):
+        return False
+    path = report_path or (LIVE_PROBE_DIR / Path(CODEX_AUTH_START_REPORT_RELATIVE_PATH).name)
+    try:
+        relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+        report_bytes = path.read_bytes()
+        if relative_path != CODEX_AUTH_START_REPORT_RELATIVE_PATH or len(report_bytes) > 64 * 1024:
+            return False
+        if json.loads(report_bytes.decode('utf-8')) != report:
+            return False
+    except (OSError, ValueError, UnicodeError):
+        return False
+    if (
+        not codex_auth_start_frontier_is_partial()
+        or not codex_auth_start_profile_report_matches_candidate_revision(report, report.get('sourceRevision'))
+    ):
+        return False
+    receipt = report.get('runnerReceipt')
+    if not isinstance(receipt, dict):
+        return False
+    report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+    claim = {
+        'state': 'REPORT_WRITTEN', 'reportWritten': True, 'reportSha256': report_sha256,
+        'retryAllowed': False, 'runNumber': report.get('runNumber'), 'frontierId': report.get('frontierId'),
+        'epochId': report.get('epochId'), 'profileId': report.get('profileId'),
+        'claimId': report.get('claimId'), 'prNumber': report.get('prNumber'),
+        'toolName': report.get('toolName'), 'argumentProfile': report.get('argumentProfile'),
+        'sourceCandidateSha': report.get('sourceRevision'), 'baseSha': report.get('baseSha'),
+        'ciSha': report.get('ciSha'), 'ciStatus': report.get('ciStatus'),
+        'reviewerId': report.get('reviewerId'), 'bundleSha256': report.get('mcpBundleSha256'),
+        'registrySha256': report.get('registrySha256'),
+        'expectedArgumentsSha256': report.get('expectedArgumentsSha256'),
+        'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
+        'runnerReceiptPublicKeySha256': receipt.get('publicKeySha256'),
+    }
+    validation = subprocess.run(
+        ['node', str(ROOT / 'scripts/acceptance/validate-auth-start-offline-agent-mcp-report.mjs')],
+        cwd=ROOT,
+        input=json.dumps({'claim': claim, 'reportBytesBase64': base64.b64encode(report_bytes).decode('ascii')}),
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    if validation.returncode != 0:
+        return False
+    try:
+        result = json.loads(validation.stdout)
+    except (TypeError, ValueError):
+        return False
+    if result.get('passed') is not True or result.get('reportSha256') != report_sha256:
+        return False
+    pr_number = report.get('prNumber')
+    current_epoch_status = (
+        epoch_status if isinstance(epoch_status, dict)
+        else codex_auth_start_profile_epoch_harness_status(pr_number)
+    )
+    current_harness_status = (
+        harness_status if isinstance(harness_status, dict)
+        else codex_auth_start_profile_harness_status(pr_number)
+    )
+    epoch_result = current_epoch_status.get('epoch') if isinstance(current_epoch_status, dict) else None
+    epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
+    candidate_sha = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
+    if not isinstance(candidate_sha, str) or re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is None:
+        return False
+    try:
+        current_bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate_sha)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return False
+    return (
+        codex_auth_start_profile_candidate_binding_is_current(
+            report, current_epoch_status, current_bundle_sha256,
+        )
+        and codex_auth_start_profile_disposition_matches_report(
             report, current_harness_status, report_sha256,
         ) is not None
     )
@@ -22302,6 +22792,22 @@ def codex_mcp_evidence_is_valid(
             and current_tool.get('risk') == 'read'
             and codex_a01_aggregate_matrix_profile_report_is_valid(report)
         )
+    if (
+        tool_name == CODEX_AUTH_START_TOOL_NAME
+        or report.get('profileId') == CODEX_AUTH_START_PROFILE_ID
+    ):
+        current_tool = current_by_name.get(CODEX_AUTH_START_TOOL_NAME)
+        return bool(
+            tool_name == CODEX_AUTH_START_TOOL_NAME
+            and report.get('argumentProfile') == CODEX_AUTH_START_ARGUMENT_PROFILE
+            and report.get('profileId') == CODEX_AUTH_START_PROFILE_ID
+            and report.get('acceptanceScope') == 'agent-mcp-matrix-only'
+            and current_tool is not None
+            and evidence_by_name.get(CODEX_AUTH_START_TOOL_NAME) == current_tool
+            and current_tool.get('auth') == 'none'
+            and current_tool.get('risk') == 'read'
+            and codex_auth_start_profile_report_is_valid(report)
+        )
     argument_profile = report.get('argumentProfile')
     if (
         tool_name == CODEX_A01_RENDER_AGGREGATION_TOOL_NAME
@@ -22711,6 +23217,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_CAST_OFFLINE_V2_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_M07_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(LIVE_PROBE_DIR / CODEX_AUTH_START_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R04_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R04_RENDER_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH.split('/')[-1])
@@ -22799,6 +23306,33 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             sources.setdefault(CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME, set()).add(
                 report_source_ref(path),
             )
+            continue
+        if report.get('evidenceKind') == CODEX_AUTH_START_EVIDENCE_KIND:
+            try:
+                report_relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+            except ValueError:
+                continue
+            evidence_by_name = catalog_for_hash(report.get('catalogSha256'))
+            current_tool = current_by_name.get(CODEX_AUTH_START_TOOL_NAME)
+            current_status = codex_auth_start_profile_harness_status(report.get('prNumber'))
+            current_epoch_status = codex_auth_start_profile_epoch_harness_status(report.get('prNumber'))
+            if (
+                report_relative_path != CODEX_AUTH_START_REPORT_RELATIVE_PATH
+                or report.get('toolName') != CODEX_AUTH_START_TOOL_NAME
+                or report.get('argumentProfile') != CODEX_AUTH_START_ARGUMENT_PROFILE
+                or report.get('profileId') != CODEX_AUTH_START_PROFILE_ID
+                or report.get('acceptanceScope') != 'agent-mcp-matrix-only'
+                or evidence_by_name is None
+                or current_tool is None
+                or evidence_by_name.get(CODEX_AUTH_START_TOOL_NAME) != current_tool
+                or current_tool.get('auth') != 'none'
+                or current_tool.get('risk') != 'read'
+                or not codex_auth_start_profile_report_is_valid(
+                    report, current_status, path, current_epoch_status,
+                )
+            ):
+                continue
+            sources.setdefault(CODEX_AUTH_START_TOOL_NAME, set()).add(report_source_ref(path))
             continue
         if report.get('evidenceKind') == CODEX_R04_RENDER_EVIDENCE_KIND:
             try:
