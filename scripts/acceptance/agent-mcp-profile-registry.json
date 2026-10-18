@@ -815,6 +815,42 @@
       ]
     },
     {
+      "id": "c07-render-comparison-offline-agent-mcp-matrix-v3",
+      "frontierId": "C07",
+      "epochId": "run95-c07-render-comparison-offline-agent-mcp-matrix-v3-20261018",
+      "toolName": "bangumi.render_subject_cohort_comparison",
+      "argumentProfile": "fixed-c07-synthetic-cohort-e-render-comparison-matrix-v3",
+      "claimLabelName": "harness-r95-c07-render-v3-claimed",
+      "reportPath": "docs/live-probes/c07-render-comparison-offline-agent-mcp-matrix-v3-run95.json",
+      "selectionEvidencePath": "docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v3-contract-2026-10-18.md",
+      "evidenceKind": "codex_cli_c07_render_comparison_offline_agent_mcp_matrix_v3",
+      "answerCheckMethod": "c07-exact-synthetic-render-comparison-execution-only-v3",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-c07-render-comparison-synthetic-offline-matrix-v3",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 1024,
+      "calls": [
+        {
+          "toolName": "bangumi.render_subject_cohort_comparison",
+          "arguments": {
+            "cohorts": [
+              {
+                "label": "合成样本 E",
+                "query": {
+                  "keyword": "run95 c07 synthetic cohort e offline matrix 20261018",
+                  "media": "anime",
+                  "resultMode": "all",
+                  "limit": 1
+                }
+              }
+            ],
+            "maxSubjects": 1
+          }
+        }
+      ]
+    },
+    {
       "id": "s05-bounded-non-tv-voice-agent-mcp-v1",
       "frontierId": "S05",
       "epochId": "run95-s05-bounded-non-tv-voice-agent-mcp-20261017",

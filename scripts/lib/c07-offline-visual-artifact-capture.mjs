@@ -11,20 +11,26 @@ import {
 } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID } from './c07-render-comparison-offline-profile.mjs';
+import {
+  C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+} from './c07-render-comparison-offline-profile.mjs';
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const MAX_PNG_BYTES = 5_000_000;
-const TEMP_ARTIFACT_SUFFIX = '.c07-v2-artifact.png';
+const TEMP_ARTIFACT_SUFFIXES = new Map([
+  [C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID, '.c07-v2-artifact.png'],
+  [C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID, '.c07-v3-artifact.png'],
+]);
 
-function assertV2Profile(profileId) {
-  if (profileId !== C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID) {
-    throw new Error('Local C07 visual capture is restricted to the exact v2 profile.');
+function assertVisualProfile(profileId) {
+  if (!TEMP_ARTIFACT_SUFFIXES.has(profileId)) {
+    throw new Error('Local C07 visual capture requires an exact registered matrix profile.');
   }
 }
 
 export function c07OfflineVisualArtifactTempPath(profileId, summaryPath) {
-  assertV2Profile(profileId);
+  assertVisualProfile(profileId);
   if (typeof summaryPath !== 'string' || summaryPath.length === 0) {
     throw new Error('Local C07 visual capture requires an exact temporary summary path.');
   }
@@ -33,7 +39,7 @@ export function c07OfflineVisualArtifactTempPath(profileId, summaryPath) {
   if (!absoluteSummaryPath.startsWith(temporaryRoot)) {
     throw new Error('Local C07 visual capture is restricted to the temporary directory.');
   }
-  return `${absoluteSummaryPath}${TEMP_ARTIFACT_SUFFIX}`;
+  return `${absoluteSummaryPath}${TEMP_ARTIFACT_SUFFIXES.get(profileId)}`;
 }
 
 export function writeC07OfflineVisualArtifactTempCopy({ profileId, summaryPath, pngBytes }) {
@@ -112,9 +118,10 @@ export function persistC07OfflineVisualArtifactForInspection({
   }
 
   const { repositoryRoot, outputDirectory } = ensureLocalArtifactDirectory(root);
+  const profileVersion = profileId.endsWith('-v3') ? 'v3' : 'v2';
   const absolutePath = path.join(
     outputDirectory,
-    `c07-render-comparison-v2-mcp-${sourceRevision.slice(0, 12)}.png`,
+    `c07-render-comparison-${profileVersion}-mcp-${sourceRevision.slice(0, 12)}.png`,
   );
   const relativePath = path.relative(repositoryRoot, absolutePath).split(path.sep).join('/');
   let descriptor;

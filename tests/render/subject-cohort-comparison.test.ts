@@ -22,8 +22,29 @@ describe('subject cohort comparison renderer', () => {
     expect(html).toContain('条目群体比较');
     expect(html).toContain('2026 春季');
     expect(html).toContain('评分总体标准差');
-    expect(html).toContain('bangumi.rating.population_sd.v1');
+    expect(html).toContain('评分分布标准差');
+    expect(html).not.toContain('bangumi.rating.population_sd.v1');
+    expect(html).not.toContain('subject.rating.score');
+    expect(html).not.toContain('searchSubjects');
     expect(html).toContain('B − A');
+  });
+
+  it('uses the available width for one cohort and keeps renderer details reader-facing', () => {
+    const single = buildSubjectCohortComparisonViewModel({
+      ...result,
+      cohorts: [result.cohorts[0]!],
+      coverage: {
+        ...result.coverage,
+        totalSubjectsReturned: 1,
+        cohortsComplete: 1,
+      },
+    });
+    const html = renderHtmlTemplate(single, 'bangumi-dark', {}, 960);
+    expect(html).toContain('样本分组');
+    expect(html).toContain('Bangumi 公共数据');
+    expect(html).not.toContain('derived-s7');
+    expect(html).not.toContain('sourceField');
+    expect(html).not.toContain('searchSubjects');
   });
 
   it('decodes the offline C07 comparison card and verifies its nonblank pixel signal', async () => {
@@ -61,7 +82,27 @@ describe('subject cohort comparison renderer', () => {
       ],
     });
     const html = renderHtmlTemplate(partial, 'bangumi-dark', {}, 720);
-    expect(html).toContain('partial observation');
+    expect(html).toContain('部分样本');
+  });
+
+  it('shows warning guidance without exposing internal warning codes', () => {
+    const html = renderHtmlTemplate(
+      {
+        ...buildSubjectCohortComparisonViewModel(result),
+        warnings: [
+          {
+            code: 'SYNTHETIC_PARTIAL_FIXTURE',
+            state: 'partial',
+            message: '条目详情暂不可用；缺失字段不会按 0 计算。',
+          },
+        ],
+      },
+      'bangumi-dark',
+      {},
+      360,
+    );
+    expect(html).toContain('条目详情暂不可用');
+    expect(html).not.toContain('SYNTHETIC_PARTIAL_FIXTURE');
   });
 
   it('shows invalid discovery counts and score-versus-histogram conflict values', () => {
@@ -172,7 +213,7 @@ describe('subject cohort comparison renderer', () => {
     });
     const html = renderHtmlTemplate(oneCohort, 'bangumi-dark', {}, 720);
     expect(html).toContain('条目群体聚合');
-    expect(html).toContain('单 cohort 观察');
+    expect(html).toContain('仅展示单组样本');
     expect(html).not.toContain('B − A');
   });
 });

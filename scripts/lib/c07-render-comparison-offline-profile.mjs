@@ -2,6 +2,7 @@ import { canonicalAgentMcpProfileJson } from './agent-mcp-profile-claims.mjs';
 
 const V1_PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v1';
 const V2_PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v2';
+const V3_PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v3';
 
 function createConfig({
   id,
@@ -49,7 +50,7 @@ function createConfig({
     expectedArguments,
     subjectName: `Synthetic Cohort ${cohortLabel.at(-1)} Work ${subjectId}`,
     subjectNameCn: `${cohortLabel} 作品 ${subjectId}`,
-    receiptKind: `c07-render-comparison-offline-runner-receipt-${id.endsWith('-v2') ? 'v2' : 'v1'}`,
+    receiptKind: `c07-render-comparison-offline-runner-receipt-${id.endsWith('-v3') ? 'v3' : id.endsWith('-v2') ? 'v2' : 'v1'}`,
     acknowledgement: 'C07_SYNTHETIC_COHORT_RENDERED',
   });
 }
@@ -93,13 +94,34 @@ const CONFIGS = new Map([
       cohortLabel: '合成样本 D',
     }),
   ],
+  [
+    V3_PROFILE_ID,
+    createConfig({
+      id: V3_PROFILE_ID,
+      epochId: 'run95-c07-render-comparison-offline-agent-mcp-matrix-v3-20261018',
+      networkMode: 'run95-c07-render-comparison-synthetic-offline-matrix-v3',
+      argumentProfile: 'fixed-c07-synthetic-cohort-e-render-comparison-matrix-v3',
+      profile: 'run95-c07-render-comparison-offline-fixture-matrix-v3',
+      reportPath: 'docs/live-probes/c07-render-comparison-offline-agent-mcp-matrix-v3-run95.json',
+      selectionEvidencePath:
+        'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v3-contract-2026-10-18.md',
+      claimLabelName: 'harness-r95-c07-render-v3-claimed',
+      evidenceKind: 'codex_cli_c07_render_comparison_offline_agent_mcp_matrix_v3',
+      answerCheckMethod: 'c07-exact-synthetic-render-comparison-execution-only-v3',
+      keyword: 'run95 c07 synthetic cohort e offline matrix 20261018',
+      subjectId: 991226,
+      cohortLabel: '合成样本 E',
+    }),
+  ],
 ]);
 
 export const C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID = V1_PROFILE_ID;
 export const C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID = V2_PROFILE_ID;
+export const C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID = V3_PROFILE_ID;
 export const C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID = CONFIGS.get(V1_PROFILE_ID).epochId;
 export const C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE = CONFIGS.get(V1_PROFILE_ID).networkMode;
 export const C07_RENDER_COMPARISON_OFFLINE_V2_NETWORK_MODE = CONFIGS.get(V2_PROFILE_ID).networkMode;
+export const C07_RENDER_COMPARISON_OFFLINE_V3_NETWORK_MODE = CONFIGS.get(V3_PROFILE_ID).networkMode;
 export const C07_RENDER_COMPARISON_OFFLINE_ARGUMENT_PROFILE =
   CONFIGS.get(V1_PROFILE_ID).argumentProfile;
 export const C07_RENDER_COMPARISON_OFFLINE_PROFILE = CONFIGS.get(V1_PROFILE_ID).profile;

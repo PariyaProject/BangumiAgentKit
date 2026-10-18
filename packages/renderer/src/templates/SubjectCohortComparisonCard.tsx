@@ -6,6 +6,11 @@ import { TitleBlock } from '../components/TitleBlock.js';
 import type { ThemeTokens } from '../themes/index.js';
 import type { SubjectCohortComparisonViewModel } from '../view-models/index.js';
 
+const OFFICIAL_OPERATION_LABELS: Record<string, string> = {
+  searchSubjects: '检索条目',
+  getSubjectById: '读取条目详情',
+};
+
 export interface SubjectCohortComparisonCardProps {
   viewModel: SubjectCohortComparisonViewModel;
   theme: ThemeTokens;
@@ -18,6 +23,7 @@ function stateLabel(state: string): string {
       {
         complete: '完整',
         partial: '部分覆盖',
+        ok: '成功',
         conflict: '存在冲突',
         unavailable: '不可用',
         not_computable: '不可计算',
@@ -44,6 +50,41 @@ function metricDigits(key: string): number {
   return key === 'score' || key === 'ratingStandardDeviation' ? 2 : 1;
 }
 
+function metricSourceLabel(key: string): string {
+  return (
+    (
+      {
+        score: '来源：Bangumi 评分',
+        heat: '来源：收藏人数合计',
+        episodesReported: '来源：报告话数',
+        ratingStandardDeviation: '来源：评分分布',
+      } as Record<string, string>
+    )[key] ?? '来源：返回条目数据'
+  );
+}
+
+function totalKindLabel(kind: string): string {
+  return (
+    (
+      {
+        estimated: '总数为估算',
+        exact: '总数完整',
+        unknown: '总数未知',
+      } as Record<string, string>
+    )[kind] ?? '总数未知'
+  );
+}
+
+function retrievalDateLabel(value?: string): string {
+  if (!value) return '检索时间未知';
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return '检索时间未知';
+  return `检索日期 ${new Intl.DateTimeFormat('zh-CN', {
+    dateStyle: 'medium',
+    timeZone: 'UTC',
+  }).format(timestamp)} UTC`;
+}
+
 function deltaLabel(metric: SubjectCohortComparisonViewModel['metrics'][number]): string {
   if (metric.delta === undefined) return '不可计算';
   const value = numberLabel(metric.delta, metricDigits(metric.key));
@@ -59,7 +100,7 @@ function averageLabel(
   const partial = metric.partialAverages?.[index];
   return partial === undefined
     ? '未知'
-    : `${numberLabel(partial, metricDigits(metric.key))}（partial observation）`;
+    : `${numberLabel(partial, metricDigits(metric.key))}（部分样本）`;
 }
 
 function metricCoverageLabel(
@@ -67,7 +108,23 @@ function metricCoverageLabel(
   key: SubjectCohortComparisonViewModel['metrics'][number]['key'],
 ): string {
   const coverage = cohort.coverage.metrics[key];
-  return `${coverage.valid} 有效 · ${coverage.partial} 部分 · ${coverage.missing} 缺失 · ${coverage.conflicts} 冲突 · ${coverage.notComputable} 不可计算 · ${stateLabel(coverage.state)}`;
+  if (
+    coverage.state === 'complete' &&
+    coverage.partial === 0 &&
+    coverage.missing === 0 &&
+    coverage.conflicts === 0 &&
+    coverage.notComputable === 0
+  ) {
+    return `${coverage.valid} 条完整样本`;
+  }
+  const counts = [
+    coverage.valid > 0 ? `${coverage.valid} 条有效` : null,
+    coverage.partial > 0 ? `${coverage.partial} 条部分` : null,
+    coverage.missing > 0 ? `${coverage.missing} 条缺失` : null,
+    coverage.conflicts > 0 ? `${coverage.conflicts} 条冲突` : null,
+    coverage.notComputable > 0 ? `${coverage.notComputable} 条不可计算` : null,
+  ].filter((value): value is string => value !== null);
+  return [...counts, stateLabel(coverage.state)].join(' · ');
 }
 
 export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardProps> = ({
@@ -77,21 +134,25 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
 }) => {
   const dimensions = viewModel.cohorts;
   const showComparison = dimensions.length === 2;
-  const officialOperations = viewModel.source.official.operations.join(' · ') || '未记录';
+  const officialOperations =
+    viewModel.source.official.operations
+      .map((operation) => OFFICIAL_OPERATION_LABELS[operation] ?? '查询条目数据')
+      .join('、') || 'Bangumi 公共条目';
   const hasWarnings = viewModel.warnings.length > 0;
 
   return (
     <CardFrame theme={theme} width={width}>
       <TitleBlock
         title={showComparison ? '条目群体比较' : '条目群体聚合'}
-        subtitle={`官方 v0 + derived-s7 · ${stateLabel(viewModel.state)} · ${showComparison ? '差值为 B − A' : '单 cohort 观察'}，不生成推荐或胜负结论`}
+        subtitle={`Bangumi 公共数据 · ${stateLabel(viewModel.state)} · ${showComparison ? '差值按 B − A 展示' : '仅展示单组样本'}，不生成推荐结论`}
         theme={theme}
       />
 
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: width !== undefined && width >= 820 ? '1fr 1fr' : '1fr',
+          gridTemplateColumns:
+            showComparison && width !== undefined && width >= 820 ? '1fr 1fr' : '1fr',
           gap: theme.spacing.md,
         }}
       >
@@ -110,7 +171,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
               }}
             >
               <div style={{ color: theme.accent, fontSize: '10px', letterSpacing: '0.08em' }}>
-                {index === 0 ? 'A' : 'B'} · COHORT
+                {showComparison ? `分组 ${index === 0 ? 'A' : 'B'}` : '样本分组'}
               </div>
               <div
                 style={{
@@ -140,13 +201,13 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                   `状态 ${stateLabel(cohort.coverage.query.state)}`,
                   `返回 ${queryCoverage.returned}`,
                   `观察 ${queryCoverage.scanned}`,
-                  `总数 ${queryCoverage.totalKind}`,
+                  totalKindLabel(queryCoverage.totalKind),
                 ]}
               />
               <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-                查询：{queryCoverage.pagesScanned}/{queryCoverage.pagesRequested} 页 ·{' '}
-                {queryCoverage.upstreamExhausted ? '上游耗尽' : '未证明耗尽'} ·{' '}
-                {queryCoverage.budgetExceeded ? '达到预算' : '预算内'} · 详情{' '}
+                已读 {queryCoverage.pagesScanned}/{queryCoverage.pagesRequested} 页 ·{' '}
+                {queryCoverage.upstreamExhausted ? '本次来源已读完' : '来源尚未读完'} ·{' '}
+                {queryCoverage.budgetExceeded ? '已达到查询上限' : '查询未触及上限'} · 详情获取{' '}
                 {cohort.coverage.detailHydrationsSucceeded}/
                 {cohort.coverage.detailHydrationsAttempted} 成功
               </div>
@@ -187,10 +248,9 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                         {subject.ratingCountState === 'invalid'
                           ? '无效'
                           : numberLabel(subject.ratingCount, 0)}{' '}
-                        · 热度{' '}
-                        {numberLabel(subject.collectionTotal, 0)}
-                        {' · '}报告话数 {numberLabel(subject.episodesReported, 0)} · σ{' '}
-                        {numberLabel(subject.ratingStandardDeviation, 2)}（n=
+                        · 收藏人数 {numberLabel(subject.collectionTotal, 0)}
+                        {' · '}报告话数 {numberLabel(subject.episodesReported, 0)} · 评分分布离散度{' '}
+                        {numberLabel(subject.ratingStandardDeviation, 2)}（样本数{' '}
                         {numberLabel(subject.ratingHistogramPopulation, 0)}）
                       </div>
                       {(subject.ratingStandardDeviationConflicts || []).map((conflict, index) => (
@@ -201,19 +261,22 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                           评分标准差冲突：
                           {conflict.kind === 'score_vs_histogram_mean'
                             ? `官方评分 ${numberLabel(conflict.officialScore, 2)} vs 直方图均值 ${numberLabel(conflict.histogramMean, 2)}`
-                            : `discovery 人数 ${numberLabel(conflict.discoveryRatingCount, 0)} vs 详情总数 ${numberLabel(conflict.detailRatingTotal, 0)}`}
+                            : `搜索人数 ${numberLabel(conflict.discoveryRatingCount, 0)} 与详情总数 ${numberLabel(conflict.detailRatingTotal, 0)} 不一致`}
                         </div>
                       ))}
                       {subject.ratingHistogramTotalValidation &&
                       subject.ratingHistogramTotalValidation.state !== 'match' ? (
-                        <div
-                          style={{ color: theme.warning, fontSize: '9px', lineHeight: 1.35 }}
-                        >
+                        <div style={{ color: theme.warning, fontSize: '9px', lineHeight: 1.35 }}>
                           详情评分总数
                           {subject.ratingHistogramTotalValidation.state === 'invalid'
                             ? '无效'
-                            : ` ${numberLabel(subject.ratingHistogramTotalValidation.detailRatingTotal, 0)}`}
-                          {' '}与直方图样本 {numberLabel(subject.ratingHistogramTotalValidation.histogramPopulation, 0)} 不匹配。
+                            : ` ${numberLabel(subject.ratingHistogramTotalValidation.detailRatingTotal, 0)}`}{' '}
+                          与直方图样本{' '}
+                          {numberLabel(
+                            subject.ratingHistogramTotalValidation.histogramPopulation,
+                            0,
+                          )}{' '}
+                          不匹配。
                         </div>
                       ) : null}
                     </div>
@@ -235,8 +298,8 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
       <section>
         <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>聚合指标</div>
         <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-          均值只对对应指标的有效值计算；部分覆盖只显示为 partial observation，不冒充完整均值；
-          {showComparison ? ' delta 仅在两侧指标覆盖完整时显示。' : '单 cohort 不计算 delta。'}
+          均值仅按已取得的有效样本计算；部分数据不会冒充完整结果；
+          {showComparison ? '只有两组数据完整时才显示差值。' : '单组结果不计算差值。'}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
           {viewModel.metrics.map((metric) => (
@@ -260,16 +323,18 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
             >
               <div>
                 <div style={{ color: theme.text, fontWeight: 700 }}>{metric.label}</div>
-                <div style={{ color: theme.textMuted, fontSize: '9px' }}>{metric.sourceField}</div>
+                <div style={{ color: theme.textMuted, fontSize: '9px' }}>
+                  {metricSourceLabel(metric.key)}
+                </div>
                 {metric.formula ? (
                   <div style={{ color: theme.textMuted, fontSize: '9px' }}>
-                    公式 {metric.formula.id} v{metric.formula.version}
+                    计算口径：评分分布标准差（v{metric.formula.version}）
                   </div>
                 ) : null}
               </div>
               {viewModel.cohorts.map((cohort, index) => (
                 <div key={`${metric.key}-${index}`} style={{ color: theme.textMuted }}>
-                  {index === 0 ? 'A' : 'B'} ·{' '}
+                  {showComparison ? `分组 ${index === 0 ? 'A' : 'B'}` : '样本'} ·{' '}
                   <strong style={{ color: theme.text }}>{averageLabel(metric, index)}</strong>
                   <div>{metricCoverageLabel(cohort, metric.key)}</div>
                 </div>
@@ -292,16 +357,12 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
       </section>
 
       <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-        资源：每侧最多 {viewModel.coverage.maxSubjectsPerCohort} 条返回样本 · 总返回{' '}
+        数据范围：每组最多 {viewModel.coverage.maxSubjectsPerCohort} 条 · 本次返回{' '}
         {viewModel.coverage.totalSubjectsReturned} · 详情读取{' '}
         {viewModel.coverage.detailHydrationsSucceeded}/
         {viewModel.coverage.detailHydrationsAttempted} 成功
         {viewModel.coverage.truncated ? ' · 至少一侧存在有界/部分覆盖' : ''}
-        {' · '}证据 {viewModel.coverage.evidence.retained}/{viewModel.coverage.evidence.maxRefs}{' '}
-        条、 {viewModel.coverage.evidence.bytes}/{viewModel.coverage.evidence.maxBytes} 字节
-        {viewModel.coverage.evidence.omitted > 0
-          ? `（省略 ${viewModel.coverage.evidence.omitted}，去重 ${viewModel.coverage.evidence.deduplicated}）`
-          : ''}
+        {viewModel.coverage.evidence.omitted > 0 ? ' · 部分来源依据未在卡片展开' : ''}
         {viewModel.coverage.overlap.count > 0
           ? ` · 两侧重复 ${viewModel.coverage.overlap.count} 项（仍分别计入均值）：${viewModel.coverage.overlap.subjectIds
               .slice(0, 12)
@@ -312,10 +373,10 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
 
       {hasWarnings ? (
         <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
-          <div style={{ fontWeight: 700 }}>告警</div>
+          <div style={{ fontWeight: 700 }}>数据说明</div>
           {viewModel.warnings.slice(0, 3).map((warning, index) => (
             <div key={`${warning.code}-${index}`}>
-              {warning.code} · {warning.message}
+              {warning.message || '部分数据无法确认；缺失值不会按 0 计算。'}
             </div>
           ))}
           {viewModel.warnings.length > 3
@@ -340,10 +401,9 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
       ) : null}
 
       <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-        来源：{officialOperations} · 检索时间 {viewModel.retrievedAt || '未知'} · 公式{' '}
-        {viewModel.formulaVersion}
+        来源：Bangumi 公共条目 · {officialOperations} · {retrievalDateLabel(viewModel.retrievedAt)}
       </div>
-      <Footer label="Bangumi 官方 v0 条目 cohort 观察" theme={theme} />
+      <Footer label="Bangumi 条目样本统计" theme={theme} />
     </CardFrame>
   );
 };

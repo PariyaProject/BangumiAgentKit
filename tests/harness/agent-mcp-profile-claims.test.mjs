@@ -95,7 +95,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 32);
+  assert.equal(listAgentMcpProfiles().length, 33);
   const p06OfflineV2 = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v2');
   assert.ok(p06OfflineV2);
   assert.equal(p06OfflineV2.epochId, 'run95-p06-render-person-profile-visual-matrix-v2-20261018');
@@ -138,6 +138,19 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
     'fixed-c07-synthetic-cohort-d-render-comparison-matrix-v2',
   );
   assert.notDeepEqual(c07RenderComparisonV2.calls, c07RenderComparison.calls);
+  const c07RenderComparisonV3 = getAgentMcpProfileById(
+    'c07-render-comparison-offline-agent-mcp-matrix-v3',
+  );
+  assert.ok(c07RenderComparisonV3);
+  assert.equal(c07RenderComparisonV3.frontierId, 'C07');
+  assert.equal(c07RenderComparisonV3.toolName, 'bangumi.render_subject_cohort_comparison');
+  assert.equal(c07RenderComparisonV3.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(
+    c07RenderComparisonV3.calls[0].arguments.cohorts[0].query.keyword,
+    'run95 c07 synthetic cohort e offline matrix 20261018',
+  );
+  assert.equal(c07RenderComparisonV3.calls[0].arguments.maxSubjects, 1);
+  assert.notDeepEqual(c07RenderComparisonV3.calls, c07RenderComparisonV2.calls);
   const g01RenderQuery = getAgentMcpProfileById('g01-render-query-subjects-offline-agent-mcp-v1');
   assert.ok(g01RenderQuery);
   assert.equal(g01RenderQuery.frontierId, 'G01');
@@ -739,6 +752,23 @@ test('profile failure diagnostics keep only bounded allowlisted checks and count
       counters: { codexErrorItems: 2, mcpToolErrorResults: 1 },
     }).counters,
     { codexErrorItems: 2, mcpToolErrorResults: 1 },
+  );
+  assert.deepEqual(
+    normalizeAgentMcpProfileDiagnostics({
+      schemaVersion: 1,
+      reasonCode: 'C07_RENDER_COMPARISON_AGENT_MCP_ASSERTION_FAILED',
+      checks: { codexErrorCountsMatch: true, safeWebSearchErrorClassification: false },
+      counters: {
+        codexErrorItems: 3,
+        blockedDisabledWebSearchErrors: 2,
+        unexpectedCodexErrors: 1,
+      },
+    }).counters,
+    {
+      blockedDisabledWebSearchErrors: 2,
+      codexErrorItems: 3,
+      unexpectedCodexErrors: 1,
+    },
   );
   assert.throws(
     () =>

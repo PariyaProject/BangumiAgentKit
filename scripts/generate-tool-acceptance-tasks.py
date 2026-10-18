@@ -2461,14 +2461,20 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V2 = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'c07-render-comparison-offline-agent-mcp-matrix-v2'
 )
+CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V3 = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'c07-render-comparison-offline-agent-mcp-matrix-v3'
+)
 CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILES = {
     profile['id']: profile
     for profile in (
         CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE,
         CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V2,
+        CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V3,
     )
 }
 CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE['id']
+CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V3_ID = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V3['id']
 CODEX_C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE['epochId']
 CODEX_C07_RENDER_COMPARISON_OFFLINE_TOOL_NAME = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE['toolName']
 CODEX_C07_RENDER_COMPARISON_OFFLINE_ARGUMENT_PROFILE = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE['argumentProfile']
@@ -2496,6 +2502,10 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_EVIDENCE_REFRESH_PATHS = {
     'docs/product/frontier-ledger.json',
 }
 CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_FIELDS = CODEX_P06_REPORT_FIELDS
+CODEX_C07_RENDER_COMPARISON_OFFLINE_V3_ERROR_REPORT_FIELDS = {
+    'blockedDisabledWebSearchErrorItemCount',
+    'unexpectedCodexErrorItemCount',
+}
 CODEX_C07_RENDER_COMPARISON_OFFLINE_ANSWER_CHECK_FIELDS = (
     CODEX_P06_ANSWER_CHECK_FIELDS - {'threeExpectedLocalResponses'}
 ) | {'twoExpectedLocalResponses'}
@@ -5521,15 +5531,20 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         '"networkMode": "run95-c07-render-comparison-synthetic-offline-v1"',
         '"id": "c07-render-comparison-offline-agent-mcp-matrix-v2"',
         '"networkMode": "run95-c07-render-comparison-synthetic-offline-matrix-v2"',
+        '"id": "c07-render-comparison-offline-agent-mcp-matrix-v3"',
+        '"networkMode": "run95-c07-render-comparison-synthetic-offline-matrix-v3"',
         '"toolName": "bangumi.render_subject_cohort_comparison"',
         'run95 c07 synthetic cohort c offline 20261017',
         'run95 c07 synthetic cohort d offline matrix 20261018',
+        'run95 c07 synthetic cohort e offline matrix 20261018',
     ),
     'scripts/lib/c07-render-comparison-offline-profile.mjs': (
         'export function assertC07RenderComparisonOfflineProfile(',
         'C07_RENDER_COMPARISON_OFFLINE_EXPECTED_ARGUMENTS',
         'C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID',
         'C07_RENDER_COMPARISON_OFFLINE_V2_NETWORK_MODE',
+        'C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID',
+        'C07_RENDER_COMPARISON_OFFLINE_V3_NETWORK_MODE',
     ),
     'scripts/lib/c07-render-comparison-offline-fixture.mjs': (
         'export function createC07RenderComparisonOfflineFetch(',
@@ -5541,19 +5556,27 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'writeC07OfflineVisualArtifactTempCopy(',
         'persistC07OfflineVisualArtifactForInspection(',
         'C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID',
+        'C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID',
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
         "profileId === 'c07-render-comparison-offline-agent-mcp-matrix-v1'",
         'C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID',
+        'C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID',
         'artifactSummary',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
         'createC07RenderComparisonOfflineFetch(config.profile)',
         'createC07RenderComparisonOfflineAssetGuard()',
         'isC07RenderComparisonOfflineProfileId(config.profile?.id)',
+        'C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID',
     ),
     'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
         'assertC07RenderComparisonOfflineProfile(profile)',
+    ),
+    'scripts/lib/agent-mcp-profile-claims.mjs': (
+        'codexErrorCountsMatch',
+        'blockedDisabledWebSearchErrors',
+        'normalizeAgentMcpProfileDiagnostics(value)',
     ),
     'scripts/acceptance/run-c07-render-comparison-offline-agent-mcp.mjs': (
         'export function validateC07RenderComparisonOfflineRunnerArgs(',
@@ -5561,25 +5584,36 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'export function buildC07RenderComparisonOfflineCodexExecArgs(',
         'export function validateC07RenderComparisonOfflineServerSummary(',
         'persistC07OfflineVisualArtifactForInspection(',
+        'summarizeCodexErrorItems(parsed.events)',
+        'safeWebSearchErrorClassification',
+        'blockedDisabledWebSearchErrorItemCount',
         'function runC07RenderComparisonOffline(',
     ),
     'scripts/acceptance/write-c07-render-comparison-offline-agent-mcp-report.mjs': (
         'export function buildC07RenderComparisonOfflineRunnerReceiptPayload(',
         'export function validateC07RenderComparisonOfflineProfileReport(',
+        'codexErrorSummaryIsValid(PROFILE.id, events)',
         'export function validateC07RenderComparisonOfflineSanitizedReportFile(',
         "openSync(REPORT_PATH, 'wx', 0o600)",
     ),
     'scripts/acceptance/validate-c07-render-comparison-offline-agent-mcp-report.mjs': (
         'validateC07RenderComparisonOfflineProfileReport(',
     ),
+    'scripts/acceptance/generate-c07-render-comparison-offline-v3-visuals.ts': (
+        'c07-cohort-comparison-v3-visual-qa',
+        'const WIDTHS = [320, 360, 520, 640, 960]',
+        '991226',
+        'extractImageUrls(viewModel)',
+    ),
     'scripts/agent-harness.mjs': (
         "case 'c07-render-comparison-offline-agent-mcp-matrix-v1'",
         "case 'c07-render-comparison-offline-agent-mcp-matrix-v2'",
+        "case 'c07-render-comparison-offline-agent-mcp-matrix-v3'",
         'assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(',
     ),
     'docs/product/frontier-ledger.json': (
-        'A separate Run #95 Epoch may use its exact registered synthetic cohort C profile once',
-        'Keep C07 UNASSESSED.',
+        'A fresh cohort E v3 profile (`c07-render-comparison-offline-agent-mcp-matrix-v3`)',
+        'Keep C07 UNASSESSED; do not claim compare_subject_cohorts',
     ),
     'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-contract-2026-10-17.md': (
         'The new closed fetch fixture will allow exactly one POST search and one GET subject detail response',
@@ -5589,9 +5623,16 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'The closed local fetch fixture may answer one exact anonymous',
         'C07 remains `UNASSESSED`',
     ),
+    'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v3-contract-2026-10-18.md': (
+        'Only the exact disabled/unavailable Web Search error category is eligible',
+        'C07 remains `UNASSESSED`',
+    ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_c07_render_comparison_offline_profile_report_is_valid(',
         'CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_RELATIVE_PATH',
+    ),
+    'scripts/test_acceptance_evidence.py': (
+        'def test_v3_report_accepts_only_bounded_safe_web_search_error_counts(',
     ),
 }
 CODEX_G01_RENDER_QUERY_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
@@ -12627,10 +12668,14 @@ def codex_c07_render_comparison_offline_profile_report_is_valid(
 ) -> bool:
     """Validate signed synthetic C07 renderer evidence for its Agent/MCP matrix cell only."""
     profile = codex_c07_render_comparison_offline_profile_spec(report)
+    is_v3 = isinstance(profile, dict) and profile.get('id') == CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V3_ID
+    expected_report_fields = CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_FIELDS | (
+        CODEX_C07_RENDER_COMPARISON_OFFLINE_V3_ERROR_REPORT_FIELDS if is_v3 else set()
+    )
     if (
         not isinstance(report, dict)
         or profile is None
-        or set(report) != CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_FIELDS
+        or set(report) != expected_report_fields
     ):
         return False
     registry_sha256, expected_arguments_sha256 = codex_c07_render_comparison_offline_profile_hashes(
@@ -12710,7 +12755,18 @@ def codex_c07_render_comparison_offline_profile_report_is_valid(
         or type(report.get('codexMcpToolEventCount')) is not int
         or report.get('codexMcpToolEventCount') != 1
         or type(report.get('codexErrorItemCount')) is not int
-        or report.get('codexErrorItemCount') != 0
+        or (not is_v3 and report.get('codexErrorItemCount') != 0)
+        or (
+            is_v3 and (
+                not isinstance(report.get('blockedDisabledWebSearchErrorItemCount'), int)
+                or isinstance(report.get('blockedDisabledWebSearchErrorItemCount'), bool)
+                or report.get('codexErrorItemCount') < 0
+                or report.get('codexErrorItemCount') > 3
+                or report.get('blockedDisabledWebSearchErrorItemCount') != report.get('codexErrorItemCount')
+                or type(report.get('unexpectedCodexErrorItemCount')) is not int
+                or report.get('unexpectedCodexErrorItemCount') != 0
+            )
+        )
         or type(report.get('nonMcpToolEventCount')) is not int
         or report.get('nonMcpToolEventCount') != 0
         or report.get('nonMcpToolTypes') != []
@@ -12793,7 +12849,10 @@ def codex_c07_render_comparison_offline_profile_report_is_valid(
         or not isinstance(report.get('runnerReceipt'), dict)
         or set(report['runnerReceipt']) != CODEX_C07_RENDER_COMPARISON_OFFLINE_RECEIPT_FIELDS
         or not isinstance(report['runnerReceipt'].get('payload'), dict)
-        or set(report['runnerReceipt']['payload']) != CODEX_C07_RENDER_COMPARISON_OFFLINE_RECEIPT_PAYLOAD_FIELDS
+        or set(report['runnerReceipt']['payload']) != (
+            CODEX_C07_RENDER_COMPARISON_OFFLINE_RECEIPT_PAYLOAD_FIELDS
+            | (CODEX_C07_RENDER_COMPARISON_OFFLINE_V3_ERROR_REPORT_FIELDS if is_v3 else set())
+        )
         or _contains_forbidden_codex_content(report)
     ):
         return False

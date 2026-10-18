@@ -188,6 +188,7 @@ import {
 import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
 } from './lib/c07-render-comparison-offline-profile.mjs';
 import {
@@ -299,6 +300,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'p06-render-person-profile-offline-agent-mcp-v2',
   'c07-render-comparison-offline-agent-mcp-matrix-v1',
   'c07-render-comparison-offline-agent-mcp-matrix-v2',
+  'c07-render-comparison-offline-agent-mcp-matrix-v3',
   'p02-person-profile-offline-agent-mcp-v1',
   'r04-series-watch-order-offline-agent-mcp-v1',
   'r04-series-watch-order-offline-agent-mcp-v2',
@@ -4294,6 +4296,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateP06SanitizedReportFile(claim, root, reportPath);
     case 'c07-render-comparison-offline-agent-mcp-matrix-v1':
     case 'c07-render-comparison-offline-agent-mcp-matrix-v2':
+    case 'c07-render-comparison-offline-agent-mcp-matrix-v3':
       return validateC07RenderComparisonOfflineSanitizedReportFile(claim, root, reportPath);
     case 'g01-render-query-subjects-offline-agent-mcp-v1':
     case 'g01-render-query-subjects-offline-agent-mcp-v2':
@@ -8539,13 +8542,18 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
     assertG06CastOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber);
     ensureCleanWorkingTree();
   } else if (
-    [C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID, C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID].some(
+    [
+      C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
+      C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+      C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+    ].some(
       (profileId) => getC07RenderComparisonOfflineConfig(profileId)?.epochId === epoch.epoch_id,
     )
   ) {
     const profileId = [
       C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
       C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+      C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
     ].find(
       (candidate) => getC07RenderComparisonOfflineConfig(candidate)?.epochId === epoch.epoch_id,
     );

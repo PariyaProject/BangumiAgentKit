@@ -6,6 +6,8 @@ import {
   C07_RENDER_COMPARISON_OFFLINE_EXPECTED_ARGUMENTS,
   C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  getC07RenderComparisonOfflineConfig,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 
 const REQUIRED = [
@@ -35,6 +37,20 @@ test('registered C07 profile selects only its immutable offline network mode', (
   ]);
 });
 
+test('registered C07 v3 selects its exact synthetic cohort-E fixture', () => {
+  const expected = getC07RenderComparisonOfflineConfig(C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID);
+  const config = parseCodexOneToolMcpArguments([
+    '--profile-id',
+    C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+    ...REQUIRED,
+  ]);
+  assert.equal(config.profile.id, C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID);
+  assert.equal(config.networkMode, expected.networkMode);
+  assert.equal(expected.subjectId, 991226);
+  assert.equal(expected.keyword, 'run95 c07 synthetic cohort e offline matrix 20261018');
+  assert.deepEqual(config.expectedArgumentSequence, [expected.expectedArguments]);
+});
+
 test('one-tool MCP server imports C07 profile selectors from their defining module', () => {
   const profileImport = SERVER_SOURCE.match(
     /import\s*\{([^}]+)\}\s*from\s*['"]\.\.\/\.\.\/scripts\/lib\/c07-render-comparison-offline-profile\.mjs['"]/u,
@@ -42,6 +58,7 @@ test('one-tool MCP server imports C07 profile selectors from their defining modu
   assert.ok(profileImport);
   assert.match(profileImport[1], /\bisC07RenderComparisonOfflineNetworkMode\b/u);
   assert.match(profileImport[1], /\bisC07RenderComparisonOfflineProfileId\b/u);
+  assert.match(profileImport[1], /\bC07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID\b/u);
 
   const fixtureImport = SERVER_SOURCE.match(
     /import\s*\{([^}]+)\}\s*from\s*['"]\.\.\/\.\.\/scripts\/lib\/c07-render-comparison-offline-fixture\.mjs['"]/u,

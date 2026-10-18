@@ -13,6 +13,7 @@ import { isValidP06CiRunEvidence as isValidProfileCiRunEvidence } from '../lib/p
 import {
   assertC07RenderComparisonOfflineProfile,
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
 } from '../lib/c07-render-comparison-offline-profile.mjs';
 
@@ -94,6 +95,10 @@ const REPORT_FIELDS = new Set([
   'privacy',
   'runnerReceipt',
 ]);
+const V3_CODEX_ERROR_FIELDS = new Set([
+  'blockedDisabledWebSearchErrorItemCount',
+  'unexpectedCodexErrorItemCount',
+]);
 const RECEIPT_FIELDS = new Set([
   'schemaVersion',
   'kind',
@@ -143,6 +148,10 @@ const RECEIPT_PAYLOAD_FIELDS = new Set([
   'answerSha256',
   'eventStreamSha256',
   'serverSummarySha256',
+]);
+const V3_RECEIPT_CODEX_ERROR_FIELDS = new Set([
+  'blockedDisabledWebSearchErrorItemCount',
+  'unexpectedCodexErrorItemCount',
 ]);
 const ANSWER_CHECK_FIELDS = new Set([
   'exactRegisteredProfile',
@@ -215,6 +224,35 @@ function exactKeys(value, fields) {
   );
 }
 
+function expectedReportFields(profileId) {
+  return profileId === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID
+    ? new Set([...REPORT_FIELDS, ...V3_CODEX_ERROR_FIELDS])
+    : REPORT_FIELDS;
+}
+
+function expectedReceiptPayloadFields(profileId) {
+  return profileId === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID
+    ? new Set([...RECEIPT_PAYLOAD_FIELDS, ...V3_RECEIPT_CODEX_ERROR_FIELDS])
+    : RECEIPT_PAYLOAD_FIELDS;
+}
+
+function codexErrorSummaryIsValid(profileId, events) {
+  if (profileId !== C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID) {
+    return events?.codexErrorItemCount === 0;
+  }
+  const total = events?.codexErrorItemCount;
+  const blocked = events?.blockedDisabledWebSearchErrorItemCount;
+  const unexpected = events?.unexpectedCodexErrorItemCount;
+  return (
+    Number.isSafeInteger(total) &&
+    total >= 0 &&
+    total <= 3 &&
+    Number.isSafeInteger(blocked) &&
+    blocked === total &&
+    unexpected === 0
+  );
+}
+
 function catalogEvidenceMatches(report) {
   try {
     const catalogBytes = readFileSync(path.join(ROOT, 'docs/tool-catalog.json'));
@@ -271,7 +309,7 @@ export function buildC07RenderComparisonOfflineRunnerReceiptPayload(
     );
   }
   const sanitizedReport = { ...report, runnerReceipt: null };
-  return {
+  const payload = {
     schemaVersion: 1,
     kind: RECEIPT_KIND,
     sanitizedReportSha256: sha256(canonicalAgentMcpProfileJson(sanitizedReport)),
@@ -313,6 +351,11 @@ export function buildC07RenderComparisonOfflineRunnerReceiptPayload(
     eventStreamSha256,
     serverSummarySha256,
   };
+  if (report.profileId === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID) {
+    payload.blockedDisabledWebSearchErrorItemCount = report.blockedDisabledWebSearchErrorItemCount;
+    payload.unexpectedCodexErrorItemCount = report.unexpectedCodexErrorItemCount;
+  }
+  return payload;
 }
 
 function createRunnerReceipt(payload, { publicKeyBase64, privateKey }) {
@@ -351,7 +394,7 @@ export function validateC07RenderComparisonOfflineProfileReport(report, claim, r
   if (
     !PROFILE ||
     !assertC07RenderComparisonOfflineProfile(PROFILE) ||
-    !exactKeys(report, REPORT_FIELDS) ||
+    !exactKeys(report, expectedReportFields(PROFILE?.id)) ||
     !claim ||
     claim.profileId !== PROFILE.id ||
     !claimStateValid ||
@@ -433,7 +476,7 @@ export function validateC07RenderComparisonOfflineProfileReport(report, claim, r
     report.eventStreamParsed !== true ||
     report.turnCompleted !== true ||
     report.codexMcpToolEventCount !== 1 ||
-    report.codexErrorItemCount !== 0 ||
+    !codexErrorSummaryIsValid(PROFILE.id, report) ||
     report.nonMcpToolEventCount !== 0 ||
     !Array.isArray(report.nonMcpToolTypes) ||
     report.nonMcpToolTypes.length !== 0 ||
@@ -474,7 +517,7 @@ export function validateC07RenderComparisonOfflineProfileReport(report, claim, r
     canonicalAgentMcpProfileJson(report.privacy) !==
       canonicalAgentMcpProfileJson(expectedPrivacy) ||
     !exactKeys(report.runnerReceipt, RECEIPT_FIELDS) ||
-    !exactKeys(receipt.payload, RECEIPT_PAYLOAD_FIELDS)
+    !exactKeys(receipt.payload, expectedReceiptPayloadFields(PROFILE.id))
   ) {
     return { passed: false, reason: 'C07_RENDER_COMPARISON_REPORT_FIELDS_INVALID' };
   }
@@ -553,7 +596,8 @@ export function buildC07RenderComparisonOfflineProfileReport(
     events.eventStreamParsed !== true ||
     events.turnCompleted !== true ||
     events.codexMcpToolEventCount !== 1 ||
-    events.codexErrorItemCount !== 0 ||
+    events.mcpToolErrorResultCount !== 0 ||
+    !codexErrorSummaryIsValid(PROFILE.id, events) ||
     events.nonMcpToolEventCount !== 0 ||
     events.shellToolCallCount !== 0 ||
     events.allowedCallCount !== 1 ||
@@ -633,6 +677,12 @@ export function buildC07RenderComparisonOfflineProfileReport(
     turnCompleted: events.turnCompleted,
     codexMcpToolEventCount: events.codexMcpToolEventCount,
     codexErrorItemCount: events.codexErrorItemCount,
+    ...(PROFILE.id === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID
+      ? {
+          blockedDisabledWebSearchErrorItemCount: events.blockedDisabledWebSearchErrorItemCount,
+          unexpectedCodexErrorItemCount: events.unexpectedCodexErrorItemCount,
+        }
+      : {}),
     nonMcpToolEventCount: events.nonMcpToolEventCount,
     nonMcpToolTypes: events.nonMcpToolTypes,
     shellToolCallCount: events.shellToolCallCount,
