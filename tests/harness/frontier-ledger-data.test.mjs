@@ -452,7 +452,6 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
     'scripts/acceptance/write-r04-series-watch-order-offline-agent-mcp-v2-report.mjs',
     'scripts/acceptance/validate-r04-series-watch-order-offline-agent-mcp-v2-report.mjs',
     'docs/research/run95-r04-series-watch-order-offline-matrix-v2-contract-2026-10-18.md',
-    'docs/live-probes/r04-series-watch-order-offline-agent-mcp-v2-run95.json',
     'tests/harness/r04-series-watch-order-offline-v2-fixture.test.mjs',
     'tests/harness/run-r04-series-watch-order-offline-agent-mcp-v2.test.mjs',
     'tests/harness/write-r04-series-watch-order-offline-agent-mcp-v2-report.test.mjs',
