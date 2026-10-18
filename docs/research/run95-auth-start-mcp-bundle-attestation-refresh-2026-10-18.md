@@ -36,6 +36,10 @@ The attestation update records build provenance only. The attestation and this r
 
 ## One-shot disposition and limits
 
-The runner stopped before Harness created a profile claim, before `codex exec`, and before an MCP call. Harness readback remained `UNCLAIMED`, with no claim or terminal label and no disposition. The create-once report was absent. This was not an inconclusive profile result and did not consume the one-shot.
+The first runner attempt stopped before Harness created a profile claim, before `codex exec`, and before an MCP call. Harness readback remained `UNCLAIMED`; that preclaim stop did not consume the one-shot.
 
-The refresh does not grant auth_start matrix credit, assess G26, or imply OAuth consent, account access, QQ/TIM delivery, or real-client rendering. The profile may proceed only after this refreshed Candidate passes exact-head CI, Harness Candidate readiness, and the same-identity GPT-6 Luna Max review.
+After the refreshed Candidate passed exact-head CI, Harness Candidate readiness, and same-identity review, the single profile call ran on 2026-10-18T12:48:05.829Z. Harness recorded terminal `INCONCLUSIVE` for claim `profile-run-95-pr-227-42ff713890f7-1792327644743`, bound to Candidate `42ff713890f71310022ccca9d922dfddb20f0307`, Base `90eef4b132690a6ea12ac77ac66190d143d27874`, and bundle `1252c04e0aeb38ba0afb746b4d5c79c7368617ae3f8d9307012d7c49a7a281a9`. `retryAllowed=false`; claim and terminal labels are present; no report file was written.
+
+The runner's sanitized result was `AUTH_START_AGENT_MCP_ASSERTION_FAILED`: Codex exited 0 and the event stream parsed, but the event stream had 1 MCP event and 3 Codex error items while the server summary recorded 0 tool calls and `NOT_CALLED`. Other counts were 0 non-MCP tool events, 0 shell calls, 0 denied calls, and 0 HTTP requests. Answer semantics passed, but exact arguments, one-call, synthetic-URL, server-summary, and clean-event-stream checks failed. This note includes no raw prompt, answer, URL, OAuth state, account data, or event stream. The outcome earns no auth_start Agent/MCP matrix credit and must never be retried.
+
+The profile result does not assess G26, establish OAuth consent or account access, or prove QQ/TIM delivery or real-client rendering. OP-009 stays `PARTIAL`; the profile only tested a synthetic offline auth_start path.
