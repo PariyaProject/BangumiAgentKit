@@ -102,9 +102,9 @@ import {
   G06_CAST_OFFLINE_V2_PROFILE_ID,
 } from '../../scripts/lib/g06-subject-cast-offline-profile.mjs';
 import {
-  C07_RENDER_COMPARISON_OFFLINE_ARGUMENT_PROFILE,
-  C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID,
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  getC07RenderComparisonOfflineConfig,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 import {
   G01_RENDER_QUERY_OFFLINE_ARGUMENT_PROFILE,
@@ -7208,19 +7208,21 @@ function c07RenderComparisonOfflineMergeEnvironment({
   terminal = false,
   unacceptedReportSha256 = null,
   reportWritten = false,
+  profileId = C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
 } = {}) {
   const { run, epoch } = controlFixture();
   const prNumber = 223;
   const reviewerId = `gpt-6-luna-max-run95-pr${prNumber}-round1`;
-  const profile = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID);
+  const config = getC07RenderComparisonOfflineConfig(profileId);
+  const profile = getAgentMcpProfileById(profileId);
   run.state = 'EPOCH_ACTIVE';
   run.active_epoch_pr = prNumber;
   run.outer_sol.consumed = 1;
   run.outer_sol.product.consumed = 1;
-  epoch.epoch_id = C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID;
+  epoch.epoch_id = config.epochId;
   epoch.base_sha = sha('a');
   epoch.base_branch = 'master';
-  epoch.branch = 'codex/epoch-run95-c07-render-cohort-comparison-offline-agent-mcp-20261017';
+  epoch.branch = `codex/epoch-${config.epochId}`;
   epoch.pr_number = prNumber;
   epoch.state = 'REVIEW_PASSED';
   epoch.candidate_sha = sha('b');
@@ -7245,11 +7247,11 @@ function c07RenderComparisonOfflineMergeEnvironment({
               retryAllowed: false,
               profileId: profile.id,
               frontierId: 'C07',
-              epochId: C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID,
+              epochId: config.epochId,
               runNumber: 95,
               prNumber,
               toolName: profile.toolName,
-              argumentProfile: C07_RENDER_COMPARISON_OFFLINE_ARGUMENT_PROFILE,
+              argumentProfile: profile.argumentProfile,
               expectedArguments: profile.calls.map((call) => call.arguments),
               expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
               registrySha256: agentMcpProfileRegistrySha256(profile.id),
@@ -7364,6 +7366,20 @@ test('C07 renderer matrix Epoch cannot merge without a durable terminal profile 
 
 test('C07 renderer matrix Epoch can merge terminal inconclusive without matrix credit', () => {
   const environment = c07RenderComparisonOfflineMergeEnvironment({ terminal: true });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(parseControlBlock(environment.readState().prBody, EPOCH_MARKER).state, 'MERGED');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C07 renderer matrix v2 Epoch uses its own profile and merges a terminal no-credit result', () => {
+  const environment = c07RenderComparisonOfflineMergeEnvironment({
+    terminal: true,
+    profileId: C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+  });
   try {
     const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);
     assert.equal(result.status, 0, result.stderr);

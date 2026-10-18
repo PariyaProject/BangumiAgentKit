@@ -35,13 +35,13 @@ test('registered C07 profile selects only its immutable offline network mode', (
   ]);
 });
 
-test('one-tool MCP server imports C07 constants from their defining module', () => {
+test('one-tool MCP server imports C07 profile selectors from their defining module', () => {
   const profileImport = SERVER_SOURCE.match(
     /import\s*\{([^}]+)\}\s*from\s*['"]\.\.\/\.\.\/scripts\/lib\/c07-render-comparison-offline-profile\.mjs['"]/u,
   );
   assert.ok(profileImport);
-  assert.match(profileImport[1], /\bC07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE\b/u);
-  assert.match(profileImport[1], /\bC07_RENDER_COMPARISON_OFFLINE_PROFILE_ID\b/u);
+  assert.match(profileImport[1], /\bisC07RenderComparisonOfflineNetworkMode\b/u);
+  assert.match(profileImport[1], /\bisC07RenderComparisonOfflineProfileId\b/u);
 
   const fixtureImport = SERVER_SOURCE.match(
     /import\s*\{([^}]+)\}\s*from\s*['"]\.\.\/\.\.\/scripts\/lib\/c07-render-comparison-offline-fixture\.mjs['"]/u,
