@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-18T16:09:28Z",
+  "updated_at": "2026-10-18T20:51:13Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -3923,9 +3923,16 @@
         "tests/unit/series-watch-order.test.ts",
         "tests/render/series-watch-order-g09.test.ts",
         "tests/integration/mcp-result-presenter.test.ts",
-        "docs/research/op002-watch-order-reconciliation-2026-10-17.md"
+        "docs/research/op002-watch-order-reconciliation-2026-10-17.md",
+        "docs/research/run95-collection-render-state-clarity-discovery-2026-10-19.md",
+        "packages/bangumi-core/src/services/collection-series-service.ts",
+        "packages/renderer/src/templates/CollectionSeriesCard.tsx",
+        "apps/standalone/src/presenter.ts",
+        "tests/unit/collection-series.test.ts",
+        "tests/render/collection-series.test.ts",
+        "tests/standalone/collection-series-presenter.test.ts"
       ],
-      "next_action": "Keep OP-002 PARTIAL: the shipped implementation delivers a bounded deterministic recommendation around one selected anime root, but the official relation source does not establish an exhaustive or canonical franchise order or whether a film is mandatory. The source reconciliation is recorded in docs/research/op002-watch-order-reconciliation-2026-10-17.md. The registered Run #95 R04 Agent/MCP profiles are terminal INCONCLUSIVE/no-report and must not be replayed; this report adds no tool-matrix credit. Reopen only for a distinct supported unspent profile on a bounded user journey, or a source contract that supplies explicit canonical/completeness/order semantics.",
+      "next_action": "Run #95 candidate run95-collection-render-state-clarity-20261019 separates confirmed ungrouped from unknown relation membership in the bounded current-collection view; it does not add canonical or exhaustive watch order. Focused service, render, and Standalone presenter regressions pass on the candidate source. Keep OP-002 PARTIAL: the source still cannot prove a complete franchise graph or official order, and registered R04/G20 one-shot profiles remain terminal/no-retry. This offline candidate adds no Agent/MCP or live-client credit.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },
@@ -4174,8 +4181,13 @@
       "user_question": "Can BangumiAgentKit deliver the bounded user value described by Collection Dashboard?",
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
-      "source_refs": ["docs/product/opportunity-log.md"],
-      "next_action": "Reconcile the opportunity against shipped capabilities and assess remaining user value.",
+      "source_refs": [
+        "docs/product/opportunity-log.md",
+        "docs/research/run95-collection-render-state-clarity-discovery-2026-10-19.md",
+        "packages/renderer/src/templates/CollectionDashboardCard.tsx",
+        "tests/render/collection-dashboard.test.ts"
+      ],
+      "next_action": "Run #95 candidate run95-collection-render-state-clarity-20261019 labels displayed output as “无省略” or “有条目省略” independently of the dashboard source/data state. The focused dashboard render regression covers a dense output and degraded partial data with no display omission. Keep OP-011 PARTIAL: this is synthetic Renderer evidence; actual OAuth-bound account behavior and QQ/TIM delivery remain separate.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },

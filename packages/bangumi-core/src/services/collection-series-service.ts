@@ -8,7 +8,7 @@ import { SubjectService } from './subject-service.js';
 import { UserService } from './user-service.js';
 import type { UserCollectionItem } from '../models/user.js';
 
-export const COLLECTION_SERIES_FORMULA_VERSION = 'collection-series-groups-v1';
+export const COLLECTION_SERIES_FORMULA_VERSION = 'collection-series-groups-v2';
 
 export const COLLECTION_SERIES_DEFAULTS = {
   maxItems: 100,
@@ -107,12 +107,14 @@ export interface CollectionSeriesResult {
   state: CollectionSeriesState;
   groups: CollectionSeriesGroup[];
   ungrouped: CollectionSeriesCollectionItem[];
+  unresolvedItems: CollectionSeriesCollectionItem[];
   summary: {
     collectionRowsObserved: number;
     collectionItems: number;
     eligibleAnimeItems: number;
     groupedItems: number;
     ungroupedItems: number;
+    relationMembershipUnknownItems: number;
     relationSubjectsRequested: number;
     relationSubjectsSucceeded: number;
     relationSubjectsFailed: number;
@@ -583,7 +585,17 @@ export class CollectionSeriesService {
     const allGroupedSubjectIds = new Set(
       allGroups.flatMap((group) => group.items.map((item) => item.subjectId)),
     );
-    const ungrouped = eligibleItems.filter((item) => !allGroupedSubjectIds.has(item.subjectId));
+    const relationReadsBySubjectId = new Map(relationReads.map((read) => [read.subjectId, read]));
+    const unresolvedItems = eligibleItems.filter((item) => {
+      if (allGroupedSubjectIds.has(item.subjectId)) return false;
+      const read = relationReadsBySubjectId.get(item.subjectId);
+      return !read || Boolean(read.error) || read.truncated;
+    });
+    const unresolvedSubjectIds = new Set(unresolvedItems.map((item) => item.subjectId));
+    const ungrouped = eligibleItems.filter(
+      (item) =>
+        !allGroupedSubjectIds.has(item.subjectId) && !unresolvedSubjectIds.has(item.subjectId),
+    );
     const conflicts = [...edgeAggregates.values()].filter((edge) => edge.conflict).length;
     const collectionPartial = scan.truncated || scan.paginationStalled || scan.sourceTotalChanged;
     const relationPartial =
@@ -661,12 +673,14 @@ export class CollectionSeriesService {
       state,
       groups,
       ungrouped,
+      unresolvedItems,
       summary: {
         collectionRowsObserved: scan.rowsObserved,
         collectionItems: scan.items.length,
         eligibleAnimeItems: eligibleItems.length,
         groupedItems: allGroups.reduce((total, group) => total + group.items.length, 0),
         ungroupedItems: ungrouped.length,
+        relationMembershipUnknownItems: unresolvedItems.length,
         relationSubjectsRequested: relationRoots.length,
         relationSubjectsSucceeded: relationReads.filter((read) => !read.error).length,
         relationSubjectsFailed: relationFailures.length,
@@ -751,7 +765,8 @@ export class CollectionSeriesService {
         },
         {
           source: 'derived',
-          operation: 'Bounded connected-component grouping over stable anime relation kinds',
+          operation:
+            'Bounded connected-component grouping with explicit membership states over observed stable anime relations',
           formulaVersion: COLLECTION_SERIES_FORMULA_VERSION,
           authScope: 'account',
           attemptedAt,
@@ -877,12 +892,14 @@ export class CollectionSeriesService {
       state: stateForCollectionError(error),
       groups: [],
       ungrouped: [],
+      unresolvedItems: [],
       summary: {
         collectionRowsObserved: scan.rowsObserved,
         collectionItems: scan.items.length,
         eligibleAnimeItems: 0,
         groupedItems: 0,
         ungroupedItems: 0,
+        relationMembershipUnknownItems: 0,
         relationSubjectsRequested: 0,
         relationSubjectsSucceeded: 0,
         relationSubjectsFailed: 0,

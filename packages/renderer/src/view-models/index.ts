@@ -516,6 +516,7 @@ export interface CollectionSeriesViewModel {
   state: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['state'];
   groups: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['groups'];
   ungrouped: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['ungrouped'];
+  unresolvedItems: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['unresolvedItems'];
   summary: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['summary'];
   coverage: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['coverage'];
   excludedRelations: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['excludedRelations'];
@@ -530,6 +531,7 @@ export interface CollectionSeriesViewModel {
     items: { available: number; rendered: number; omitted: number };
     edges: { available: number; rendered: number; omitted: number };
     ungrouped: { available: number; rendered: number; omitted: number };
+    unresolved: { available: number; rendered: number; omitted: number };
   };
   error?: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['error'];
 }

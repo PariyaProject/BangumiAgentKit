@@ -467,12 +467,14 @@ export function buildCollectionSeriesViewModel(
     maxItemsPerGroup?: number;
     maxEdgesPerGroup?: number;
     maxUngrouped?: number;
+    maxUnresolved?: number;
   } = {},
 ): CollectionSeriesViewModel {
   const maxGroups = Math.min(10, Math.max(1, Math.trunc(options.maxGroups ?? 8)));
   const maxItemsPerGroup = Math.min(10, Math.max(1, Math.trunc(options.maxItemsPerGroup ?? 8)));
   const maxEdgesPerGroup = Math.min(16, Math.max(1, Math.trunc(options.maxEdgesPerGroup ?? 12)));
   const maxUngrouped = Math.min(12, Math.max(0, Math.trunc(options.maxUngrouped ?? 8)));
+  const maxUnresolved = Math.min(12, Math.max(0, Math.trunc(options.maxUnresolved ?? 8)));
   const groups = result.groups.slice(0, maxGroups).map((group) => {
     const items = group.items.slice(0, maxItemsPerGroup);
     const edges = group.edges.slice(0, maxEdgesPerGroup);
@@ -487,13 +489,11 @@ export function buildCollectionSeriesViewModel(
     };
   });
   const ungrouped = result.ungrouped.slice(0, maxUngrouped);
+  const unresolvedItems = result.unresolvedItems.slice(0, maxUnresolved);
   const renderedItems = groups.reduce((total, group) => total + group.items.length, 0);
   const renderedEdges = groups.reduce((total, group) => total + group.edges.length, 0);
   const availableGroups = result.groups.length + result.coverage.output.hiddenGroupCount;
-  const availableItems = Math.max(
-    result.summary.eligibleAnimeItems - result.summary.ungroupedItems,
-    result.summary.groupedItems,
-  );
+  const availableItems = result.summary.groupedItems;
   const availableEdges = result.summary.relationEdges;
 
   return {
@@ -502,6 +502,7 @@ export function buildCollectionSeriesViewModel(
     state: result.state,
     groups,
     ungrouped,
+    unresolvedItems,
     summary: result.summary,
     coverage: result.coverage,
     excludedRelations: result.excludedRelations,
@@ -532,6 +533,11 @@ export function buildCollectionSeriesViewModel(
         available: result.ungrouped.length,
         rendered: ungrouped.length,
         omitted: Math.max(0, result.ungrouped.length - ungrouped.length),
+      },
+      unresolved: {
+        available: result.unresolvedItems.length,
+        rendered: unresolvedItems.length,
+        omitted: Math.max(0, result.unresolvedItems.length - unresolvedItems.length),
       },
     },
     error: result.error,

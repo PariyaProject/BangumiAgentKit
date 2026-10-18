@@ -30,10 +30,14 @@ describe('Standalone collection series presenter', () => {
       ungrouped: [
         { subjectId: 3, subjectNameCn: '未归组条目', status: 'done', statusLabel: '看过' },
       ],
+      unresolvedItems: [
+        { subjectId: 4, subjectNameCn: '关系待确认条目', status: 'doing', statusLabel: '在看' },
+      ],
       summary: {
-        eligibleAnimeItems: 3,
+        eligibleAnimeItems: 4,
         groupedItems: 2,
         ungroupedItems: 1,
+        relationMembershipUnknownItems: 1,
         relationEdges: 1,
       },
       coverage: {
@@ -55,6 +59,9 @@ describe('Standalone collection series presenter', () => {
     expect(output).toContain('收藏系列组 · 状态: partial');
     expect(output).toContain('第一部');
     expect(output).toContain('—续集→');
+    expect(output).toContain('关系待确认 1');
+    expect(output).toContain('关系待确认条目');
+    expect(output).toContain('不能据此判断这些条目没有系列关系');
     expect(output).toContain('覆盖: 收藏 3/100');
     expect(output).toContain('RELATION_SUBJECT_CAP');
     expect(output).not.toContain('private comment');

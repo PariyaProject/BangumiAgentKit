@@ -138,6 +138,13 @@ describe('CollectionSeriesService', () => {
       returnedGroups: 1,
       returnedEdges: 1,
     });
+    expect(result.unresolvedItems.map((item) => item.subjectId)).toEqual([3]);
+    expect(result.summary).toMatchObject({
+      eligibleAnimeItems: 3,
+      groupedItems: 2,
+      ungroupedItems: 0,
+      relationMembershipUnknownItems: 1,
+    });
     expect(result.warnings.map((warning) => warning.code)).toEqual(
       expect.arrayContaining(['RELATION_SUBJECT_CAP', 'RELATION_ROW_CAP']),
     );
@@ -183,7 +190,12 @@ describe('CollectionSeriesService', () => {
       state: 'complete',
       groups: [],
       ungrouped: [],
-      summary: { eligibleAnimeItems: 0, relationSubjectsRequested: 0 },
+      unresolvedItems: [],
+      summary: {
+        eligibleAnimeItems: 0,
+        relationSubjectsRequested: 0,
+        relationMembershipUnknownItems: 0,
+      },
     });
     expect(emptyResult.coverage.collection.sourceExhausted).toBe(true);
   });
@@ -211,8 +223,48 @@ describe('CollectionSeriesService', () => {
       subjectId: 1,
       message: expect.any(String),
     });
+    expect(result.ungrouped.map((item) => item.subjectId)).toEqual([2]);
+    expect(result.unresolvedItems.map((item) => item.subjectId)).toEqual([1]);
+    expect(result.summary).toMatchObject({
+      eligibleAnimeItems: 2,
+      groupedItems: 0,
+      ungroupedItems: 1,
+      relationMembershipUnknownItems: 1,
+    });
     expect(result.coverage.relations.failedSubjects).toBe(1);
     expect(result.warnings.map((warning) => warning.code)).toContain('RELATION_READ_FAILURE');
+  });
+
+  it('keeps a failed relation subject grouped when another observed edge confirms membership', async () => {
+    const result = await new CollectionSeriesService(
+      buildClient(async (input) => {
+        const url = new URL(String(input));
+        if (url.pathname.endsWith('/collections')) {
+          return response({
+            total: 2,
+            limit: 50,
+            offset: 0,
+            data: [collectionRow(1), collectionRow(2)],
+          });
+        }
+        const subjectId = Number(url.pathname.split('/').at(-2));
+        return subjectId === 1
+          ? response({ message: 'relation down' }, 503)
+          : response([relation(1, '续集')]);
+      }),
+    ).getCollectionSeriesGroups('bound-user');
+
+    expect(result.state).toBe('partial');
+    expect(result.groups).toHaveLength(1);
+    expect(result.groups[0]?.items.map((item) => item.subjectId)).toEqual([1, 2]);
+    expect(result.unresolvedItems).toEqual([]);
+    expect(result.ungrouped).toEqual([]);
+    expect(result.summary).toMatchObject({
+      eligibleAnimeItems: 2,
+      groupedItems: 2,
+      ungroupedItems: 0,
+      relationMembershipUnknownItems: 0,
+    });
   });
 
   it('preserves an authenticated-source failure as an unavailable result', async () => {

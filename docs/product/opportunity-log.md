@@ -287,6 +287,12 @@ calendar/weekly-schedule join. The slice reuses the existing current-account
 Status:
 SELECTED_IN_HARNESS_V3_EPOCH / COLLECTION-DASHBOARD-V1
 
+Run #95 Epoch run95-collection-render-state-clarity-20261019 records a current
+candidate correction for the card's display-state wording: it names whether
+rows were omitted separately from the dashboard's source/data state. This is
+synthetic renderer evidence only. The frontier ledger keeps OP-011 PARTIAL;
+real account behavior and QQ/TIM delivery remain separate.
+
 User questions:
 
 “我的收藏概览、backlog 和未来七日播出计划能否一次给出？”
@@ -478,6 +484,13 @@ evidence, and a complete full-window workload claim is still unsupported.
 
 Status:
 DELIVERED_IN_PR-7G_RECOVERY
+
+This status records the historical bounded implementation. The current Run #95
+frontier record remains PARTIAL because the source and accepted Agent/MCP
+evidence do not establish an exhaustive or canonical viewing order. Epoch
+run95-collection-render-state-clarity-20261019 adds explicit unknown-membership
+handling to account-scoped collection grouping; it does not change that order
+boundary or add scenario/Agent/MCP credit.
 
 User question:
 

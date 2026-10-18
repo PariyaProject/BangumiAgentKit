@@ -80,6 +80,7 @@ describe('collection-series renderer', () => {
 
     expect(viewModel.template).toBe('collection-series');
     expect(extractImageUrls(viewModel)).toEqual([]);
+    expect(viewModel.summary.relationMembershipUnknownItems).toBe(0);
     expect(viewModel.presentation.groups).toMatchObject({
       available: 1,
       rendered: 1,
@@ -88,8 +89,9 @@ describe('collection-series renderer', () => {
     for (const width of [640, 960]) {
       const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
       expect(html).toContain('我的收藏系列组');
+      expect(html).toContain('数据覆盖完整');
       expect(html).toContain('第二部');
-      expect(html).toContain('collection-series-groups-v1');
+      expect(html).toContain('collection-series-groups-v2');
       expect(html).toContain('覆盖：收藏');
       expect(html).not.toContain('private comment');
     }
@@ -118,6 +120,41 @@ describe('collection-series renderer', () => {
     });
     const denseHtml = renderHtmlTemplate(denseViewModel, 'bangumi-dark', {}, 640);
     expect(denseHtml).toContain('系列组展示 8/9，省略 1 个');
+    expect(denseHtml).toContain('数据覆盖完整');
+    expect(denseHtml).toContain('数据覆盖状态与展示数量分别统计');
+
+    const unresolvedResult = structuredClone(result);
+    const unresolvedItem = unresolvedResult.ungrouped[0];
+    if (!unresolvedItem) throw new Error('fixture did not produce an ungrouped item');
+    unresolvedItem.subjectNameCn = '关系未查明条目';
+    unresolvedResult.state = 'partial';
+    unresolvedResult.ungrouped = [];
+    unresolvedResult.unresolvedItems = [unresolvedItem];
+    unresolvedResult.summary.ungroupedItems = 0;
+    unresolvedResult.summary.relationMembershipUnknownItems = 1;
+    unresolvedResult.summary.relationSubjectsFailed = 1;
+    unresolvedResult.coverage.relations.failedSubjects = 1;
+    unresolvedResult.coverage.relations.succeededSubjects -= 1;
+    unresolvedResult.relationFailures = [
+      {
+        subjectId: unresolvedItem.subjectId,
+        code: 'UPSTREAM_UNAVAILABLE',
+        message: '关系读取失败',
+      },
+    ];
+    const unresolvedViewModel = buildCollectionSeriesViewModel(unresolvedResult);
+    expect(unresolvedViewModel.presentation.unresolved).toMatchObject({
+      available: 1,
+      rendered: 1,
+      omitted: 0,
+    });
+    for (const width of [320, 360, 520, 640, 960]) {
+      const unresolvedHtml = renderHtmlTemplate(unresolvedViewModel, 'bangumi-dark', {}, width);
+      expect(unresolvedHtml).toContain('关系待确认（展示 1/1）');
+      expect(unresolvedHtml).toContain('不能据此判断这些条目没有系列关系');
+      expect(unresolvedHtml).toContain('关系未查明条目');
+      expect(unresolvedHtml).not.toContain('未归组条目');
+    }
 
     const privateCache = new RendererLruCache<RenderResult>(2);
     const privateRenderService = new RenderService(undefined, privateCache);

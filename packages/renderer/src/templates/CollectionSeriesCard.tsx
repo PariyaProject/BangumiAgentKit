@@ -12,8 +12,8 @@ export interface CollectionSeriesCardProps {
 }
 
 function stateLabel(state: CollectionSeriesViewModel['state']): string {
-  if (state === 'complete') return '覆盖完整';
-  if (state === 'partial') return '部分覆盖';
+  if (state === 'complete') return '数据覆盖完整';
+  if (state === 'partial') return '数据部分覆盖';
   if (state === 'conflict') return '关系冲突';
   if (state === 'auth_required') return '需要授权';
   if (state === 'permission_denied') return '无权限';
@@ -54,7 +54,8 @@ export const CollectionSeriesCard: React.FC<CollectionSeriesCardProps> = ({
     ['动画收藏', String(viewModel.summary.eligibleAnimeItems)],
     ['系列组', String(viewModel.coverage.output.returnedGroups)],
     ['已归组', String(viewModel.summary.groupedItems)],
-    ['未归组', String(viewModel.summary.ungroupedItems)],
+    ['已确认未归组', String(viewModel.summary.ungroupedItems)],
+    ['关系待确认', String(viewModel.summary.relationMembershipUnknownItems)],
     ['关系边', String(viewModel.summary.relationEdges)],
   ];
   const warningMessages = viewModel.warnings
@@ -80,7 +81,7 @@ export const CollectionSeriesCard: React.FC<CollectionSeriesCardProps> = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: width && width >= 900 ? 'repeat(5, 1fr)' : 'repeat(2, 1fr)',
+          gridTemplateColumns: width && width >= 900 ? 'repeat(6, 1fr)' : 'repeat(2, 1fr)',
           gap: theme.spacing.sm,
         }}
       >
@@ -190,9 +191,13 @@ export const CollectionSeriesCard: React.FC<CollectionSeriesCardProps> = ({
 
       {viewModel.presentation.groups.omitted > 0 ? (
         <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
-          系列组展示 {viewModel.presentation.groups.rendered}/
-          {viewModel.presentation.groups.available}，省略 {viewModel.presentation.groups.omitted} 个；
-          完整组计数仍见 coverage。
+          {'系列组展示 ' +
+            viewModel.presentation.groups.rendered +
+            '/' +
+            viewModel.presentation.groups.available +
+            '，省略 ' +
+            viewModel.presentation.groups.omitted +
+            ' 个；数据覆盖状态与展示数量分别统计。'}
         </div>
       ) : null}
 
@@ -209,6 +214,34 @@ export const CollectionSeriesCard: React.FC<CollectionSeriesCardProps> = ({
             style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5, marginTop: '4px' }}
           >
             {viewModel.ungrouped.map((item) => itemName(item)).join(' · ')}
+          </div>
+        </section>
+      ) : null}
+
+      {viewModel.presentation.unresolved.omitted > 0 ? (
+        <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
+          关系待确认条目展示 {viewModel.presentation.unresolved.rendered}/
+          {viewModel.presentation.unresolved.available}，另省略{' '}
+          {viewModel.presentation.unresolved.omitted} 项。
+        </div>
+      ) : null}
+
+      {viewModel.unresolvedItems.length > 0 ? (
+        <section>
+          <div style={{ color: theme.warning, fontWeight: 700, fontSize: '13px' }}>
+            {'关系待确认（展示 ' +
+              viewModel.unresolvedItems.length +
+              '/' +
+              viewModel.presentation.unresolved.available +
+              '）'}
+          </div>
+          <div
+            style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5, marginTop: '4px' }}
+          >
+            关系读取失败、未覆盖或已截断；不能据此判断这些条目没有系列关系。
+          </div>
+          <div style={{ color: theme.text, fontSize: '10px', lineHeight: 1.5, marginTop: '4px' }}>
+            {viewModel.unresolvedItems.map((item) => itemName(item)).join(' · ')}
           </div>
         </section>
       ) : null}

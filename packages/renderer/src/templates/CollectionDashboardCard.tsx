@@ -127,8 +127,8 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
         和未来七日播出计划分别读取；日期不表示具体时刻或时区，未观察数据不会被补猜。
         <br />
         活跃状态过滤：{viewModel.filters.length ? viewModel.filters.join('、') : '未设置'} ·
-        展示状态：
-        {viewModel.presentation.state === 'complete' ? '完整' : '部分（有省略）'}
+        展示内容：
+        {viewModel.presentation.state === 'complete' ? '无省略' : '有条目省略'}
       </div>
 
       <div
