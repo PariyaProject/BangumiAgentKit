@@ -29,10 +29,10 @@ const VALID_PNG_BUFFER = Buffer.from(
   'base64',
 );
 const SYNTHETIC_COVER_PNG_BUFFER = readFileSync(
-  new URL('./fixtures/subject-overview-cover.png', import.meta.url),
+  path.resolve(process.cwd(), 'tests/render/fixtures/subject-overview-cover.png'),
 );
 const SYNTHETIC_CHARACTER_PNG_BUFFER = readFileSync(
-  new URL('./fixtures/subject-overview-character.png', import.meta.url),
+  path.resolve(process.cwd(), 'tests/render/fixtures/subject-overview-character.png'),
 );
 const LIMITS = { maxCast: 20, maxStaff: 24, maxRelations: 12 };
 
