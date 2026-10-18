@@ -165,6 +165,7 @@ import { validateP02SanitizedReportFile } from './acceptance/write-p02-person-pr
 import { validateG06SubjectCastOfflineSanitizedReportFile } from './acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs';
 import { validateR04SanitizedReportFile } from './acceptance/write-r04-series-watch-order-offline-agent-mcp-report.mjs';
 import { validateR04RenderSanitizedReportFile } from './acceptance/write-r04-render-series-watch-order-offline-agent-mcp-report.mjs';
+import { validateR04RenderV2SanitizedReportFile } from './acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs';
 import { validateR01RelationsOfflineSanitizedReportFile } from './acceptance/write-r01-relations-offline-agent-mcp-report.mjs';
 import { validateR03RelationsOfflineSanitizedReportFile } from './acceptance/write-r03-relations-offline-agent-mcp-report.mjs';
 import { validateC04SanitizedReportFile } from './acceptance/write-c04-cohort-comparison-agent-mcp-report.mjs';
@@ -286,6 +287,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'p02-person-profile-offline-agent-mcp-v1',
   'r04-series-watch-order-offline-agent-mcp-v1',
   'r04-render-series-watch-order-offline-agent-mcp-v1',
+  'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
   'r01-subject-relations-offline-agent-mcp-v1',
   'r03-two-hop-relations-offline-agent-mcp-v1',
   'r03-direct-relations-offline-agent-mcp-matrix-v2',
@@ -4283,6 +4285,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateR04SanitizedReportFile(claim, root, reportPath);
     case 'r04-render-series-watch-order-offline-agent-mcp-v1':
       return validateR04RenderSanitizedReportFile(claim, root, reportPath);
+    case 'r04-render-series-watch-order-offline-agent-mcp-matrix-v2':
+      return validateR04RenderV2SanitizedReportFile(claim, root, reportPath);
     case 'r01-subject-relations-offline-agent-mcp-v1':
       return validateR01RelationsOfflineSanitizedReportFile(claim, root, reportPath);
     case 'r03-two-hop-relations-offline-agent-mcp-v1':

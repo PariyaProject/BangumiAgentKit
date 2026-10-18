@@ -10319,6 +10319,34 @@ class R04RenderSeriesWatchOrderMatrixProfileTests(unittest.TestCase):
         }))
 
 
+class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
+    def test_v2_is_separately_keyed_and_keeps_the_r04_scenario_unassessed(self):
+        self.assertEqual(
+            GENERATOR.CODEX_R04_RENDER_V2_PROFILE_ID,
+            'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
+        )
+        self.assertEqual(
+            GENERATOR.CODEX_R04_RENDER_V2_TOOL_NAME,
+            'bangumi.render_series_watch_order',
+        )
+        self.assertEqual(
+            GENERATOR.CODEX_R04_RENDER_V2_EXPECTED_ARGUMENTS['subjectId'],
+            990803,
+        )
+        self.assertNotEqual(
+            GENERATOR.CODEX_R04_RENDER_V2_PROFILE_ID,
+            GENERATOR.CODEX_R04_RENDER_PROFILE_ID,
+        )
+        self.assertTrue(GENERATOR.codex_r04_render_v2_frontier_is_unassessed())
+
+    def test_unbound_or_malformed_v2_report_never_earns_matrix_credit(self):
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_report_is_valid({}))
+        self.assertFalse(GENERATOR.codex_r04_render_v2_profile_report_is_valid({
+            'evidenceKind': GENERATOR.CODEX_R04_RENDER_V2_EVIDENCE_KIND,
+            'profileId': GENERATOR.CODEX_R04_RENDER_V2_PROFILE_ID,
+        }))
+
+
 class R01OfflineRelationsProfileReportValidationTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='r01-offline-profile-evidence-test-')

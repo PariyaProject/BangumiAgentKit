@@ -22,12 +22,16 @@ import {
   assertR02PositiveDirectRelationsProfile,
   R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE,
 } from './r02-positive-direct-relations-profile.mjs';
-import { assertA01RenderCohortAggregationOfflineProfile } from './a01-render-cohort-aggregation-offline-fixture.mjs';
+import {
+  A01_RENDER_COHORT_AGGREGATION_PROFILE_ID,
+  assertA01RenderCohortAggregationOfflineProfile,
+} from './a01-render-cohort-aggregation-offline-fixture.mjs';
 import {
   A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
   assertA01AggregateCohortOfflineProfile,
 } from './a01-aggregate-cohort-offline-matrix-profile.mjs';
 import { assertR04RenderSeriesWatchOrderOfflineProfile } from './r04-render-series-watch-order-offline-fixture.mjs';
+import { assertR04RenderV2SeriesWatchOrderOfflineV2Profile } from './r04-render-series-watch-order-offline-v2-fixture.mjs';
 import {
   assertTitleQueryRenderPublicProfile,
   TITLE_QUERY_RENDER_NETWORK_MODE,
@@ -154,8 +158,10 @@ export function parseCodexOneToolMcpArguments(argv) {
           assertR03RelationsOfflineProfile(profile) ||
           assertR02PositiveDirectRelationsProfile(profile) ||
           assertA01RatingDispersionProfile(profile) ||
-          assertA01RenderCohortAggregationOfflineProfile(profile) ||
-          assertR04RenderSeriesWatchOrderOfflineProfile(profile);
+          (profile.id === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID &&
+            assertA01RenderCohortAggregationOfflineProfile(profile)) ||
+          assertR04RenderSeriesWatchOrderOfflineProfile(profile) ||
+          assertR04RenderV2SeriesWatchOrderOfflineV2Profile(profile);
       }
       if (!approved) {
         throw new Error('Registered profile network mode is not supported.');

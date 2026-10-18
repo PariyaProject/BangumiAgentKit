@@ -92,7 +92,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 27);
+  assert.equal(listAgentMcpProfiles().length, 28);
   const g06CastMatrixV2 = getAgentMcpProfileById('g06-cast-offline-agent-mcp-matrix-v2');
   assert.ok(g06CastMatrixV2);
   assert.equal(g06CastMatrixV2.epochId, 'run95-g06-cast-offline-matrix-v2-20261018');
@@ -188,7 +188,22 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
     maxNodes: 1,
     media: 'anime',
   });
+  const r04RenderV2 = getAgentMcpProfileById(
+    'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
+  );
+  assert.ok(r04RenderV2);
+  assert.equal(r04RenderV2.frontierId, 'R04');
+  assert.equal(r04RenderV2.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(r04RenderV2.toolName, 'bangumi.render_series_watch_order');
+  assert.notEqual(r04RenderV2.id, r04Render.id);
+  assert.deepEqual(r04RenderV2.calls[0].arguments, {
+    subjectId: 990803,
+    depth: 0,
+    maxNodes: 1,
+    media: 'anime',
+  });
   assert.notDeepEqual(r04Render.calls[0].arguments, r04Get.calls[0].arguments);
+  assert.notDeepEqual(r04RenderV2.calls[0].arguments, r04Render.calls[0].arguments);
   const c01 = getAgentMcpProfileById('c01-rating-count-gap-v1');
   assert.ok(c01);
   assert.equal(c01.frontierId, 'C01');

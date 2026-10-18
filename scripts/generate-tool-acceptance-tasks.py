@@ -3178,6 +3178,67 @@ CODEX_R04_RENDER_RECEIPT_PAYLOAD_FIELDS = {
     'rendererAssetBoundarySha256', 'networkBoundarySha256', 'answerSha256',
     'eventStreamSha256', 'serverSummarySha256',
 }
+CODEX_R04_RENDER_V2_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'r04-render-series-watch-order-offline-agent-mcp-matrix-v2'
+)
+CODEX_R04_RENDER_V2_PROFILE_ID = CODEX_R04_RENDER_V2_PROFILE['id']
+CODEX_R04_RENDER_V2_EPOCH_ID = CODEX_R04_RENDER_V2_PROFILE['epochId']
+CODEX_R04_RENDER_V2_TOOL_NAME = CODEX_R04_RENDER_V2_PROFILE['toolName']
+CODEX_R04_RENDER_V2_ARGUMENT_PROFILE = CODEX_R04_RENDER_V2_PROFILE['argumentProfile']
+CODEX_R04_RENDER_V2_EXPECTED_ARGUMENTS = CODEX_R04_RENDER_V2_PROFILE['calls'][0]['arguments']
+CODEX_R04_RENDER_V2_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [CODEX_R04_RENDER_V2_EXPECTED_ARGUMENTS], sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_R04_RENDER_V2_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_R04_RENDER_V2_PROFILE, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH = CODEX_R04_RENDER_V2_PROFILE['reportPath']
+CODEX_R04_RENDER_V2_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_R04_RENDER_V2_PROFILE['selectionEvidencePath']
+CODEX_R04_RENDER_V2_EVIDENCE_KIND = CODEX_R04_RENDER_V2_PROFILE['evidenceKind']
+CODEX_R04_RENDER_V2_ANSWER_CHECK_METHOD = CODEX_R04_RENDER_V2_PROFILE['answerCheckMethod']
+CODEX_R04_RENDER_V2_NETWORK_MODE = CODEX_R04_RENDER_V2_PROFILE['networkMode']
+CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS = {
+    CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+}
+CODEX_R04_RENDER_V2_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
+    'profileId', 'profile', 'model', 'reasoningEffort', 'reviewerId', 'codexCliVersion',
+    'observedAt', 'sourceRevision', 'baseSha', 'ciSha', 'ciStatus', 'ciRunId', 'ciChecks',
+    'prNumber', 'claimId', 'mcpBundleSha256', 'registrySha256', 'selectionEvidenceSha256',
+    'toolName', 'argumentProfile', 'expectedArgumentsSha256', 'catalogSha256',
+    'toolDescriptionSha256', 'inputSchemaSha256', 'serverToolNames', 'serverToolCount',
+    'networkMode', 'mcpServerNames', 'processExitCode', 'resultStatus', 'eventStreamParsed',
+    'turnCompleted', 'codexMcpToolEventCount', 'codexErrorItemCount', 'mcpToolErrorResultCount', 'nonMcpToolEventCount',
+    'nonMcpToolTypes', 'shellToolCallCount', 'allowedCallCount', 'deniedCallCount',
+    'answerCheckMethod', 'answerSha256', 'answerUtf8Bytes', 'answerChecks', 'resultSummary',
+    'offlineFixture', 'rendererAssetBoundary', 'networkBoundary', 'privacy', 'runnerReceipt',
+}
+CODEX_R04_RENDER_V2_ANSWER_CHECK_FIELDS = {
+    'exactRegisteredProfile', 'oneAllowedMcpTool', 'fixedArguments', 'exactCandidateBundle',
+    'offlineFixtureOnly', 'twoExpectedLocalResponses', 'noRendererAssetRequests',
+    'artifactMetadataVerified', 'safeTextReadback', 'exactAcknowledgement', 'privacyPreserved',
+}
+CODEX_R04_RENDER_V2_PRIVACY_FIELDS = CODEX_R04_PRIVACY_FIELDS
+CODEX_R04_RENDER_V2_OFFLINE_FIXTURE_FIELDS = CODEX_R04_OFFLINE_FIXTURE_FIELDS
+CODEX_R04_RENDER_V2_ASSET_FIELDS = {'requestCount'}
+CODEX_R04_RENDER_V2_NETWORK_BOUNDARY_FIELDS = CODEX_R04_NETWORK_BOUNDARY_FIELDS
+CODEX_R04_RENDER_V2_RECEIPT_FIELDS = {
+    'schemaVersion', 'kind', 'publicKeyBase64', 'publicKeySha256', 'payload', 'signature',
+}
+CODEX_R04_RENDER_V2_RECEIPT_PAYLOAD_FIELDS = {
+    'schemaVersion', 'kind', 'sanitizedReportSha256', 'claimId', 'profileId', 'runNumber',
+    'frontierId', 'epochId', 'prNumber', 'sourceRevision', 'baseSha', 'ciSha', 'ciStatus',
+    'ciRunId', 'ciChecks', 'reviewerId', 'bundleSha256', 'registrySha256',
+    'selectionEvidenceSha256', 'toolName', 'argumentProfile', 'expectedArgumentsSha256',
+    'codexCliVersion', 'processExitCode', 'resultStatus', 'eventStreamParsed', 'turnCompleted',
+    'codexMcpToolEventCount', 'codexErrorItemCount', 'mcpToolErrorResultCount', 'nonMcpToolEventCount', 'shellToolCallCount',
+    'allowedCallCount', 'deniedCallCount', 'offlineFixtureSha256',
+    'rendererAssetBoundarySha256', 'networkBoundarySha256', 'answerSha256',
+    'eventStreamSha256', 'serverSummarySha256',
+}
 CODEX_C04_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'c04-cohort-comparison-agent-mcp-matrix-v1'
@@ -6147,6 +6208,86 @@ CODEX_R04_RENDER_PROFILE_IMPLEMENTATION_MARKERS = {
         'def codex_r04_render_profile_report_is_valid(',
         'CODEX_R04_RENDER_REPORT_RELATIVE_PATH',
         "if report.get('evidenceKind') == CODEX_R04_RENDER_EVIDENCE_KIND:",
+    ),
+}
+CODEX_R04_RENDER_V2_PROFILE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "r04-render-series-watch-order-offline-agent-mcp-matrix-v2"',
+        '"networkMode": "run95-r04-render-series-watch-order-offline-v2"',
+        '"toolName": "bangumi.render_series_watch_order"',
+        '"subjectId": 990803',
+    ),
+    'scripts/lib/r04-render-series-watch-order-offline-v2-fixture.mjs': (
+        'export function assertR04RenderV2SeriesWatchOrderOfflineV2Profile(',
+        'export function createR04RenderV2SeriesWatchOrderOfflineV2Fetch()',
+        'export function createR04RenderV2SeriesWatchOrderV2AssetFence()',
+        'authorizationHeaderCount', 'duplicateRequestCount', 'unexpectedRequestCount',
+    ),
+    'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
+        'assertR04RenderV2SeriesWatchOrderOfflineV2Profile(profile)',
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        'createR04RenderV2SeriesWatchOrderOfflineV2Fetch()',
+        'R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE',
+        'R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID',
+        'R04_RENDER_SUMMARY_UNAVAILABLE',
+    ),
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        'R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID',
+        'pngSignatureValid', 'dimensionsMatch',
+    ),
+    'scripts/acceptance/run-r04-render-series-watch-order-offline-agent-mcp-v2.mjs': (
+        'export function buildR04RenderV2CodexExecArgs(',
+        'export function exactR04RenderV2TextReadback(',
+        'export function validateR04RenderV2ServerSummary(',
+        'codexMcpExactToolAccessConfig(SERVER_ID, [PROFILE.toolName])',
+        'function runR04RenderV2(',
+    ),
+    'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs': (
+        'export function buildR04RenderV2RunnerReceiptPayload(',
+        'export function validateR04RenderV2ProfileReport(',
+        'export function validateR04RenderV2SanitizedReportFile(',
+        "openSync(target, 'wx', 0o600)",
+    ),
+    'scripts/acceptance/validate-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs': (
+        'validateR04RenderV2ProfileReport(',
+    ),
+    'docs/research/run95-r04-render-series-watch-order-offline-matrix-v2-contract-2026-10-18.md': (
+        'does not answer the R04 theatrical-film scenario',
+        'does not prove visual quality',
+        'synthetic `subjectId=990803`',
+    ),
+    'docs/product/frontier-ledger.json': (
+        'separately keyed R04 renderer v2 profile',
+        'Keep the R04 theatrical-film scenario UNASSESSED',
+    ),
+    'tests/harness/frontier-ledger-data.test.mjs': (
+        'separately keyed R04 renderer v2 profile',
+        'do not claim canonical order or visual quality',
+        'earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry',
+    ),
+    'tests/harness/r04-render-series-watch-order-offline-v2-fixture.test.mjs': (
+        'R04 render profile binds one synthetic renderer call',
+        'R04 render fixture rejects duplicate or unlisted requests',
+        'R04 render fixture denies query strings, bodies, methods, and foreign origins',
+    ),
+    'tests/harness/run-r04-render-series-watch-order-offline-agent-mcp-v2.test.mjs': (
+        'R04 render Codex config uses an exact per-tool grant without deprecated feature keys',
+        'R04 renderer result can be read back from the sanitized JSON text alone',
+    ),
+    'tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs': (
+        'R04 render report signs only artifact metadata and matrix evidence',
+        'R04 render report rejects external asset activity and altered readback',
+        'R04 render report rejects candidate, base, CI, reviewer, bundle, profile, and claim mismatches',
+    ),
+    'scripts/test_acceptance_evidence.py': (
+        'class R04RenderV2SeriesWatchOrderMatrixProfileTests(unittest.TestCase):',
+        'unbound or malformed render profile report never earns matrix credit',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_r04_render_v2_profile_report_is_valid(',
+        'CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH',
+        "if report.get('evidenceKind') == CODEX_R04_RENDER_V2_EVIDENCE_KIND:",
     ),
 }
 CODEX_R01_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
@@ -15944,6 +16085,386 @@ def codex_r04_render_profile_report_is_valid(
     return result.get('passed') is True and result.get('reportSha256') == report_sha
 
 
+def codex_r04_render_v2_profile_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_R04_RENDER_V2_PROFILE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
+def codex_r04_render_v2_profile_report_matches_candidate_revision(
+    report_path: Path, revision: object,
+) -> bool:
+    if not codex_r04_render_v2_profile_revision_has_implementation(revision):
+        return False
+    return _codex_relations_report_matches_candidate_revision(
+        report_path, revision, CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
+    )
+
+
+def codex_r04_render_v2_profile_harness_status(pr_number: object) -> dict[str, object] | None:
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                'node', str(ROOT / 'scripts/agent-harness.mjs'),
+                'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
+                '--profile-id', CODEX_R04_RENDER_V2_PROFILE_ID,
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_r04_render_v2_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                'node', str(ROOT / 'scripts/agent-harness.mjs'),
+                'status', '--run', '95', '--pr', str(pr_number),
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_r04_render_v2_profile_candidate_binding_is_valid(
+    report: dict[str, object], epoch_status: object, changed_paths: object,
+    current_bundle_sha256: object,
+) -> bool:
+    if not isinstance(epoch_status, dict):
+        return False
+    run = epoch_status.get('run')
+    epoch_result = epoch_status.get('epoch')
+    if not isinstance(run, dict) or not isinstance(epoch_result, dict):
+        return False
+    run_state = run.get('state')
+    epoch = epoch_result.get('state')
+    if not isinstance(run_state, dict) or not isinstance(epoch, dict):
+        return False
+    candidate_sha = epoch.get('candidate_sha')
+    pr_number = report.get('prNumber')
+    reviews = epoch.get('review_history', [])
+    latest_review = reviews[-1] if isinstance(reviews, list) and reviews else None
+    active_pr = (
+        run_state.get('state') == 'EPOCH_ACTIVE'
+        and run_state.get('active_epoch_pr') == pr_number
+        and epoch_result.get('github_state') == 'OPEN'
+        and epoch.get('state') != 'MERGED'
+    )
+    merged_pr = (
+        epoch.get('state') == 'MERGED'
+        and epoch_result.get('github_state') == 'MERGED'
+        and isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == candidate_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+    )
+    return (
+        type(pr_number) is int and pr_number > 0
+        and run.get('number') == 95 and (active_pr or merged_pr)
+        and epoch.get('epoch_id') == CODEX_R04_RENDER_V2_EPOCH_ID
+        and epoch.get('pr_number') == pr_number and epoch.get('base_branch') == 'master'
+        and epoch_result.get('pr_base_ref_name') == 'master'
+        and epoch.get('base_sha') == report.get('baseSha')
+        and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
+        and epoch_result.get('pr_head_ref_name') == epoch.get('branch')
+        and epoch_result.get('pr_is_draft') is False
+        and isinstance(candidate_sha, str) and re.fullmatch(r'[0-9a-f]{40}', candidate_sha)
+        and epoch_result.get('pr_head_sha') == candidate_sha
+        and isinstance(report.get('sourceRevision'), str)
+        and codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(changed_paths)
+        and current_bundle_sha256 == report.get('mcpBundleSha256')
+    )
+
+
+def codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(paths: object) -> bool:
+    return (
+        isinstance(paths, (list, tuple, set, frozenset))
+        and CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH in paths
+        and all(isinstance(item, str) and item in CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS for item in paths)
+    )
+
+
+def codex_r04_render_v2_profile_report_candidate_paths(
+    source_revision: object, candidate_sha: object,
+) -> set[str] | None:
+    if (
+        not isinstance(source_revision, str)
+        or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
+        or not isinstance(candidate_sha, str)
+        or re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is None
+        or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', source_revision, candidate_sha).returncode != 0
+    ):
+        return None
+    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
+    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
+    if diff.returncode != 0 or status.returncode != 0:
+        return None
+    paths = set(diff.stdout.splitlines())
+    for line in status.stdout.splitlines():
+        if len(line) < 4:
+            return None
+        paths.add(line[3:])
+    return paths
+
+
+def codex_r04_render_v2_profile_report_candidate_binding_is_current(
+    report: dict[str, object], epoch_status: object,
+) -> bool:
+    candidate = None
+    if isinstance(epoch_status, dict):
+        epoch_result = epoch_status.get('epoch')
+        epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
+        candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
+    paths = codex_r04_render_v2_profile_report_candidate_paths(report.get('sourceRevision'), candidate)
+    bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
+    return codex_r04_render_v2_profile_candidate_binding_is_valid(
+        report, epoch_status, paths, bundle_sha256,
+    )
+
+
+def codex_r04_render_v2_profile_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+) -> dict[str, object] | None:
+    if not isinstance(harness_status, dict):
+        return None
+    receipt = report.get('runnerReceipt')
+    disposition = harness_status.get('disposition')
+    if (
+        harness_status.get('state') != 'REPORT_WRITTEN'
+        or harness_status.get('profile_id') != CODEX_R04_RENDER_V2_PROFILE_ID
+        or harness_status.get('pr') != report.get('prNumber')
+        or harness_status.get('tool_name') != CODEX_R04_RENDER_V2_TOOL_NAME
+        or harness_status.get('argument_profile') != CODEX_R04_RENDER_V2_ARGUMENT_PROFILE
+        or harness_status.get('expected_arguments_sha256') != CODEX_R04_RENDER_V2_EXPECTED_ARGUMENTS_SHA256
+        or harness_status.get('registry_sha256') != CODEX_R04_RENDER_V2_PROFILE_REGISTRY_SHA256
+        or harness_status.get('claim_label_present') is not True
+        or harness_status.get('terminal_label_present') is not True
+        or not isinstance(disposition, dict)
+        or not isinstance(receipt, dict)
+        or not isinstance(report_sha256, str)
+        or re.fullmatch(r'[0-9a-f]{64}', report_sha256) is None
+    ):
+        return None
+    expected = {
+        'claimId': report.get('claimId'),
+        'profileId': CODEX_R04_RENDER_V2_PROFILE_ID,
+        'frontierId': 'R04',
+        'epochId': CODEX_R04_RENDER_V2_EPOCH_ID,
+        'runNumber': 95,
+        'prNumber': report.get('prNumber'),
+        'state': 'REPORT_WRITTEN',
+        'sourceCandidateSha': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'ciSha': report.get('sourceRevision'),
+        'ciStatus': 'SUCCESS',
+        'ciRunId': report.get('ciRunId'),
+        'ciChecks': report.get('ciChecks'),
+        'reviewerId': report.get('reviewerId'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'registrySha256': CODEX_R04_RENDER_V2_PROFILE_REGISTRY_SHA256,
+        'toolName': CODEX_R04_RENDER_V2_TOOL_NAME,
+        'argumentProfile': CODEX_R04_RENDER_V2_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': CODEX_R04_RENDER_V2_EXPECTED_ARGUMENTS_SHA256,
+        'reportWritten': True,
+        'reportPath': CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
+        'reportSha256': report_sha256,
+        'retryAllowed': False,
+        'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
+        'runnerReceiptPublicKeySha256': receipt.get('publicKeySha256'),
+        'runnerReceiptSha256': _canonical_json_sha256(receipt),
+    }
+    if any(disposition.get(key) != value for key, value in expected.items()):
+        return None
+    return disposition
+
+
+def codex_r04_render_v2_frontier_is_unassessed(require_report_ref: bool = False) -> bool:
+    try:
+        frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    records = frontier.get('records') if isinstance(frontier, dict) else None
+    record = next((item for item in records or [] if isinstance(item, dict) and item.get('id') == 'R04'), None)
+    refs = record.get('source_refs') if isinstance(record, dict) else None
+    return bool(
+        isinstance(record, dict) and record.get('status') == 'UNASSESSED'
+        and isinstance(refs, list)
+        and CODEX_R04_RENDER_V2_SELECTION_EVIDENCE_RELATIVE_PATH in refs
+        and (not require_report_ref or CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH in refs)
+    )
+
+
+def codex_r04_render_v2_profile_report_is_valid(
+    report: object, harness_status: object = None, report_path: Path | None = None,
+    epoch_status: object = None,
+) -> bool:
+    if not isinstance(report, dict) or set(report) != CODEX_R04_RENDER_V2_REPORT_FIELDS:
+        return False
+    path = report_path or (LIVE_PROBE_DIR / Path(CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH).name)
+    try:
+        relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+        report_bytes = path.read_bytes()
+        selection_bytes = (ROOT / CODEX_R04_RENDER_V2_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
+    except (OSError, ValueError):
+        return False
+    source = report.get('sourceRevision')
+    pr_number = report.get('prNumber')
+    if (
+        relative_path != CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH or len(report_bytes) > 64 * 1024
+        or type(report.get('schemaVersion')) is not int or report.get('schemaVersion') != 1
+        or report.get('evidenceKind') != CODEX_R04_RENDER_V2_EVIDENCE_KIND
+        or report.get('runNumber') != 95 or report.get('frontierId') != 'R04'
+        or report.get('scenarioId') is not None or report.get('epochId') != CODEX_R04_RENDER_V2_EPOCH_ID
+        or report.get('profileId') != CODEX_R04_RENDER_V2_PROFILE_ID
+        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v2'
+        or report.get('model') != 'gpt-6-luna' or report.get('reasoningEffort') != 'max'
+        or not isinstance(report.get('reviewerId'), str)
+        or re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', report['reviewerId']) is None
+        or not isinstance(report.get('codexCliVersion'), str)
+        or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
+        or not isinstance(report.get('observedAt'), str)
+        or re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', report['observedAt']) is None
+        or report.get('toolName') != CODEX_R04_RENDER_V2_TOOL_NAME
+        or report.get('argumentProfile') != CODEX_R04_RENDER_V2_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != CODEX_R04_RENDER_V2_EXPECTED_ARGUMENTS_SHA256
+        or report.get('registrySha256') != CODEX_R04_RENDER_V2_PROFILE_REGISTRY_SHA256
+        or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
+        or report.get('networkMode') != CODEX_R04_RENDER_V2_NETWORK_MODE
+        or not isinstance(source, str) or re.fullmatch(r'[0-9a-f]{40}', source) is None
+        or not codex_r04_render_v2_profile_revision_has_implementation(source)
+        or not codex_r04_render_v2_frontier_is_unassessed(require_report_ref=True)
+        or not isinstance(report.get('baseSha'), str) or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
+        or report.get('ciSha') != source or report.get('ciStatus') != 'SUCCESS'
+        or not isinstance(report.get('ciRunId'), str) or re.fullmatch(r'[1-9]\d{3,}', report['ciRunId']) is None
+        or report.get('ciChecks') != [
+            {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+            for name in CODEX_R04_REQUIRED_CI_CHECKS
+        ]
+        or type(pr_number) is not int or pr_number < 1
+        or not isinstance(report.get('claimId'), str)
+        or re.fullmatch(rf'profile-run-95-pr-{pr_number}-{source[:12]}-\d+', report['claimId']) is None
+        or report.get('mcpBundleSha256') != codex_g26_candidate_bundle_sha256(source)
+        or report.get('resultStatus') != 'SUCCESS' or report.get('processExitCode') != 0
+        or report.get('eventStreamParsed') is not True or report.get('turnCompleted') is not True
+        or report.get('codexMcpToolEventCount') != 1
+        or type(report.get('codexErrorItemCount')) is not int
+        or not 0 <= report.get('codexErrorItemCount') <= 10_000_000
+        or report.get('mcpToolErrorResultCount') != 0
+        or report.get('nonMcpToolEventCount') != 0 or report.get('nonMcpToolTypes') != []
+        or report.get('shellToolCallCount') != 0 or report.get('allowedCallCount') != 1
+        or report.get('deniedCallCount') != 0
+        or report.get('serverToolNames') != [CODEX_R04_RENDER_V2_TOOL_NAME]
+        or report.get('serverToolCount') != 1 or report.get('mcpServerNames') != ['bgk_r04_render_watch_order_v2']
+        or report.get('answerCheckMethod') != CODEX_R04_RENDER_V2_ANSWER_CHECK_METHOD
+        or report.get('answerSha256') != hashlib.sha256(b'R04_RENDER_V2_SYNTHETIC_CARD_READY').hexdigest()
+        or report.get('answerUtf8Bytes') != len(b'R04_RENDER_V2_SYNTHETIC_CARD_READY')
+    ):
+        return False
+
+    fixture = report.get('offlineFixture')
+    asset_boundary = report.get('rendererAssetBoundary')
+    network_boundary = report.get('networkBoundary')
+    privacy = report.get('privacy')
+    result_summary = report.get('resultSummary')
+    artifact = result_summary.get('artifact') if isinstance(result_summary, dict) else None
+    if (
+        not isinstance(report.get('answerChecks'), dict)
+        or set(report['answerChecks']) != CODEX_R04_RENDER_V2_ANSWER_CHECK_FIELDS
+        or any(value is not True for value in report['answerChecks'].values())
+        or not isinstance(fixture, dict) or set(fixture) != CODEX_R04_RENDER_V2_OFFLINE_FIXTURE_FIELDS
+        or fixture != {
+            'profile': CODEX_R04_RENDER_V2_NETWORK_MODE, 'requestCount': 2,
+            'subjectRequestCount': 1, 'relationsRequestCount': 1,
+            'duplicateRequestCount': 0, 'unexpectedRequestCount': 0,
+            'authorizationHeaderCount': 0, 'expectedOperationsComplete': True,
+        }
+        or not isinstance(asset_boundary, dict) or set(asset_boundary) != CODEX_R04_RENDER_V2_ASSET_FIELDS
+        or asset_boundary != {'requestCount': 0}
+        or not isinstance(result_summary, dict) or set(result_summary) != {'resultState', 'artifact'}
+        or result_summary.get('resultState') != 'artifact_returned'
+        or not isinstance(artifact, dict)
+        or set(artifact) != {'returned', 'persisted', 'mimeType', 'width', 'height', 'byteLength', 'sha256', 'pngSignatureValid', 'decoded', 'dimensionsMatch'}
+        or artifact.get('returned') is not True or artifact.get('persisted') is not True
+        or artifact.get('mimeType') != 'image/png'
+        or type(artifact.get('width')) is not int or not 320 <= artifact['width'] <= 1200
+        or type(artifact.get('height')) is not int or artifact['height'] <= 0
+        or type(artifact.get('byteLength')) is not int or artifact['byteLength'] <= 8
+        or not isinstance(artifact.get('sha256'), str) or re.fullmatch(r'[0-9a-f]{64}', artifact['sha256']) is None
+        or artifact.get('pngSignatureValid') is not True or artifact.get('decoded') is not True
+        or artifact.get('dimensionsMatch') is not True
+        or not isinstance(network_boundary, dict) or set(network_boundary) != CODEX_R04_RENDER_V2_NETWORK_BOUNDARY_FIELDS
+        or network_boundary != {'liveBangumiApiRequestCount': 0, 'rendererAssetRequestCount': 0, 'fullCodexHarnessNetworkSandboxed': False}
+        or not isinstance(privacy, dict) or set(privacy) != CODEX_R04_RENDER_V2_PRIVACY_FIELDS
+        or privacy != {
+            'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+            'writesAttempted': False, 'communityRead': False, 'qqPipelineTested': False,
+            'timClientTested': False, 'promptStored': False, 'answerStored': False,
+            'rawFixtureRowsStored': False, 'rawToolResultStored': False,
+            'artifactImageBytesStored': False, 'credentialsStored': False,
+        }
+        or not isinstance(report.get('runnerReceipt'), dict)
+        or set(report['runnerReceipt']) != CODEX_R04_RENDER_V2_RECEIPT_FIELDS
+        or not isinstance(report['runnerReceipt'].get('payload'), dict)
+        or set(report['runnerReceipt']['payload']) != CODEX_R04_RENDER_V2_RECEIPT_PAYLOAD_FIELDS
+    ):
+        return False
+
+    try:
+        catalog_bytes = CATALOG.read_bytes()
+        catalog = json.loads(catalog_bytes)
+        current = next((item for item in catalog if isinstance(item, dict) and item.get('name') == CODEX_R04_RENDER_V2_TOOL_NAME), None)
+    except (OSError, ValueError):
+        return False
+    if (
+        not isinstance(current, dict) or current.get('auth') != 'none' or current.get('risk') != 'read'
+        or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+        or report.get('toolDescriptionSha256') != hashlib.sha256(current.get('description', '').encode('utf-8')).hexdigest()
+        or report.get('inputSchemaSha256') != _canonical_json_sha256(current.get('inputSchema'))
+    ):
+        return False
+
+    report_sha = hashlib.sha256(report_bytes).hexdigest()
+    current_epoch = epoch_status or codex_r04_render_v2_profile_epoch_harness_status(pr_number)
+    if not codex_r04_render_v2_profile_report_candidate_binding_is_current(report, current_epoch):
+        return False
+    status = harness_status or codex_r04_render_v2_profile_harness_status(pr_number)
+    disposition = codex_r04_render_v2_profile_disposition_matches_report(report, status, report_sha)
+    if disposition is None:
+        return False
+    validator = ROOT / 'scripts/acceptance/validate-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs'
+    validation = subprocess.run(
+        ['node', str(validator)], cwd=ROOT,
+        input=json.dumps({'claim': disposition, 'reportBytesBase64': base64.b64encode(report_bytes).decode('ascii')}),
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    if validation.returncode != 0:
+        return False
+    try:
+        result = json.loads(validation.stdout)
+    except (TypeError, ValueError):
+        return False
+    return result.get('passed') is True and result.get('reportSha256') == report_sha
+
+
 def codex_r01_offline_profile_revision_has_implementation(revision: object) -> bool:
     """Bind the new R01 matrix cell to its exact offline fixture, runner and validator."""
     if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
@@ -22065,6 +22586,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(LIVE_PROBE_DIR / CODEX_M07_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R04_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R04_RENDER_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(LIVE_PROBE_DIR / CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R01_OFFLINE_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_R02_REPORT_RELATIVE_PATH.split('/')[-1])
@@ -22177,6 +22699,33 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             ):
                 continue
             sources.setdefault(CODEX_R04_RENDER_TOOL_NAME, set()).add(report_source_ref(path))
+            continue
+        if report.get('evidenceKind') == CODEX_R04_RENDER_V2_EVIDENCE_KIND:
+            try:
+                report_relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+            except ValueError:
+                continue
+            evidence_by_name = catalog_for_hash(report.get('catalogSha256'))
+            current_tool = current_by_name.get(CODEX_R04_RENDER_V2_TOOL_NAME)
+            if (
+                report_relative_path != CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH
+                or report.get('frontierId') != 'R04'
+                or report.get('scenarioId') is not None
+                or report.get('toolName') != CODEX_R04_RENDER_V2_TOOL_NAME
+                or report.get('argumentProfile') != CODEX_R04_RENDER_V2_ARGUMENT_PROFILE
+                or report.get('profileId') != CODEX_R04_RENDER_V2_PROFILE_ID
+                or evidence_by_name is None
+                or current_tool is None
+                or evidence_by_name.get(CODEX_R04_RENDER_V2_TOOL_NAME) != current_tool
+                or current_tool.get('auth') != 'none'
+                or current_tool.get('risk') != 'read'
+                or not codex_r04_render_v2_profile_report_is_valid(report, report_path=path)
+                or not codex_r04_render_v2_profile_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault(CODEX_R04_RENDER_V2_TOOL_NAME, set()).add(report_source_ref(path))
             continue
         if report.get('evidenceKind') == 'codex_cli_a01_agent_mcp':
             if (
