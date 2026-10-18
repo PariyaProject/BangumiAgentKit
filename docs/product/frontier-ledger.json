@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-18T20:51:13Z",
+  "updated_at": "2026-10-18T20:56:01Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -3930,9 +3930,10 @@
         "apps/standalone/src/presenter.ts",
         "tests/unit/collection-series.test.ts",
         "tests/render/collection-series.test.ts",
-        "tests/standalone/collection-series-presenter.test.ts"
+        "tests/standalone/collection-series-presenter.test.ts",
+        "docs/research/run95-collection-series-clarity-candidate-0f4e178-visual-qa-2026-10-19.md"
       ],
-      "next_action": "Run #95 candidate run95-collection-render-state-clarity-20261019 separates confirmed ungrouped from unknown relation membership in the bounded current-collection view; it does not add canonical or exhaustive watch order. Focused service, render, and Standalone presenter regressions pass on the candidate source. Keep OP-002 PARTIAL: the source still cannot prove a complete franchise graph or official order, and registered R04/G20 one-shot profiles remain terminal/no-retry. This offline candidate adds no Agent/MCP or live-client credit.",
+      "next_action": "Candidate 0f4e178 from Run #95 visually reviewed all 45 collection-series images at five widths. Relation-read failures appear as membership unknown unless another observed edge places the item in a group; 8/10 visible groups are distinct from complete data coverage. No clipping; dense 320px remains 2514px and relation details remain dense. Focused service/render/Standalone tests pass. Keep OP-002 PARTIAL: no complete franchise graph or canonical order is established, and R04/G20 one-shot profiles remain terminal/no-retry. No Agent/MCP or live-client credit.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },
@@ -4185,9 +4186,10 @@
         "docs/product/opportunity-log.md",
         "docs/research/run95-collection-render-state-clarity-discovery-2026-10-19.md",
         "packages/renderer/src/templates/CollectionDashboardCard.tsx",
-        "tests/render/collection-dashboard.test.ts"
+        "tests/render/collection-dashboard.test.ts",
+        "docs/research/run95-collection-dashboard-clarity-candidate-0f4e178-visual-qa-2026-10-19.md"
       ],
-      "next_action": "Run #95 candidate run95-collection-render-state-clarity-20261019 labels displayed output as “无省略” or “有条目省略” independently of the dashboard source/data state. The focused dashboard render regression covers a dense output and degraded partial data with no display omission. Keep OP-011 PARTIAL: this is synthetic Renderer evidence; actual OAuth-bound account behavior and QQ/TIM delivery remain separate.",
+      "next_action": "Candidate 0f4e178 from Run #95 visually reviewed all 35 collection-dashboard images at five widths. The display label now says “无省略” or “有条目省略” separately from source/data state; the degraded partial-data case with no output omission reads distinctly. No clipping; dense 320px remains tall and section/global errors repeat. Keep OP-011 PARTIAL: this is synthetic Renderer evidence; actual OAuth-bound account behavior and QQ/TIM delivery remain separate. No Agent/MCP credit.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },
