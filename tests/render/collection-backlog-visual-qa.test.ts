@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
 import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { CollectionBacklogService } from '@bangumi-agent-kit/bangumi-core';
@@ -162,33 +162,39 @@ describe.skipIf(!outputDirectory)('collection backlog final image matrix', () =>
       sha256: string;
     }> = [];
 
-    for (const visualCase of cases) {
-      const viewModel = await buildViewModel(visualCase);
-      if (visualCase === 'partial') {
-        expect(viewModel.presentation?.warningMessages).toEqual([
-          '七日计划未能完整读取，相关安排保持未知；未观察到不等于没有计划。可稍后重试。',
-        ]);
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-19T00:00:00.000Z'));
+    try {
+      for (const visualCase of cases) {
+        const viewModel = await buildViewModel(visualCase);
+        if (visualCase === 'partial') {
+          expect(viewModel.presentation?.warningMessages).toEqual([
+            '七日计划未能完整读取，相关安排保持未知；未观察到不等于没有计划。可稍后重试。',
+          ]);
+        }
+        if (visualCase === 'partial-empty') {
+          expect(viewModel.presentation?.warningMessages).toEqual([]);
+        }
+        for (const width of widths) {
+          const rendered = await renderService.renderCard(viewModel, {
+            width,
+            deviceScaleFactor: 1,
+            cache: false,
+          });
+          const filename = `${visualCase}-${width}.png`;
+          await writeFile(join(destination, filename), rendered.buffer);
+          manifest.push({
+            case: visualCase,
+            filename,
+            width: rendered.width,
+            height: rendered.height,
+            byteLength: rendered.buffer.byteLength,
+            sha256: createHash('sha256').update(rendered.buffer).digest('hex'),
+          });
+        }
       }
-      if (visualCase === 'partial-empty') {
-        expect(viewModel.presentation?.warningMessages).toEqual([]);
-      }
-      for (const width of widths) {
-        const rendered = await renderService.renderCard(viewModel, {
-          width,
-          deviceScaleFactor: 1,
-          cache: false,
-        });
-        const filename = `${visualCase}-${width}.png`;
-        await writeFile(join(destination, filename), rendered.buffer);
-        manifest.push({
-          case: visualCase,
-          filename,
-          width: rendered.width,
-          height: rendered.height,
-          byteLength: rendered.buffer.byteLength,
-          sha256: createHash('sha256').update(rendered.buffer).digest('hex'),
-        });
-      }
+    } finally {
+      vi.useRealTimers();
     }
 
     await writeFile(join(destination, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
