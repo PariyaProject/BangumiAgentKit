@@ -215,8 +215,25 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
     scoreBand8To9Share?.percentage !== undefined &&
     scoreBand8To9Share.count !== undefined &&
     scoreBand8To9Share.population !== undefined
-      ? `${formatPercent(scoreBand8To9Share.percentage)} (${formatNumber(scoreBand8To9Share.count)}/${formatNumber(scoreBand8To9Share.population)})${scoreBand8To9Share.state === 'conflict' ? ' · 来源冲突' : ''}`
+      ? formatPercent(scoreBand8To9Share.percentage)
       : metricStateLabel(scoreBand8To9Share?.state ?? 'unknown');
+  const scoreBand8To9ShareDetail =
+    scoreBand8To9Share?.count !== undefined && scoreBand8To9Share.population !== undefined
+      ? `样本数 ${formatNumber(scoreBand8To9Share.count)} / ${formatNumber(scoreBand8To9Share.population)}${scoreBand8To9Share.state === 'conflict' ? ' · 来源冲突' : ''}`
+      : undefined;
+  const summaryMetrics: Array<{ label: string; value: string; detail?: string }> = [
+    { label: '官方评分', value: formatNumber(raw?.score, 1) },
+    { label: '评分人数', value: formatNumber(raw?.ratingTotal) },
+    {
+      label: '8–9 分占比',
+      value: scoreBand8To9ShareValue,
+      detail: scoreBand8To9ShareDetail,
+    },
+    { label: '分布均值', value: formatNumber(viewModel.rating.mean, 2) },
+    { label: '评分离散度', value: formatNumber(viewModel.rating.standardDeviation, 2) },
+    { label: '收藏人数', value: formatNumber(viewModel.collection.total) },
+    { label: '完成率', value: formatRatioPercent(viewModel.collection.completionRate) },
+  ];
 
   return (
     <CardFrame theme={theme} width={width}>
@@ -282,15 +299,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
               gap: theme.spacing.sm,
             }}
           >
-            {[
-              ['官方评分', formatNumber(raw.score, 1)],
-              ['评分人数', formatNumber(raw.ratingTotal)],
-              ['8–9 分占比', scoreBand8To9ShareValue],
-              ['分布均值', formatNumber(viewModel.rating.mean, 2)],
-              ['评分离散度', formatNumber(viewModel.rating.standardDeviation, 2)],
-              ['收藏人数', formatNumber(viewModel.collection.total)],
-              ['完成率', formatRatioPercent(viewModel.collection.completionRate)],
-            ].map(([label, value]) => (
+            {summaryMetrics.map(({ label, value, detail }) => (
               <div
                 key={label}
                 style={{
@@ -312,6 +321,19 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
                 >
                   {value}
                 </div>
+                {detail ? (
+                  <div
+                    style={{
+                      color: theme.textMuted,
+                      fontSize: '11px',
+                      lineHeight: 1.3,
+                      marginTop: 2,
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
+                    {detail}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

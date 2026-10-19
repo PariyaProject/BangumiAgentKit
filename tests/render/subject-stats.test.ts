@@ -200,7 +200,8 @@ describe('subject-stats renderer', () => {
     });
     expect(extractImageUrls(viewModel)).toEqual([]);
 
-    const narrowHtml = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 480);
+    const narrowHtml = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 320);
+    const narrowLayout = await measureRenderRootLayout(narrowHtml, 320);
     const wideHtml = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 960);
     for (const html of [narrowHtml, wideHtml]) {
       expect(html).toContain('少女终末旅行');
@@ -209,7 +210,9 @@ describe('subject-stats renderer', () => {
       expect(html).toContain('官方 v0 条目名称');
       expect(html).toContain('评分分布');
       expect(html).toContain('8–9 分占比');
-      expect(html).toContain('100.0% (100/100)');
+      expect(html).toContain('100.0%');
+      expect(html).toContain('样本数 100 / 100');
+      expect(html).not.toContain('100.0% (100/100)');
       expect(html).toContain('不能单独判定两极化、质量、原因或推荐');
       expect(html).toContain('40.0%');
       expect(html).toContain('完成率');
@@ -227,6 +230,12 @@ describe('subject-stats renderer', () => {
       expect(html).not.toContain('NaN');
       expect(html).not.toContain('Infinity');
     }
+    expect(narrowLayout).toMatchObject({
+      clientWidth: 320,
+      scrollWidth: 320,
+      overflowing: [],
+      contentOverflowing: [],
+    });
 
     const rendered = await renderService.renderCard(viewModel, {
       width: 640,
@@ -626,6 +635,20 @@ describe('subject-stats renderer', () => {
       { code: 'RATING_MEAN_CONFLICT', state: 'conflict', message: '两个评分来源存在差异。' },
     ];
 
+    const shareConflict = structuredClone(result);
+    shareConflict.rating.scoreBand8To9Share = {
+      ...shareConflict.rating.scoreBand8To9Share!,
+      state: 'conflict',
+    };
+    const shareConflictHtml = renderHtmlTemplate(
+      buildStatsViewModel(shareConflict),
+      'bangumi-dark',
+      {},
+      320,
+    );
+    expect(shareConflictHtml).toContain('100.0%');
+    expect(shareConflictHtml).toContain('样本数 100 / 100 · 来源冲突');
+
     const unavailable: SubjectStatsIntelligenceResult = {
       ...result,
       state: 'unavailable',
@@ -687,7 +710,8 @@ describe('subject-stats renderer', () => {
     expect(partialHtml).toContain('已收到 9/10 档');
     expect(partialHtml).toContain('8–9 分占比');
     expect(partialHtml).toContain('数据不全');
-    expect(partialHtml).not.toContain('100.0% (100/100)');
+    expect(partialHtml).not.toContain('100.0%');
+    expect(partialHtml).not.toContain('样本数 100 / 100');
     expect(partialHtml).toContain('未知 · 未知');
     expect(partialHtml).toContain('部分统计字段未返回，相关指标保持未知。');
     expect(partialHtml).not.toContain('MISSING_FIELD');
