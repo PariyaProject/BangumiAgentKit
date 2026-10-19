@@ -148,6 +148,7 @@ import { g16RunnerPublicKeySha256 } from './acceptance/g16-agent-mcp-runner-rece
 import { validateG16SanitizedReportFile } from './acceptance/write-g16-agent-mcp-report.mjs';
 import { validateC01SanitizedReportFile } from './acceptance/write-c01-rating-count-report.mjs';
 import { validateC03SanitizedReportFile } from './acceptance/write-c03-profile-report.mjs';
+import { validateC03PersonActivityOfflineV2SanitizedReportFile } from './acceptance/write-c03-person-activity-offline-v2-report.mjs';
 import { validateP03SanitizedReportFile } from './acceptance/write-p03-person-name-cn-report.mjs';
 import { validateP07SanitizedReportFile } from './acceptance/write-p07-person-season-report.mjs';
 import { validateS05SanitizedReportFile } from './acceptance/write-s05-person-activity-report.mjs';
@@ -320,6 +321,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'r03-direct-relations-offline-agent-mcp-matrix-v2',
   'r02-positive-direct-relations-agent-mcp-v1',
   'c04-cohort-comparison-agent-mcp-matrix-v1',
+  'c03-person-activity-offline-agent-mcp-matrix-v2',
   'query-render-title-agent-mcp-v1',
   'a01-rating-dispersion-1998-spring-v1',
   'g06-cast-offline-agent-mcp-matrix-v1',
@@ -3889,15 +3891,18 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
     );
   }
   const p02V2Profile = profile.id === 'p02-person-profile-offline-agent-mcp-v2';
+  const c03ActivityV2Profile = profile.id === 'c03-person-activity-offline-agent-mcp-matrix-v2';
   if (
     Number(runNumber) !== 95 ||
     !Number.isSafeInteger(Number(prNumber)) ||
     Number(prNumber) < 1 ||
-    (!A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS.includes(profile.id) && !p02V2Profile)
+    (!A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS.includes(profile.id) &&
+      !p02V2Profile &&
+      !c03ActivityV2Profile)
   ) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_RECONCILE_INVALID',
-      'Ambiguous-latch reconciliation is limited to the registered Run #95 A01 and P02 v2 offline profiles.',
+      'Ambiguous-latch reconciliation is limited to the registered Run #95 A01, P02 v2, and C03 v2 offline profiles.',
     );
   }
 
@@ -4247,7 +4252,9 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
     schemaVersion: 1,
     reasonCode: matchingClaim
       ? 'A01_AGGREGATE_MATRIX_AMBIGUOUS_CLAIM_TERMINALIZED'
-      : 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
+      : c03ActivityV2Profile
+        ? 'C03_ACTIVITY_V2_AMBIGUOUS_LATCH_RECONCILED'
+        : 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
     checks: { invocationStateUnknown: true },
     counters: {},
   });
@@ -4516,6 +4523,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateR05SanitizedReportFile(claim, root, reportPath);
     case 'c03-voice-actor-comparison-v1':
       return validateC03SanitizedReportFile(claim, root, reportPath);
+    case 'c03-person-activity-offline-agent-mcp-matrix-v2':
+      return validateC03PersonActivityOfflineV2SanitizedReportFile(claim, root, reportPath);
     case 'p06-render-person-profile-offline-agent-mcp-v1':
     case 'p06-render-person-profile-offline-agent-mcp-v2':
       return validateP06SanitizedReportFile(claim, root, reportPath);

@@ -1219,6 +1219,37 @@
           }
         }
       ]
+    },
+    {
+      "id": "c03-person-activity-offline-agent-mcp-matrix-v2",
+      "frontierId": "C03",
+      "epochId": "run95-c03-person-activity-offline-agent-mcp-matrix-v2-20261019",
+      "toolName": "bangumi.get_person_activity",
+      "argumentProfile": "fixed-c03-synthetic-person-activity-v2-20261019-one-person-12m-v1",
+      "claimLabelName": "harness-r95-c03-activity-mtx-v2-claimed",
+      "reportPath": "docs/live-probes/c03-person-activity-offline-agent-mcp-run95-v2.json",
+      "selectionEvidencePath": "docs/research/run95-c03-person-activity-offline-matrix-v2-contract-2026-10-19.md",
+      "evidenceKind": "codex_cli_c03_person_activity_offline_agent_mcp_matrix_v2",
+      "answerCheckMethod": "c03-synthetic-person-activity-result-schema-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-c03-person-activity-offline-matrix-v2",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 1536,
+      "calls": [
+        {
+          "toolName": "bangumi.get_person_activity",
+          "arguments": {
+            "personId": 991237,
+            "kind": "voice",
+            "media": "tv",
+            "windowMonths": 12,
+            "maxRelations": 1,
+            "maxSubjectDetails": 1,
+            "maxRows": 1
+          }
+        }
+      ]
     }
   ]
 }

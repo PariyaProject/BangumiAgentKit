@@ -38,9 +38,7 @@ import {
   summarizeR02PositiveDirectRelationsToolResult,
 } from './r02-positive-direct-relations-profile.mjs';
 import { A01_RENDER_COHORT_AGGREGATION_PROFILE_ID } from './a01-render-cohort-aggregation-offline-fixture.mjs';
-import {
-  A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS,
-} from './a01-aggregate-cohort-offline-matrix-profile.mjs';
+import { A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS } from './a01-aggregate-cohort-offline-matrix-profile.mjs';
 import {
   A01_RATING_DISPERSION_PROFILE,
   A01_RATING_DISPERSION_PROFILE_ID,
@@ -68,6 +66,10 @@ import {
   G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
   summarizeG01QuerySubjectsOfflineToolResult,
 } from './g01-query-subjects-offline-matrix-profile.mjs';
+import {
+  C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE_ID,
+  summarizeC03PersonActivityOfflineV2Result,
+} from './c03-person-activity-offline-matrix-v2-profile.mjs';
 
 const C04_RESULT_STATES = new Set([
   'ok',
@@ -597,6 +599,9 @@ export function summarizeProfileToolResult(
   }
   if (profileId === R05_PROFILE_ID) {
     return summarizeR05SubjectOverlapToolResult(result, expectedArguments);
+  }
+  if (profileId === C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE_ID) {
+    return summarizeC03PersonActivityOfflineV2Result(result);
   }
   const summary = result?.summary;
   const coverage = result?.coverage;

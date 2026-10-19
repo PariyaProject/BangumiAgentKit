@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the generated 96-tool acceptance table without network access."""
+"""Validate the generated 96-tool acceptance table and claim-bound evidence."""
 
 from __future__ import annotations
 
@@ -29,7 +29,15 @@ G01_RENDER_QUERY_PROFILES = {
     and profile.get('toolName') == 'bangumi.render_query_subjects'
     and profile.get('acceptanceScope') == 'agent-mcp-matrix-only'
 }
+C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE = next(
+    profile for profile in PROFILE_REGISTRY.get('profiles', [])
+    if isinstance(profile, dict)
+    and profile.get('id') == 'c03-person-activity-offline-agent-mcp-matrix-v2'
+)
 sys.path.insert(0, str(ROOT / 'scripts'))
+from acceptance.c03_person_activity_offline_v2_acceptance import (
+    c03_person_activity_offline_v2_signed_report_matches,
+)
 from client_evidence import tool_client_e2e_sources
 TOOL_ROW = re.compile(r'^\| `(bangumi\.[a-z0-9_]+)` \|')
 SOURCE_REFERENCE = re.compile(r'`(?P<path>tests/[^`|:]+):(?P<line>[1-9][0-9]*)`')
@@ -118,6 +126,162 @@ def g01_render_query_report_matches(name: str, relative_path: str, report: objec
         and report.get('answerCheckMethod') == profile['answerCheckMethod']
         and report.get('answerSha256') == hashlib.sha256(acknowledgement.encode()).hexdigest()
         and report.get('answerUtf8Bytes') == len(acknowledgement.encode())
+    )
+
+
+def c03_person_activity_offline_v2_report_matches(
+    name: str,
+    relative_path: str,
+    report: object,
+    *,
+    report_path: Path | None = None,
+    harness_status: object = None,
+    root: Path = ROOT,
+) -> bool:
+    if not isinstance(report, dict):
+        return False
+    profile = C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE
+
+    def exact_int(value: object, expected: int) -> bool:
+        return type(value) is int and value == expected
+
+    def canonical_json(value: object) -> str:
+        return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+
+    result = report.get('resultSummary')
+    fixture = report.get('offlineFixture')
+    checks = report.get('answerChecks')
+    privacy = report.get('privacy')
+    result_keys = {'resultState', 'windowMonths', 'uniqueSubjects', 'roleCounts', 'coverage'}
+    answer_check_fields = {
+        'exactRegisteredProfile', 'oneAllowedMcpTool', 'fixedArguments',
+        'exactCandidateBundle', 'offlineFixtureOnly', 'resultReadbackMatched',
+        'answerEchoedToolResult', 'outputSchemaApplied', 'noScenarioCredit',
+        'privacyPreserved',
+    }
+    coverage_keys = {
+        'relationRowsObserved', 'relationRowsSelected', 'relationRowsDroppedAtLimit',
+        'subjectDetailsSucceeded', 'subjectDetailsFailed', 'rowsEligible', 'rowsReturned',
+        'unknownRoleRows', 'outputTruncated', 'truncated',
+    }
+    roles = result.get('roleCounts') if isinstance(result, dict) else None
+    coverage = result.get('coverage') if isinstance(result, dict) else None
+    counts = [
+        result.get('uniqueSubjects') if isinstance(result, dict) else None,
+        *(roles.values() if isinstance(roles, dict) else []),
+        *(
+            [coverage.get(key) for key in coverage_keys - {'outputTruncated', 'truncated'}]
+            if isinstance(coverage, dict)
+            else []
+        ),
+    ]
+    try:
+        selection_sha256 = hashlib.sha256(
+            (root / profile['selectionEvidencePath']).read_bytes(),
+        ).hexdigest()
+    except OSError:
+        return False
+    return bool(
+        name == profile['toolName']
+        and relative_path == profile['reportPath']
+        and exact_int(report.get('schemaVersion'), 1)
+        and report.get('evidenceKind') == profile['evidenceKind']
+        and report.get('profileId') == profile['id']
+        and report.get('epochId') == profile['epochId']
+        and exact_int(report.get('runNumber'), 95)
+        and report.get('frontierId') == 'C03'
+        and report.get('scenarioId') is None
+        and report.get('profile') == 'codex-luna-max-offline-agent-mcp-matrix-v2'
+        and report.get('model') == 'gpt-6-luna'
+        and report.get('reasoningEffort') == 'max'
+        and report.get('resultStatus') == 'SUCCESS'
+        and exact_int(report.get('processExitCode'), 0)
+        and report.get('eventStreamParsed') is True
+        and report.get('turnCompleted') is True
+        and exact_int(report.get('codexMcpToolEventCount'), 1)
+        and exact_int(report.get('codexErrorItemCount'), 0)
+        and exact_int(report.get('nonMcpToolEventCount'), 0)
+        and report.get('nonMcpToolTypes') == []
+        and exact_int(report.get('shellToolCallCount'), 0)
+        and exact_int(report.get('allowedCallCount'), 1)
+        and exact_int(report.get('deniedCallCount'), 0)
+        and report.get('toolName') == profile['toolName']
+        and report.get('argumentProfile') == profile['argumentProfile']
+        and report.get('expectedArgumentsSha256') == hashlib.sha256(json.dumps(
+            [call['arguments'] for call in profile['calls']],
+            sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
+        and report.get('registrySha256') == hashlib.sha256(json.dumps(
+            profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
+        and report.get('selectionEvidenceSha256') == selection_sha256
+        and report.get('serverToolNames') == [profile['toolName']]
+        and exact_int(report.get('serverToolCount'), 1)
+        and report.get('mcpServerNames') == ['bgk_c03_person_activity_offline_v2']
+        and report.get('networkMode') == profile['networkMode']
+        and isinstance(result, dict)
+        and set(result) == result_keys
+        and isinstance(result.get('resultState'), str)
+        and result.get('resultState') in {'complete', 'partial', 'unavailable', 'not_computable', 'unknown'}
+        and type(result.get('windowMonths')) is int
+        and result.get('windowMonths') == 12
+        and all(value is None or (type(value) is int and value >= 0) for value in counts)
+        and isinstance(roles, dict)
+        and set(roles) == {'main', 'support', 'unknown'}
+        and isinstance(coverage, dict)
+        and set(coverage) == coverage_keys
+        and all(
+            value is None or type(value) is bool
+            for value in (coverage.get('outputTruncated'), coverage.get('truncated'))
+        )
+        and isinstance(fixture, dict)
+        and canonical_json(fixture) == canonical_json({
+            'profile': profile['networkMode'],
+            'requestCount': 3,
+            'personRequestCount': 1,
+            'characterRequestCount': 1,
+            'subjectDetailRequestCount': 1,
+            'unexpectedRequestCount': 0,
+            'authorizationHeaderCount': 0,
+            'expectedOperationsComplete': True,
+            'operations': ['person', 'characters', 'subject_detail'],
+        })
+        and canonical_json(report.get('networkBoundary')) == canonical_json({
+            'liveBangumiApiRequestCount': 0,
+            'unexpectedNetworkRequestCount': 0,
+            'rendererAssetRequestCount': 0,
+            'fullCodexHarnessNetworkSandboxed': False,
+        })
+        and isinstance(checks, dict)
+        and set(checks) == answer_check_fields
+        and all(value is True for value in checks.values())
+        and report.get('answerCheckMethod') == profile['answerCheckMethod']
+        and isinstance(report.get('answerSha256'), str)
+        and re.fullmatch(r'[0-9a-f]{64}', report['answerSha256']) is not None
+        and type(report.get('answerUtf8Bytes')) is int
+        and 0 < report['answerUtf8Bytes'] <= profile['maxAnswerBytes']
+        and isinstance(privacy, dict)
+        and canonical_json(privacy) == canonical_json({
+            'authProfile': 'anonymous',
+            'oauthAttempted': False,
+            'accountDataRead': False,
+            'writesAttempted': False,
+            'communityRead': False,
+            'qqPipelineTested': False,
+            'timClientTested': False,
+            'promptStored': False,
+            'answerStored': False,
+            'rawFixtureRowsStored': False,
+            'rawToolResultStored': False,
+            'artifactImageBytesStored': False,
+            'credentialsStored': False,
+        })
+        and c03_person_activity_offline_v2_signed_report_matches(
+            report,
+            report_path or (ROOT / relative_path),
+            harness_status=harness_status,
+            root=root,
+        )
     )
 
 
@@ -1013,11 +1177,15 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
             r02_positive_matches = r02_positive_agent_mcp_matches(
                 name, relative_path, report,
             )
+            c03_person_activity_offline_v2_matches = c03_person_activity_offline_v2_report_matches(
+                name, relative_path, report, report_path=path,
+            )
             matches = (
                 scenario_matches or c04_matches or title_query_render_matches
                 or g01_render_query_matches or g01_query_subjects_offline_matches
                 or r01_offline_matches or r04_render_v2_matches
                 or g06_cast_offline_v2_matches or r02_positive_matches
+                or c03_person_activity_offline_v2_matches
             )
         else:
             try:
