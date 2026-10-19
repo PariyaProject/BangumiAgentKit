@@ -3044,6 +3044,7 @@ CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = {
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
     'tests/harness/public-probe-coverage.test.mjs',
+    'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
     'tests/integration/tool-e2e-acceptance.test.ts',
 }
 CODEX_G06_CAST_OFFLINE_PROFILE_IDS = (
@@ -3309,6 +3310,7 @@ CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS = {
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
     'tests/harness/public-probe-coverage.test.mjs',
+    'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
     'tests/integration/tool-e2e-acceptance.test.ts',
 }
 CODEX_R04_RENDER_V2_REPORT_FIELDS = {

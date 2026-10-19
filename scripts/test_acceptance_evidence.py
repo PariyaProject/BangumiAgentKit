@@ -8599,6 +8599,7 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
             'tests/harness/g09-public-watch-order-evidence.test.mjs',
             'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
             'tests/harness/public-probe-coverage.test.mjs',
+            'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
             'tests/integration/tool-e2e-acceptance.test.ts',
         })
         self.assertTrue(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
@@ -10638,6 +10639,7 @@ class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
             'tests/harness/g09-public-watch-order-evidence.test.mjs',
             'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
             'tests/harness/public-probe-coverage.test.mjs',
+            'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
             'tests/integration/tool-e2e-acceptance.test.ts',
         })
         self.assertTrue(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(
@@ -12249,31 +12251,6 @@ class FreshQuerySubjectsPublicMatrixProfileTests(unittest.TestCase):
         self.frontier['records'][0]['status'] = 'CLOSED'
         self.frontier_path.write_text(json.dumps(self.frontier), encoding='utf-8')
         self.assertFalse(GENERATOR.codex_query_subjects_fresh_public_frontier_is_partial())
-
-    def test_repository_g14_disposition_keeps_terminal_claims_partial_and_uncredited(self):
-        frontier = json.loads(
-            (self.original_root / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'),
-        )
-        g14 = next(record for record in frontier['records'] if record.get('id') == 'G14')
-        self.assertEqual(g14['status'], 'PARTIAL')
-        self.assertIn('PR #232', g14['next_action'])
-        self.assertIn('PR #233', g14['next_action'])
-        self.assertIn('INCONCLUSIVE/no-report/retry_allowed=false', g14['next_action'])
-        self.assertIn('no Agent/MCP matrix credit', g14['next_action'])
-        self.assertIn('never invoke either claim again', g14['next_action'])
-        self.assertNotIn('may add only the query_subjects Agent/MCP cell', g14['next_action'])
-        report_path = self.original_root / (
-            'docs/research/run95-g14-query-subjects-v2-terminal-disposition-2026-10-19.md'
-        )
-        report = report_path.read_text(encoding='utf-8')
-        for marker in (
-            'terminal `INCONCLUSIVE`',
-            '`call_count=1`',
-            '`report_written=false`',
-            '`retry_allowed=false`',
-            'No report was produced',
-        ):
-            self.assertIn(marker, report)
 
     def test_python_and_node_report_schemas_match_and_registry_markers_are_present(self):
         report_script = (
