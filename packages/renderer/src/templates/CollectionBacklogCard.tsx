@@ -134,10 +134,12 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
       </div>
       <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
         来源：{presentation?.sourceSummary || 'Bangumi v0 收藏'} · 七日计划：
-        {presentation?.scheduleSummary || `覆盖 ${scheduleCoverage.sourceDayCount}/7 天 · 匹配 ${scheduleCoverage.matchedItems} 项`}
+        {presentation?.scheduleSummary ||
+          `覆盖 ${scheduleCoverage.sourceDayCount}/7 天 · 匹配 ${scheduleCoverage.matchedItems} 项`}
       </div>
 
-      {viewModel.coverage.hydration.budgetExceeded || viewModel.coverage.collection.truncated ? (
+      {!presentation?.emptyState &&
+      (viewModel.coverage.hydration.budgetExceeded || viewModel.coverage.collection.truncated) ? (
         <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
           这是有界样本：收藏扫描或进度读取达到安全上限，未读取部分不作推测。
         </div>
@@ -158,7 +160,9 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
             lineHeight: 1.5,
           }}
         >
-          {presentation?.errorMessage || viewModel.error?.message || '暂时无法读取收藏数据，未生成猜测的 backlog。'}
+          {presentation?.errorMessage ||
+            viewModel.error?.message ||
+            '暂时无法读取收藏数据，未生成猜测的 backlog。'}
           {presentation?.errorNextAction || viewModel.error?.nextAction
             ? ` ${presentation?.errorNextAction || viewModel.error?.nextAction}`
             : ''}
@@ -176,7 +180,9 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
           }}
         >
           <div style={{ fontWeight: 700, fontSize: '13px' }}>{presentation.emptyState.title}</div>
-          <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5, marginTop: '3px' }}>
+          <div
+            style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5, marginTop: '3px' }}
+          >
             {presentation.emptyState.detail}
           </div>
           <div style={{ color: theme.accent, fontSize: '11px', lineHeight: 1.5, marginTop: '3px' }}>
@@ -283,7 +289,11 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
         </div>
       ) : null}
       <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-        公式版本：{presentation?.formulaSummary.join(' · ') || viewModel.evidence.formulaVersion || '未生成'} · 范围：当前账号
+        公式版本：
+        {presentation?.formulaSummary.join(' · ') ||
+          viewModel.evidence.formulaVersion ||
+          '未生成'}{' '}
+        · 范围：当前账号
         {presentation?.retrievedAtLabel || viewModel.source.retrievedAt
           ? ` · 取数时间：${presentation?.retrievedAtLabel || viewModel.source.retrievedAt}`
           : ''}

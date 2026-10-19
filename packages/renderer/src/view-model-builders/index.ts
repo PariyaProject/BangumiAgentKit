@@ -283,35 +283,53 @@ export function buildCollectionBacklogViewModel(
     (item) => item.formulaVersion === COLLECTION_BACKLOG_CONFIDENCE_FORMULA_VERSION,
   );
   const retrievedAt = result.source.retrievedAt;
+  const collectionCoverage = result.coverage.collection;
+  const collectionScanIncomplete =
+    collectionCoverage.sourceTotal === undefined ||
+    !collectionCoverage.sourceExhausted ||
+    collectionCoverage.truncated ||
+    collectionCoverage.pagesSucceeded < collectionCoverage.pagesAttempted ||
+    collectionCoverage.pageFailureOffset !== undefined ||
+    collectionCoverage.paginationStalled ||
+    collectionCoverage.sourceTotalChanged ||
+    (collectionCoverage.sourceTotal !== undefined &&
+      collectionCoverage.sourceTotal > collectionCoverage.observedRows);
+  const scheduleIncomplete =
+    result.coverage.schedule.attempted && result.coverage.schedule.state !== 'complete';
   const emptyState =
-    result.data.items.length === 0 && result.data.summary.eligibleItems === 0
-      ? result.state === 'complete'
+    result.data.items.length === 0 &&
+    result.data.summary.eligibleItems === 0 &&
+    (result.state === 'complete' || result.state === 'partial')
+      ? collectionScanIncomplete
         ? {
-            title: '没有符合条件的待看条目',
-            detail: '当前收藏已完整读取，但没有发现符合本次状态筛选的条目。',
-            nextAction: '可调整状态筛选后再查看，或打开收藏概览。',
+            title: '暂未发现符合条件的条目',
+            detail: `收藏覆盖尚不完整；未读取范围仍可能包含符合条件的待看条目。${scheduleIncomplete ? '七日计划读取也不完整，播出安排保持未知。' : ''}`,
+            nextAction: '可稍后重试以补齐收藏读取范围。',
           }
-        : result.state === 'partial'
-          ? {
-              title: '暂未发现符合条件的条目',
-              detail: '目前只读取到部分收藏；未读取部分仍可能有符合条件的待看条目。',
-              nextAction: '可稍后重试，暂不要据此判断收藏为空。',
-            }
-          : undefined
+        : {
+            title: '没有符合条件的待看条目',
+            detail: `当前收藏已完整读取，但没有发现符合本次状态筛选的条目。${scheduleIncomplete ? ' 七日计划暂不可用，播出安排保持未知。' : ''}`,
+            nextAction: scheduleIncomplete
+              ? '可稍后重试以恢复七日计划。'
+              : '可调整状态筛选后再查看，或打开收藏概览。',
+          }
       : undefined;
   const errorCopy: Record<string, { message: string; nextAction: string }> = {
     AUTH_REQUIRED: { message: '当前账号尚未绑定 Bangumi。', nextAction: '请先绑定账号后重试。' },
     AUTH_EXPIRED: { message: 'Bangumi 登录凭证已失效。', nextAction: '请重新授权后重试。' },
-    PERMISSION_DENIED: { message: '当前授权没有收藏读取权限。', nextAction: '请确认授权范围后重试。' },
+    PERMISSION_DENIED: {
+      message: '当前授权没有收藏读取权限。',
+      nextAction: '请确认授权范围后重试。',
+    },
     RATE_LIMITED: { message: 'Bangumi 暂时限制了读取请求。', nextAction: '请稍后重试。' },
     NETWORK_ERROR: { message: '暂时无法读取 Bangumi 收藏。', nextAction: '请稍后重试。' },
     UPSTREAM_UNAVAILABLE: { message: '暂时无法读取 Bangumi 收藏。', nextAction: '请稍后重试。' },
   };
   const errorPresentation = result.error
-    ? errorCopy[result.error.code] ?? {
+    ? (errorCopy[result.error.code] ?? {
         message: result.error.message.trim(),
         nextAction: result.error.nextAction,
-      }
+      })
     : undefined;
   const errorMessage = errorPresentation?.message;
   const scheduleWarningCodes = new Set([
@@ -319,6 +337,12 @@ export function buildCollectionBacklogViewModel(
     'SCHEDULE_NOT_REQUESTED',
     'PARTIAL_SCHEDULE_COVERAGE',
     'UNKNOWN_SCHEDULE_EVIDENCE',
+  ]);
+  const collectionCoverageWarningCodes = new Set([
+    'PARTIAL_COLLECTION_SCAN',
+    'COLLECTION_PAGE_FAILURE',
+    'COLLECTION_PAGINATION_STALLED',
+    'COLLECTION_SOURCE_TOTAL_CHANGED',
   ]);
   const warningCopy: Record<string, string> = {
     SCHEDULE_SOURCE_UNAVAILABLE: '七日计划暂时不可用，相关安排保持未知。可稍后重试。',
@@ -345,15 +369,13 @@ export function buildCollectionBacklogViewModel(
   for (const warning of result.warnings) {
     if (warning.code === result.error?.code) continue;
     if (scheduleWarningCodes.has(warning.code)) continue;
+    if (emptyState && collectionCoverageWarningCodes.has(warning.code)) continue;
     const message = warningCopy[warning.code] ?? warning.message.trim();
     if (!message || message === errorMessage || seenWarningMessages.has(message)) continue;
     seenWarningMessages.add(message);
     warningMessages.push(message);
   }
-  if (
-    !emptyState &&
-    result.warnings.some((warning) => scheduleWarningCodes.has(warning.code))
-  ) {
+  if (!emptyState && result.warnings.some((warning) => scheduleWarningCodes.has(warning.code))) {
     warningMessages.push(
       '七日计划未能完整读取，相关安排保持未知；未观察到不等于没有计划。可稍后重试。',
     );

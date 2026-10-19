@@ -13,7 +13,11 @@ function buildClient(fetchFn: typeof fetch): GeneratedBangumiOpenApiClient {
   return new GeneratedBangumiOpenApiClient(new HttpClient({ fetchFn }));
 }
 
-async function buildEmptyBacklogViewModel(calendarAvailable: boolean) {
+async function buildEmptyBacklogViewModel(options: {
+  calendarAvailable: boolean;
+  collectionTotal?: number;
+}) {
+  const { calendarAvailable, collectionTotal = 0 } = options;
   const fetchFn: typeof fetch = async (input) => {
     const url = new URL(String(input));
     if (url.pathname === '/calendar') {
@@ -36,17 +40,18 @@ async function buildEmptyBacklogViewModel(calendarAvailable: boolean) {
       );
     }
     if (url.pathname.endsWith('/collections')) {
-      return new Response(JSON.stringify({ total: 0, limit: 50, offset: 0, data: [] }), {
-        status: 200,
-      });
+      return new Response(
+        JSON.stringify({ total: collectionTotal, limit: 50, offset: 0, data: [] }),
+        { status: 200 },
+      );
     }
     throw new Error(`Unexpected synthetic request: ${url.pathname}`);
   };
   const httpClient = new HttpClient({ fetchFn });
-  const result = await new CollectionBacklogService(buildClient(fetchFn), httpClient).getCollectionBacklog(
-    'synthetic-bound-user',
-    { includeSchedule: true },
-  );
+  const result = await new CollectionBacklogService(
+    buildClient(fetchFn),
+    httpClient,
+  ).getCollectionBacklog('synthetic-bound-user', { includeSchedule: true });
   return buildCollectionBacklogViewModel(result);
 }
 
@@ -222,30 +227,48 @@ describe('collection-backlog renderer', () => {
     expect(rendered.buffer.length).toBeGreaterThan(1000);
   });
 
-  it('distinguishes a complete empty result from a partial empty sample', async () => {
-    const complete = await buildEmptyBacklogViewModel(true);
-    const partial = await buildEmptyBacklogViewModel(false);
+  it('distinguishes calendar-only partial coverage from an incomplete collection scan', async () => {
+    const complete = await buildEmptyBacklogViewModel({ calendarAvailable: true });
+    const schedulePartial = await buildEmptyBacklogViewModel({ calendarAvailable: false });
+    const collectionPartial = await buildEmptyBacklogViewModel({
+      calendarAvailable: true,
+      collectionTotal: 1,
+    });
     const completeHtml = renderHtmlTemplate(complete, 'bangumi-dark', {}, 320);
-    const partialHtml = renderHtmlTemplate(partial, 'bangumi-dark', {}, 320);
+    const schedulePartialHtml = renderHtmlTemplate(schedulePartial, 'bangumi-dark', {}, 320);
+    const collectionPartialHtml = renderHtmlTemplate(collectionPartial, 'bangumi-dark', {}, 320);
 
     expect(complete.state).toBe('complete');
     expect(complete.presentation?.emptyState?.title).toBe('没有符合条件的待看条目');
     expect(completeHtml).toContain('当前收藏已完整读取');
     expect(completeHtml).toContain('可调整状态筛选后再查看');
 
-    expect(partial.state).toBe('partial');
-    expect(partial.presentation?.emptyState?.title).toBe('暂未发现符合条件的条目');
-    expect(partialHtml).toContain('未读取部分仍可能有符合条件的待看条目');
-    expect(partialHtml).toContain('暂不要据此判断收藏为空');
-    expect(partialHtml).not.toContain('收藏已完整读取');
-    expect(partial.presentation?.warningMessages).toEqual([]);
-    expect(partialHtml).not.toContain('UPSTREAM_UNAVAILABLE');
+    expect(schedulePartial.state).toBe('partial');
+    expect(schedulePartial.coverage.collection.sourceExhausted).toBe(true);
+    expect(schedulePartial.coverage.collection.truncated).toBe(false);
+    expect(schedulePartial.presentation?.emptyState?.title).toBe('没有符合条件的待看条目');
+    expect(schedulePartialHtml).toContain('当前收藏已完整读取');
+    expect(schedulePartialHtml).toContain('七日计划暂不可用');
+    expect(schedulePartialHtml).not.toContain('未读取范围仍可能');
+    expect(schedulePartial.presentation?.warningMessages).toEqual([]);
+    expect(schedulePartialHtml).not.toContain('UPSTREAM_UNAVAILABLE');
+
+    expect(collectionPartial.state).toBe('partial');
+    expect(collectionPartial.coverage.collection.sourceTotal).toBe(1);
+    expect(collectionPartial.coverage.collection.observedRows).toBe(0);
+    expect(collectionPartial.coverage.collection.truncated).toBe(true);
+    expect(collectionPartial.presentation?.emptyState?.title).toBe('暂未发现符合条件的条目');
+    expect(collectionPartialHtml).toContain('收藏覆盖尚不完整');
+    expect(collectionPartialHtml).toContain('未读取范围仍可能包含符合条件的待看条目');
+    expect(collectionPartialHtml).not.toContain('当前收藏已完整读取');
+    expect(collectionPartialHtml).not.toContain('收藏读取达到安全范围');
+    expect(collectionPartial.presentation?.warningMessages).toEqual([]);
 
     expect(complete.presentation?.limitationSummary.length).toBeLessThan(
       complete.limitations.length,
     );
     expect(complete.limitations.length).toBeGreaterThan(4);
-    expect(partial.limitations).toEqual(complete.limitations);
+    expect(schedulePartial.limitations).toEqual(complete.limitations);
   });
 
   it('keeps permission-denied semantics visible in the zero-network card', () => {

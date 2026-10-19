@@ -5,10 +5,7 @@ import { afterAll, describe, expect, it, vi } from 'vitest';
 import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
 import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { CollectionBacklogService } from '@bangumi-agent-kit/bangumi-core';
-import {
-  buildCollectionBacklogViewModel,
-  RenderService,
-} from '@bangumi-agent-kit/renderer';
+import { buildCollectionBacklogViewModel, RenderService } from '@bangumi-agent-kit/renderer';
 
 const outputDirectory = process.env.BANGUMI_BACKLOG_VISUAL_QA_DIR;
 const widths = [320, 360, 520, 640, 960] as const;
@@ -17,6 +14,7 @@ const cases = [
   'complete-empty',
   'partial',
   'partial-empty',
+  'collection-partial-empty',
   'dense',
   'auth-required',
   'permission-denied',
@@ -72,16 +70,17 @@ function calendarDays(subjectIds: number[]) {
       cn: cnWeekdays[index],
       ja: jaWeekdays[index],
     },
-    items: index === 0
-      ? subjectIds.map((id) => ({
-          id,
-          type: 2,
-          name: `Synthetic Title ${id}`,
-          name_cn: `合成标题 ${id}`,
-          air_date: '2026-08-24',
-          air_weekday: 1,
-        }))
-      : [],
+    items:
+      index === 0
+        ? subjectIds.map((id) => ({
+            id,
+            type: 2,
+            name: `Synthetic Title ${id}`,
+            name_cn: `合成标题 ${id}`,
+            air_date: '2026-08-24',
+            air_weekday: 1,
+          }))
+        : [],
   }));
 }
 
@@ -104,15 +103,42 @@ function episodeRows(subjectId: number) {
 }
 
 async function buildViewModel(visualCase: VisualCase) {
-  const subjectCount = visualCase === 'dense' ? 10 : visualCase === 'complete' || visualCase === 'partial' ? 1 : 0;
+  const subjectCount =
+    visualCase === 'dense' ? 10 : visualCase === 'complete' || visualCase === 'partial' ? 1 : 0;
   const subjectIds = Array.from({ length: subjectCount }, (_, index) => 1000 + index);
+  let mockedFetchCalls = 0;
   const errorByCase: Partial<Record<VisualCase, BangumiError>> = {
-    'auth-required': new BangumiError('AUTH_REQUIRED', 'synthetic auth required', false, 401, '请绑定当前账号后重试'),
-    'permission-denied': new BangumiError('PERMISSION_DENIED', 'synthetic permission denied', false, 403, '请确认收藏读取权限后重试'),
-    'rate-limited': new BangumiError('RATE_LIMITED', 'synthetic rate limit', false, 429, '请稍后重试'),
-    'upstream-error': new BangumiError('UPSTREAM_UNAVAILABLE', 'synthetic upstream failure', false, 503, '请稍后重试'),
+    'auth-required': new BangumiError(
+      'AUTH_REQUIRED',
+      'synthetic auth required',
+      false,
+      401,
+      '请绑定当前账号后重试',
+    ),
+    'permission-denied': new BangumiError(
+      'PERMISSION_DENIED',
+      'synthetic permission denied',
+      false,
+      403,
+      '请确认收藏读取权限后重试',
+    ),
+    'rate-limited': new BangumiError(
+      'RATE_LIMITED',
+      'synthetic rate limit',
+      false,
+      429,
+      '请稍后重试',
+    ),
+    'upstream-error': new BangumiError(
+      'UPSTREAM_UNAVAILABLE',
+      'synthetic upstream failure',
+      false,
+      503,
+      '请稍后重试',
+    ),
   };
   const fetchFn: typeof fetch = async (input) => {
+    mockedFetchCalls += 1;
     const url = new URL(String(input));
     if (url.pathname === '/calendar') {
       if (visualCase === 'partial' || visualCase === 'partial-empty') {
@@ -123,34 +149,40 @@ async function buildViewModel(visualCase: VisualCase) {
     if (url.pathname.endsWith('/collections') && !url.pathname.includes('/episodes')) {
       const error = errorByCase[visualCase];
       if (error) throw error;
-      return new Response(JSON.stringify({
-        total: subjectIds.length,
-        limit: 50,
-        offset: 0,
-        data: subjectIds.map(subjectRow),
-      }), { status: 200 });
+      return new Response(
+        JSON.stringify({
+          total: visualCase === 'collection-partial-empty' ? 1 : subjectIds.length,
+          limit: 50,
+          offset: 0,
+          data: subjectIds.map(subjectRow),
+        }),
+        { status: 200 },
+      );
     }
     const episodePath = url.pathname.match(/\/collections\/(\d+)\/episodes$/u);
     if (episodePath) {
-      return new Response(JSON.stringify({
-        total: 3,
-        limit: 100,
-        offset: 0,
-        data: episodeRows(Number(episodePath[1])),
-      }), { status: 200 });
+      return new Response(
+        JSON.stringify({
+          total: 3,
+          limit: 100,
+          offset: 0,
+          data: episodeRows(Number(episodePath[1])),
+        }),
+        { status: 200 },
+      );
     }
     throw new Error(`Unexpected synthetic request: ${url.pathname}`);
   };
   const publicClient = new HttpClient({ fetchFn });
-  const result = await new CollectionBacklogService(buildClient(fetchFn), publicClient).getCollectionBacklog(
-    'synthetic-bound-user',
-    { includeSchedule: true },
-  );
-  return buildCollectionBacklogViewModel(result);
+  const result = await new CollectionBacklogService(
+    buildClient(fetchFn),
+    publicClient,
+  ).getCollectionBacklog('synthetic-bound-user', { includeSchedule: true });
+  return { viewModel: buildCollectionBacklogViewModel(result), mockedFetchCalls };
 }
 
 describe.skipIf(!outputDirectory)('collection backlog final image matrix', () => {
-  it('renders nine synthetic states at each required width and records PNG hashes', async () => {
+  it('renders ten synthetic states at each required width and records PNG hashes', async () => {
     const destination = resolve(outputDirectory!);
     await mkdir(destination, { recursive: true });
     const manifest: Array<{
@@ -161,18 +193,35 @@ describe.skipIf(!outputDirectory)('collection backlog final image matrix', () =>
       byteLength: number;
       sha256: string;
     }> = [];
+    let matrixMockedFetchCalls = 0;
 
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-19T00:00:00.000Z'));
     try {
       for (const visualCase of cases) {
-        const viewModel = await buildViewModel(visualCase);
+        const { viewModel, mockedFetchCalls } = await buildViewModel(visualCase);
+        matrixMockedFetchCalls += mockedFetchCalls;
         if (visualCase === 'partial') {
           expect(viewModel.presentation?.warningMessages).toEqual([
             '七日计划未能完整读取，相关安排保持未知；未观察到不等于没有计划。可稍后重试。',
           ]);
         }
         if (visualCase === 'partial-empty') {
+          expect(viewModel.presentation?.warningMessages).toEqual([]);
+          expect(viewModel.state).toBe('partial');
+          expect(viewModel.coverage.collection.sourceExhausted).toBe(true);
+          expect(viewModel.coverage.collection.truncated).toBe(false);
+          expect(viewModel.presentation?.emptyState?.title).toBe('没有符合条件的待看条目');
+          expect(viewModel.presentation?.emptyState?.detail).toContain('当前收藏已完整读取');
+          expect(viewModel.presentation?.emptyState?.detail).toContain('七日计划暂不可用');
+        }
+        if (visualCase === 'collection-partial-empty') {
+          expect(viewModel.state).toBe('partial');
+          expect(viewModel.coverage.collection.sourceTotal).toBe(1);
+          expect(viewModel.coverage.collection.observedRows).toBe(0);
+          expect(viewModel.coverage.collection.truncated).toBe(true);
+          expect(viewModel.presentation?.emptyState?.title).toBe('暂未发现符合条件的条目');
+          expect(viewModel.presentation?.emptyState?.detail).toContain('收藏覆盖尚不完整');
           expect(viewModel.presentation?.warningMessages).toEqual([]);
         }
         for (const width of widths) {
@@ -198,8 +247,11 @@ describe.skipIf(!outputDirectory)('collection backlog final image matrix', () =>
     }
 
     await writeFile(join(destination, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-    expect(manifest).toHaveLength(45);
-    expect(new Set(manifest.map((item) => item.filename)).size).toBe(45);
-    expect(manifest.every((item) => item.width > 0 && item.height > 0 && item.sha256.length === 64)).toBe(true);
+    expect(matrixMockedFetchCalls).toBe(28);
+    expect(manifest).toHaveLength(50);
+    expect(new Set(manifest.map((item) => item.filename)).size).toBe(50);
+    expect(
+      manifest.every((item) => item.width > 0 && item.height > 0 && item.sha256.length === 64),
+    ).toBe(true);
   });
 });
