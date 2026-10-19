@@ -30,6 +30,8 @@ import {
   buildG06AgentMcpReport,
   writeG06AgentMcpReport,
 } from '../../scripts/acceptance/write-g06-agent-mcp-report.mjs';
+import { buildP02ProfileReport } from '../../scripts/acceptance/write-p02-person-profile-agent-mcp-report.mjs';
+import { getP02PersonProfileOfflineSpec } from '../../scripts/lib/p02-person-profile-offline-fixture.mjs';
 import { G06_PRIVACY } from '../../scripts/lib/g06-privacy-summary.mjs';
 import {
   g06OneShotLatchLabelDescription,
@@ -94,6 +96,7 @@ import {
   agentMcpProfileClaimLabelDescription,
   agentMcpProfileRegistrySha256,
   agentMcpProfileTerminalLabelDescription,
+  agentMcpProfileTerminalLabelName,
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
@@ -162,6 +165,81 @@ const mandatoryChecks = [
   'provider-foundation',
   'discovery-foundation',
 ];
+
+function buildP02V2ReportForClaim(claim, keyPair) {
+  const profile = P02_V2_PROFILE;
+  const spec = getP02PersonProfileOfflineSpec(profile.id);
+  const expectedArguments = profile.calls[0].arguments;
+  const offlineFixture = {
+    profile: spec.networkMode,
+    requestCount: 3,
+    personRequestCount: 1,
+    subjectsRequestCount: 1,
+    charactersRequestCount: 1,
+    duplicateRequestCount: 0,
+    unexpectedRequestCount: 0,
+    authorizationHeaderCount: 0,
+    expectedOperationsComplete: true,
+  };
+  const catalogBytes = fs.readFileSync(path.join(root, 'docs/tool-catalog.json'));
+  const catalog = JSON.parse(catalogBytes.toString('utf8'));
+  const catalogTool = catalog.find((item) => item.name === profile.toolName);
+  const serverSummary = {
+    profileId: profile.id,
+    argumentProfile: profile.argumentProfile,
+    networkMode: spec.networkMode,
+    serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
+    sourceRevision: claim.sourceCandidateSha,
+    bundleSha256: claim.bundleSha256,
+    catalogSha256: createHash('sha256').update(catalogBytes).digest('hex'),
+    toolName: profile.toolName,
+    toolDescriptionSha256: createHash('sha256').update(catalogTool.description).digest('hex'),
+    inputSchemaSha256: createHash('sha256')
+      .update(canonicalAgentMcpProfileJson(catalogTool.inputSchema))
+      .digest('hex'),
+    serverToolNames: [profile.toolName],
+    serverToolCount: 1,
+    expectedArgumentsSha256: claim.expectedArgumentsSha256,
+    expectedCallCount: 1,
+    serverResultStatus: 'SUCCESS',
+    allowedCallCount: 1,
+    deniedCallCount: 0,
+    argumentMatch: true,
+    results: [
+      {
+        sequenceIndex: 0,
+        status: 'SUCCESS',
+        resultSummary: { personId: expectedArguments.personId, state: 'partial' },
+      },
+    ],
+    offlineFixture,
+  };
+  return buildP02ProfileReport(
+    {
+      claim,
+      serverSummary,
+      events: {
+        processExitCode: 0,
+        eventStreamParsed: true,
+        turnCompleted: true,
+        codexMcpToolEventCount: 1,
+        codexErrorItemCount: 0,
+        nonMcpToolEventCount: 0,
+        nonMcpToolTypes: [],
+        shellToolCallCount: 0,
+        mcpServerNames: [spec.serverId],
+        allowedCallCount: 1,
+        deniedCallCount: 0,
+      },
+      completedMcpCalls: [{ tool: profile.toolName, arguments: expectedArguments }],
+      answer: spec.acknowledgement,
+      codexCliVersion: '1.2.14',
+      eventStreamSha256: '7'.repeat(64),
+      serverSummarySha256: '8'.repeat(64),
+    },
+    { privateKey: keyPair.privateKey },
+  );
+}
 
 function controlFixture() {
   const run = createRunState({ runId: 'run-cli' });
@@ -2205,6 +2283,195 @@ test('P02 v2 ambiguous latch reconciliation terminalizes the exact no-report cla
     assert.match(claim.stderr, /^AGENT_MCP_PROFILE_CLAIM_GATE_FAILED:/u);
   } finally {
     environment.cleanup();
+  }
+});
+
+test('P02 v2 ambiguous terminal no-report latch replays reconciliation', () => {
+  const terminalDescription = agentMcpProfileTerminalLabelDescription(
+    P02_V2_PROFILE,
+    'INCONCLUSIVE',
+  );
+  const { environment } = agentMcpProfileReviewReadyEnvironment(P02_V2_PROFILE, {
+    repositoryLabels: {
+      [P02_V2_PROFILE.claimLabelName]: {
+        name: P02_V2_PROFILE.claimLabelName,
+        description: agentMcpProfileClaimLabelDescription(P02_V2_PROFILE),
+      },
+      [agentMcpProfileTerminalLabelName(P02_V2_PROFILE)]: {
+        name: agentMcpProfileTerminalLabelName(P02_V2_PROFILE),
+        description: terminalDescription,
+      },
+    },
+  });
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', P02_V2_PROFILE.id];
+  try {
+    const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(status.status, 0, status.stderr);
+    const ambiguous = JSON.parse(status.stdout);
+    assert.equal(ambiguous.state, 'AMBIGUOUS_TERMINAL_LATCH');
+    assert.equal(ambiguous.disposition, null);
+    assert.equal(ambiguous.terminal_label_description, terminalDescription);
+
+    const reconciled = environment.execute([
+      'epoch:agent-mcp-profile-reconcile-ambiguous',
+      ...runArgs,
+    ]);
+    assert.equal(reconciled.status, 0, reconciled.stderr);
+    assert.equal(
+      JSON.parse(reconciled.stdout).state,
+      'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
+    );
+
+    const terminal = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    const terminalStatus = JSON.parse(terminal.stdout);
+    assert.equal(terminalStatus.state, 'INCONCLUSIVE');
+    assert.equal(terminalStatus.disposition.ambiguousLatchReconciled, true);
+    assert.equal(terminalStatus.retry_allowed, false);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('P02 v2 claimed no-report terminal latch replays its exact inconclusive result', () => {
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(P02_V2_PROFILE);
+  const keyPair = generateKeyPairSync('ed25519');
+  const publicKeyBase64 = keyPair.publicKey
+    .export({ type: 'spki', format: 'der' })
+    .toString('base64');
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', P02_V2_PROFILE.id];
+  const diagnostics = {
+    schemaVersion: 1,
+    reasonCode: 'P02_TERMINAL_LATCH_REPLAYED',
+    checks: { invocationStateUnknown: true },
+    counters: {},
+  };
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claim = JSON.parse(claimed.stdout);
+    const state = environment.readState();
+    state.repositoryLabels ??= {};
+    state.repositoryLabels[agentMcpProfileTerminalLabelName(P02_V2_PROFILE)] = {
+      name: agentMcpProfileTerminalLabelName(P02_V2_PROFILE),
+      color: '0e8a16',
+      description: agentMcpProfileTerminalLabelDescription(P02_V2_PROFILE, 'INCONCLUSIVE'),
+    };
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const recoveredStatus = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(recoveredStatus.status, 0, recoveredStatus.stderr);
+    assert.equal(JSON.parse(recoveredStatus.stdout).state, 'AMBIGUOUS_TERMINAL_LATCH');
+
+    const recovered = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claim.claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--diagnostics-json',
+      JSON.stringify(diagnostics),
+    ]);
+    assert.equal(recovered.status, 0, recovered.stderr);
+    assert.equal(JSON.parse(recovered.stdout).state, 'AGENT_MCP_PROFILE_RESULT_RECORDED');
+
+    const finalStatus = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(finalStatus.status, 0, finalStatus.stderr);
+    const disposition = JSON.parse(finalStatus.stdout).disposition;
+    assert.equal(JSON.parse(finalStatus.stdout).state, 'INCONCLUSIVE');
+    assert.deepEqual(disposition.failureDiagnostics, diagnostics);
+    assert.equal(disposition.retryAllowed, false);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('P02 v2 REPORT_WRITTEN terminal latch replays after stale claim and PR write failure', () => {
+  const harnessRoot = createIsolatedHarnessRoot();
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(P02_V2_PROFILE, {
+    harnessRoot,
+  });
+  const runnerKeyPair = generateKeyPairSync('ed25519');
+  const publicKeyBase64 = runnerKeyPair.publicKey
+    .export({ type: 'spki', format: 'der' })
+    .toString('base64');
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', P02_V2_PROFILE.id];
+  try {
+    const claimResult = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      publicKeyBase64,
+    ]);
+    assert.equal(claimResult.status, 0, claimResult.stderr);
+    const claim = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.agent_mcp_profile_dispositions[P02_V2_PROFILE.id];
+    const built = buildP02V2ReportForClaim(claim, runnerKeyPair);
+    assert.equal(built.passed, true, JSON.stringify(built));
+    const reportPath = path.join(harnessRoot, P02_V2_PROFILE.reportPath);
+    fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+    const reportBytes = Buffer.from(`${JSON.stringify(built.report, null, 2)}\n`);
+    fs.writeFileSync(reportPath, reportBytes);
+    const reportSha256 = createHash('sha256').update(reportBytes).digest('hex');
+    const mockState = environment.readState();
+    mockState.dirty = `?? ${P02_V2_PROFILE.reportPath}`;
+    mockState.failNextPullRequestPatch = true;
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(mockState, null, 2)}\n`);
+
+    const resultArgs = [
+      'epoch:agent-mcp-profile-result',
+      ...runArgs,
+      '--claim-id',
+      claim.claimId,
+      '--state',
+      'REPORT_WRITTEN',
+      '--report-sha256',
+      reportSha256,
+    ];
+    const first = environment.execute(resultArgs);
+    assert.notEqual(first.status, 0);
+    assert.match(first.stderr, /simulated pull request body update failure/u);
+
+    const partial = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(partial.status, 0, partial.stderr);
+    const partialStatus = JSON.parse(partial.stdout);
+    assert.equal(partialStatus.state, 'AMBIGUOUS_TERMINAL_LATCH');
+    assert.equal(partialStatus.disposition.state, 'CLAIMED');
+    assert.equal(
+      partialStatus.terminal_label_description,
+      agentMcpProfileTerminalLabelDescription(P02_V2_PROFILE, 'REPORT_WRITTEN', reportSha256),
+    );
+
+    const staleState = environment.readState();
+    staleState.baseSha = sha('d');
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(staleState, null, 2)}\n`);
+    const replayed = environment.execute(resultArgs);
+    assert.equal(replayed.status, 0, replayed.stderr);
+    assert.equal(JSON.parse(replayed.stdout).state, 'AGENT_MCP_PROFILE_RESULT_RECORDED');
+
+    const finalStatus = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(finalStatus.status, 0, finalStatus.stderr);
+    const recorded = JSON.parse(finalStatus.stdout);
+    assert.equal(recorded.state, 'REPORT_WRITTEN');
+    assert.equal(recorded.disposition.reportSha256, reportSha256);
+    assert.equal(recorded.disposition.retryAllowed, false);
+  } finally {
+    environment.cleanup();
+    fs.rmSync(harnessRoot, { recursive: true, force: true });
   }
 });
 

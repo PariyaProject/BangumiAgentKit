@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  agentMcpProfileTerminalLabelDescription,
   agentMcpProfileArgumentsSha256,
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
@@ -13,6 +14,7 @@ import {
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 import {
   buildP02CodexExecArgs,
+  classifyP02TerminalLatchRecovery,
   classifyP02ReportWriteRecovery,
   isP02ProfileClaimCurrent,
   validateP02RunnerArgs,
@@ -64,6 +66,80 @@ test('P02 report-write recovery distinguishes committed, stale-terminal, and pen
     ),
     'ACK_PENDING',
   );
+});
+
+test('P02 terminal-latch recovery replays only the exact durable terminal state', () => {
+  const reportSha256 = 'd'.repeat(64);
+  const noClaim = {
+    state: 'AMBIGUOUS_TERMINAL_LATCH',
+    disposition: null,
+    terminal_label_description: agentMcpProfileTerminalLabelDescription(PROFILE_V2, 'INCONCLUSIVE'),
+  };
+  assert.equal(
+    classifyP02TerminalLatchRecovery(noClaim, null, PROFILE_V2.id),
+    'RECONCILE_AMBIGUOUS',
+  );
+
+  const claimed = {
+    state: 'AMBIGUOUS_TERMINAL_LATCH',
+    disposition: { claimId: 'p02-claim', state: 'CLAIMED' },
+  };
+  assert.equal(
+    classifyP02TerminalLatchRecovery(
+      {
+        ...claimed,
+        terminal_label_description: agentMcpProfileTerminalLabelDescription(
+          PROFILE_V2,
+          'REPORT_WRITTEN',
+          reportSha256,
+        ),
+      },
+      reportSha256,
+      PROFILE_V2.id,
+    ),
+    'REPLAY_REPORT_WRITTEN',
+  );
+  assert.equal(
+    classifyP02TerminalLatchRecovery(
+      {
+        ...claimed,
+        terminal_label_description: agentMcpProfileTerminalLabelDescription(
+          PROFILE_V2,
+          'INCONCLUSIVE',
+          reportSha256,
+        ),
+      },
+      reportSha256,
+      PROFILE_V2.id,
+    ),
+    'REPLAY_INCONCLUSIVE',
+  );
+  assert.equal(
+    classifyP02TerminalLatchRecovery(
+      {
+        ...claimed,
+        terminal_label_description: agentMcpProfileTerminalLabelDescription(
+          PROFILE_V2,
+          'INCONCLUSIVE',
+        ),
+      },
+      null,
+      PROFILE_V2.id,
+    ),
+    'REPLAY_INCONCLUSIVE',
+  );
+  assert.equal(
+    classifyP02TerminalLatchRecovery(
+      {
+        ...claimed,
+        terminal_label_description: 'Run95 P02 REPORT_WRITTEN sha256=ffffffff',
+      },
+      reportSha256,
+      PROFILE_V2.id,
+    ),
+    'ACK_PENDING',
+  );
+  assert.equal(classifyP02TerminalLatchRecovery({ state: 'CLAIMED' }, null, PROFILE_V2.id), 'NONE');
 });
 
 test('P02 exact claim-current check accepts the assigned runtime reviewer and rejects drift', () => {

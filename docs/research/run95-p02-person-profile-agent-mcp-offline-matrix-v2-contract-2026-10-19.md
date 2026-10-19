@@ -53,6 +53,14 @@ is accepted, retain only its digest as unaccepted and terminalize the claim as
 `INCONCLUSIVE`. Any incomplete or ambiguous attempt is terminal and has
 `retryAllowed=false`.
 
+If a terminal GitHub label was written but the Epoch PR disposition update
+failed, the runner reads the exact terminal label description and replays only
+that matching idempotent Harness operation. Reconciliation of an unclaimed
+no-report latch must not invoke the tool; a claimed result may be replayed only
+when its profile, claim id, result state, and report digest match the durable
+latch. A conflicting or unverifiable latch remains pending and grants no
+acceptance credit.
+
 Any valid report can add only the `bangumi.get_person_profile` Agent/MCP matrix
 cell. P02 remains `PARTIAL`; this profile earns no first/latest participation
 scenario credit. The path makes no live API, OAuth/account, community, HTML,

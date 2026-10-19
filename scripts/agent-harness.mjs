@@ -3820,6 +3820,7 @@ function commandEpochAgentMcpProfileStatus(options) {
     retry_allowed: false,
     claim_label_present: claimLabel !== null,
     terminal_label_present: terminalLabel !== null,
+    terminal_label_description: terminalLabel?.description ?? null,
     review_gate: reviewGate,
     disposition,
     issue_state: runResult.state.state,
@@ -4574,6 +4575,25 @@ function commandEpochAgentMcpProfileResult(options) {
       { profileId, claimId },
     );
   }
+  const existingTerminalLabel = readAgentMcpProfileLabels().find(
+    (label) => label.name === agentMcpProfileTerminalLabelName(profile),
+  );
+  const reportDigestValid =
+    resultState === 'REPORT_WRITTEN'
+      ? /^[0-9a-f]{64}$/u.test(reportSha256 ?? '')
+      : reportSha256 === null || /^[0-9a-f]{64}$/u.test(reportSha256);
+  const existingTerminalLatchMatches =
+    reportDigestValid &&
+    existingTerminalLabel?.description ===
+      agentMcpProfileTerminalLabelDescription(profile, resultState, reportSha256);
+  const replayingTerminalLatch = current.state === 'CLAIMED' && existingTerminalLatchMatches;
+  if (existingTerminalLabel && !existingTerminalLatchMatches) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_TERMINAL_LATCH_MISMATCH',
+      'A durable terminal profile label exists with a different result or report digest.',
+      { profileId, claimId },
+    );
+  }
   if (current.state === resultState) {
     if (
       failureDiagnostics &&
@@ -4653,7 +4673,9 @@ function commandEpochAgentMcpProfileResult(options) {
         'REPORT_WRITTEN requires the exact sanitized report SHA-256.',
       );
     }
-    assertAgentMcpProfileClaimCurrent(profile, current);
+    // The exact terminal label is the write-ahead record. Replay it even if the
+    // Candidate went stale after the first PR-body write failed.
+    if (!replayingTerminalLatch) assertAgentMcpProfileClaimCurrent(profile, current);
     const status = git('status', '--porcelain', '--untracked-files=all');
     if (status !== `?? ${profile.reportPath}`) {
       throw new HarnessInvariantError(
@@ -4690,7 +4712,7 @@ function commandEpochAgentMcpProfileResult(options) {
         );
       }
       const validation = validateAgentMcpProfileReport(profile, current, reportPath);
-      if (validation.passed) {
+      if (validation.passed && !replayingTerminalLatch) {
         let claimCurrent = true;
         try {
           assertAgentMcpProfileClaimCurrent(profile, current);

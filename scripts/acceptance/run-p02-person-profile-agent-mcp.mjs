@@ -20,6 +20,7 @@ import {
 import {
   agentMcpProfileArgumentsSha256,
   agentMcpProfileRegistrySha256,
+  agentMcpProfileTerminalLabelDescription,
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
@@ -658,12 +659,53 @@ export function classifyP02ReportWriteRecovery(status, claimId, reportSha256) {
   return 'ACK_PENDING';
 }
 
+export function classifyP02TerminalLatchRecovery(
+  status,
+  reportSha256,
+  profileId = DEFAULT_PROFILE_ID,
+) {
+  if (status?.state !== 'AMBIGUOUS_TERMINAL_LATCH') return 'NONE';
+  const { profile } = profileContext(profileId);
+  if (!profile) return 'ACK_PENDING';
+  const description = status.terminal_label_description;
+  if (
+    status.disposition == null &&
+    reportSha256 == null &&
+    description === agentMcpProfileTerminalLabelDescription(profile, 'INCONCLUSIVE')
+  ) {
+    return 'RECONCILE_AMBIGUOUS';
+  }
+  if (
+    status.disposition?.state !== 'CLAIMED' ||
+    typeof status.disposition.claimId !== 'string' ||
+    status.disposition.claimId.length === 0
+  ) {
+    return 'ACK_PENDING';
+  }
+  if (
+    reportSha256 &&
+    description === agentMcpProfileTerminalLabelDescription(profile, 'REPORT_WRITTEN', reportSha256)
+  ) {
+    return 'REPLAY_REPORT_WRITTEN';
+  }
+  if (
+    description ===
+    agentMcpProfileTerminalLabelDescription(profile, 'INCONCLUSIVE', reportSha256 ?? null)
+  ) {
+    return 'REPLAY_INCONCLUSIVE';
+  }
+  return 'ACK_PENDING';
+}
+
 function resolveReportWrittenAckFailure(prNumber, claim, reportSha256, profile) {
   let status;
   try {
     status = readProfileStatus(prNumber, profile.id);
   } catch {
     return printReportWrittenAckPending(profile.id, claim.claimId, reportSha256);
+  }
+  if (status.state === 'AMBIGUOUS_TERMINAL_LATCH') {
+    return recoverAmbiguousTerminalLatch(prNumber, status, profile.id);
   }
   const recovery = classifyP02ReportWriteRecovery(status, claim.claimId, reportSha256);
   if (recovery === 'REPORT_WRITTEN') {
@@ -736,11 +778,90 @@ function reconcileAmbiguousClaim(prNumber, profileId = DEFAULT_PROFILE_ID) {
   return 1;
 }
 
+function recoverAmbiguousTerminalLatch(prNumber, status, profileId = DEFAULT_PROFILE_ID) {
+  const { profile } = profileContext(profileId);
+  const reportPath = path.join(ROOT, profile.reportPath);
+  const reportSha256 = existsSync(reportPath) ? sha256(readFileSync(reportPath)) : null;
+  const recovery = classifyP02TerminalLatchRecovery(status, reportSha256, profile.id);
+  if (recovery === 'RECONCILE_AMBIGUOUS') {
+    return reconcileAmbiguousClaim(prNumber, profile.id);
+  }
+  if (!['REPLAY_REPORT_WRITTEN', 'REPLAY_INCONCLUSIVE'].includes(recovery)) {
+    printSafe({
+      state: 'TERMINAL_LATCH_ACK_PENDING',
+      profileId: profile.id,
+      retryAllowed: false,
+      reasonCode: 'P02_TERMINAL_LATCH_REPLAY_UNCONFIRMED',
+    });
+    return 1;
+  }
+  const claimId = status.disposition.claimId;
+  const resultState = recovery === 'REPLAY_REPORT_WRITTEN' ? 'REPORT_WRITTEN' : 'INCONCLUSIVE';
+  const diagnostics =
+    resultState === 'INCONCLUSIVE'
+      ? {
+          schemaVersion: 1,
+          reasonCode: 'P02_TERMINAL_LATCH_REPLAYED',
+          checks: { invocationStateUnknown: true },
+          counters: {},
+        }
+      : null;
+  const result = persistProfileResult(
+    prNumber,
+    claimId,
+    resultState,
+    reportSha256,
+    profile.id,
+    diagnostics,
+  );
+  let confirmed;
+  try {
+    confirmed = readProfileStatus(prNumber, profile.id);
+  } catch {
+    confirmed = null;
+  }
+  const resultRecorded =
+    result.exitCode === 0 &&
+    ['AGENT_MCP_PROFILE_RESULT_RECORDED', 'AGENT_MCP_PROFILE_RESULT_ALREADY_RECORDED'].includes(
+      result.output?.state,
+    ) &&
+    confirmed?.state === resultState &&
+    confirmed.disposition?.retryAllowed === false &&
+    (resultState !== 'REPORT_WRITTEN' || confirmed.disposition?.reportSha256 === reportSha256) &&
+    (resultState !== 'INCONCLUSIVE' ||
+      (reportSha256 === null
+        ? confirmed.disposition?.unacceptedReportSha256 === null ||
+          confirmed.disposition?.unacceptedReportSha256 === undefined
+        : confirmed.disposition?.unacceptedReportSha256 === reportSha256));
+  if (!resultRecorded) {
+    printSafe({
+      state: 'TERMINAL_LATCH_ACK_PENDING',
+      profileId: profile.id,
+      claimId,
+      retryAllowed: false,
+      reasonCode: 'P02_TERMINAL_LATCH_REPLAY_UNCONFIRMED',
+    });
+    return 1;
+  }
+  printSafe({
+    state: resultState,
+    profileId: profile.id,
+    claimId,
+    reportSha256,
+    retryAllowed: false,
+    recovered: true,
+  });
+  return resultState === 'REPORT_WRITTEN' ? 0 : 1;
+}
+
 function terminalizeP02NoReportAttempt(prNumber, claimId, reasonCode, profileId) {
   const { profile } = profileContext(profileId);
   const status = readProfileStatus(prNumber, profile.id);
   if (status.state === 'AMBIGUOUS') {
     return reconcileAmbiguousClaim(prNumber, profile.id);
+  }
+  if (status.state === 'AMBIGUOUS_TERMINAL_LATCH') {
+    return recoverAmbiguousTerminalLatch(prNumber, status, profile.id);
   }
   if (
     status.state === 'CLAIMED' &&
@@ -832,6 +953,9 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
   if (profileStatus.state === 'AMBIGUOUS') {
     return reconcileAmbiguousClaim(prNumber, profile.id);
   }
+  if (profileStatus.state === 'AMBIGUOUS_TERMINAL_LATCH') {
+    return recoverAmbiguousTerminalLatch(prNumber, profileStatus, profile.id);
+  }
   if (
     ['REPORT_WRITTEN', 'INCONCLUSIVE'].includes(profileStatus.state) &&
     profileStatus.disposition
@@ -908,6 +1032,9 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
     if (claimStatus.state === 'AMBIGUOUS') {
       return reconcileAmbiguousClaim(prNumber, profile.id);
     }
+    if (claimStatus.state === 'AMBIGUOUS_TERMINAL_LATCH') {
+      return recoverAmbiguousTerminalLatch(prNumber, claimStatus, profile.id);
+    }
     if (claimStatus.state === 'CLAIMED' && claimStatus.disposition) {
       return finalizePreexistingAttempt(prNumber, claimStatus, profile.id);
     }
@@ -916,6 +1043,9 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
   const claimStatus = readProfileStatus(prNumber, profile.id);
   if (claimStatus.state === 'AMBIGUOUS') {
     return reconcileAmbiguousClaim(prNumber, profile.id);
+  }
+  if (claimStatus.state === 'AMBIGUOUS_TERMINAL_LATCH') {
+    return recoverAmbiguousTerminalLatch(prNumber, claimStatus, profile.id);
   }
   if (claimStatus.state !== 'CLAIMED' || !claimStatus.disposition) {
     return terminalizeP02NoReportAttempt(
@@ -1108,6 +1238,9 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
     }
     if (currentStatus.state === 'AMBIGUOUS') {
       return reconcileAmbiguousClaim(prNumber, profile.id);
+    }
+    if (currentStatus.state === 'AMBIGUOUS_TERMINAL_LATCH') {
+      return recoverAmbiguousTerminalLatch(prNumber, currentStatus, profile.id);
     }
     if (currentStatus.state === 'CLAIMED' && currentStatus.disposition?.claimId === claim.claimId) {
       const reportPath = path.join(ROOT, profile.reportPath);
