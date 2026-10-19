@@ -1,3 +1,7 @@
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
@@ -17,6 +21,12 @@ const ONE_PIXEL_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+6R0JggAAAABJRU5ErkJggg==',
   'base64',
 );
+const visualQaDirectory = process.env.BANGUMI_DISCOVERY_VISUAL_QA_DIR;
+const visualQaWidths = [320, 360, 520, 640, 960] as const;
+const visualPosterUrl = 'https://synthetic.invalid/discovery-results-cover.png';
+const visualPosterDataUrl = `data:image/png;base64,${readFileSync(
+  resolve(process.cwd(), 'tests/render/fixtures/subject-overview-cover.png'),
+).toString('base64')}`;
 
 type FixtureState = 'ok' | 'partial' | 'unsupported' | 'unavailable';
 
@@ -53,29 +63,32 @@ function makeResult(state: FixtureState = 'partial', itemCount = 13) {
         value: unknown;
       }>,
       unsupported: [],
-      limitations: ['官方搜索总数是估计值。', '结果受有界预算限制。'],
+      limitations: state === 'ok' ? [] : ['官方搜索总数是估计值。', '结果受有界预算限制。'],
     },
     coverage: {
       state: coverageState,
-      requested: 10,
+      requested: itemCount,
       scanned: 20,
       matched: itemCount,
       returned: itemCount,
       pagesScanned: 2,
       totalKind: state === 'ok' ? 'exact' : 'estimated',
       upstreamExhausted: state === 'ok',
-      budgetExceeded: state !== 'ok',
-      outputCap: state === 'partial' ? 12 : undefined,
-      hydrationsAttempted: state === 'ok' ? 0 : 5,
-      hydrationsSucceeded: state === 'ok' ? 0 : 4,
-      hydrationsFailed: state === 'ok' ? 0 : 1,
-      hydrationsUnresolved: state === 'ok' ? 0 : 1,
-      unresolvedCandidates: state === 'ok' ? 0 : 1,
+      budgetExceeded: state === 'partial',
+      outputCap: undefined as number | undefined,
+      hydrationsAttempted: state === 'partial' ? 5 : 0,
+      hydrationsSucceeded: state === 'partial' ? 4 : 0,
+      hydrationsFailed: state === 'partial' ? 1 : 0,
+      hydrationsUnresolved: state === 'partial' ? 1 : 0,
+      unresolvedCandidates: state === 'partial' ? 1 : 0,
       hydrationBudgetExceeded: false,
-      reason: state === 'ok' ? undefined : 'Execution budget was exhausted.',
+      reason:
+        state === 'partial'
+          ? 'Execution budget was exhausted before upstream coverage was proven.'
+          : undefined,
     },
     warnings:
-      state === 'ok'
+      state !== 'partial'
         ? []
         : [
             { code: 'DISCOVERY_BUDGET_EXCEEDED', message: '已达到有界执行预算。' },
@@ -111,7 +124,7 @@ describe('discovery-results renderer', () => {
       concepts: ['后宫'],
       rating: { min: 8 },
       sort: 'score',
-      limit: 10,
+      limit: 13,
     });
 
     expect(viewModel.template).toBe('discovery-results');
@@ -128,6 +141,7 @@ describe('discovery-results renderer', () => {
     expect(viewModel.query.facets).toEqual(
       expect.arrayContaining(['媒介：动画', '概念：后宫', '评分：≥8']),
     );
+    expect(viewModel.query.facets).toContain('上限：13');
     expect(viewModel.items[2]?.score).toBeUndefined();
     expect(viewModel.plan.pushdown[0]).toContain('媒介');
     expect(viewModel.plan.pushdown[0]).toContain('动画');
@@ -136,6 +150,11 @@ describe('discovery-results renderer', () => {
     expect(viewModel.plan.derivedFilters[0]).toContain('降序');
     expect(viewModel.source.operations).toEqual(expect.arrayContaining(['searchSubjects']));
     expect(viewModel.coverage.budgetExceeded).toBe(true);
+    expect(viewModel.coverage.reason).toBe(
+      'Execution budget was exhausted before upstream coverage was proven.',
+    );
+    expect(viewModel.plan.operation).toBe('searchSubjects');
+    expect(viewModel.source.retrievedAt).toBe('2026-08-11T00:00:00.000Z');
   });
 
   it('labels collection heat precisely and shows the score tie-break boundary in Chinese', () => {
@@ -198,12 +217,14 @@ describe('discovery-results renderer', () => {
     expect(html).toContain('40.0%');
     expect(html).toContain('不是官方 API 公式、章节完成率、个人进度或偏好');
     expect(html).toContain(COLLECTION_COMPLETION_UNRESOLVED_CAVEAT);
-    expect(html).toContain('未解析候选 3');
+    expect(html).not.toContain('未解析候选 3');
+    expect(viewModel.coverage.unresolvedCandidates).toBe(3);
     expect(html.indexOf('条件解释')).toBeLessThan(html.indexOf('Original title 1'));
   });
 
   it('renders the resolved season when the query requested the current season', () => {
     const result = makeResult('partial', 1);
+    result.coverage.requested = 12;
     Object.assign(result.plan, { season: '2026-autumn' });
     const viewModel = buildDiscoveryResultsViewModel(result, {
       media: 'anime',
@@ -260,7 +281,7 @@ describe('discovery-results renderer', () => {
     });
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 360);
 
-    expect(html).toContain('官方作品搜索接口仍处于实验阶段。');
+    expect(html).toContain('官方作品搜索接口仍处于实验阶段，可能遗漏尚未编入索引的条目');
     expect(html).toContain('检索受最大页数与候选条目数限制');
     expect(html).toContain('官方搜索总数为估算值，不能据此认定 Bangumi 全库已完整覆盖');
     expect(html).toContain('“尽量完整”会在预算内继续检索；预算耗尽时仍标记为部分覆盖');
@@ -298,11 +319,11 @@ describe('discovery-results renderer', () => {
       360,
     );
     expect(forwardCompatibilityHtml).toContain('未识别的来源说明仍保留。');
-    expect(forwardCompatibilityHtml).toContain('未知来源提示仍保留。');
+    expect(forwardCompatibilityHtml).toContain('未知来源提示仍保留');
     expect(forwardCompatibilityHtml).toContain(
-      `官方搜索来源提示：${unfamiliarExperimentalMessage}`,
+      '官方作品搜索接口仍处于实验阶段，可能遗漏尚未编入索引的条目',
     );
-    expect(forwardCompatibilityHtml).not.toContain('官方作品搜索接口仍处于实验阶段。');
+    expect(forwardCompatibilityHtml).not.toContain(unfamiliarExperimentalMessage);
 
     for (const width of [320, 360, 520]) {
       const mobileHtml = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
@@ -364,21 +385,132 @@ describe('discovery-results renderer', () => {
     expect(viewModel.plan.pushdown.every((filter) => Array.from(filter).length <= 128)).toBe(true);
   });
 
-  it('shows coverage reasons even when no detail hydration was attempted', () => {
-    const result = makeResult('partial', 1);
+  it('deduplicates an engine output-cap warning already explained by the coverage reason', () => {
+    const result = makeResult('partial', 12);
+    result.coverage.requested = 13;
+    result.coverage.matched = 13;
+    result.coverage.returned = 12;
+    result.coverage.outputCap = 12;
     result.coverage.hydrationsAttempted = 0;
     result.coverage.hydrationsSucceeded = 0;
     result.coverage.hydrationsFailed = 0;
     result.coverage.hydrationsUnresolved = 0;
+    result.coverage.unresolvedCandidates = 0;
+    result.coverage.reason = 'output_cap';
+    result.coverage.budgetExceeded = false;
+    result.warnings = [
+      Object.assign(
+        {
+          code: 'DISCOVERY_OUTPUT_TRUNCATED',
+          message:
+            'Discovery matched more items than the trusted output cap; the result is partial.',
+        },
+        { matched: 13, returned: 12, outputCap: 12 },
+      ),
+    ];
+    result.limitations = [];
+
+    const viewModel = buildDiscoveryResultsViewModel(result, { limit: 13 });
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
+
+    expect(html).toContain('范围说明：结果已达到返回上限，仍有匹配条目未纳入列表。');
+    expect(html.match(/结果已达到返回上限/g)).toHaveLength(1);
+    expect(html).not.toContain('提示：');
+    expect(html).not.toContain('output_cap');
+    expect(html).not.toContain('计划与证据边界');
+    expect(html).not.toContain('searchSubjects');
+    expect(html).toContain('条目 ID 1');
+    expect(viewModel.coverage).toMatchObject({ matched: 13, returned: 12, outputCap: 12 });
+    expect(viewModel.coverage.reason).toBe('output_cap');
+    expect(viewModel.warnings).toHaveLength(1);
+    expect(viewModel.plan.operation).toBe('searchSubjects');
+    expect(viewModel.source.operations).toContain('searchSubjects');
+    expect(viewModel.source.retrievedAt).toBe('2026-08-11T00:00:00.000Z');
+
     result.coverage.reason = 'Output cap was reached.';
+    const legacyReasonHtml = renderHtmlTemplate(
+      buildDiscoveryResultsViewModel(result, { limit: 13 }),
+      'bangumi-dark',
+      {},
+      640,
+    );
+    expect(legacyReasonHtml).toContain('范围说明：结果已达到返回上限，仍有匹配条目未纳入列表。');
+    expect(legacyReasonHtml.match(/结果已达到返回上限/g)).toHaveLength(1);
+    expect(legacyReasonHtml).not.toContain('提示：');
+  });
+
+  it('keeps the structured budget limitation but hides its duplicate image copy', () => {
+    const result = makeResult('partial', 1);
+    const viewModel = buildDiscoveryResultsViewModel(result, {});
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 360);
+
+    expect(html).toContain('范围说明：检索已到本次处理上限，尚未证明覆盖全部结果。');
+    expect(html).not.toContain('结果受有界预算限制。');
+    expect(viewModel.limitations).toContain('结果受有界预算限制。');
+  });
+
+  it('deduplicates an unresolved-field warning already explained by the coverage reason', () => {
+    const result = makeResult('partial', 1);
+    result.coverage.budgetExceeded = false;
+    result.coverage.reason =
+      'Some candidate filters remained unresolved because required data was missing, inconsistent, or not computable.';
+    result.warnings = [
+      {
+        code: 'DISCOVERY_HYDRATION_UNRESOLVED',
+        message:
+          'Some discovered candidates could not be reliably evaluated because required fields were missing, inconsistent, or not computable; they remain unresolved.',
+      },
+    ];
+
+    const viewModel = buildDiscoveryResultsViewModel(result, {});
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 360);
+
+    expect(html).toContain('范围说明：部分候选的筛选字段无法确认，相关结论按未知处理。');
+    expect(html).not.toContain('提示：');
+    expect(html).not.toContain('Some candidate filters remained unresolved');
+    expect(viewModel.coverage.reason).toBe(result.coverage.reason);
+    expect(viewModel.warnings).toHaveLength(1);
+  });
+
+  it('uses a safe fallback for unknown technical reasons and keeps exact detail structured', () => {
+    const result = makeResult('partial', 1);
+    result.coverage.budgetExceeded = false;
+    result.coverage.reason = 'InternalPlannerDeadlineError: candidate_budget=42';
+
+    const viewModel = buildDiscoveryResultsViewModel(result, {});
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 360);
+
+    expect(viewModel.coverage.reason).toBe('InternalPlannerDeadlineError: candidate_budget=42');
+    expect(html).toContain('范围说明：本次结果范围未能完全确认；详细原因保留在结构化结果中。');
+    expect(html).not.toContain('InternalPlannerDeadlineError');
+    expect(html).not.toContain('candidate_budget=42');
+  });
+
+  it('keeps hydration limits concise and avoids a duplicate budget warning', () => {
+    const result = makeResult('partial', 1);
+    result.coverage.budgetExceeded = false;
+    result.coverage.hydrationBudgetExceeded = true;
+    result.coverage.reason =
+      'Hydration budget was exhausted before all required candidates could be evaluated.';
+    result.warnings = [
+      {
+        code: 'DISCOVERY_HYDRATION_BUDGET_EXCEEDED',
+        message: '已达到详情核验预算。',
+      },
+      { code: 'DISCOVERY_HYDRATION_UNRESOLVED', message: '部分字段仍未知。' },
+    ];
 
     const html = renderHtmlTemplate(
       buildDiscoveryResultsViewModel(result, {}),
       'bangumi-dark',
       {},
-      640,
+      360,
     );
-    expect(html).toContain('覆盖说明：Output cap was reached.');
+
+    expect(html).toContain('范围说明：条目核验已到处理上限，部分筛选条件可能尚未确认。');
+    expect(html).toContain('部分候选的筛选字段未能核实，已按未知处理。');
+    expect(html).not.toContain('Hydration budget was exhausted');
+    expect(html).not.toContain('已达到详情核验预算');
   });
 
   it('enforces the 12-item renderer and asset-resolution ceiling for caller-created view models', async () => {
@@ -475,8 +607,13 @@ describe('discovery-results renderer', () => {
       expect(viewModel.source.operations).toEqual([]);
       expect(viewModel.source.experimental).toBeUndefined();
       const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
-      expect(html).toContain('无证据来源路径');
-      expect(html).not.toContain('证据来源路径<!-- --> 条目搜索');
+      expect(html).not.toContain('证据来源路径');
+      expect(html).not.toContain('searchSubjects');
+      if (result === unsupportedResult) {
+        expect(html).toContain('筛选概念未能确认，未进行语义扩展。');
+        expect(html).not.toContain('not-in-vocabulary');
+        expect(html).not.toContain('Concept "');
+      }
     }
   });
 
@@ -564,4 +701,98 @@ describe('discovery-results renderer', () => {
       }
     }
   }, 30_000);
+});
+
+describe.skipIf(!visualQaDirectory)('discovery results final image matrix', () => {
+  let visualRenderService: RenderService;
+  let mockedAssetRequests = 0;
+  beforeAll(() => {
+    const assetResolver = {
+      async resolveAsset(url?: string) {
+        mockedAssetRequests += 1;
+        if (url !== visualPosterUrl) throw new Error(`Unexpected synthetic asset: ${url}`);
+        return { dataUrl: visualPosterDataUrl };
+      },
+    };
+    visualRenderService = new RenderService(undefined, undefined, assetResolver as never);
+  });
+  afterAll(async () => {
+    await visualRenderService?.close();
+    await closeMobileLayoutBrowser();
+  });
+
+  it('renders complete and partial synthetic states at every target width with PNG receipts', async () => {
+    const destination = resolve(visualQaDirectory!);
+    await mkdir(destination, { recursive: true });
+    const images: Array<{
+      state: 'complete' | 'partial';
+      filename: string;
+      width: number;
+      height: number;
+      byteLength: number;
+      sha256: string;
+    }> = [];
+
+    for (const state of ['ok', 'partial'] as const) {
+      const viewModel = buildDiscoveryResultsViewModel(makeResult(state), {
+        keyword: '校园恋爱',
+        media: 'anime',
+        concepts: ['后宫'],
+        rating: { min: 8 },
+        sort: 'score',
+        limit: 13,
+      });
+      expect(viewModel.query.facets).toContain('上限：13');
+      expect(viewModel.coverage).toMatchObject({ requested: 13, returned: 13 });
+      if (viewModel.items[0]) viewModel.items[0].image = visualPosterUrl;
+      expect(extractImageUrls(viewModel)).toEqual([visualPosterUrl]);
+      for (const width of visualQaWidths) {
+        const renderedHtml = renderHtmlTemplate(
+          viewModel,
+          'bangumi-dark',
+          { [visualPosterUrl]: visualPosterDataUrl },
+          width,
+        );
+        const layout = await measureRenderRootLayout(renderedHtml, width);
+        expect(layout.clientWidth, `${state} root width at ${width}px`).toBe(width);
+        expect(layout.scrollWidth, `${state} scroll width at ${width}px`).toBe(width);
+        expect(layout.overflowing, `${state} overflow at ${width}px`).toEqual([]);
+        const rendered = await visualRenderService.renderCard(viewModel, {
+          width,
+          deviceScaleFactor: 1,
+          cache: false,
+        });
+        const filename = `discovery-results-${state === 'ok' ? 'complete' : 'partial'}-${width}.png`;
+        await writeFile(join(destination, filename), rendered.buffer);
+        images.push({
+          state: state === 'ok' ? 'complete' : 'partial',
+          filename,
+          width: rendered.width,
+          height: rendered.height,
+          byteLength: rendered.buffer.byteLength,
+          sha256: createHash('sha256').update(rendered.buffer).digest('hex'),
+        });
+      }
+    }
+
+    await writeFile(
+      join(destination, 'manifest.json'),
+      `${JSON.stringify(
+        {
+          externalRequests: 0,
+          mockedAssetRequests,
+          syntheticPoster: 'tests/render/fixtures/subject-overview-cover.png',
+          images,
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    expect(images).toHaveLength(10);
+    expect(mockedAssetRequests).toBe(10);
+    expect(new Set(images.map((image) => image.filename)).size).toBe(10);
+    expect(
+      images.every((image) => image.width > 0 && image.height > 0 && image.sha256.length === 64),
+    ).toBe(true);
+  });
 });

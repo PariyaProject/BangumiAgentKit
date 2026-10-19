@@ -13,6 +13,9 @@ export interface DiscoveryResultsCardProps {
   width?: number;
 }
 
+const DISCOVERY_UNRESOLVED_COVERAGE_REASON =
+  'Some candidate filters remained unresolved because required data was missing, inconsistent, or not computable.';
+
 function stateLabel(state: DiscoveryResultsViewModel['state']): string {
   const labels: Record<DiscoveryResultsViewModel['state'], string> = {
     ok: '结果可用',
@@ -40,20 +43,6 @@ function totalLabel(totalKind: DiscoveryResultsViewModel['coverage']['totalKind'
   return '总数未知';
 }
 
-function operationLabel(operation: string): string {
-  if (operation === 'searchSubjects') return '条目搜索';
-  if (operation === 'browseSubjects') return '条目浏览';
-  return '来源操作';
-}
-
-function qualityLabel(quality: string): string {
-  if (quality === 'exact') return '条件精确';
-  if (quality === 'bounded_exact') return '有界精确';
-  if (quality === 'partial_possible') return '可能部分覆盖';
-  if (quality === 'unsupported') return '条件不支持';
-  return '质量未知';
-}
-
 function warningLabel(code: string): string {
   const labels: Record<string, string> = {
     EXPERIMENTAL_SOURCE: '官方搜索来源提示',
@@ -70,11 +59,26 @@ function warningLabel(code: string): string {
 }
 
 function warningText(code: string, message: string): string {
-  if (
-    code === 'EXPERIMENTAL_SOURCE' &&
-    message === 'Official v0 subject search is marked experimental upstream.'
-  ) {
-    return '官方作品搜索接口仍处于实验阶段。';
+  if (code === 'DISCOVERY_AMBIGUOUS_CONCEPT') {
+    return '筛选概念存在歧义，未进行语义扩展。';
+  }
+  if (code === 'DISCOVERY_UNKNOWN_CONCEPT') {
+    return '筛选概念未能确认，未进行语义扩展。';
+  }
+  if (code === 'DISCOVERY_BUDGET_EXCEEDED') {
+    return '检索已到本次处理上限，当前结果可能不完整。';
+  }
+  if (code === 'DISCOVERY_HYDRATION_BUDGET_EXCEEDED') {
+    return '条目核验已到处理上限，部分筛选条件可能尚未确认。';
+  }
+  if (code === 'DISCOVERY_HYDRATION_UNRESOLVED') {
+    return '部分候选的筛选字段未能核实，已按未知处理。';
+  }
+  if (code === 'DISCOVERY_OUTPUT_TRUNCATED') {
+    return '结果已达到返回上限，可能还有匹配条目未纳入列表。';
+  }
+  if (code === 'EXPERIMENTAL_SOURCE') {
+    return '官方作品搜索接口仍处于实验阶段，可能遗漏尚未编入索引的条目。';
   }
   return `${warningLabel(code)}：${message}`;
 }
@@ -98,8 +102,24 @@ function limitationLabel(message: string): string {
 }
 
 function coverageReasonLabel(reason: string): string {
-  if (reason === 'output_cap') return '输出上限已达到。';
-  return reason;
+  const labels: Record<string, string> = {
+    output_cap: '结果已达到返回上限，仍有匹配条目未纳入列表。',
+    'Output cap was reached.': '结果已达到返回上限，仍有匹配条目未纳入列表。',
+    'Hydration budget was exhausted before all required candidates could be evaluated.':
+      '条目核验已到处理上限，部分筛选条件可能尚未确认。',
+    [DISCOVERY_UNRESOLVED_COVERAGE_REASON]: '部分候选的筛选字段无法确认，相关结论按未知处理。',
+    'Execution budget was exhausted before upstream coverage was proven.':
+      '检索已到本次处理上限，尚未证明覆盖全部结果。',
+  };
+  return labels[reason] ?? '本次结果范围未能完全确认；详细原因保留在结构化结果中。';
+}
+
+function joinReaderMessages(messages: string[]): string {
+  const joined = messages
+    .map((message) => message.trim().replace(/[。；;]+$/u, ''))
+    .filter(Boolean)
+    .join('；');
+  return joined ? `${joined}。` : '';
 }
 
 function numberLabel(value: number | undefined, suffix = ''): string {
@@ -107,38 +127,6 @@ function numberLabel(value: number | undefined, suffix = ''): string {
 }
 
 const DISCOVERY_MAX_RENDERED_ITEMS = 12;
-
-const FilterGroup: React.FC<{
-  label: string;
-  values: string[];
-  theme: ThemeTokens;
-}> = ({ label, values, theme }) => {
-  if (values.length === 0) return null;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
-      <div style={{ color: theme.textMuted, fontSize: '11px', fontWeight: 700 }}>{label}</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-        {values.map((value, index) => (
-          <span
-            key={`${value}-${index}`}
-            style={{
-              color: theme.text,
-              backgroundColor: theme.surface,
-              border: `1px solid ${theme.border}`,
-              borderRadius: theme.radius.sm,
-              padding: '4px 7px',
-              fontSize: '11px',
-              lineHeight: 1.35,
-              overflowWrap: 'anywhere',
-            }}
-          >
-            {value}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
   viewModel,
@@ -148,20 +136,61 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
 }) => {
   const itemBasis = width && width >= 900 ? 'calc(50% - 6px)' : '100%';
   const stateTone = stateColor(viewModel.state, theme);
-  const visibleWarnings = viewModel.warnings.slice(0, 4);
-  const completionLimitations = viewModel.limitations.filter((item) =>
-    item.startsWith('collectionCompletionRate =') || item === COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
-  );
-  const otherLimitations = viewModel.limitations.filter((item) => !completionLimitations.includes(item));
-  const visibleLimitations = otherLimitations.slice(0, 3);
-  const hiddenWarnings = Math.max(0, viewModel.warnings.length - visibleWarnings.length);
-  const hiddenLimitations = Math.max(0, otherLimitations.length - visibleLimitations.length);
   const coverage = viewModel.coverage;
+  const coverageMessages = [
+    ...(coverage.budgetExceeded ? ['检索已到本次处理上限，尚未证明覆盖全部结果。'] : []),
+    ...(coverage.hydrationBudgetExceeded
+      ? ['条目核验已到处理上限，部分筛选条件可能尚未确认。']
+      : []),
+    ...(!coverage.budgetExceeded && !coverage.hydrationBudgetExceeded && coverage.reason
+      ? [coverageReasonLabel(coverage.reason)]
+      : []),
+  ];
+  const coverageNote = [...new Set(coverageMessages)].join('；');
+  const coverageReasonIsShown = !coverage.budgetExceeded && !coverage.hydrationBudgetExceeded;
+  const coverageIsOutputCap =
+    coverage.reason === 'output_cap' || coverage.reason === 'Output cap was reached.';
+  const renderWarnings = viewModel.warnings.filter((warning) => {
+    if (coverage.budgetExceeded && warning.code === 'DISCOVERY_BUDGET_EXCEEDED') return false;
+    if (
+      coverage.hydrationBudgetExceeded &&
+      warning.code === 'DISCOVERY_HYDRATION_BUDGET_EXCEEDED'
+    ) {
+      return false;
+    }
+    if (
+      coverageReasonIsShown &&
+      coverageIsOutputCap &&
+      warning.code === 'DISCOVERY_OUTPUT_TRUNCATED'
+    ) {
+      return false;
+    }
+    if (
+      coverageReasonIsShown &&
+      coverage.reason === DISCOVERY_UNRESOLVED_COVERAGE_REASON &&
+      warning.code === 'DISCOVERY_HYDRATION_UNRESOLVED'
+    ) {
+      return false;
+    }
+    return true;
+  });
+  const visibleWarnings = renderWarnings.slice(0, 4);
+  const completionLimitations = viewModel.limitations.filter(
+    (item) =>
+      item.startsWith('collectionCompletionRate =') ||
+      item === COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
+  );
+  const duplicateBudgetLimitation = coverage.budgetExceeded ? '结果受有界预算限制。' : undefined;
+  const otherLimitations = viewModel.limitations.filter(
+    (item) => !completionLimitations.includes(item) && item !== duplicateBudgetLimitation,
+  );
+  const visibleLimitations = otherLimitations.slice(0, 3);
+  const hiddenWarnings = Math.max(0, renderWarnings.length - visibleWarnings.length);
+  const hiddenLimitations = Math.max(0, otherLimitations.length - visibleLimitations.length);
   const visibleItems = viewModel.items.slice(0, DISCOVERY_MAX_RENDERED_ITEMS);
   const overflowItemCount = Math.max(0, viewModel.items.length - visibleItems.length);
   const effectiveHiddenCount = Math.max(0, (viewModel.hiddenCount ?? 0) + overflowItemCount);
   const renderedCount = visibleItems.length;
-  const sourceOperations = viewModel.source.operations.map(operationLabel);
 
   return (
     <CardFrame theme={theme} width={width}>
@@ -188,7 +217,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
 
       {completionLimitations.length > 0 ? (
         <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>
-          条件解释：{completionLimitations.map(limitationLabel).join('；')}
+          条件解释：{joinReaderMessages(completionLimitations.map(limitationLabel))}
         </div>
       ) : null}
 
@@ -227,23 +256,27 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
 
       <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>
         覆盖：观察 {coverage.observed} · 匹配 {coverage.matched} · 返回 {coverage.returned} · 展示{' '}
-        {renderedCount} · 页面 {coverage.pagesScanned} · {totalLabel(coverage.totalKind)}
-        {coverage.requested > 0 ? ` · 请求上限 ${coverage.requested}` : ''}
-        {coverage.budgetExceeded ? ' · 达到执行预算' : ''}
-        {coverage.outputCap !== undefined ? ` · 输出上限 ${coverage.outputCap}` : ''}
-        {coverage.unresolvedCandidates > 0 ? ` · 未解析候选 ${coverage.unresolvedCandidates}` : ''}
-        {!coverage.upstreamExhausted && !coverage.budgetExceeded ? ' · 上游范围未证明耗尽' : ''}
+        {renderedCount} · {totalLabel(coverage.totalKind)}
       </div>
-      {(coverage.hydrationsAttempted > 0 || coverage.hydrationsUnresolved > 0) && (
+      {coverageNote ? (
         <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>
-          详情验证：尝试 {coverage.hydrationsAttempted} · 成功 {coverage.hydrationsSucceeded} · 失败{' '}
-          {coverage.hydrationsFailed} · 未解析 {coverage.hydrationsUnresolved}
-          {coverage.hydrationBudgetExceeded ? ' · 详情预算达到' : ''}
+          范围说明：{coverageNote}
         </div>
-      )}
-      {coverage.reason ? (
+      ) : null}
+
+      {visibleWarnings.length > 0 ? (
+        <div style={{ color: theme.warning, fontSize: '12px', lineHeight: 1.55 }}>
+          提示：
+          {joinReaderMessages([
+            ...visibleWarnings.map((warning) => warningText(warning.code, warning.message)),
+            ...(hiddenWarnings > 0 ? [`另有 ${hiddenWarnings} 条提示`] : []),
+          ])}
+        </div>
+      ) : null}
+      {visibleLimitations.length > 0 ? (
         <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>
-          覆盖说明：{coverageReasonLabel(coverage.reason)}
+          限制：{joinReaderMessages(visibleLimitations.map(limitationLabel))}
+          {hiddenLimitations > 0 ? `；另有 ${hiddenLimitations} 条限制` : ''}
         </div>
       ) : null}
 
@@ -345,6 +378,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
                 <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.4 }}>
                   {item.media}
                   {item.category ? ` · ${item.category}` : ''}
+                  {` · 条目 ID ${item.id}`}
                   {item.date ? ` · ${item.date}` : ' · 日期未知'}
                 </div>
                 <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.4 }}>
@@ -359,7 +393,8 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
                 ) : null}
                 {item.collectionCompletionRate !== undefined ? (
                   <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.4 }}>
-                    collect 状态占比（五类状态合计） {(item.collectionCompletionRate * 100).toFixed(1)}%
+                    collect 状态占比（五类状态合计）{' '}
+                    {(item.collectionCompletionRate * 100).toFixed(1)}%
                   </div>
                 ) : null}
               </div>
@@ -377,50 +412,6 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
         <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>
           另有 {viewModel.observedNotReturnedCount}{' '}
           个匹配候选已被引擎观察到但未纳入本次结构化返回；此处仅显示计数，不代表其字段事实可用。
-        </div>
-      ) : null}
-
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: theme.spacing.sm,
-          backgroundColor: theme.surfaceAlt,
-          border: `1px solid ${theme.border}`,
-          borderRadius: theme.radius.md,
-          padding: theme.spacing.md,
-        }}
-      >
-        <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>计划与证据边界</div>
-        <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>
-          计划操作：{operationLabel(viewModel.plan.operation)} ·{' '}
-          {qualityLabel(viewModel.plan.quality)} · {viewModel.source.evidenceCount} 条字段证据
-          {sourceOperations.length > 0
-            ? ` · 证据来源路径 ${sourceOperations.join('、')}`
-            : ' · 无证据来源路径'}
-          {viewModel.source.retrievedAt ? ` · 获取于 ${viewModel.source.retrievedAt}` : ''}
-        </div>
-        <FilterGroup label="上游直接支持" values={viewModel.plan.pushdown} theme={theme} />
-        <FilterGroup label="本地结果过滤" values={viewModel.plan.postFilters} theme={theme} />
-        <FilterGroup label="派生或排序条件" values={viewModel.plan.derivedFilters} theme={theme} />
-        <FilterGroup
-          label="不支持的条件"
-          values={viewModel.plan.unsupportedFilters}
-          theme={theme}
-        />
-      </div>
-
-      {visibleWarnings.length > 0 ? (
-        <div style={{ color: theme.warning, fontSize: '12px', lineHeight: 1.55 }}>
-          警告：
-          {visibleWarnings.map((warning) => warningText(warning.code, warning.message)).join('；')}
-          {hiddenWarnings > 0 ? `；另有 ${hiddenWarnings} 条警告` : ''}
-        </div>
-      ) : null}
-      {visibleLimitations.length > 0 ? (
-        <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>
-          限制：{visibleLimitations.map(limitationLabel).join('；')}
-          {hiddenLimitations > 0 ? `；另有 ${hiddenLimitations} 条限制` : ''}
         </div>
       ) : null}
 
