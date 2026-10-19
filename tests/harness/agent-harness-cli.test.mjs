@@ -3438,6 +3438,7 @@ function g06V2ReportRefreshEnvironment(disposition, overrides = {}, epochOverrid
     G06_V2_PROFILE.reportPath,
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
     'docs/product/frontier-ledger.json',
+    'docs/research/run95-g14-query-subjects-v2-terminal-disposition-2026-10-19.md',
     '.github/workflows/ci.yml',
     'docs/agent/HARNESS.md',
     'scripts/check-tool-acceptance-table.py',
@@ -3449,6 +3450,7 @@ function g06V2ReportRefreshEnvironment(disposition, overrides = {}, epochOverrid
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
     'tests/harness/public-probe-coverage.test.mjs',
+    'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
     'tests/integration/tool-e2e-acceptance.test.ts',
   ];
   const ciRunId = '39077898683';
@@ -3514,6 +3516,8 @@ function r04RenderV2ReportRefreshEnvironment(disposition, overrides = {}, epochO
     R04_RENDER_V2_PROFILE.reportPath,
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
     'docs/product/frontier-ledger.json',
+    'docs/agent/HARNESS.md',
+    'docs/research/run95-g14-query-subjects-v2-terminal-disposition-2026-10-19.md',
     'scripts/check-tool-acceptance-table.py',
     'scripts/generate-tool-acceptance-tasks.py',
     'scripts/test_acceptance_evidence.py',
@@ -3523,6 +3527,7 @@ function r04RenderV2ReportRefreshEnvironment(disposition, overrides = {}, epochO
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
     'tests/harness/public-probe-coverage.test.mjs',
+    'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
     'tests/integration/tool-e2e-acceptance.test.ts',
   ];
   const ciRunId = '39096913171';
@@ -7156,6 +7161,7 @@ test('G06 v2 merge gate permits its exact verifier refresh and rejects runtime c
     G06_V2_PROFILE.reportPath,
     'docs/product/frontier-ledger.json',
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/research/run95-g14-query-subjects-v2-terminal-disposition-2026-10-19.md',
     '.github/workflows/ci.yml',
     'docs/agent/HARNESS.md',
     'scripts/check-tool-acceptance-table.py',
@@ -7167,6 +7173,7 @@ test('G06 v2 merge gate permits its exact verifier refresh and rejects runtime c
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
     'tests/harness/public-probe-coverage.test.mjs',
+    'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
     'tests/integration/tool-e2e-acceptance.test.ts',
   ];
   const acceptedScope = g06CastOfflineMergeEnvironment({

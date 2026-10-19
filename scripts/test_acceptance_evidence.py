@@ -8588,6 +8588,8 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         self.assertEqual(verifier_paths, {
             '.github/workflows/ci.yml',
             'docs/agent/HARNESS.md',
+            'docs/product/frontier-ledger.json',
+            'docs/research/run95-g14-query-subjects-v2-terminal-disposition-2026-10-19.md',
             'scripts/check-tool-acceptance-table.py',
             'scripts/test_acceptance_evidence.py',
             'scripts/generate-tool-acceptance-tasks.py',
@@ -8597,6 +8599,7 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
             'tests/harness/g09-public-watch-order-evidence.test.mjs',
             'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
             'tests/harness/public-probe-coverage.test.mjs',
+            'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
             'tests/integration/tool-e2e-acceptance.test.ts',
         })
         self.assertTrue(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
@@ -10626,6 +10629,8 @@ class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
             GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
             'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
             'docs/product/frontier-ledger.json',
+            'docs/agent/HARNESS.md',
+            'docs/research/run95-g14-query-subjects-v2-terminal-disposition-2026-10-19.md',
             'scripts/check-tool-acceptance-table.py',
             'scripts/generate-tool-acceptance-tasks.py',
             'scripts/test_acceptance_evidence.py',
@@ -10635,6 +10640,7 @@ class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
             'tests/harness/g09-public-watch-order-evidence.test.mjs',
             'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
             'tests/harness/public-probe-coverage.test.mjs',
+            'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
             'tests/integration/tool-e2e-acceptance.test.ts',
         })
         self.assertTrue(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(

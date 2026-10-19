@@ -275,6 +275,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
   '.github/workflows/ci.yml',
   'docs/agent/HARNESS.md',
+  'docs/research/run95-g14-query-subjects-v2-terminal-disposition-2026-10-19.md',
   'scripts/check-tool-acceptance-table.py',
   'scripts/test_acceptance_evidence.py',
   'scripts/generate-tool-acceptance-tasks.py',
@@ -284,10 +285,13 @@ const G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
   'tests/harness/g09-public-watch-order-evidence.test.mjs',
   'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
   'tests/harness/public-probe-coverage.test.mjs',
+  'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
   'tests/integration/tool-e2e-acceptance.test.ts',
 ]);
 const R04_RENDER_V2_PROFILE_ID = 'r04-render-series-watch-order-offline-agent-mcp-matrix-v2';
 const R04_RENDER_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
+  'docs/agent/HARNESS.md',
+  'docs/research/run95-g14-query-subjects-v2-terminal-disposition-2026-10-19.md',
   'scripts/check-tool-acceptance-table.py',
   'scripts/generate-tool-acceptance-tasks.py',
   'scripts/test_acceptance_evidence.py',
@@ -297,6 +301,7 @@ const R04_RENDER_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
   'tests/harness/g09-public-watch-order-evidence.test.mjs',
   'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
   'tests/harness/public-probe-coverage.test.mjs',
+  'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
   'tests/integration/tool-e2e-acceptance.test.ts',
 ]);
 const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
@@ -3603,9 +3608,9 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID',
         profile.id === G06_CAST_OFFLINE_V2_PROFILE_ID
-          ? 'A G06 v2 report refresh may include only its report, acceptance matrix, frontier evidence, and exact acceptance verifier files, with the MCP bundle unchanged.'
+          ? 'A G06 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact acceptance verifier files, and the documented G14 terminal-disposition report/test exception, with the MCP bundle unchanged.'
           : profile.id === R04_RENDER_V2_PROFILE_ID
-            ? 'An R04 v2 report refresh may include only its report, acceptance matrix, frontier evidence, and exact acceptance verifier files, with the MCP bundle unchanged.'
+            ? 'An R04 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact acceptance verifier files, the documented G14 terminal-disposition report/test exception, and this policy file, with the MCP bundle unchanged.'
             : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
         { profileId: profile.id, changedPaths: changedSinceReport },
       );

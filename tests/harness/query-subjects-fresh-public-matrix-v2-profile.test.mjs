@@ -111,6 +111,25 @@ test('profile uses a unique fixed query_subjects input and one anonymous read-on
   );
 });
 
+test('G14 records terminal query_subjects claims without inviting a retry or matrix credit', () => {
+  const frontier = JSON.parse(
+    readFileSync(path.join(ROOT, 'docs/product/frontier-ledger.json'), 'utf8'),
+  );
+  const g14 = frontier.records.find((record) => record.id === 'G14');
+
+  assert.ok(g14);
+  assert.equal(g14.status, 'PARTIAL');
+  assert.match(g14.next_action, /PR #232.*PR #233/u);
+  assert.match(g14.next_action, /INCONCLUSIVE.*no-report.*retry_allowed=false/u);
+  assert.match(g14.next_action, /no Agent\/MCP matrix credit/u);
+  assert.match(g14.next_action, /never invoke.*again/u);
+  assert.doesNotMatch(g14.next_action, /may add only the query_subjects Agent\/MCP cell/u);
+  assert.match(
+    g14.next_action,
+    /run95-g14-query-subjects-v2-terminal-disposition-2026-10-19\.md/u,
+  );
+});
+
 test('closed Codex MCP configuration exposes exactly the registered query_subjects tool', () => {
   const parsed = parseCodexOneToolMcpArguments(BASE_ARGS);
   assert.equal(parsed.networkMode, QUERY_SUBJECTS_FRESH_PUBLIC_V2_NETWORK_MODE);

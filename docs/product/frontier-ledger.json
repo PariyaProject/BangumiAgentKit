@@ -1116,6 +1116,7 @@
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
       "source_refs": [
+        "docs/research/run95-g14-query-subjects-v2-terminal-disposition-2026-10-19.md",
         "docs/research/run95-query-subjects-fresh-public-matrix-v2-contract-2026-10-19.md",
         "docs/research/run95-query-subjects-fresh-public-matrix-contract-2026-10-19.md",
         "docs/research/user-scenario-catalog.md",
@@ -1130,7 +1131,7 @@
         "tests/discovery/engine.test.ts",
         "tests/discovery/scenario-cases.test.ts"
       ],
-      "next_action": "Run #95 PR #232 query_subjects v1 is terminal INCONCLUSIVE/no-report/no-retry and earns no Agent/MCP credit; never invoke it again. A local stable-Codex diagnostic with a synthetic MCP stub found three verbose web-search-disabled errors, but retained no raw messages and made no Bangumi request. The distinct v2 Epoch uses a fresh fixed input and narrowly classifies only explicit disabled-web-search errors; it may add only the query_subjects Agent/MCP cell after its exact Candidate, seven-check CI, same-identity Luna Max review, one-shot, and REPORT_WRITTEN gates pass. Keep G14 PARTIAL: a bounded search does not establish annual ranking or catalog completeness; it adds no renderer, OAuth/account, QQ, or TIM evidence. See docs/research/run95-query-subjects-fresh-public-matrix-v2-contract-2026-10-19.md.",
+      "next_action": "Run #95 PR #232 query_subjects v1 and PR #233 query_subjects v2 are both terminal INCONCLUSIVE/no-report/retry_allowed=false and earned no Agent/MCP matrix credit; never invoke either claim again. PR #233 merged the narrow disabled-search classifier correction at 7be6675, but that merge does not reopen the consumed v2 claim. Keep G14 PARTIAL: one bounded search cannot establish annual ranking or catalog completeness. Continue on another safe, genuinely unspent frontier after checking current Harness eligibility; preserve the user-directed 65/65 public target. This adds no renderer, OAuth/account, QQ, or TIM evidence. See docs/research/run95-g14-query-subjects-v2-terminal-disposition-2026-10-19.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

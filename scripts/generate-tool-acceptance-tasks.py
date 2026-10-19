@@ -3033,6 +3033,8 @@ CODEX_G06_CAST_OFFLINE_V2_EVIDENCE_REFRESH_PATHS = {
 CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = {
     '.github/workflows/ci.yml',
     'docs/agent/HARNESS.md',
+    'docs/product/frontier-ledger.json',
+    'docs/research/run95-g14-query-subjects-v2-terminal-disposition-2026-10-19.md',
     'scripts/check-tool-acceptance-table.py',
     'scripts/test_acceptance_evidence.py',
     'scripts/generate-tool-acceptance-tasks.py',
@@ -3042,6 +3044,7 @@ CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = {
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
     'tests/harness/public-probe-coverage.test.mjs',
+    'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
     'tests/integration/tool-e2e-acceptance.test.ts',
 }
 CODEX_G06_CAST_OFFLINE_PROFILE_IDS = (
@@ -3297,6 +3300,8 @@ CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS = {
     CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH,
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
     'docs/product/frontier-ledger.json',
+    'docs/agent/HARNESS.md',
+    'docs/research/run95-g14-query-subjects-v2-terminal-disposition-2026-10-19.md',
     'scripts/check-tool-acceptance-table.py',
     'scripts/generate-tool-acceptance-tasks.py',
     'scripts/test_acceptance_evidence.py',
@@ -3306,6 +3311,7 @@ CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS = {
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
     'tests/harness/public-probe-coverage.test.mjs',
+    'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
     'tests/integration/tool-e2e-acceptance.test.ts',
 }
 CODEX_R04_RENDER_V2_REPORT_FIELDS = {
