@@ -17,12 +17,12 @@ catalog completeness, cover `render_query_subjects`, or add renderer, OAuth,
 account, QQ, or TIM evidence. G14 remains `PARTIAL` because this bounded search
 cannot prove the full scenario's ranking or completeness requirements.
 
-The current generated Agent/MCP baseline is 81/96. Two cells previously shown
-as credited no longer pass live evidence validation: G06 cast v2 has Harness
-state `AMBIGUOUS_TERMINAL_LATCH`, and the R04 render v2 report's registered
-profile hash does not match the current profile. Keep both reports as history,
-but do not count or rerun them. This reconciliation is separate from the v2
-query claim and from UX-001 visual/client acceptance.
+The current generated Agent/MCP baseline is 83/96. The G06 cast v2 and R04
+render v2 reports both validate as `REPORT_WRITTEN` under their exact registered
+profile IDs and current Candidate bindings. They count only for their respective
+Agent/MCP cells; they do not add G06/R04 scenario completion or renderer visual
+acceptance. This matrix accounting is separate from the v2 query claim and
+UX-001 visual/client acceptance.
 
 ## v1 disposition and classifier evidence
 
