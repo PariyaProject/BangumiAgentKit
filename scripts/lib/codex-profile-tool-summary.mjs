@@ -14,7 +14,10 @@ import {
   R05_PROFILE_ID,
   summarizeR05SubjectOverlapToolResult,
 } from './r05-shared-person-overlap-evidence.mjs';
-import { P02_PERSON_PROFILE_OFFLINE_PROFILE_ID } from './p02-person-profile-offline-fixture.mjs';
+import {
+  P02_PERSON_PROFILE_OFFLINE_PROFILE_ID,
+  P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+} from './p02-person-profile-offline-fixture.mjs';
 import {
   G06_CAST_OFFLINE_PROFILE_ID,
   G06_CAST_OFFLINE_V2_PROFILE_ID,
@@ -504,7 +507,11 @@ export function summarizeProfileToolResult(
       },
     };
   }
-  if (profileId === P02_PERSON_PROFILE_OFFLINE_PROFILE_ID) {
+  if (
+    [P02_PERSON_PROFILE_OFFLINE_PROFILE_ID, P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID].includes(
+      profileId,
+    )
+  ) {
     return {
       personId:
         Number.isSafeInteger(result?.person?.id) && result.person.id > 0 ? result.person.id : null,

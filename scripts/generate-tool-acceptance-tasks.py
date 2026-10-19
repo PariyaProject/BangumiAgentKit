@@ -2718,9 +2718,20 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_RECEIPT_PAYLOAD_FIELDS = {
     'eventStreamSha256', 'serverSummarySha256',
 }
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_REQUIRED_CI_CHECKS = CODEX_P06_REQUIRED_CI_CHECKS
-CODEX_P02_PROFILE = next(
-    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
-    if profile.get('id') == 'p02-person-profile-offline-agent-mcp-v1'
+CODEX_P02_PROFILES = {
+    profile['id']: profile
+    for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if isinstance(profile, dict)
+    and profile.get('id') in {
+        'p02-person-profile-offline-agent-mcp-v1',
+        'p02-person-profile-offline-agent-mcp-v2',
+    }
+}
+CODEX_P02_PROFILE = CODEX_P02_PROFILES['p02-person-profile-offline-agent-mcp-v1']
+CODEX_P02_V2_PROFILE = CODEX_P02_PROFILES['p02-person-profile-offline-agent-mcp-v2']
+CODEX_P02_PROFILE_IDS = frozenset(CODEX_P02_PROFILES)
+CODEX_P02_EVIDENCE_KINDS = frozenset(
+    profile['evidenceKind'] for profile in CODEX_P02_PROFILES.values()
 )
 CODEX_P02_PROFILE_ID = CODEX_P02_PROFILE['id']
 CODEX_P02_EPOCH_ID = CODEX_P02_PROFILE['epochId']
@@ -2744,12 +2755,87 @@ CODEX_P02_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_P02_PROFILE['selectionEvidenc
 CODEX_P02_EVIDENCE_KIND = CODEX_P02_PROFILE['evidenceKind']
 CODEX_P02_ANSWER_CHECK_METHOD = CODEX_P02_PROFILE['answerCheckMethod']
 CODEX_P02_NETWORK_MODE = CODEX_P02_PROFILE['networkMode']
-CODEX_P02_REQUIRED_CI_CHECKS = CODEX_P06_REQUIRED_CI_CHECKS
-CODEX_P02_EVIDENCE_REFRESH_PATHS = {
-    CODEX_P02_REPORT_RELATIVE_PATH,
-    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
-    'docs/product/frontier-ledger.json',
+CODEX_P02_V2_PROFILE_ID = CODEX_P02_V2_PROFILE['id']
+CODEX_P02_V2_EPOCH_ID = CODEX_P02_V2_PROFILE['epochId']
+CODEX_P02_V2_TOOL_NAME = CODEX_P02_V2_PROFILE['toolName']
+CODEX_P02_V2_ARGUMENT_PROFILE = CODEX_P02_V2_PROFILE['argumentProfile']
+CODEX_P02_V2_EXPECTED_CALLS = CODEX_P02_V2_PROFILE['calls']
+CODEX_P02_V2_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_P02_V2_EXPECTED_CALLS],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_P02_V2_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_P02_V2_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_P02_V2_REPORT_RELATIVE_PATH = CODEX_P02_V2_PROFILE['reportPath']
+CODEX_P02_V2_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_P02_V2_PROFILE['selectionEvidencePath']
+CODEX_P02_V2_EVIDENCE_KIND = CODEX_P02_V2_PROFILE['evidenceKind']
+CODEX_P02_V2_ANSWER_CHECK_METHOD = CODEX_P02_V2_PROFILE['answerCheckMethod']
+CODEX_P02_V2_NETWORK_MODE = CODEX_P02_V2_PROFILE['networkMode']
+CODEX_P02_PROFILE_AUX = {
+    CODEX_P02_PROFILE_ID: {
+        'acknowledgement': 'P02_SYNTHETIC_PROFILE_READ',
+        'serverId': 'bgk_p02_profile',
+        'reportProfile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+        'receiptKind': 'p02-person-profile-offline-runner-receipt-v1',
+    },
+    CODEX_P02_V2_PROFILE_ID: {
+        'acknowledgement': 'P02_SYNTHETIC_PROFILE_READ_V2',
+        'serverId': 'bgk_p02_profile_v2',
+        'reportProfile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
+        'receiptKind': 'p02-person-profile-offline-runner-receipt-v2',
+    },
 }
+CODEX_P02_REQUIRED_CI_CHECKS = CODEX_P06_REQUIRED_CI_CHECKS
+CODEX_P02_EVIDENCE_REFRESH_PATHS_BY_PROFILE = {
+    profile_id: {
+        profile['reportPath'],
+        'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+        'docs/product/frontier-ledger.json',
+    }
+    for profile_id, profile in CODEX_P02_PROFILES.items()
+}
+CODEX_P02_EVIDENCE_REFRESH_PATHS = CODEX_P02_EVIDENCE_REFRESH_PATHS_BY_PROFILE[
+    CODEX_P02_PROFILE_ID
+]
+
+
+def codex_p02_profile_spec(profile_id: object = None) -> dict[str, object] | None:
+    selected_id = CODEX_P02_PROFILE_ID if profile_id is None else profile_id
+    if not isinstance(selected_id, str):
+        return None
+    return CODEX_P02_PROFILES.get(selected_id)
+
+
+def codex_p02_profile_arguments_sha256(profile_id: object = None) -> str | None:
+    profile = codex_p02_profile_spec(profile_id)
+    if profile is None:
+        return None
+    return hashlib.sha256(json.dumps(
+        [call['arguments'] for call in profile['calls']],
+        sort_keys=True,
+        separators=(',', ':'),
+        ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+
+
+def codex_p02_profile_registry_sha256(profile_id: object = None) -> str | None:
+    profile = codex_p02_profile_spec(profile_id)
+    if profile is None:
+        return None
+    return hashlib.sha256(json.dumps(
+        profile,
+        sort_keys=True,
+        separators=(',', ':'),
+        ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+
+
 CODEX_M07_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'm07-manage-index-unbound-agent-mcp-v1'
@@ -5969,7 +6055,7 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
 }
 CODEX_P02_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/lib/codex-profile-tool-summary.mjs': (
-        'profileId === P02_PERSON_PROFILE_OFFLINE_PROFILE_ID',
+        'P02_PERSON_PROFILE_OFFLINE_PROFILE_ID',
         'Number.isSafeInteger(result?.person?.id)',
     ),
     'scripts/acceptance/agent-mcp-profile-registry.json': (
@@ -5985,7 +6071,7 @@ CODEX_P02_PROBE_IMPLEMENTATION_MARKERS = {
         'duplicateRequestCount',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
-        'createP02PersonProfileOfflineFetch()',
+        'createP02PersonProfileOfflineFetch',
         'P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE',
     ),
     'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
@@ -6003,7 +6089,6 @@ CODEX_P02_PROBE_IMPLEMENTATION_MARKERS = {
         'export function buildP02RunnerReceiptPayload(',
         'export function validateP02ProfileReport(',
         'export function validateP02SanitizedReportFile(',
-        "openSync(REPORT_PATH, 'wx', 0o600)",
     ),
     'scripts/acceptance/validate-p02-person-profile-agent-mcp-report.mjs': (
         'validateP02ProfileReport(',
@@ -6038,6 +6123,45 @@ CODEX_P02_PROBE_IMPLEMENTATION_MARKERS = {
         'def codex_p02_profile_report_matches_candidate_revision(',
         'def codex_p02_profile_disposition_matches_report(',
         'CODEX_P02_REPORT_RELATIVE_PATH',
+    ),
+}
+CODEX_P02_V2_PROFILE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "p02-person-profile-offline-agent-mcp-v2"',
+        '"networkMode": "run95-p02-person-profile-offline-v2"',
+        '"personId": 990711',
+        '"claimLabelName": "harness-r95-p02-person-profile-offline-v2-claimed"',
+    ),
+    'scripts/lib/p02-person-profile-offline-fixture.mjs': (
+        "export const P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID =",
+        'P02_PERSON_PROFILE_OFFLINE_V2_EXPECTED_ARGUMENTS',
+        'getP02PersonProfileOfflineSpec(profileId)',
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        'P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE',
+        'createP02PersonProfileOfflineFetch(config.profile.id)',
+    ),
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        'P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID',
+    ),
+    'scripts/acceptance/run-p02-person-profile-agent-mcp.mjs': (
+        "'p02-person-profile-offline-agent-mcp-v2'",
+        'profileContext(profileId = DEFAULT_PROFILE_ID)',
+        "args[2] === '--profile-id'",
+    ),
+    'scripts/acceptance/write-p02-person-profile-agent-mcp-report.mjs': (
+        'getP02PersonProfileOfflineSpec(profileId)',
+        'spec.receiptKind',
+        'spec.reportPath',
+        "openSync(path.join(ROOT, spec.reportPath), 'wx', 0o600)",
+    ),
+    'scripts/agent-harness.mjs': (
+        "case 'p02-person-profile-offline-agent-mcp-v2'",
+    ),
+    'docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-v2-contract-2026-10-19.md': (
+        '990711',
+        'retryAllowed=false',
+        'P02 remains `PARTIAL`',
     ),
 }
 CODEX_G06_CAST_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
@@ -11595,12 +11719,13 @@ def codex_r01_harness_disposition_matches_report(
 
 
 def codex_g16_reviewer_id_is_valid(reviewer_id: object, pr_number: object) -> bool:
-    """Accept the current Run 95 G16 reviewer shape or the Harness stable identity shape."""
+    """Accept the configured Run 95 Luna Max alias or exact local reviewer runtime id."""
     if not isinstance(reviewer_id, str) or type(pr_number) is not int or pr_number < 1:
         return False
     return (
         re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', reviewer_id) is not None
         or re.fullmatch(r'run95-g16-review[1-9]\d*-gpt-6-luna-max-[0-9a-f]{7,40}', reviewer_id) is not None
+        or re.fullmatch(r'/root/[a-z0-9_]+', reviewer_id) is not None
     )
 
 
@@ -13565,24 +13690,37 @@ def codex_g01_query_subjects_offline_profile_report_is_valid(
     return result.get('passed') is True and result.get('reportSha256') == report_sha256
 
 
-def codex_p02_profile_revision_has_implementation(revision: object) -> bool:
+def codex_p02_profile_revision_has_implementation(
+    revision: object, profile_id: object = None,
+) -> bool:
     """Bind P02 matrix evidence to its exact offline fixture, runner, and report validator."""
-    if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+    profile = codex_p02_profile_spec(profile_id)
+    if (
+        profile is None
+        or not isinstance(revision, str)
+        or re.fullmatch(r'[0-9a-f]{40}', revision) is None
+    ):
         return False
+    markers = dict(CODEX_P02_PROBE_IMPLEMENTATION_MARKERS)
+    if profile['id'] == CODEX_P02_V2_PROFILE_ID:
+        markers.update(CODEX_P02_V2_PROFILE_IMPLEMENTATION_MARKERS)
     return (
         codex_probe_revision_has_implementation(revision)
-        and _codex_revision_has_markers(str(ROOT), revision, CODEX_P02_PROBE_IMPLEMENTATION_MARKERS)
+        and _codex_revision_has_markers(str(ROOT), revision, markers)
     )
 
 
 def codex_p02_profile_report_matches_candidate_revision(
-    report_path: Path, revision: object,
+    report_path: Path, revision: object, profile_id: object = None,
 ) -> bool:
     """Bind the P02 sanitized report to the exact pre-invocation reviewed Candidate."""
-    if not codex_p02_profile_revision_has_implementation(revision):
+    profile = codex_p02_profile_spec(profile_id)
+    if profile is None or not codex_p02_profile_revision_has_implementation(
+        revision, profile['id'],
+    ):
         return False
     return _codex_relations_report_matches_candidate_revision(
-        report_path, revision, CODEX_P02_REPORT_RELATIVE_PATH,
+        report_path, revision, str(profile['reportPath']),
     )
 
 
@@ -15201,11 +15339,19 @@ def codex_a01_aggregate_matrix_profile_report_is_valid(
     )
 
 
-def codex_p02_profile_evidence_refresh_paths_are_valid(paths: object) -> bool:
+def codex_p02_profile_evidence_refresh_paths_are_valid(
+    paths: object, profile_id: object = None,
+) -> bool:
+    profile = codex_p02_profile_spec(profile_id)
+    allowed_paths = (
+        CODEX_P02_EVIDENCE_REFRESH_PATHS_BY_PROFILE.get(str(profile['id']), set())
+        if profile is not None else set()
+    )
     return (
-        isinstance(paths, (list, tuple, set, frozenset))
-        and CODEX_P02_REPORT_RELATIVE_PATH in paths
-        and all(isinstance(item, str) and item in CODEX_P02_EVIDENCE_REFRESH_PATHS for item in paths)
+        profile is not None
+        and isinstance(paths, (list, tuple, set, frozenset))
+        and profile['reportPath'] in paths
+        and all(isinstance(item, str) and item in allowed_paths for item in paths)
     )
 
 
@@ -15217,6 +15363,9 @@ def codex_p02_profile_candidate_binding_is_valid(
 ) -> bool:
     """Bind P02 evidence to the live exact Candidate and narrow report-only refresh."""
     if not isinstance(report, dict) or not isinstance(epoch_status, dict):
+        return False
+    profile = codex_p02_profile_spec(report.get('profileId'))
+    if profile is None:
         return False
     run = epoch_status.get('run')
     epoch_result = epoch_status.get('epoch')
@@ -15250,7 +15399,7 @@ def codex_p02_profile_candidate_binding_is_valid(
         and pr_number > 0
         and run.get('number') == 95
         and (active_pr or merged_pr)
-        and epoch.get('epoch_id') == CODEX_P02_EPOCH_ID
+        and epoch.get('epoch_id') == profile['epochId']
         and epoch.get('pr_number') == pr_number
         and epoch.get('base_branch') == 'master'
         and isinstance(branch, str)
@@ -15264,7 +15413,9 @@ def codex_p02_profile_candidate_binding_is_valid(
         and epoch_result.get('pr_head_sha') == candidate_sha
         and isinstance(report.get('sourceRevision'), str)
         and re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision']) is not None
-        and codex_p02_profile_evidence_refresh_paths_are_valid(changed_paths)
+        and codex_p02_profile_evidence_refresh_paths_are_valid(
+            changed_paths, str(profile['id']),
+        )
         and current_bundle_sha256 == report.get('mcpBundleSha256')
     )
 
@@ -15304,9 +15455,7 @@ def codex_p02_profile_report_candidate_binding_is_current(
         candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
     paths = _codex_p02_profile_report_candidate_paths(report.get('sourceRevision'), candidate)
     bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
-    return codex_p02_profile_candidate_binding_is_valid(
-        report, epoch_status, paths, bundle_sha256,
-    )
+    return codex_p02_profile_candidate_binding_is_valid(report, epoch_status, paths, bundle_sha256)
 
 
 def codex_p02_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
@@ -15326,16 +15475,19 @@ def codex_p02_profile_epoch_harness_status(pr_number: object) -> dict[str, objec
     return status if isinstance(status, dict) else None
 
 
-def codex_p02_profile_harness_status(pr_number: object) -> dict[str, object] | None:
+def codex_p02_profile_harness_status(
+    pr_number: object, profile_id: object = None,
+) -> dict[str, object] | None:
     """Read the exact P02 one-shot disposition and permanent latches."""
-    if type(pr_number) is not int or pr_number < 1:
+    profile = codex_p02_profile_spec(profile_id)
+    if profile is None or type(pr_number) is not int or pr_number < 1:
         return None
     try:
         result = subprocess.run(
             [
                 'node', str(ROOT / 'scripts/agent-harness.mjs'),
                 'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
-                '--profile-id', CODEX_P02_PROFILE_ID,
+                '--profile-id', str(profile['id']),
             ],
             cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
         )
@@ -15351,18 +15503,23 @@ def codex_p02_profile_disposition_matches_report(
     report: dict[str, object], harness_status: object, report_sha256: object,
 ) -> dict[str, object] | None:
     """Require the exact durable P02 report disposition and both permanent latches."""
+    profile = codex_p02_profile_spec(report.get('profileId'))
+    profile_id = str(profile['id']) if profile is not None else None
+    profile_aux = CODEX_P02_PROFILE_AUX.get(profile_id)
     if not isinstance(harness_status, dict):
         return None
     receipt = report.get('runnerReceipt')
     disposition = harness_status.get('disposition')
     if (
         harness_status.get('state') != 'REPORT_WRITTEN'
-        or harness_status.get('profile_id') != CODEX_P02_PROFILE_ID
+        or profile is None
+        or profile_aux is None
+        or harness_status.get('profile_id') != profile_id
         or harness_status.get('pr') != report.get('prNumber')
-        or harness_status.get('tool_name') != CODEX_P02_TOOL_NAME
-        or harness_status.get('argument_profile') != CODEX_P02_ARGUMENT_PROFILE
-        or harness_status.get('expected_arguments_sha256') != CODEX_P02_EXPECTED_ARGUMENTS_SHA256
-        or harness_status.get('registry_sha256') != CODEX_P02_PROFILE_REGISTRY_SHA256
+        or harness_status.get('tool_name') != profile['toolName']
+        or harness_status.get('argument_profile') != profile['argumentProfile']
+        or harness_status.get('expected_arguments_sha256') != report.get('expectedArgumentsSha256')
+        or harness_status.get('registry_sha256') != report.get('registrySha256')
         or harness_status.get('claim_label_present') is not True
         or harness_status.get('terminal_label_present') is not True
         or not isinstance(disposition, dict)
@@ -15373,9 +15530,9 @@ def codex_p02_profile_disposition_matches_report(
         return None
     expected = {
         'claimId': report.get('claimId'),
-        'profileId': CODEX_P02_PROFILE_ID,
+        'profileId': profile_id,
         'frontierId': 'P02',
-        'epochId': CODEX_P02_EPOCH_ID,
+        'epochId': profile['epochId'],
         'runNumber': 95,
         'prNumber': report.get('prNumber'),
         'state': 'REPORT_WRITTEN',
@@ -15387,12 +15544,12 @@ def codex_p02_profile_disposition_matches_report(
         'ciChecks': report.get('ciChecks'),
         'reviewerId': report.get('reviewerId'),
         'bundleSha256': report.get('mcpBundleSha256'),
-        'registrySha256': CODEX_P02_PROFILE_REGISTRY_SHA256,
-        'toolName': CODEX_P02_TOOL_NAME,
-        'argumentProfile': CODEX_P02_ARGUMENT_PROFILE,
-        'expectedArgumentsSha256': CODEX_P02_EXPECTED_ARGUMENTS_SHA256,
+        'registrySha256': report.get('registrySha256'),
+        'toolName': profile['toolName'],
+        'argumentProfile': profile['argumentProfile'],
+        'expectedArgumentsSha256': report.get('expectedArgumentsSha256'),
         'reportWritten': True,
-        'reportPath': CODEX_P02_REPORT_RELATIVE_PATH,
+        'reportPath': profile['reportPath'],
         'reportSha256': report_sha256,
         'retryAllowed': False,
         'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
@@ -15404,8 +15561,13 @@ def codex_p02_profile_disposition_matches_report(
     return disposition
 
 
-def codex_p02_frontier_is_partial(require_report_ref: bool = False) -> bool:
+def codex_p02_frontier_is_partial(
+    require_report_ref: bool = False, profile_id: object = None,
+) -> bool:
     """Keep P02's first/latest-participation scenario partial despite matrix evidence."""
+    profile = codex_p02_profile_spec(profile_id)
+    if profile is None:
+        return False
     try:
         frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -15420,8 +15582,8 @@ def codex_p02_frontier_is_partial(require_report_ref: bool = False) -> bool:
         isinstance(record, dict)
         and record.get('status') == 'PARTIAL'
         and isinstance(source_refs, list)
-        and CODEX_P02_SELECTION_EVIDENCE_RELATIVE_PATH in source_refs
-        and (not require_report_ref or CODEX_P02_REPORT_RELATIVE_PATH in source_refs)
+        and profile['selectionEvidencePath'] in source_refs
+        and (not require_report_ref or profile['reportPath'] in source_refs)
     )
 
 
@@ -15434,11 +15596,16 @@ def codex_p02_profile_report_is_valid(
     """Validate signed synthetic P02 Agent/MCP matrix evidence without scenario credit."""
     if not isinstance(report, dict) or set(report) != CODEX_P02_REPORT_FIELDS:
         return False
-    path = report_path or (LIVE_PROBE_DIR / Path(CODEX_P02_REPORT_RELATIVE_PATH).name)
+    profile_id = report.get('profileId')
+    profile = codex_p02_profile_spec(profile_id)
+    profile_aux = CODEX_P02_PROFILE_AUX.get(profile_id)
+    if profile is None or profile_aux is None:
+        return False
+    path = report_path or (LIVE_PROBE_DIR / Path(str(profile['reportPath'])).name)
     try:
         relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
         report_bytes = path.read_bytes()
-        selection_bytes = (ROOT / CODEX_P02_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
+        selection_bytes = (ROOT / str(profile['selectionEvidencePath'])).read_bytes()
     except (OSError, ValueError):
         return False
     source_revision = report.get('sourceRevision')
@@ -15448,36 +15615,36 @@ def codex_p02_profile_report_is_valid(
     network_boundary = report.get('networkBoundary')
     privacy = report.get('privacy')
     if (
-        relative_path != CODEX_P02_REPORT_RELATIVE_PATH
+        relative_path != profile['reportPath']
         or len(report_bytes) > 64 * 1024
         or type(report.get('schemaVersion')) is not int
         or report.get('schemaVersion') != 1
-        or report.get('evidenceKind') != CODEX_P02_EVIDENCE_KIND
+        or report.get('evidenceKind') != profile['evidenceKind']
         or type(report.get('runNumber')) is not int
         or report.get('runNumber') != 95
         or report.get('frontierId') != 'P02'
         or report.get('scenarioId') is not None
-        or report.get('epochId') != CODEX_P02_EPOCH_ID
-        or report.get('profileId') != CODEX_P02_PROFILE_ID
-        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v1'
-        or report.get('model') != 'gpt-6-luna'
-        or report.get('reasoningEffort') != 'max'
+        or report.get('epochId') != profile['epochId']
+        or report.get('profileId') != profile_id
+        or report.get('profile') != profile_aux['reportProfile']
+        or report.get('model') != profile['model']
+        or report.get('reasoningEffort') != profile['reasoningEffort']
         or not isinstance(report.get('reviewerId'), str)
-        or re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', report['reviewerId']) is None
+        or not codex_g16_reviewer_id_is_valid(report['reviewerId'], pr_number)
         or not isinstance(report.get('codexCliVersion'), str)
         or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
         or not isinstance(observed_at, str)
         or re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', observed_at) is None
-        or report.get('toolName') != CODEX_P02_TOOL_NAME
-        or report.get('argumentProfile') != CODEX_P02_ARGUMENT_PROFILE
-        or report.get('expectedArgumentsSha256') != CODEX_P02_EXPECTED_ARGUMENTS_SHA256
-        or report.get('registrySha256') != CODEX_P02_PROFILE_REGISTRY_SHA256
+        or report.get('toolName') != profile['toolName']
+        or report.get('argumentProfile') != profile['argumentProfile']
+        or report.get('expectedArgumentsSha256') != codex_p02_profile_arguments_sha256(profile_id)
+        or report.get('registrySha256') != codex_p02_profile_registry_sha256(profile_id)
         or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
-        or report.get('networkMode') != CODEX_P02_NETWORK_MODE
+        or report.get('networkMode') != profile['networkMode']
         or not isinstance(source_revision, str)
         or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
-        or not codex_p02_profile_revision_has_implementation(source_revision)
-        or not codex_p02_frontier_is_partial(require_report_ref=True)
+        or not codex_p02_profile_revision_has_implementation(source_revision, profile_id)
+        or not codex_p02_frontier_is_partial(require_report_ref=True, profile_id=profile_id)
         or not isinstance(report.get('baseSha'), str)
         or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
         or report.get('ciSha') != source_revision
@@ -15511,13 +15678,13 @@ def codex_p02_profile_report_is_valid(
         or report.get('allowedCallCount') != 1
         or type(report.get('deniedCallCount')) is not int
         or report.get('deniedCallCount') != 0
-        or report.get('serverToolNames') != [CODEX_P02_TOOL_NAME]
+        or report.get('serverToolNames') != [profile['toolName']]
         or type(report.get('serverToolCount')) is not int
         or report.get('serverToolCount') != 1
-        or report.get('mcpServerNames') != ['bgk_p02_profile']
-        or report.get('answerCheckMethod') != CODEX_P02_ANSWER_CHECK_METHOD
-        or report.get('answerSha256') != hashlib.sha256(b'P02_SYNTHETIC_PROFILE_READ').hexdigest()
-        or report.get('answerUtf8Bytes') != len(b'P02_SYNTHETIC_PROFILE_READ')
+        or report.get('mcpServerNames') != [profile_aux['serverId']]
+        or report.get('answerCheckMethod') != profile['answerCheckMethod']
+        or report.get('answerSha256') != hashlib.sha256(profile_aux['acknowledgement'].encode()).hexdigest()
+        or report.get('answerUtf8Bytes') != len(profile_aux['acknowledgement'].encode())
     ):
         return False
     if (
@@ -15527,7 +15694,7 @@ def codex_p02_profile_report_is_valid(
         or not isinstance(fixture, dict)
         or set(fixture) != CODEX_P02_OFFLINE_FIXTURE_FIELDS
         or fixture != {
-            'profile': CODEX_P02_NETWORK_MODE,
+            'profile': profile['networkMode'],
             'requestCount': 3,
             'personRequestCount': 1,
             'subjectsRequestCount': 1,
@@ -15565,7 +15732,7 @@ def codex_p02_profile_report_is_valid(
         catalog_bytes = CATALOG.read_bytes()
         catalog = json.loads(catalog_bytes)
         catalog_tool = next(
-            (item for item in catalog if isinstance(item, dict) and item.get('name') == CODEX_P02_TOOL_NAME),
+            (item for item in catalog if isinstance(item, dict) and item.get('name') == profile['toolName']),
             None,
         )
     except (OSError, ValueError):
@@ -15584,7 +15751,7 @@ def codex_p02_profile_report_is_valid(
     current_epoch_status = epoch_status or codex_p02_profile_epoch_harness_status(pr_number)
     if not codex_p02_profile_report_candidate_binding_is_current(report, current_epoch_status):
         return False
-    status = harness_status or codex_p02_profile_harness_status(pr_number)
+    status = harness_status or codex_p02_profile_harness_status(pr_number, profile_id)
     disposition = codex_p02_profile_disposition_matches_report(report, status, report_sha256)
     if disposition is None:
         return False
@@ -23901,7 +24068,10 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(
         LIVE_PROBE_DIR / CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_RELATIVE_PATH.split('/')[-1],
     )
-    report_paths.append(LIVE_PROBE_DIR / CODEX_P02_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.extend(
+        LIVE_PROBE_DIR / Path(str(profile['reportPath'])).name
+        for profile in CODEX_P02_PROFILES.values()
+    )
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_CAST_OFFLINE_V2_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_M07_REPORT_RELATIVE_PATH.split('/')[-1])
@@ -24271,20 +24441,26 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             for tool_name in codex_g01_query_subjects_offline_profile_matrix_targets(report):
                 sources.setdefault(tool_name, set()).add(report_source_ref(path))
             continue
-        if report.get('evidenceKind') == CODEX_P02_EVIDENCE_KIND:
-            current_status = codex_p02_profile_harness_status(report.get('prNumber'))
+        if report.get('evidenceKind') in CODEX_P02_EVIDENCE_KINDS:
+            profile = codex_p02_profile_spec(report.get('profileId'))
+            if profile is None or report.get('evidenceKind') != profile.get('evidenceKind'):
+                continue
+            profile_id = str(profile['id'])
+            current_status = codex_p02_profile_harness_status(
+                report.get('prNumber'), profile_id,
+            )
             current_epoch_status = codex_p02_profile_epoch_harness_status(report.get('prNumber'))
             if (
-                path.name != Path(CODEX_P02_REPORT_RELATIVE_PATH).name
+                path.name != Path(str(profile['reportPath'])).name
                 or not codex_p02_profile_report_is_valid(
                     report, current_status, path, current_epoch_status,
                 )
                 or not codex_p02_profile_report_matches_candidate_revision(
-                    path, report.get('sourceRevision'),
+                    path, report.get('sourceRevision'), profile_id,
                 )
             ):
                 continue
-            sources.setdefault(CODEX_P02_TOOL_NAME, set()).add(report_source_ref(path))
+            sources.setdefault(str(profile['toolName']), set()).add(report_source_ref(path))
             continue
         if report.get('evidenceKind') in {
             CODEX_G06_CAST_OFFLINE_EVIDENCE_KIND,

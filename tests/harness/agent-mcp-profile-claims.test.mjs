@@ -16,6 +16,7 @@ import {
   getAgentMcpProfileById,
   listAgentMcpProfiles,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
+import { isG16LunaMaxReviewerId } from '../../scripts/lib/g16-reviewer-id.mjs';
 
 const PROFILE = getAgentMcpProfile(
   'bangumi.get_person_activity',
@@ -25,6 +26,13 @@ const C04_PROFILE = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matr
 const R04_V2_PROFILE = getAgentMcpProfileById(
   'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
 );
+
+test('Luna Max reviewer validation accepts the exact local runtime identity form', () => {
+  assert.equal(isG16LunaMaxReviewerId('/root/p02_v2_review', 237), true);
+  assert.equal(isG16LunaMaxReviewerId('/root/p02-v2-review', 237), false);
+  assert.equal(isG16LunaMaxReviewerId('/tmp/p02_v2_review', 237), false);
+  assert.equal(isG16LunaMaxReviewerId('/root/p02_v2_review', 0), false);
+});
 
 test('C04 matrix profile binds its two exact read-only tools in order', () => {
   assert.ok(C04_PROFILE);
@@ -95,7 +103,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 35);
+  assert.equal(listAgentMcpProfiles().length, 36);
   const p06OfflineV2 = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v2');
   assert.ok(p06OfflineV2);
   assert.equal(p06OfflineV2.epochId, 'run95-p06-render-person-profile-visual-matrix-v2-20261018');
@@ -373,6 +381,38 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   );
   assert.match(agentMcpProfileArgumentsSha256(p02), /^[0-9a-f]{64}$/u);
   assert.match(agentMcpProfileRegistrySha256(p02.id), /^[0-9a-f]{64}$/u);
+  const p02v2 = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v2');
+  assert.ok(p02v2);
+  assert.equal(p02v2.frontierId, 'P02');
+  assert.equal(p02v2.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(p02v2.epochId, 'run95-p02-person-profile-offline-v2-matrix-20261019');
+  assert.equal(p02v2.networkMode, 'run95-p02-person-profile-offline-v2');
+  assert.equal(
+    p02v2.argumentProfile,
+    'fixed-p02-synthetic-person-990711-one-subject-one-character-v2',
+  );
+  assert.equal(p02v2.claimLabelName, 'harness-r95-p02-person-profile-offline-v2-claimed');
+  assert.equal(p02v2.reportPath, 'docs/live-probes/p02-person-profile-agent-mcp-v2-run95.json');
+  assert.notEqual(p02v2.claimLabelName, p02.claimLabelName);
+  assert.notEqual(p02v2.reportPath, p02.reportPath);
+  assert.deepEqual(p02v2.calls, [
+    {
+      toolName: 'bangumi.get_person_profile',
+      arguments: {
+        personId: 990711,
+        includeCredits: true,
+        maxSubjects: 1,
+        maxCharacters: 1,
+        includeChronology: false,
+      },
+    },
+  ]);
+  assert.equal(
+    agentMcpProfileClaimLabelDescription(p02v2),
+    'Run 95 P02 profile p02-person-profile-offline-agent-mcp-v2; permanent one-shot latch.',
+  );
+  assert.match(agentMcpProfileArgumentsSha256(p02v2), /^[0-9a-f]{64}$/u);
+  assert.match(agentMcpProfileRegistrySha256(p02v2.id), /^[0-9a-f]{64}$/u);
   const r04 = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v1');
   assert.ok(r04);
   assert.equal(r04.frontierId, 'R04');

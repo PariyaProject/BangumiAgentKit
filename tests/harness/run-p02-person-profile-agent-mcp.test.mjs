@@ -1,29 +1,370 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  agentMcpProfileTerminalLabelDescription,
   agentMcpProfileArgumentsSha256,
+  agentMcpProfileRegistrySha256,
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
   P02_PERSON_PROFILE_EXPECTED_ARGUMENTS,
-  P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+  P02_PERSON_PROFILE_OFFLINE_PROFILE_ID,
+  P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+  getP02PersonProfileOfflineSpec,
 } from '../../scripts/lib/p02-person-profile-offline-fixture.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 import {
   buildP02CodexExecArgs,
+  classifyP02TerminalLatchRecovery,
+  classifyP02ReportWriteRecovery,
+  isP02ProfileClaimCurrent,
+  recoverP02StartupStatus,
+  shouldInvokeP02Codex,
   validateP02RunnerArgs,
   validateServerSummary,
 } from '../../scripts/acceptance/run-p02-person-profile-agent-mcp.mjs';
 
-const PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
+const PROFILE = getAgentMcpProfileById(P02_PERSON_PROFILE_OFFLINE_PROFILE_ID);
+const PROFILE_V2 = getAgentMcpProfileById(P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
+const SPEC_V2 = getP02PersonProfileOfflineSpec(P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
 const SOURCE_SHA = 'a'.repeat(40);
 const BUNDLE_SHA = 'b'.repeat(64);
 const SERVER_ID = 'bgk_p02_profile';
 
+test('P02 report-write recovery distinguishes committed, stale-terminal, and pending states', () => {
+  const claimId = 'p02-claim';
+  const reportSha256 = 'd'.repeat(64);
+  assert.equal(
+    classifyP02ReportWriteRecovery(
+      { state: 'REPORT_WRITTEN', disposition: { reportSha256 } },
+      claimId,
+      reportSha256,
+    ),
+    'REPORT_WRITTEN',
+  );
+  assert.equal(
+    classifyP02ReportWriteRecovery(
+      {
+        state: 'INCONCLUSIVE',
+        disposition: { unacceptedReportSha256: reportSha256, retryAllowed: false },
+      },
+      claimId,
+      reportSha256,
+    ),
+    'INCONCLUSIVE',
+  );
+  assert.equal(
+    classifyP02ReportWriteRecovery(
+      { state: 'CLAIMED', disposition: { claimId } },
+      claimId,
+      reportSha256,
+    ),
+    'CHECK_CANDIDATE_STALENESS',
+  );
+  assert.equal(
+    classifyP02ReportWriteRecovery(
+      { state: 'CLAIMED', disposition: { claimId: 'other' } },
+      claimId,
+      reportSha256,
+    ),
+    'ACK_PENDING',
+  );
+});
+
+test('P02 terminal-latch recovery replays only the exact durable terminal state', () => {
+  const reportSha256 = 'd'.repeat(64);
+  const noClaim = {
+    state: 'AMBIGUOUS_TERMINAL_LATCH',
+    disposition: null,
+    terminal_label_description: agentMcpProfileTerminalLabelDescription(PROFILE_V2, 'INCONCLUSIVE'),
+  };
+  assert.equal(
+    classifyP02TerminalLatchRecovery(noClaim, null, PROFILE_V2.id),
+    'RECONCILE_AMBIGUOUS',
+  );
+
+  const claimed = {
+    state: 'AMBIGUOUS_TERMINAL_LATCH',
+    disposition: { claimId: 'p02-claim', state: 'CLAIMED' },
+  };
+  assert.equal(
+    classifyP02TerminalLatchRecovery(
+      {
+        ...claimed,
+        terminal_label_description: agentMcpProfileTerminalLabelDescription(
+          PROFILE_V2,
+          'REPORT_WRITTEN',
+          reportSha256,
+        ),
+      },
+      reportSha256,
+      PROFILE_V2.id,
+    ),
+    'REPLAY_REPORT_WRITTEN',
+  );
+  assert.equal(
+    classifyP02TerminalLatchRecovery(
+      {
+        ...claimed,
+        terminal_label_description: agentMcpProfileTerminalLabelDescription(
+          PROFILE_V2,
+          'INCONCLUSIVE',
+          reportSha256,
+        ),
+      },
+      reportSha256,
+      PROFILE_V2.id,
+    ),
+    'REPLAY_INCONCLUSIVE',
+  );
+  assert.equal(
+    classifyP02TerminalLatchRecovery(
+      {
+        ...claimed,
+        terminal_label_description: agentMcpProfileTerminalLabelDescription(
+          PROFILE_V2,
+          'INCONCLUSIVE',
+        ),
+      },
+      null,
+      PROFILE_V2.id,
+    ),
+    'REPLAY_INCONCLUSIVE',
+  );
+  assert.equal(
+    classifyP02TerminalLatchRecovery(
+      {
+        ...claimed,
+        terminal_label_description: 'Run95 P02 REPORT_WRITTEN sha256=ffffffff',
+      },
+      reportSha256,
+      PROFILE_V2.id,
+    ),
+    'ACK_PENDING',
+  );
+  assert.equal(classifyP02TerminalLatchRecovery({ state: 'CLAIMED' }, null, PROFILE_V2.id), 'NONE');
+});
+
+test('P02 startup routes persisted profile-binding mismatches to no-report reconciliation', () => {
+  for (const state of ['CLAIM_MISMATCH', 'CLAIM_MISMATCH_TERMINAL_LATCH']) {
+    const claimId = `profile-run-95-pr-237-${state.toLowerCase()}`;
+    const calls = [];
+    const result = recoverP02StartupStatus(
+      { state, disposition: { claimId } },
+      {
+        reconcileAmbiguous: () => calls.push('ambiguous-reconcile'),
+        recoverTerminalLatch: () => calls.push('terminal-latch-recovery'),
+        terminalizeMismatch: (status) => {
+          calls.push(['mismatch-terminalization', status.disposition.claimId]);
+          return 1;
+        },
+        reuseTerminal: () => calls.push('reuse-terminal'),
+        finalizeClaim: () => calls.push('finalize-claim'),
+      },
+    );
+    assert.equal(result, 1);
+    assert.deepEqual(calls, [['mismatch-terminalization', claimId]]);
+  }
+});
+
+test('P02 exact claim-current check accepts the assigned runtime reviewer and rejects drift', () => {
+  const candidateSha = 'a'.repeat(40);
+  const baseSha = 'b'.repeat(40);
+  const reviewerId = '/root/p02_v2_review';
+  const claim = {
+    claimId: 'profile-run-95-pr-237-aaaaaaaaaaaa-1792100000000',
+    profileId: PROFILE_V2.id,
+    frontierId: PROFILE_V2.frontierId,
+    epochId: SPEC_V2.epochId,
+    runNumber: 95,
+    prNumber: 237,
+    toolName: PROFILE_V2.toolName,
+    argumentProfile: PROFILE_V2.argumentProfile,
+    expectedArguments: PROFILE_V2.calls.map((call) => structuredClone(call.arguments)),
+    baseSha,
+    sourceCandidateSha: candidateSha,
+    ciSha: candidateSha,
+    ciRunId: '39207834428',
+    ciChecks: [{ name: 'harness-control', status: 'COMPLETED', conclusion: 'SUCCESS' }],
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE_V2),
+    registrySha256: agentMcpProfileRegistrySha256(PROFILE_V2.id),
+    reviewerId,
+    bundleSha256: BUNDLE_SHA,
+  };
+  const epoch = {
+    epoch_id: SPEC_V2.epochId,
+    pr_number: 237,
+    state: 'REVIEW_PASSED',
+    advances_frontier_ids: ['P02'],
+    scope_closure: { related_work_remaining: false },
+    adversarial_preflight: { completed: true },
+    base_branch: 'master',
+    base_sha: baseSha,
+    reviewed_base_sha: baseSha,
+    candidate_sha: candidateSha,
+    review_pass_sha: candidateSha,
+    ci: { sha: candidateSha, status: 'SUCCESS' },
+    branch: 'codex/p02-v2',
+    review_history: [
+      {
+        candidate_sha: candidateSha,
+        reviewed_base_sha: baseSha,
+        reviewer_id: reviewerId,
+        verdict: 'PASS',
+      },
+    ],
+  };
+  const status = {
+    git: { branch: epoch.branch },
+    run: {
+      state: {
+        state: 'EPOCH_ACTIVE',
+        profile: 'AUTONOMOUS_EVOLUTION',
+        active_epoch_pr: 237,
+        pending_epoch: null,
+      },
+    },
+    epoch: { number: 237, state: epoch },
+  };
+  const pr = {
+    state: 'OPEN',
+    isDraft: false,
+    baseRefName: 'master',
+    headRefName: epoch.branch,
+    headRefOid: candidateSha,
+  };
+  const inputs = {
+    profileStatus: { state: 'CLAIMED', disposition: structuredClone(claim) },
+    epochStatus: status,
+    pr,
+    currentBaseSha: baseSha,
+    localBranch: epoch.branch,
+    localHead: candidateSha,
+    localWorktreeStatus: `?? ${PROFILE_V2.reportPath}`,
+    expectedWorktreeStatus: `?? ${PROFILE_V2.reportPath}`,
+    bundleCurrent: true,
+    ciEvidence: { ciRunId: claim.ciRunId, ciChecks: claim.ciChecks },
+  };
+  assert.equal(isP02ProfileClaimCurrent(claim, inputs), true);
+  const preInvocationInputs = {
+    ...inputs,
+    localWorktreeStatus: '',
+    expectedWorktreeStatus: '',
+  };
+  assert.equal(isP02ProfileClaimCurrent(claim, preInvocationInputs), true);
+  const driftedLiveStates = [
+    {
+      ...preInvocationInputs,
+      currentBaseSha: 'c'.repeat(40),
+    },
+    {
+      ...preInvocationInputs,
+      pr: { ...pr, headRefOid: 'c'.repeat(40) },
+    },
+    {
+      ...preInvocationInputs,
+      epochStatus: {
+        ...status,
+        epoch: {
+          ...status.epoch,
+          state: {
+            ...epoch,
+            review_history: [{ ...epoch.review_history[0], reviewer_id: '/root/other-reviewer' }],
+          },
+        },
+      },
+    },
+    {
+      ...preInvocationInputs,
+      epochStatus: {
+        ...status,
+        epoch: { ...status.epoch, state: { ...epoch, ci: { ...epoch.ci, sha: 'c'.repeat(40) } } },
+      },
+    },
+    {
+      ...preInvocationInputs,
+      ciEvidence: { ciRunId: 'other-run', ciChecks: claim.ciChecks },
+    },
+    {
+      ...preInvocationInputs,
+      localHead: 'c'.repeat(40),
+    },
+    ...[
+      ['frontierId', 'G06'],
+      ['epochId', 'run95-other-epoch'],
+      ['runNumber', 94],
+      ['expectedArguments', [{ personId: 990712 }]],
+    ].map(([field, value]) => ({
+      ...preInvocationInputs,
+      profileStatus: {
+        state: 'CLAIMED',
+        disposition: { ...claim, [field]: value },
+      },
+    })),
+  ].map((liveInputs) => isP02ProfileClaimCurrent(claim, liveInputs));
+  assert.deepEqual(driftedLiveStates, Array(10).fill(false));
+
+  const claimStatus = { state: 'CLAIMED', disposition: structuredClone(claim) };
+  assert.equal(
+    shouldInvokeP02Codex({
+      beforeInvokeProfileStatus: {
+        state: 'CLAIM_MISMATCH',
+        disposition: { ...claim, frontierId: 'G06' },
+      },
+      claim,
+      liveClaimCurrent: false,
+      reportExists: false,
+    }),
+    false,
+  );
+  let invocationCount = 0;
+  for (const liveClaimCurrent of driftedLiveStates) {
+    if (
+      shouldInvokeP02Codex({
+        beforeInvokeProfileStatus: claimStatus,
+        claim,
+        liveClaimCurrent,
+        reportExists: false,
+      })
+    ) {
+      invocationCount += 1;
+    }
+  }
+  assert.equal(
+    invocationCount,
+    0,
+    'Base, PR head, reviewer, CI, or registered-profile drift after claim must prevent the one-shot Codex invocation',
+  );
+  assert.equal(
+    shouldInvokeP02Codex({
+      beforeInvokeProfileStatus: claimStatus,
+      claim,
+      liveClaimCurrent: true,
+      reportExists: true,
+    }),
+    false,
+  );
+});
+
 test('P02 Codex invocation is ephemeral, read-only, and exposes only the fixed offline tool', () => {
-  assert.equal(validateP02RunnerArgs(['--help']), 'help');
-  assert.equal(validateP02RunnerArgs(['--run', '95']), 'run');
+  assert.deepEqual(validateP02RunnerArgs(['--help']), { mode: 'help' });
+  assert.deepEqual(validateP02RunnerArgs(['--run', '95']), {
+    mode: 'run',
+    profileId: P02_PERSON_PROFILE_OFFLINE_PROFILE_ID,
+  });
   assert.throws(() => validateP02RunnerArgs(['--run', '94']));
+  assert.throws(() =>
+    validateP02RunnerArgs(['--run', '95', '--profile-id', 'unregistered-p02-profile']),
+  );
+  assert.deepEqual(
+    validateP02RunnerArgs([
+      '--run',
+      '95',
+      '--profile-id',
+      P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+    ]),
+    { mode: 'run', profileId: P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID },
+  );
   const args = buildP02CodexExecArgs({
     nodePath: '/usr/bin/node',
     summaryPath: '/tmp/p02-summary.json',
@@ -43,6 +384,19 @@ test('P02 Codex invocation is ephemeral, read-only, and exposes only the fixed o
   assert.match(joined, /features\.shell_tool=false/u);
   assert.match(joined, /features\.web_search=false/u);
   assert.doesNotMatch(joined, /render_person_profile/u);
+  const v2Args = buildP02CodexExecArgs({
+    nodePath: '/usr/bin/node',
+    summaryPath: '/tmp/p02-v2-summary.json',
+    sourceRevision: SOURCE_SHA,
+    bundleSha256: BUNDLE_SHA,
+    profileId: P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+  });
+  const v2Joined = v2Args.join('\n');
+  assert.match(v2Joined, /mcp_servers\.bgk_p02_profile_v2\.enabled_tools/u);
+  assert.match(v2Joined, /p02-person-profile-offline-agent-mcp-v2/u);
+  assert.match(v2Joined, /990711/u);
+  assert.match(v2Joined, /P02_SYNTHETIC_PROFILE_READ_V2/u);
+  assert.doesNotMatch(v2Joined, /bgk_p02_profile\.enabled_tools/u);
 });
 
 test('P02 server summary requires exactly the three synthetic responses', () => {
@@ -50,7 +404,7 @@ test('P02 server summary requires exactly the three synthetic responses', () => 
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
     profileId: PROFILE.id,
     argumentProfile: PROFILE.argumentProfile,
-    networkMode: P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+    networkMode: 'run95-p02-person-profile-offline-v1',
     expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
     sourceRevision: SOURCE_SHA,
     bundleSha256: BUNDLE_SHA,
@@ -69,7 +423,7 @@ test('P02 server summary requires exactly the three synthetic responses', () => 
       },
     ],
     offlineFixture: {
-      profile: P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+      profile: 'run95-p02-person-profile-offline-v1',
       requestCount: 3,
       personRequestCount: 1,
       subjectsRequestCount: 1,
@@ -114,10 +468,12 @@ test('P02 server summary requires exactly the three synthetic responses', () => 
     validateServerSummary(
       {
         ...summary,
-        results: [{
-          ...summary.results[0],
-          resultSummary: mismatchedResultSummary,
-        }],
+        results: [
+          {
+            ...summary.results[0],
+            resultSummary: mismatchedResultSummary,
+          },
+        ],
       },
       SOURCE_SHA,
       BUNDLE_SHA,
@@ -134,10 +490,12 @@ test('P02 server summary requires exactly the three synthetic responses', () => 
     validateServerSummary(
       {
         ...summary,
-        results: [{
-          ...summary.results[0],
-          resultSummary: missingResultIdentitySummary,
-        }],
+        results: [
+          {
+            ...summary.results[0],
+            resultSummary: missingResultIdentitySummary,
+          },
+        ],
       },
       SOURCE_SHA,
       BUNDLE_SHA,
@@ -145,4 +503,35 @@ test('P02 server summary requires exactly the three synthetic responses', () => 
     false,
   );
   assert.equal(SERVER_ID, 'bgk_p02_profile');
+  const v2Summary = {
+    ...summary,
+    profileId: PROFILE_V2.id,
+    argumentProfile: PROFILE_V2.argumentProfile,
+    networkMode: SPEC_V2.networkMode,
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE_V2),
+    toolName: PROFILE_V2.toolName,
+    serverToolNames: [PROFILE_V2.toolName],
+    results: [
+      {
+        ...summary.results[0],
+        resultSummary: { ...summary.results[0].resultSummary, personId: 990711 },
+      },
+    ],
+    offlineFixture: { ...summary.offlineFixture, profile: SPEC_V2.networkMode },
+  };
+  assert.equal(validateServerSummary(v2Summary, SOURCE_SHA, BUNDLE_SHA, PROFILE_V2.id), true);
+  assert.equal(
+    validateServerSummary(
+      {
+        ...v2Summary,
+        results: [
+          { ...v2Summary.results[0], resultSummary: { personId: 990701, state: 'partial' } },
+        ],
+      },
+      SOURCE_SHA,
+      BUNDLE_SHA,
+      PROFILE_V2.id,
+    ),
+    false,
+  );
 });

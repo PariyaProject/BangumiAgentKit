@@ -173,9 +173,7 @@ import { validateC04SanitizedReportFile } from './acceptance/write-c04-cohort-co
 import { validateTitleQueryRenderSanitizedReportFile } from './acceptance/write-title-query-render-agent-mcp-report.mjs';
 import { validateR02SanitizedReportFile } from './acceptance/write-r02-positive-direct-relations-agent-mcp-report.mjs';
 import { validateQuerySubjectsFreshPublicSanitizedReportFile } from './acceptance/write-query-subjects-fresh-public-agent-mcp-report.mjs';
-import {
-  validateQuerySubjectsFreshPublicSanitizedReportFile as validateQuerySubjectsFreshPublicV2SanitizedReportFile,
-} from './acceptance/write-query-subjects-fresh-public-agent-mcp-v2-report.mjs';
+import { validateQuerySubjectsFreshPublicSanitizedReportFile as validateQuerySubjectsFreshPublicV2SanitizedReportFile } from './acceptance/write-query-subjects-fresh-public-agent-mcp-v2-report.mjs';
 import { validateC02SanitizedReportFile } from './acceptance/write-c02-tv-movie-comparison-report.mjs';
 import { validateM07SanitizedReportFile } from './acceptance/write-m07-manage-index-agent-mcp-report.mjs';
 import { validateAuthStartSanitizedReportFile } from './acceptance/write-auth-start-offline-agent-mcp-report.mjs';
@@ -311,6 +309,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'c07-render-comparison-offline-agent-mcp-matrix-v2',
   'c07-render-comparison-offline-agent-mcp-matrix-v3',
   'p02-person-profile-offline-agent-mcp-v1',
+  'p02-person-profile-offline-agent-mcp-v2',
   'r04-series-watch-order-offline-agent-mcp-v1',
   'r04-series-watch-order-offline-agent-mcp-v2',
   'r04-render-series-watch-order-offline-agent-mcp-v1',
@@ -3419,6 +3418,51 @@ function agentMcpProfileClaims(epoch) {
   return epoch?.adversarial_preflight?.agent_mcp_profile_dispositions ?? {};
 }
 
+function agentMcpProfileClaimMatchesRegisteredProfile(profile, claim, runNumber, prNumber) {
+  if (!claim || typeof claim !== 'object' || Array.isArray(claim)) return false;
+  return (
+    claim.profileId === profile.id &&
+    claim.frontierId === profile.frontierId &&
+    claim.epochId === profile.epochId &&
+    claim.runNumber === Number(runNumber) &&
+    claim.prNumber === Number(prNumber) &&
+    claim.toolName === profile.toolName &&
+    claim.argumentProfile === profile.argumentProfile &&
+    canonicalHash(claim.expectedArguments) ===
+      canonicalHash(profile.calls.map((call) => call.arguments)) &&
+    claim.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(profile) &&
+    claim.registrySha256 === agentMcpProfileRegistrySha256(profile.id)
+  );
+}
+
+function isTerminalizableAgentMcpProfileBindingMismatch(profile, claim, prNumber) {
+  if (
+    !claim ||
+    typeof claim !== 'object' ||
+    Array.isArray(claim) ||
+    claim.state !== 'CLAIMED' ||
+    claim.reportWritten !== false ||
+    claim.retryAllowed !== false ||
+    claim.reportPath !== undefined ||
+    claim.reportSha256 !== undefined ||
+    claim.unacceptedReportSha256 !== undefined ||
+    claim.runnerReceiptSha256 !== undefined
+  ) {
+    return false;
+  }
+  const candidateSha = claim.sourceCandidateSha;
+  const claimIdMatch =
+    typeof claim.claimId === 'string'
+      ? new RegExp(`^profile-run-95-pr-${prNumber}-([0-9a-f]{12})-\\d+$`, 'u').exec(claim.claimId)
+      : null;
+  return (
+    /^[0-9a-f]{40}$/u.test(candidateSha ?? '') &&
+    claimIdMatch?.[1] === candidateSha.slice(0, 12) &&
+    typeof claim.claimedAt === 'string' &&
+    Number.isFinite(Date.parse(claim.claimedAt))
+  );
+}
+
 function isMatchingA01AggregateProfileClaim(profile, claim, prNumber) {
   if (!claim || typeof claim !== 'object' || Array.isArray(claim)) return false;
   const claimFields = new Set([
@@ -3753,6 +3797,12 @@ function commandEpochAgentMcpProfileStatus(options) {
   const terminalLabelName = agentMcpProfileTerminalLabelName(profile);
   const terminalLabel = labels.find((label) => label.name === terminalLabelName) ?? null;
   const expectedDescription = agentMcpProfileClaimLabelDescription(profile);
+  const claimMatchesProfile = agentMcpProfileClaimMatchesRegisteredProfile(
+    profile,
+    disposition,
+    runNumber,
+    prNumber,
+  );
   let state = 'UNCLAIMED';
   if (claimLabel && claimLabel.description !== expectedDescription) {
     state = 'LATCH_CONFLICT';
@@ -3760,15 +3810,7 @@ function commandEpochAgentMcpProfileStatus(options) {
     state = 'AMBIGUOUS';
   } else if (disposition) {
     state = disposition.state;
-    if (
-      disposition.profileId !== profile.id ||
-      disposition.toolName !== profile.toolName ||
-      disposition.argumentProfile !== profile.argumentProfile ||
-      disposition.expectedArgumentsSha256 !== agentMcpProfileArgumentsSha256(profile) ||
-      disposition.registrySha256 !== agentMcpProfileRegistrySha256(profile.id) ||
-      disposition.retryAllowed !== false
-    )
-      state = 'CLAIM_MISMATCH';
+    if (!claimMatchesProfile || disposition.retryAllowed !== false) state = 'CLAIM_MISMATCH';
   }
   if (disposition && ['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(disposition.state)) {
     let expectedTerminalDescription;
@@ -3785,7 +3827,10 @@ function commandEpochAgentMcpProfileStatus(options) {
       state = 'TERMINAL_LATCH_MISMATCH';
     }
   } else if (terminalLabel) {
-    state = 'AMBIGUOUS_TERMINAL_LATCH';
+    state =
+      disposition?.state === 'CLAIMED' && !claimMatchesProfile
+        ? 'CLAIM_MISMATCH_TERMINAL_LATCH'
+        : 'AMBIGUOUS_TERMINAL_LATCH';
   }
   let reviewGate = { eligible: false, reason: null };
   if (state === 'UNCLAIMED') {
@@ -3821,6 +3866,7 @@ function commandEpochAgentMcpProfileStatus(options) {
     retry_allowed: false,
     claim_label_present: claimLabel !== null,
     terminal_label_present: terminalLabel !== null,
+    terminal_label_description: terminalLabel?.description ?? null,
     review_gate: reviewGate,
     disposition,
     issue_state: runResult.state.state,
@@ -3841,15 +3887,16 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
       { profileId },
     );
   }
+  const p02V2Profile = profile.id === 'p02-person-profile-offline-agent-mcp-v2';
   if (
     Number(runNumber) !== 95 ||
     !Number.isSafeInteger(Number(prNumber)) ||
     Number(prNumber) < 1 ||
-    profile.id !== 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1'
+    (profile.id !== 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1' && !p02V2Profile)
   ) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_RECONCILE_INVALID',
-      'Ambiguous-latch reconciliation is limited to the Run #95 A01 offline aggregate profile.',
+      'Ambiguous-latch reconciliation is limited to the registered Run #95 A01 and P02 v2 offline profiles.',
     );
   }
 
@@ -3867,11 +3914,11 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
     !epoch.advances_frontier_ids?.includes(profile.frontierId) ||
     epoch.adversarial_preflight?.completed !== true ||
     pr.state !== 'OPEN' ||
-    pr.isDraft
+    (!p02V2Profile && pr.isDraft)
   ) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_RECONCILE_EPOCH_MISMATCH',
-      'Ambiguous-latch reconciliation must match the active A01 profile Epoch.',
+      'Ambiguous-latch reconciliation must match the active registered profile Epoch.',
       { runNumber: Number(runNumber), prNumber: Number(prNumber), profileId },
     );
   }
@@ -3894,6 +3941,172 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
       'A different terminal profile latch already exists; refusing reconciliation.',
       { profileId },
     );
+  }
+
+  if (p02V2Profile) {
+    const dispositions = agentMcpProfileClaims(epoch);
+    const current = dispositions[profile.id];
+    const currentClaimBindingMismatch =
+      current?.state === 'CLAIMED' &&
+      !agentMcpProfileClaimMatchesRegisteredProfile(profile, current, runNumber, prNumber) &&
+      isTerminalizableAgentMcpProfileBindingMismatch(profile, current, prNumber);
+    const invalidClaimSha256 = currentClaimBindingMismatch ? canonicalHash(current) : null;
+    if (
+      current?.state === 'INCONCLUSIVE' &&
+      current.ambiguousLatchReconciled === true &&
+      current.claimIdentityRecovered === false &&
+      current.claimBindingMismatchTerminalized !== true &&
+      current.terminalLabelDescription === terminalDescription &&
+      terminalLabel?.description === terminalDescription
+    ) {
+      print({
+        state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED',
+        run: 95,
+        pr: Number(prNumber),
+        profileId,
+        resultState: 'INCONCLUSIVE',
+        retryAllowed: false,
+      });
+      return;
+    }
+    if (
+      current?.state === 'INCONCLUSIVE' &&
+      current.ambiguousLatchReconciled === true &&
+      current.claimIdentityRecovered === false &&
+      current.claimBindingMismatchTerminalized === true &&
+      /^[0-9a-f]{64}$/u.test(current.invalidClaimSha256 ?? '') &&
+      current.terminalLabelDescription === terminalDescription &&
+      terminalLabel?.description === terminalDescription &&
+      !fs.existsSync(path.join(root, profile.reportPath))
+    ) {
+      print({
+        state: 'AGENT_MCP_PROFILE_CLAIM_MISMATCH_ALREADY_TERMINALIZED',
+        run: 95,
+        pr: Number(prNumber),
+        profileId,
+        invalidClaimId: current.invalidClaimId,
+        invalidClaimSha256: current.invalidClaimSha256,
+        resultState: 'INCONCLUSIVE',
+        retryAllowed: false,
+      });
+      return;
+    }
+    if (current !== undefined && !currentClaimBindingMismatch) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_DISPOSITION_NOT_AMBIGUOUS',
+        'A durable P02 v2 profile disposition is neither ambiguous nor a terminalizable profile-binding mismatch.',
+        { profileId, currentState: current.state },
+      );
+    }
+    if (fs.existsSync(path.join(root, profile.reportPath))) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_AMBIGUOUS_REPORT_PRESENT',
+        'A P02 v2 report exists without a durable claim; refusing ambiguous-latch reconciliation.',
+        { profileId },
+      );
+    }
+
+    const terminal = acquireAgentMcpProfileTerminalGitHubLatch(gh, profile, 'INCONCLUSIVE');
+    const latestRun = issueState(runNumber).state;
+    const latestEpochResult = epochState(prNumber);
+    const latestEpoch = latestEpochResult.state;
+    const latestDispositions = agentMcpProfileClaims(latestEpoch);
+    const latestClaimLabel = readAgentMcpProfileLabels().find(
+      (label) => label.name === profile.claimLabelName,
+    );
+    const latestTerminalLabel = readAgentMcpProfileLabels().find(
+      (label) => label.name === terminalLabelName,
+    );
+    if (
+      latestRun.state !== 'EPOCH_ACTIVE' ||
+      latestRun.active_epoch_pr !== Number(prNumber) ||
+      latestRun.pending_epoch != null ||
+      latestEpoch.epoch_id !== profile.epochId ||
+      latestEpoch.pr_number !== Number(prNumber) ||
+      latestEpochResult.view.state !== 'OPEN' ||
+      (currentClaimBindingMismatch
+        ? !isTerminalizableAgentMcpProfileBindingMismatch(
+            profile,
+            latestDispositions[profile.id],
+            prNumber,
+          ) || canonicalHash(latestDispositions[profile.id]) !== invalidClaimSha256
+        : latestDispositions[profile.id] !== undefined) ||
+      latestClaimLabel?.description !== agentMcpProfileClaimLabelDescription(profile) ||
+      latestTerminalLabel?.description !== terminalDescription ||
+      fs.existsSync(path.join(root, profile.reportPath))
+    ) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_AMBIGUOUS_RECONCILIATION_STALE',
+        'The active P02 v2 Epoch or ambiguous disposition changed during terminal-latch creation; refusing a stale PR write.',
+        { profileId, prNumber: Number(prNumber) },
+      );
+    }
+    const failureDiagnostics = normalizeAgentMcpProfileDiagnostics({
+      schemaVersion: 1,
+      reasonCode: currentClaimBindingMismatch
+        ? 'P02_PROFILE_CLAIM_BINDING_MISMATCH_TERMINALIZED'
+        : 'P02_AMBIGUOUS_LATCH_RECONCILED',
+      checks: currentClaimBindingMismatch
+        ? { claimReadbackValid: false, invocationStateUnknown: false }
+        : { invocationStateUnknown: true },
+      counters: {},
+    });
+    const nextEpoch = structuredClone(latestEpoch);
+    const disposition = {
+      schemaVersion: 1,
+      claimId: null,
+      ...(currentClaimBindingMismatch
+        ? {
+            invalidClaimId: current.claimId,
+            invalidClaimSha256,
+            claimBindingMismatchTerminalized: true,
+          }
+        : {}),
+      claimIdentityRecovered: false,
+      ambiguousLatchReconciled: true,
+      state: 'INCONCLUSIVE',
+      profileId: profile.id,
+      frontierId: profile.frontierId,
+      epochId: profile.epochId,
+      runNumber: 95,
+      prNumber: Number(prNumber),
+      toolName: profile.toolName,
+      argumentProfile: profile.argumentProfile,
+      expectedArguments: profile.calls.map((call) => structuredClone(call.arguments)),
+      expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+      registrySha256: agentMcpProfileRegistrySha256(profile.id),
+      sourceCandidateSha: null,
+      baseSha: null,
+      ciSha: null,
+      ciStatus: 'UNKNOWN',
+      reviewerId: null,
+      bundleSha256: null,
+      reportWritten: false,
+      failureDiagnostics,
+      terminalLabel: terminal.name,
+      terminalLabelDescription: terminal.description,
+      retryAllowed: false,
+      finishedAt: new Date().toISOString(),
+    };
+    nextEpoch.adversarial_preflight.agent_mcp_profile_dispositions = {
+      ...latestDispositions,
+      [profile.id]: disposition,
+    };
+    updatePr(prNumber, nextEpoch);
+    print({
+      state: currentClaimBindingMismatch
+        ? 'AGENT_MCP_PROFILE_CLAIM_MISMATCH_TERMINALIZED'
+        : 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
+      run: 95,
+      pr: Number(prNumber),
+      profileId,
+      ...(currentClaimBindingMismatch
+        ? { invalidClaimId: current.claimId, invalidClaimSha256 }
+        : {}),
+      resultState: 'INCONCLUSIVE',
+      retryAllowed: false,
+    });
+    return;
   }
 
   const dispositions = agentMcpProfileClaims(epoch);
@@ -4319,6 +4532,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'query-subjects-fresh-public-matrix-v2':
       return validateQuerySubjectsFreshPublicV2SanitizedReportFile(claim, root, reportPath);
     case 'p02-person-profile-offline-agent-mcp-v1':
+    case 'p02-person-profile-offline-agent-mcp-v2':
       return validateP02SanitizedReportFile(claim, root, reportPath);
     case 'r04-series-watch-order-offline-agent-mcp-v1':
       return validateR04SanitizedReportFile(claim, root, reportPath);
@@ -4457,6 +4671,25 @@ function commandEpochAgentMcpProfileResult(options) {
       { profileId, claimId },
     );
   }
+  const existingTerminalLabel = readAgentMcpProfileLabels().find(
+    (label) => label.name === agentMcpProfileTerminalLabelName(profile),
+  );
+  const reportDigestValid =
+    resultState === 'REPORT_WRITTEN'
+      ? /^[0-9a-f]{64}$/u.test(reportSha256 ?? '')
+      : reportSha256 === null || /^[0-9a-f]{64}$/u.test(reportSha256);
+  const existingTerminalLatchMatches =
+    reportDigestValid &&
+    existingTerminalLabel?.description ===
+      agentMcpProfileTerminalLabelDescription(profile, resultState, reportSha256);
+  const replayingTerminalLatch = current.state === 'CLAIMED' && existingTerminalLatchMatches;
+  if (existingTerminalLabel && !existingTerminalLatchMatches) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_TERMINAL_LATCH_MISMATCH',
+      'A durable terminal profile label exists with a different result or report digest.',
+      { profileId, claimId },
+    );
+  }
   if (current.state === resultState) {
     if (
       failureDiagnostics &&
@@ -4536,7 +4769,9 @@ function commandEpochAgentMcpProfileResult(options) {
         'REPORT_WRITTEN requires the exact sanitized report SHA-256.',
       );
     }
-    assertAgentMcpProfileClaimCurrent(profile, current);
+    // The exact terminal label is the write-ahead record. Replay it even if the
+    // Candidate went stale after the first PR-body write failed.
+    if (!replayingTerminalLatch) assertAgentMcpProfileClaimCurrent(profile, current);
     const status = git('status', '--porcelain', '--untracked-files=all');
     if (status !== `?? ${profile.reportPath}`) {
       throw new HarnessInvariantError(
@@ -4573,7 +4808,7 @@ function commandEpochAgentMcpProfileResult(options) {
         );
       }
       const validation = validateAgentMcpProfileReport(profile, current, reportPath);
-      if (validation.passed) {
+      if (validation.passed && !replayingTerminalLatch) {
         let claimCurrent = true;
         try {
           assertAgentMcpProfileClaimCurrent(profile, current);

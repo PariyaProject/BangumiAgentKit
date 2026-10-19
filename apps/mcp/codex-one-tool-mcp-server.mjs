@@ -82,6 +82,7 @@ import { G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE } from '../../scripts/lib/g01-q
 import {
   assertP02PersonProfileOfflineProfile,
   createP02PersonProfileOfflineFetch,
+  P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
   P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
 } from '../../scripts/lib/p02-person-profile-offline-fixture.mjs';
 import {
@@ -316,7 +317,11 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE) {
     assertA01AggregateCohortOfflineProfile(config.profile);
   }
-  if (config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE) {
+  if (
+    [P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE, P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE].includes(
+      config.networkMode,
+    )
+  ) {
     assertP02PersonProfileOfflineProfile(config.profile);
   }
   if (isC07RenderComparisonOfflineNetworkMode(config.networkMode)) {
@@ -451,8 +456,11 @@ async function main(argv = process.argv.slice(2)) {
                 ? createG01RenderQueryOfflineFetch(config.profile)
                 : config.networkMode === G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE
                   ? createG01QuerySubjectsOfflineFetch()
-                  : config.networkMode === P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE
-                    ? createP02PersonProfileOfflineFetch()
+                  : [
+                        P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+                        P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+                      ].includes(config.networkMode)
+                    ? createP02PersonProfileOfflineFetch(config.profile.id)
                     : [G06_CAST_OFFLINE_NETWORK_MODE, G06_CAST_OFFLINE_V2_NETWORK_MODE].includes(
                           config.networkMode,
                         )

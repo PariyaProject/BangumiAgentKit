@@ -84,6 +84,11 @@ if (tool === 'gh') {
       state.runBody = payload.body;
       output('updated');
     } else if (/^repos\/\{owner\}\/\{repo\}\/pulls\/\d+$/u.test(action)) {
+      if (state.failNextPullRequestPatch === true) {
+        state.failNextPullRequestPatch = false;
+        fail('simulated pull request body update failure');
+        process.exit(1);
+      }
       const pullNumber = action.match(/\/(\d+)$/u)?.[1];
       if (state.prs?.[pullNumber]) state.prs[pullNumber].body = payload.body;
       else state.prBody = payload.body;

@@ -3,6 +3,10 @@ import test from 'node:test';
 import { getAgentMcpProfileById } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
   P02_PERSON_PROFILE_EXPECTED_ARGUMENTS,
+  P02_PERSON_PROFILE_OFFLINE_V2_EXPECTED_ARGUMENTS,
+  P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+  P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+  P02_PERSON_PROFILE_OFFLINE_V2_SYNTHETIC_ID,
   P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
   P02_PERSON_PROFILE_OFFLINE_PROFILE_ID,
   P02_PERSON_PROFILE_SYNTHETIC_ID,
@@ -34,6 +38,62 @@ test('P02 profile binds one exact synthetic get_person_profile matrix call', () 
   assert.equal(config.networkMode, P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE);
   assert.deepEqual(config.expectedArgumentSequence, [P02_PERSON_PROFILE_EXPECTED_ARGUMENTS]);
   assert.equal(config.profile.acceptanceScope, 'agent-mcp-matrix-only');
+});
+
+test('P02 v2 profile uses distinct immutable arguments and synthetic identity', async () => {
+  const profile = getAgentMcpProfileById(P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
+  assert.equal(assertP02PersonProfileOfflineProfile(profile), true);
+  const parsed = parseCodexOneToolMcpArguments([
+    '--profile-id',
+    P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+    ...REQUIRED,
+  ]);
+  assert.equal(parsed.profile.id, P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
+  assert.equal(parsed.networkMode, P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE);
+  assert.deepEqual(parsed.expectedArgumentSequence, [
+    P02_PERSON_PROFILE_OFFLINE_V2_EXPECTED_ARGUMENTS,
+  ]);
+  assert.notEqual(profile.id, P02_PERSON_PROFILE_OFFLINE_PROFILE_ID);
+  assert.notEqual(profile.networkMode, P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE);
+  assert.deepEqual(profile.calls[0].arguments, P02_PERSON_PROFILE_OFFLINE_V2_EXPECTED_ARGUMENTS);
+  assert.equal(profile.calls[0].arguments.personId, P02_PERSON_PROFILE_OFFLINE_V2_SYNTHETIC_ID);
+
+  const baseV2 = `https://api.bgm.tv/v0/persons/${P02_PERSON_PROFILE_OFFLINE_V2_SYNTHETIC_ID}`;
+  const fixture = createP02PersonProfileOfflineFetch(profile.id);
+  const values = [];
+  for (const url of [baseV2, `${baseV2}/subjects`, `${baseV2}/characters`]) {
+    const response = await fixture.fetchFn(url);
+    assert.equal(response.status, 200);
+    values.push(await response.json());
+  }
+  assert.equal(values[0].id, 990711);
+  assert.equal(values[1][0].id, 990712);
+  assert.equal(values[2][0].id, 990713);
+  assert.deepEqual(fixture.snapshot(), {
+    profile: P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+    requestCount: 3,
+    personRequestCount: 1,
+    subjectsRequestCount: 1,
+    charactersRequestCount: 1,
+    duplicateRequestCount: 0,
+    unexpectedRequestCount: 0,
+    authorizationHeaderCount: 0,
+    expectedOperationsComplete: true,
+  });
+  const duplicate = createP02PersonProfileOfflineFetch(profile.id);
+  await duplicate.fetchFn(baseV2);
+  assert.equal((await duplicate.fetchFn(baseV2)).status, 599);
+  assert.equal(duplicate.snapshot().duplicateRequestCount, 1);
+  const withAuthorization = createP02PersonProfileOfflineFetch(profile.id);
+  assert.equal(
+    (
+      await withAuthorization.fetchFn(baseV2, {
+        headers: { authorization: 'Bearer synthetic' },
+      })
+    ).status,
+    599,
+  );
+  assert.equal(withAuthorization.snapshot().authorizationHeaderCount, 1);
 });
 
 test('P02 offline mode rejects arbitrary tools, arguments, and selected network modes', () => {
@@ -98,6 +158,8 @@ test('P02 fixture rejects unregistered route, method, query, duplicate, and Auth
     ['https://api.bgm.tv/v0/persons/990701?limit=1', undefined],
     [`${base}/subjects`, { method: 'POST' }],
     [`${base}/subjects`, { headers: { authorization: 'Bearer synthetic' } }],
+    [`${base}/subjects`, { body: 'synthetic' }],
+    [{ url: base, method: 'GET', body: 'synthetic' }, undefined],
     ['https://api.bgm.tv/v0/subjects/990702', undefined],
   ];
   for (const [url, init] of invalidCalls) {

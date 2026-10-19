@@ -9,15 +9,16 @@ import {
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
-  P02_PERSON_PROFILE_EXPECTED_ARGUMENTS,
-  P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+  P02_PERSON_PROFILE_OFFLINE_PROFILE_ID,
+  P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+  getP02PersonProfileOfflineSpec,
 } from '../../scripts/lib/p02-person-profile-offline-fixture.mjs';
 import {
   buildP02ProfileReport,
   validateP02ProfileReport,
 } from '../../scripts/acceptance/write-p02-person-profile-agent-mcp-report.mjs';
 
-const PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
+const PROFILE = getAgentMcpProfileById(P02_PERSON_PROFILE_OFFLINE_PROFILE_ID);
 const ACKNOWLEDGEMENT = 'P02_SYNTHETIC_PROFILE_READ';
 const CI_RUN_ID = '38812509760';
 const CI_CHECKS = [
@@ -31,7 +32,10 @@ const CI_CHECKS = [
 ].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
-function fixtureInput() {
+function fixtureInput(profileId = P02_PERSON_PROFILE_OFFLINE_PROFILE_ID) {
+  const profile = getAgentMcpProfileById(profileId);
+  const spec = getP02PersonProfileOfflineSpec(profileId);
+  const expectedArguments = profile.calls[0].arguments;
   const keyPair = generateKeyPairSync('ed25519');
   const publicKeyBase64 = keyPair.publicKey
     .export({ type: 'spki', format: 'der' })
@@ -41,16 +45,16 @@ function fixtureInput() {
     schemaVersion: 1,
     claimId: 'profile-run-95-pr-222-000000000000-1792100000000',
     state: 'CLAIMED',
-    profileId: PROFILE.id,
+    profileId: profile.id,
     frontierId: 'P02',
-    epochId: PROFILE.epochId,
+    epochId: profile.epochId,
     runNumber: 95,
     prNumber: 222,
-    toolName: PROFILE.toolName,
-    argumentProfile: PROFILE.argumentProfile,
-    expectedArguments: [P02_PERSON_PROFILE_EXPECTED_ARGUMENTS],
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
-    registrySha256: agentMcpProfileRegistrySha256(PROFILE.id),
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
+    expectedArguments: [expectedArguments],
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+    registrySha256: agentMcpProfileRegistrySha256(profile.id),
     sourceCandidateSha: '0'.repeat(40),
     baseSha: '1'.repeat(40),
     ciSha: '0'.repeat(40),
@@ -65,7 +69,7 @@ function fixtureInput() {
     retryAllowed: false,
   };
   const offlineFixture = {
-    profile: P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+    profile: spec.networkMode,
     requestCount: 3,
     personRequestCount: 1,
     subjectsRequestCount: 1,
@@ -77,19 +81,19 @@ function fixtureInput() {
   };
   const catalogBytes = readFileSync(new URL('../../docs/tool-catalog.json', import.meta.url));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
-  const catalogTool = catalog.find((item) => item.name === PROFILE.toolName);
+  const catalogTool = catalog.find((item) => item.name === profile.toolName);
   const serverSummary = {
-    profileId: PROFILE.id,
-    argumentProfile: PROFILE.argumentProfile,
-    networkMode: P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+    profileId: profile.id,
+    argumentProfile: profile.argumentProfile,
+    networkMode: spec.networkMode,
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
     sourceRevision: claim.sourceCandidateSha,
     bundleSha256: claim.bundleSha256,
     catalogSha256: sha256(catalogBytes),
-    toolName: PROFILE.toolName,
+    toolName: profile.toolName,
     toolDescriptionSha256: sha256(catalogTool.description),
     inputSchemaSha256: sha256(canonicalAgentMcpProfileJson(catalogTool.inputSchema)),
-    serverToolNames: [PROFILE.toolName],
+    serverToolNames: [profile.toolName],
     serverToolCount: 1,
     expectedArgumentsSha256: claim.expectedArgumentsSha256,
     expectedCallCount: 1,
@@ -101,7 +105,7 @@ function fixtureInput() {
       {
         sequenceIndex: 0,
         status: 'SUCCESS',
-        resultSummary: { personId: 990701, state: 'partial' },
+        resultSummary: { personId: expectedArguments.personId, state: 'partial' },
       },
     ],
     offlineFixture,
@@ -115,7 +119,7 @@ function fixtureInput() {
     nonMcpToolEventCount: 0,
     nonMcpToolTypes: [],
     shellToolCallCount: 0,
-    mcpServerNames: ['bgk_p02_profile'],
+    mcpServerNames: [spec.serverId],
     allowedCallCount: 1,
     deniedCallCount: 0,
   };
@@ -124,10 +128,8 @@ function fixtureInput() {
       claim,
       serverSummary,
       events,
-      completedMcpCalls: [
-        { tool: PROFILE.toolName, arguments: P02_PERSON_PROFILE_EXPECTED_ARGUMENTS },
-      ],
-      answer: ACKNOWLEDGEMENT,
+      completedMcpCalls: [{ tool: profile.toolName, arguments: expectedArguments }],
+      answer: spec.acknowledgement,
       codexCliVersion: '1.2.14',
       eventStreamSha256: '7'.repeat(64),
       serverSummarySha256: '8'.repeat(64),
@@ -162,6 +164,41 @@ test('P02 report builder signs only sanitized matrix evidence with no scenario c
   assert.equal(Object.hasOwn(built.report, 'answer'), false);
 });
 
+test('P02 v2 report binds its own profile identity without inheriting v1 evidence', () => {
+  const { input, keyPair } = fixtureInput(P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
+  const built = buildP02ProfileReport(input, { privateKey: keyPair.privateKey });
+  assert.equal(built.passed, true, JSON.stringify(built));
+  assert.equal(built.report.profileId, P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
+  assert.equal(built.report.networkMode, 'run95-p02-person-profile-offline-v2');
+  assert.equal(
+    built.report.answerCheckMethod,
+    'p02-exact-synthetic-person-profile-execution-only-v2',
+  );
+  assert.equal(built.report.runnerReceipt.kind, 'p02-person-profile-offline-runner-receipt-v2');
+  assert.equal(validateP02ProfileReport(built.report, input.claim).passed, true);
+  const runtimeReviewer = fixtureInput(P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
+  runtimeReviewer.input.claim.reviewerId = '/root/p02_v2_review';
+  const runtimeReviewerBuilt = buildP02ProfileReport(runtimeReviewer.input, {
+    privateKey: runtimeReviewer.keyPair.privateKey,
+  });
+  assert.equal(
+    validateP02ProfileReport(runtimeReviewerBuilt.report, runtimeReviewer.input.claim).passed,
+    true,
+  );
+  const serialized = JSON.stringify(built.report);
+  for (const forbidden of [
+    'Synthetic Person',
+    'Synthetic Work',
+    'Synthetic Character',
+    input.answer,
+  ]) {
+    assert.equal(serialized.includes(forbidden), false, forbidden);
+  }
+  const crossVersion = structuredClone(built.report);
+  crossVersion.profileId = P02_PERSON_PROFILE_OFFLINE_PROFILE_ID;
+  assert.equal(validateP02ProfileReport(crossVersion, input.claim).passed, false);
+});
+
 test('P02 report validator rejects changed fixture counters and any modified signed evidence', () => {
   const { input, keyPair } = fixtureInput();
   const built = buildP02ProfileReport(input, { privateKey: keyPair.privateKey });
@@ -183,7 +220,7 @@ test('P02 report validator rejects changed fixture counters and any modified sig
 test('P02 report builder fails closed when the exact registered call or result changes', () => {
   const { input, keyPair } = fixtureInput();
   input.completedMcpCalls[0].arguments = {
-    ...P02_PERSON_PROFILE_EXPECTED_ARGUMENTS,
+    ...PROFILE.calls[0].arguments,
     personId: 4765,
   };
   assert.equal(buildP02ProfileReport(input, { privateKey: keyPair.privateKey }).passed, false);

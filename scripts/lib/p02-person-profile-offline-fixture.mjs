@@ -1,10 +1,17 @@
 export const P02_PERSON_PROFILE_OFFLINE_PROFILE_ID = 'p02-person-profile-offline-agent-mcp-v1';
+export const P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID = 'p02-person-profile-offline-agent-mcp-v2';
 export const P02_PERSON_PROFILE_OFFLINE_EPOCH_ID =
   'run95-p02-get-person-profile-agent-mcp-offline-20261016';
 export const P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE = 'run95-p02-person-profile-offline-v1';
+export const P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE = 'run95-p02-person-profile-offline-v2';
 export const P02_PERSON_PROFILE_ARGUMENT_PROFILE =
   'fixed-p02-synthetic-person-990701-one-subject-one-character-v1';
+export const P02_PERSON_PROFILE_OFFLINE_V2_EPOCH_ID =
+  'run95-p02-person-profile-offline-v2-matrix-20261019';
+export const P02_PERSON_PROFILE_OFFLINE_V2_ARGUMENT_PROFILE =
+  'fixed-p02-synthetic-person-990711-one-subject-one-character-v2';
 export const P02_PERSON_PROFILE_SYNTHETIC_ID = 990701;
+export const P02_PERSON_PROFILE_OFFLINE_V2_SYNTHETIC_ID = 990711;
 export const P02_PERSON_PROFILE_EXPECTED_ARGUMENTS = Object.freeze({
   personId: P02_PERSON_PROFILE_SYNTHETIC_ID,
   includeCredits: true,
@@ -12,43 +19,88 @@ export const P02_PERSON_PROFILE_EXPECTED_ARGUMENTS = Object.freeze({
   maxCharacters: 1,
   includeChronology: false,
 });
+export const P02_PERSON_PROFILE_OFFLINE_V2_EXPECTED_ARGUMENTS = Object.freeze({
+  personId: P02_PERSON_PROFILE_OFFLINE_V2_SYNTHETIC_ID,
+  includeCredits: true,
+  maxSubjects: 1,
+  maxCharacters: 1,
+  includeChronology: false,
+});
 
-const SUBJECT_ID = 990702;
-const CHARACTER_ID = 990703;
+const PROFILE_SPECS = Object.freeze({
+  [P02_PERSON_PROFILE_OFFLINE_PROFILE_ID]: Object.freeze({
+    epochId: P02_PERSON_PROFILE_OFFLINE_EPOCH_ID,
+    networkMode: P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+    argumentProfile: P02_PERSON_PROFILE_ARGUMENT_PROFILE,
+    personId: P02_PERSON_PROFILE_SYNTHETIC_ID,
+    subjectId: 990702,
+    characterId: 990703,
+    expectedArguments: P02_PERSON_PROFILE_EXPECTED_ARGUMENTS,
+    reportPath: 'docs/live-probes/p02-person-profile-agent-mcp-run95.json',
+    selectionEvidencePath:
+      'docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-contract-2026-10-16.md',
+    evidenceKind: 'codex_cli_p02_person_profile_offline_agent_mcp',
+    answerCheckMethod: 'p02-exact-synthetic-person-profile-execution-only-v1',
+    acknowledgement: 'P02_SYNTHETIC_PROFILE_READ',
+    serverId: 'bgk_p02_profile',
+    reportProfile: 'codex-luna-max-offline-agent-mcp-matrix-v1',
+    receiptKind: 'p02-person-profile-offline-runner-receipt-v1',
+  }),
+  [P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID]: Object.freeze({
+    epochId: P02_PERSON_PROFILE_OFFLINE_V2_EPOCH_ID,
+    networkMode: P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+    argumentProfile: P02_PERSON_PROFILE_OFFLINE_V2_ARGUMENT_PROFILE,
+    personId: P02_PERSON_PROFILE_OFFLINE_V2_SYNTHETIC_ID,
+    subjectId: 990712,
+    characterId: 990713,
+    expectedArguments: P02_PERSON_PROFILE_OFFLINE_V2_EXPECTED_ARGUMENTS,
+    reportPath: 'docs/live-probes/p02-person-profile-agent-mcp-v2-run95.json',
+    selectionEvidencePath:
+      'docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-v2-contract-2026-10-19.md',
+    evidenceKind: 'codex_cli_p02_person_profile_offline_agent_mcp_v2',
+    answerCheckMethod: 'p02-exact-synthetic-person-profile-execution-only-v2',
+    acknowledgement: 'P02_SYNTHETIC_PROFILE_READ_V2',
+    serverId: 'bgk_p02_profile_v2',
+    reportProfile: 'codex-luna-max-offline-agent-mcp-matrix-v2',
+    receiptKind: 'p02-person-profile-offline-runner-receipt-v2',
+  }),
+});
+
+export function getP02PersonProfileOfflineSpec(profileId) {
+  return PROFILE_SPECS[profileId] ?? null;
+}
+
 const ORIGIN = 'https://api.bgm.tv';
 
-function matchesExpectedArguments(value) {
+function matchesExpectedArguments(value, expectedArguments) {
   return (
     value &&
     typeof value === 'object' &&
     !Array.isArray(value) &&
-    Object.keys(value).sort().join(',') ===
-      Object.keys(P02_PERSON_PROFILE_EXPECTED_ARGUMENTS).sort().join(',') &&
-    Object.entries(P02_PERSON_PROFILE_EXPECTED_ARGUMENTS).every(
-      ([key, expected]) => value[key] === expected,
-    )
+    Object.keys(value).sort().join(',') === Object.keys(expectedArguments).sort().join(',') &&
+    Object.entries(expectedArguments).every(([key, expected]) => value[key] === expected)
   );
 }
 
 export function assertP02PersonProfileOfflineProfile(profile) {
-  if (profile?.id !== P02_PERSON_PROFILE_OFFLINE_PROFILE_ID) return false;
+  const spec = getP02PersonProfileOfflineSpec(profile?.id);
+  if (!spec) return false;
   if (
-    profile.networkMode !== P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE ||
+    profile.networkMode !== spec.networkMode ||
     profile.toolName !== 'bangumi.get_person_profile' ||
     profile.frontierId !== 'P02' ||
-    profile.epochId !== P02_PERSON_PROFILE_OFFLINE_EPOCH_ID ||
-    profile.argumentProfile !== P02_PERSON_PROFILE_ARGUMENT_PROFILE ||
+    profile.epochId !== spec.epochId ||
+    profile.argumentProfile !== spec.argumentProfile ||
     profile.acceptanceScope !== 'agent-mcp-matrix-only' ||
-    profile.reportPath !== 'docs/live-probes/p02-person-profile-agent-mcp-run95.json' ||
-    profile.selectionEvidencePath !==
-      'docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-contract-2026-10-16.md' ||
-    profile.evidenceKind !== 'codex_cli_p02_person_profile_offline_agent_mcp' ||
-    profile.answerCheckMethod !== 'p02-exact-synthetic-person-profile-execution-only-v1' ||
+    profile.reportPath !== spec.reportPath ||
+    profile.selectionEvidencePath !== spec.selectionEvidencePath ||
+    profile.evidenceKind !== spec.evidenceKind ||
+    profile.answerCheckMethod !== spec.answerCheckMethod ||
     profile.model !== 'gpt-6-luna' ||
     profile.reasoningEffort !== 'max' ||
     profile.calls?.length !== 1 ||
     profile.calls[0]?.toolName !== 'bangumi.get_person_profile' ||
-    !matchesExpectedArguments(profile.calls[0]?.arguments)
+    !matchesExpectedArguments(profile.calls[0]?.arguments, spec.expectedArguments)
   ) {
     throw new Error(
       'P02 offline mode only accepts its immutable registered person-profile profile.',
@@ -79,10 +131,10 @@ function requestHeaders(input, init) {
   return new Headers(init?.headers ?? input?.headers ?? {});
 }
 
-function syntheticPerson() {
+function syntheticPerson(spec) {
   return {
-    id: P02_PERSON_PROFILE_SYNTHETIC_ID,
-    name: 'Synthetic Person 990701',
+    id: spec.personId,
+    name: `Synthetic Person ${spec.personId}`,
     type: 1,
     career: ['voice actor'],
     short_summary: 'Synthetic fixture only; not a Bangumi person.',
@@ -90,13 +142,13 @@ function syntheticPerson() {
   };
 }
 
-function syntheticSubjects() {
+function syntheticSubjects(spec) {
   return [
     {
-      id: SUBJECT_ID,
+      id: spec.subjectId,
       type: 2,
-      name: 'Synthetic Work 990702',
-      name_cn: '合成作品 990702',
+      name: `Synthetic Work ${spec.subjectId}`,
+      name_cn: `合成作品 ${spec.subjectId}`,
       staff: '合成配音',
       eps: '12',
       image: '',
@@ -104,31 +156,35 @@ function syntheticSubjects() {
   ];
 }
 
-function syntheticCharacters() {
+function syntheticCharacters(spec) {
   return [
     {
-      id: CHARACTER_ID,
+      id: spec.characterId,
       type: 1,
-      name: 'Synthetic Character 990703',
+      name: `Synthetic Character ${spec.characterId}`,
       images: { large: '', medium: '', small: '', grid: '' },
-      subject_id: SUBJECT_ID,
+      subject_id: spec.subjectId,
       subject_type: 2,
-      subject_name: 'Synthetic Work 990702',
-      subject_name_cn: '合成作品 990702',
+      subject_name: `Synthetic Work ${spec.subjectId}`,
+      subject_name_cn: `合成作品 ${spec.subjectId}`,
       staff: '合成角色',
     },
   ];
 }
 
-export function createP02PersonProfileOfflineFetch() {
+export function createP02PersonProfileOfflineFetch(
+  profileId = P02_PERSON_PROFILE_OFFLINE_PROFILE_ID,
+) {
+  const spec = getP02PersonProfileOfflineSpec(profileId);
+  if (!spec) throw new Error('P02 offline fixture requires a registered profile version.');
   const operations = new Map([
-    [`/v0/persons/${P02_PERSON_PROFILE_SYNTHETIC_ID}`, syntheticPerson],
-    [`/v0/persons/${P02_PERSON_PROFILE_SYNTHETIC_ID}/subjects`, syntheticSubjects],
-    [`/v0/persons/${P02_PERSON_PROFILE_SYNTHETIC_ID}/characters`, syntheticCharacters],
+    [`/v0/persons/${spec.personId}`, () => syntheticPerson(spec)],
+    [`/v0/persons/${spec.personId}/subjects`, () => syntheticSubjects(spec)],
+    [`/v0/persons/${spec.personId}/characters`, () => syntheticCharacters(spec)],
   ]);
   const observed = new Set();
   const counters = {
-    profile: P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+    profile: spec.networkMode,
     requestCount: 0,
     personRequestCount: 0,
     subjectsRequestCount: 0,
@@ -161,7 +217,8 @@ export function createP02PersonProfileOfflineFetch() {
       url.href === `${ORIGIN}${url.pathname}` &&
       url.search === '' &&
       url.hash === '' &&
-      init?.body === undefined &&
+      (input?.body === undefined || input.body === null) &&
+      (init?.body === undefined || init.body === null) &&
       !headers.has('authorization') &&
       operation !== undefined;
     if (!valid) {
