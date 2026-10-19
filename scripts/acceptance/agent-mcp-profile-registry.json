@@ -210,6 +210,35 @@
       ]
     },
     {
+      "id": "p02-person-profile-offline-agent-mcp-v2",
+      "frontierId": "P02",
+      "epochId": "run95-p02-person-profile-offline-v2-matrix-20261019",
+      "toolName": "bangumi.get_person_profile",
+      "argumentProfile": "fixed-p02-synthetic-person-990711-one-subject-one-character-v2",
+      "claimLabelName": "harness-r95-p02-person-profile-offline-v2-claimed",
+      "reportPath": "docs/live-probes/p02-person-profile-agent-mcp-v2-run95.json",
+      "selectionEvidencePath": "docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-v2-contract-2026-10-19.md",
+      "evidenceKind": "codex_cli_p02_person_profile_offline_agent_mcp_v2",
+      "answerCheckMethod": "p02-exact-synthetic-person-profile-execution-only-v2",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-p02-person-profile-offline-v2",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 2048,
+      "calls": [
+        {
+          "toolName": "bangumi.get_person_profile",
+          "arguments": {
+            "personId": 990711,
+            "includeCredits": true,
+            "maxSubjects": 1,
+            "maxCharacters": 1,
+            "includeChronology": false
+          }
+        }
+      ]
+    },
+    {
       "id": "r04-series-watch-order-offline-agent-mcp-v1",
       "frontierId": "R04",
       "epochId": "run95-r04-series-watch-order-offline-matrix-20261016",

@@ -9824,6 +9824,11 @@ class P02OfflineProfileReportValidationTests(unittest.TestCase):
         selection_path.write_bytes(
             (GENERATOR.ROOT / GENERATOR.CODEX_P02_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes(),
         )
+        v2_selection_path = self.root / GENERATOR.CODEX_P02_V2_SELECTION_EVIDENCE_RELATIVE_PATH
+        v2_selection_path.parent.mkdir(parents=True, exist_ok=True)
+        v2_selection_path.write_bytes(
+            (GENERATOR.ROOT / GENERATOR.CODEX_P02_V2_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes(),
+        )
         self.catalog_path = self.root / 'docs/tool-catalog.json'
         self.catalog_path.parent.mkdir(parents=True, exist_ok=True)
         self.catalog_path.write_bytes(GENERATOR.CATALOG.read_bytes())
@@ -9833,6 +9838,8 @@ class P02OfflineProfileReportValidationTests(unittest.TestCase):
         p02 = next(record for record in frontier['records'] if record['id'] == 'P02')
         p02['source_refs'].append(GENERATOR.CODEX_P02_REPORT_RELATIVE_PATH)
         p02['source_refs'].append(GENERATOR.CODEX_P02_SELECTION_EVIDENCE_RELATIVE_PATH)
+        p02['source_refs'].append(GENERATOR.CODEX_P02_V2_REPORT_RELATIVE_PATH)
+        p02['source_refs'].append(GENERATOR.CODEX_P02_V2_SELECTION_EVIDENCE_RELATIVE_PATH)
         frontier_path.write_text(json.dumps(frontier), encoding='utf-8')
         self.originals = (GENERATOR.ROOT, GENERATOR.CATALOG, GENERATOR.LIVE_PROBE_DIR)
         GENERATOR.ROOT = self.root
@@ -9844,23 +9851,25 @@ class P02OfflineProfileReportValidationTests(unittest.TestCase):
         GENERATOR.ROOT, GENERATOR.CATALOG, GENERATOR.LIVE_PROBE_DIR = self.originals
         self.temp_dir.cleanup()
 
-    def build_report(self):
+    def build_report(self, profile_id=GENERATOR.CODEX_P02_PROFILE_ID):
+        profile = GENERATOR.codex_p02_profile_spec(profile_id)
+        profile_aux = GENERATOR.CODEX_P02_PROFILE_AUX[profile_id]
         catalog_bytes = self.catalog_path.read_bytes()
         catalog = json.loads(catalog_bytes)
-        tool = next(item for item in catalog if item['name'] == GENERATOR.CODEX_P02_TOOL_NAME)
-        selection_bytes = (self.root / GENERATOR.CODEX_P02_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
+        tool = next(item for item in catalog if item['name'] == profile['toolName'])
+        selection_bytes = (self.root / profile['selectionEvidencePath']).read_bytes()
         receipt_payload = {field: None for field in GENERATOR.CODEX_P02_RECEIPT_PAYLOAD_FIELDS}
         return {
             'schemaVersion': 1,
-            'evidenceKind': GENERATOR.CODEX_P02_EVIDENCE_KIND,
+            'evidenceKind': profile['evidenceKind'],
             'runNumber': 95,
             'frontierId': 'P02',
             'scenarioId': None,
-            'epochId': GENERATOR.CODEX_P02_EPOCH_ID,
-            'profileId': GENERATOR.CODEX_P02_PROFILE_ID,
-            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
-            'model': 'gpt-6-luna',
-            'reasoningEffort': 'max',
+            'epochId': profile['epochId'],
+            'profileId': profile_id,
+            'profile': profile_aux['reportProfile'],
+            'model': profile['model'],
+            'reasoningEffort': profile['reasoningEffort'],
             'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
             'codexCliVersion': '1.2.14',
             'observedAt': '2026-10-16T05:00:00.000Z',
@@ -9876,18 +9885,18 @@ class P02OfflineProfileReportValidationTests(unittest.TestCase):
             'prNumber': 222,
             'claimId': 'profile-run-95-pr-222-aaaaaaaaaaaa-1792100000000',
             'mcpBundleSha256': 'c' * 64,
-            'registrySha256': GENERATOR.CODEX_P02_PROFILE_REGISTRY_SHA256,
+            'registrySha256': GENERATOR.codex_p02_profile_registry_sha256(profile_id),
             'selectionEvidenceSha256': hashlib.sha256(selection_bytes).hexdigest(),
-            'toolName': GENERATOR.CODEX_P02_TOOL_NAME,
-            'argumentProfile': GENERATOR.CODEX_P02_ARGUMENT_PROFILE,
-            'expectedArgumentsSha256': GENERATOR.CODEX_P02_EXPECTED_ARGUMENTS_SHA256,
+            'toolName': profile['toolName'],
+            'argumentProfile': profile['argumentProfile'],
+            'expectedArgumentsSha256': GENERATOR.codex_p02_profile_arguments_sha256(profile_id),
             'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
             'toolDescriptionSha256': hashlib.sha256(tool['description'].encode()).hexdigest(),
             'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
-            'serverToolNames': [GENERATOR.CODEX_P02_TOOL_NAME],
+            'serverToolNames': [profile['toolName']],
             'serverToolCount': 1,
-            'networkMode': GENERATOR.CODEX_P02_NETWORK_MODE,
-            'mcpServerNames': ['bgk_p02_profile'],
+            'networkMode': profile['networkMode'],
+            'mcpServerNames': [profile_aux['serverId']],
             'processExitCode': 0,
             'resultStatus': 'SUCCESS',
             'eventStreamParsed': True,
@@ -9899,12 +9908,12 @@ class P02OfflineProfileReportValidationTests(unittest.TestCase):
             'shellToolCallCount': 0,
             'allowedCallCount': 1,
             'deniedCallCount': 0,
-            'answerCheckMethod': GENERATOR.CODEX_P02_ANSWER_CHECK_METHOD,
-            'answerSha256': hashlib.sha256(b'P02_SYNTHETIC_PROFILE_READ').hexdigest(),
-            'answerUtf8Bytes': len(b'P02_SYNTHETIC_PROFILE_READ'),
+            'answerCheckMethod': profile['answerCheckMethod'],
+            'answerSha256': hashlib.sha256(profile_aux['acknowledgement'].encode()).hexdigest(),
+            'answerUtf8Bytes': len(profile_aux['acknowledgement'].encode()),
             'answerChecks': {key: True for key in GENERATOR.CODEX_P02_ANSWER_CHECK_FIELDS},
             'offlineFixture': {
-                'profile': GENERATOR.CODEX_P02_NETWORK_MODE,
+                'profile': profile['networkMode'],
                 'requestCount': 3,
                 'personRequestCount': 1,
                 'subjectsRequestCount': 1,
@@ -9928,7 +9937,7 @@ class P02OfflineProfileReportValidationTests(unittest.TestCase):
             },
             'runnerReceipt': {
                 'schemaVersion': 1,
-                'kind': 'p02-person-profile-offline-runner-receipt-v1',
+                'kind': profile_aux['receiptKind'],
                 'publicKeyBase64': 'AQ==',
                 'publicKeySha256': 'd' * 64,
                 'payload': receipt_payload,
@@ -9937,7 +9946,10 @@ class P02OfflineProfileReportValidationTests(unittest.TestCase):
         }
 
     def validate_report(self, report):
-        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        profile = GENERATOR.codex_p02_profile_spec(report['profileId'])
+        report_path = self.root / str(profile['reportPath'])
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
 
         def validate_embedded_report(args, **kwargs):
             payload = json.loads(kwargs['input'])
@@ -9958,13 +9970,26 @@ class P02OfflineProfileReportValidationTests(unittest.TestCase):
             return GENERATOR.codex_p02_profile_report_is_valid(
                 report,
                 harness_status={'fixture': True},
-                report_path=self.report_path,
+                report_path=report_path,
                 epoch_status={'fixture': True},
             )
 
     def test_accepts_synthetic_agent_mcp_matrix_evidence_while_P02_remains_partial(self):
         self.assertTrue(GENERATOR.codex_p02_frontier_is_partial())
         self.assertTrue(self.validate_report(self.report))
+
+    def test_v2_accepts_only_its_distinct_report_and_keeps_P02_partial(self):
+        report = self.build_report(GENERATOR.CODEX_P02_V2_PROFILE_ID)
+        self.assertTrue(
+            GENERATOR.codex_p02_frontier_is_partial(
+                require_report_ref=True,
+                profile_id=GENERATOR.CODEX_P02_V2_PROFILE_ID,
+            ),
+        )
+        self.assertTrue(self.validate_report(report))
+        cross_version = json.loads(json.dumps(report))
+        cross_version['profileId'] = GENERATOR.CODEX_P02_PROFILE_ID
+        self.assertFalse(self.validate_report(cross_version))
 
     def test_rejects_scenario_credit_network_expansion_and_raw_fields(self):
         scenario_credit = json.loads(json.dumps(self.report))
@@ -9992,6 +10017,10 @@ class P02OfflineProfileReportValidationTests(unittest.TestCase):
 
     def test_routes_the_report_to_only_get_person_profile_agent_mcp(self):
         self.report_path.write_text(json.dumps(self.report), encoding='utf-8')
+        v2_report = self.build_report(GENERATOR.CODEX_P02_V2_PROFILE_ID)
+        v2_report_path = self.root / GENERATOR.CODEX_P02_V2_REPORT_RELATIVE_PATH
+        v2_report_path.parent.mkdir(parents=True, exist_ok=True)
+        v2_report_path.write_text(json.dumps(v2_report), encoding='utf-8')
         catalog = json.loads(self.catalog_path.read_text(encoding='utf-8'))
         with (
             patch.object(GENERATOR, 'codex_p02_profile_harness_status', return_value={'fixture': True}),
@@ -10005,6 +10034,7 @@ class P02OfflineProfileReportValidationTests(unittest.TestCase):
             {
                 'bangumi.get_person_profile': {
                     GENERATOR.CODEX_P02_REPORT_RELATIVE_PATH,
+                    GENERATOR.CODEX_P02_V2_REPORT_RELATIVE_PATH,
                 },
             },
         )

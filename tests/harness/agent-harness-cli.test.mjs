@@ -142,6 +142,7 @@ const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const P06_PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
 const G06_V2_PROFILE = getAgentMcpProfileById(G06_CAST_OFFLINE_V2_PROFILE_ID);
 const P02_PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
+const P02_V2_PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v2');
 const R04_PROFILE = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v1');
 const R04_V2_PROFILE = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v2');
 const R04_RENDER_PROFILE = getAgentMcpProfileById(
@@ -1691,6 +1692,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
   const exactCiProfileIds = [
     P06_PROFILE.id,
     P02_PROFILE.id,
+    P02_V2_PROFILE.id,
     C04_PROFILE.id,
     TITLE_QUERY_RENDER_PROFILE.id,
     A01_PROFILE.id,
@@ -2528,35 +2530,37 @@ test('R04 renderer v2 Harness claim persists the exact successful CI run and che
   }
 });
 
-test('P02 Harness profile claim persists the exact successful CI run and check identities', () => {
-  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(P02_PROFILE);
-  const keyPair = generateG04RunnerReceiptKeyPair();
-  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', P02_PROFILE.id];
-  try {
-    const claimed = environment.execute([
-      'epoch:agent-mcp-profile-claim',
-      ...runArgs,
-      '--bundle-sha256',
-      'c'.repeat(64),
-      '--reviewer-id',
-      reviewerId,
-      '--runner-public-key',
-      keyPair.publicKeyBase64,
-    ]);
-    assert.equal(claimed.status, 0, claimed.stderr);
-    const claimResult = JSON.parse(claimed.stdout);
-    assert.equal(claimResult.profileId, P02_PROFILE.id);
-    assert.equal(claimResult.ciRunId, '38806371672');
-    assert.deepEqual(
-      claimResult.ciChecks.map(({ name, status, conclusion }) => ({ name, status, conclusion })),
-      mandatoryChecks.map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' })),
-    );
-    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
-    const disposition = stored.adversarial_preflight.agent_mcp_profile_dispositions[P02_PROFILE.id];
-    assert.equal(disposition.ciRunId, '38806371672');
-    assert.deepEqual(disposition.ciChecks, claimResult.ciChecks);
-  } finally {
-    environment.cleanup();
+test('P02 v1 and v2 Harness claims bind exact successful CI run and check identities', () => {
+  for (const profile of [P02_PROFILE, P02_V2_PROFILE]) {
+    const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(profile);
+    const keyPair = generateG04RunnerReceiptKeyPair();
+    const runArgs = ['--run', '95', '--pr', '42', '--profile-id', profile.id];
+    try {
+      const claimed = environment.execute([
+        'epoch:agent-mcp-profile-claim',
+        ...runArgs,
+        '--bundle-sha256',
+        'c'.repeat(64),
+        '--reviewer-id',
+        reviewerId,
+        '--runner-public-key',
+        keyPair.publicKeyBase64,
+      ]);
+      assert.equal(claimed.status, 0, claimed.stderr);
+      const claimResult = JSON.parse(claimed.stdout);
+      assert.equal(claimResult.profileId, profile.id);
+      assert.equal(claimResult.ciRunId, '38806371672');
+      assert.deepEqual(
+        claimResult.ciChecks.map(({ name, status, conclusion }) => ({ name, status, conclusion })),
+        mandatoryChecks.map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' })),
+      );
+      const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+      const disposition = stored.adversarial_preflight.agent_mcp_profile_dispositions[profile.id];
+      assert.equal(disposition.ciRunId, '38806371672');
+      assert.deepEqual(disposition.ciChecks, claimResult.ciChecks);
+    } finally {
+      environment.cleanup();
+    }
   }
 });
 

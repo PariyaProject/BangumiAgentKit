@@ -6,7 +6,9 @@ import {
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
   P02_PERSON_PROFILE_EXPECTED_ARGUMENTS,
-  P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+  P02_PERSON_PROFILE_OFFLINE_PROFILE_ID,
+  P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+  getP02PersonProfileOfflineSpec,
 } from '../../scripts/lib/p02-person-profile-offline-fixture.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 import {
@@ -15,15 +17,32 @@ import {
   validateServerSummary,
 } from '../../scripts/acceptance/run-p02-person-profile-agent-mcp.mjs';
 
-const PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
+const PROFILE = getAgentMcpProfileById(P02_PERSON_PROFILE_OFFLINE_PROFILE_ID);
+const PROFILE_V2 = getAgentMcpProfileById(P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
+const SPEC_V2 = getP02PersonProfileOfflineSpec(P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
 const SOURCE_SHA = 'a'.repeat(40);
 const BUNDLE_SHA = 'b'.repeat(64);
 const SERVER_ID = 'bgk_p02_profile';
 
 test('P02 Codex invocation is ephemeral, read-only, and exposes only the fixed offline tool', () => {
-  assert.equal(validateP02RunnerArgs(['--help']), 'help');
-  assert.equal(validateP02RunnerArgs(['--run', '95']), 'run');
+  assert.deepEqual(validateP02RunnerArgs(['--help']), { mode: 'help' });
+  assert.deepEqual(validateP02RunnerArgs(['--run', '95']), {
+    mode: 'run',
+    profileId: P02_PERSON_PROFILE_OFFLINE_PROFILE_ID,
+  });
   assert.throws(() => validateP02RunnerArgs(['--run', '94']));
+  assert.throws(() =>
+    validateP02RunnerArgs(['--run', '95', '--profile-id', 'unregistered-p02-profile']),
+  );
+  assert.deepEqual(
+    validateP02RunnerArgs([
+      '--run',
+      '95',
+      '--profile-id',
+      P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+    ]),
+    { mode: 'run', profileId: P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID },
+  );
   const args = buildP02CodexExecArgs({
     nodePath: '/usr/bin/node',
     summaryPath: '/tmp/p02-summary.json',
@@ -43,6 +62,19 @@ test('P02 Codex invocation is ephemeral, read-only, and exposes only the fixed o
   assert.match(joined, /features\.shell_tool=false/u);
   assert.match(joined, /features\.web_search=false/u);
   assert.doesNotMatch(joined, /render_person_profile/u);
+  const v2Args = buildP02CodexExecArgs({
+    nodePath: '/usr/bin/node',
+    summaryPath: '/tmp/p02-v2-summary.json',
+    sourceRevision: SOURCE_SHA,
+    bundleSha256: BUNDLE_SHA,
+    profileId: P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+  });
+  const v2Joined = v2Args.join('\n');
+  assert.match(v2Joined, /mcp_servers\.bgk_p02_profile_v2\.enabled_tools/u);
+  assert.match(v2Joined, /p02-person-profile-offline-agent-mcp-v2/u);
+  assert.match(v2Joined, /990711/u);
+  assert.match(v2Joined, /P02_SYNTHETIC_PROFILE_READ_V2/u);
+  assert.doesNotMatch(v2Joined, /bgk_p02_profile\.enabled_tools/u);
 });
 
 test('P02 server summary requires exactly the three synthetic responses', () => {
@@ -50,7 +82,7 @@ test('P02 server summary requires exactly the three synthetic responses', () => 
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
     profileId: PROFILE.id,
     argumentProfile: PROFILE.argumentProfile,
-    networkMode: P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+    networkMode: 'run95-p02-person-profile-offline-v1',
     expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
     sourceRevision: SOURCE_SHA,
     bundleSha256: BUNDLE_SHA,
@@ -69,7 +101,7 @@ test('P02 server summary requires exactly the three synthetic responses', () => 
       },
     ],
     offlineFixture: {
-      profile: P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+      profile: 'run95-p02-person-profile-offline-v1',
       requestCount: 3,
       personRequestCount: 1,
       subjectsRequestCount: 1,
@@ -114,10 +146,12 @@ test('P02 server summary requires exactly the three synthetic responses', () => 
     validateServerSummary(
       {
         ...summary,
-        results: [{
-          ...summary.results[0],
-          resultSummary: mismatchedResultSummary,
-        }],
+        results: [
+          {
+            ...summary.results[0],
+            resultSummary: mismatchedResultSummary,
+          },
+        ],
       },
       SOURCE_SHA,
       BUNDLE_SHA,
@@ -134,10 +168,12 @@ test('P02 server summary requires exactly the three synthetic responses', () => 
     validateServerSummary(
       {
         ...summary,
-        results: [{
-          ...summary.results[0],
-          resultSummary: missingResultIdentitySummary,
-        }],
+        results: [
+          {
+            ...summary.results[0],
+            resultSummary: missingResultIdentitySummary,
+          },
+        ],
       },
       SOURCE_SHA,
       BUNDLE_SHA,
@@ -145,4 +181,35 @@ test('P02 server summary requires exactly the three synthetic responses', () => 
     false,
   );
   assert.equal(SERVER_ID, 'bgk_p02_profile');
+  const v2Summary = {
+    ...summary,
+    profileId: PROFILE_V2.id,
+    argumentProfile: PROFILE_V2.argumentProfile,
+    networkMode: SPEC_V2.networkMode,
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE_V2),
+    toolName: PROFILE_V2.toolName,
+    serverToolNames: [PROFILE_V2.toolName],
+    results: [
+      {
+        ...summary.results[0],
+        resultSummary: { ...summary.results[0].resultSummary, personId: 990711 },
+      },
+    ],
+    offlineFixture: { ...summary.offlineFixture, profile: SPEC_V2.networkMode },
+  };
+  assert.equal(validateServerSummary(v2Summary, SOURCE_SHA, BUNDLE_SHA, PROFILE_V2.id), true);
+  assert.equal(
+    validateServerSummary(
+      {
+        ...v2Summary,
+        results: [
+          { ...v2Summary.results[0], resultSummary: { personId: 990701, state: 'partial' } },
+        ],
+      },
+      SOURCE_SHA,
+      BUNDLE_SHA,
+      PROFILE_V2.id,
+    ),
+    false,
+  );
 });
