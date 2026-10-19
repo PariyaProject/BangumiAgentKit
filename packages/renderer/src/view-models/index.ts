@@ -444,6 +444,17 @@ export interface CollectionBacklogViewModel {
   warnings: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['warnings'];
   limitations: string[];
   error?: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['error'];
+  presentation?: {
+    emptyState?: { title: string; detail: string; nextAction: string };
+    errorMessage?: string;
+    errorNextAction?: string;
+    warningMessages: string[];
+    sourceSummary: string;
+    scheduleSummary: string;
+    limitationSummary: string[];
+    formulaSummary: string[];
+    retrievedAtLabel?: string;
+  };
 }
 
 export interface CollectionScheduleViewModel {

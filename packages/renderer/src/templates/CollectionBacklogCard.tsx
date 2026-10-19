@@ -12,14 +12,14 @@ export interface CollectionBacklogCardProps {
 }
 
 function stateLabel(state: CollectionBacklogViewModel['state']): string {
-  if (state === 'complete') return '覆盖完整';
+  if (state === 'complete') return '来源覆盖完整';
   if (state === 'partial') return '部分覆盖';
-  if (state === 'conflict') return '来源冲突';
-  if (state === 'not_computable') return '无法计算';
+  if (state === 'conflict') return '数据不一致';
+  if (state === 'not_computable') return '暂不能计算';
   if (state === 'auth_required') return '需要授权';
-  if (state === 'permission_denied') return '无权限';
+  if (state === 'permission_denied') return '收藏读取权限不足';
   if (state === 'rate_limited') return '请求受限';
-  if (state === 'upstream_error') return '上游错误';
+  if (state === 'upstream_error') return '数据源暂不可用';
   return '暂不可用';
 }
 
@@ -46,21 +46,23 @@ function progressLabel(item: CollectionBacklogViewModel['items'][number]): strin
     return `剩余 ${item.remainingEpisodes} 集 · 已看 ${item.watchedEpisodes ?? 0}/${item.episodeReportedEpisodes ?? '?'}`;
   }
   if (item.error) {
-    return `${boundedText(item.error.code, 64)} · ${boundedText(item.error.message)}${item.error.nextAction ? ` · ${boundedText(item.error.nextAction)}` : ''}`;
+    const message = boundedText(item.error.message);
+    const nextAction = item.error.nextAction ? boundedText(item.error.nextAction) : '';
+    return nextAction && !message.includes(nextAction) ? `${message} · ${nextAction}` : message;
   }
   return item.reasons[0] || rowStateLabel(item.state);
 }
 
 function airingLabel(state: CollectionBacklogViewModel['items'][number]['airingState']): string {
-  if (state === 'finished') return '已播完（日期证据；未证明后续/hiatus）';
-  if (state === 'ongoing') return '可能在播（未来日期证据）';
+  if (state === 'finished') return '正篇日期已过（作品是否完结未知）';
+  if (state === 'ongoing') return '正篇尚有未来日期';
   return '播出状态未知';
 }
 
 function sortLabel(sortBy: CollectionBacklogViewModel['sortBy']): string {
-  if (sortBy === 'estimated_minutes_asc') return '预计分钟数升序';
-  if (sortBy === 'estimated_minutes_desc') return '预计分钟数降序';
-  return '源顺序';
+  if (sortBy === 'estimated_minutes_asc') return '预计时长从短到长';
+  if (sortBy === 'estimated_minutes_desc') return '预计时长从长到短';
+  return '收藏顺序';
 }
 
 function durationLabel(item: CollectionBacklogViewModel['items'][number]): string {
@@ -84,8 +86,8 @@ function scheduleLabel(item: CollectionBacklogViewModel['items'][number]): strin
       '星期未知';
     return `计划 ${weekday}${item.schedule.airDate ? ` · ${item.schedule.airDate}` : ''}`;
   }
-  if (item.schedule.state === 'not_observed') return '计划未在完整七日观察中出现';
-  return `计划未知 · ${boundedText(item.schedule.reason, 120)}`;
+  if (item.schedule.state === 'not_observed') return '七日计划未见匹配';
+  return '计划未知';
 }
 
 function confidenceLabel(item: CollectionBacklogViewModel['items'][number]): string {
@@ -100,6 +102,9 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
 }) => {
   const hasItems = viewModel.items.length > 0 && viewModel.state !== 'unavailable';
   const scheduleCoverage = viewModel.coverage.schedule;
+  const presentation = viewModel.presentation;
+  const warningMessages =
+    presentation?.warningMessages ?? viewModel.warnings.map((warning) => warning.message);
   const summary = [
     ['符合状态', String(viewModel.summary.eligibleItems)],
     ['已返回', String(viewModel.summary.returnedItems)],
@@ -119,26 +124,24 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
   return (
     <CardFrame theme={theme} width={width}>
       <TitleBlock
-        title="我的收藏 backlog"
+        title="我的收藏待看清单"
         subtitle={`当前账号 · 官方 v0 · ${stateLabel(viewModel.state)} · 排序：${sortLabel(viewModel.sortBy)}`}
         theme={theme}
       />
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
-        只读取当前账号的动画收藏与正篇 episode collection；不显示评论或写入任何进度。
+        只读取当前账号的动画收藏与正篇进度；不展示评论，也不写入进度。
       </div>
       <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-        来源：{viewModel.source.class}
-        {viewModel.source.calendar
-          ? ` + ${viewModel.source.calendar.class} ${viewModel.source.calendar.operation}`
-          : ' · 未请求七日 calendar'}{' '}
-        · 计划覆盖：{scheduleCoverage.state} · 星期 {scheduleCoverage.sourceDayCount}/7 · 已匹配{' '}
-        {scheduleCoverage.matchedItems}
+        来源：{presentation?.sourceSummary || 'Bangumi v0 收藏'} · 七日计划：
+        {presentation?.scheduleSummary ||
+          `覆盖 ${scheduleCoverage.sourceDayCount}/7 天 · 匹配 ${scheduleCoverage.matchedItems} 项`}
       </div>
 
-      {viewModel.coverage.hydration.budgetExceeded || viewModel.coverage.collection.truncated ? (
+      {!presentation?.emptyState &&
+      (viewModel.coverage.hydration.budgetExceeded || viewModel.coverage.collection.truncated) ? (
         <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
-          这是有界样本：收藏扫描或条目 hydration 达到安全上限，未观察部分没有被猜测补全。
+          这是有界样本：收藏扫描或进度读取达到安全上限，未读取部分不作推测。
         </div>
       ) : null}
 
@@ -157,14 +160,34 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
             lineHeight: 1.5,
           }}
         >
-          {viewModel.error?.message || '官方收藏源暂时不可用，未生成猜测的 backlog 数据。'}
-          {viewModel.error?.nextAction ? ` ${viewModel.error.nextAction}` : ''}
+          {presentation?.errorMessage ||
+            viewModel.error?.message ||
+            '暂时无法读取收藏数据，未生成猜测的 backlog。'}
+          {presentation?.errorNextAction || viewModel.error?.nextAction
+            ? ` ${presentation?.errorNextAction || viewModel.error?.nextAction}`
+            : ''}
         </div>
       ) : null}
 
-      {viewModel.error ? (
-        <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
-          错误代码：{viewModel.error.code}
+      {!hasItems && presentation?.emptyState ? (
+        <div
+          style={{
+            color: theme.text,
+            backgroundColor: theme.surfaceAlt,
+            border: `1px solid ${theme.border}`,
+            borderRadius: theme.radius.md,
+            padding: theme.spacing.md,
+          }}
+        >
+          <div style={{ fontWeight: 700, fontSize: '13px' }}>{presentation.emptyState.title}</div>
+          <div
+            style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5, marginTop: '3px' }}
+          >
+            {presentation.emptyState.detail}
+          </div>
+          <div style={{ color: theme.accent, fontSize: '11px', lineHeight: 1.5, marginTop: '3px' }}>
+            下一步：{presentation.emptyState.nextAction}
+          </div>
         </div>
       ) : null}
 
@@ -203,12 +226,12 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
             ))}
           </div>
           <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-            * “已播完”仅表示当前报告的正篇 airdate 均已过去，不能证明未发布后续或排除 hiatus。
+            * 日期证据只说明当前报告的正篇播出日期均已过去，不代表作品已完结。
           </div>
 
           <section>
             <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>
-              收藏条目（{sortLabel(viewModel.sortBy)}）
+              待看条目（{sortLabel(viewModel.sortBy)}）
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginTop: '6px' }}>
               {viewModel.items.map((item) => (
@@ -252,29 +275,28 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
           展示省略 {viewModel.coverage.omittedItems} 条已返回条目（源覆盖状态不变）。
         </div>
       ) : null}
-      {viewModel.warnings.length > 0 ? (
+      {warningMessages.length > 0 ? (
         <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
-          {viewModel.warnings.map((warning) => warning.message).join('；')}
+          {warningMessages.join('；')}
         </div>
       ) : null}
-      {viewModel.limitations.length > 0 ? (
-        <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-          限制：{viewModel.limitations.join('；')}
+      {(presentation?.limitationSummary.length ?? viewModel.limitations.length) > 0 ? (
+        <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+          <div>计算口径：</div>
+          {(presentation?.limitationSummary ?? viewModel.limitations).map((limitation) => (
+            <div key={limitation}>· {limitation}</div>
+          ))}
         </div>
       ) : null}
       <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-        公式：{viewModel.evidence.formulaVersion || '未生成'} · 账号范围：
-        {viewModel.evidence.authScope}
-        {viewModel.evidence.durationFormulaVersion
-          ? ` · 时长公式：${viewModel.evidence.durationFormulaVersion}`
+        公式版本：
+        {presentation?.formulaSummary.join(' · ') ||
+          viewModel.evidence.formulaVersion ||
+          '未生成'}{' '}
+        · 范围：当前账号
+        {presentation?.retrievedAtLabel || viewModel.source.retrievedAt
+          ? ` · 取数时间：${presentation?.retrievedAtLabel || viewModel.source.retrievedAt}`
           : ''}
-        {viewModel.evidence.scheduleFormulaVersion
-          ? ` · schedule 公式：${viewModel.evidence.scheduleFormulaVersion}`
-          : ''}
-        {viewModel.evidence.confidenceFormulaVersion
-          ? ` · confidence 公式：${viewModel.evidence.confidenceFormulaVersion}`
-          : ''}
-        {viewModel.source.retrievedAt ? ` · ${viewModel.source.retrievedAt}` : ''}
       </div>
       <Footer theme={theme} />
     </CardFrame>

@@ -283,6 +283,123 @@ export function buildCollectionBacklogViewModel(
     (item) => item.formulaVersion === COLLECTION_BACKLOG_CONFIDENCE_FORMULA_VERSION,
   );
   const retrievedAt = result.source.retrievedAt;
+  const collectionCoverage = result.coverage.collection;
+  const collectionScanIncomplete =
+    collectionCoverage.sourceTotal === undefined ||
+    !collectionCoverage.sourceExhausted ||
+    collectionCoverage.truncated ||
+    collectionCoverage.pagesSucceeded < collectionCoverage.pagesAttempted ||
+    collectionCoverage.pageFailureOffset !== undefined ||
+    collectionCoverage.paginationStalled ||
+    collectionCoverage.sourceTotalChanged ||
+    (collectionCoverage.sourceTotal !== undefined &&
+      collectionCoverage.sourceTotal > collectionCoverage.observedRows);
+  const scheduleIncomplete =
+    result.coverage.schedule.attempted && result.coverage.schedule.state !== 'complete';
+  const emptyState =
+    result.data.items.length === 0 &&
+    result.data.summary.eligibleItems === 0 &&
+    (result.state === 'complete' || result.state === 'partial')
+      ? collectionScanIncomplete
+        ? {
+            title: '暂未发现符合条件的条目',
+            detail: `收藏覆盖尚不完整；未读取范围仍可能包含符合条件的待看条目。${scheduleIncomplete ? '七日计划读取也不完整，播出安排保持未知。' : ''}`,
+            nextAction: '可稍后重试以补齐收藏读取范围。',
+          }
+        : {
+            title: '没有符合条件的待看条目',
+            detail: `当前收藏已完整读取，但没有发现符合本次状态筛选的条目。${scheduleIncomplete ? ' 七日计划暂不可用，播出安排保持未知。' : ''}`,
+            nextAction: scheduleIncomplete
+              ? '可稍后重试以恢复七日计划。'
+              : '可调整状态筛选后再查看，或打开收藏概览。',
+          }
+      : undefined;
+  const errorCopy: Record<string, { message: string; nextAction: string }> = {
+    AUTH_REQUIRED: { message: '当前账号尚未绑定 Bangumi。', nextAction: '请先绑定账号后重试。' },
+    AUTH_EXPIRED: { message: 'Bangumi 登录凭证已失效。', nextAction: '请重新授权后重试。' },
+    PERMISSION_DENIED: {
+      message: '当前授权没有收藏读取权限。',
+      nextAction: '请确认授权范围后重试。',
+    },
+    RATE_LIMITED: { message: 'Bangumi 暂时限制了读取请求。', nextAction: '请稍后重试。' },
+    NETWORK_ERROR: { message: '暂时无法读取 Bangumi 收藏。', nextAction: '请稍后重试。' },
+    UPSTREAM_UNAVAILABLE: { message: '暂时无法读取 Bangumi 收藏。', nextAction: '请稍后重试。' },
+  };
+  const errorPresentation = result.error
+    ? (errorCopy[result.error.code] ?? {
+        message: result.error.message.trim(),
+        nextAction: result.error.nextAction,
+      })
+    : undefined;
+  const errorMessage = errorPresentation?.message;
+  const scheduleWarningCodes = new Set([
+    'SCHEDULE_SOURCE_UNAVAILABLE',
+    'SCHEDULE_NOT_REQUESTED',
+    'PARTIAL_SCHEDULE_COVERAGE',
+    'UNKNOWN_SCHEDULE_EVIDENCE',
+  ]);
+  const collectionCoverageWarningCodes = new Set([
+    'PARTIAL_COLLECTION_SCAN',
+    'COLLECTION_PAGE_FAILURE',
+    'COLLECTION_PAGINATION_STALLED',
+    'COLLECTION_SOURCE_TOTAL_CHANGED',
+  ]);
+  const warningCopy: Record<string, string> = {
+    SCHEDULE_SOURCE_UNAVAILABLE: '七日计划暂时不可用，相关安排保持未知。可稍后重试。',
+    SCHEDULE_NOT_REQUESTED: '未读取七日计划，相关安排保持未知。',
+    PARTIAL_SCHEDULE_COVERAGE: '七日计划读取不完整，未覆盖的日期保持未知。',
+    UNKNOWN_SCHEDULE_EVIDENCE: '部分条目缺少可靠的计划信息；未观察到不等于没有计划。',
+    PARTIAL_COLLECTION_SCAN: '收藏读取达到安全范围；未读取部分未纳入结果。',
+    COLLECTION_PAGE_FAILURE: '部分收藏读取失败，已读内容仍可查看，其余范围未知。',
+    COLLECTION_PAGINATION_STALLED: '收藏分页没有返回新条目，扫描已停止。',
+    COLLECTION_SOURCE_TOTAL_CHANGED: '读取期间收藏总数发生变化；结果只代表已观察样本。',
+    COLLECTION_DUPLICATE_ROWS: '重复收藏条目已去重。',
+    HYDRATION_BUDGET_EXCEEDED: '部分条目的进度未读取，未观察部分不作推测。',
+    EPISODE_COLLECTION_FAILURE: '部分条目的进度来源不可用，对应完成度保持未知。',
+    EPISODE_COLLECTION_PAGE_FAILURE: '部分进度页面读取失败；已读范围和失败位置已保留。',
+    PARTIAL_EPISODE_PROGRESS: '部分条目的进度覆盖不完整，对应完成度未作精确推算。',
+    EPISODE_SOURCE_TOTAL_CHANGED: '读取期间正篇集数变化；受影响条目的完成度保持未知。',
+    PROGRESS_CONFLICT: '收藏状态与已读进度不一致；受影响条目的完成度保持未知。',
+    NOT_COMPUTABLE_ROWS: '部分条目缺少有效的正篇集数，无法计算剩余集数。',
+    UNKNOWN_EPISODE_DURATIONS: '部分条目时长无法解析；预计时长仅汇总已知值。',
+    PARTIAL_DURATION_COVERAGE: '时长或进度覆盖不完整；预计分钟数仅代表已观察小计。',
+  };
+  const seenWarningMessages = new Set<string>();
+  const warningMessages: string[] = [];
+  for (const warning of result.warnings) {
+    if (warning.code === result.error?.code) continue;
+    if (scheduleWarningCodes.has(warning.code)) continue;
+    if (emptyState && collectionCoverageWarningCodes.has(warning.code)) continue;
+    const message = warningCopy[warning.code] ?? warning.message.trim();
+    if (!message || message === errorMessage || seenWarningMessages.has(message)) continue;
+    seenWarningMessages.add(message);
+    warningMessages.push(message);
+  }
+  if (!emptyState && result.warnings.some((warning) => scheduleWarningCodes.has(warning.code))) {
+    warningMessages.push(
+      '七日计划未能完整读取，相关安排保持未知；未观察到不等于没有计划。可稍后重试。',
+    );
+  }
+  const scheduleStateLabel = {
+    complete: '完整',
+    partial: '部分',
+    unavailable: '暂不可用',
+    not_requested: '未读取',
+  }[result.coverage.schedule.state];
+  const scheduleSummary = result.coverage.schedule.attempted
+    ? `${scheduleStateLabel} · ${result.coverage.schedule.sourceDayCount}/7 天 · 匹配 ${result.coverage.schedule.matchedItems} 项`
+    : '未读取七日计划';
+  const versionLabel = (version: string | undefined, label: string) => {
+    if (!version) return undefined;
+    const shortVersion = version.match(/-v\d+$/u)?.[0]?.slice(1) ?? version;
+    return `${label} ${shortVersion}`;
+  };
+  const formulaSummary = [
+    versionLabel(formulaEvidence?.formulaVersion, 'backlog'),
+    versionLabel(durationFormulaEvidence?.formulaVersion, '时长'),
+    versionLabel(scheduleFormulaEvidence?.formulaVersion, '播出'),
+    versionLabel(confidenceFormulaEvidence?.formulaVersion, '完整度'),
+  ].filter((value): value is string => Boolean(value));
 
   return {
     template: 'collection-backlog',
@@ -315,6 +432,29 @@ export function buildCollectionBacklogViewModel(
     warnings: result.warnings,
     limitations: result.limitations,
     error: result.error,
+    presentation: {
+      ...(emptyState ? { emptyState } : {}),
+      ...(errorMessage ? { errorMessage } : {}),
+      ...(errorPresentation?.nextAction ? { errorNextAction: errorPresentation.nextAction } : {}),
+      warningMessages,
+      sourceSummary: 'Bangumi v0 收藏',
+      scheduleSummary,
+      limitationSummary: [
+        '范围：当前账号的有界动画收藏；超出安全上限的内容不推测。',
+        '进度/时长：余集只按有效正篇分母计算；时长只汇总已知值。',
+        '七日计划：仅含星期和首播日，无具体时刻/时区；未观察不等于没有计划。',
+        '完整度不是概率；不读取评论/历史，不做跨用户推断，也不写回收藏。',
+      ],
+      formulaSummary,
+      ...(retrievedAt
+        ? {
+            retrievedAtLabel: retrievedAt
+              .replace('T', ' ')
+              .replace(/\.\d+Z$/u, ' UTC')
+              .replace(/Z$/u, ' UTC'),
+          }
+        : {}),
+    },
   };
 }
 
