@@ -173,6 +173,9 @@ import { validateC04SanitizedReportFile } from './acceptance/write-c04-cohort-co
 import { validateTitleQueryRenderSanitizedReportFile } from './acceptance/write-title-query-render-agent-mcp-report.mjs';
 import { validateR02SanitizedReportFile } from './acceptance/write-r02-positive-direct-relations-agent-mcp-report.mjs';
 import { validateQuerySubjectsFreshPublicSanitizedReportFile } from './acceptance/write-query-subjects-fresh-public-agent-mcp-report.mjs';
+import {
+  validateQuerySubjectsFreshPublicSanitizedReportFile as validateQuerySubjectsFreshPublicV2SanitizedReportFile,
+} from './acceptance/write-query-subjects-fresh-public-agent-mcp-v2-report.mjs';
 import { validateC02SanitizedReportFile } from './acceptance/write-c02-tv-movie-comparison-report.mjs';
 import { validateM07SanitizedReportFile } from './acceptance/write-m07-manage-index-agent-mcp-report.mjs';
 import { validateAuthStartSanitizedReportFile } from './acceptance/write-auth-start-offline-agent-mcp-report.mjs';
@@ -320,6 +323,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID,
   'g01-query-subjects-offline-agent-mcp-matrix-v1',
   'query-subjects-fresh-public-matrix-v1',
+  'query-subjects-fresh-public-matrix-v2',
 ]);
 const profileRequiresExactCiRunEvidence = (profileId) => PROFILE_CI_RUN_EVIDENCE_IDS.has(profileId);
 const P01_MODEL = 'gpt-6-luna';
@@ -4307,6 +4311,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateG01QuerySubjectsOfflineSanitizedReportFile(claim, root, reportPath);
     case 'query-subjects-fresh-public-matrix-v1':
       return validateQuerySubjectsFreshPublicSanitizedReportFile(claim, root, reportPath);
+    case 'query-subjects-fresh-public-matrix-v2':
+      return validateQuerySubjectsFreshPublicV2SanitizedReportFile(claim, root, reportPath);
     case 'p02-person-profile-offline-agent-mcp-v1':
       return validateP02SanitizedReportFile(claim, root, reportPath);
     case 'r04-series-watch-order-offline-agent-mcp-v1':

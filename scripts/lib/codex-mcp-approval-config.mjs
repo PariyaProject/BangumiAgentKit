@@ -32,11 +32,32 @@ const EXPECTED_BLOCKED_WEB_SEARCH_MESSAGES = new Set([
   'The web search tool is unavailable.',
 ]);
 
+const VERBOSE_DISABLED_WEB_SEARCH_MESSAGE_MAX_LENGTH = 512;
+const WEB_SEARCH_TOOL_MARKER = /\bweb[_\s-]+search(?:\s+tool)?\b/iu;
+const DISABLED_WEB_SEARCH_RELATION =
+  /\bweb[_\s-]+search(?:\s+tool)?\b[^.!?;\n]{0,96}\bdisabled\b|\bdisabled\b[^.!?;\n]{0,96}\bweb[_\s-]+search(?:\s+tool)?\b/iu;
+const NEGATED_DISABLED_MARKER =
+  /\b(?:not|never)\s+(?:(?:currently|explicitly|actually)\s+)?disabled\b|\b(?:isn't|wasn't)\s+disabled\b/iu;
+const NETWORK_FAILURE_MARKERS = [
+  /\b(?:dns|enotfound|ehostunreach|etimedout|econn[a-z0-9_]*)\b/iu,
+  /\b(?:timeout|timed?[\s-]+out)\b/iu,
+  /\bhttp\s+[45]\d{2}\b/iu,
+  /\b(?:host(?:name)?|domain|name)\s+resolution\s+(?:failure|failed|error)\b/iu,
+  /\b(?:failed\s+to|unable\s+to|cannot|can['’]t|could\s+not|couldn['’]t)\s+resolve\s+(?:the\s+)?(?:host|hostname|domain|name)\b/iu,
+  /\b(?:host(?:name)?|domain|name)\s+(?:could\s+not|couldn['’]t|cannot|can['’]t|was\s+not|is\s+not)\s+(?:be\s+)?resolved\b/iu,
+  /\b(?:network|connection|socket)\s+(?:request\s+)?(?:failure|failed|error|refused|reset|closed|timeout|timed?[\s-]+out)\b/iu,
+  /\b(?:request\s+)?(?:failed|unable)\s+to\s+connect\b/iu,
+];
+
 function isBlockedDisabledWebSearchError(item) {
+  if (item?.type !== 'error' || typeof item.message !== 'string') return false;
+  if (EXPECTED_BLOCKED_WEB_SEARCH_MESSAGES.has(item.message)) return true;
   return (
-    item?.type === 'error' &&
-    typeof item.message === 'string' &&
-    EXPECTED_BLOCKED_WEB_SEARCH_MESSAGES.has(item.message)
+    item.message.length <= VERBOSE_DISABLED_WEB_SEARCH_MESSAGE_MAX_LENGTH &&
+    WEB_SEARCH_TOOL_MARKER.test(item.message) &&
+    !NEGATED_DISABLED_MARKER.test(item.message) &&
+    !NETWORK_FAILURE_MARKERS.some((marker) => marker.test(item.message)) &&
+    DISABLED_WEB_SEARCH_RELATION.test(item.message)
   );
 }
 

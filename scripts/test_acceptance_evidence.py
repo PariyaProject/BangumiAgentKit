@@ -12234,14 +12234,14 @@ class FreshQuerySubjectsPublicMatrixProfileTests(unittest.TestCase):
 
     def test_profile_is_one_fresh_public_matrix_call_and_does_not_close_g14(self):
         profile = GENERATOR.CODEX_QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE
-        self.assertEqual(profile['id'], 'query-subjects-fresh-public-matrix-v1')
+        self.assertEqual(profile['id'], 'query-subjects-fresh-public-matrix-v2')
         self.assertEqual(profile['frontierId'], 'G14')
         self.assertEqual(profile['acceptanceScope'], 'agent-mcp-matrix-only')
         self.assertEqual(profile['model'], 'gpt-6-luna')
         self.assertEqual(profile['reasoningEffort'], 'max')
         self.assertEqual(len(profile['calls']), 1)
         self.assertEqual(profile['calls'][0]['toolName'], 'bangumi.query_subjects')
-        self.assertEqual(profile['calls'][0]['arguments']['keyword'], '进击的巨人')
+        self.assertEqual(profile['calls'][0]['arguments']['keyword'], '天空之城')
         self.assertTrue(GENERATOR.codex_query_subjects_fresh_public_frontier_is_partial())
         self.frontier['records'][0]['status'] = 'CLOSED'
         self.frontier_path.write_text(json.dumps(self.frontier), encoding='utf-8')
@@ -12249,7 +12249,7 @@ class FreshQuerySubjectsPublicMatrixProfileTests(unittest.TestCase):
 
     def test_python_and_node_report_schemas_match_and_registry_markers_are_present(self):
         report_script = (
-            self.original_root / 'scripts/acceptance/write-query-subjects-fresh-public-agent-mcp-report.mjs'
+            self.original_root / 'scripts/acceptance/write-query-subjects-fresh-public-agent-mcp-v2-report.mjs'
         ).read_text(encoding='utf-8')
         keys_match = re.search(r'const REQUIRED_REPORT_KEYS = \[(.*?)\n\];', report_script, re.S)
         self.assertIsNotNone(keys_match)
@@ -12272,7 +12272,7 @@ class FreshQuerySubjectsPublicMatrixProfileTests(unittest.TestCase):
             'reviewerId': reviewer_id,
             'mcpBundleSha256': 'd' * 64,
         }
-        branch = 'codex/epoch-run95-query-subjects-fresh-public-matrix-20261019'
+        branch = 'codex/epoch-run95-query-subjects-fresh-public-matrix-v2-20261019'
         epoch_status = {
             'run': {
                 'number': 95,

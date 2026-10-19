@@ -42,7 +42,7 @@ test('Codex MCP approval config rejects broad or ambiguous tool sets', () => {
   );
 });
 
-test('only blocked disabled web-search errors are classified as expected', () => {
+test('only explicit disabled web-search errors within the size bound are expected', () => {
   const summary = summarizeCodexErrorItems([
     {
       type: 'item.completed',
@@ -55,6 +55,23 @@ test('only blocked disabled web-search errors are classified as expected', () =>
     {
       type: 'item.completed',
       item: { id: 'web-2', type: 'error', message: 'The web search tool is unavailable.' },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'verbose-1',
+        type: 'error',
+        message:
+          'The web_search tool is disabled for this Codex invocation because web search was not enabled in the request configuration.',
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'verbose-2',
+        type: 'error',
+        message: 'The web-search tool is disabled by the current Codex configuration.',
+      },
     },
     {
       type: 'item.completed',
@@ -74,20 +91,105 @@ test('only blocked disabled web-search errors are classified as expected', () =>
     },
     {
       type: 'item.completed',
-      item: { id: 'near-match-3', type: 'error', message: 'The web-search tool is disabled.' },
+      item: {
+        id: 'near-match-3',
+        type: 'error',
+        message: 'The web search request returned HTTP 503.',
+      },
     },
     {
       type: 'item.completed',
-      item: { id: 'unknown-1', type: 'error', message: 'MCP server did not start.' },
+      item: {
+        id: 'near-match-4',
+        type: 'error',
+        message: 'The authorization tool is disabled in this environment.',
+      },
     },
     {
       type: 'item.completed',
-      item: { id: 'not-error', type: 'mcp_tool_call', status: 'completed' },
+      item: {
+        id: 'near-match-5',
+        type: 'error',
+        message: 'Web search succeeded. A separate response parser is disabled.',
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'near-match-6',
+        type: 'error',
+        message: 'The web-search tool is not disabled; this request timed out.',
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'network-disabled',
+        type: 'error',
+        message: 'The web search tool was disabled after a DNS request timed out.',
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'host-resolution-disabled',
+        type: 'error',
+        message: 'The web search tool is disabled because host resolution failed.',
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'host-resolution-disabled-paraphrase',
+        type: 'error',
+        message: 'The web search tool is disabled because we could not resolve the host.',
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'host-resolution-disabled-passive',
+        type: 'error',
+        message: 'The web search tool is disabled because the hostname could not be resolved.',
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'host-resolution-disabled-contracted',
+        type: 'error',
+        message: 'The web search tool is disabled because we couldn’t resolve the host.',
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'host-resolution-disabled-ascii-contracted',
+        type: 'error',
+        message: "The web search tool is disabled because we couldn't resolve the hostname.",
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'too-long',
+        type: 'error',
+        message: `web_search is disabled ${'x'.repeat(520)}`,
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'non-error-web-search',
+        type: 'mcp_tool_call',
+        status: 'completed',
+        message: 'web_search is disabled',
+      },
     },
   ]);
   assert.deepEqual(summary, {
-    errorItemCount: 6,
-    blockedWebSearchErrorItemCount: 2,
-    unexpectedCodexErrorItemCount: 4,
+    errorItemCount: 17,
+    blockedWebSearchErrorItemCount: 4,
+    unexpectedCodexErrorItemCount: 13,
   });
 });
