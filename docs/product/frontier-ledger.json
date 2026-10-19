@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-19T04:07:57Z",
+  "updated_at": "2026-10-19T04:38:38Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",

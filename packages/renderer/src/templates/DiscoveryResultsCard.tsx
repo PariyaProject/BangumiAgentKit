@@ -13,6 +13,9 @@ export interface DiscoveryResultsCardProps {
   width?: number;
 }
 
+const DISCOVERY_UNRESOLVED_COVERAGE_REASON =
+  'Some candidate filters remained unresolved because required data was missing, inconsistent, or not computable.';
+
 function stateLabel(state: DiscoveryResultsViewModel['state']): string {
   const labels: Record<DiscoveryResultsViewModel['state'], string> = {
     ok: '结果可用',
@@ -72,7 +75,7 @@ function warningText(code: string, message: string): string {
     return '部分候选的筛选字段未能核实，已按未知处理。';
   }
   if (code === 'DISCOVERY_OUTPUT_TRUNCATED') {
-    return '结果达到展示上限，部分条目未展开。';
+    return '结果已达到返回上限，可能还有匹配条目未纳入列表。';
   }
   if (code === 'EXPERIMENTAL_SOURCE') {
     return '官方作品搜索接口仍处于实验阶段，可能遗漏尚未编入索引的条目。';
@@ -100,12 +103,11 @@ function limitationLabel(message: string): string {
 
 function coverageReasonLabel(reason: string): string {
   const labels: Record<string, string> = {
-    output_cap: '卡片已达到展示上限，仍有已返回条目未展开。',
-    'Output cap was reached.': '卡片已达到展示上限，仍有已返回条目未展开。',
+    output_cap: '结果已达到返回上限，仍有匹配条目未纳入列表。',
+    'Output cap was reached.': '结果已达到返回上限，仍有匹配条目未纳入列表。',
     'Hydration budget was exhausted before all required candidates could be evaluated.':
       '条目核验已到处理上限，部分筛选条件可能尚未确认。',
-    'Some candidate filters remained unresolved because required data was missing, inconsistent, or not computable.':
-      '部分候选的筛选字段无法确认，相关结论按未知处理。',
+    [DISCOVERY_UNRESOLVED_COVERAGE_REASON]: '部分候选的筛选字段无法确认，相关结论按未知处理。',
     'Execution budget was exhausted before upstream coverage was proven.':
       '检索已到本次处理上限，尚未证明覆盖全部结果。',
   };
@@ -145,11 +147,26 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
       : []),
   ];
   const coverageNote = [...new Set(coverageMessages)].join('；');
+  const coverageReasonIsShown = !coverage.budgetExceeded && !coverage.hydrationBudgetExceeded;
   const renderWarnings = viewModel.warnings.filter((warning) => {
     if (coverage.budgetExceeded && warning.code === 'DISCOVERY_BUDGET_EXCEEDED') return false;
     if (
       coverage.hydrationBudgetExceeded &&
       warning.code === 'DISCOVERY_HYDRATION_BUDGET_EXCEEDED'
+    ) {
+      return false;
+    }
+    if (
+      coverageReasonIsShown &&
+      coverage.reason === 'output_cap' &&
+      warning.code === 'DISCOVERY_OUTPUT_TRUNCATED'
+    ) {
+      return false;
+    }
+    if (
+      coverageReasonIsShown &&
+      coverage.reason === DISCOVERY_UNRESOLVED_COVERAGE_REASON &&
+      warning.code === 'DISCOVERY_HYDRATION_UNRESOLVED'
     ) {
       return false;
     }

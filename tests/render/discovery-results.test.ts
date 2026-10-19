@@ -67,7 +67,7 @@ function makeResult(state: FixtureState = 'partial', itemCount = 13) {
     },
     coverage: {
       state: coverageState,
-      requested: 10,
+      requested: itemCount,
       scanned: 20,
       matched: itemCount,
       returned: itemCount,
@@ -75,7 +75,7 @@ function makeResult(state: FixtureState = 'partial', itemCount = 13) {
       totalKind: state === 'ok' ? 'exact' : 'estimated',
       upstreamExhausted: state === 'ok',
       budgetExceeded: state === 'partial',
-      outputCap: state === 'partial' ? 12 : undefined,
+      outputCap: undefined as number | undefined,
       hydrationsAttempted: state === 'partial' ? 5 : 0,
       hydrationsSucceeded: state === 'partial' ? 4 : 0,
       hydrationsFailed: state === 'partial' ? 1 : 0,
@@ -124,7 +124,7 @@ describe('discovery-results renderer', () => {
       concepts: ['后宫'],
       rating: { min: 8 },
       sort: 'score',
-      limit: 10,
+      limit: 13,
     });
 
     expect(viewModel.template).toBe('discovery-results');
@@ -141,6 +141,7 @@ describe('discovery-results renderer', () => {
     expect(viewModel.query.facets).toEqual(
       expect.arrayContaining(['媒介：动画', '概念：后宫', '评分：≥8']),
     );
+    expect(viewModel.query.facets).toContain('上限：13');
     expect(viewModel.items[2]?.score).toBeUndefined();
     expect(viewModel.plan.pushdown[0]).toContain('媒介');
     expect(viewModel.plan.pushdown[0]).toContain('动画');
@@ -223,6 +224,7 @@ describe('discovery-results renderer', () => {
 
   it('renders the resolved season when the query requested the current season', () => {
     const result = makeResult('partial', 1);
+    result.coverage.requested = 12;
     Object.assign(result.plan, { season: '2026-autumn' });
     const viewModel = buildDiscoveryResultsViewModel(result, {
       media: 'anime',
@@ -383,27 +385,70 @@ describe('discovery-results renderer', () => {
     expect(viewModel.plan.pushdown.every((filter) => Array.from(filter).length <= 128)).toBe(true);
   });
 
-  it('localizes coverage reasons without exposing internal diagnostics in the image', () => {
-    const result = makeResult('partial', 1);
+  it('deduplicates an engine output-cap warning already explained by the coverage reason', () => {
+    const result = makeResult('partial', 12);
+    result.coverage.requested = 13;
+    result.coverage.matched = 13;
+    result.coverage.returned = 12;
+    result.coverage.outputCap = 12;
     result.coverage.hydrationsAttempted = 0;
     result.coverage.hydrationsSucceeded = 0;
     result.coverage.hydrationsFailed = 0;
     result.coverage.hydrationsUnresolved = 0;
-    result.coverage.reason = 'Output cap was reached.';
+    result.coverage.unresolvedCandidates = 0;
+    result.coverage.reason = 'output_cap';
     result.coverage.budgetExceeded = false;
+    result.warnings = [
+      Object.assign(
+        {
+          code: 'DISCOVERY_OUTPUT_TRUNCATED',
+          message:
+            'Discovery matched more items than the trusted output cap; the result is partial.',
+        },
+        { matched: 13, returned: 12, outputCap: 12 },
+      ),
+    ];
+    result.limitations = [];
 
-    const viewModel = buildDiscoveryResultsViewModel(result, {});
+    const viewModel = buildDiscoveryResultsViewModel(result, { limit: 13 });
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
 
-    expect(html).toContain('范围说明：卡片已达到展示上限，仍有已返回条目未展开。');
-    expect(html).not.toContain('Output cap was reached.');
+    expect(html).toContain('范围说明：结果已达到返回上限，仍有匹配条目未纳入列表。');
+    expect(html.match(/结果已达到返回上限/g)).toHaveLength(1);
+    expect(html).not.toContain('提示：');
+    expect(html).not.toContain('output_cap');
     expect(html).not.toContain('计划与证据边界');
     expect(html).not.toContain('searchSubjects');
     expect(html).toContain('条目 ID 1');
-    expect(viewModel.coverage.reason).toBe('Output cap was reached.');
+    expect(viewModel.coverage).toMatchObject({ matched: 13, returned: 12, outputCap: 12 });
+    expect(viewModel.coverage.reason).toBe('output_cap');
+    expect(viewModel.warnings).toHaveLength(1);
     expect(viewModel.plan.operation).toBe('searchSubjects');
     expect(viewModel.source.operations).toContain('searchSubjects');
     expect(viewModel.source.retrievedAt).toBe('2026-08-11T00:00:00.000Z');
+  });
+
+  it('deduplicates an unresolved-field warning already explained by the coverage reason', () => {
+    const result = makeResult('partial', 1);
+    result.coverage.budgetExceeded = false;
+    result.coverage.reason =
+      'Some candidate filters remained unresolved because required data was missing, inconsistent, or not computable.';
+    result.warnings = [
+      {
+        code: 'DISCOVERY_HYDRATION_UNRESOLVED',
+        message:
+          'Some discovered candidates could not be reliably evaluated because required fields were missing, inconsistent, or not computable; they remain unresolved.',
+      },
+    ];
+
+    const viewModel = buildDiscoveryResultsViewModel(result, {});
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 360);
+
+    expect(html).toContain('范围说明：部分候选的筛选字段无法确认，相关结论按未知处理。');
+    expect(html).not.toContain('提示：');
+    expect(html).not.toContain('Some candidate filters remained unresolved');
+    expect(viewModel.coverage.reason).toBe(result.coverage.reason);
+    expect(viewModel.warnings).toHaveLength(1);
   });
 
   it('uses a safe fallback for unknown technical reasons and keeps exact detail structured', () => {
@@ -674,8 +719,10 @@ describe.skipIf(!visualQaDirectory)('discovery results final image matrix', () =
         concepts: ['后宫'],
         rating: { min: 8 },
         sort: 'score',
-        limit: 10,
+        limit: 13,
       });
+      expect(viewModel.query.facets).toContain('上限：13');
+      expect(viewModel.coverage).toMatchObject({ requested: 13, returned: 13 });
       if (viewModel.items[0]) viewModel.items[0].image = visualPosterUrl;
       expect(extractImageUrls(viewModel)).toEqual([visualPosterUrl]);
       for (const width of visualQaWidths) {
