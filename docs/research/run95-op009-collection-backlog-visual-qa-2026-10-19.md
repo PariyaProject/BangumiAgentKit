@@ -5,7 +5,7 @@
 - Compared the pre-change renderer at base `c809dc810df6fc20c1cb1959ec8d2d163eeb3cd2` with the renderer implementation committed as `9f960a2e80968a425152cb3b87202c79f52da07e`. The final deterministic fixture runner is commit `95404f34c5a5c23ccb2be4198be6b75109731851`; this commit changed the fixture clock only, not the renderer.
 - Used nine synthetic states (`complete`, `complete-empty`, `partial`, `partial-empty`, `dense`, `auth-required`, `permission-denied`, `rate-limited`, `upstream-error`) at 320/360/520/640/960 CSS px, device scale factor 1: 45 baseline and 45 candidate PNGs.
 - Both runs used the same deterministic fixture content and frozen retrieval time `2026-10-19T00:00:00.000Z`. For baseline compatibility, the temporary runner omitted only assertions that inspect the new ViewModel presentation field; fixtures, mocked service calls, renderer, widths, and PNG recording were otherwise unchanged. Two candidate runs produced identical dimensions, byte lengths, and SHA-256 values for all 45 PNGs.
-- All 90 baseline/candidate images were individually opened and compared. No clipping, horizontal spill, or footer overlap was observed. Synthetic private comments and fake cover URLs were not rendered. Each state matrix used 30 mocked fetches; external requests: 0.
+- All 90 baseline/candidate images were individually opened and compared. No clipping, horizontal spill, or footer overlap was observed. Synthetic private comments and fake cover URLs were not rendered. The original report incorrectly stated 30 mocked fetches; the nine-state fixture made 26 calls. The corrected ten-state fixture below makes 28 calls. External requests: 0 in both runs.
 - PNGs and manifests remain in ignored local artifacts; this tracked report records the paired dimensions and hashes without committing image binaries.
 
 ## Height comparison
@@ -26,7 +26,7 @@ Most cards are substantially shorter because detailed implementation prose, raw 
 
 ## Findings
 
-- Complete-empty now says the current collection was fully read and no item matched the selected statuses; it suggests changing the filter or opening the collection overview. Partial-empty says unread items may still match and advises against treating the sample as an empty collection.
+- Complete-empty says the current collection was fully read and no item matched the selected statuses; it suggests changing the filter or opening the collection overview. Review round 1 found that the original partial-empty fixture was partial only because the optional calendar failed; its empty-state panel falsely claimed the collection itself was only partially read. The corrective matrix separates schedule-only partial coverage from an incomplete collection scan.
 - Auth-required, permission-denied, rate-limited, and upstream failures each show one concise explanation and one next action. The rendered card omits machine error codes; the ViewModel retains the full error object.
 - Partial populated output contains one schedule-coverage warning. Partial-empty relies on its dedicated state panel rather than repeating the same schedule failure below it.
 - Full warnings, limitations, source operations, formula identifiers, retrieval time, coverage, item-level recovery data, and top-level error data remain available on the ViewModel. The renderer shows a concise four-line methodology summary.
@@ -36,7 +36,9 @@ Most cards are substantially shorter because detailed implementation prose, raw 
 
 The pinned [Bangumi-for-QQ revision `b44d493`](https://github.com/Kurarion/Bangumi-for-QQ/tree/b44d493dd6f5044d6fe305292016908ae15ef933) uses a private authorization message/confirmation and image-led search/collection progression. The pinned [Bangumi-QQ-Bot-CPP revision `f1c75bc`](https://github.com/Kurarion/Bangumi-QQ-Bot-CPP/tree/f1c75bc366755d8bd7bf35ee5c11b513cb066f8e) presents collection/progress information with subject covers and structured text. Neither source audit found a direct derived-backlog-card equivalent. This comparison is limited to state clarity, next action, and hierarchy; it makes no whole-project parity or superiority claim. The legacy OAuth state/credential practices are not copied.
 
-## Per-image receipt
+## Initial per-image receipt
+
+These 45 rows preserve the original nine-state review before round-1 corrections. The corrected `partial-empty` candidate hashes and the new `collection-partial-empty` receipts are listed under “Corrective review image receipts.” The other 40 candidate PNGs are unchanged.
 
 | PNG | State | Base dimensions · SHA-256 | Candidate dimensions · bytes · SHA-256 | Individual inspection |
 | --- | --- | --- | --- | --- |
@@ -85,6 +87,29 @@ The pinned [Bangumi-for-QQ revision `b44d493`](https://github.com/Kurarion/Bangu
 | `upstream-error-520.png` | `upstream-error` | 520×783 · `de409b83f6e3d9d70d22e4b4cc21d830b2144379a52e913d7a3c9334841a8134` | 520×471 · 59845 B · `df2edec8d6f7c56e54ed2c9d2f4531fd230834fe76dd422604d821c3615ac3ee` | 只显示暂时无法读取收藏及稍后重试；无重复解释或机器错误码. 520px：状态、条目与口径分区清楚，无裁切。 |
 | `upstream-error-640.png` | `upstream-error` | 640×708 · `075991f105c4b2654a9d6248daf43a8ffe0990a181560572b79a9b95052b466b` | 640×471 · 60913 B · `d32ac9442a9fdbbbec85457222b478a91059f5f9f7f0cc8d85b151bf6536acbf` | 只显示暂时无法读取收藏及稍后重试；无重复解释或机器错误码. 640px：摘要、主内容与页脚间距正常，无裁切。 |
 | `upstream-error-960.png` | `upstream-error` | 960×618 · `919edfca07a726cb968ab34f8b3daae4b19064d5842733c0d2c973d7df623eb9` | 960×471 · 64128 B · `74a928f88c4e0cca0ab2bc2f4ebc53d53949427d67de41b52c8b5aae3d888dd0` | 只显示暂时无法读取收藏及稍后重试；无重复解释或机器错误码. 960px 宽屏：摘要按四列排列，主内容和页脚仍在卡片边界内。 |
+
+## Corrective review image receipts
+
+Luna Max review round 1 returned `CORRECTIVE_REQUIRED` with two findings. The P1 correction now selects empty-state copy from collection-scan coverage, independently reports an incomplete optional schedule, and suppresses repeated collection-scan warnings in the empty panel. A complete collection with a calendar outage now says the collection was fully read and that schedule details are unavailable. A collection scan whose reported total exceeds its observed rows says unread scope may still contain matching items. Structured warnings and coverage remain on the ViewModel.
+
+The corrected matrix uses ten states (`complete`, `complete-empty`, `partial`, `partial-empty`, `collection-partial-empty`, `dense`, `auth-required`, `permission-denied`, `rate-limited`, `upstream-error`) at the same five widths: 50 exact-base and 50 corrected-candidate PNGs. Both matrices made 28 mocked fetch calls and zero external requests. The baseline runner omitted only candidate-specific presentation assertions. The final candidate was rendered twice; all 50 dimensions, byte lengths, and SHA-256 values matched. The other 40 files (eight unchanged states) match the individually inspected initial candidate byte-for-byte. The ten corrected/new empty-state images below were individually opened and compared with their paired exact-base images; no clipping, horizontal spill, or footer overlap was observed.
+
+The corrected renderer, template, and fixtures are source commit `ed9745450ec07e83276fe5f402687378f416fce8`. The exact comparison base remains `c809dc810df6fc20c1cb1959ec8d2d163eeb3cd2`; the images were rerendered after the source commit and are unchanged across the subsequent report-only update.
+
+| PNG | State | Base dimensions · SHA-256 | Corrected candidate dimensions · bytes · SHA-256 | Individual inspection |
+| --- | --- | --- | --- | --- |
+| `partial-empty-320.png` | `partial-empty` | 320×1169 · `481fc15b3452be910e00116347d431b37ae4c5c87b84b7509b22da442dcb330e` | 320×708 · 76290 B · `10b450bca946afb8e6139291b96997d2ead75a2d5207f464aaa567f954994ba3` | 收藏扫描完整、仅七日计划不可用；明确说明空结果与计划状态。窄屏文字自然换行，无溢出或裁切。 |
+| `partial-empty-360.png` | `partial-empty` | 360×1035 · `7976540a4429db6213c8da072f71c5fd488bcbb489fab33f6274d42e0b19142e` | 360×694 · 77256 B · `d4f91d356a039a74a5e72da107c1f95b39ea8d153c56d23bd7d6298dfce59b3f` | 收藏完整与计划不可用分开表达；摘要两列和详情均可读，脚注与页脚分离。 |
+| `partial-empty-520.png` | `partial-empty` | 520×726 · `e4afbd078938b21728a6ce581190d81c515b3f5ae5a1ca0d9b4bbfbcc4f28674` | 520×540 · 75084 B · `35130450ae211fc7cff6c545a3ea4a525606b98533ed43cc58bc1e8a6170cb4b` | 空状态、七日计划提示、计算口径分区清楚；无重复警告或边缘裁切。 |
+| `partial-empty-640.png` | `partial-empty` | 640×636 · `e4848da130506756d2ce3cd0c4810b94aa21f9182d40456843b43b6c985b3b8c` | 640×510 · 75765 B · `e23a7cd349d36a12e08181f88a3e29712329bbe5f286e9531ffc274be5ffecd3` | 完整收藏范围与未知播出安排一目了然；面板、口径和页脚间距正常。 |
+| `partial-empty-960.png` | `partial-empty` | 960×532 · `36b6a733bdc26cf79a9660f8f7b77142e09e6f76b3b9ba658f07208fe217c95c` | 960×510 · 79427 B · `23c3a0de39568f91765aad6eb66d631b1777ddd68c0f898e619e2d6bba1625be` | 宽屏保持单一状态面板，完整读取与日历不可用说明清楚，无溢出。 |
+| `collection-partial-empty-320.png` | `collection-partial-empty` | 320×1235 · `609791e61eaaca352ab27e360f69c560228c49eaabeef2122455f8339b2c5bd8` | 320×708 · 74118 B · `5b7b1e3ed8ef9f977e619c6ba469e3c21df47fee59ea955008efe2cb98961063` | 说明收藏覆盖不完整且未读范围仍可能有条目；只有一条状态解释，没有重复红色警告，窄屏行动文案完整可见。 |
+| `collection-partial-empty-360.png` | `collection-partial-empty` | 360×1101 · `945f2bb7a049c34e141b0e14563de9a937221dde9cef3be373640cf4017b075d` | 360×678 · 74696 B · `1ccb1c055de4b674e7a50749b56b60da8911a8168f914aebc23a8ebb36534e43` | 未覆盖范围与下一步不混淆；内容自然换行，底部口径和页脚无遮挡。 |
+| `collection-partial-empty-520.png` | `collection-partial-empty` | 520×775 · `9401eb5e3c1b8b04256d34847cd911a1daa52568ccf7e0961e5515059d22dd68` | 520×524 · 72675 B · `b11f6bb58d26d3eb2cd1af33b5747b5865ad8cf329db54aaf3efb60f134a835a` | 一个部分覆盖面板承载说明与行动；未出现重复扫描警告，分区和页脚正常。 |
+| `collection-partial-empty-640.png` | `collection-partial-empty` | 640×668 · `4f254db5cbe68c0045a074aef0a38c64d1ee5e8ef332683ea3be4b6012302691` | 640×510 · 73767 B · `24ae8b54779911e51fb78962778563667c76afefd9630b5e4d2dd7b67b9748d9` | 状态卡与收藏范围警示层次清楚；行动文案、口径及页脚均在卡片内。 |
+| `collection-partial-empty-960.png` | `collection-partial-empty` | 960×564 · `1fd31a0a291bc6c610f5632ed4b4a311f9408cfd11dc15d85d6948283c649467` | 960×510 · 77325 B · `72a174029f8941db25eb8dfaa51e6c9abb5e7b8222bc1a07622496b3f2e16388` | 宽屏明确未读收藏仍可能包含结果；没有重复警告，卡片边界和页脚完整。 |
+
+The P2 report-count finding is corrected: the initial nine-state run used 26 mock calls; the corrected ten-state run uses 28. The visual matrix remains synthetic and does not change any acceptance counters.
 
 ## Acceptance boundary
 
