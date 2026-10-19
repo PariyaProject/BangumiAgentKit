@@ -2009,7 +2009,7 @@
         "tests/harness/run-c03-person-activity-offline-matrix-v2.test.mjs",
         "tests/harness/write-c03-person-activity-offline-v2-report.test.mjs"
       ],
-      "next_action": "Run #95 has a separately registered C03 v2 synthetic offline Agent/MCP matrix-only profile for bangumi.get_person_activity; the active Candidate has not been claimed and no model call has run. After exact Candidate/Base/seven-check CI/same-identity Luna Max gates, the one-shot may credit only that tool matrix cell. C03 remains UNASSESSED as the two-voice-actor common-work/main-role-share scenario; the old v1 claim remains terminal INCONCLUSIVE/no-report/no-retry and must never be reused. After the v2 matrix disposition, continue the full comparison scenario only with a separately selected safe unspent method.",
+      "next_action": "Run #95 has a separately registered C03 v2 synthetic offline Agent/MCP matrix-only profile for bangumi.get_person_activity; the active v2 Candidate has not been claimed or invoked. After exact Candidate/Base/seven-check CI/same-identity Luna Max gates, the one-shot may credit only that tool matrix cell. C03 remains UNASSESSED as the two-voice-actor common-work/main-role-share scenario. The old v1 claim ended INCONCLUSIVE without a report (retryAllowed=false); the missing report does not restore eligibility. Never rerun this consumed Run #95 profile. Continue through another safe unspent frontier; after the v2 matrix disposition, the full comparison scenario requires a separately selected safe unspent method.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
