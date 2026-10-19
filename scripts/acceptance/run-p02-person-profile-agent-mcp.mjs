@@ -273,10 +273,13 @@ export function isP02ProfileClaimCurrent(
     localBranch,
     localHead,
     localWorktreeStatus,
+    expectedWorktreeStatus = `?? ${getAgentMcpProfileById(claim?.profileId)?.reportPath}`,
     bundleCurrent,
     ciEvidence,
   },
 ) {
+  const profile = getAgentMcpProfileById(claim?.profileId);
+  if (!profile) return false;
   const epoch = epochStatus?.epoch?.state;
   const run = epochStatus?.run?.state;
   const latestReview = epoch?.review_history?.at(-1);
@@ -292,6 +295,8 @@ export function isP02ProfileClaimCurrent(
     epoch?.scope_closure?.related_work_remaining === false,
     epoch?.adversarial_preflight?.completed === true,
     epoch?.base_branch === 'master',
+    claim?.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(profile),
+    claim?.registrySha256 === agentMcpProfileRegistrySha256(profile.id),
     epoch?.base_sha === claim?.baseSha,
     epoch?.reviewed_base_sha === claim?.baseSha,
     currentBaseSha === claim?.baseSha,
@@ -315,7 +320,7 @@ export function isP02ProfileClaimCurrent(
     currentBaseSha === claim?.baseSha,
     localBranch === epoch?.branch,
     localHead === claim?.sourceCandidateSha,
-    localWorktreeStatus === `?? ${getAgentMcpProfileById(claim?.profileId)?.reportPath}`,
+    localWorktreeStatus === expectedWorktreeStatus,
     bundleCurrent === true,
     ciEvidence?.ciRunId === claim?.ciRunId,
     canonicalAgentMcpProfileJson(ciEvidence?.ciChecks ?? []) ===
@@ -323,8 +328,28 @@ export function isP02ProfileClaimCurrent(
   ].every(Boolean);
 }
 
-function currentP02ProfileClaimState(prNumber, claim, profile) {
+export function shouldInvokeP02Codex({
+  beforeInvokeProfileStatus,
+  claim,
+  liveClaimCurrent,
+  reportExists,
+}) {
+  return (
+    beforeInvokeProfileStatus?.state === 'CLAIMED' &&
+    beforeInvokeProfileStatus.disposition?.claimId === claim?.claimId &&
+    liveClaimCurrent === true &&
+    reportExists === false
+  );
+}
+
+function currentP02ProfileClaimState(
+  prNumber,
+  claim,
+  profile,
+  { expectedWorktreeStatus = `?? ${profile.reportPath}`, requireReportAbsent = false } = {},
+) {
   try {
+    if (requireReportAbsent && existsSync(path.join(ROOT, profile.reportPath))) return false;
     const profileStatus = readProfileStatus(prNumber, profile.id);
     const epochStatus = readEpochStatus(prNumber);
     const pr = readPullRequest(prNumber);
@@ -344,6 +369,7 @@ function currentP02ProfileClaimState(prNumber, claim, profile) {
       localBranch: gitText('branch', '--show-current'),
       localHead: gitText('rev-parse', 'HEAD'),
       localWorktreeStatus: gitText('status', '--porcelain', '--untracked-files=all'),
+      expectedWorktreeStatus,
       bundleCurrent,
       ciEvidence,
     });
@@ -1076,11 +1102,21 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
 
   let temporaryDirectory = null;
   try {
+    temporaryDirectory = mkdtempSync(path.join(path.resolve(os.tmpdir()), 'bgk-p02-run95-'));
+    const summaryPath = path.join(temporaryDirectory, 'server-summary.json');
     const beforeInvoke = readProfileStatus(prNumber, profile.id);
+    const liveClaimCurrent = currentP02ProfileClaimState(prNumber, claim, profile, {
+      expectedWorktreeStatus: '',
+      requireReportAbsent: true,
+    });
+    const reportExists = existsSync(path.join(ROOT, profile.reportPath));
     if (
-      beforeInvoke.state !== 'CLAIMED' ||
-      beforeInvoke.disposition?.claimId !== claim.claimId ||
-      !assertCurrentCandidateBundle(sourceRevision, bundleSha256)
+      !shouldInvokeP02Codex({
+        beforeInvokeProfileStatus: beforeInvoke,
+        claim,
+        liveClaimCurrent,
+        reportExists,
+      })
     ) {
       return terminalizeP02NoReportAttempt(
         prNumber,
@@ -1090,8 +1126,6 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
       );
     }
 
-    temporaryDirectory = mkdtempSync(path.join(path.resolve(os.tmpdir()), 'bgk-p02-run95-'));
-    const summaryPath = path.join(temporaryDirectory, 'server-summary.json');
     const execution = invokeCodex({
       summaryPath,
       sourceRevision,

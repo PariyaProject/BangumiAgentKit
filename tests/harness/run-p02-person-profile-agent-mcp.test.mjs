@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   agentMcpProfileTerminalLabelDescription,
   agentMcpProfileArgumentsSha256,
+  agentMcpProfileRegistrySha256,
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
@@ -17,6 +18,7 @@ import {
   classifyP02TerminalLatchRecovery,
   classifyP02ReportWriteRecovery,
   isP02ProfileClaimCurrent,
+  shouldInvokeP02Codex,
   validateP02RunnerArgs,
   validateServerSummary,
 } from '../../scripts/acceptance/run-p02-person-profile-agent-mcp.mjs';
@@ -156,6 +158,8 @@ test('P02 exact claim-current check accepts the assigned runtime reviewer and re
     ciSha: candidateSha,
     ciRunId: '39207834428',
     ciChecks: [{ name: 'harness-control', status: 'COMPLETED', conclusion: 'SUCCESS' }],
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE_V2),
+    registrySha256: agentMcpProfileRegistrySha256(PROFILE_V2.id),
     reviewerId,
     bundleSha256: BUNDLE_SHA,
   };
@@ -209,15 +213,94 @@ test('P02 exact claim-current check accepts the assigned runtime reviewer and re
     localBranch: epoch.branch,
     localHead: candidateSha,
     localWorktreeStatus: `?? ${PROFILE_V2.reportPath}`,
+    expectedWorktreeStatus: `?? ${PROFILE_V2.reportPath}`,
     bundleCurrent: true,
     ciEvidence: { ciRunId: claim.ciRunId, ciChecks: claim.ciChecks },
   };
   assert.equal(isP02ProfileClaimCurrent(claim, inputs), true);
+  const preInvocationInputs = {
+    ...inputs,
+    localWorktreeStatus: '',
+    expectedWorktreeStatus: '',
+  };
+  assert.equal(isP02ProfileClaimCurrent(claim, preInvocationInputs), true);
+  const driftedLiveStates = [
+    {
+      ...preInvocationInputs,
+      currentBaseSha: 'c'.repeat(40),
+    },
+    {
+      ...preInvocationInputs,
+      pr: { ...pr, headRefOid: 'c'.repeat(40) },
+    },
+    {
+      ...preInvocationInputs,
+      epochStatus: {
+        ...status,
+        epoch: {
+          ...status.epoch,
+          state: {
+            ...epoch,
+            review_history: [{ ...epoch.review_history[0], reviewer_id: '/root/other-reviewer' }],
+          },
+        },
+      },
+    },
+    {
+      ...preInvocationInputs,
+      epochStatus: {
+        ...status,
+        epoch: { ...status.epoch, state: { ...epoch, ci: { ...epoch.ci, sha: 'c'.repeat(40) } } },
+      },
+    },
+    {
+      ...preInvocationInputs,
+      ciEvidence: { ciRunId: 'other-run', ciChecks: claim.ciChecks },
+    },
+    {
+      ...preInvocationInputs,
+      localHead: 'c'.repeat(40),
+    },
+  ].map((liveInputs) => isP02ProfileClaimCurrent(claim, liveInputs));
+  assert.deepEqual(driftedLiveStates, [false, false, false, false, false, false]);
+
+  const claimStatus = { state: 'CLAIMED', disposition: { claimId: claim.claimId } };
   assert.equal(
-    isP02ProfileClaimCurrent(claim, { ...inputs, currentBaseSha: 'c'.repeat(40) }),
+    shouldInvokeP02Codex({
+      beforeInvokeProfileStatus: claimStatus,
+      claim,
+      liveClaimCurrent: true,
+      reportExists: false,
+    }),
+    true,
+  );
+  let invocationCount = 0;
+  for (const liveClaimCurrent of driftedLiveStates) {
+    if (
+      shouldInvokeP02Codex({
+        beforeInvokeProfileStatus: claimStatus,
+        claim,
+        liveClaimCurrent,
+        reportExists: false,
+      })
+    ) {
+      invocationCount += 1;
+    }
+  }
+  assert.equal(
+    invocationCount,
+    0,
+    'Base, PR head, reviewer, or CI drift after claim must prevent the one-shot Codex invocation',
+  );
+  assert.equal(
+    shouldInvokeP02Codex({
+      beforeInvokeProfileStatus: claimStatus,
+      claim,
+      liveClaimCurrent: true,
+      reportExists: true,
+    }),
     false,
   );
-  assert.equal(isP02ProfileClaimCurrent(claim, { ...inputs, localHead: 'c'.repeat(40) }), false);
 });
 
 test('P02 Codex invocation is ephemeral, read-only, and exposes only the fixed offline tool', () => {
