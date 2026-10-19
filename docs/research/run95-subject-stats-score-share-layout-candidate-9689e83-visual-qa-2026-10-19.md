@@ -24,6 +24,10 @@
 - 本图像 QA 未新增 Agent/MCP、账号/OAuth、QQ 或 TIM 验收积分；Run #95 的 Agent/MCP 矩阵仍为 83/96，OP-012 仍为 PARTIAL。
 - 原 Run 69 记录要求每个修改后的 Candidate 重新执行一次精确源码自然语言 Agent/MCP 验收。此报告不把合成图或单元测试冒充那项验收。Run #95 将这次调用作为独立门槛，仅在精确 Candidate CI、Harness candidate check 和 Luna Max review PASS 后、合并前执行一次；执行结果另行记录，遵循一次性调用规则。
 
+## G23 精确源码验证前置
+
+同身份 Luna Max 对 Candidate `f077f9bac9c0d7299874b29915e161ffc388ca28` 的复审通过后，G23 渲染器探测的本地 bundle preflight 发现跟踪的 G26 bundle attestation 已过期。两次 `pnpm build` 均生成相同 bundle SHA-256；细节记录在 [`G23 bundle attestation refresh`](run95-subject-stats-g23-bundle-attestation-refresh-2026-10-19.md)。G26 attestation 已在当前 Epoch 的后续 Candidate 中刷新。该元数据变化需要新的精确 Candidate CI、Harness candidate check 和同身份 review；这些门禁通过后才调用 G23 一次。此次 preflight 没有调用 Codex/MCP 或 Bangumi API，没有创建 claim，也不增加任何矩阵积分。
+
 ## 40 张 PNG 逐张审阅收据
 
 | PNG | 状态 | 尺寸 | 字节 | SHA-256 | 单张观察 |

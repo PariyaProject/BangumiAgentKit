@@ -369,6 +369,8 @@ Renderer follow-up — 2026-10-03 (Harness Epoch PR #65): a shared real-browser 
 
 Run #95 narrow-screen follow-up — Candidate source commit `9689e830d5cfd552a230c0e99dde7c55df32d098`: the 320px complete card had left the closing parenthesis of `100.0% (100/100)` alone on a line. The candidate presents the percentage and `样本数 100 / 100` separately without changing formulas or source semantics. Eight synthetic states at five widths (320/360/520/640/960 CSS px) were rendered and all 40 PNGs were opened individually; exact receipts and observations are in `docs/research/run95-subject-stats-score-share-layout-candidate-9689e83-visual-qa-2026-10-19.md`. The old Run 69 record requires exact-source natural-language Agent/MCP revalidation for each changed Candidate. Under current Run #95 rules, make that one call only after exact-Candidate CI, Harness candidate check, and Luna Max review PASS, before merge; this synthetic visual QA does not replace it. No live account/OAuth, QQ/TIM, or matrix acceptance credit is claimed.
 
+Run #95 G23 bundle preflight — after review PASS on Candidate `f077f9bac9c0d7299874b29915e161ffc388ca28`, two forced builds produced the identical bundle digest `8397e9ab0137490288c45485a0fd376ff85d1d9ea71205486b6bceb610a8929a`; the tracked G26 attestation was stale at `3afe88786b6433e5f51f5eb5d8bbaabc034b3f17b3b0051fd309486b5c939e7f`. No one-shot claim or Codex/MCP/Bangumi call occurred. The G26 attestation is being refreshed in this active Epoch; new exact Candidate CI, candidate:check, and same-identity review remain required before the one allowed G23 call. This refresh adds no G26 or Agent/MCP matrix credit.
+
 Status:
 SELECTED_IN_HARNESS_V3_EPOCH / SUBJECT-STATS-INTELLIGENCE-V1
 
