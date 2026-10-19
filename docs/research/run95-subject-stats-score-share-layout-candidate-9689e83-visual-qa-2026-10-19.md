@@ -2,7 +2,7 @@
 
 ## 范围和方法
 
-基线为 BangumiAgentKit `master` `c8b1783a5cbb4aa8fcc5a4f6ed75462d8246189d`。实现源提交为 `9689e83296beb27223f74b4d8e840f3cb6f504d0`。只修改 `SubjectStatsCard` 的 8–9 分占比呈现：将百分比保留为主值，把计数/总体数移至独立的“样本数”次级行。统计公式、源字段、覆盖判断和业务状态不变。
+基线为 BangumiAgentKit `master` `c8b1783a5cbb4aa8fcc5a4f6ed75462d8246189d`。实现源提交为 `9689e830d5cfd552a230c0e99dde7c55df32d098`。只修改 `SubjectStatsCard` 的 8–9 分占比呈现：将百分比保留为主值，把计数/总体数移至独立的“样本数”次级行。统计公式、源字段、覆盖判断和业务状态不变。
 
 使用确定性合成 ViewModel 对 complete、sparse、partial、conflict、unavailable、not-found、not-computable、dense-long-identity 八种状态分别按 320、360、520、640、960 CSS px（DPR 1）渲染。40 张最终 PNG 均逐张打开检查。输出文件和完整生成脚本保存在本机忽略目录：`/Users/wuzhao/Program/Github/BangumiAgentKit-clean-current/.artifacts/render/subject-stats-visual-qa-20261019-candidate/`。manifest 中逐项记录 PNG 尺寸、字节数和 SHA-256。渲染外部请求：0；没有访问账号、OAuth、公开 API、QQ 或 TIM。
 
