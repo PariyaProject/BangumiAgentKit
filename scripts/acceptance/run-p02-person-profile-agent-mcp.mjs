@@ -286,6 +286,17 @@ export function isP02ProfileClaimCurrent(
   return [
     profileStatus?.state === 'CLAIMED',
     profileStatus?.disposition?.claimId === claim?.claimId,
+    canonicalAgentMcpProfileJson(profileStatus?.disposition) ===
+      canonicalAgentMcpProfileJson(claim),
+    claim?.profileId === profile.id,
+    claim?.frontierId === profile.frontierId,
+    claim?.epochId === profile.epochId,
+    claim?.runNumber === RUN_NUMBER,
+    claim?.prNumber === epochStatus?.epoch?.number,
+    claim?.toolName === profile.toolName,
+    claim?.argumentProfile === profile.argumentProfile,
+    canonicalAgentMcpProfileJson(claim?.expectedArguments) ===
+      canonicalAgentMcpProfileJson(profile.calls.map((call) => call.arguments)),
     epochStatus?.git?.branch === epoch?.branch,
     epochStatus?.epoch?.number === claim?.prNumber,
     epoch?.pr_number === claim?.prNumber,
@@ -783,6 +794,8 @@ function reconcileAmbiguousClaim(prNumber, profileId = DEFAULT_PROFILE_ID) {
     [
       'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
       'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED',
+      'AGENT_MCP_PROFILE_CLAIM_MISMATCH_TERMINALIZED',
+      'AGENT_MCP_PROFILE_CLAIM_MISMATCH_ALREADY_TERMINALIZED',
     ].includes(result.output?.state) &&
     status.state === 'INCONCLUSIVE' &&
     status.disposition?.retryAllowed === false
@@ -884,6 +897,9 @@ function terminalizeP02NoReportAttempt(prNumber, claimId, reasonCode, profileId)
   const { profile } = profileContext(profileId);
   const status = readProfileStatus(prNumber, profile.id);
   if (status.state === 'AMBIGUOUS') {
+    return reconcileAmbiguousClaim(prNumber, profile.id);
+  }
+  if (status.state === 'CLAIM_MISMATCH' || status.state === 'CLAIM_MISMATCH_TERMINAL_LATCH') {
     return reconcileAmbiguousClaim(prNumber, profile.id);
   }
   if (status.state === 'AMBIGUOUS_TERMINAL_LATCH') {
@@ -1084,6 +1100,15 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
   const claim = claimStatus.disposition;
   if (
     claim.claimId !== claimResult.output.claimId ||
+    claim.profileId !== profile.id ||
+    claim.frontierId !== profile.frontierId ||
+    claim.epochId !== profile.epochId ||
+    claim.runNumber !== RUN_NUMBER ||
+    claim.prNumber !== prNumber ||
+    claim.toolName !== profile.toolName ||
+    claim.argumentProfile !== profile.argumentProfile ||
+    canonicalAgentMcpProfileJson(claim.expectedArguments) !==
+      canonicalAgentMcpProfileJson(profile.calls.map((call) => call.arguments)) ||
     claim.sourceCandidateSha !== sourceRevision ||
     claim.baseSha !== currentGate.baseSha ||
     claim.reviewerId !== currentGate.reviewerId ||

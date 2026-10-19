@@ -151,8 +151,13 @@ test('P02 exact claim-current check accepts the assigned runtime reviewer and re
   const claim = {
     claimId: 'profile-run-95-pr-237-aaaaaaaaaaaa-1792100000000',
     profileId: PROFILE_V2.id,
+    frontierId: PROFILE_V2.frontierId,
     epochId: SPEC_V2.epochId,
+    runNumber: 95,
     prNumber: 237,
+    toolName: PROFILE_V2.toolName,
+    argumentProfile: PROFILE_V2.argumentProfile,
+    expectedArguments: PROFILE_V2.calls.map((call) => structuredClone(call.arguments)),
     baseSha,
     sourceCandidateSha: candidateSha,
     ciSha: candidateSha,
@@ -206,7 +211,7 @@ test('P02 exact claim-current check accepts the assigned runtime reviewer and re
     headRefOid: candidateSha,
   };
   const inputs = {
-    profileStatus: { state: 'CLAIMED', disposition: { claimId: claim.claimId } },
+    profileStatus: { state: 'CLAIMED', disposition: structuredClone(claim) },
     epochStatus: status,
     pr,
     currentBaseSha: baseSha,
@@ -261,18 +266,33 @@ test('P02 exact claim-current check accepts the assigned runtime reviewer and re
       ...preInvocationInputs,
       localHead: 'c'.repeat(40),
     },
+    ...[
+      ['frontierId', 'G06'],
+      ['epochId', 'run95-other-epoch'],
+      ['runNumber', 94],
+      ['expectedArguments', [{ personId: 990712 }]],
+    ].map(([field, value]) => ({
+      ...preInvocationInputs,
+      profileStatus: {
+        state: 'CLAIMED',
+        disposition: { ...claim, [field]: value },
+      },
+    })),
   ].map((liveInputs) => isP02ProfileClaimCurrent(claim, liveInputs));
-  assert.deepEqual(driftedLiveStates, [false, false, false, false, false, false]);
+  assert.deepEqual(driftedLiveStates, Array(10).fill(false));
 
-  const claimStatus = { state: 'CLAIMED', disposition: { claimId: claim.claimId } };
+  const claimStatus = { state: 'CLAIMED', disposition: structuredClone(claim) };
   assert.equal(
     shouldInvokeP02Codex({
-      beforeInvokeProfileStatus: claimStatus,
+      beforeInvokeProfileStatus: {
+        state: 'CLAIM_MISMATCH',
+        disposition: { ...claim, frontierId: 'G06' },
+      },
       claim,
-      liveClaimCurrent: true,
+      liveClaimCurrent: false,
       reportExists: false,
     }),
-    true,
+    false,
   );
   let invocationCount = 0;
   for (const liveClaimCurrent of driftedLiveStates) {
@@ -290,7 +310,7 @@ test('P02 exact claim-current check accepts the assigned runtime reviewer and re
   assert.equal(
     invocationCount,
     0,
-    'Base, PR head, reviewer, or CI drift after claim must prevent the one-shot Codex invocation',
+    'Base, PR head, reviewer, CI, or registered-profile drift after claim must prevent the one-shot Codex invocation',
   );
   assert.equal(
     shouldInvokeP02Codex({

@@ -2396,6 +2396,95 @@ test('P02 v2 claimed no-report terminal latch replays its exact inconclusive res
   }
 });
 
+test('P02 v2 profile-binding drift is rejected and terminalized as no-report', () => {
+  const profileBindingDrifts = [
+    ['frontierId', 'G06'],
+    ['epochId', 'run95-other-epoch'],
+    ['runNumber', 94],
+    ['expectedArguments', [{ personId: 990712 }]],
+  ];
+
+  for (const [field, value] of profileBindingDrifts) {
+    const harnessRoot = createIsolatedHarnessRoot();
+    const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(P02_V2_PROFILE, {
+      harnessRoot,
+    });
+    const runnerKeyPair = generateKeyPairSync('ed25519');
+    const publicKeyBase64 = runnerKeyPair.publicKey
+      .export({ type: 'spki', format: 'der' })
+      .toString('base64');
+    const runArgs = ['--run', '95', '--pr', '42', '--profile-id', P02_V2_PROFILE.id];
+
+    try {
+      const claimed = environment.execute([
+        'epoch:agent-mcp-profile-claim',
+        ...runArgs,
+        '--bundle-sha256',
+        'c'.repeat(64),
+        '--reviewer-id',
+        reviewerId,
+        '--runner-public-key',
+        publicKeyBase64,
+      ]);
+      assert.equal(claimed.status, 0, claimed.stderr);
+      const claim = JSON.parse(claimed.stdout);
+      const mutated = environment.readState();
+      const epoch = parseControlBlock(mutated.prBody, EPOCH_MARKER);
+      epoch.adversarial_preflight.agent_mcp_profile_dispositions[P02_V2_PROFILE.id][field] = value;
+      mutated.prBody = renderEpochBody(epoch);
+      fs.writeFileSync(environment.statePath, `${JSON.stringify(mutated, null, 2)}\n`);
+
+      const rejected = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+      assert.equal(rejected.status, 0, rejected.stderr);
+      assert.equal(JSON.parse(rejected.stdout).state, 'CLAIM_MISMATCH', `${field} drift`);
+
+      const terminalized = environment.execute([
+        'epoch:agent-mcp-profile-reconcile-ambiguous',
+        ...runArgs,
+      ]);
+      assert.equal(terminalized.status, 0, terminalized.stderr);
+      assert.equal(
+        JSON.parse(terminalized.stdout).state,
+        'AGENT_MCP_PROFILE_CLAIM_MISMATCH_TERMINALIZED',
+        `${field} drift`,
+      );
+
+      const finalStatus = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+      assert.equal(finalStatus.status, 0, finalStatus.stderr);
+      const terminal = JSON.parse(finalStatus.stdout);
+      assert.equal(terminal.state, 'INCONCLUSIVE', `${field} drift`);
+      assert.equal(terminal.disposition.state, 'INCONCLUSIVE');
+      assert.equal(terminal.disposition.claimIdentityRecovered, false);
+      assert.equal(terminal.disposition.claimBindingMismatchTerminalized, true);
+      assert.equal(terminal.disposition.invalidClaimId, claim.claimId);
+      assert.match(terminal.disposition.invalidClaimSha256, /^[0-9a-f]{64}$/u);
+      assert.equal(terminal.disposition.reportWritten, false);
+      assert.equal(terminal.disposition.retryAllowed, false);
+      assert.equal(fs.existsSync(path.join(harnessRoot, P02_V2_PROFILE.reportPath)), false);
+      assert.equal(
+        environment.readState().repositoryLabels[agentMcpProfileTerminalLabelName(P02_V2_PROFILE)]
+          .description,
+        'Run95 P02 INCONCLUSIVE no-report',
+      );
+
+      const noRetry = environment.execute([
+        'epoch:agent-mcp-profile-claim',
+        ...runArgs,
+        '--bundle-sha256',
+        'c'.repeat(64),
+        '--reviewer-id',
+        reviewerId,
+        '--runner-public-key',
+        publicKeyBase64,
+      ]);
+      assert.equal(noRetry.status, 2);
+    } finally {
+      environment.cleanup();
+      fs.rmSync(harnessRoot, { recursive: true, force: true });
+    }
+  }
+});
+
 test('P02 v2 REPORT_WRITTEN terminal latch replays after stale claim and PR write failure', () => {
   const harnessRoot = createIsolatedHarnessRoot();
   const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(P02_V2_PROFILE, {
