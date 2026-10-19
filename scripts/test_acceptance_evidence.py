@@ -190,6 +190,151 @@ class G01RenderQueryProfileContractTests(unittest.TestCase):
         )
 
 
+class C03PersonActivityOfflineV2MatrixTests(unittest.TestCase):
+    def setUp(self):
+        self.profile = TABLE_CHECKER.C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE
+        self.report = {
+            'schemaVersion': 1,
+            'evidenceKind': self.profile['evidenceKind'],
+            'profileId': self.profile['id'],
+            'epochId': self.profile['epochId'],
+            'runNumber': 95,
+            'frontierId': 'C03',
+            'scenarioId': None,
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'resultStatus': 'SUCCESS',
+            'processExitCode': 0,
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'toolName': self.profile['toolName'],
+            'argumentProfile': self.profile['argumentProfile'],
+            'expectedArgumentsSha256': hashlib.sha256(json.dumps(
+                [call['arguments'] for call in self.profile['calls']],
+                sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+            ).encode('utf-8')).hexdigest(),
+            'registrySha256': hashlib.sha256(json.dumps(
+                self.profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+            ).encode('utf-8')).hexdigest(),
+            'selectionEvidenceSha256': hashlib.sha256(
+                (TABLE_CHECKER.ROOT / self.profile['selectionEvidencePath']).read_bytes(),
+            ).hexdigest(),
+            'serverToolNames': [self.profile['toolName']],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_c03_person_activity_offline_v2'],
+            'networkMode': self.profile['networkMode'],
+            'resultSummary': {
+                'resultState': 'partial',
+                'windowMonths': 12,
+                'uniqueSubjects': 1,
+                'roleCounts': {'main': 1, 'support': 0, 'unknown': 0},
+                'coverage': {
+                    'relationRowsObserved': 1,
+                    'relationRowsSelected': 1,
+                    'relationRowsDroppedAtLimit': 0,
+                    'subjectDetailsSucceeded': 1,
+                    'subjectDetailsFailed': 0,
+                    'rowsEligible': 1,
+                    'rowsReturned': 1,
+                    'unknownRoleRows': 0,
+                    'outputTruncated': False,
+                    'truncated': False,
+                },
+            },
+            'offlineFixture': {
+                'profile': self.profile['networkMode'],
+                'requestCount': 3,
+                'personRequestCount': 1,
+                'characterRequestCount': 1,
+                'subjectDetailRequestCount': 1,
+                'unexpectedRequestCount': 0,
+                'authorizationHeaderCount': 0,
+                'expectedOperationsComplete': True,
+                'operations': ['person', 'characters', 'subject_detail'],
+            },
+            'networkBoundary': {
+                'liveBangumiApiRequestCount': 0,
+                'unexpectedNetworkRequestCount': 0,
+                'rendererAssetRequestCount': 0,
+                'fullCodexHarnessNetworkSandboxed': False,
+            },
+            'answerChecks': {
+                key: True
+                for key in (
+                    'exactRegisteredProfile', 'oneAllowedMcpTool', 'fixedArguments',
+                    'exactCandidateBundle', 'offlineFixtureOnly', 'resultReadbackMatched',
+                    'answerEchoedToolResult', 'outputSchemaApplied', 'noScenarioCredit',
+                    'privacyPreserved',
+                )
+            },
+            'answerCheckMethod': self.profile['answerCheckMethod'],
+            'answerSha256': 'a' * 64,
+            'answerUtf8Bytes': 100,
+            'privacy': {
+                'authProfile': 'anonymous',
+                'oauthAttempted': False,
+                'accountDataRead': False,
+                'writesAttempted': False,
+                'communityRead': False,
+                'qqPipelineTested': False,
+                'timClientTested': False,
+                'promptStored': False,
+                'answerStored': False,
+                'rawFixtureRowsStored': False,
+                'rawToolResultStored': False,
+                'artifactImageBytesStored': False,
+                'credentialsStored': False,
+            },
+            'runnerReceipt': {
+                'kind': 'c03-person-activity-offline-matrix-v2-runner-receipt-v1',
+            },
+        }
+
+    def test_matrix_report_acceptance_is_separate_from_the_c03_scenario(self):
+        self.assertTrue(
+            TABLE_CHECKER.c03_person_activity_offline_v2_report_matches(
+                self.profile['toolName'], self.profile['reportPath'], self.report,
+            ),
+        )
+        self.report['scenarioId'] = 'C03'
+        self.assertFalse(
+            TABLE_CHECKER.c03_person_activity_offline_v2_report_matches(
+                self.profile['toolName'], self.profile['reportPath'], self.report,
+            ),
+        )
+
+    def test_matrix_report_rejects_unexpected_fixture_requests(self):
+        self.report['offlineFixture']['unexpectedRequestCount'] = 1
+        self.assertFalse(
+            TABLE_CHECKER.c03_person_activity_offline_v2_report_matches(
+                self.profile['toolName'], self.profile['reportPath'], self.report,
+            ),
+        )
+
+    def test_matrix_report_rejects_boolean_counts_and_malformed_state(self):
+        self.report['processExitCode'] = False
+        self.assertFalse(
+            TABLE_CHECKER.c03_person_activity_offline_v2_report_matches(
+                self.profile['toolName'], self.profile['reportPath'], self.report,
+            ),
+        )
+        self.report['processExitCode'] = 0
+        self.report['resultSummary']['resultState'] = []
+        self.assertFalse(
+            TABLE_CHECKER.c03_person_activity_offline_v2_report_matches(
+                self.profile['toolName'], self.profile['reportPath'], self.report,
+            ),
+        )
+
+
 class PublicApiEvidenceTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='acceptance-evidence-test-')

@@ -148,6 +148,7 @@ import { g16RunnerPublicKeySha256 } from './acceptance/g16-agent-mcp-runner-rece
 import { validateG16SanitizedReportFile } from './acceptance/write-g16-agent-mcp-report.mjs';
 import { validateC01SanitizedReportFile } from './acceptance/write-c01-rating-count-report.mjs';
 import { validateC03SanitizedReportFile } from './acceptance/write-c03-profile-report.mjs';
+import { validateC03PersonActivityOfflineV2SanitizedReportFile } from './acceptance/write-c03-person-activity-offline-v2-report.mjs';
 import { validateP03SanitizedReportFile } from './acceptance/write-p03-person-name-cn-report.mjs';
 import { validateP07SanitizedReportFile } from './acceptance/write-p07-person-season-report.mjs';
 import { validateS05SanitizedReportFile } from './acceptance/write-s05-person-activity-report.mjs';
@@ -4516,6 +4517,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateR05SanitizedReportFile(claim, root, reportPath);
     case 'c03-voice-actor-comparison-v1':
       return validateC03SanitizedReportFile(claim, root, reportPath);
+    case 'c03-person-activity-offline-agent-mcp-matrix-v2':
+      return validateC03PersonActivityOfflineV2SanitizedReportFile(claim, root, reportPath);
     case 'p06-render-person-profile-offline-agent-mcp-v1':
     case 'p06-render-person-profile-offline-agent-mcp-v2':
       return validateP06SanitizedReportFile(claim, root, reportPath);

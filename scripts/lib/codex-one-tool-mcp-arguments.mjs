@@ -55,6 +55,7 @@ import {
   S05_NETWORK_MODE,
   S05_PROFILE_ID,
 } from './s05-person-activity-evidence.mjs';
+import { assertC03PersonActivityOfflineV2Profile } from './c03-person-activity-offline-matrix-v2-profile.mjs';
 
 const ANONYMOUS_PUBLIC_NETWORK_MODES = new Set([
   C04_COHORT_COMPARISON_NETWORK_MODE,
@@ -155,6 +156,7 @@ export function parseCodexOneToolMcpArguments(argv) {
         approved = assertA01AggregateCohortOfflineProfile(profile);
       } else {
         approved =
+          assertC03PersonActivityOfflineV2Profile(profile) ||
           assertG06SubjectCastOfflineProfile(profile) ||
           assertC04CohortComparisonPublicProfile(profile) ||
           assertTitleQueryRenderPublicProfile(profile) ||
