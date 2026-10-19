@@ -13,6 +13,7 @@ import {
 import {
   agentMcpProfileArgumentsSha256,
   agentMcpProfileRegistrySha256,
+  agentMcpProfileTerminalLabelDescription,
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
@@ -277,6 +278,38 @@ export function c03ClaimMatchesCurrentCi(profileStatus, currentGate, claim) {
   );
 }
 
+export function c03ObservedCiRunId(statusCheckRollup) {
+  if (!Array.isArray(statusCheckRollup)) return null;
+  const byName = new Map();
+  for (const check of statusCheckRollup) {
+    const name = check?.name ?? check?.context;
+    if (!MANDATORY_CI_CHECKS.includes(name)) continue;
+    const matches = byName.get(name) ?? [];
+    matches.push(check);
+    byName.set(name, matches);
+  }
+  const runIds = [];
+  for (const name of MANDATORY_CI_CHECKS) {
+    const entries = byName.get(name);
+    if (entries?.length !== 1) return null;
+    let detailsUrl;
+    try {
+      detailsUrl = new URL(entries[0]?.detailsUrl);
+    } catch {
+      return null;
+    }
+    const runId =
+      detailsUrl.origin === 'https://github.com'
+        ? /^\/PariyaProject\/BangumiAgentKit\/actions\/runs\/([1-9]\d*)\/job\/[1-9]\d*\/?$/u.exec(
+            detailsUrl.pathname,
+          )?.[1]
+        : null;
+    if (!runId) return null;
+    runIds.push(runId);
+  }
+  return new Set(runIds).size === 1 ? runIds[0] : null;
+}
+
 function currentCandidateBundleMatches(sourceRevision, bundleSha256) {
   try {
     return (
@@ -484,8 +517,15 @@ function printSafe(value) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
 }
 
-function finalizeInconclusive(prNumber, claim, reasonCode, checks = {}, counters = {}) {
-  const result = persistProfileResult(prNumber, claim.claimId, 'INCONCLUSIVE', null, {
+function finalizeInconclusive(
+  prNumber,
+  claim,
+  reasonCode,
+  checks = {},
+  counters = {},
+  reportSha256 = null,
+) {
+  const result = persistProfileResult(prNumber, claim.claimId, 'INCONCLUSIVE', reportSha256, {
     schemaVersion: 1,
     reasonCode,
     checks,
@@ -506,7 +546,20 @@ function finalizeInconclusive(prNumber, claim, reasonCode, checks = {}, counters
 }
 
 function finalizeExistingAttempt(prNumber, status) {
-  if (['AMBIGUOUS', 'AMBIGUOUS_TERMINAL_LATCH'].includes(status.state)) {
+  if (status.state === 'AMBIGUOUS_TERMINAL_LATCH' && status.disposition?.state === 'CLAIMED') {
+    status = replayC03AmbiguousTerminalLatch(prNumber, status);
+    if (!status) {
+      printSafe({
+        state: 'REPORT_WRITTEN_ACK_PENDING',
+        profileId: PROFILE.id,
+        retryAllowed: false,
+      });
+      return 1;
+    }
+  } else if (
+    status.state === 'AMBIGUOUS' ||
+    (status.state === 'AMBIGUOUS_TERMINAL_LATCH' && status.disposition === null)
+  ) {
     status = reconcileC03AmbiguousProfileStatus(prNumber, status);
   }
   if (['REPORT_WRITTEN', 'INCONCLUSIVE'].includes(status.state)) {
@@ -523,7 +576,14 @@ function finalizeExistingAttempt(prNumber, status) {
   }
   const validation = validateC03PersonActivityOfflineV2SanitizedReportFile(claim, ROOT, reportPath);
   if (!validation.passed) {
-    return finalizeInconclusive(prNumber, claim, 'C03_ACTIVITY_V2_EXISTING_REPORT_INVALID');
+    return finalizeInconclusive(
+      prNumber,
+      claim,
+      'C03_ACTIVITY_V2_EXISTING_REPORT_INVALID',
+      {},
+      {},
+      sha256(readFileSync(reportPath)),
+    );
   }
   const recorded = persistProfileResult(
     prNumber,
@@ -532,8 +592,7 @@ function finalizeExistingAttempt(prNumber, status) {
     validation.reportSha256,
   );
   if (recorded.exitCode !== 0) {
-    printSafe({ state: 'REPORT_WRITTEN_ACK_PENDING', profileId: PROFILE.id, retryAllowed: false });
-    return 1;
+    return settleC03ReportAcknowledgementAndPrint(prNumber, claim, validation.reportSha256);
   }
   printSafe({
     state: 'REPORT_WRITTEN',
@@ -599,6 +658,239 @@ export function reconcileC03AmbiguousProfileStatus(
     );
   }
   return reconciled;
+}
+
+export function replayC03AmbiguousTerminalLatch(
+  prNumber,
+  status,
+  {
+    readProfileStatusCommand = readProfileStatus,
+    persistProfileResultCommand = persistProfileResult,
+    reportExists = () => existsSync(path.join(ROOT, PROFILE.reportPath)),
+    readReportSha256 = () => sha256(readFileSync(path.join(ROOT, PROFILE.reportPath))),
+    validateReport = (claim) =>
+      validateC03PersonActivityOfflineV2SanitizedReportFile(
+        claim,
+        ROOT,
+        path.join(ROOT, PROFILE.reportPath),
+      ),
+  } = {},
+) {
+  if (
+    status?.state !== 'AMBIGUOUS_TERMINAL_LATCH' ||
+    status.claim_label_present !== true ||
+    status.terminal_label_present !== true ||
+    status.disposition?.state !== 'CLAIMED' ||
+    typeof status.disposition.claimId !== 'string'
+  ) {
+    return null;
+  }
+  const claim = status.disposition;
+  const hasReport = reportExists();
+  const reportSha256 = hasReport ? readReportSha256() : null;
+  const inconclusiveLatchMatches =
+    status.terminal_label_description ===
+    agentMcpProfileTerminalLabelDescription(PROFILE, 'INCONCLUSIVE', reportSha256);
+  const reportWrittenLatchMatches =
+    hasReport &&
+    status.terminal_label_description ===
+      agentMcpProfileTerminalLabelDescription(PROFILE, 'REPORT_WRITTEN', reportSha256);
+  let resultState;
+  let reportDigest = reportSha256;
+  let diagnostics = null;
+  if (reportWrittenLatchMatches) {
+    const validation = validateReport(claim);
+    if (!hasReport || !validation.passed || validation.reportSha256 !== reportSha256) return null;
+    resultState = 'REPORT_WRITTEN';
+  } else if (inconclusiveLatchMatches) {
+    resultState = 'INCONCLUSIVE';
+    diagnostics = {
+      schemaVersion: 1,
+      reasonCode: 'C03_ACTIVITY_V2_TERMINAL_LATCH_REPLAYED',
+      checks: { invocationStateUnknown: true },
+      counters: {},
+    };
+  } else {
+    return null;
+  }
+
+  const recorded = persistProfileResultCommand(
+    prNumber,
+    claim.claimId,
+    resultState,
+    reportDigest,
+    diagnostics,
+  );
+  let readback;
+  try {
+    readback = readProfileStatusCommand(prNumber);
+  } catch {
+    return null;
+  }
+  if (
+    (recorded.exitCode !== 0 && readback.state !== resultState) ||
+    readback.state !== resultState ||
+    readback.disposition?.claimId !== claim.claimId ||
+    readback.retry_allowed !== false
+  ) {
+    return null;
+  }
+  if (resultState === 'REPORT_WRITTEN' && readback.disposition?.reportSha256 !== reportDigest) {
+    return null;
+  }
+  if (
+    resultState === 'INCONCLUSIVE' &&
+    (readback.disposition?.reportWritten !== false ||
+      (readback.disposition?.unacceptedReportSha256 ?? null) !== reportDigest)
+  ) {
+    return null;
+  }
+  return readback;
+}
+
+export function settleC03ReportAcknowledgement(
+  prNumber,
+  claim,
+  reportSha256,
+  {
+    readProfileStatusCommand = readProfileStatus,
+    readPullRequestCommand = readPullRequest,
+    persistProfileResultCommand = persistProfileResult,
+    reportExists = () => existsSync(path.join(ROOT, PROFILE.reportPath)),
+    validateReport = (durableClaim) =>
+      validateC03PersonActivityOfflineV2SanitizedReportFile(
+        durableClaim,
+        ROOT,
+        path.join(ROOT, PROFILE.reportPath),
+      ),
+  } = {},
+) {
+  let status;
+  try {
+    status = readProfileStatusCommand(prNumber);
+  } catch {
+    return null;
+  }
+  if (
+    status.state === 'REPORT_WRITTEN' &&
+    status.disposition?.claimId === claim.claimId &&
+    status.disposition?.reportSha256 === reportSha256 &&
+    status.retry_allowed === false
+  ) {
+    return status;
+  }
+  if (
+    status.state === 'INCONCLUSIVE' &&
+    status.disposition?.claimId === claim.claimId &&
+    status.disposition?.unacceptedReportSha256 === reportSha256 &&
+    status.retry_allowed === false
+  ) {
+    return status;
+  }
+  if (status.state === 'AMBIGUOUS_TERMINAL_LATCH') {
+    return replayC03AmbiguousTerminalLatch(prNumber, status, {
+      readProfileStatusCommand,
+      persistProfileResultCommand,
+      reportExists,
+      validateReport,
+    });
+  }
+  if (
+    status.state !== 'CLAIMED' ||
+    status.disposition?.claimId !== claim.claimId ||
+    status.disposition?.ciRunId !== claim.ciRunId ||
+    !reportExists()
+  ) {
+    return null;
+  }
+  const reportValidation = validateReport(status.disposition);
+  if (!reportValidation.passed || reportValidation.reportSha256 !== reportSha256) return null;
+
+  let currentPr;
+  try {
+    currentPr = readPullRequestCommand(prNumber);
+  } catch {
+    return null;
+  }
+  const observedCiRunId = c03ObservedCiRunId(currentPr.statusCheckRollup);
+  if (!observedCiRunId || observedCiRunId === claim.ciRunId) return null;
+
+  const diagnostics = {
+    schemaVersion: 1,
+    reasonCode: 'C03_ACTIVITY_V2_REPORT_ACK_STALE_CI',
+    checks: { activeGateCurrent: false },
+    counters: {},
+  };
+  const recorded = persistProfileResultCommand(
+    prNumber,
+    claim.claimId,
+    'INCONCLUSIVE',
+    reportSha256,
+    diagnostics,
+  );
+  if (recorded.exitCode === 0) {
+    try {
+      status = readProfileStatusCommand(prNumber);
+    } catch {
+      return null;
+    }
+  } else {
+    try {
+      status = readProfileStatusCommand(prNumber);
+    } catch {
+      return null;
+    }
+    if (status.state === 'AMBIGUOUS_TERMINAL_LATCH') {
+      return replayC03AmbiguousTerminalLatch(prNumber, status, {
+        readProfileStatusCommand,
+        persistProfileResultCommand,
+        reportExists,
+        validateReport,
+      });
+    }
+  }
+  if (
+    status.state !== 'INCONCLUSIVE' ||
+    status.disposition?.claimId !== claim.claimId ||
+    status.disposition?.unacceptedReportSha256 !== reportSha256 ||
+    status.retry_allowed !== false
+  ) {
+    return null;
+  }
+  return status;
+}
+
+function settleC03ReportAcknowledgementAndPrint(prNumber, claim, reportSha256) {
+  const status = settleC03ReportAcknowledgement(prNumber, claim, reportSha256);
+  if (!status) {
+    printSafe({
+      state: 'REPORT_WRITTEN_ACK_PENDING',
+      profileId: PROFILE.id,
+      reportSha256,
+      retryAllowed: false,
+    });
+    return 1;
+  }
+  if (status.state === 'REPORT_WRITTEN') {
+    printSafe({
+      state: 'REPORT_WRITTEN',
+      profileId: PROFILE.id,
+      claimId: claim.claimId,
+      reportSha256,
+      recovered: true,
+      retryAllowed: false,
+    });
+    return 0;
+  }
+  printSafe({
+    state: 'INCONCLUSIVE',
+    profileId: PROFILE.id,
+    claimId: claim.claimId,
+    reportSha256,
+    retryAllowed: false,
+    reasonCode: status.disposition?.failureDiagnostics?.reasonCode,
+  });
+  return 1;
 }
 
 function runProfile() {
@@ -875,13 +1167,7 @@ function runProfile() {
       written.reportSha256,
     );
     if (recorded.exitCode !== 0) {
-      printSafe({
-        state: 'REPORT_WRITTEN_ACK_PENDING',
-        profileId: PROFILE.id,
-        reportSha256: written.reportSha256,
-        retryAllowed: false,
-      });
-      return 1;
+      return settleC03ReportAcknowledgementAndPrint(prNumber, claim, written.reportSha256);
     }
     printSafe({
       state: 'REPORT_WRITTEN',

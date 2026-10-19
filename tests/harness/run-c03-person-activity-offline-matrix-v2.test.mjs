@@ -4,11 +4,18 @@ import {
   assertC03PersonActivityOfflineV2CandidateGate,
   buildC03PersonActivityOfflineV2CodexExecArgs,
   c03ClaimMatchesCurrentCi,
+  c03ObservedCiRunId,
   extractC03PersonActivityOfflineV2ToolProjection,
+  replayC03AmbiguousTerminalLatch,
   reconcileC03AmbiguousProfileStatus,
+  settleC03ReportAcknowledgement,
   validateC03PersonActivityOfflineV2RunnerArgs,
 } from '../../scripts/acceptance/run-c03-person-activity-offline-matrix-v2.mjs';
-import { canonicalAgentMcpProfileJson } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
+import {
+  agentMcpProfileTerminalLabelDescription,
+  canonicalAgentMcpProfileJson,
+  getAgentMcpProfileById,
+} from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 
 const summary = {
   resultState: 'partial',
@@ -170,6 +177,7 @@ test('C03 v2 invocation gate rejects a Base change after the review PASS', () =>
   });
   assert.equal(rerunGate.ciRunId, rerunId);
   assert.equal(c03ClaimMatchesCurrentCi(profileStatus, rerunGate, claim), false);
+  assert.equal(c03ObservedCiRunId(rerunPr.statusCheckRollup), rerunId);
 
   assert.throws(() =>
     assertC03PersonActivityOfflineV2CandidateGate(status, pr, {
@@ -242,6 +250,160 @@ test('C03 v2 runner refuses ambiguous reconciliation if a report already exists'
     /refusing no-report terminal reconciliation/u,
   );
   assert.equal(harnessCalled, false);
+});
+
+test('C03 v2 replays a REPORT_WRITTEN terminal latch after a lost PR-body write', () => {
+  const profile = getAgentMcpProfileById('c03-person-activity-offline-agent-mcp-matrix-v2');
+  assert.ok(profile);
+  const claim = { state: 'CLAIMED', claimId: 'c03-v2-claim-1', ciRunId: '39200000001' };
+  const reportSha256 = 'd'.repeat(64);
+  const status = {
+    state: 'AMBIGUOUS_TERMINAL_LATCH',
+    claim_label_present: true,
+    terminal_label_present: true,
+    terminal_label_description: agentMcpProfileTerminalLabelDescription(
+      profile,
+      'REPORT_WRITTEN',
+      reportSha256,
+    ),
+    disposition: claim,
+  };
+  const recorded = [];
+  const terminalStatus = {
+    state: 'REPORT_WRITTEN',
+    retry_allowed: false,
+    disposition: { ...claim, reportSha256, reportWritten: true },
+  };
+  const result = replayC03AmbiguousTerminalLatch(240, status, {
+    readProfileStatusCommand: (prNumber) => {
+      assert.equal(prNumber, 240);
+      return terminalStatus;
+    },
+    persistProfileResultCommand: (...args) => {
+      recorded.push(args);
+      return { exitCode: 0 };
+    },
+    reportExists: () => true,
+    readReportSha256: () => reportSha256,
+    validateReport: (durableClaim) => {
+      assert.equal(durableClaim.claimId, claim.claimId);
+      return { passed: true, reportSha256 };
+    },
+  });
+  assert.equal(result, terminalStatus);
+  assert.deepEqual(recorded, [[240, claim.claimId, 'REPORT_WRITTEN', reportSha256, null]]);
+});
+
+test('C03 v2 replays a no-report INCONCLUSIVE terminal latch for a durable claim', () => {
+  const profile = getAgentMcpProfileById('c03-person-activity-offline-agent-mcp-matrix-v2');
+  assert.ok(profile);
+  const claim = { state: 'CLAIMED', claimId: 'c03-v2-claim-3', ciRunId: '39200000003' };
+  const status = {
+    state: 'AMBIGUOUS_TERMINAL_LATCH',
+    claim_label_present: true,
+    terminal_label_present: true,
+    terminal_label_description: agentMcpProfileTerminalLabelDescription(profile, 'INCONCLUSIVE'),
+    disposition: claim,
+  };
+  const recorded = [];
+  const terminalStatus = {
+    state: 'INCONCLUSIVE',
+    retry_allowed: false,
+    disposition: {
+      ...claim,
+      reportWritten: false,
+      unacceptedReportSha256: null,
+    },
+  };
+  const result = replayC03AmbiguousTerminalLatch(240, status, {
+    readProfileStatusCommand: () => terminalStatus,
+    persistProfileResultCommand: (...args) => {
+      recorded.push(args);
+      return { exitCode: 0 };
+    },
+    reportExists: () => false,
+  });
+  assert.equal(result, terminalStatus);
+  assert.deepEqual(recorded, [
+    [
+      240,
+      claim.claimId,
+      'INCONCLUSIVE',
+      null,
+      {
+        schemaVersion: 1,
+        reasonCode: 'C03_ACTIVITY_V2_TERMINAL_LATCH_REPLAYED',
+        checks: { invocationStateUnknown: true },
+        counters: {},
+      },
+    ],
+  ]);
+});
+
+test('C03 v2 terminalizes a report acknowledgement after CI reruns during invocation', () => {
+  const oldRunId = '39200000001';
+  const newRunId = '39200000002';
+  const claim = { claimId: 'c03-v2-claim-2', ciRunId: oldRunId };
+  const reportSha256 = 'e'.repeat(64);
+  const checkNames = [
+    'harness-control',
+    'sqlite-default',
+    'host-integration',
+    'standalone-release-smoke',
+    'postgres-compat',
+    'provider-foundation',
+    'discovery-foundation',
+  ];
+  const claimedStatus = {
+    state: 'CLAIMED',
+    disposition: { ...claim, state: 'CLAIMED' },
+  };
+  const terminalStatus = {
+    state: 'INCONCLUSIVE',
+    retry_allowed: false,
+    disposition: {
+      ...claim,
+      state: 'INCONCLUSIVE',
+      reportWritten: false,
+      unacceptedReportSha256: reportSha256,
+    },
+  };
+  const persisted = [];
+  let reads = 0;
+  const result = settleC03ReportAcknowledgement(240, claim, reportSha256, {
+    readProfileStatusCommand: () => (reads++ === 0 ? claimedStatus : terminalStatus),
+    readPullRequestCommand: (prNumber) => {
+      assert.equal(prNumber, 240);
+      return {
+        statusCheckRollup: checkNames.map((name, index) => ({
+          name,
+          status: 'QUEUED',
+          detailsUrl: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${newRunId}/job/${index + 1}`,
+        })),
+      };
+    },
+    persistProfileResultCommand: (...args) => {
+      persisted.push(args);
+      return { exitCode: 0 };
+    },
+    reportExists: () => true,
+    validateReport: () => ({ passed: true, reportSha256 }),
+  });
+  assert.equal(result, terminalStatus);
+  assert.deepEqual(persisted, [
+    [
+      240,
+      claim.claimId,
+      'INCONCLUSIVE',
+      reportSha256,
+      {
+        schemaVersion: 1,
+        reasonCode: 'C03_ACTIVITY_V2_REPORT_ACK_STALE_CI',
+        checks: { activeGateCurrent: false },
+        counters: {},
+      },
+    ],
+  ]);
 });
 
 test('C03 v2 accepts exact structured or text-only readback and rejects disagreement', () => {
