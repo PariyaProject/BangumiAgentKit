@@ -17,6 +17,10 @@ import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from client_evidence import tool_client_e2e_sources
+from acceptance.c03_person_activity_offline_v2_acceptance import (
+    c03_person_activity_offline_v2_harness_status,
+    c03_person_activity_offline_v2_signed_report_matches,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / 'docs/tool-catalog.json'
@@ -2207,6 +2211,14 @@ CODEX_C03_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'c03-voice-actor-comparison-v1'
 )
+CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'c03-person-activity-offline-agent-mcp-matrix-v2'
+)
+CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE_ID = CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE['id']
+CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_TOOL_NAME = CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE['toolName']
+CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_REPORT_RELATIVE_PATH = CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE['reportPath']
+CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_EVIDENCE_KIND = CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE['evidenceKind']
 CODEX_C03_PROFILE_ID = CODEX_C03_PROFILE['id']
 CODEX_C03_EPOCH_ID = CODEX_C03_PROFILE['epochId']
 CODEX_C03_TOOL_NAME = CODEX_C03_PROFILE['toolName']
@@ -12551,6 +12563,40 @@ def codex_c03_profile_report_is_valid(
     except (TypeError, ValueError):
         return False
     return result.get('passed') is True and result.get('reportSha256') == report_sha256
+
+
+def codex_c03_person_activity_offline_v2_report_is_valid(
+    report: object,
+    report_path: Path,
+    harness_status: object = None,
+    root: Path = ROOT,
+) -> bool:
+    """Accept only the C03 v2 matrix profile with a signed, acknowledged exact report."""
+    if not isinstance(report, dict):
+        return False
+    try:
+        relative_path = report_path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return False
+    if (
+        relative_path != CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_REPORT_RELATIVE_PATH
+        or report.get('evidenceKind') != CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_EVIDENCE_KIND
+        or report.get('profileId') != CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE_ID
+        or report.get('frontierId') != 'C03'
+        or report.get('scenarioId') is not None
+        or report.get('runNumber') != 95
+        or report.get('toolName') != CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_TOOL_NAME
+    ):
+        return False
+    status = harness_status
+    if status is None:
+        status = c03_person_activity_offline_v2_harness_status(report.get('prNumber'))
+    return c03_person_activity_offline_v2_signed_report_matches(
+        report,
+        report_path,
+        harness_status=status,
+        root=root,
+    )
 
 
 def codex_r05_profile_report_is_valid(
@@ -24087,55 +24133,17 @@ def codex_mcp_evidence_is_valid(
     return True
 
 
-def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
-    """Trust passed CLI MCP reports whose individual tool catalog entry is current."""
-    sources: dict[str, set[str]] = {}
-    current_catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
-    current_by_name = {item['name']: item for item in catalog}
-    catalog_cache: dict[str, dict[str, dict] | None] = {
-        current_catalog_sha256: current_by_name,
-    }
-
-    def catalog_for_hash(catalog_sha256: object) -> dict[str, dict] | None:
-        if not isinstance(catalog_sha256, str) or not re.fullmatch(r'[0-9a-f]{64}', catalog_sha256):
-            return None
-        if catalog_sha256 in catalog_cache:
-            return catalog_cache[catalog_sha256]
-        snapshot_path = LIVE_PROBE_DIR / 'catalog-snapshots' / f'{catalog_sha256}.json'
-        try:
-            snapshot_bytes = snapshot_path.read_bytes()
-            snapshot = json.loads(snapshot_bytes)
-        except (OSError, ValueError):
-            catalog_cache[catalog_sha256] = None
-            return None
-        if hashlib.sha256(snapshot_bytes).hexdigest() != catalog_sha256 or not isinstance(snapshot, list):
-            catalog_cache[catalog_sha256] = None
-            return None
-        snapshot_by_name = {
-            item['name']: item
-            for item in snapshot
-            if isinstance(item, dict) and isinstance(item.get('name'), str)
-        }
-        catalog_cache[catalog_sha256] = snapshot_by_name
-        return snapshot_by_name
-
-    valid_profiles = {
-        'bangumi-compact-v1',
-        'bangumi-full-public-qa-v1',
-        'bangumi-full-renderer-qa-v1',
-        'bangumi-full-operation-qa-v1',
-        'bangumi-full-auth-start-qa-v1',
-        'bangumi-full-auth-switch-qa-v1',
-        'bangumi-full-auth-mutation-qa-v1',
-        'bangumi-full-auth-feature-qa-v1',
-        'bangumi-full-auth-write-qa-v1',
-    }
+def model_mcp_e2e_report_paths() -> list[Path]:
+    """Return every explicitly supported local MCP report path."""
     report_paths = list(LIVE_PROBE_DIR.glob('pariya-agent-*-e2e-*.json'))
     report_paths.append(LIVE_PROBE_DIR / CODEX_S02_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G04_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G05_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G16_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_C03_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(
+        LIVE_PROBE_DIR / Path(CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_REPORT_RELATIVE_PATH).name,
+    )
     report_paths.append(LIVE_PROBE_DIR / CODEX_P06_REPORT_RELATIVE_PATH.split('/')[-1])
     for c07_profile in CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILES.values():
         report_paths.append(LIVE_PROBE_DIR / Path(str(c07_profile['reportPath'])).name)
@@ -24186,7 +24194,53 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(LIVE_PROBE_DIR / CODEX_G19_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_P01_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_S03_REPORT_RELATIVE_PATH.split('/')[-1])
-    for path in report_paths:
+    return report_paths
+
+
+def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
+    """Trust passed CLI MCP reports whose individual tool catalog entry is current."""
+    sources: dict[str, set[str]] = {}
+    current_catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
+    current_by_name = {item['name']: item for item in catalog}
+    catalog_cache: dict[str, dict[str, dict] | None] = {
+        current_catalog_sha256: current_by_name,
+    }
+
+    def catalog_for_hash(catalog_sha256: object) -> dict[str, dict] | None:
+        if not isinstance(catalog_sha256, str) or not re.fullmatch(r'[0-9a-f]{64}', catalog_sha256):
+            return None
+        if catalog_sha256 in catalog_cache:
+            return catalog_cache[catalog_sha256]
+        snapshot_path = LIVE_PROBE_DIR / 'catalog-snapshots' / f'{catalog_sha256}.json'
+        try:
+            snapshot_bytes = snapshot_path.read_bytes()
+            snapshot = json.loads(snapshot_bytes)
+        except (OSError, ValueError):
+            catalog_cache[catalog_sha256] = None
+            return None
+        if hashlib.sha256(snapshot_bytes).hexdigest() != catalog_sha256 or not isinstance(snapshot, list):
+            catalog_cache[catalog_sha256] = None
+            return None
+        snapshot_by_name = {
+            item['name']: item
+            for item in snapshot
+            if isinstance(item, dict) and isinstance(item.get('name'), str)
+        }
+        catalog_cache[catalog_sha256] = snapshot_by_name
+        return snapshot_by_name
+
+    valid_profiles = {
+        'bangumi-compact-v1',
+        'bangumi-full-public-qa-v1',
+        'bangumi-full-renderer-qa-v1',
+        'bangumi-full-operation-qa-v1',
+        'bangumi-full-auth-start-qa-v1',
+        'bangumi-full-auth-switch-qa-v1',
+        'bangumi-full-auth-mutation-qa-v1',
+        'bangumi-full-auth-feature-qa-v1',
+        'bangumi-full-auth-write-qa-v1',
+    }
+    for path in model_mcp_e2e_report_paths():
         try:
             report = json.loads(path.read_text(encoding='utf-8'))
         except (OSError, ValueError):
@@ -24407,6 +24461,13 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             ):
                 continue
             sources.setdefault('bangumi.get_person_activity', set()).add(report_source_ref(path))
+            continue
+        if report.get('evidenceKind') == CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_EVIDENCE_KIND:
+            if not codex_c03_person_activity_offline_v2_report_is_valid(report, path):
+                continue
+            sources.setdefault(CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_TOOL_NAME, set()).add(
+                report_source_ref(path),
+            )
             continue
         if report.get('evidenceKind') == CODEX_C03_EVIDENCE_KIND:
             current_status = codex_c03_profile_harness_status(report.get('prNumber'))

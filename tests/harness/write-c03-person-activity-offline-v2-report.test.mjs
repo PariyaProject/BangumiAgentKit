@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { createHash, generateKeyPairSync } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -206,11 +207,14 @@ test('C03 v2 writes and verifies a sanitized signed matrix-only report', () => {
     assert.equal(text.includes('Synthetic Person Activity Fixture'), false);
     assert.equal(text.includes('Synthetic Activity Work'), false);
     assert.equal(text.includes('主角'), false);
+    const report = JSON.parse(text);
     const writtenClaim = {
       ...claim,
       state: 'REPORT_WRITTEN',
       reportWritten: true,
+      reportPath: PROFILE.reportPath,
       reportSha256: result.reportSha256,
+      runnerReceiptSha256: sha256(canonicalAgentMcpProfileJson(report.runnerReceipt)),
     };
     const validation = validateC03PersonActivityOfflineV2SanitizedReportFile(
       writtenClaim,
@@ -221,6 +225,88 @@ test('C03 v2 writes and verifies a sanitized signed matrix-only report', () => {
     assert.equal(validation.report.scenarioId, null);
     assert.equal(validation.report.privacy.oauthAttempted, false);
     assert.equal(validation.report.privacy.qqPipelineTested, false);
+
+    const harnessStatus = {
+      state: 'REPORT_WRITTEN',
+      run: 95,
+      pr: 42,
+      epoch_id: PROFILE.epochId,
+      profile_id: PROFILE.id,
+      frontier_id: 'C03',
+      tool_name: PROFILE.toolName,
+      argument_profile: PROFILE.argumentProfile,
+      expected_arguments_sha256: agentMcpProfileArgumentsSha256(PROFILE),
+      registry_sha256: agentMcpProfileRegistrySha256(PROFILE.id),
+      claim_label_present: true,
+      terminal_label_present: true,
+      disposition: writtenClaim,
+    };
+    const pythonValidation = spawnSync(
+      'python3',
+      ['-c', [
+        'import json, sys',
+        'import importlib.util',
+        'from pathlib import Path',
+        'sys.path.insert(0, str(Path.cwd() / "scripts"))',
+        'from acceptance.c03_person_activity_offline_v2_acceptance import c03_person_activity_offline_v2_signed_report_matches',
+        'value = json.load(sys.stdin)',
+        'passed = c03_person_activity_offline_v2_signed_report_matches(value["report"], Path(value["reportPath"]), harness_status=value["harnessStatus"], root=Path(value["root"]))',
+        'spec = importlib.util.spec_from_file_location("generator", Path.cwd() / "scripts/generate-tool-acceptance-tasks.py")',
+        'generator = importlib.util.module_from_spec(spec)',
+        'spec.loader.exec_module(generator)',
+        'generator_passed = generator.codex_c03_person_activity_offline_v2_report_is_valid(value["report"], Path(value["reportPath"]), value["harnessStatus"], Path(value["root"]))',
+        'print(json.dumps({"passed": passed, "generatorPassed": generator_passed}))',
+      ].join('\n')],
+      {
+        cwd: ROOT,
+        input: JSON.stringify({
+          report: JSON.parse(text),
+          reportPath,
+          harnessStatus,
+          root: temp,
+        }),
+        encoding: 'utf8',
+      },
+    );
+    assert.equal(pythonValidation.status, 0, pythonValidation.stderr);
+    assert.deepEqual(JSON.parse(pythonValidation.stdout), { passed: true, generatorPassed: true });
+
+    const unsignedReport = {
+      ...report,
+      runnerReceipt: { ...report.runnerReceipt, signature: '' },
+    };
+    const unsignedBytes = Buffer.from(`${JSON.stringify(unsignedReport)}\n`);
+    writeFileSync(reportPath, unsignedBytes);
+    const unsignedDisposition = {
+      ...writtenClaim,
+      reportSha256: sha256(unsignedBytes),
+      runnerReceiptSha256: sha256(canonicalAgentMcpProfileJson(unsignedReport.runnerReceipt)),
+    };
+    const unsignedStatus = { ...harnessStatus, disposition: unsignedDisposition };
+    const unsignedValidation = spawnSync(
+      'python3',
+      ['-c', [
+        'import json, sys',
+        'from pathlib import Path',
+        'sys.path.insert(0, str(Path.cwd() / "scripts"))',
+        'from acceptance.c03_person_activity_offline_v2_acceptance import c03_person_activity_offline_v2_signed_report_matches',
+        'value = json.load(sys.stdin)',
+        'passed = c03_person_activity_offline_v2_signed_report_matches(value["report"], Path(value["reportPath"]), harness_status=value["harnessStatus"], root=Path(value["root"]))',
+        'print(json.dumps({"passed": passed}))',
+      ].join('\n')],
+      {
+        cwd: ROOT,
+        input: JSON.stringify({
+          report: unsignedReport,
+          reportPath,
+          harnessStatus: unsignedStatus,
+          root: temp,
+        }),
+        encoding: 'utf8',
+      },
+    );
+    assert.equal(unsignedValidation.status, 0, unsignedValidation.stderr);
+    assert.deepEqual(JSON.parse(unsignedValidation.stdout), { passed: false });
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }

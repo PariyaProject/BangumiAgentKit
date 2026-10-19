@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the generated 96-tool acceptance table without network access."""
+"""Validate the generated 96-tool acceptance table and claim-bound evidence."""
 
 from __future__ import annotations
 
@@ -35,6 +35,9 @@ C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE = next(
     and profile.get('id') == 'c03-person-activity-offline-agent-mcp-matrix-v2'
 )
 sys.path.insert(0, str(ROOT / 'scripts'))
+from acceptance.c03_person_activity_offline_v2_acceptance import (
+    c03_person_activity_offline_v2_signed_report_matches,
+)
 from client_evidence import tool_client_e2e_sources
 TOOL_ROW = re.compile(r'^\| `(bangumi\.[a-z0-9_]+)` \|')
 SOURCE_REFERENCE = re.compile(r'`(?P<path>tests/[^`|:]+):(?P<line>[1-9][0-9]*)`')
@@ -127,7 +130,13 @@ def g01_render_query_report_matches(name: str, relative_path: str, report: objec
 
 
 def c03_person_activity_offline_v2_report_matches(
-    name: str, relative_path: str, report: object,
+    name: str,
+    relative_path: str,
+    report: object,
+    *,
+    report_path: Path | None = None,
+    harness_status: object = None,
+    root: Path = ROOT,
 ) -> bool:
     if not isinstance(report, dict):
         return False
@@ -168,7 +177,7 @@ def c03_person_activity_offline_v2_report_matches(
     ]
     try:
         selection_sha256 = hashlib.sha256(
-            (ROOT / profile['selectionEvidencePath']).read_bytes(),
+            (root / profile['selectionEvidencePath']).read_bytes(),
         ).hexdigest()
     except OSError:
         return False
@@ -267,8 +276,12 @@ def c03_person_activity_offline_v2_report_matches(
             'artifactImageBytesStored': False,
             'credentialsStored': False,
         })
-        and isinstance(report.get('runnerReceipt'), dict)
-        and report['runnerReceipt'].get('kind') == 'c03-person-activity-offline-matrix-v2-runner-receipt-v1'
+        and c03_person_activity_offline_v2_signed_report_matches(
+            report,
+            report_path or (ROOT / relative_path),
+            harness_status=harness_status,
+            root=root,
+        )
     )
 
 
@@ -1165,7 +1178,7 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                 name, relative_path, report,
             )
             c03_person_activity_offline_v2_matches = c03_person_activity_offline_v2_report_matches(
-                name, relative_path, report,
+                name, relative_path, report, report_path=path,
             )
             matches = (
                 scenario_matches or c04_matches or title_query_render_matches

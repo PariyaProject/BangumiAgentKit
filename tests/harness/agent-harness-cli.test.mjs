@@ -104,6 +104,7 @@ import {
   G06_CAST_OFFLINE_PROFILE_ID,
   G06_CAST_OFFLINE_V2_PROFILE_ID,
 } from '../../scripts/lib/g06-subject-cast-offline-profile.mjs';
+import { C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE_ID } from '../../scripts/lib/c03-person-activity-offline-matrix-v2-profile.mjs';
 import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
@@ -1772,6 +1773,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
     P02_PROFILE.id,
     P02_V2_PROFILE.id,
     C04_PROFILE.id,
+    C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE_ID,
     TITLE_QUERY_RENDER_PROFILE.id,
     A01_PROFILE.id,
     G06_V2_PROFILE.id,
@@ -2936,6 +2938,41 @@ test('G06 v2 Harness profile claim persists the exact successful CI run and chec
     const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
     const disposition =
       stored.adversarial_preflight.agent_mcp_profile_dispositions[G06_V2_PROFILE.id];
+    assert.equal(disposition.ciRunId, claimResult.ciRunId);
+    assert.deepEqual(disposition.ciChecks, claimResult.ciChecks);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C03 v2 Harness profile claim persists the exact successful CI run and check identities', () => {
+  const profile = getAgentMcpProfileById(C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE_ID);
+  assert.ok(profile);
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(profile);
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', profile.id];
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    assert.equal(claimResult.profileId, profile.id);
+    assert.equal(claimResult.ciRunId, '38806371672');
+    assert.deepEqual(
+      claimResult.ciChecks.map(({ name, status, conclusion }) => ({ name, status, conclusion })),
+      mandatoryChecks.map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' })),
+    );
+
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    const disposition = stored.adversarial_preflight.agent_mcp_profile_dispositions[profile.id];
     assert.equal(disposition.ciRunId, claimResult.ciRunId);
     assert.deepEqual(disposition.ciChecks, claimResult.ciChecks);
   } finally {

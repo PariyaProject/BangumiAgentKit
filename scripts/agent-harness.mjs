@@ -321,6 +321,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'r03-direct-relations-offline-agent-mcp-matrix-v2',
   'r02-positive-direct-relations-agent-mcp-v1',
   'c04-cohort-comparison-agent-mcp-matrix-v1',
+  'c03-person-activity-offline-agent-mcp-matrix-v2',
   'query-render-title-agent-mcp-v1',
   'a01-rating-dispersion-1998-spring-v1',
   'g06-cast-offline-agent-mcp-matrix-v1',

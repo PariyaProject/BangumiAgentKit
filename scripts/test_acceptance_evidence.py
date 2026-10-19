@@ -204,6 +204,23 @@ class C03PersonActivityOfflineV2MatrixTests(unittest.TestCase):
             'profile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
             'model': 'gpt-6-luna',
             'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr240-round1',
+            'sourceRevision': 'a' * 40,
+            'baseSha': 'c' * 40,
+            'ciSha': 'a' * 40,
+            'ciStatus': 'SUCCESS',
+            'ciRunId': '39256838410',
+            'ciChecks': [
+                {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+                for name in (
+                    'harness-control', 'sqlite-default', 'host-integration',
+                    'standalone-release-smoke', 'postgres-compat', 'provider-foundation',
+                    'discovery-foundation',
+                )
+            ],
+            'prNumber': 240,
+            'claimId': 'profile-run-95-pr-240-aaaaaaaaaaaa-1',
+            'mcpBundleSha256': 'b' * 64,
             'resultStatus': 'SUCCESS',
             'processExitCode': 0,
             'eventStreamParsed': True,
@@ -294,16 +311,138 @@ class C03PersonActivityOfflineV2MatrixTests(unittest.TestCase):
                 'credentialsStored': False,
             },
             'runnerReceipt': {
+                'schemaVersion': 1,
                 'kind': 'c03-person-activity-offline-matrix-v2-runner-receipt-v1',
+                'publicKeyBase64': 'bm90LWEtYS1rZXk=',
+                'publicKeySha256': 'd' * 64,
+                'payload': {},
+                'signature': '',
             },
         }
 
-    def test_matrix_report_acceptance_is_separate_from_the_c03_scenario(self):
-        self.assertTrue(
-            TABLE_CHECKER.c03_person_activity_offline_v2_report_matches(
-                self.profile['toolName'], self.profile['reportPath'], self.report,
+    def test_matrix_generator_registers_the_v2_report_path(self):
+        expected = GENERATOR.LIVE_PROBE_DIR / Path(self.profile['reportPath']).name
+        self.assertIn(expected, GENERATOR.model_mcp_e2e_report_paths())
+        self.assertFalse(
+            GENERATOR.codex_c03_person_activity_offline_v2_report_is_valid(
+                self.report, expected, {'state': 'UNCLAIMED'},
             ),
         )
+
+    def harness_status(self, report_bytes):
+        receipt = self.report['runnerReceipt']
+        canonical_receipt = json.dumps(
+            receipt, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')
+        disposition = {
+            'claimId': self.report['claimId'],
+            'profileId': self.profile['id'],
+            'frontierId': 'C03',
+            'epochId': self.profile['epochId'],
+            'runNumber': 95,
+            'prNumber': self.report['prNumber'],
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': self.report['sourceRevision'],
+            'baseSha': self.report['baseSha'],
+            'ciSha': self.report['ciSha'],
+            'ciStatus': self.report['ciStatus'],
+            'ciRunId': self.report['ciRunId'],
+            'ciChecks': self.report['ciChecks'],
+            'reviewerId': self.report['reviewerId'],
+            'bundleSha256': self.report['mcpBundleSha256'],
+            'registrySha256': self.report['registrySha256'],
+            'toolName': self.profile['toolName'],
+            'argumentProfile': self.profile['argumentProfile'],
+            'expectedArgumentsSha256': self.report['expectedArgumentsSha256'],
+            'reportWritten': True,
+            'reportPath': self.profile['reportPath'],
+            'reportSha256': hashlib.sha256(report_bytes).hexdigest(),
+            'retryAllowed': False,
+            'runnerReceiptPublicKey': receipt['publicKeyBase64'],
+            'runnerReceiptPublicKeySha256': receipt['publicKeySha256'],
+            'runnerReceiptSha256': hashlib.sha256(canonical_receipt).hexdigest(),
+        }
+        return {
+            'state': 'REPORT_WRITTEN',
+            'run': 95,
+            'pr': self.report['prNumber'],
+            'epoch_id': self.profile['epochId'],
+            'profile_id': self.profile['id'],
+            'frontier_id': 'C03',
+            'tool_name': self.profile['toolName'],
+            'argument_profile': self.profile['argumentProfile'],
+            'expected_arguments_sha256': self.report['expectedArgumentsSha256'],
+            'registry_sha256': self.report['registrySha256'],
+            'claim_label_present': True,
+            'terminal_label_present': True,
+            'disposition': disposition,
+        }
+
+    def test_matrix_report_requires_active_harness_ack_and_signed_receipt(self):
+        with tempfile.TemporaryDirectory(prefix='c03-v2-matrix-report-') as directory:
+            root = Path(directory)
+            report_path = root / self.profile['reportPath']
+            report_path.parent.mkdir(parents=True)
+            catalog_path = root / 'docs/tool-catalog.json'
+            catalog_path.parent.mkdir(parents=True, exist_ok=True)
+            catalog_path.write_bytes((TABLE_CHECKER.ROOT / 'docs/tool-catalog.json').read_bytes())
+            selection_path = root / self.profile['selectionEvidencePath']
+            selection_path.parent.mkdir(parents=True, exist_ok=True)
+            selection_path.write_bytes((TABLE_CHECKER.ROOT / self.profile['selectionEvidencePath']).read_bytes())
+            report_bytes = (json.dumps(self.report, ensure_ascii=False) + '\n').encode('utf-8')
+            report_path.write_bytes(report_bytes)
+
+            self.assertFalse(
+                TABLE_CHECKER.c03_person_activity_offline_v2_report_matches(
+                    self.profile['toolName'], self.profile['reportPath'], self.report,
+                    report_path=report_path, harness_status={'state': 'UNCLAIMED'}, root=root,
+                ),
+            )
+            self.assertFalse(
+                TABLE_CHECKER.c03_person_activity_offline_v2_report_matches(
+                    self.profile['toolName'], self.profile['reportPath'], self.report,
+                    report_path=report_path, harness_status=self.harness_status(report_bytes), root=root,
+                ),
+            )
+            self.assertFalse(
+                GENERATOR.codex_c03_person_activity_offline_v2_report_is_valid(
+                    self.report, report_path, self.harness_status(report_bytes), root,
+                ),
+            )
+
+    def test_matrix_report_rejects_a_harness_ack_for_a_different_digest(self):
+        with tempfile.TemporaryDirectory(prefix='c03-v2-matrix-report-') as directory:
+            root = Path(directory)
+            report_path = root / self.profile['reportPath']
+            report_path.parent.mkdir(parents=True)
+            catalog_path = root / 'docs/tool-catalog.json'
+            catalog_path.parent.mkdir(parents=True, exist_ok=True)
+            catalog_path.write_bytes((TABLE_CHECKER.ROOT / 'docs/tool-catalog.json').read_bytes())
+            selection_path = root / self.profile['selectionEvidencePath']
+            selection_path.parent.mkdir(parents=True, exist_ok=True)
+            selection_path.write_bytes((TABLE_CHECKER.ROOT / self.profile['selectionEvidencePath']).read_bytes())
+            report_bytes = (json.dumps(self.report, ensure_ascii=False) + '\n').encode('utf-8')
+            report_path.write_bytes(report_bytes)
+            status = self.harness_status(report_bytes)
+            status['disposition']['reportSha256'] = 'f' * 64
+            self.assertFalse(
+                TABLE_CHECKER.c03_person_activity_offline_v2_report_matches(
+                    self.profile['toolName'], self.profile['reportPath'], self.report,
+                    report_path=report_path, harness_status=status, root=root,
+                ),
+            )
+
+    def test_matrix_report_cannot_credit_the_c03_scenario(self):
+        with tempfile.TemporaryDirectory(prefix='c03-v2-matrix-report-') as directory:
+            report_path = Path(directory) / self.profile['reportPath']
+            report_path.parent.mkdir(parents=True)
+            report_path.write_text(json.dumps(self.report), encoding='utf-8')
+            self.assertFalse(
+                TABLE_CHECKER.c03_person_activity_offline_v2_report_matches(
+                    self.profile['toolName'], self.profile['reportPath'], self.report,
+                    report_path=report_path, harness_status={'state': 'UNCLAIMED'},
+                ),
+            )
         self.report['scenarioId'] = 'C03'
         self.assertFalse(
             TABLE_CHECKER.c03_person_activity_offline_v2_report_matches(
