@@ -28,7 +28,7 @@ import {
   assertA01RenderCohortAggregationOfflineProfile,
 } from './a01-render-cohort-aggregation-offline-fixture.mjs';
 import {
-  A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+  A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS,
   assertA01AggregateCohortOfflineProfile,
 } from './a01-aggregate-cohort-offline-matrix-profile.mjs';
 import { assertR04RenderSeriesWatchOrderOfflineProfile } from './r04-render-series-watch-order-offline-fixture.mjs';
@@ -151,7 +151,7 @@ export function parseCodexOneToolMcpArguments(argv) {
     let registeredNetworkMode;
     if (profile.networkMode !== undefined) {
       let approved;
-      if (profile.id === A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID) {
+      if (A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS.includes(profile.id)) {
         approved = assertA01AggregateCohortOfflineProfile(profile);
       } else {
         approved =

@@ -9,6 +9,10 @@ import {
   A01_AGGREGATE_COHORT_OFFLINE_EPOCH_ID,
   A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE,
   A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+  A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS,
+  A01_AGGREGATE_COHORT_OFFLINE_V2_EPOCH_ID,
+  A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+  A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
   A01_AGGREGATE_COHORT_TOOL,
   assertA01AggregateCohortOfflineProfile,
   createA01AggregateCohortOfflineFetch,
@@ -64,6 +68,28 @@ test('A01 aggregate matrix profile is unique, exact, and matrix-only', () => {
   );
 });
 
+test('A01 aggregate matrix v2 is distinct from the spent v1 input and fixture', () => {
+  const profile = getAgentMcpProfileById(A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID);
+  const v1 = getAgentMcpProfileById(A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID);
+  assert.ok(profile);
+  assert.equal(profile.frontierId, 'A01');
+  assert.equal(profile.epochId, A01_AGGREGATE_COHORT_OFFLINE_V2_EPOCH_ID);
+  assert.equal(profile.toolName, A01_AGGREGATE_COHORT_TOOL);
+  assert.equal(profile.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(profile.networkMode, A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE);
+  assert.deepEqual(profile.calls[0].arguments, A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS);
+  assert.notEqual(profile.id, v1.id);
+  assert.notDeepEqual(profile.calls[0].arguments, v1.calls[0].arguments);
+  assert.equal(assertA01AggregateCohortOfflineProfile(profile), true);
+  assert.throws(() => assertA01AggregateCohortOfflineProfile({
+    ...profile,
+    calls: [{
+      ...profile.calls[0],
+      arguments: A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
+    }],
+  }));
+});
+
 test('registered MCP arguments select only the exact offline profile and reject overrides', () => {
   const config = parseCodexOneToolMcpArguments([
     '--profile-id',
@@ -95,6 +121,34 @@ test('registered MCP arguments select only the exact offline profile and reject 
   );
 });
 
+test('registered MCP arguments select the distinct v2 mode and inputs', () => {
+  const config = parseCodexOneToolMcpArguments([
+    '--profile-id',
+    A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+    '--summary-file',
+    '/tmp/a01-aggregate-summary-v2.json',
+    '--candidate-sha',
+    candidateSha,
+    '--bundle-sha256',
+    bundleSha256,
+  ]);
+  assert.equal(config.networkMode, A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE);
+  assert.deepEqual(config.toolNames, [A01_AGGREGATE_COHORT_TOOL]);
+  assert.deepEqual(config.expectedArgumentSequence, [A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS]);
+  assert.throws(() => parseCodexOneToolMcpArguments([
+    '--profile-id',
+    A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+    '--network-mode',
+    A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+    '--summary-file',
+    '/tmp/a01-aggregate-summary-v2.json',
+    '--candidate-sha',
+    candidateSha,
+    '--bundle-sha256',
+    bundleSha256,
+  ]));
+});
+
 test('offline fixture serves exactly one anonymous synthetic search and detail response', async () => {
   const fixture = createA01AggregateCohortOfflineFetch();
   const search = await fixture.fetchFn('https://api.bgm.tv/v0/search/subjects?limit=20&offset=0', {
@@ -120,6 +174,48 @@ test('offline fixture serves exactly one anonymous synthetic search and detail r
     searchRequestCount: 1,
     detailRequestCount: 1,
     unexpectedRequestCount: 0,
+    authorizationHeaderCount: 0,
+    expectedOperationsComplete: true,
+  });
+});
+
+test('offline v2 fixture serves only the new synthetic input and subject', async () => {
+  const fixture = createA01AggregateCohortOfflineFetch(A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID);
+  const v1Input = await fixture.fetchFn('https://api.bgm.tv/v0/search/subjects?limit=20&offset=0', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      keyword: A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS.cohort.query.keyword,
+      sort: 'match',
+      filter: { type: [2] },
+    }),
+  });
+  assert.equal(v1Input.status, 599);
+  assert.equal(fixture.snapshot().searchRequestCount, 0);
+
+  const search = await fixture.fetchFn('https://api.bgm.tv/v0/search/subjects?limit=20&offset=0', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      keyword: A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS.cohort.query.keyword,
+      sort: 'match',
+      filter: { type: [2] },
+    }),
+  });
+  assert.equal(search.status, 200);
+  assert.equal((await search.json()).data[0].id, 991219);
+  const detail = await fixture.fetchFn('https://api.bgm.tv/v0/subjects/991219');
+  const detailBody = await detail.json();
+  assert.equal(detail.status, 200);
+  assert.equal(detailBody.score, 6.5);
+  assert.equal(detailBody.collection.collect, 61);
+  assert.equal(detailBody.eps, 10);
+  assert.deepEqual(fixture.snapshot(), {
+    profile: A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+    requestCount: 3,
+    searchRequestCount: 1,
+    detailRequestCount: 1,
+    unexpectedRequestCount: 1,
     authorizationHeaderCount: 0,
     expectedOperationsComplete: true,
   });
@@ -264,6 +360,14 @@ test('runner is Run #95/PR-bound, exposes one tool, and disables general capabil
   assert.deepEqual(parseA01AggregateCohortRunnerArgs(['--run', '95', '--pr', '231']), {
     runNumber: 95,
     prNumber: 231,
+    profileId: A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+  });
+  assert.deepEqual(parseA01AggregateCohortRunnerArgs([
+    '--run', '95', '--pr', '231', '--profile-id', A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+  ]), {
+    runNumber: 95,
+    prNumber: 231,
+    profileId: A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
   });
   assert.deepEqual(parseA01AggregateCohortRunnerArgs(['--help']), { help: true });
   assert.throws(() => parseA01AggregateCohortRunnerArgs(['--run', '94', '--pr', '231']));
@@ -288,6 +392,16 @@ test('runner is Run #95/PR-bound, exposes one tool, and disables general capabil
       'mcp_servers.bgk_a01_aggregate_cohort_offline.enabled_tools=["bangumi.aggregate_subject_cohort"]',
     ),
   );
+  const v2Args = buildCodexExecArgs({
+    root: '/repo',
+    nodePath: '/node',
+    summaryPath: '/tmp/summary-v2.json',
+    candidateSha,
+    bundleSha256,
+    profileId: A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+  });
+  assert.ok(v2Args.at(-1).includes(A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS.cohort.query.keyword));
+  assert.ok(v2Args.some((value) => value.includes(A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID)));
 });
 
 test('claim readback failure retains the confirmed claim id without retaining the readback error', () => {

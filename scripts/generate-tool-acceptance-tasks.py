@@ -2963,31 +2963,89 @@ CODEX_A01_RENDER_AGGREGATION_REPORT_FIELDS = {
     'answerSha256', 'answerUtf8Bytes', 'answerChecks', 'privacy', 'scenarios',
     'retryAllowed', 'reportWritten', 'runnerReceipt',
 }
-CODEX_A01_AGGREGATE_MATRIX_PROFILE = next(
-    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
-    if profile.get('id') == 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1'
-)
-CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID = CODEX_A01_AGGREGATE_MATRIX_PROFILE['id']
-CODEX_A01_AGGREGATE_MATRIX_EPOCH_ID = CODEX_A01_AGGREGATE_MATRIX_PROFILE['epochId']
-CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME = CODEX_A01_AGGREGATE_MATRIX_PROFILE['toolName']
-CODEX_A01_AGGREGATE_MATRIX_ARGUMENT_PROFILE = CODEX_A01_AGGREGATE_MATRIX_PROFILE['argumentProfile']
-CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS = CODEX_A01_AGGREGATE_MATRIX_PROFILE['calls'][0]['arguments']
-CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
-    [CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS],
-    sort_keys=True,
-    separators=(',', ':'),
-    ensure_ascii=False,
-).encode('utf-8')).hexdigest()
-CODEX_A01_AGGREGATE_MATRIX_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
-    CODEX_A01_AGGREGATE_MATRIX_PROFILE,
-    sort_keys=True,
-    separators=(',', ':'),
-    ensure_ascii=False,
-).encode('utf-8')).hexdigest()
-CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH = CODEX_A01_AGGREGATE_MATRIX_PROFILE['reportPath']
-CODEX_A01_AGGREGATE_MATRIX_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_A01_AGGREGATE_MATRIX_PROFILE['selectionEvidencePath']
-CODEX_A01_AGGREGATE_MATRIX_EVIDENCE_KIND = CODEX_A01_AGGREGATE_MATRIX_PROFILE['evidenceKind']
-CODEX_A01_AGGREGATE_MATRIX_NETWORK_MODE = CODEX_A01_AGGREGATE_MATRIX_PROFILE['networkMode']
+CODEX_A01_AGGREGATE_MATRIX_PROFILE_IDS = {
+    'a01-aggregate-cohort-offline-agent-mcp-matrix-v1',
+    'a01-aggregate-cohort-offline-agent-mcp-matrix-v2',
+}
+CODEX_A01_AGGREGATE_MATRIX_PROFILES = {
+    profile['id']: profile
+    for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') in CODEX_A01_AGGREGATE_MATRIX_PROFILE_IDS
+}
+CODEX_A01_AGGREGATE_MATRIX_EXPECTED_METRICS_BY_PROFILE = {
+    'a01-aggregate-cohort-offline-agent-mcp-matrix-v1': [
+        ('score', 7), ('heat', 56), ('episodesReported', 12), ('ratingStandardDeviation', 1),
+    ],
+    'a01-aggregate-cohort-offline-agent-mcp-matrix-v2': [
+        ('score', 6.5), ('heat', 71), ('episodesReported', 10), ('ratingStandardDeviation', 2),
+    ],
+}
+
+def _select_codex_a01_aggregate_matrix_profile(profile_id):
+    if not isinstance(profile_id, str):
+        return False
+    profile = CODEX_A01_AGGREGATE_MATRIX_PROFILES.get(profile_id)
+    if profile is None:
+        return False
+    global CODEX_A01_AGGREGATE_MATRIX_PROFILE
+    global CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID
+    global CODEX_A01_AGGREGATE_MATRIX_EPOCH_ID
+    global CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME
+    global CODEX_A01_AGGREGATE_MATRIX_ARGUMENT_PROFILE
+    global CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS
+    global CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS_SHA256
+    global CODEX_A01_AGGREGATE_MATRIX_PROFILE_REGISTRY_SHA256
+    global CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH
+    global CODEX_A01_AGGREGATE_MATRIX_SELECTION_EVIDENCE_RELATIVE_PATH
+    global CODEX_A01_AGGREGATE_MATRIX_EVIDENCE_KIND
+    global CODEX_A01_AGGREGATE_MATRIX_NETWORK_MODE
+    global CODEX_A01_AGGREGATE_MATRIX_EXPECTED_METRICS
+    global CODEX_A01_AGGREGATE_MATRIX_SERVER_ID
+    CODEX_A01_AGGREGATE_MATRIX_PROFILE = profile
+    CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID = profile['id']
+    CODEX_A01_AGGREGATE_MATRIX_EPOCH_ID = profile['epochId']
+    CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME = profile['toolName']
+    CODEX_A01_AGGREGATE_MATRIX_ARGUMENT_PROFILE = profile['argumentProfile']
+    CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS = profile['calls'][0]['arguments']
+    CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+        [CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS],
+        sort_keys=True,
+        separators=(',', ':'),
+        ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+    CODEX_A01_AGGREGATE_MATRIX_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+        profile,
+        sort_keys=True,
+        separators=(',', ':'),
+        ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+    CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH = profile['reportPath']
+    CODEX_A01_AGGREGATE_MATRIX_SELECTION_EVIDENCE_RELATIVE_PATH = profile['selectionEvidencePath']
+    CODEX_A01_AGGREGATE_MATRIX_EVIDENCE_KIND = profile['evidenceKind']
+    CODEX_A01_AGGREGATE_MATRIX_NETWORK_MODE = profile['networkMode']
+    CODEX_A01_AGGREGATE_MATRIX_EXPECTED_METRICS = CODEX_A01_AGGREGATE_MATRIX_EXPECTED_METRICS_BY_PROFILE[profile_id]
+    CODEX_A01_AGGREGATE_MATRIX_SERVER_ID = (
+        'bgk_a01_aggregate_cohort_offline'
+        if profile_id == 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1'
+        else 'bgk_a01_aggregate_cohort_offline_v2'
+    )
+    return True
+
+CODEX_A01_AGGREGATE_MATRIX_PROFILE = None
+CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID = None
+CODEX_A01_AGGREGATE_MATRIX_EPOCH_ID = None
+CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME = None
+CODEX_A01_AGGREGATE_MATRIX_ARGUMENT_PROFILE = None
+CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS = None
+CODEX_A01_AGGREGATE_MATRIX_EXPECTED_ARGUMENTS_SHA256 = None
+CODEX_A01_AGGREGATE_MATRIX_PROFILE_REGISTRY_SHA256 = None
+CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH = None
+CODEX_A01_AGGREGATE_MATRIX_SELECTION_EVIDENCE_RELATIVE_PATH = None
+CODEX_A01_AGGREGATE_MATRIX_EVIDENCE_KIND = None
+CODEX_A01_AGGREGATE_MATRIX_NETWORK_MODE = None
+CODEX_A01_AGGREGATE_MATRIX_EXPECTED_METRICS = None
+CODEX_A01_AGGREGATE_MATRIX_SERVER_ID = None
+_select_codex_a01_aggregate_matrix_profile('a01-aggregate-cohort-offline-agent-mcp-matrix-v1')
 CODEX_A01_AGGREGATE_MATRIX_ANSWER_CHECK_FIELDS = {
     'fixedArguments', 'singleToolInvocation', 'structuredResultReadback',
     'exactMetricAndCoverageAnswer', 'offlineFixtureBounded',
@@ -14838,7 +14896,11 @@ def codex_a01_render_aggregation_profile_report_is_valid(
     )
 
 
-def codex_a01_aggregate_matrix_profile_revision_has_implementation(revision: object) -> bool:
+def codex_a01_aggregate_matrix_profile_revision_has_implementation(
+    revision: object, profile_id: object = 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1',
+) -> bool:
+    if not _select_codex_a01_aggregate_matrix_profile(profile_id):
+        return False
     if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
         return False
     required_paths = {
@@ -14860,6 +14922,10 @@ def codex_a01_aggregate_matrix_profile_revision_has_implementation(revision: obj
         'tests/integration/tool-direct-execute-discovery.test.ts',
         'tests/harness/write-a01-aggregate-cohort-offline-agent-mcp-report.test.mjs',
     }
+    if profile_id == 'a01-aggregate-cohort-offline-agent-mcp-matrix-v2':
+        required_paths.add(
+            'docs/research/run95-a01-aggregate-cohort-offline-matrix-v2-contract-2026-10-19.md',
+        )
     return all(
         _run_repository_git(ROOT, 'cat-file', '-e', f'{revision}:{relative_path}').returncode == 0
         for relative_path in required_paths
@@ -14869,11 +14935,15 @@ def codex_a01_aggregate_matrix_profile_revision_has_implementation(revision: obj
 def codex_a01_aggregate_matrix_profile_report_matches_candidate_revision(
     report: object, revision: object,
 ) -> bool:
+    if not isinstance(report, dict) or not _select_codex_a01_aggregate_matrix_profile(report.get('profileId')):
+        return False
     if (
         not isinstance(report, dict)
         or not isinstance(revision, str)
         or report.get('sourceRevision') != revision
-        or not codex_a01_aggregate_matrix_profile_revision_has_implementation(revision)
+        or not codex_a01_aggregate_matrix_profile_revision_has_implementation(
+            revision, report.get('profileId'),
+        )
         or not re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
         or _run_repository_git(
             ROOT, 'merge-base', '--is-ancestor', report['baseSha'], revision,
@@ -14911,16 +14981,16 @@ def codex_a01_aggregate_matrix_profile_epoch_harness_status(
 
 
 def codex_a01_aggregate_matrix_profile_harness_status(
-    pr_number: object,
+    pr_number: object, profile_id: object = 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1',
 ) -> dict[str, object] | None:
-    if type(pr_number) is not int or pr_number < 1:
+    if type(pr_number) is not int or pr_number < 1 or not _select_codex_a01_aggregate_matrix_profile(profile_id):
         return None
     try:
         result = subprocess.run(
             [
                 'node', str(ROOT / 'scripts/agent-harness.mjs'),
                 'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
-                '--profile-id', CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID,
+                '--profile-id', str(profile_id),
             ],
             cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
         )
@@ -14935,6 +15005,8 @@ def codex_a01_aggregate_matrix_profile_harness_status(
 def codex_a01_aggregate_matrix_profile_disposition_matches_report(
     report: dict[str, object], harness_status: object, report_sha256: object,
 ) -> dict[str, object] | None:
+    if not isinstance(report, dict) or not _select_codex_a01_aggregate_matrix_profile(report.get('profileId')):
+        return None
     if not isinstance(harness_status, dict):
         return None
     receipt = report.get('runnerReceipt')
@@ -14987,6 +15059,8 @@ def codex_a01_aggregate_matrix_profile_disposition_matches_report(
 def codex_a01_aggregate_matrix_profile_candidate_binding_is_current(
     report: dict[str, object], epoch_status: object, current_bundle_sha256: object,
 ) -> bool:
+    if not isinstance(report, dict) or not _select_codex_a01_aggregate_matrix_profile(report.get('profileId')):
+        return False
     if not isinstance(epoch_status, dict):
         return False
     run_result = epoch_status.get('run')
@@ -15098,7 +15172,11 @@ def codex_a01_aggregate_matrix_profile_report_is_valid(
     report_path: Path | None = None,
     epoch_status: object = None,
 ) -> bool:
-    if not isinstance(report, dict) or set(report) != CODEX_A01_AGGREGATE_MATRIX_REPORT_FIELDS:
+    if (
+        not isinstance(report, dict)
+        or not _select_codex_a01_aggregate_matrix_profile(report.get('profileId'))
+        or set(report) != CODEX_A01_AGGREGATE_MATRIX_REPORT_FIELDS
+    ):
         return False
     if (
         report.get('evidenceKind') != CODEX_A01_AGGREGATE_MATRIX_EVIDENCE_KIND
@@ -15133,7 +15211,7 @@ def codex_a01_aggregate_matrix_profile_report_is_valid(
         or report.get('writeActionReached') is not False
         or report.get('qqPipelineTested') is not False
         or report.get('timClientTested') is not False
-        or report.get('serverId') != 'bgk_a01_aggregate_cohort_offline'
+        or report.get('serverId') != CODEX_A01_AGGREGATE_MATRIX_SERVER_ID
         or report.get('serverToolNames') != [CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME]
         or report.get('serverToolCount') != 1
         or report.get('ciSha') != report.get('sourceRevision')
@@ -15196,12 +15274,7 @@ def codex_a01_aggregate_matrix_profile_report_is_valid(
     }:
         return False
     summary = report.get('resultSummary')
-    expected_metrics = [
-        ('score', 7),
-        ('heat', 56),
-        ('episodesReported', 12),
-        ('ratingStandardDeviation', 1),
-    ]
+    expected_metrics = CODEX_A01_AGGREGATE_MATRIX_EXPECTED_METRICS
     if (
         not isinstance(summary, dict)
         or set(summary) != {'resultState', 'cohortCount', 'cohorts', 'metricCount', 'metrics', 'coverage'}
@@ -15318,7 +15391,9 @@ def codex_a01_aggregate_matrix_profile_report_is_valid(
         codex_a01_aggregate_matrix_profile_epoch_harness_status(report.get('prNumber'))
     )
     current_harness_status = harness_status if isinstance(harness_status, dict) else (
-        codex_a01_aggregate_matrix_profile_harness_status(report.get('prNumber'))
+        codex_a01_aggregate_matrix_profile_harness_status(
+            report.get('prNumber'), report.get('profileId'),
+        )
     )
     epoch_result = current_epoch_status.get('epoch') if isinstance(current_epoch_status, dict) else None
     epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
@@ -23635,7 +23710,8 @@ def codex_mcp_evidence_is_valid(
     tool_name = report.get('toolName')
     if not isinstance(tool_name, str):
         return False
-    if report.get('profileId') == CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID:
+    if report.get('profileId') in CODEX_A01_AGGREGATE_MATRIX_PROFILE_IDS:
+        _select_codex_a01_aggregate_matrix_profile(report.get('profileId'))
         current_tool = current_by_name.get(CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME)
         return bool(
             tool_name == CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME
@@ -24100,6 +24176,11 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(
         LIVE_PROBE_DIR / CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH.split('/')[-1],
     )
+    report_paths.append(
+        LIVE_PROBE_DIR / CODEX_A01_AGGREGATE_MATRIX_PROFILES[
+            'a01-aggregate-cohort-offline-agent-mcp-matrix-v2'
+        ]['reportPath'].split('/')[-1],
+    )
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_D07_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G19_REPORT_RELATIVE_PATH.split('/')[-1])
@@ -24141,7 +24222,11 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 report_source_ref(path),
             )
             continue
-        if report.get('evidenceKind') == CODEX_A01_AGGREGATE_MATRIX_EVIDENCE_KIND:
+        if report.get('profileId') in CODEX_A01_AGGREGATE_MATRIX_PROFILE_IDS:
+            if not _select_codex_a01_aggregate_matrix_profile(report.get('profileId')):
+                continue
+            if report.get('evidenceKind') != CODEX_A01_AGGREGATE_MATRIX_EVIDENCE_KIND:
+                continue
             try:
                 report_relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
             except ValueError:

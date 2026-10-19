@@ -289,12 +289,20 @@ test('A01 aggregate cohort offline profile is distinct and remains matrix-only',
   const profile = agentMcpProfiles.find(
     ({ id }) => id === 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1',
   );
+  const profileV2 = agentMcpProfiles.find(
+    ({ id }) => id === 'a01-aggregate-cohort-offline-agent-mcp-matrix-v2',
+  );
   assert.ok(record);
   assert.ok(profile);
+  assert.ok(profileV2);
   assert.equal(record.status, 'UNASSESSED');
   assert.equal(profile.epochId, 'run95-a01-aggregate-cohort-matrix-followup-20261018');
   assert.equal(profile.acceptanceScope, 'agent-mcp-matrix-only');
   assert.equal(profile.toolName, 'bangumi.aggregate_subject_cohort');
+  assert.equal(profileV2.toolName, profile.toolName);
+  assert.equal(profileV2.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.notEqual(profileV2.epochId, profile.epochId);
+  assert.notDeepEqual(profileV2.calls, profile.calls);
   assert.equal(
     record.evidence.aggregate_cohort_offline_matrix_followup_2026_10_18.epoch_id,
     profile.epochId,
@@ -303,8 +311,7 @@ test('A01 aggregate cohort offline profile is distinct and remains matrix-only',
     record.evidence.aggregate_cohort_offline_matrix_followup_2026_10_18.reconciliation_behavior,
     /preserve unrelated concurrent PR control updates/u,
   );
-  assert.match(record.next_action, /A01 remains UNASSESSED/u);
-  assert.match(record.next_action, /re-reads the current PR control state/u);
+  assert.match(record.next_action, /A01 UNASSESSED/u);
   assert.ok(
     record.source_refs.includes(
       'docs/research/run95-a01-aggregate-subject-cohort-offline-agent-mcp-contract-2026-10-18.md',
@@ -312,10 +319,18 @@ test('A01 aggregate cohort offline profile is distinct and remains matrix-only',
   );
   assert.match(
     record.next_action,
-    /new a01-aggregate-cohort-offline-agent-mcp-matrix-v1 profile is distinct synthetic offline Agent\/MCP evidence/u,
+    /distinct v1 and v2 synthetic offline matrix-profile contracts/iu,
   );
-  assert.match(record.next_action, /a valid signed report can credit that one matrix cell/u);
-  assert.match(record.next_action, /not the A01 scenario, public API/u);
+  assert.match(record.next_action, /v2 contract uses fresh synthetic input/u);
+  assert.match(
+    record.next_action,
+    /can earn at most the aggregate_subject_cohort Agent\/MCP matrix row/u,
+  );
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-a01-aggregate-cohort-offline-matrix-v2-contract-2026-10-19.md',
+    ),
+  );
   assertOneShotRuntimeIsHarnessOwned(record);
 });
 

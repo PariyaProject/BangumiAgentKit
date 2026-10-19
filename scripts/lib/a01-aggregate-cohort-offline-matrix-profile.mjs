@@ -4,7 +4,17 @@ export const A01_AGGREGATE_COHORT_OFFLINE_EPOCH_ID =
   'run95-a01-aggregate-cohort-matrix-followup-20261018';
 export const A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE =
   'run95-a01-aggregate-cohort-offline-matrix-v1';
+export const A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID =
+  'a01-aggregate-cohort-offline-agent-mcp-matrix-v2';
+export const A01_AGGREGATE_COHORT_OFFLINE_V2_EPOCH_ID =
+  'run95-a01-aggregate-cohort-offline-matrix-v2-20261019';
+export const A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE =
+  'run95-a01-aggregate-cohort-offline-matrix-v2';
 export const A01_AGGREGATE_COHORT_TOOL = 'bangumi.aggregate_subject_cohort';
+export const A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS = Object.freeze([
+  A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+  A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+]);
 
 export const A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS = Object.freeze({
   cohort: {
@@ -19,46 +29,109 @@ export const A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS = Object.freeze({
   maxSubjects: 1,
 });
 
-const SYNTHETIC_SUBJECT = Object.freeze({
-  id: 990184,
-  type: 2,
-  name: 'Synthetic Aggregate Matrix Subject',
-  name_cn: '合成聚合矩阵条目',
-  score: 7,
-  rank: 990184,
-  date: '2024-04-01',
-  platform: 'TV',
-  summary: 'Synthetic local fixture; not a Bangumi record.',
-  nsfw: false,
-  locked: false,
-  images: { common: '', large: '', medium: '', small: '' },
-  tags: [],
-  meta_tags: [],
-  rating: {
-    score: 7,
-    rank: 990184,
-    total: 10,
-    count: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 5, 7: 0, 8: 5, 9: 0, 10: 0 },
+export const A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS = Object.freeze({
+  cohort: {
+    label: 'Synthetic aggregate matrix v2 sample',
+    query: {
+      keyword: 'run95 fresh synthetic aggregation matrix v2 2026-10-19',
+      media: 'anime',
+      resultMode: 'all',
+      limit: 1,
+    },
   },
-  collection: { wish: 3, collect: 50, doing: 2, on_hold: 1, dropped: 0 },
-  eps: 12,
-  total_episodes: 12,
+  maxSubjects: 1,
 });
 
+const PROFILE_SPECS = new Map([
+  [
+    A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+    {
+      epochId: A01_AGGREGATE_COHORT_OFFLINE_EPOCH_ID,
+      networkMode: A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE,
+      arguments: A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
+      subject: {
+        id: 990184,
+        name: 'Synthetic Aggregate Matrix Subject',
+        nameCn: '合成聚合矩阵条目',
+        score: 7,
+        rank: 990184,
+        date: '2024-04-01',
+        platform: 'TV',
+        summary: 'Synthetic local fixture; not a Bangumi record.',
+        episodeCount: 12,
+        totalEpisodes: 12,
+        collection: { wish: 3, collect: 50, doing: 2, on_hold: 1, dropped: 0 },
+        rating: {
+          score: 7,
+          rank: 990184,
+          total: 10,
+          count: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 5, 7: 0, 8: 5, 9: 0, 10: 0 },
+        },
+      },
+      expectedMetrics: [
+        { key: 'score', value: 7 },
+        { key: 'heat', value: 56 },
+        { key: 'episodesReported', value: 12 },
+        { key: 'ratingStandardDeviation', value: 1 },
+      ],
+    },
+  ],
+  [
+    A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+    {
+      epochId: A01_AGGREGATE_COHORT_OFFLINE_V2_EPOCH_ID,
+      networkMode: A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+      arguments: A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS,
+      subject: {
+        id: 991219,
+        name: 'Synthetic Aggregate Matrix V2 Subject',
+        nameCn: '合成聚合矩阵二版条目',
+        score: 6.5,
+        rank: 991219,
+        date: '2025-01-01',
+        platform: 'TV',
+        summary: 'Fresh synthetic v2 fixture; not a Bangumi record.',
+        episodeCount: 10,
+        totalEpisodes: 12,
+        collection: { wish: 4, collect: 61, doing: 3, on_hold: 2, dropped: 1 },
+        rating: {
+          score: 6.5,
+          rank: 991219,
+          total: 10,
+          count: { 1: 0, 2: 0, 3: 0, 4: 5, 5: 0, 6: 0, 7: 0, 8: 5, 9: 0, 10: 0 },
+        },
+      },
+      expectedMetrics: [
+        { key: 'score', value: 6.5 },
+        { key: 'heat', value: 71 },
+        { key: 'episodesReported', value: 10 },
+        { key: 'ratingStandardDeviation', value: 2 },
+      ],
+    },
+  ],
+]);
+
+export function getA01AggregateCohortOfflineProfileSpec(profileOrId) {
+  const id = typeof profileOrId === 'string' ? profileOrId : profileOrId?.id;
+  const spec = PROFILE_SPECS.get(id);
+  return spec ? { id, ...spec } : null;
+}
+
 export function assertA01AggregateCohortOfflineProfile(profile) {
+  const spec = getA01AggregateCohortOfflineProfileSpec(profile);
   const call = profile?.calls?.[0];
   if (
-    profile?.id !== A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID ||
-    profile?.epochId !== A01_AGGREGATE_COHORT_OFFLINE_EPOCH_ID ||
+    !spec ||
+    profile?.epochId !== spec.epochId ||
     profile?.frontierId !== 'A01' ||
-    profile?.networkMode !== A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE ||
+    profile?.networkMode !== spec.networkMode ||
     profile?.toolName !== A01_AGGREGATE_COHORT_TOOL ||
     profile?.acceptanceScope !== 'agent-mcp-matrix-only' ||
     profile?.calls?.length !== 1 ||
     call?.toolName !== A01_AGGREGATE_COHORT_TOOL ||
-    JSON.stringify(call?.arguments) !== JSON.stringify(A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS)
+    JSON.stringify(call?.arguments) !== JSON.stringify(spec.arguments)
   ) {
-    throw new Error('A01 aggregate offline mode accepts only its exact matrix-only profile.');
+    throw new Error('A01 aggregate offline mode accepts only a registered exact matrix-only profile.');
   }
   return true;
 }
@@ -87,28 +160,54 @@ function jsonResponse(value) {
   });
 }
 
-function syntheticSearchSubject() {
+function toBangumiSubject(subject) {
   return {
-    id: SYNTHETIC_SUBJECT.id,
+    id: subject.id,
     type: 2,
-    name: SYNTHETIC_SUBJECT.name,
-    name_cn: SYNTHETIC_SUBJECT.name_cn,
-    date: SYNTHETIC_SUBJECT.date,
-    platform: SYNTHETIC_SUBJECT.platform,
-    summary: SYNTHETIC_SUBJECT.summary,
+    name: subject.name,
+    name_cn: subject.nameCn,
+    score: subject.score,
+    rank: subject.rank,
+    date: subject.date,
+    platform: subject.platform,
+    summary: subject.summary,
     nsfw: false,
     locked: false,
     images: { common: '', large: '', medium: '', small: '' },
     tags: [],
     meta_tags: [],
-    eps: SYNTHETIC_SUBJECT.eps,
-    total_episodes: SYNTHETIC_SUBJECT.total_episodes,
+    rating: subject.rating,
+    collection: subject.collection,
+    eps: subject.episodeCount,
+    total_episodes: subject.totalEpisodes,
   };
 }
 
-export function createA01AggregateCohortOfflineFetch() {
+function syntheticSearchSubject(subject) {
+  return {
+    id: subject.id,
+    type: 2,
+    name: subject.name,
+    name_cn: subject.nameCn,
+    date: subject.date,
+    platform: subject.platform,
+    summary: subject.summary,
+    nsfw: false,
+    locked: false,
+    images: { common: '', large: '', medium: '', small: '' },
+    tags: [],
+    meta_tags: [],
+    eps: subject.episodeCount,
+    total_episodes: subject.totalEpisodes,
+  };
+}
+
+export function createA01AggregateCohortOfflineFetch(profile = A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID) {
+  const spec = getA01AggregateCohortOfflineProfileSpec(profile);
+  if (!spec) throw new Error('Unknown A01 aggregate offline fixture profile.');
+  const syntheticSubject = toBangumiSubject(spec.subject);
   const counters = {
-    profile: A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+    profile: spec.id,
     requestCount: 0,
     searchRequestCount: 0,
     detailRequestCount: 0,
@@ -149,28 +248,28 @@ export function createA01AggregateCohortOfflineFetch() {
         url.search === '?limit=20&offset=0' &&
         JSON.stringify(Object.keys(body ?? {}).sort()) ===
           JSON.stringify(['filter', 'keyword', 'sort']) &&
-        body?.keyword === A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS.cohort.query.keyword &&
+        body?.keyword === spec.arguments.cohort.query.keyword &&
         body?.sort === 'match' &&
         JSON.stringify(Object.keys(body?.filter ?? {}).sort()) === JSON.stringify(['type']) &&
         JSON.stringify(body?.filter?.type) === JSON.stringify([2]);
       if (valid) {
         searchObserved = true;
         counters.searchRequestCount += 1;
-        return jsonResponse({ data: [syntheticSearchSubject()], total: 1, limit: 20, offset: 0 });
+        return jsonResponse({ data: [syntheticSearchSubject(spec.subject)], total: 1, limit: 20, offset: 0 });
       }
     }
 
     if (
       method === 'GET' &&
       url.origin === 'https://api.bgm.tv' &&
-      url.pathname === `/v0/subjects/${SYNTHETIC_SUBJECT.id}` &&
+      url.pathname === `/v0/subjects/${spec.subject.id}` &&
       url.search === '' &&
       searchObserved &&
       !detailObserved
     ) {
       detailObserved = true;
       counters.detailRequestCount += 1;
-      return jsonResponse(SYNTHETIC_SUBJECT);
+      return jsonResponse(syntheticSubject);
     }
 
     counters.unexpectedRequestCount += 1;

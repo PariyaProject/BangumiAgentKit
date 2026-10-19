@@ -2961,9 +2961,10 @@
         "tests/harness/codex-one-tool-mcp-server-a01-aggregate-matrix.test.mjs",
         "tests/harness/write-a01-aggregate-cohort-offline-agent-mcp-report.test.mjs",
         "tests/harness/agent-mcp-profile-claims.test.mjs",
-        "tests/harness/agent-harness-cli.test.mjs"
+        "tests/harness/agent-harness-cli.test.mjs",
+        "docs/research/run95-a01-aggregate-cohort-offline-matrix-v2-contract-2026-10-19.md"
       ],
-      "next_action": "Keep A01 UNASSESSED: the exact public reports support only their corresponding public API rows, not the cohort-analysis scenario. The aggregate_subject_cohort and three other cohort tools’ 2026-10-16 public-matrix rows are separate from the scenario. The C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks. The new a01-aggregate-cohort-offline-agent-mcp-matrix-v1 profile is distinct synthetic offline Agent/MCP evidence for bangumi.aggregate_subject_cohort only; even a valid signed report can credit that one matrix cell, not the A01 scenario, public API, comparison, significance, recommendation, or historical claims. A01 remains UNASSESSED. Profile claim state and terminal eligibility belong to the active Harness Run/Epoch; consult live Harness for exact Candidate/Base/CI/review eligibility and never retry a consumed claim. Ambiguous-latch recovery re-reads the current PR control state after terminal-label creation and fails closed on changed profile state. Continue only with a genuinely unspent profile after the exact Harness Candidate, Base, CI, review, and report gates. Idempotent A01 profile reconciliation now verifies exact terminal-label metadata before returning success; missing or mismatched metadata fails closed. This protects evidence integrity and adds no scenario or matrix credit.",
+      "next_action": "Keep A01 UNASSESSED: the exact public reports support only their corresponding public API rows, not the cohort-analysis scenario. The aggregate_subject_cohort and three other cohort tools’ 2026-10-16 public-matrix rows are separate from the scenario. The C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks. Distinct v1 and v2 synthetic offline matrix-profile contracts are scoped to bangumi.aggregate_subject_cohort; the v2 contract uses fresh synthetic input and can earn at most the aggregate_subject_cohort Agent/MCP matrix row if an exact signed report is acknowledged by the active Harness. Inspect profile eligibility in the active Harness Run/Epoch; never retry a consumed claim. No scenario, public API, significance, comparison, history, account, QQ/TIM, or stability credit is inferred. Keep OAuth/account/community/QQ/TIM passive while safe independent work remains.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -3154,6 +3155,23 @@
             }
           },
           "acceptance_boundary": "These four current-catalog anonymous direct ToolRegistry observations support only their matching public API matrix rows. They do not answer the A01 cohort-analysis question, change A01 from UNASSESSED, add Agent/MCP or one-shot credit, or establish population completeness, significance, trends, causality, or stability. The report retains fixed public query inputs and sanitized summaries only; raw result rows, response-derived names/identifiers, request bodies, and image bytes are not persisted."
+        },
+        "aggregate_cohort_offline_matrix_v2_contract_2026_10_19": {
+          "epoch_id": "run95-a01-aggregate-cohort-offline-matrix-v2-20261019",
+          "profile_id": "a01-aggregate-cohort-offline-agent-mcp-matrix-v2",
+          "tool": "bangumi.aggregate_subject_cohort",
+          "acceptance_scope": "agent-mcp-matrix-only",
+          "argument_profile": "fixed-a01-synthetic-aggregate-cohort-v2-20261019-one-subject-v1",
+          "synthetic_subject_id": 991219,
+          "expected_metrics": {
+            "score": 6.5,
+            "heat": 71,
+            "episodesReported": 10,
+            "ratingStandardDeviation": 2
+          },
+          "source": "Exact local synthetic search/detail fixture; no external network request.",
+          "retry_allowed": false,
+          "acceptance_boundary": "Only one exact Harness-acknowledged v2 report may credit one Agent/MCP matrix row. A01 scenario remains UNASSESSED; v1 is terminal INCONCLUSIVE/no-report/no-retry."
         }
       }
     },

@@ -12623,6 +12623,9 @@ class A01RenderCohortAggregationMatrixProfileTests(unittest.TestCase):
 
 class A01AggregateCohortOfflineMatrixProfileTests(unittest.TestCase):
     def setUp(self):
+        self.assertTrue(GENERATOR._select_codex_a01_aggregate_matrix_profile(
+            'a01-aggregate-cohort-offline-agent-mcp-matrix-v1',
+        ))
         self.tool_name = GENERATOR.CODEX_A01_AGGREGATE_MATRIX_TOOL_NAME
         self.profile = GENERATOR.CODEX_A01_AGGREGATE_MATRIX_PROFILE
         self.current_tool = {
@@ -12637,6 +12640,11 @@ class A01AggregateCohortOfflineMatrixProfileTests(unittest.TestCase):
             'profileId': GENERATOR.CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID,
             'acceptanceScope': 'agent-mcp-matrix-only',
         }
+
+    def tearDown(self):
+        GENERATOR._select_codex_a01_aggregate_matrix_profile(
+            'a01-aggregate-cohort-offline-agent-mcp-matrix-v1',
+        )
 
     def test_frontier_remains_unassessed_and_requires_contract_reference(self):
         self.assertEqual(self.profile['toolName'], 'bangumi.aggregate_subject_cohort')
@@ -12677,7 +12685,9 @@ class A01AggregateCohortOfflineMatrixProfileTests(unittest.TestCase):
         }
         expected_path = GENERATOR.CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH
 
-        def collect_sources(report, report_relative_path=expected_path, current_catalog=catalog):
+        def collect_sources(report, report_relative_path=None, current_catalog=catalog):
+            if report_relative_path is None:
+                report_relative_path = GENERATOR.CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH
             with tempfile.TemporaryDirectory(prefix='a01-aggregate-matrix-report-routing-') as temp:
                 root = Path(temp)
                 live_probe_dir = root / 'docs/live-probes'
@@ -12723,6 +12733,64 @@ class A01AggregateCohortOfflineMatrixProfileTests(unittest.TestCase):
         self.assertEqual(calls, [])
         self.assertTrue(frontier_is_unassessed)
 
+    def test_v2_uses_its_distinct_profile_and_report_path(self):
+        profile_id = 'a01-aggregate-cohort-offline-agent-mcp-matrix-v2'
+        self.assertTrue(GENERATOR._select_codex_a01_aggregate_matrix_profile(profile_id))
+        profile = GENERATOR.CODEX_A01_AGGREGATE_MATRIX_PROFILE
+        self.assertNotEqual(profile['id'], self.profile['id'])
+        self.assertNotEqual(profile['reportPath'], self.profile['reportPath'])
+        self.assertNotEqual(profile['networkMode'], self.profile['networkMode'])
+
+        catalog = [self.current_tool]
+        catalog_bytes = json.dumps(catalog, ensure_ascii=False).encode('utf-8')
+        report = {
+            **self.report,
+            'profileId': profile_id,
+            'argumentProfile': profile['argumentProfile'],
+            'evidenceKind': profile['evidenceKind'],
+            'frontierId': 'A01',
+            'scenarioId': None,
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+        }
+
+        def collect_sources(report_relative_path):
+            with tempfile.TemporaryDirectory(prefix='a01-aggregate-matrix-v2-routing-') as temp:
+                root = Path(temp)
+                live_probe_dir = root / 'docs/live-probes'
+                live_probe_dir.mkdir(parents=True)
+                report_path = root / report_relative_path
+                report_path.parent.mkdir(parents=True, exist_ok=True)
+                report_path.write_text(json.dumps(report), encoding='utf-8')
+                catalog_path = root / 'docs/tool-catalog.json'
+                catalog_path.parent.mkdir(parents=True, exist_ok=True)
+                catalog_path.write_bytes(catalog_bytes)
+                frontier_path = root / 'docs/product/frontier-ledger.json'
+                frontier_path.parent.mkdir(parents=True, exist_ok=True)
+                frontier_path.write_text(json.dumps({
+                    'records': [{
+                        'id': 'A01',
+                        'status': 'UNASSESSED',
+                        'source_refs': [profile['selectionEvidencePath']],
+                    }],
+                }), encoding='utf-8')
+                with (
+                    patch.object(GENERATOR, 'ROOT', root),
+                    patch.object(GENERATOR, 'LIVE_PROBE_DIR', live_probe_dir),
+                    patch.object(GENERATOR, 'CATALOG', catalog_path),
+                    patch.object(
+                        GENERATOR,
+                        'codex_a01_aggregate_matrix_profile_report_is_valid',
+                        return_value=True,
+                    ),
+                ):
+                    return GENERATOR.model_mcp_e2e_sources(catalog)
+
+        self.assertEqual(
+            collect_sources(profile['reportPath']),
+            {self.tool_name: {profile['reportPath']}},
+        )
+        self.assertEqual(collect_sources(self.profile['reportPath']), {})
+
     def test_candidate_refresh_is_limited_to_report_matrix_and_frontier(self):
         source_candidate = 'a' * 40
         refreshed_candidate = 'd' * 40
@@ -12730,6 +12798,7 @@ class A01AggregateCohortOfflineMatrixProfileTests(unittest.TestCase):
         branch = 'codex/epoch-run95-a01-aggregate-matrix-followup-20261018'
         reviewer_id = 'gpt-6-luna-max-run95-pr231-round1'
         report = {
+            'profileId': GENERATOR.CODEX_A01_AGGREGATE_MATRIX_PROFILE_ID,
             'prNumber': 231,
             'sourceRevision': source_candidate,
             'baseSha': base_sha,

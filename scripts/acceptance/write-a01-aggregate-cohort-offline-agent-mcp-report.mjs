@@ -9,25 +9,37 @@ import {
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
 import {
-  A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
   A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+  A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS,
   A01_AGGREGATE_COHORT_TOOL,
+  assertA01AggregateCohortOfflineProfile,
+  getA01AggregateCohortOfflineProfileSpec,
 } from '../lib/a01-aggregate-cohort-offline-matrix-profile.mjs';
 import { buildG06PrivacySummary } from '../lib/g06-privacy-summary.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const PROFILE = getAgentMcpProfileById(A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID);
+let PROFILE = getAgentMcpProfileById(A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID);
 if (!PROFILE) throw new Error('A01 aggregate matrix profile is not registered.');
-const REPORT_PATH = path.join(ROOT, PROFILE.reportPath);
-const SERVER_ID = 'bgk_a01_aggregate_cohort_offline';
-const EXPECTED_METRICS = [
-  { key: 'score', value: 7 },
-  { key: 'heat', value: 56 },
-  { key: 'episodesReported', value: 12 },
-  { key: 'ratingStandardDeviation', value: 1 },
-];
+let REPORT_PATH = path.join(ROOT, PROFILE.reportPath);
+let SERVER_ID = 'bgk_a01_aggregate_cohort_offline_v1';
+let EXPECTED_METRICS = getA01AggregateCohortOfflineProfileSpec(PROFILE).expectedMetrics;
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const canonical = (value) => canonicalAgentMcpProfileJson(value);
+
+function selectA01AggregateProfile(profileId) {
+  if (!A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS.includes(profileId)) {
+    throw new Error('Unknown A01 aggregate matrix report profile.');
+  }
+  PROFILE = getAgentMcpProfileById(profileId);
+  const spec = getA01AggregateCohortOfflineProfileSpec(PROFILE);
+  if (!PROFILE || !spec) throw new Error('A01 aggregate matrix report profile is not registered.');
+  assertA01AggregateCohortOfflineProfile(PROFILE);
+  REPORT_PATH = path.join(ROOT, PROFILE.reportPath);
+  SERVER_ID = profileId === A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID
+    ? 'bgk_a01_aggregate_cohort_offline'
+    : 'bgk_a01_aggregate_cohort_offline_v2';
+  EXPECTED_METRICS = spec.expectedMetrics;
+}
 
 function exactKeys(value, keys) {
   return Boolean(
@@ -212,6 +224,11 @@ function parseAnswer(answer) {
 }
 
 export function validateA01AggregateCohortProfileRun(input) {
+  try {
+    selectA01AggregateProfile(input?.claim?.profileId);
+  } catch {
+    return { passed: false, reason: 'A01_AGGREGATE_MATRIX_CLAIM_INVALID', answerChecks: null };
+  }
   if (!validProfileClaim(input?.claim)) {
     return { passed: false, reason: 'A01_AGGREGATE_MATRIX_CLAIM_INVALID', answerChecks: null };
   }
@@ -223,7 +240,7 @@ export function validateA01AggregateCohortProfileRun(input) {
   const parsedAnswer = parseAnswer(input.answer);
   const answerChecks = {
     fixedArguments:
-      canonical(call?.arguments) === canonical(A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS),
+      canonical(call?.arguments) === canonical(PROFILE.calls[0].arguments),
     singleToolInvocation:
       events?.codexMcpToolEventCount === 1 &&
       events?.completedMcpCalls?.length === 1 &&
@@ -399,6 +416,11 @@ function reportProjection(input, validation) {
 }
 
 export function buildA01AggregateCohortProfileReport(input, { privateKey }) {
+  try {
+    selectA01AggregateProfile(input?.claim?.profileId);
+  } catch {
+    return { passed: false, reason: 'A01_AGGREGATE_MATRIX_REPORT_INPUT_INVALID' };
+  }
   const validation = validateA01AggregateCohortProfileRun(input);
   if (!privateKey || !validation.passed) {
     return {
@@ -508,6 +530,11 @@ const REPORT_FIELDS = [
 ];
 
 export function validateA01AggregateCohortProfileReport(report, claim, reportBytes = null) {
+  try {
+    selectA01AggregateProfile(claim?.profileId);
+  } catch {
+    return { passed: false, reason: 'A01_AGGREGATE_MATRIX_REPORT_CLAIM_INVALID' };
+  }
   if (!validProfileClaim(claim) || !exactKeys(report, REPORT_FIELDS)) {
     return { passed: false, reason: 'A01_AGGREGATE_MATRIX_REPORT_CLAIM_INVALID' };
   }
@@ -645,6 +672,7 @@ export function validateA01AggregateCohortProfileReport(report, claim, reportByt
 
 export function validateA01AggregateCohortProfileReportFile(claim, root, reportPath) {
   try {
+    selectA01AggregateProfile(claim?.profileId);
     const expectedPath = path.join(path.resolve(root), PROFILE.reportPath);
     if (path.resolve(reportPath) !== expectedPath) {
       return { passed: false, reason: 'A01_AGGREGATE_MATRIX_REPORT_PATH_INVALID' };
@@ -661,8 +689,9 @@ export function validateA01AggregateCohortProfileReportFile(claim, root, reportP
   }
 }
 
-export function writeA01AggregateCohortProfileReport(report, { reportPath = REPORT_PATH } = {}) {
-  const outputPath = path.resolve(reportPath);
+export function writeA01AggregateCohortProfileReport(report, { reportPath = null } = {}) {
+  selectA01AggregateProfile(report?.profileId);
+  const outputPath = path.resolve(reportPath ?? REPORT_PATH);
   if (outputPath !== REPORT_PATH || existsSync(outputPath)) {
     throw new Error('A01 aggregate matrix report path is fixed and create-once.');
   }

@@ -42,7 +42,8 @@ import {
 } from '../../scripts/lib/a01-render-cohort-aggregation-offline-fixture.mjs';
 import {
   A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE,
-  A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+  A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+  A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS,
   assertA01AggregateCohortOfflineProfile,
   createA01AggregateCohortOfflineFetch,
 } from '../../scripts/lib/a01-aggregate-cohort-offline-matrix-profile.mjs';
@@ -314,7 +315,11 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE) {
     assertA01RenderCohortAggregationOfflineProfile(config.profile);
   }
-  if (config.networkMode === A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE) {
+  if (
+    [A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE, A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE].includes(
+      config.networkMode,
+    )
+  ) {
     assertA01AggregateCohortOfflineProfile(config.profile);
   }
   if (
@@ -439,8 +444,10 @@ async function main(argv = process.argv.slice(2)) {
       ? createA01RatingDispersionPublicFetch()
       : null;
   const offlineFixture =
-    config.networkMode === A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE
-      ? createA01AggregateCohortOfflineFetch()
+    [A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE, A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE].includes(
+      config.networkMode,
+    )
+      ? createA01AggregateCohortOfflineFetch(config.profile)
       : config.networkMode === A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE
         ? createA01RenderCohortAggregationOfflineFetch()
         : config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
@@ -906,7 +913,7 @@ async function main(argv = process.argv.slice(2)) {
             structuredContent: safeProjection,
           };
         }
-        if (config.profile?.id === A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID) {
+        if (A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS.includes(config.profile?.id)) {
           const safeProjection = summary.results[sequenceIndex]?.resultSummary;
           if (!safeProjection) {
             summary = {

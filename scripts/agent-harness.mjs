@@ -179,6 +179,7 @@ import { validateM07SanitizedReportFile } from './acceptance/write-m07-manage-in
 import { validateAuthStartSanitizedReportFile } from './acceptance/write-auth-start-offline-agent-mcp-report.mjs';
 import { validateA01RenderCohortAggregationSanitizedReportFile } from './acceptance/write-a01-render-cohort-aggregation-agent-mcp-report.mjs';
 import { validateA01AggregateCohortProfileReportFile } from './acceptance/write-a01-aggregate-cohort-offline-agent-mcp-report.mjs';
+import { A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS } from './lib/a01-aggregate-cohort-offline-matrix-profile.mjs';
 import { validateA01RatingDispersionSanitizedReportFile } from './acceptance/write-a01-rating-dispersion-agent-mcp-report.mjs';
 import {
   G06_CAST_OFFLINE_EPOCH_ID,
@@ -3524,7 +3525,7 @@ function isMatchingA01AggregateProfileClaim(profile, claim, prNumber) {
   }
   try {
     return (
-      profile.id === 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1' &&
+      A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS.includes(profile.id) &&
       claim.schemaVersion === 1 &&
       ['CLAIMED', 'INCONCLUSIVE'].includes(claim.state) &&
       claimIdMatch?.[1] === candidateSha?.slice(0, 12) &&
@@ -3892,7 +3893,7 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
     Number(runNumber) !== 95 ||
     !Number.isSafeInteger(Number(prNumber)) ||
     Number(prNumber) < 1 ||
-    (profile.id !== 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1' && !p02V2Profile)
+    (!A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS.includes(profile.id) && !p02V2Profile)
   ) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_RECONCILE_INVALID',
@@ -4561,6 +4562,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'a01-render-cohort-aggregation-agent-mcp-offline-v1':
       return validateA01RenderCohortAggregationSanitizedReportFile(claim, root, reportPath);
     case 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1':
+    case 'a01-aggregate-cohort-offline-agent-mcp-matrix-v2':
       return validateA01AggregateCohortProfileReportFile(claim, root, reportPath);
     case 'a01-rating-dispersion-1998-spring-v1':
       return validateA01RatingDispersionSanitizedReportFile(claim, root, reportPath);
