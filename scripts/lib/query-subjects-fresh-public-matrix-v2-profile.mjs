@@ -113,7 +113,11 @@ function bodyMatchesProfile(bodyValue) {
       !Array.isArray(body) &&
       body.keyword === QUERY_SUBJECTS_FRESH_PUBLIC_V2_EXPECTED_ARGUMENTS.keyword &&
       body.sort === 'match' &&
-      body.filter?.type?.length === 1 &&
+      body.filter &&
+      typeof body.filter === 'object' &&
+      !Array.isArray(body.filter) &&
+      Array.isArray(body.filter.type) &&
+      body.filter.type.length === 1 &&
       body.filter.type[0] === 2 &&
       body.filter.nsfw === false &&
       Object.keys(body).every((key) => ['keyword', 'sort', 'filter'].includes(key)) &&

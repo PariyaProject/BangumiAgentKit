@@ -42,6 +42,15 @@ import {
 } from '../../scripts/lib/query-subjects-fresh-public-matrix-v2-profile.mjs';
 
 const PROFILE = getAgentMcpProfileById(QUERY_SUBJECTS_FRESH_PUBLIC_V2_PROFILE_ID);
+const FIXED_QUERY_SUBJECTS_INPUT = Object.freeze({
+  keyword: '天空之城',
+  media: 'anime',
+  resultMode: 'top',
+  limit: 1,
+  sort: 'relevance',
+  explain: 'compact',
+  nsfw: false,
+});
 const BASE_ARGS = [
   '--profile-id',
   QUERY_SUBJECTS_FRESH_PUBLIC_V2_PROFILE_ID,
@@ -68,11 +77,12 @@ const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
 test('profile uses a unique fixed query_subjects input and one anonymous read-only tool', () => {
   assert.equal(assertQuerySubjectsFreshPublicV2Profile(PROFILE), true);
+  assert.deepEqual(QUERY_SUBJECTS_FRESH_PUBLIC_V2_EXPECTED_ARGUMENTS, FIXED_QUERY_SUBJECTS_INPUT);
   assert.ok(PROFILE.claimLabelName.length <= 50);
   assert.equal(PROFILE.calls.length, 1);
   assert.deepEqual(PROFILE.calls[0], {
     toolName: 'bangumi.query_subjects',
-    arguments: QUERY_SUBJECTS_FRESH_PUBLIC_V2_EXPECTED_ARGUMENTS,
+    arguments: FIXED_QUERY_SUBJECTS_INPUT,
   });
   const priorQueryInputs = listAgentMcpProfiles()
     .filter((item) => item.id !== PROFILE.id)
@@ -178,6 +188,16 @@ test('public fetch denies altered routes, arguments, credentials and over-budget
     {
       url: REQUEST_URL,
       init: { method: 'POST', body: JSON.stringify({ ...REQUEST_BODY, keyword: '葬送的芙莉莲' }) },
+    },
+    {
+      url: REQUEST_URL,
+      init: {
+        method: 'POST',
+        body: JSON.stringify({
+          ...REQUEST_BODY,
+          filter: { ...REQUEST_BODY.filter, type: { length: 1, 0: 2 } },
+        }),
+      },
     },
     {
       url: REQUEST_URL,

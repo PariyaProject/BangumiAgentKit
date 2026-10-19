@@ -124,6 +124,14 @@ test('only explicit disabled web-search errors within the size bound are expecte
     {
       type: 'item.completed',
       item: {
+        id: 'network-disabled',
+        type: 'error',
+        message: 'The web search tool was disabled after a DNS request timed out.',
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
         id: 'too-long',
         type: 'error',
         message: `web_search is disabled ${'x'.repeat(520)}`,
@@ -140,8 +148,8 @@ test('only explicit disabled web-search errors within the size bound are expecte
     },
   ]);
   assert.deepEqual(summary, {
-    errorItemCount: 11,
+    errorItemCount: 12,
     blockedWebSearchErrorItemCount: 4,
-    unexpectedCodexErrorItemCount: 7,
+    unexpectedCodexErrorItemCount: 8,
   });
 });
