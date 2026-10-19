@@ -43,7 +43,8 @@ const NETWORK_FAILURE_MARKERS = [
   /\b(?:timeout|timed?[\s-]+out)\b/iu,
   /\bhttp\s+[45]\d{2}\b/iu,
   /\b(?:host(?:name)?|domain|name)\s+resolution\s+(?:failure|failed|error)\b/iu,
-  /\b(?:failed\s+to|unable\s+to|cannot|can't|could not)\s+resolve\s+(?:the\s+)?(?:host|hostname|domain|name)\b/iu,
+  /\b(?:failed\s+to|unable\s+to|cannot|can['’]t|could\s+not|couldn['’]t)\s+resolve\s+(?:the\s+)?(?:host|hostname|domain|name)\b/iu,
+  /\b(?:host(?:name)?|domain|name)\s+(?:could\s+not|couldn['’]t|cannot|can['’]t|was\s+not|is\s+not)\s+(?:be\s+)?resolved\b/iu,
   /\b(?:network|connection|socket)\s+(?:request\s+)?(?:failure|failed|error|refused|reset|closed|timeout|timed?[\s-]+out)\b/iu,
   /\b(?:request\s+)?(?:failed|unable)\s+to\s+connect\b/iu,
 ];

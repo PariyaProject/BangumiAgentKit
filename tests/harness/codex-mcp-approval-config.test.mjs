@@ -148,6 +148,30 @@ test('only explicit disabled web-search errors within the size bound are expecte
     {
       type: 'item.completed',
       item: {
+        id: 'host-resolution-disabled-passive',
+        type: 'error',
+        message: 'The web search tool is disabled because the hostname could not be resolved.',
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'host-resolution-disabled-contracted',
+        type: 'error',
+        message: 'The web search tool is disabled because we couldn’t resolve the host.',
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
+        id: 'host-resolution-disabled-ascii-contracted',
+        type: 'error',
+        message: "The web search tool is disabled because we couldn't resolve the hostname.",
+      },
+    },
+    {
+      type: 'item.completed',
+      item: {
         id: 'too-long',
         type: 'error',
         message: `web_search is disabled ${'x'.repeat(520)}`,
@@ -164,8 +188,8 @@ test('only explicit disabled web-search errors within the size bound are expecte
     },
   ]);
   assert.deepEqual(summary, {
-    errorItemCount: 14,
+    errorItemCount: 17,
     blockedWebSearchErrorItemCount: 4,
-    unexpectedCodexErrorItemCount: 10,
+    unexpectedCodexErrorItemCount: 13,
   });
 });
