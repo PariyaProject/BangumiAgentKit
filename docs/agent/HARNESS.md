@@ -360,10 +360,34 @@ isolation regressions in `tests/harness/g01-public-query-render-evidence.test.mj
 `tests/integration/tool-e2e-acceptance.test.ts` and `.github/workflows/ci.yml`.
 The workflow gives only the acceptance-validation step a token with read-only
 contents/checks/issues/pull-requests permissions so it can verify durable Harness
-state in GitHub. Both Harness and the acceptance generator enforce that exact G06
-v2-only file set; tool runtime, MCP sources, profile registry, or unrelated paths
-remain outside the refresh. The report credits one Agent/MCP matrix cell only and
-leaves G06 `PARTIAL`.
+state in GitHub. The only cross-frontier files permitted by this refresh are the
+sanitized Run #95 G14 terminal-disposition report and its focused regression
+test; they record a no-credit terminal state consumed by the acceptance ledger.
+Both Harness and the acceptance generator enforce this exact G06 v2 refresh set,
+including those two paths. Tool runtime, MCP sources, profile registry, or any
+other unrelated path remains outside the refresh. The report credits one
+Agent/MCP matrix cell only and leaves G06 `PARTIAL`.
+
+The Run #95 R04 v2 renderer matrix report uses the same source-Candidate and
+unchanged-MCP-bundle binding. Its evidence refresh is limited to that report at
+`docs/live-probes/r04-render-series-watch-order-offline-agent-mcp-v2-run95.json`,
+the generated acceptance matrix and frontier ledger, and these acceptance
+verifier files: `docs/agent/HARNESS.md`,
+`docs/research/run95-g14-query-subjects-v2-terminal-disposition-2026-10-19.md`,
+`scripts/check-tool-acceptance-table.py`,
+`scripts/generate-tool-acceptance-tasks.py`,
+`scripts/test_acceptance_evidence.py`, `scripts/agent-harness.mjs`,
+`tests/harness/agent-harness-cli.test.mjs`,
+`tests/harness/g01-public-query-render-evidence.test.mjs`,
+`tests/harness/g09-public-watch-order-evidence.test.mjs`,
+`tests/harness/g09-public-watch-order-render-evidence.test.mjs`,
+`tests/harness/public-probe-coverage.test.mjs`,
+`tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs`, and
+`tests/integration/tool-e2e-acceptance.test.ts`. The G14 report and test are the
+only cross-frontier paths; this policy file is explicitly included so the exact
+scope stays documented. Harness and the acceptance generator enforce the same
+closed set. Renderer runtime, MCP sources, profile registry, or any other
+unrelated path remains outside the refresh.
 
 The runner re-reads the durable claim immediately before invoking Codex and
 again before writing a report. Runner completion and recovery compete for one
