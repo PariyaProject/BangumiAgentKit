@@ -24,6 +24,7 @@ import {
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
 import { deriveP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
+import { isG16LunaMaxReviewerId } from '../lib/g16-reviewer-id.mjs';
 import {
   P02_PERSON_PROFILE_OFFLINE_PROFILE_ID,
   assertP02PersonProfileOfflineProfile,
@@ -46,6 +47,12 @@ const HARNESS_SCRIPT = path.join(ROOT, 'scripts/agent-harness.mjs');
 const MAX_STDOUT_BYTES = 8 * 1024 * 1024;
 const CODEX_TIMEOUT_MS = 10 * 60 * 1000;
 const BUILD_TIMEOUT_MS = 5 * 60 * 1000;
+const P02_STALE_REPORT_DIAGNOSTICS = Object.freeze({
+  schemaVersion: 1,
+  reasonCode: 'P02_REPORT_CANDIDATE_STALE',
+  checks: Object.freeze({ activeGateCurrent: false }),
+  counters: Object.freeze({}),
+});
 
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const tomlString = (value) => JSON.stringify(value);
@@ -205,10 +212,7 @@ export function assertCandidateReviewGate(
   const reviewerId = latestReview?.reviewer_id;
   const ciEvidence = deriveP06CiRunEvidence(epoch?.ci?.url, pr?.statusCheckRollup);
   const reviewIdMatches =
-    Number.isSafeInteger(epochView?.number) &&
-    new RegExp(`^gpt-6-luna-max-run95-pr${epochView.number}-round[1-9]\\d*$`, 'u').test(
-      reviewerId ?? '',
-    );
+    Number.isSafeInteger(epochView?.number) && isG16LunaMaxReviewerId(reviewerId, epochView.number);
   const valid = [
     status?.git?.status === '',
     status?.git?.head === sourceRevision,
@@ -256,6 +260,95 @@ export function assertCandidateReviewGate(
     reviewerId,
     ...ciEvidence,
   };
+}
+
+export function isP02ProfileClaimCurrent(
+  claim,
+  {
+    profileStatus,
+    epochStatus,
+    pr,
+    currentBaseSha,
+    localBranch,
+    localHead,
+    localWorktreeStatus,
+    bundleCurrent,
+    ciEvidence,
+  },
+) {
+  const epoch = epochStatus?.epoch?.state;
+  const run = epochStatus?.run?.state;
+  const latestReview = epoch?.review_history?.at(-1);
+  return [
+    profileStatus?.state === 'CLAIMED',
+    profileStatus?.disposition?.claimId === claim?.claimId,
+    epochStatus?.git?.branch === epoch?.branch,
+    epochStatus?.epoch?.number === claim?.prNumber,
+    epoch?.pr_number === claim?.prNumber,
+    epoch?.epoch_id === claim?.epochId,
+    epoch?.state === 'REVIEW_PASSED',
+    epoch?.advances_frontier_ids?.includes('P02') === true,
+    epoch?.scope_closure?.related_work_remaining === false,
+    epoch?.adversarial_preflight?.completed === true,
+    epoch?.base_branch === 'master',
+    epoch?.base_sha === claim?.baseSha,
+    epoch?.reviewed_base_sha === claim?.baseSha,
+    currentBaseSha === claim?.baseSha,
+    epoch?.candidate_sha === claim?.sourceCandidateSha,
+    epoch?.review_pass_sha === claim?.sourceCandidateSha,
+    epoch?.ci?.sha === claim?.ciSha,
+    epoch?.ci?.status === 'SUCCESS',
+    latestReview?.candidate_sha === claim?.sourceCandidateSha,
+    latestReview?.reviewed_base_sha === claim?.baseSha,
+    latestReview?.reviewer_id === claim?.reviewerId,
+    latestReview?.verdict === 'PASS',
+    run?.state === 'EPOCH_ACTIVE',
+    run?.profile === 'AUTONOMOUS_EVOLUTION',
+    run?.active_epoch_pr === claim?.prNumber,
+    run?.pending_epoch == null,
+    pr?.state === 'OPEN',
+    pr?.isDraft === false,
+    pr?.baseRefName === 'master',
+    pr?.headRefName === epoch?.branch,
+    pr?.headRefOid === claim?.sourceCandidateSha,
+    currentBaseSha === claim?.baseSha,
+    localBranch === epoch?.branch,
+    localHead === claim?.sourceCandidateSha,
+    localWorktreeStatus === `?? ${getAgentMcpProfileById(claim?.profileId)?.reportPath}`,
+    bundleCurrent === true,
+    ciEvidence?.ciRunId === claim?.ciRunId,
+    canonicalAgentMcpProfileJson(ciEvidence?.ciChecks ?? []) ===
+      canonicalAgentMcpProfileJson(claim?.ciChecks ?? []),
+  ].every(Boolean);
+}
+
+function currentP02ProfileClaimState(prNumber, claim, profile) {
+  try {
+    const profileStatus = readProfileStatus(prNumber, profile.id);
+    const epochStatus = readEpochStatus(prNumber);
+    const pr = readPullRequest(prNumber);
+    const currentBaseSha = fetchCurrentMaster();
+    const ciEvidence = deriveP06CiRunEvidence(
+      epochStatus.epoch.state.ci?.url,
+      pr.statusCheckRollup,
+    );
+    const bundleCurrent =
+      computeMcpBundleSha256(ROOT) === claim.bundleSha256 &&
+      readG26McpBundleAttestation(ROOT) === claim.bundleSha256;
+    return isP02ProfileClaimCurrent(claim, {
+      profileStatus,
+      epochStatus,
+      pr,
+      currentBaseSha,
+      localBranch: gitText('branch', '--show-current'),
+      localHead: gitText('rev-parse', 'HEAD'),
+      localWorktreeStatus: gitText('status', '--porcelain', '--untracked-files=all'),
+      bundleCurrent,
+      ciEvidence,
+    });
+  } catch {
+    return null;
+  }
 }
 
 function assertCurrentCandidateBundle(sourceRevision, bundleSha256) {
@@ -454,20 +547,13 @@ export function validateServerSummary(
   );
 }
 
-function readProfileDisposition(prNumber, profileId = DEFAULT_PROFILE_ID) {
-  const status = readProfileStatus(prNumber, profileId);
-  if (status.state !== 'CLAIMED' || !status.disposition) {
-    throw new Error('Harness P02 profile claim is not active.');
-  }
-  return status.disposition;
-}
-
 function persistProfileResult(
   prNumber,
   claimId,
   state,
   reportSha256 = null,
   profileId = DEFAULT_PROFILE_ID,
+  diagnostics = null,
 ) {
   const { profile } = profileContext(profileId);
   const args = [
@@ -484,6 +570,7 @@ function persistProfileResult(
     state,
   ];
   if (reportSha256) args.push('--report-sha256', reportSha256);
+  if (diagnostics) args.push('--diagnostics-json', JSON.stringify(diagnostics));
   return runHarness(args);
 }
 
@@ -497,10 +584,23 @@ function recordInconclusive(
   reportSha256 = null,
   reasonCode = 'P02_RUN_INCONCLUSIVE',
   profileId = DEFAULT_PROFILE_ID,
+  diagnostics = null,
 ) {
   const { profile } = profileContext(profileId);
-  const result = persistProfileResult(prNumber, claimId, 'INCONCLUSIVE', reportSha256, profile.id);
-  if (result.exitCode !== 0) {
+  const result = persistProfileResult(
+    prNumber,
+    claimId,
+    'INCONCLUSIVE',
+    reportSha256,
+    profile.id,
+    diagnostics,
+  );
+  if (
+    result.exitCode !== 0 ||
+    !['AGENT_MCP_PROFILE_RESULT_RECORDED', 'AGENT_MCP_PROFILE_RESULT_ALREADY_RECORDED'].includes(
+      result.output?.state,
+    )
+  ) {
     printSafe({
       state: 'INCONCLUSIVE_ACK_PENDING',
       profileId: profile.id,
@@ -517,6 +617,146 @@ function recordInconclusive(
     reasonCode,
   });
   return true;
+}
+
+function recordStaleReport(prNumber, claim, reportSha256, profileId) {
+  return recordInconclusive(
+    prNumber,
+    claim.claimId,
+    reportSha256,
+    'P02_REPORT_CANDIDATE_STALE',
+    profileId,
+    P02_STALE_REPORT_DIAGNOSTICS,
+  );
+}
+
+function printReportWrittenAckPending(profileId, claimId, reportSha256) {
+  printSafe({
+    state: 'REPORT_WRITTEN_ACK_PENDING',
+    profileId,
+    claimId,
+    reportSha256,
+    retryAllowed: false,
+  });
+  return 1;
+}
+
+export function classifyP02ReportWriteRecovery(status, claimId, reportSha256) {
+  if (status?.state === 'REPORT_WRITTEN' && status.disposition?.reportSha256 === reportSha256) {
+    return 'REPORT_WRITTEN';
+  }
+  if (
+    status?.state === 'INCONCLUSIVE' &&
+    status.disposition?.unacceptedReportSha256 === reportSha256 &&
+    status.disposition?.retryAllowed === false
+  ) {
+    return 'INCONCLUSIVE';
+  }
+  if (status?.state === 'CLAIMED' && status.disposition?.claimId === claimId) {
+    return 'CHECK_CANDIDATE_STALENESS';
+  }
+  return 'ACK_PENDING';
+}
+
+function resolveReportWrittenAckFailure(prNumber, claim, reportSha256, profile) {
+  let status;
+  try {
+    status = readProfileStatus(prNumber, profile.id);
+  } catch {
+    return printReportWrittenAckPending(profile.id, claim.claimId, reportSha256);
+  }
+  const recovery = classifyP02ReportWriteRecovery(status, claim.claimId, reportSha256);
+  if (recovery === 'REPORT_WRITTEN') {
+    printSafe({
+      state: 'REPORT_WRITTEN',
+      profileId: profile.id,
+      claimId: claim.claimId,
+      reportSha256,
+      retryAllowed: false,
+      recovered: true,
+    });
+    return 0;
+  }
+  if (recovery === 'INCONCLUSIVE') {
+    printSafe({
+      state: 'INCONCLUSIVE',
+      profileId: profile.id,
+      claimId: claim.claimId,
+      reportSha256,
+      retryAllowed: false,
+      recovered: true,
+    });
+    return 1;
+  }
+  if (
+    recovery === 'CHECK_CANDIDATE_STALENESS' &&
+    currentP02ProfileClaimState(prNumber, claim, profile) === false
+  ) {
+    recordStaleReport(prNumber, claim, reportSha256, profile.id);
+    return 1;
+  }
+  return printReportWrittenAckPending(profile.id, claim.claimId, reportSha256);
+}
+
+function reconcileAmbiguousClaim(prNumber, profileId = DEFAULT_PROFILE_ID) {
+  const { profile } = profileContext(profileId);
+  const result = runHarness([
+    'epoch:agent-mcp-profile-reconcile-ambiguous',
+    '--run',
+    String(RUN_NUMBER),
+    '--pr',
+    String(prNumber),
+    '--profile-id',
+    profile.id,
+  ]);
+  const status = readProfileStatus(prNumber, profile.id);
+  if (
+    result.exitCode === 0 &&
+    [
+      'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
+      'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED',
+    ].includes(result.output?.state) &&
+    status.state === 'INCONCLUSIVE' &&
+    status.disposition?.retryAllowed === false
+  ) {
+    printSafe({
+      state: 'INCONCLUSIVE',
+      profileId: profile.id,
+      retryAllowed: false,
+      reconciled: true,
+    });
+    return 1;
+  }
+  printSafe({
+    state: 'AMBIGUOUS_LATCH_ACK_PENDING',
+    profileId: profile.id,
+    retryAllowed: false,
+    reasonCode: 'P02_AMBIGUOUS_LATCH_RECONCILIATION_UNCONFIRMED',
+  });
+  return 1;
+}
+
+function terminalizeP02NoReportAttempt(prNumber, claimId, reasonCode, profileId) {
+  const { profile } = profileContext(profileId);
+  const status = readProfileStatus(prNumber, profile.id);
+  if (status.state === 'AMBIGUOUS') {
+    return reconcileAmbiguousClaim(prNumber, profile.id);
+  }
+  if (
+    status.state === 'CLAIMED' &&
+    status.disposition?.claimId &&
+    (!claimId || status.disposition.claimId === claimId)
+  ) {
+    recordInconclusive(prNumber, status.disposition.claimId, null, reasonCode, profile.id);
+    return 1;
+  }
+  printSafe({
+    state: 'INCONCLUSIVE_ACK_PENDING',
+    profileId: profile.id,
+    retryAllowed: false,
+    reasonCode,
+  });
+  return 1;
 }
 
 function finalizePreexistingAttempt(prNumber, status, profileId = DEFAULT_PROFILE_ID) {
@@ -552,6 +792,10 @@ function finalizePreexistingAttempt(prNumber, status, profileId = DEFAULT_PROFIL
     );
     return 1;
   }
+  if (currentP02ProfileClaimState(prNumber, claim, profile) === false) {
+    recordStaleReport(prNumber, claim, reportSha256, profile.id);
+    return 1;
+  }
   const recorded = persistProfileResult(
     prNumber,
     claim.claimId,
@@ -569,14 +813,11 @@ function finalizePreexistingAttempt(prNumber, status, profileId = DEFAULT_PROFIL
     });
     return 0;
   }
-  printSafe({
-    state: 'REPORT_WRITTEN_ACK_PENDING',
-    profileId: profile.id,
-    claimId: claim.claimId,
-    reportSha256,
-    retryAllowed: false,
-  });
-  return 1;
+  if (currentP02ProfileClaimState(prNumber, claim, profile) === false) {
+    recordStaleReport(prNumber, claim, reportSha256, profile.id);
+    return 1;
+  }
+  return printReportWrittenAckPending(profile.id, claim.claimId, reportSha256);
 }
 
 function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
@@ -588,6 +829,9 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
     throw new Error('Run #95 has no active P02 Epoch PR.');
   const profileStatus = readProfileStatus(prNumber, profile.id);
   const reportExists = existsSync(path.join(ROOT, profile.reportPath));
+  if (profileStatus.state === 'AMBIGUOUS') {
+    return reconcileAmbiguousClaim(prNumber, profile.id);
+  }
   if (
     ['REPORT_WRITTEN', 'INCONCLUSIVE'].includes(profileStatus.state) &&
     profileStatus.disposition
@@ -660,9 +904,28 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
     publicKeyBase64,
   ]);
   if (claimResult.exitCode !== 0 || claimResult.output?.state !== 'AGENT_MCP_PROFILE_CLAIMED') {
+    const claimStatus = readProfileStatus(prNumber, profile.id);
+    if (claimStatus.state === 'AMBIGUOUS') {
+      return reconcileAmbiguousClaim(prNumber, profile.id);
+    }
+    if (claimStatus.state === 'CLAIMED' && claimStatus.disposition) {
+      return finalizePreexistingAttempt(prNumber, claimStatus, profile.id);
+    }
     throw new Error('Harness did not confirm the permanent P02 one-shot claim.');
   }
-  const claim = readProfileDisposition(prNumber, profile.id);
+  const claimStatus = readProfileStatus(prNumber, profile.id);
+  if (claimStatus.state === 'AMBIGUOUS') {
+    return reconcileAmbiguousClaim(prNumber, profile.id);
+  }
+  if (claimStatus.state !== 'CLAIMED' || !claimStatus.disposition) {
+    return terminalizeP02NoReportAttempt(
+      prNumber,
+      claimResult.output.claimId,
+      'P02_CLAIM_READBACK_MISMATCH',
+      profile.id,
+    );
+  }
+  const claim = claimStatus.disposition;
   if (
     claim.claimId !== claimResult.output.claimId ||
     claim.sourceCandidateSha !== sourceRevision ||
@@ -673,14 +936,12 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
     claim.registrySha256 !== agentMcpProfileRegistrySha256(profile.id) ||
     claim.runnerReceiptPublicKey !== publicKeyBase64
   ) {
-    recordInconclusive(
+    return terminalizeP02NoReportAttempt(
       prNumber,
       claimResult.output.claimId,
-      null,
       'P02_CLAIM_READBACK_MISMATCH',
       profile.id,
     );
-    return 1;
   }
 
   let temporaryDirectory = null;
@@ -691,8 +952,12 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
       beforeInvoke.disposition?.claimId !== claim.claimId ||
       !assertCurrentCandidateBundle(sourceRevision, bundleSha256)
     ) {
-      recordInconclusive(prNumber, claim.claimId, null, 'P02_PREINVOKE_GATE_MISMATCH', profile.id);
-      return 1;
+      return terminalizeP02NoReportAttempt(
+        prNumber,
+        claim.claimId,
+        'P02_PREINVOKE_GATE_MISMATCH',
+        profile.id,
+      );
     }
 
     temporaryDirectory = mkdtempSync(path.join(path.resolve(os.tmpdir()), 'bgk-p02-run95-'));
@@ -743,14 +1008,12 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
       validateServerSummary(serverSummary, sourceRevision, bundleSha256, profile.id) &&
       assertCurrentCandidateBundle(sourceRevision, bundleSha256);
     if (!passed) {
-      recordInconclusive(
+      return terminalizeP02NoReportAttempt(
         prNumber,
         claim.claimId,
-        null,
         'P02_AGENT_MCP_ASSERTION_FAILED',
         profile.id,
       );
-      return 1;
     }
 
     const postStatus = readEpochStatus(prNumber);
@@ -766,14 +1029,12 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
       postGate.reviewerId !== currentGate.reviewerId ||
       postGate.baseSha !== currentGate.baseSha
     ) {
-      recordInconclusive(
+      return terminalizeP02NoReportAttempt(
         prNumber,
         claim.claimId,
-        null,
         'P02_ACTIVE_GATE_CHANGED_DURING_QUERY',
         profile.id,
       );
-      return 1;
     }
 
     const reportResult = writeP02ProfileReport(
@@ -790,14 +1051,12 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
       { privateKey: keyPair.privateKey },
     );
     if (!reportResult.passed) {
-      recordInconclusive(
+      return terminalizeP02NoReportAttempt(
         prNumber,
         claim.claimId,
-        null,
         reportResult.reason ?? 'P02_REPORT_BUILD_FAILED',
         profile.id,
       );
-      return 1;
     }
 
     const terminal = persistProfileResult(
@@ -808,28 +1067,14 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
       profile.id,
     );
     if (terminal.exitCode !== 0 || terminal.output?.state !== 'AGENT_MCP_PROFILE_RESULT_RECORDED') {
-      printSafe({
-        state: 'REPORT_WRITTEN_ACK_PENDING',
-        profileId: profile.id,
-        claimId: claim.claimId,
-        reportSha256: reportResult.reportSha256,
-        retryAllowed: false,
-      });
-      return 1;
+      return resolveReportWrittenAckFailure(prNumber, claim, reportResult.reportSha256, profile);
     }
     const confirmed = readProfileStatus(prNumber, profile.id);
     if (
       confirmed.state !== 'REPORT_WRITTEN' ||
       confirmed.disposition?.reportSha256 !== reportResult.reportSha256
     ) {
-      printSafe({
-        state: 'REPORT_WRITTEN_ACK_PENDING',
-        profileId: profile.id,
-        claimId: claim.claimId,
-        reportSha256: reportResult.reportSha256,
-        retryAllowed: false,
-      });
-      return 1;
+      return resolveReportWrittenAckFailure(prNumber, claim, reportResult.reportSha256, profile);
     }
     printSafe({
       state: 'REPORT_WRITTEN',
@@ -861,16 +1106,22 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
       });
       return 0;
     }
+    if (currentStatus.state === 'AMBIGUOUS') {
+      return reconcileAmbiguousClaim(prNumber, profile.id);
+    }
     if (currentStatus.state === 'CLAIMED' && currentStatus.disposition?.claimId === claim.claimId) {
       const reportPath = path.join(ROOT, profile.reportPath);
       const reportSha256 = existsSync(reportPath) ? sha256(readFileSync(reportPath)) : null;
-      recordInconclusive(
-        prNumber,
-        claim.claimId,
-        reportSha256,
-        'P02_RUNNER_FAILED_AFTER_CLAIM',
-        profile.id,
-      );
+      if (reportSha256 && currentP02ProfileClaimState(prNumber, claim, profile) === false) {
+        recordStaleReport(prNumber, claim, reportSha256, profile.id);
+      } else if (!reportSha256) {
+        terminalizeP02NoReportAttempt(
+          prNumber,
+          claim.claimId,
+          'P02_RUNNER_FAILED_AFTER_CLAIM',
+          profile.id,
+        );
+      }
     }
     return 1;
   } finally {

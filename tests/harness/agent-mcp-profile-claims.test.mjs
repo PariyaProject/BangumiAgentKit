@@ -16,6 +16,7 @@ import {
   getAgentMcpProfileById,
   listAgentMcpProfiles,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
+import { isG16LunaMaxReviewerId } from '../../scripts/lib/g16-reviewer-id.mjs';
 
 const PROFILE = getAgentMcpProfile(
   'bangumi.get_person_activity',
@@ -25,6 +26,13 @@ const C04_PROFILE = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matr
 const R04_V2_PROFILE = getAgentMcpProfileById(
   'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
 );
+
+test('Luna Max reviewer validation accepts the exact local runtime identity form', () => {
+  assert.equal(isG16LunaMaxReviewerId('/root/p02_v2_review', 237), true);
+  assert.equal(isG16LunaMaxReviewerId('/root/p02-v2-review', 237), false);
+  assert.equal(isG16LunaMaxReviewerId('/tmp/p02_v2_review', 237), false);
+  assert.equal(isG16LunaMaxReviewerId('/root/p02_v2_review', 0), false);
+});
 
 test('C04 matrix profile binds its two exact read-only tools in order', () => {
   assert.ok(C04_PROFILE);

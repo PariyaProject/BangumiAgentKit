@@ -10,6 +10,7 @@ import {
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
 import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
+import { isG16LunaMaxReviewerId } from '../lib/g16-reviewer-id.mjs';
 import {
   assertP02PersonProfileOfflineProfile,
   getP02PersonProfileOfflineSpec,
@@ -379,9 +380,7 @@ export function validateP02ProfileReport(report, claim, reportBytes = null) {
     report.profile === spec.reportProfile &&
     report.model === profile.model &&
     report.reasoningEffort === profile.reasoningEffort &&
-    new RegExp(`^gpt-6-luna-max-run95-pr${report.prNumber}-round[1-9]\\d*$`, 'u').test(
-      report.reviewerId ?? '',
-    ) &&
+    isG16LunaMaxReviewerId(report.reviewerId, report.prNumber) &&
     /^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/u.test(report.codexCliVersion ?? '') &&
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(report.observedAt ?? '') &&
     /^[0-9a-f]{40}$/u.test(report.sourceRevision ?? '') &&

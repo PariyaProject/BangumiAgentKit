@@ -11719,12 +11719,13 @@ def codex_r01_harness_disposition_matches_report(
 
 
 def codex_g16_reviewer_id_is_valid(reviewer_id: object, pr_number: object) -> bool:
-    """Accept the current Run 95 G16 reviewer shape or the Harness stable identity shape."""
+    """Accept the configured Run 95 Luna Max alias or exact local reviewer runtime id."""
     if not isinstance(reviewer_id, str) or type(pr_number) is not int or pr_number < 1:
         return False
     return (
         re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', reviewer_id) is not None
         or re.fullmatch(r'run95-g16-review[1-9]\d*-gpt-6-luna-max-[0-9a-f]{7,40}', reviewer_id) is not None
+        or re.fullmatch(r'/root/[a-z0-9_]+', reviewer_id) is not None
     )
 
 
@@ -15629,7 +15630,7 @@ def codex_p02_profile_report_is_valid(
         or report.get('model') != profile['model']
         or report.get('reasoningEffort') != profile['reasoningEffort']
         or not isinstance(report.get('reviewerId'), str)
-        or re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', report['reviewerId']) is None
+        or not codex_g16_reviewer_id_is_valid(report['reviewerId'], pr_number)
         or not isinstance(report.get('codexCliVersion'), str)
         or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
         or not isinstance(observed_at, str)

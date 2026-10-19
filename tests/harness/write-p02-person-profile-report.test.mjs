@@ -176,6 +176,15 @@ test('P02 v2 report binds its own profile identity without inheriting v1 evidenc
   );
   assert.equal(built.report.runnerReceipt.kind, 'p02-person-profile-offline-runner-receipt-v2');
   assert.equal(validateP02ProfileReport(built.report, input.claim).passed, true);
+  const runtimeReviewer = fixtureInput(P02_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID);
+  runtimeReviewer.input.claim.reviewerId = '/root/p02_v2_review';
+  const runtimeReviewerBuilt = buildP02ProfileReport(runtimeReviewer.input, {
+    privateKey: runtimeReviewer.keyPair.privateKey,
+  });
+  assert.equal(
+    validateP02ProfileReport(runtimeReviewerBuilt.report, runtimeReviewer.input.claim).passed,
+    true,
+  );
   const serialized = JSON.stringify(built.report);
   for (const forbidden of [
     'Synthetic Person',

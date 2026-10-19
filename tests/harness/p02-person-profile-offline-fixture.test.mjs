@@ -158,6 +158,8 @@ test('P02 fixture rejects unregistered route, method, query, duplicate, and Auth
     ['https://api.bgm.tv/v0/persons/990701?limit=1', undefined],
     [`${base}/subjects`, { method: 'POST' }],
     [`${base}/subjects`, { headers: { authorization: 'Bearer synthetic' } }],
+    [`${base}/subjects`, { body: 'synthetic' }],
+    [{ url: base, method: 'GET', body: 'synthetic' }, undefined],
     ['https://api.bgm.tv/v0/subjects/990702', undefined],
   ];
   for (const [url, init] of invalidCalls) {

@@ -13,6 +13,8 @@ import {
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 import {
   buildP02CodexExecArgs,
+  classifyP02ReportWriteRecovery,
+  isP02ProfileClaimCurrent,
   validateP02RunnerArgs,
   validateServerSummary,
 } from '../../scripts/acceptance/run-p02-person-profile-agent-mcp.mjs';
@@ -23,6 +25,124 @@ const SPEC_V2 = getP02PersonProfileOfflineSpec(P02_PERSON_PROFILE_OFFLINE_V2_PRO
 const SOURCE_SHA = 'a'.repeat(40);
 const BUNDLE_SHA = 'b'.repeat(64);
 const SERVER_ID = 'bgk_p02_profile';
+
+test('P02 report-write recovery distinguishes committed, stale-terminal, and pending states', () => {
+  const claimId = 'p02-claim';
+  const reportSha256 = 'd'.repeat(64);
+  assert.equal(
+    classifyP02ReportWriteRecovery(
+      { state: 'REPORT_WRITTEN', disposition: { reportSha256 } },
+      claimId,
+      reportSha256,
+    ),
+    'REPORT_WRITTEN',
+  );
+  assert.equal(
+    classifyP02ReportWriteRecovery(
+      {
+        state: 'INCONCLUSIVE',
+        disposition: { unacceptedReportSha256: reportSha256, retryAllowed: false },
+      },
+      claimId,
+      reportSha256,
+    ),
+    'INCONCLUSIVE',
+  );
+  assert.equal(
+    classifyP02ReportWriteRecovery(
+      { state: 'CLAIMED', disposition: { claimId } },
+      claimId,
+      reportSha256,
+    ),
+    'CHECK_CANDIDATE_STALENESS',
+  );
+  assert.equal(
+    classifyP02ReportWriteRecovery(
+      { state: 'CLAIMED', disposition: { claimId: 'other' } },
+      claimId,
+      reportSha256,
+    ),
+    'ACK_PENDING',
+  );
+});
+
+test('P02 exact claim-current check accepts the assigned runtime reviewer and rejects drift', () => {
+  const candidateSha = 'a'.repeat(40);
+  const baseSha = 'b'.repeat(40);
+  const reviewerId = '/root/p02_v2_review';
+  const claim = {
+    claimId: 'profile-run-95-pr-237-aaaaaaaaaaaa-1792100000000',
+    profileId: PROFILE_V2.id,
+    epochId: SPEC_V2.epochId,
+    prNumber: 237,
+    baseSha,
+    sourceCandidateSha: candidateSha,
+    ciSha: candidateSha,
+    ciRunId: '39207834428',
+    ciChecks: [{ name: 'harness-control', status: 'COMPLETED', conclusion: 'SUCCESS' }],
+    reviewerId,
+    bundleSha256: BUNDLE_SHA,
+  };
+  const epoch = {
+    epoch_id: SPEC_V2.epochId,
+    pr_number: 237,
+    state: 'REVIEW_PASSED',
+    advances_frontier_ids: ['P02'],
+    scope_closure: { related_work_remaining: false },
+    adversarial_preflight: { completed: true },
+    base_branch: 'master',
+    base_sha: baseSha,
+    reviewed_base_sha: baseSha,
+    candidate_sha: candidateSha,
+    review_pass_sha: candidateSha,
+    ci: { sha: candidateSha, status: 'SUCCESS' },
+    branch: 'codex/p02-v2',
+    review_history: [
+      {
+        candidate_sha: candidateSha,
+        reviewed_base_sha: baseSha,
+        reviewer_id: reviewerId,
+        verdict: 'PASS',
+      },
+    ],
+  };
+  const status = {
+    git: { branch: epoch.branch },
+    run: {
+      state: {
+        state: 'EPOCH_ACTIVE',
+        profile: 'AUTONOMOUS_EVOLUTION',
+        active_epoch_pr: 237,
+        pending_epoch: null,
+      },
+    },
+    epoch: { number: 237, state: epoch },
+  };
+  const pr = {
+    state: 'OPEN',
+    isDraft: false,
+    baseRefName: 'master',
+    headRefName: epoch.branch,
+    headRefOid: candidateSha,
+  };
+  const inputs = {
+    profileStatus: { state: 'CLAIMED', disposition: { claimId: claim.claimId } },
+    epochStatus: status,
+    pr,
+    currentBaseSha: baseSha,
+    localBranch: epoch.branch,
+    localHead: candidateSha,
+    localWorktreeStatus: `?? ${PROFILE_V2.reportPath}`,
+    bundleCurrent: true,
+    ciEvidence: { ciRunId: claim.ciRunId, ciChecks: claim.ciChecks },
+  };
+  assert.equal(isP02ProfileClaimCurrent(claim, inputs), true);
+  assert.equal(
+    isP02ProfileClaimCurrent(claim, { ...inputs, currentBaseSha: 'c'.repeat(40) }),
+    false,
+  );
+  assert.equal(isP02ProfileClaimCurrent(claim, { ...inputs, localHead: 'c'.repeat(40) }), false);
+});
 
 test('P02 Codex invocation is ephemeral, read-only, and exposes only the fixed offline tool', () => {
   assert.deepEqual(validateP02RunnerArgs(['--help']), { mode: 'help' });

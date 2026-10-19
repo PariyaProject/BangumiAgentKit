@@ -9987,6 +9987,9 @@ class P02OfflineProfileReportValidationTests(unittest.TestCase):
             ),
         )
         self.assertTrue(self.validate_report(report))
+        runtime_reviewer = json.loads(json.dumps(report))
+        runtime_reviewer['reviewerId'] = '/root/p02_v2_review'
+        self.assertTrue(self.validate_report(runtime_reviewer))
         cross_version = json.loads(json.dumps(report))
         cross_version['profileId'] = GENERATOR.CODEX_P02_PROFILE_ID
         self.assertFalse(self.validate_report(cross_version))

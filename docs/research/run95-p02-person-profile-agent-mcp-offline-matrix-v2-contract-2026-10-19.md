@@ -46,8 +46,12 @@ checks on that Candidate, Harness `candidate:check`, and the same-identity
 GPT-6 Luna Max PASS. The report must bind that exact Candidate/Base/CI/reviewer,
 MCP bundle, registry and permanent claim/result latches. Store only signed
 sanitized counters and hashes; exclude prompt, answer text, raw rows, raw tool
-result, and media. If the invocation is incomplete or ambiguous, terminalize it
-once as no-report `INCONCLUSIVE` with `retryAllowed=false`.
+result, and media. If a permanent v2 claim latch exists without a durable claim
+and report, reconcile that exact latch to no-report `INCONCLUSIVE` without
+invoking the tool. If a sanitized report becomes stale before `REPORT_WRITTEN`
+is accepted, retain only its digest as unaccepted and terminalize the claim as
+`INCONCLUSIVE`. Any incomplete or ambiguous attempt is terminal and has
+`retryAllowed=false`.
 
 Any valid report can add only the `bangumi.get_person_profile` Agent/MCP matrix
 cell. P02 remains `PARTIAL`; this profile earns no first/latest participation

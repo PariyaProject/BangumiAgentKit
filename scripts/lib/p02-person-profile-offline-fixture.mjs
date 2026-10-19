@@ -217,7 +217,8 @@ export function createP02PersonProfileOfflineFetch(
       url.href === `${ORIGIN}${url.pathname}` &&
       url.search === '' &&
       url.hash === '' &&
-      init?.body === undefined &&
+      (input?.body === undefined || input.body === null) &&
+      (init?.body === undefined || init.body === null) &&
       !headers.has('authorization') &&
       operation !== undefined;
     if (!valid) {

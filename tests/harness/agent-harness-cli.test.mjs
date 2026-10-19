@@ -2136,6 +2136,78 @@ test('A01 ambiguous profile latch reconciliation is terminal, bounded, and idemp
   }
 });
 
+test('P02 v2 ambiguous latch reconciliation terminalizes the exact no-report claim once', () => {
+  const { environment } = agentMcpProfileReviewReadyEnvironment(P02_V2_PROFILE, {
+    repositoryLabels: {
+      [P02_V2_PROFILE.claimLabelName]: {
+        name: P02_V2_PROFILE.claimLabelName,
+        description: agentMcpProfileClaimLabelDescription(P02_V2_PROFILE),
+      },
+    },
+  });
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', P02_V2_PROFILE.id];
+  try {
+    const ambiguous = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(ambiguous.status, 0, ambiguous.stderr);
+    assert.equal(JSON.parse(ambiguous.stdout).state, 'AMBIGUOUS');
+
+    const reconciled = environment.execute([
+      'epoch:agent-mcp-profile-reconcile-ambiguous',
+      ...runArgs,
+    ]);
+    assert.equal(reconciled.status, 0, reconciled.stderr);
+    assert.deepEqual(JSON.parse(reconciled.stdout), {
+      state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
+      run: 95,
+      pr: 42,
+      profileId: P02_V2_PROFILE.id,
+      resultState: 'INCONCLUSIVE',
+      retryAllowed: false,
+    });
+
+    const status = environment.execute(['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(status.status, 0, status.stderr);
+    const profileStatus = JSON.parse(status.stdout);
+    assert.equal(profileStatus.state, 'INCONCLUSIVE');
+    assert.equal(profileStatus.retry_allowed, false);
+    assert.equal(profileStatus.disposition.ambiguousLatchReconciled, true);
+    assert.equal(profileStatus.disposition.claimIdentityRecovered, false);
+    assert.equal(profileStatus.disposition.claimId, null);
+    assert.equal(profileStatus.disposition.reportWritten, false);
+    assert.deepEqual(profileStatus.disposition.failureDiagnostics, {
+      schemaVersion: 1,
+      reasonCode: 'P02_AMBIGUOUS_LATCH_RECONCILED',
+      checks: { invocationStateUnknown: true },
+      counters: {},
+    });
+
+    const repeated = environment.execute([
+      'epoch:agent-mcp-profile-reconcile-ambiguous',
+      ...runArgs,
+    ]);
+    assert.equal(repeated.status, 0, repeated.stderr);
+    assert.equal(
+      JSON.parse(repeated.stdout).state,
+      'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED',
+    );
+
+    const claim = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      '/root/p02_v2_review',
+      '--runner-public-key',
+      'A'.repeat(43),
+    ]);
+    assert.equal(claim.status, 2);
+    assert.match(claim.stderr, /^AGENT_MCP_PROFILE_CLAIM_GATE_FAILED:/u);
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('A01 ambiguous profile reconciliation preserves concurrent Epoch control updates', () => {
   const { environment } = agentMcpProfileReviewReadyEnvironment(A01_AGGREGATE_PROFILE, {
     repositoryLabels: {
@@ -2533,6 +2605,14 @@ test('R04 renderer v2 Harness claim persists the exact successful CI run and che
 test('P02 v1 and v2 Harness claims bind exact successful CI run and check identities', () => {
   for (const profile of [P02_PROFILE, P02_V2_PROFILE]) {
     const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(profile);
+    const profileReviewerId = profile.id === P02_V2_PROFILE.id ? '/root/p02_v2_review' : reviewerId;
+    if (profileReviewerId !== reviewerId) {
+      const state = environment.readState();
+      const epoch = parseControlBlock(state.prBody, EPOCH_MARKER);
+      epoch.review_history.at(-1).reviewer_id = profileReviewerId;
+      state.prBody = renderEpochBody(epoch);
+      fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
+    }
     const keyPair = generateG04RunnerReceiptKeyPair();
     const runArgs = ['--run', '95', '--pr', '42', '--profile-id', profile.id];
     try {
@@ -2542,7 +2622,7 @@ test('P02 v1 and v2 Harness claims bind exact successful CI run and check identi
         '--bundle-sha256',
         'c'.repeat(64),
         '--reviewer-id',
-        reviewerId,
+        profileReviewerId,
         '--runner-public-key',
         keyPair.publicKeyBase64,
       ]);
@@ -2557,6 +2637,7 @@ test('P02 v1 and v2 Harness claims bind exact successful CI run and check identi
       const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
       const disposition = stored.adversarial_preflight.agent_mcp_profile_dispositions[profile.id];
       assert.equal(disposition.ciRunId, '38806371672');
+      assert.equal(disposition.reviewerId, profileReviewerId);
       assert.deepEqual(disposition.ciChecks, claimResult.ciChecks);
     } finally {
       environment.cleanup();
