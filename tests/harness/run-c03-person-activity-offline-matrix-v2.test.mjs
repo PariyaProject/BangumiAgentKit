@@ -3,7 +3,9 @@ import test from 'node:test';
 import {
   assertC03PersonActivityOfflineV2CandidateGate,
   buildC03PersonActivityOfflineV2CodexExecArgs,
+  c03ClaimMatchesCurrentCi,
   extractC03PersonActivityOfflineV2ToolProjection,
+  reconcileC03AmbiguousProfileStatus,
   validateC03PersonActivityOfflineV2RunnerArgs,
 } from '../../scripts/acceptance/run-c03-person-activity-offline-matrix-v2.mjs';
 import { canonicalAgentMcpProfileJson } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
@@ -62,6 +64,8 @@ test('C03 v2 runner accepts only its fixed one-shot invocation', () => {
 test('C03 v2 invocation gate rejects a Base change after the review PASS', () => {
   const candidate = 'a'.repeat(40);
   const base = 'b'.repeat(40);
+  const ciRunId = '39200000001';
+  const ciRunUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
   const checks = [
     'harness-control',
     'sqlite-default',
@@ -70,7 +74,12 @@ test('C03 v2 invocation gate rejects a Base change after the review PASS', () =>
     'postgres-compat',
     'provider-foundation',
     'discovery-foundation',
-  ].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
+  ].map((name, index) => ({
+    name,
+    status: 'COMPLETED',
+    conclusion: 'SUCCESS',
+    detailsUrl: `${ciRunUrl}/job/${index + 1}`,
+  }));
   const status = {
     git: { status: '', head: candidate, branch: 'codex/c03-v2' },
     run: {
@@ -93,7 +102,7 @@ test('C03 v2 invocation gate rejects a Base change after the review PASS', () =>
         reviewed_base_sha: base,
         candidate_sha: candidate,
         review_pass_sha: candidate,
-        ci: { sha: candidate, status: 'SUCCESS' },
+        ci: { sha: candidate, status: 'SUCCESS', url: ciRunUrl },
         state: 'REVIEW_PASSED',
         advances_frontier_ids: ['C03'],
         scope_closure: { related_work_remaining: false },
@@ -117,20 +126,51 @@ test('C03 v2 invocation gate rejects a Base change after the review PASS', () =>
     headRefOid: candidate,
     statusCheckRollup: checks,
   };
-  assert.deepEqual(
-    assertC03PersonActivityOfflineV2CandidateGate(status, pr, {
-      sourceRevision: candidate,
-      currentBaseSha: base,
-      gitStatus: '',
-      gitHead: candidate,
-    }),
-    {
-      candidateSha: candidate,
-      baseSha: base,
-      prNumber: 42,
-      reviewerId: 'gpt-6-luna-max-run95-pr42-round1',
-    },
-  );
+  const currentGate = assertC03PersonActivityOfflineV2CandidateGate(status, pr, {
+    sourceRevision: candidate,
+    currentBaseSha: base,
+    gitStatus: '',
+    gitHead: candidate,
+  });
+  assert.deepEqual(currentGate, {
+    candidateSha: candidate,
+    baseSha: base,
+    prNumber: 42,
+    reviewerId: 'gpt-6-luna-max-run95-pr42-round1',
+    ciRunId,
+    ciChecks: checks.map(({ name, status, conclusion }) => ({ name, status, conclusion })),
+  });
+  const claim = {
+    claimId: 'profile-run-95-pr-42-candidate-claim',
+    ciRunId,
+    ciChecks: currentGate.ciChecks,
+  };
+  const profileStatus = {
+    state: 'CLAIMED',
+    disposition: { ...claim },
+  };
+  assert.equal(c03ClaimMatchesCurrentCi(profileStatus, currentGate, claim), true);
+
+  const rerunId = '39200000002';
+  const rerunUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${rerunId}`;
+  const rerunStatus = structuredClone(status);
+  rerunStatus.epoch.state.ci.url = rerunUrl;
+  const rerunPr = {
+    ...pr,
+    statusCheckRollup: checks.map((check, index) => ({
+      ...check,
+      detailsUrl: `${rerunUrl}/job/${index + 1}`,
+    })),
+  };
+  const rerunGate = assertC03PersonActivityOfflineV2CandidateGate(rerunStatus, rerunPr, {
+    sourceRevision: candidate,
+    currentBaseSha: base,
+    gitStatus: '',
+    gitHead: candidate,
+  });
+  assert.equal(rerunGate.ciRunId, rerunId);
+  assert.equal(c03ClaimMatchesCurrentCi(profileStatus, rerunGate, claim), false);
+
   assert.throws(() =>
     assertC03PersonActivityOfflineV2CandidateGate(status, pr, {
       sourceRevision: candidate,
@@ -139,6 +179,69 @@ test('C03 v2 invocation gate rejects a Base change after the review PASS', () =>
       gitHead: candidate,
     }),
   );
+});
+
+test('C03 v2 runner reconciles an ambiguous permanent latch only as no-report INCONCLUSIVE', () => {
+  const status = { state: 'AMBIGUOUS', claim_label_present: true, disposition: null };
+  const commands = [];
+  const reconciledStatus = {
+    state: 'INCONCLUSIVE',
+    retry_allowed: false,
+    disposition: {
+      reportWritten: false,
+      claimIdentityRecovered: false,
+      ambiguousLatchReconciled: true,
+    },
+  };
+  const result = reconcileC03AmbiguousProfileStatus(240, status, {
+    runHarnessCommand: (args) => {
+      commands.push(args);
+      return {
+        exitCode: 0,
+        output: { state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED' },
+      };
+    },
+    readProfileStatusCommand: (prNumber) => {
+      assert.equal(prNumber, 240);
+      return reconciledStatus;
+    },
+    reportExists: () => false,
+  });
+  assert.equal(result, reconciledStatus);
+  assert.equal(commands.length, 1);
+  assert.deepEqual(commands[0], [
+    'epoch:agent-mcp-profile-reconcile-ambiguous',
+    '--run',
+    '95',
+    '--pr',
+    '240',
+    '--profile-id',
+    'c03-person-activity-offline-agent-mcp-matrix-v2',
+  ]);
+});
+
+test('C03 v2 runner refuses ambiguous reconciliation if a report already exists', () => {
+  let harnessCalled = false;
+  assert.throws(
+    () =>
+      reconcileC03AmbiguousProfileStatus(
+        240,
+        { state: 'AMBIGUOUS', claim_label_present: true, disposition: null },
+        {
+          runHarnessCommand: () => {
+            harnessCalled = true;
+            return {
+              exitCode: 0,
+              output: { state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED' },
+            };
+          },
+          readProfileStatusCommand: () => ({ state: 'INCONCLUSIVE' }),
+          reportExists: () => true,
+        },
+      ),
+    /refusing no-report terminal reconciliation/u,
+  );
+  assert.equal(harnessCalled, false);
 });
 
 test('C03 v2 accepts exact structured or text-only readback and rejects disagreement', () => {

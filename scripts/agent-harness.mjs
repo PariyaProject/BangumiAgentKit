@@ -3891,15 +3891,18 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
     );
   }
   const p02V2Profile = profile.id === 'p02-person-profile-offline-agent-mcp-v2';
+  const c03ActivityV2Profile = profile.id === 'c03-person-activity-offline-agent-mcp-matrix-v2';
   if (
     Number(runNumber) !== 95 ||
     !Number.isSafeInteger(Number(prNumber)) ||
     Number(prNumber) < 1 ||
-    (!A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS.includes(profile.id) && !p02V2Profile)
+    (!A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS.includes(profile.id) &&
+      !p02V2Profile &&
+      !c03ActivityV2Profile)
   ) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_RECONCILE_INVALID',
-      'Ambiguous-latch reconciliation is limited to the registered Run #95 A01 and P02 v2 offline profiles.',
+      'Ambiguous-latch reconciliation is limited to the registered Run #95 A01, P02 v2, and C03 v2 offline profiles.',
     );
   }
 
@@ -4249,7 +4252,9 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
     schemaVersion: 1,
     reasonCode: matchingClaim
       ? 'A01_AGGREGATE_MATRIX_AMBIGUOUS_CLAIM_TERMINALIZED'
-      : 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
+      : c03ActivityV2Profile
+        ? 'C03_ACTIVITY_V2_AMBIGUOUS_LATCH_RECONCILED'
+        : 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
     checks: { invocationStateUnknown: true },
     counters: {},
   });

@@ -16,6 +16,7 @@ import {
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
+import { deriveP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   computeMcpBundleSha256,
   gitRepositoryText,
@@ -208,6 +209,7 @@ export function assertC03PersonActivityOfflineV2CandidateGate(
     new RegExp(`^gpt-6-luna-max-run95-pr${epochView.number}-round[1-9]\\d*$`, 'u').test(
       reviewerId ?? '',
     );
+  const ciEvidence = deriveP06CiRunEvidence(epoch?.ci?.url, pr?.statusCheckRollup);
   const valid = [
     status?.git?.status === '',
     status?.git?.head === sourceRevision,
@@ -241,6 +243,7 @@ export function assertC03PersonActivityOfflineV2CandidateGate(
     pr?.headRefName === status?.git?.branch,
     pr?.headRefOid === sourceRevision,
     mandatoryChecksSuccessful(pr?.statusCheckRollup),
+    ciEvidence !== null,
     gitStatus === '',
     gitHead === sourceRevision,
   ].every(Boolean);
@@ -254,7 +257,24 @@ export function assertC03PersonActivityOfflineV2CandidateGate(
     baseSha: currentBaseSha,
     prNumber: epochView.number,
     reviewerId,
+    ciRunId: ciEvidence.ciRunId,
+    ciChecks: ciEvidence.ciChecks,
   };
+}
+
+export function c03ClaimMatchesCurrentCi(profileStatus, currentGate, claim) {
+  return (
+    profileStatus?.state === 'CLAIMED' &&
+    profileStatus.disposition?.claimId === claim?.claimId &&
+    typeof claim?.ciRunId === 'string' &&
+    Array.isArray(claim?.ciChecks) &&
+    profileStatus.disposition.ciRunId === claim.ciRunId &&
+    canonicalAgentMcpProfileJson(profileStatus.disposition.ciChecks) ===
+      canonicalAgentMcpProfileJson(claim.ciChecks) &&
+    currentGate?.ciRunId === claim.ciRunId &&
+    canonicalAgentMcpProfileJson(currentGate.ciChecks) ===
+      canonicalAgentMcpProfileJson(claim.ciChecks)
+  );
 }
 
 function currentCandidateBundleMatches(sourceRevision, bundleSha256) {
@@ -486,6 +506,9 @@ function finalizeInconclusive(prNumber, claim, reasonCode, checks = {}, counters
 }
 
 function finalizeExistingAttempt(prNumber, status) {
+  if (['AMBIGUOUS', 'AMBIGUOUS_TERMINAL_LATCH'].includes(status.state)) {
+    status = reconcileC03AmbiguousProfileStatus(prNumber, status);
+  }
   if (['REPORT_WRITTEN', 'INCONCLUSIVE'].includes(status.state)) {
     printSafe({ state: status.state, profileId: PROFILE.id, retryAllowed: false, reused: true });
     return 0;
@@ -520,6 +543,62 @@ function finalizeExistingAttempt(prNumber, status) {
     recovered: true,
   });
   return 0;
+}
+
+export function reconcileC03AmbiguousProfileStatus(
+  prNumber,
+  status,
+  {
+    runHarnessCommand = runHarness,
+    readProfileStatusCommand = readProfileStatus,
+    reportExists = () => existsSync(path.join(ROOT, PROFILE.reportPath)),
+  } = {},
+) {
+  if (
+    !['AMBIGUOUS', 'AMBIGUOUS_TERMINAL_LATCH'].includes(status?.state) ||
+    status.claim_label_present !== true ||
+    status.disposition !== null
+  ) {
+    throw new Error(
+      'C03 v2 ambiguous reconciliation requires its exact claim latch and no claim record.',
+    );
+  }
+  if (reportExists()) {
+    throw new Error(
+      'C03 v2 ambiguous claim has a report; refusing no-report terminal reconciliation.',
+    );
+  }
+  const result = runHarnessCommand([
+    'epoch:agent-mcp-profile-reconcile-ambiguous',
+    '--run',
+    String(RUN_NUMBER),
+    '--pr',
+    String(prNumber),
+    '--profile-id',
+    PROFILE.id,
+  ]);
+  if (
+    result.exitCode !== 0 ||
+    ![
+      'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
+      'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED',
+    ].includes(result.output?.state)
+  ) {
+    throw new Error('Harness did not confirm C03 v2 ambiguous no-report reconciliation.');
+  }
+  const reconciled = readProfileStatusCommand(prNumber);
+  if (
+    reconciled.state !== 'INCONCLUSIVE' ||
+    reconciled.retry_allowed !== false ||
+    reconciled.disposition?.reportWritten !== false ||
+    reconciled.disposition?.claimIdentityRecovered !== false ||
+    reconciled.disposition?.ambiguousLatchReconciled !== true
+  ) {
+    throw new Error(
+      'Harness C03 v2 reconciliation did not produce the exact no-retry terminal state.',
+    );
+  }
+  return reconciled;
 }
 
 function runProfile() {
@@ -627,6 +706,7 @@ function runProfile() {
     if (
       beforeInvoke.state !== 'CLAIMED' ||
       beforeInvoke.disposition?.claimId !== claim.claimId ||
+      !c03ClaimMatchesCurrentCi(beforeInvoke, beforeInvokeGate, claim) ||
       beforeInvokeGate.prNumber !== finalGate.prNumber ||
       beforeInvokeGate.reviewerId !== finalGate.reviewerId ||
       beforeInvokeGate.baseSha !== finalGate.baseSha ||
