@@ -6,6 +6,7 @@ import {
   c03ClaimMatchesCurrentCi,
   c03ObservedCiRunId,
   extractC03PersonActivityOfflineV2ToolProjection,
+  isC03PersonActivityOfflineV2CandidateBundleCurrent,
   replayC03AmbiguousTerminalLatch,
   reconcileC03AmbiguousProfileStatus,
   settleC03ReportAcknowledgement,
@@ -186,6 +187,91 @@ test('C03 v2 invocation gate rejects a Base change after the review PASS', () =>
       gitStatus: '',
       gitHead: candidate,
     }),
+  );
+});
+
+test('C03 v2 post-write candidate check allows only its registered report', () => {
+  const profile = getAgentMcpProfileById('c03-person-activity-offline-agent-mcp-matrix-v2');
+  assert.ok(profile);
+  const candidate = 'a'.repeat(40);
+  const bundleSha256 = 'b'.repeat(64);
+  const snapshot = {
+    sourceRevision: candidate,
+    bundleSha256,
+    gitStatus: '',
+    gitHead: candidate,
+    currentBundleSha256: bundleSha256,
+    attestedBundleSha256: bundleSha256,
+  };
+
+  assert.equal(isC03PersonActivityOfflineV2CandidateBundleCurrent(snapshot), true);
+  assert.equal(
+    isC03PersonActivityOfflineV2CandidateBundleCurrent({
+      ...snapshot,
+      gitStatus: `?? ${profile.reportPath}`,
+    }),
+    false,
+  );
+  assert.equal(
+    isC03PersonActivityOfflineV2CandidateBundleCurrent({
+      ...snapshot,
+      gitStatus: `?? ${profile.reportPath}`,
+      registeredReportExists: true,
+      allowRegisteredReport: true,
+    }),
+    true,
+  );
+  assert.equal(
+    isC03PersonActivityOfflineV2CandidateBundleCurrent({
+      ...snapshot,
+      gitStatus: `?? ${profile.reportPath}`,
+      registeredReportExists: false,
+      allowRegisteredReport: true,
+    }),
+    false,
+  );
+
+  for (const gitStatus of [
+    '?? docs/live-probes/unrelated.json',
+    `?? ${profile.reportPath}\n?? docs/live-probes/unrelated.json`,
+    ' M src/changed-file.mjs',
+  ]) {
+    assert.equal(
+      isC03PersonActivityOfflineV2CandidateBundleCurrent({
+        ...snapshot,
+        gitStatus,
+        allowRegisteredReport: true,
+      }),
+      false,
+    );
+  }
+
+  assert.equal(
+    isC03PersonActivityOfflineV2CandidateBundleCurrent({
+      ...snapshot,
+      gitStatus: `?? ${profile.reportPath}`,
+      gitHead: 'c'.repeat(40),
+      allowRegisteredReport: true,
+    }),
+    false,
+  );
+  assert.equal(
+    isC03PersonActivityOfflineV2CandidateBundleCurrent({
+      ...snapshot,
+      gitStatus: `?? ${profile.reportPath}`,
+      currentBundleSha256: 'd'.repeat(64),
+      allowRegisteredReport: true,
+    }),
+    false,
+  );
+  assert.equal(
+    isC03PersonActivityOfflineV2CandidateBundleCurrent({
+      ...snapshot,
+      gitStatus: `?? ${profile.reportPath}`,
+      attestedBundleSha256: 'e'.repeat(64),
+      allowRegisteredReport: true,
+    }),
+    false,
   );
 });
 

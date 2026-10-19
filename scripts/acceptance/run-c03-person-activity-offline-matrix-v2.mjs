@@ -310,14 +310,44 @@ export function c03ObservedCiRunId(statusCheckRollup) {
   return new Set(runIds).size === 1 ? runIds[0] : null;
 }
 
-function currentCandidateBundleMatches(sourceRevision, bundleSha256) {
+export function isC03PersonActivityOfflineV2CandidateBundleCurrent({
+  sourceRevision,
+  bundleSha256,
+  gitStatus,
+  gitHead,
+  currentBundleSha256,
+  attestedBundleSha256,
+  registeredReportExists = false,
+  allowRegisteredReport = false,
+}) {
+  const worktreeMatches =
+    gitStatus === '' || (allowRegisteredReport && gitStatus === `?? ${PROFILE.reportPath}`);
+  return (
+    (!allowRegisteredReport || registeredReportExists) &&
+    worktreeMatches &&
+    gitHead === sourceRevision &&
+    currentBundleSha256 === bundleSha256 &&
+    attestedBundleSha256 === bundleSha256
+  );
+}
+
+function currentCandidateBundleMatches(
+  sourceRevision,
+  bundleSha256,
+  { allowRegisteredReport = false } = {},
+) {
   try {
-    return (
-      gitText('status', '--porcelain') === '' &&
-      gitText('rev-parse', 'HEAD') === sourceRevision &&
-      computeMcpBundleSha256(ROOT) === bundleSha256 &&
-      readG26McpBundleAttestation(ROOT) === bundleSha256
-    );
+    return isC03PersonActivityOfflineV2CandidateBundleCurrent({
+      sourceRevision,
+      bundleSha256,
+      gitStatus: gitText('status', '--porcelain', '--untracked-files=all'),
+      gitHead: gitText('rev-parse', 'HEAD'),
+      currentBundleSha256: computeMcpBundleSha256(ROOT),
+      attestedBundleSha256: readG26McpBundleAttestation(ROOT),
+      registeredReportExists:
+        allowRegisteredReport && existsSync(path.join(ROOT, PROFILE.reportPath)),
+      allowRegisteredReport,
+    });
   } catch {
     return false;
   }
@@ -1157,7 +1187,11 @@ function runProfile() {
         written.reason ?? 'C03_ACTIVITY_V2_REPORT_REJECTED',
       );
     }
-    if (!currentCandidateBundleMatches(sourceRevision, bundleSha256)) {
+    if (
+      !currentCandidateBundleMatches(sourceRevision, bundleSha256, {
+        allowRegisteredReport: true,
+      })
+    ) {
       return finalizeInconclusive(prNumber, claim, 'C03_ACTIVITY_V2_POSTRUN_CANDIDATE_CHANGED');
     }
     const recorded = persistProfileResult(
