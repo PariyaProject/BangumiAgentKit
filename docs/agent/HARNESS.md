@@ -323,16 +323,21 @@ query may run and the consumed latch cannot be released. Recovery may only
 reconcile the existing latch, PR state, and any sanitized artifact to a
 terminal result; it never retries the Product query.
 
-For the Run #95 A01 offline aggregate profile, if profile status is `AMBIGUOUS`
+For Run #95 A01 offline aggregate profiles v1/v2, if profile status is `AMBIGUOUS`
 because the exact permanent claim label exists without a durable PR disposition,
 use `pnpm harness epoch:agent-mcp-profile-reconcile-ambiguous --run 95 --pr
-<pr> --profile-id a01-aggregate-cohort-offline-agent-mcp-matrix-v1`. This
+<pr> --profile-id <registered-a01-aggregate-profile>`. This
 Harness-only recovery requires the active matching A01 Epoch, exact claim-label
 metadata, and no report artifact. It writes an `INCONCLUSIVE` no-report
 disposition and terminal label with `retryAllowed=false`, explicitly leaves the
 claim identity and invocation state unknown, and grants no matrix credit. It
 does not issue a new claim or invoke Codex. Missing, mismatched, unreadable, or
 conflicting latch state fails closed.
+
+The v2 synthetic offline profile is independent of the spent v1 latch: it has a
+new profile ID, network mode, exact arguments, synthetic subject, and report
+path. It may credit only the `aggregate_subject_cohort` Agent/MCP matrix row.
+Do not retry v1 or treat either profile as A01 scenario/public API evidence.
 
 For Run 95 R01, `pnpm harness epoch:r01-one-shot-reconcile --run 95 --pr <pr>`
 is the no-Codex recovery route. It verifies the original claim label by GET,

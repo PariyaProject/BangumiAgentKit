@@ -9,9 +9,10 @@ import {
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
-  A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
   A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+  A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
   A01_AGGREGATE_COHORT_TOOL,
+  getA01AggregateCohortOfflineProfileSpec,
 } from '../../scripts/lib/a01-aggregate-cohort-offline-matrix-profile.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 import { buildG06PrivacySummary } from '../../scripts/lib/g06-privacy-summary.mjs';
@@ -26,10 +27,14 @@ const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const candidateSha = 'a'.repeat(40);
 const baseSha = 'b'.repeat(40);
 const bundleSha256 = 'c'.repeat(64);
-const serverId = 'bgk_a01_aggregate_cohort_offline';
 
-function createValidRunInput() {
-  const profile = getAgentMcpProfileById(A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID);
+function createValidRunInput(profileId = A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID) {
+  const profile = getAgentMcpProfileById(profileId);
+  const profileSpec = getA01AggregateCohortOfflineProfileSpec(profile);
+  const expectedArguments = profile.calls[0].arguments;
+  const serverId = profileId === A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID
+    ? 'bgk_a01_aggregate_cohort_offline'
+    : 'bgk_a01_aggregate_cohort_offline_v2';
   const keyPair = generateKeyPairSync('ed25519');
   const publicKeyBytes = keyPair.publicKey.export({ format: 'der', type: 'spki' });
   const publicKeyBase64 = publicKeyBytes.toString('base64');
@@ -40,7 +45,7 @@ function createValidRunInput() {
     state: 'complete',
     cohorts: [
       {
-        subjects: [{ id: 990184, title: 'Synthetic Aggregate Matrix Subject' }],
+        subjects: [{ id: profileSpec.subject.id, title: profileSpec.subject.name }],
         coverage: {
           query: { state: 'ok' },
           detailHydrationsAttempted: 1,
@@ -49,12 +54,7 @@ function createValidRunInput() {
         },
       },
     ],
-    metrics: [
-      ['score', 7],
-      ['heat', 56],
-      ['episodesReported', 12],
-      ['ratingStandardDeviation', 1],
-    ].map(([key, average]) => ({
+    metrics: profileSpec.expectedMetrics.map(({ key, value: average }) => ({
       key,
       state: 'complete',
       averages: [average],
@@ -78,8 +78,8 @@ function createValidRunInput() {
   };
   const resultSummary = summarizeProfileToolResult(
     rawResult,
-    A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
-    PROFILE_ID,
+    expectedArguments,
+    profile.id,
     null,
     A01_AGGREGATE_COHORT_TOOL,
   );
@@ -161,7 +161,7 @@ function createValidRunInput() {
   const call = {
     tool: profile.toolName,
     status: 'completed',
-    arguments: A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
+    arguments: expectedArguments,
     result: { isError: false, structuredContent: resultSummary },
   };
   const events = {
@@ -193,8 +193,6 @@ function createValidRunInput() {
     resultSummarySha256,
   };
 }
-
-const PROFILE_ID = 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1';
 
 test('A01 aggregate matrix run accepts only the exact synthetic result and answer', () => {
   const input = createValidRunInput();
@@ -255,5 +253,25 @@ test('A01 aggregate signed report binds the one-shot claim and rejects mutation'
   assert.throws(
     () => writeA01AggregateCohortProfileReport(built.report, { reportPath: '/tmp/other.json' }),
     /fixed and create-once/u,
+  );
+});
+
+test('A01 aggregate v2 report binds the fresh synthetic profile and metrics', () => {
+  const input = createValidRunInput(A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID);
+  const validation = validateA01AggregateCohortProfileRun(input);
+  assert.equal(validation.passed, true);
+  assert.deepEqual(validation.resultSummary.metrics.map((metric) => metric.averages[0]), [6.5, 71, 10, 2]);
+  const built = buildA01AggregateCohortProfileReport(input, {
+    privateKey: input.keyPair.privateKey,
+  });
+  assert.equal(built.passed, true);
+  assert.equal(built.report.profileId, A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID);
+  assert.equal(built.report.networkMode, 'run95-a01-aggregate-cohort-offline-matrix-v2');
+  assert.equal(built.report.serverId, 'bgk_a01_aggregate_cohort_offline_v2');
+  assert.equal(JSON.stringify(built.report).includes('991219'), false);
+  assert.equal(JSON.stringify(built.report).includes('Synthetic Aggregate Matrix V2 Subject'), false);
+  assert.equal(
+    validateA01AggregateCohortProfileReport(built.report, input.claim, built.reportBytes).passed,
+    true,
   );
 });
