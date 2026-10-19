@@ -13,6 +13,43 @@ function buildClient(fetchFn: typeof fetch): GeneratedBangumiOpenApiClient {
   return new GeneratedBangumiOpenApiClient(new HttpClient({ fetchFn }));
 }
 
+async function buildEmptyBacklogViewModel(calendarAvailable: boolean) {
+  const fetchFn: typeof fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname === '/calendar') {
+      if (!calendarAvailable) {
+        throw new BangumiError('UPSTREAM_UNAVAILABLE', 'synthetic calendar outage', false, 503);
+      }
+      return new Response(
+        JSON.stringify(
+          Array.from({ length: 7 }, (_, index) => ({
+            weekday: {
+              id: index + 1,
+              en: `Day${index + 1}`,
+              cn: `星期${index + 1}`,
+              ja: `曜日${index + 1}`,
+            },
+            items: [],
+          })),
+        ),
+        { status: 200 },
+      );
+    }
+    if (url.pathname.endsWith('/collections')) {
+      return new Response(JSON.stringify({ total: 0, limit: 50, offset: 0, data: [] }), {
+        status: 200,
+      });
+    }
+    throw new Error(`Unexpected synthetic request: ${url.pathname}`);
+  };
+  const httpClient = new HttpClient({ fetchFn });
+  const result = await new CollectionBacklogService(buildClient(fetchFn), httpClient).getCollectionBacklog(
+    'synthetic-bound-user',
+    { includeSchedule: true },
+  );
+  return buildCollectionBacklogViewModel(result);
+}
+
 describe('collection-backlog renderer', () => {
   let renderService: RenderService;
 
@@ -161,21 +198,54 @@ describe('collection-backlog renderer', () => {
     expect(extractImageUrls(viewModel)).toEqual([]);
 
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
-    expect(html).toContain('我的收藏 backlog');
+    expect(html).toContain('我的收藏待看清单');
     expect(html).toContain('剩余 2 集');
-    expect(html).toContain('collection-backlog-v2');
+    expect(html).toContain('公式版本：backlog v2');
+    expect(html).toContain('时长 v1');
+    expect(html).toContain('播出 v1');
+    expect(html).toContain('完整度 v1');
     expect(html).toContain('一个需要在窄卡片中安全换行的超长收藏标题');
     expect(html).toContain('已知待看时长');
     expect(html).toContain('已知约 48 分');
     expect(html).toContain('计划 星期1');
     expect(html).toContain('证据完整度 高');
-    expect(html).toContain('collection-backlog-schedule-v1');
-    expect(html).toContain('collection-backlog-confidence-v1');
+    expect(html).not.toContain('collection-backlog-schedule-v1');
+    expect(html).not.toContain('collection-backlog-confidence-v1');
     expect(html).not.toContain('private comment');
+    expect(viewModel.evidence.formulaVersion).toBe('collection-backlog-v2');
+    expect(viewModel.evidence.durationFormulaVersion).toBe('collection-backlog-duration-v1');
+    expect(viewModel.evidence.scheduleFormulaVersion).toBe('collection-backlog-schedule-v1');
+    expect(viewModel.evidence.confidenceFormulaVersion).toBe('collection-backlog-confidence-v1');
 
     const rendered = await renderService.renderCard(viewModel, { width: 640 });
     expect(rendered.template).toBe('collection-backlog');
     expect(rendered.buffer.length).toBeGreaterThan(1000);
+  });
+
+  it('distinguishes a complete empty result from a partial empty sample', async () => {
+    const complete = await buildEmptyBacklogViewModel(true);
+    const partial = await buildEmptyBacklogViewModel(false);
+    const completeHtml = renderHtmlTemplate(complete, 'bangumi-dark', {}, 320);
+    const partialHtml = renderHtmlTemplate(partial, 'bangumi-dark', {}, 320);
+
+    expect(complete.state).toBe('complete');
+    expect(complete.presentation?.emptyState?.title).toBe('没有符合条件的待看条目');
+    expect(completeHtml).toContain('当前收藏已完整读取');
+    expect(completeHtml).toContain('可调整状态筛选后再查看');
+
+    expect(partial.state).toBe('partial');
+    expect(partial.presentation?.emptyState?.title).toBe('暂未发现符合条件的条目');
+    expect(partialHtml).toContain('未读取部分仍可能有符合条件的待看条目');
+    expect(partialHtml).toContain('暂不要据此判断收藏为空');
+    expect(partialHtml).not.toContain('收藏已完整读取');
+    expect(partial.presentation?.warningMessages).toEqual([]);
+    expect(partialHtml).not.toContain('UPSTREAM_UNAVAILABLE');
+
+    expect(complete.presentation?.limitationSummary.length).toBeLessThan(
+      complete.limitations.length,
+    );
+    expect(complete.limitations.length).toBeGreaterThan(4);
+    expect(partial.limitations).toEqual(complete.limitations);
   });
 
   it('keeps permission-denied semantics visible in the zero-network card', () => {
@@ -283,9 +353,13 @@ describe('collection-backlog renderer', () => {
 
     expect(viewModel.state).toBe('permission_denied');
     expect(viewModel.error?.code).toBe('PERMISSION_DENIED');
-    expect(html).toContain('无权限');
-    expect(html).toContain('PERMISSION_DENIED');
-    expect(html).toContain('请重新授权');
+    expect(html).toContain('收藏读取权限不足');
+    expect(html).toContain('请确认授权范围后重试。');
+    expect(html).not.toContain('PERMISSION_DENIED');
+    expect(html).toContain('当前授权没有收藏读取权限。');
+    expect(html.match(/当前授权没有收藏读取权限。/gu)).toHaveLength(1);
+    expect(viewModel.warnings[0]?.code).toBe('PERMISSION_DENIED');
+    expect(viewModel.presentation?.warningMessages).toEqual([]);
   });
 
   it('preserves row-level recovery metadata through the view model and rendered card', async () => {
@@ -361,9 +435,10 @@ describe('collection-backlog renderer', () => {
     });
 
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
-    expect(html).toContain('AUTH_EXPIRED');
+    expect(html).not.toContain('AUTH_EXPIRED');
     expect(html).toContain('Bangumi 登录凭证已失效，请重新授权。');
     expect(html).toContain('请重新授权');
+    expect(viewModel.items[0]?.error?.code).toBe('AUTH_EXPIRED');
 
     const rendered = await renderService.renderCard(viewModel, { width: 640 });
     expect(rendered.template).toBe('collection-backlog');
