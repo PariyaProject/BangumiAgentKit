@@ -983,6 +983,29 @@ function finalizePreexistingAttempt(prNumber, status, profileId = DEFAULT_PROFIL
   return printReportWrittenAckPending(profile.id, claim.claimId, reportSha256);
 }
 
+export function recoverP02StartupStatus(profileStatus, handlers) {
+  if (profileStatus.state === 'AMBIGUOUS') return handlers.reconcileAmbiguous(profileStatus);
+  if (profileStatus.state === 'AMBIGUOUS_TERMINAL_LATCH') {
+    return handlers.recoverTerminalLatch(profileStatus);
+  }
+  if (
+    profileStatus.state === 'CLAIM_MISMATCH' ||
+    profileStatus.state === 'CLAIM_MISMATCH_TERMINAL_LATCH'
+  ) {
+    return handlers.terminalizeMismatch(profileStatus);
+  }
+  if (
+    ['REPORT_WRITTEN', 'INCONCLUSIVE'].includes(profileStatus.state) &&
+    profileStatus.disposition
+  ) {
+    return handlers.reuseTerminal(profileStatus);
+  }
+  if (profileStatus.state === 'CLAIMED' && profileStatus.disposition) {
+    return handlers.finalizeClaim(profileStatus);
+  }
+  return null;
+}
+
 function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
   const { profile, spec } = profileContext(profileId);
   if (Number(runNumber) !== RUN_NUMBER) throw new Error('P02 profile is limited to Run #95.');
@@ -992,27 +1015,28 @@ function runP02({ runNumber, profileId = DEFAULT_PROFILE_ID }) {
     throw new Error('Run #95 has no active P02 Epoch PR.');
   const profileStatus = readProfileStatus(prNumber, profile.id);
   const reportExists = existsSync(path.join(ROOT, profile.reportPath));
-  if (profileStatus.state === 'AMBIGUOUS') {
-    return reconcileAmbiguousClaim(prNumber, profile.id);
-  }
-  if (profileStatus.state === 'AMBIGUOUS_TERMINAL_LATCH') {
-    return recoverAmbiguousTerminalLatch(prNumber, profileStatus, profile.id);
-  }
-  if (
-    ['REPORT_WRITTEN', 'INCONCLUSIVE'].includes(profileStatus.state) &&
-    profileStatus.disposition
-  ) {
-    printSafe({
-      state: profileStatus.state,
-      profileId: profile.id,
-      retryAllowed: false,
-      reused: true,
-    });
-    return 0;
-  }
-  if (profileStatus.state === 'CLAIMED' && profileStatus.disposition) {
-    return finalizePreexistingAttempt(prNumber, profileStatus, profile.id);
-  }
+  const startupRecovery = recoverP02StartupStatus(profileStatus, {
+    reconcileAmbiguous: () => reconcileAmbiguousClaim(prNumber, profile.id),
+    recoverTerminalLatch: (status) => recoverAmbiguousTerminalLatch(prNumber, status, profile.id),
+    terminalizeMismatch: (status) =>
+      terminalizeP02NoReportAttempt(
+        prNumber,
+        status.disposition?.claimId ?? null,
+        'P02_STARTUP_PROFILE_CLAIM_BINDING_MISMATCH',
+        profile.id,
+      ),
+    reuseTerminal: (status) => {
+      printSafe({
+        state: status.state,
+        profileId: profile.id,
+        retryAllowed: false,
+        reused: true,
+      });
+      return 0;
+    },
+    finalizeClaim: (status) => finalizePreexistingAttempt(prNumber, status, profile.id),
+  });
+  if (startupRecovery !== null) return startupRecovery;
   if (profileStatus.state !== 'UNCLAIMED' || profileStatus.disposition !== null || reportExists) {
     throw new Error(
       'P02 profile is ambiguous, mismatched, or has an orphan report; refusing execution.',

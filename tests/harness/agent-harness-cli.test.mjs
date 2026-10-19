@@ -2438,6 +2438,24 @@ test('P02 v2 profile-binding drift is rejected and terminalized as no-report', (
       assert.equal(rejected.status, 0, rejected.stderr);
       assert.equal(JSON.parse(rejected.stdout).state, 'CLAIM_MISMATCH', `${field} drift`);
 
+      if (field === 'frontierId') {
+        const beforeLabelReplay = environment.readState();
+        beforeLabelReplay.failNextPullRequestPatch = true;
+        fs.writeFileSync(environment.statePath, `${JSON.stringify(beforeLabelReplay, null, 2)}\n`);
+        const patchFailure = environment.execute([
+          'epoch:agent-mcp-profile-reconcile-ambiguous',
+          ...runArgs,
+        ]);
+        assert.notEqual(patchFailure.status, 0);
+        assert.match(patchFailure.stderr, /simulated pull request body update failure/u);
+        const interruptedStatus = environment.execute([
+          'epoch:agent-mcp-profile-status',
+          ...runArgs,
+        ]);
+        assert.equal(interruptedStatus.status, 0, interruptedStatus.stderr);
+        assert.equal(JSON.parse(interruptedStatus.stdout).state, 'CLAIM_MISMATCH_TERMINAL_LATCH');
+      }
+
       const terminalized = environment.execute([
         'epoch:agent-mcp-profile-reconcile-ambiguous',
         ...runArgs,

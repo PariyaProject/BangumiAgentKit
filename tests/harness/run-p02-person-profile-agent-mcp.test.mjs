@@ -18,6 +18,7 @@ import {
   classifyP02TerminalLatchRecovery,
   classifyP02ReportWriteRecovery,
   isP02ProfileClaimCurrent,
+  recoverP02StartupStatus,
   shouldInvokeP02Codex,
   validateP02RunnerArgs,
   validateServerSummary,
@@ -142,6 +143,28 @@ test('P02 terminal-latch recovery replays only the exact durable terminal state'
     'ACK_PENDING',
   );
   assert.equal(classifyP02TerminalLatchRecovery({ state: 'CLAIMED' }, null, PROFILE_V2.id), 'NONE');
+});
+
+test('P02 startup routes persisted profile-binding mismatches to no-report reconciliation', () => {
+  for (const state of ['CLAIM_MISMATCH', 'CLAIM_MISMATCH_TERMINAL_LATCH']) {
+    const claimId = `profile-run-95-pr-237-${state.toLowerCase()}`;
+    const calls = [];
+    const result = recoverP02StartupStatus(
+      { state, disposition: { claimId } },
+      {
+        reconcileAmbiguous: () => calls.push('ambiguous-reconcile'),
+        recoverTerminalLatch: () => calls.push('terminal-latch-recovery'),
+        terminalizeMismatch: (status) => {
+          calls.push(['mismatch-terminalization', status.disposition.claimId]);
+          return 1;
+        },
+        reuseTerminal: () => calls.push('reuse-terminal'),
+        finalizeClaim: () => calls.push('finalize-claim'),
+      },
+    );
+    assert.equal(result, 1);
+    assert.deepEqual(calls, [['mismatch-terminalization', claimId]]);
+  }
 });
 
 test('P02 exact claim-current check accepts the assigned runtime reviewer and rejects drift', () => {
