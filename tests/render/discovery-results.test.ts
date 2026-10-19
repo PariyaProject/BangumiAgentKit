@@ -426,6 +426,27 @@ describe('discovery-results renderer', () => {
     expect(viewModel.plan.operation).toBe('searchSubjects');
     expect(viewModel.source.operations).toContain('searchSubjects');
     expect(viewModel.source.retrievedAt).toBe('2026-08-11T00:00:00.000Z');
+
+    result.coverage.reason = 'Output cap was reached.';
+    const legacyReasonHtml = renderHtmlTemplate(
+      buildDiscoveryResultsViewModel(result, { limit: 13 }),
+      'bangumi-dark',
+      {},
+      640,
+    );
+    expect(legacyReasonHtml).toContain('范围说明：结果已达到返回上限，仍有匹配条目未纳入列表。');
+    expect(legacyReasonHtml.match(/结果已达到返回上限/g)).toHaveLength(1);
+    expect(legacyReasonHtml).not.toContain('提示：');
+  });
+
+  it('keeps the structured budget limitation but hides its duplicate image copy', () => {
+    const result = makeResult('partial', 1);
+    const viewModel = buildDiscoveryResultsViewModel(result, {});
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 360);
+
+    expect(html).toContain('范围说明：检索已到本次处理上限，尚未证明覆盖全部结果。');
+    expect(html).not.toContain('结果受有界预算限制。');
+    expect(viewModel.limitations).toContain('结果受有界预算限制。');
   });
 
   it('deduplicates an unresolved-field warning already explained by the coverage reason', () => {

@@ -148,6 +148,8 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
   ];
   const coverageNote = [...new Set(coverageMessages)].join('；');
   const coverageReasonIsShown = !coverage.budgetExceeded && !coverage.hydrationBudgetExceeded;
+  const coverageIsOutputCap =
+    coverage.reason === 'output_cap' || coverage.reason === 'Output cap was reached.';
   const renderWarnings = viewModel.warnings.filter((warning) => {
     if (coverage.budgetExceeded && warning.code === 'DISCOVERY_BUDGET_EXCEEDED') return false;
     if (
@@ -158,7 +160,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
     }
     if (
       coverageReasonIsShown &&
-      coverage.reason === 'output_cap' &&
+      coverageIsOutputCap &&
       warning.code === 'DISCOVERY_OUTPUT_TRUNCATED'
     ) {
       return false;
@@ -178,8 +180,9 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
       item.startsWith('collectionCompletionRate =') ||
       item === COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
   );
+  const duplicateBudgetLimitation = coverage.budgetExceeded ? '结果受有界预算限制。' : undefined;
   const otherLimitations = viewModel.limitations.filter(
-    (item) => !completionLimitations.includes(item),
+    (item) => !completionLimitations.includes(item) && item !== duplicateBudgetLimitation,
   );
   const visibleLimitations = otherLimitations.slice(0, 3);
   const hiddenWarnings = Math.max(0, renderWarnings.length - visibleWarnings.length);
