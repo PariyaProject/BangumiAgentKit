@@ -43,6 +43,8 @@ Sol #2's full review evidence is
 
 Renderer follow-up — 2026-10-03 (Harness Epoch PR #65): the MCP 360 CSS-pixel target exposed horizontal clipping in person-credit and search-result cards. Compact person credits now stack and wrap; search results use one column on phone widths. A Chromium layout audit runs against each successful renderer fixture at 320, 360, and 520 CSS px; it found and fixed a third overflow in the statistics-history breakpoint. Focused tests verify 720px PNG output. This is fixture-level presentation evidence only; current-source Agent/MCP and QQ/TIM acceptance remain separate.
 
+Renderer follow-up — 2026-10-20 (Run #95 theme Epoch): SubjectCard and SubjectOverview now share the clean-gallery light/dark title and icon treatment. The full offline matrix records both themes across all 29 templates at five widths in `docs/research/run95-render-theme-switch-visual-qa-2026-10-20.json`. This adds presentation evidence to OP-008 only; it does not close current-source Agent/MCP or QQ/TIM acceptance. The selectable per-sender preference is tracked separately in OP-013.
+
 Status:
 MERGED_BY_HUMAN_AUTHORIZATION / HISTORICAL_REVIEW_PARKED
 
