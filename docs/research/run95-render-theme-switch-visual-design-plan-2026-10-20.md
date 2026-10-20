@@ -133,3 +133,14 @@ and cache separation remain unchanged; layout selection follows content type.
 Acceptance repeats the complete 29-template, two-theme, five-width synthetic
 matrix and records every image receipt. It grants renderer presentation
 evidence only, not Agent/MCP, account, OAuth, QQ, or TIM acceptance.
+
+### Long-card density rule
+
+The first high-resolution pass found that a complete Subject Overview still
+reached 11,160 physical pixels at the 320 CSS-pixel target because it printed
+large staff groups in full. Long revision summaries also dominated narrow
+cards. The image may now show a responsive excerpt, while the ViewModel remains
+complete. Every excerpt reports the exact number returned and the number shown;
+staff rows report visible/total member counts, and omitted groups or relations
+are called out. The card never uses an excerpt as evidence that the source had
+no more data.

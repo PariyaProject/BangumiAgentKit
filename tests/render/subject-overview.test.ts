@@ -407,7 +407,7 @@ describe('Subject Overview renderer', () => {
     expect(compactHtml).toContain('data-layout="editorial-cover-hero"');
   });
 
-  it('renders every returned staff member when the requested cap allows it', async () => {
+  it('keeps staff ViewModels complete and labels responsive image excerpts', async () => {
     const complete = pinVisualFixtureRetrievedAt(await semanticFixture('complete'));
     const templateMember = complete.staff.items[0];
     expect(templateMember).toBeDefined();
@@ -447,8 +447,9 @@ describe('Subject Overview renderer', () => {
     expect(viewModel.staff.hiddenCount).toBeUndefined();
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 720);
     expect(html).toContain('制作职员01');
-    expect(html).toContain('制作职员87');
-    expect(html).not.toContain('另有 63 条已返回职员关系未展示');
+    expect(html).not.toContain('制作职员87');
+    expect(html).toContain('图片显示 18 条');
+    expect(html).toContain('职位分组图片展示 6/12 组');
 
     const rendered = await renderService.renderCard(viewModel, {
       width: 720,

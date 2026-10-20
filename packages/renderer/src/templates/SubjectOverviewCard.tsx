@@ -111,16 +111,20 @@ function CoverageLine({
   observed,
   returned,
   truncated,
+  displayed,
   theme,
 }: {
   observed: number;
   returned: number;
   truncated: boolean;
+  displayed?: number;
   theme: ThemeTokens;
 }) {
   return (
     <div style={{ color: truncated ? theme.warning : theme.textMuted, fontSize: '13px' }}>
-      观察 {observed} 条 · 返回 {returned} 条{truncated ? ' · 已截断' : ''}
+      观察 {observed} 条 · 返回 {returned} 条
+      {displayed === undefined ? '' : ` · 图片显示 ${displayed} 条`}
+      {truncated ? ' · 已截断' : ''}
     </div>
   );
 }
@@ -263,6 +267,17 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
     renderWidth < 360 ? 76 : renderWidth < 520 ? 92 : renderWidth < 760 ? 136 : 196;
   const compactHero = renderWidth < 520;
   const summaryLimit = compactHero ? 96 : 180;
+  const castLimit = renderWidth < 520 ? 4 : renderWidth < 900 ? 6 : 12;
+  const staffGroupLimit = renderWidth < 520 ? 4 : renderWidth < 900 ? 6 : 8;
+  const staffMemberLimit = renderWidth < 520 ? 2 : renderWidth < 900 ? 3 : 4;
+  const relationLimit = renderWidth < 520 ? 4 : renderWidth < 900 ? 6 : 8;
+  const castItems = viewModel.cast.items.slice(0, castLimit);
+  const staffGroups = viewModel.staff.groups.slice(0, staffGroupLimit);
+  const relationItems = viewModel.relations.items.slice(0, relationLimit);
+  const displayedStaffMembers = staffGroups.reduce(
+    (count, group) => count + Math.min(group.members.length, staffMemberLimit),
+    0,
+  );
   const cover = subject.image ? resolvedImages[subject.image] : undefined;
   const title = subject.nameCn || subject.name;
   const subtitle =
@@ -416,7 +431,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
             <div style={{ color: theme.textMuted, fontSize: '14px' }}>未返回角色关系。</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
-              {viewModel.cast.items.map((item) => (
+              {castItems.map((item) => (
                 <div
                   key={item.character.id}
                   style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'flex-start' }}
@@ -450,14 +465,15 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
                   </div>
                 </div>
               ))}
-              {viewModel.cast.hiddenCount ? (
+              {viewModel.cast.coverage.returned > castItems.length ? (
                 <div style={{ color: theme.textMuted, fontSize: '13px' }}>
-                  另有 {viewModel.cast.hiddenCount} 条已返回角色未展示。
+                  另有 {viewModel.cast.coverage.returned - castItems.length}{' '}
+                  条已返回角色关系未在图片中展示。
                 </div>
               ) : null}
             </div>
           )}
-          <CoverageLine {...viewModel.cast.coverage} theme={theme} />
+          <CoverageLine {...viewModel.cast.coverage} displayed={castItems.length} theme={theme} />
           {viewModel.cast.actorCoverage.truncated ? (
             <div style={{ color: theme.warning, fontSize: '13px', overflowWrap: 'anywhere' }}>
               声优展示达到上限，覆盖数量见本区段统计。
@@ -483,42 +499,60 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
             <div style={{ color: theme.textMuted, fontSize: '14px' }}>未返回制作人员关系。</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
-              {viewModel.staff.groups.map((group) => (
-                <div
-                  key={group.relation}
-                  style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'baseline' }}
-                >
-                  <span
+              {staffGroups.map((group) => {
+                const members = group.members.slice(0, staffMemberLimit);
+                const groupCount = Math.max(group.count, group.members.length);
+                return (
+                  <div
+                    key={group.relation}
                     style={{
-                      color: theme.accent,
-                      fontSize: '14px',
-                      minWidth: '64px',
-                      overflowWrap: 'anywhere',
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(60px, auto) minmax(0, 1fr) auto',
+                      gap: theme.spacing.sm,
+                      alignItems: 'baseline',
                     }}
                   >
-                    {group.relation}
-                  </span>
-                  <span style={{ color: theme.text, fontSize: '15px', overflowWrap: 'anywhere' }}>
-                    {group.members.map((member) => member.name).join('、') || '成员未知'}
-                  </span>
-                  <span style={{ color: theme.textMuted, fontSize: '12px' }}>({group.count})</span>
-                </div>
-              ))}
-              {viewModel.staff.hiddenCount ? (
-                <div style={{ color: theme.textMuted, fontSize: '13px' }}>
-                  另有 {viewModel.staff.hiddenCount} 条已返回职员关系未展示。
+                    <span
+                      style={{
+                        color: theme.accent,
+                        fontSize: '13px',
+                        minWidth: 0,
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {group.relation}
+                    </span>
+                    <span style={{ color: theme.text, fontSize: '13px', overflowWrap: 'anywhere' }}>
+                      {members.map((member) => member.name).join('、') || '成员未知'}
+                    </span>
+                    <span
+                      style={{ color: theme.textMuted, fontSize: '11px', whiteSpace: 'nowrap' }}
+                    >
+                      显示 {members.length}/{groupCount}
+                    </span>
+                  </div>
+                );
+              })}
+              {viewModel.staff.groups.length > staffGroups.length ? (
+                <div style={{ color: theme.textMuted, fontSize: '12px' }}>
+                  职位分组图片展示 {staffGroups.length}/{viewModel.staff.groups.length}{' '}
+                  组；其余分组未在图片中展开。
                 </div>
               ) : null}
             </div>
           )}
-          <CoverageLine {...viewModel.staff.coverage} theme={theme} />
+          <CoverageLine
+            {...viewModel.staff.coverage}
+            displayed={displayedStaffMembers}
+            theme={theme}
+          />
         </Panel>
         <Panel title="关联条目" state={viewModel.relations.state} theme={theme} icon="relations">
           {viewModel.relations.items.length === 0 ? (
             <div style={{ color: theme.textMuted, fontSize: '14px' }}>未返回关联条目。</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
-              {viewModel.relations.items.map((item) => (
+              {relationItems.map((item) => (
                 <div
                   key={`${item.id}-${item.relation}`}
                   style={{
@@ -543,14 +577,19 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
                   </span>
                 </div>
               ))}
-              {viewModel.relations.hiddenCount ? (
+              {viewModel.relations.coverage.returned > relationItems.length ? (
                 <div style={{ color: theme.textMuted, fontSize: '13px' }}>
-                  另有 {viewModel.relations.hiddenCount} 条已返回关系未展示。
+                  另有 {viewModel.relations.coverage.returned - relationItems.length}{' '}
+                  条已返回关系未在图片中展示。
                 </div>
               ) : null}
             </div>
           )}
-          <CoverageLine {...viewModel.relations.coverage} theme={theme} />
+          <CoverageLine
+            {...viewModel.relations.coverage}
+            displayed={relationItems.length}
+            theme={theme}
+          />
         </Panel>
       </div>
 
