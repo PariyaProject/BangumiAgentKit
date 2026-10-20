@@ -354,6 +354,10 @@ describe('Subject Overview renderer', () => {
     expect(vm.staff.hiddenCount).toBeGreaterThan(0);
 
     const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, 640);
+    expect(html).toContain('data-layout="editorial-cover-hero"');
+    expect(html).toContain('data-layout="editorial-summary"');
+    expect(html).toContain('data-layout="editorial-public-collection"');
+    expect(html).toContain('社区收藏统计');
     expect(html).toContain('少女终末旅行');
     expect(html).toContain('评分与收藏统计');
     expect(html.match(/本次范围内完整/gu)).toHaveLength(5);
@@ -395,6 +399,12 @@ describe('Subject Overview renderer', () => {
     }
     expect(unavailableHtml).toContain('不可用');
     expect(notFoundHtml).toContain('未找到');
+
+    const compactVm = structuredClone(vm);
+    compactVm.subject.summary = '用于验证简介节选且明确标注的合成摘要。'.repeat(20);
+    const compactHtml = renderHtmlTemplate(compactVm, 'bangumi-light', {}, 320);
+    expect(compactHtml).toContain('简介节选 · 前 96 字');
+    expect(compactHtml).toContain('data-layout="editorial-cover-hero"');
   });
 
   it('renders every returned staff member when the requested cap allows it', async () => {

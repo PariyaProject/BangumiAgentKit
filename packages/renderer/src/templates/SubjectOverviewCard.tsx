@@ -9,6 +9,7 @@ import { CoverImage } from '../components/CoverImage.js';
 import { Footer } from '../components/Footer.js';
 import { MetaRow } from '../components/MetaRow.js';
 import { PersonAvatar } from '../components/PersonAvatar.js';
+import { RendererIcon, type RendererIconName } from '../components/RendererIcon.js';
 import { ScoreBadge } from '../components/ScoreBadge.js';
 import { TitleBlock } from '../components/TitleBlock.js';
 import { subjectTypeLabel } from '../subject-type-label.js';
@@ -56,7 +57,7 @@ function StatePill({
       style={{
         color: stateColor(state, theme),
         border: `1px solid ${stateColor(state, theme)}`,
-        borderRadius: theme.radius.sm,
+        borderRadius: '999px',
         padding: '2px 7px',
         fontSize: '13px',
         whiteSpace: 'nowrap',
@@ -72,11 +73,13 @@ function Panel({
   state,
   children,
   theme,
+  icon = 'overview',
 }: {
   title: string;
   state: SubjectOverviewSectionState;
   children: React.ReactNode;
   theme: ThemeTokens;
+  icon?: RendererIconName;
 }) {
   return (
     <section
@@ -93,7 +96,10 @@ function Panel({
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-        <h2 style={{ margin: 0, fontSize: '18px', color: theme.text }}>{title}</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, minWidth: 0 }}>
+          <RendererIcon name={icon} theme={theme} size={16} badge />
+          <h2 style={{ margin: 0, fontSize: '18px', color: theme.text }}>{title}</h2>
+        </div>
         <StatePill state={state} theme={theme} />
       </div>
       {children}
@@ -129,7 +135,7 @@ function StatsPanel({
   const maxCount = Math.max(1, ...stats.histogram.map((item) => item.count));
   const collection = stats.collection;
   return (
-    <Panel title="评分与收藏统计" state={stats.state} theme={theme}>
+    <Panel title="评分与收藏统计" state={stats.state} theme={theme} icon="stats">
       {stats.state === 'unavailable' || stats.state === 'not_computable' ? (
         <div style={{ color: theme.textMuted, fontSize: '14px' }}>当前来源没有可用统计值。</div>
       ) : (
@@ -252,10 +258,19 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
   width,
 }) => {
   const { subject } = viewModel;
+  const renderWidth = width ?? 960;
+  const coverWidth =
+    renderWidth < 360 ? 76 : renderWidth < 520 ? 92 : renderWidth < 760 ? 136 : 196;
+  const compactHero = renderWidth < 520;
+  const summaryLimit = compactHero ? 96 : 180;
   const cover = subject.image ? resolvedImages[subject.image] : undefined;
   const title = subject.nameCn || subject.name;
   const subtitle =
     subject.nameCn && subject.nameCn !== subject.name ? subject.name : `条目 ID：${subject.id}`;
+  const summary = subject.summary?.replace(/\s+/gu, ' ').trim();
+  const summaryCharacters = summary ? Array.from(summary) : [];
+  const summaryExcerpt = summaryCharacters.slice(0, summaryLimit).join('');
+  const summaryTruncated = summaryCharacters.length > summaryLimit;
   const hasCoverageNotes = viewModel.warnings.length > 0 || viewModel.limitations.length > 0;
   const sourceLabel = viewModel.source.retrievedAt
     ? `${viewModel.source.label} · ${viewModel.source.retrievedAt}`
@@ -263,34 +278,64 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
 
   return (
     <CardFrame theme={theme} width={width}>
-      <div
+      <section
+        data-layout="editorial-cover-hero"
         style={{
-          display: 'flex',
-          gap: theme.spacing.lg,
-          alignItems: 'flex-start',
-          flexWrap: 'wrap',
+          display: 'grid',
+          gridTemplateColumns: `${coverWidth}px minmax(0, 1fr)`,
+          gap: theme.spacing.md,
+          alignItems: 'stretch',
+          padding: theme.spacing.md,
+          backgroundColor: theme.surfaceAlt,
+          border: `1px solid ${theme.border}`,
+          borderRadius: theme.radius.lg,
         }}
       >
-        <CoverImage src={cover} alt={title} theme={theme} width={132} height={184} />
+        <CoverImage
+          src={cover}
+          alt={title}
+          theme={theme}
+          width={coverWidth}
+          height={Math.round(coverWidth * 1.42)}
+        />
         <div
           style={{
             flex: '1 1 360px',
             minWidth: 0,
             display: 'flex',
             flexDirection: 'column',
-            gap: theme.spacing.sm,
+            gap: theme.spacing.md,
+            justifyContent: 'center',
           }}
         >
           <div
             style={{
               display: 'flex',
-              justifyContent: 'space-between',
+              flexDirection: 'column',
               gap: theme.spacing.sm,
-              alignItems: 'flex-start',
+              alignItems: 'stretch',
             }}
           >
-            <TitleBlock title={title} subtitle={subtitle} theme={theme} icon="overview" />
-            <StatePill state={viewModel.state} theme={theme} />
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: compactHero ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: theme.spacing.sm,
+              }}
+            >
+              <TitleBlock
+                title={title}
+                subtitle={subtitle}
+                theme={theme}
+                icon="overview"
+                titleFontSize={compactHero ? '20px' : renderWidth < 760 ? '24px' : '30px'}
+                subtitleFontSize={compactHero ? '12px' : '14px'}
+              />
+              <StatePill state={viewModel.state} theme={theme} />
+            </div>
+            <ScoreBadge score={subject.score} rank={subject.rank} theme={theme} />
           </div>
           <MetaRow
             items={[
@@ -303,25 +348,70 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
             ]}
             theme={theme}
           />
-          <ScoreBadge score={subject.score} rank={subject.rank} theme={theme} />
-          {subject.summary && (
+          {viewModel.stats.collection ? (
             <div
+              data-layout="editorial-public-collection"
               style={{
-                color: theme.textMuted,
-                fontSize: '16px',
-                lineHeight: 1.55,
-                overflowWrap: 'anywhere',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: theme.spacing.xs,
               }}
             >
-              {subject.summary}
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
+                <RendererIcon name="collection" theme={theme} size={15} />
+                <span style={{ color: theme.textMuted, fontSize: '11px' }}>社区收藏统计</span>
+              </div>
+              {[
+                ['想看', viewModel.stats.collection.wish],
+                ['看过', viewModel.stats.collection.collect],
+                ['在看', viewModel.stats.collection.doing],
+                ['搁置', viewModel.stats.collection.onHold],
+                ['抛弃', viewModel.stats.collection.dropped],
+              ].map(([label, value]) => (
+                <span
+                  key={String(label)}
+                  style={{
+                    color: theme.accent,
+                    backgroundColor: theme.surface,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '999px',
+                    padding: '3px 7px',
+                    fontSize: '11px',
+                  }}
+                >
+                  {label} {value}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {summary && (
+            <div
+              data-layout="editorial-summary"
+              style={{
+                color: theme.textMuted,
+                fontSize: compactHero ? '13px' : '15px',
+                lineHeight: 1.6,
+                overflowWrap: 'anywhere',
+                borderTop: `1px solid ${theme.border}`,
+                paddingTop: theme.spacing.sm,
+              }}
+            >
+              <div
+                style={{ color: theme.accent, fontSize: '11px', fontWeight: 700, marginBottom: 4 }}
+              >
+                简介{summaryTruncated ? `节选 · 前 ${summaryLimit} 字` : ''}
+              </div>
+              {summaryExcerpt}
+              {summaryTruncated ? '…' : ''}
             </div>
           )}
         </div>
-      </div>
+      </section>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.md }}>
         <StatsPanel stats={viewModel.stats} theme={theme} />
-        <Panel title="角色与声优" state={viewModel.cast.state} theme={theme}>
+        <Panel title="角色与声优" state={viewModel.cast.state} theme={theme} icon="cast">
           {viewModel.cast.items.length === 0 ? (
             <div style={{ color: theme.textMuted, fontSize: '14px' }}>未返回角色关系。</div>
           ) : (
@@ -377,7 +467,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.md }}>
-        <Panel title="制作人员" state={viewModel.staff.state} theme={theme}>
+        <Panel title="制作人员" state={viewModel.staff.state} theme={theme} icon="person">
           <div
             style={{
               color: theme.textMuted,
@@ -423,7 +513,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
           )}
           <CoverageLine {...viewModel.staff.coverage} theme={theme} />
         </Panel>
-        <Panel title="关联条目" state={viewModel.relations.state} theme={theme}>
+        <Panel title="关联条目" state={viewModel.relations.state} theme={theme} icon="relations">
           {viewModel.relations.items.length === 0 ? (
             <div style={{ color: theme.textMuted, fontSize: '14px' }}>未返回关联条目。</div>
           ) : (

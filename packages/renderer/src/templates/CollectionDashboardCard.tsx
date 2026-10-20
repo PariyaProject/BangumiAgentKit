@@ -1,6 +1,7 @@
 import React from 'react';
 import { CardFrame } from '../components/CardFrame.js';
 import { Footer } from '../components/Footer.js';
+import { RendererIcon, type RendererIconName } from '../components/RendererIcon.js';
 import { TitleBlock } from '../components/TitleBlock.js';
 import { CollectionDashboardViewModel } from '../view-models/index.js';
 import { ThemeTokens } from '../themes/index.js';
@@ -70,12 +71,141 @@ function sectionHeader(
   title: string,
   state: CollectionDashboardViewModel['state'],
   theme: ThemeTokens,
+  icon: RendererIconName,
 ): React.ReactNode {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-      <span style={{ color: theme.accent, fontSize: '14px', fontWeight: 700 }}>{title}</span>
-      <span style={{ color: theme.textMuted, fontSize: '10px', whiteSpace: 'nowrap' }}>
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: theme.spacing.sm,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, minWidth: 0 }}>
+        <RendererIcon name={icon} theme={theme} size={16} badge />
+        <span style={{ color: theme.accent, fontSize: '15px', fontWeight: 700 }}>{title}</span>
+      </div>
+      <span
+        style={{
+          color: theme.textMuted,
+          fontSize: '11px',
+          whiteSpace: 'nowrap',
+          border: `1px solid ${theme.border}`,
+          borderRadius: '999px',
+          padding: '3px 8px',
+        }}
+      >
         {stateLabel(state)}
+      </span>
+    </div>
+  );
+}
+
+function DashboardMetric({
+  icon,
+  label,
+  value,
+  detail,
+  theme,
+}: {
+  icon: RendererIconName;
+  label: string;
+  value: string;
+  detail: string;
+  theme: ThemeTokens;
+}): React.ReactNode {
+  return (
+    <div
+      data-layout="dashboard-metric"
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: theme.spacing.sm,
+        backgroundColor: theme.surfaceAlt,
+        border: `1px solid ${theme.border}`,
+        borderRadius: theme.radius.md,
+        padding: theme.spacing.sm,
+        minWidth: 0,
+      }}
+    >
+      <RendererIcon name={icon} theme={theme} size={18} badge />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ color: theme.textMuted, fontSize: '11px' }}>{label}</div>
+        <div
+          style={{ color: theme.text, fontSize: '18px', fontWeight: 800, overflowWrap: 'anywhere' }}
+        >
+          {value}
+        </div>
+        <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>{detail}</div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardFact({
+  label,
+  value,
+  theme,
+}: {
+  label: string;
+  value: string | number;
+  theme: ThemeTokens;
+}): React.ReactNode {
+  return (
+    <div
+      style={{
+        minWidth: 0,
+        backgroundColor: theme.surfaceAlt,
+        borderRadius: theme.radius.sm,
+        padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+      }}
+    >
+      <div style={{ color: theme.textMuted, fontSize: '10px' }}>{label}</div>
+      <div
+        style={{ color: theme.text, fontSize: '14px', fontWeight: 700, overflowWrap: 'anywhere' }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function DashboardListRow({
+  icon,
+  title,
+  detail,
+  theme,
+}: {
+  icon: RendererIconName;
+  title: string;
+  detail: string;
+  theme: ThemeTokens;
+}): React.ReactNode {
+  return (
+    <div
+      role="listitem"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '20px minmax(0, 1fr) auto',
+        alignItems: 'center',
+        gap: theme.spacing.xs,
+        padding: `${theme.spacing.xs} 0`,
+        borderBottom: `1px solid ${theme.border}`,
+        minWidth: 0,
+      }}
+    >
+      <RendererIcon name={icon} theme={theme} size={16} />
+      <span style={{ color: theme.text, fontSize: '12px', overflowWrap: 'anywhere' }}>{title}</span>
+      <span
+        style={{
+          color: theme.accent,
+          fontSize: '11px',
+          textAlign: 'right',
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {detail}
       </span>
     </div>
   );
@@ -123,16 +253,27 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
         icon="overview"
       />
 
-      <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
-        收藏概览、backlog
-        和未来七日播出计划分别读取；日期不表示具体时刻或时区，未观察数据不会被补猜。
-        <br />
-        活跃状态过滤：{viewModel.filters.length ? viewModel.filters.join('、') : '未设置'} ·
-        展示内容：
-        {viewModel.presentation.state === 'complete' ? '无省略' : '有条目省略'}
+      <div
+        data-layout="dashboard-context"
+        style={{
+          color: theme.textMuted,
+          fontSize: '12px',
+          lineHeight: 1.55,
+          backgroundColor: theme.surfaceAlt,
+          borderRadius: theme.radius.md,
+          padding: theme.spacing.sm,
+        }}
+      >
+        三个只读区段：收藏概览、backlog、七日播出计划。日期不表示具体时刻或时区；未观察到的数据不会补猜。
+        <div style={{ color: theme.accent, fontSize: '11px', marginTop: theme.spacing.xs }}>
+          活跃状态过滤：{viewModel.filters.length ? viewModel.filters.join('、') : '未设置'} ·
+          展示内容：
+          {viewModel.presentation.state === 'complete' ? '无省略' : '有条目省略'}
+        </div>
       </div>
 
       <div
+        data-layout="dashboard-metrics"
         style={{
           display: 'grid',
           gridTemplateColumns:
@@ -141,37 +282,37 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
         }}
       >
         {[
-          [
-            '区段成功',
-            `${viewModel.coverage.sectionsSucceeded}/${viewModel.coverage.sectionsInvoked}（请求${viewModel.coverage.sectionsRequested}）`,
-          ],
-          [
-            '收藏观察',
-            `${viewModel.coverage.collectionRowsObserved}/${viewModel.coverage.collectionRowsBound}`,
-          ],
-          [
-            'backlog 条目',
-            `${viewModel.coverage.backlogSubjectsSucceeded}/${viewModel.coverage.backlogSubjectsRequested}`,
-          ],
-          ['日历观察', String(viewModel.coverage.calendarRowsObserved)],
-        ].map(([label, value]) => (
-          <div
-            key={label}
-            style={{
-              backgroundColor: theme.surfaceAlt,
-              border: `1px solid ${theme.border}`,
-              borderRadius: theme.radius.sm,
-              padding: theme.spacing.sm,
-              minWidth: 0,
-            }}
-          >
-            <div style={{ color: theme.textMuted, fontSize: '10px' }}>{label}</div>
-            <div style={{ color: theme.text, fontSize: '16px', fontWeight: 700 }}>{value}</div>
-          </div>
+          {
+            icon: 'overview' as const,
+            label: '区段成功',
+            value: `${viewModel.coverage.sectionsSucceeded} / ${viewModel.coverage.sectionsInvoked}`,
+            detail: `请求 ${viewModel.coverage.sectionsRequested} 个区段`,
+          },
+          {
+            icon: 'collection' as const,
+            label: '收藏观察',
+            value: `${viewModel.coverage.collectionRowsObserved} / ${viewModel.coverage.collectionRowsBound}`,
+            detail: '观察行数 / 约束上限',
+          },
+          {
+            icon: 'episode' as const,
+            label: 'Backlog 条目',
+            value: `${viewModel.coverage.backlogSubjectsSucceeded} / ${viewModel.coverage.backlogSubjectsRequested}`,
+            detail: '成功 / 请求',
+          },
+          {
+            icon: 'calendar' as const,
+            label: '日历观察',
+            value: String(viewModel.coverage.calendarRowsObserved),
+            detail: `请求 ${viewModel.coverage.calendarRowsRequested} 行`,
+          },
+        ].map((metric) => (
+          <DashboardMetric key={metric.label} {...metric} theme={theme} />
         ))}
       </div>
 
       <div
+        data-layout="dashboard-bento"
         style={{
           display: 'grid',
           gridTemplateColumns: sectionGrid,
@@ -184,32 +325,65 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
             border: `1px solid ${theme.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
+            borderLeft: `3px solid ${theme.accent}`,
+            backgroundColor: theme.surface,
             minWidth: 0,
           }}
         >
-          {sectionHeader('收藏概览', viewModel.sections.intelligence.state, theme)}
+          {sectionHeader('收藏概览', viewModel.sections.intelligence.state, theme, 'overview')}
           <SectionError error={viewModel.sections.intelligence.error} theme={theme} />
           {intelligence ? (
             <>
-              <div style={{ color: theme.text, fontSize: '11px', lineHeight: 1.6 }}>
-                backlog {intelligence.backlog.total}（想看 {intelligence.backlog.wish} · 搁置{' '}
-                {intelligence.backlog.onHold} · 在看 {intelligence.backlog.doing}）
-                <br />
-                已评分 {intelligence.ratings.rated}
-                {intelligence.ratings.average !== undefined
-                  ? ` · 平均 ${intelligence.ratings.average}`
-                  : ''}
-                <br />
-                标签 {intelligence.tags.distinct} · 已有进度{' '}
-                {intelligence.progress.itemsWithProgress}
+              <div
+                data-layout="dashboard-facts"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gap: theme.spacing.xs,
+                }}
+              >
+                <DashboardFact
+                  label="Backlog 总量"
+                  value={intelligence.backlog.total}
+                  theme={theme}
+                />
+                <DashboardFact
+                  label="想看 / 搁置 / 在看"
+                  value={`${intelligence.backlog.wish} / ${intelligence.backlog.onHold} / ${intelligence.backlog.doing}`}
+                  theme={theme}
+                />
+                <DashboardFact label="已评分" value={intelligence.ratings.rated} theme={theme} />
+                <DashboardFact
+                  label="平均评分"
+                  value={intelligence.ratings.average ?? '未知'}
+                  theme={theme}
+                />
+                <DashboardFact label="不同标签" value={intelligence.tags.distinct} theme={theme} />
+                <DashboardFact
+                  label="已有进度"
+                  value={intelligence.progress.itemsWithProgress}
+                  theme={theme}
+                />
               </div>
-              <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-                高频标签：
-                {intelligence.tags.top.length
-                  ? intelligence.tags.top
-                      .map((item) => `${boundedText(item.tag, 32)}(${item.count})`)
-                      .join(' · ')
-                  : '无可用标签证据'}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+                {intelligence.tags.top.length ? (
+                  intelligence.tags.top.map((item) => (
+                    <span
+                      key={item.tag}
+                      style={{
+                        color: theme.textMuted,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: '999px',
+                        padding: '3px 8px',
+                        fontSize: '10px',
+                      }}
+                    >
+                      {boundedText(item.tag, 32)} · {item.count}
+                    </span>
+                  ))
+                ) : (
+                  <span style={{ color: theme.textMuted, fontSize: '10px' }}>无可用标签证据</span>
+                )}
               </div>
               {omissionLine('概览更新：', viewModel.presentation.intelligence, theme)}
               {evidenceLine(
@@ -230,31 +404,65 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
             border: `1px solid ${theme.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
+            borderLeft: `3px solid ${theme.success}`,
+            backgroundColor: theme.surface,
             minWidth: 0,
           }}
         >
-          {sectionHeader('Backlog', viewModel.sections.backlog.state, theme)}
+          {sectionHeader('Backlog', viewModel.sections.backlog.state, theme, 'collection')}
           <SectionError error={viewModel.sections.backlog.error ?? backlog?.error} theme={theme} />
           {backlog ? (
             <>
-              <div style={{ color: theme.text, fontSize: '11px', lineHeight: 1.6 }}>
-                返回 {backlog.summary.returnedItems} · 已知剩余{' '}
-                {backlog.summary.knownRemainingEpisodes} 集
-                <br />
-                可计算 {backlog.summary.completeItems} · 无法计算{' '}
-                {backlog.summary.notComputableItems}
-                <br />
-                已播完未看完 {backlog.summary.finishedIncompleteItems}
+              <div
+                data-layout="dashboard-facts"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gap: theme.spacing.xs,
+                }}
+              >
+                <DashboardFact
+                  label="返回条目"
+                  value={backlog.summary.returnedItems}
+                  theme={theme}
+                />
+                <DashboardFact
+                  label="已知剩余集数"
+                  value={backlog.summary.knownRemainingEpisodes}
+                  theme={theme}
+                />
+                <DashboardFact label="可计算" value={backlog.summary.completeItems} theme={theme} />
+                <DashboardFact
+                  label="无法计算"
+                  value={backlog.summary.notComputableItems}
+                  theme={theme}
+                />
+                <DashboardFact
+                  label="播完未看完"
+                  value={backlog.summary.finishedIncompleteItems}
+                  theme={theme}
+                />
               </div>
-              <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-                {backlog.items.length
-                  ? backlog.items
-                      .map(
-                        (item) =>
-                          `${boundedText(item.nameCn || item.name, 42)} · ${item.remainingEpisodes !== undefined ? `剩余 ${item.remainingEpisodes}` : item.state}`,
-                      )
-                      .join('\n')
-                  : '没有可展示的 backlog 条目；空结果不等同于 backlog 为空。'}
+              <div role="list" aria-label="Backlog 条目" style={{ minWidth: 0 }}>
+                {backlog.items.length ? (
+                  backlog.items.map((item) => (
+                    <DashboardListRow
+                      key={item.subjectId}
+                      icon="episode"
+                      title={boundedText(item.nameCn || item.name, 48)}
+                      detail={
+                        item.remainingEpisodes !== undefined
+                          ? `剩余 ${item.remainingEpisodes} 集`
+                          : item.state
+                      }
+                      theme={theme}
+                    />
+                  ))
+                ) : (
+                  <div style={{ color: theme.textMuted, fontSize: '11px' }}>
+                    没有可展示的 backlog 条目；空结果不等同于 backlog 为空。
+                  </div>
+                )}
               </div>
               {omissionLine('Backlog：', viewModel.presentation.backlog, theme)}
               {evidenceLine(
@@ -275,32 +483,65 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
             border: `1px solid ${theme.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
+            borderLeft: `3px solid ${theme.warning}`,
+            backgroundColor: theme.surface,
             minWidth: 0,
           }}
         >
-          {sectionHeader('七日播出计划', viewModel.sections.schedule.state, theme)}
+          {sectionHeader('七日播出计划', viewModel.sections.schedule.state, theme, 'calendar')}
           <SectionError
             error={viewModel.sections.schedule.error ?? schedule?.error}
             theme={theme}
           />
           {schedule ? (
             <>
-              <div style={{ color: theme.text, fontSize: '11px', lineHeight: 1.6 }}>
-                匹配播出 {schedule.summary.matchedRows} · 收藏未匹配{' '}
-                {schedule.summary.unmatchedCollectionRows}
-                <br />
-                日历未匹配 {schedule.summary.unmatchedCalendarRows} · 进度未知{' '}
-                {schedule.summary.progressUnknownRows + schedule.summary.progressConflictRows}
+              <div
+                data-layout="dashboard-facts"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gap: theme.spacing.xs,
+                }}
+              >
+                <DashboardFact
+                  label="匹配播出"
+                  value={schedule.summary.matchedRows}
+                  theme={theme}
+                />
+                <DashboardFact
+                  label="收藏未匹配"
+                  value={schedule.summary.unmatchedCollectionRows}
+                  theme={theme}
+                />
+                <DashboardFact
+                  label="日历未匹配"
+                  value={schedule.summary.unmatchedCalendarRows}
+                  theme={theme}
+                />
+                <DashboardFact
+                  label="进度未知 / 冲突"
+                  value={
+                    schedule.summary.progressUnknownRows + schedule.summary.progressConflictRows
+                  }
+                  theme={theme}
+                />
               </div>
-              <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-                {schedule.items.length
-                  ? schedule.items
-                      .map(
-                        (item) =>
-                          `${boundedText(item.nameCn || item.name, 42)} · ${item.schedule.weekday.cn || item.schedule.weekday.en || '星期未知'}${item.schedule.airDate ? ` ${item.schedule.airDate}` : ''}`,
-                      )
-                      .join('\n')
-                  : '没有确认匹配的收藏播出条目；请结合覆盖和未匹配原因理解。'}
+              <div role="list" aria-label="七日播出计划条目" style={{ minWidth: 0 }}>
+                {schedule.items.length ? (
+                  schedule.items.map((item) => (
+                    <DashboardListRow
+                      key={item.subjectId}
+                      icon="calendar"
+                      title={boundedText(item.nameCn || item.name, 48)}
+                      detail={`${item.schedule.weekday.cn || item.schedule.weekday.en || '星期未知'}${item.schedule.airDate ? ` · ${item.schedule.airDate}` : ''}`}
+                      theme={theme}
+                    />
+                  ))
+                ) : (
+                  <div style={{ color: theme.textMuted, fontSize: '11px' }}>
+                    没有确认匹配的收藏播出条目；请结合覆盖和未匹配原因理解。
+                  </div>
+                )}
               </div>
               {omissionLine('播出计划：', viewModel.presentation.schedule, theme)}
               {evidenceLine(

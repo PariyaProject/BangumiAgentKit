@@ -95,6 +95,41 @@ continues to exercise native JPEG delivery with networking disabled.
    routing only.
 
 The renderer has 29 templates and multiple complete, partial, conflict,
-unavailable, and not-found fixtures. This work remains `PARTIAL` until the
-template families, exact Candidate CI, review, and harness integration gates
-pass. No live QQ/TIM message is claimed.
+unavailable, and not-found fixtures. The first theme-system Candidate passed
+exact CI, same-identity review, and Harness integration as PR #241 on
+2026-10-20. OP-013 remains `PARTIAL`: that synthetic renderer evidence does not
+establish real QQ/TIM delivery. No live QQ/TIM message is claimed.
+
+## Second iteration — visual structure refinement
+
+After reviewing the first 580-image matrix, the user called out that the new
+palette and icons still left some cards looking like dense text reports. The
+contact sheets support that concern: the theme switch works, but Subject
+Overview and Collection Dashboard need stronger content hierarchy. This is a
+layout issue, not another palette request.
+
+The new design reference board is
+[`run95-render-editorial-bento-timeline-board-2026-10-20.png`](assets/run95-render-editorial-bento-timeline-board-2026-10-20.png).
+It compares three structures using the same fictional subject:
+
+- **Editorial cover hero** for a work overview: the real work cover anchors
+  the card; title, available score/rank, and public metadata lead. Public
+  aggregate collection counts may appear as clearly labeled chips; they never
+  imply a personal collection state. Detailed statistics and coverage follow.
+- **Bento metrics** for a collection dashboard: three source-backed sections
+  have distinct panels and direct summary values, with evidence and limits
+  still available at a quieter visual level.
+- **Timeline rail** for revision history: dated observations read in sequence,
+  while entity, author, missing-field, and coverage details remain explicit.
+
+The generated artwork and copy in the board are not product data. Production
+cards use the existing cover resolver, deterministic local fallback, and
+code-rendered SVG icon family. Icons remain paired with text; no generated
+text, fabricated statistics, external icon, or external image enters a card.
+
+The active Run #95 Epoch `run95-render-editorial-layouts-20261020` implements
+these three template-specific structures. The per-sender light/dark command
+and cache separation remain unchanged; layout selection follows content type.
+Acceptance repeats the complete 29-template, two-theme, five-width synthetic
+matrix and records every image receipt. It grants renderer presentation
+evidence only, not Agent/MCP, account, OAuth, QQ, or TIM acceptance.

@@ -449,6 +449,8 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
       ),
     );
     const html = renderHtmlTemplate(partialVm, 'bangumi-dark', {}, 640);
+    expect(html).toContain('data-layout="timeline-rail"');
+    expect(html).toContain('aria-label="Bangumi 修订记录时间线"');
     expect(html).toContain('&lt;script&gt;no-html&lt;/script&gt;');
     expect(html).toContain('历史增长趋势：当前源不支持计算');
   });

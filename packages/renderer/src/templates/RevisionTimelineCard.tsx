@@ -1,5 +1,6 @@
 import React from 'react';
 import { CardFrame } from '../components/CardFrame.js';
+import { RendererIcon } from '../components/RendererIcon.js';
 import { TitleBlock } from '../components/TitleBlock.js';
 import { Footer } from '../components/Footer.js';
 import { ThemeTokens } from '../themes/index.js';
@@ -29,8 +30,6 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
       : viewModel.state === 'partial'
         ? '部分覆盖'
         : '不可用';
-  const itemBasis = width && width >= 900 ? 'calc(50% - 6px)' : '100%';
-
   return (
     <CardFrame theme={theme} width={width}>
       <TitleBlock
@@ -40,7 +39,17 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
         icon="history"
       />
 
-      <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+      <div
+        data-layout="timeline-coverage"
+        style={{
+          color: theme.textMuted,
+          fontSize: '12px',
+          lineHeight: 1.5,
+          backgroundColor: theme.surfaceAlt,
+          borderRadius: theme.radius.md,
+          padding: theme.spacing.sm,
+        }}
+      >
         观察 {viewModel.coverage.observed} 条 · 返回 {viewModel.coverage.returned} 条 ·
         {` 总数 ${viewModel.coverage.totalKind === 'exact' ? viewModel.coverage.total : '未知'}`}
         {viewModel.coverage.truncated ? ' · 有界样本' : ''}
@@ -63,40 +72,89 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
         </div>
       ) : null}
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-        {viewModel.items.map((item) => (
+      <div
+        data-layout="timeline-rail"
+        role="list"
+        aria-label="Bangumi 修订记录时间线"
+        style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}
+      >
+        {viewModel.items.map((item, index) => (
           <div
             key={item.id}
+            role="listitem"
             style={{
-              flex: `1 1 ${itemBasis}`,
+              display: 'grid',
+              gridTemplateColumns: '28px minmax(0, 1fr)',
+              gap: theme.spacing.sm,
               minWidth: 0,
-              backgroundColor: theme.surfaceAlt,
-              border: `1px solid ${theme.border}`,
-              borderRadius: theme.radius.md,
-              padding: theme.spacing.md,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: theme.spacing.xs,
             }}
           >
             <div
+              aria-hidden="true"
               style={{
-                color: theme.text,
-                fontWeight: 600,
-                fontSize: '13px',
-                overflowWrap: 'anywhere',
-                wordBreak: 'break-word',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                minHeight: '100%',
               }}
             >
-              {item.summary || '修订摘要未知'}
+              <RendererIcon name="history" theme={theme} size={16} badge />
+              {index < viewModel.items.length - 1 ? (
+                <div
+                  style={{
+                    flex: 1,
+                    width: '2px',
+                    minHeight: theme.spacing.md,
+                    backgroundColor: theme.border,
+                  }}
+                />
+              ) : null}
             </div>
-            <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-              {item.createdAt ? `创建时间 ${item.createdAt}` : '创建时间未知'} · 类型 {item.type}
-              {item.creator?.nickname || item.creator?.username
-                ? ` · 修订者 ${item.creator.nickname || item.creator.username}`
-                : ' · 修订者未知'}
-            </div>
-            <div style={{ color: theme.textMuted, fontSize: '10px' }}>修订 ID {item.id}</div>
+            <article
+              style={{
+                minWidth: 0,
+                backgroundColor: theme.surfaceAlt,
+                border: `1px solid ${theme.border}`,
+                borderRadius: theme.radius.md,
+                padding: theme.spacing.md,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: theme.spacing.xs,
+              }}
+            >
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+                <span
+                  style={{
+                    color: theme.accent,
+                    backgroundColor: theme.surface,
+                    borderRadius: '999px',
+                    padding: '3px 8px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                  }}
+                >
+                  {item.createdAt ? item.createdAt : '创建时间未知'}
+                </span>
+                <span style={{ color: theme.textMuted, fontSize: '11px', padding: '3px 0' }}>
+                  类型 {item.type} · 修订 ID {item.id}
+                </span>
+              </div>
+              <div
+                style={{
+                  color: theme.text,
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  lineHeight: 1.5,
+                  overflowWrap: 'anywhere',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {item.summary || '修订摘要未知'}
+              </div>
+              <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.4 }}>
+                修订者：{item.creator?.nickname || item.creator?.username || '未知'}
+              </div>
+            </article>
           </div>
         ))}
       </div>
