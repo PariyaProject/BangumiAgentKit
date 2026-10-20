@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import { execFileSync } from 'node:child_process';
 import { createHash, createPublicKey, sign, verify } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -10,6 +11,7 @@ import {
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
 import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
+import { sanitizeGitRepositoryEnvironment } from '../lib/g26-mcp-bundle.mjs';
 import {
   assertG06SubjectCastOfflineProfile,
   getG06CastOfflineProfileSpec,
@@ -364,16 +366,26 @@ function verifyRunnerReceipt(report, claim) {
   }
 }
 
-function catalogEvidence(report, profile) {
+function catalogEvidence(report, profile, root = ROOT) {
   try {
-    const bytes = readFileSync(path.join(ROOT, 'docs/tool-catalog.json'));
-    const catalog = JSON.parse(bytes.toString('utf8'));
-    const tool = catalog.find((item) => item?.name === profile?.toolName);
+    if (!/^[0-9a-f]{40}$/u.test(report?.sourceRevision ?? '')) return false;
+    const currentBytes = readFileSync(path.join(root, 'docs/tool-catalog.json'));
+    const sourceBytes = execFileSync(
+      'git',
+      ['show', `${report.sourceRevision}:docs/tool-catalog.json`],
+      { cwd: root, env: sanitizeGitRepositoryEnvironment() },
+    );
+    const currentCatalog = JSON.parse(currentBytes.toString('utf8'));
+    const sourceCatalog = JSON.parse(sourceBytes.toString('utf8'));
+    const tool = currentCatalog.find((item) => item?.name === profile?.toolName);
+    const sourceTool = sourceCatalog.find((item) => item?.name === profile?.toolName);
     return Boolean(
       tool &&
+      sourceTool &&
+      canonicalAgentMcpProfileJson(sourceTool) === canonicalAgentMcpProfileJson(tool) &&
       tool.auth === 'none' &&
       tool.risk === 'read' &&
-      report.catalogSha256 === sha256(bytes) &&
+      report.catalogSha256 === sha256(sourceBytes) &&
       report.toolDescriptionSha256 === sha256(tool.description) &&
       report.inputSchemaSha256 === sha256(canonicalAgentMcpProfileJson(tool.inputSchema)),
     );
@@ -382,7 +394,12 @@ function catalogEvidence(report, profile) {
   }
 }
 
-export function validateG06SubjectCastOfflineReport(report, claim, reportBytes = null) {
+export function validateG06SubjectCastOfflineReport(
+  report,
+  claim,
+  reportBytes = null,
+  root = ROOT,
+) {
   const profile = profileFor(claim?.profileId);
   const profileSpec = getG06CastOfflineProfileSpec(profile);
   if (
@@ -404,7 +421,7 @@ export function validateG06SubjectCastOfflineReport(report, claim, reportBytes =
   }
   let selectionBytes;
   try {
-    selectionBytes = readFileSync(path.join(ROOT, profile.selectionEvidencePath));
+    selectionBytes = readFileSync(path.join(root, profile.selectionEvidencePath));
   } catch {
     return { passed: false, reason: 'G06_CAST_OFFLINE_SELECTION_MISSING' };
   }
@@ -496,7 +513,7 @@ export function validateG06SubjectCastOfflineReport(report, claim, reportBytes =
     exactKeys(report.privacy, new Set(Object.keys(PRIVACY))) &&
     canonicalAgentMcpProfileJson(report.privacy) ===
       canonicalAgentMcpProfileJson(expectedPrivacy) &&
-    catalogEvidence(report, profile) &&
+    catalogEvidence(report, profile, root) &&
     verifyRunnerReceipt(report, claim) &&
     !Object.hasOwn(report, 'answer') &&
     !Object.hasOwn(report, 'toolOutput') &&
@@ -522,7 +539,7 @@ export function validateG06SubjectCastOfflineSanitizedReportFile(
     const targetReportPath = reportPath ?? expectedReportPath;
     const bytes = readFileSync(targetReportPath);
     const report = JSON.parse(bytes.toString('utf8'));
-    const validation = validateG06SubjectCastOfflineReport(report, claim, bytes);
+    const validation = validateG06SubjectCastOfflineReport(report, claim, bytes, root);
     const reportSha256 = sha256(bytes);
     if (!validation.passed || path.resolve(targetReportPath) !== path.resolve(expectedReportPath)) {
       return { passed: false, reason: validation.reason ?? 'G06_CAST_OFFLINE_REPORT_PATH_INVALID' };
@@ -538,17 +555,18 @@ export function validateG06SubjectCastOfflineSanitizedReportFile(
 
 export function writeG06SubjectCastOfflineReport(
   input,
-  { privateKey, publicKeyBase64, reportPath = undefined } = {},
+  { privateKey, publicKeyBase64, reportPath = undefined, root = ROOT } = {},
 ) {
   const profile = profileFor(input?.claim?.profileId);
   const profileSpec = getG06CastOfflineProfileSpec(profile);
-  const targetReportPath = reportPath ?? (profile ? path.join(ROOT, profile.reportPath) : null);
+  const targetReportPath = reportPath ?? (profile ? path.join(root, profile.reportPath) : null);
   if (!profile || !profileSpec || !input?.claim || !targetReportPath) {
     return { passed: false, reason: 'G06_CAST_OFFLINE_PROFILE_INVALID' };
   }
-  const selectionBytes = readFileSync(path.join(ROOT, profile.selectionEvidencePath));
+  const selectionBytes = readFileSync(path.join(root, profile.selectionEvidencePath));
   const summary = input.serverSummary;
-  const catalog = JSON.parse(readFileSync(path.join(ROOT, 'docs/tool-catalog.json'), 'utf8'));
+  const catalogBytes = readFileSync(path.join(root, 'docs/tool-catalog.json'));
+  const catalog = JSON.parse(catalogBytes.toString('utf8'));
   const tool = catalog.find((item) => item?.name === profile.toolName);
   if (!tool || !summary || !tool.inputSchema) {
     return { passed: false, reason: 'G06_CAST_OFFLINE_SUMMARY_INVALID' };
@@ -582,7 +600,7 @@ export function writeG06SubjectCastOfflineReport(
     toolName: profile.toolName,
     argumentProfile: profile.argumentProfile,
     expectedArgumentsSha256: input.claim.expectedArgumentsSha256,
-    catalogSha256: sha256(readFileSync(path.join(ROOT, 'docs/tool-catalog.json'))),
+    catalogSha256: sha256(catalogBytes),
     toolDescriptionSha256: sha256(tool.description),
     inputSchemaSha256: sha256(canonicalAgentMcpProfileJson(tool.inputSchema)),
     serverToolNames: summary.serverToolNames,
@@ -617,14 +635,14 @@ export function writeG06SubjectCastOfflineReport(
     { publicKeyBase64, privateKey },
   );
   const report = { ...baseReport, runnerReceipt: receipt };
-  const validation = validateG06SubjectCastOfflineReport(report, input.claim);
+  const validation = validateG06SubjectCastOfflineReport(report, input.claim, null, root);
   if (!validation.passed) return validation;
   const bytes = Buffer.from(`${JSON.stringify(report, null, 2)}\n`, 'utf8');
   mkdirSync(path.dirname(targetReportPath), { recursive: true, mode: 0o700 });
   writeFileSync(targetReportPath, bytes, { flag: 'wx', mode: 0o600 });
   return {
     passed: true,
-    reportPath: path.relative(ROOT, targetReportPath),
+    reportPath: path.relative(root, targetReportPath),
     reportSha256: sha256(bytes),
   };
 }

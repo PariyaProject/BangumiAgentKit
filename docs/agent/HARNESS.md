@@ -358,7 +358,12 @@ and unchanged-MCP-bundle binding. Its one evidence refresh may also update only
 the G06-specific acceptance verifier, its tests, and this Harness documentation:
 `scripts/check-tool-acceptance-table.py`, `scripts/test_acceptance_evidence.py`,
 `scripts/generate-tool-acceptance-tasks.py`, `scripts/agent-harness.mjs`, and
-`tests/harness/agent-harness-cli.test.mjs`, plus the matrix-count and public-probe
+`scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs`, its
+focused test `tests/harness/write-g06-subject-cast-offline-agent-mcp-report.test.mjs`,
+the paired R04 report validator and its focused test
+`scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs`,
+`tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs`,
+and `tests/harness/agent-harness-cli.test.mjs`, plus the matrix-count and public-probe
 isolation regressions in `tests/harness/g01-public-query-render-evidence.test.mjs`,
 `tests/harness/g09-public-watch-order-evidence.test.mjs`,
 `tests/harness/g09-public-watch-order-render-evidence.test.mjs`, and
@@ -383,6 +388,11 @@ verifier files: `docs/agent/HARNESS.md`,
 `scripts/check-tool-acceptance-table.py`,
 `scripts/generate-tool-acceptance-tasks.py`,
 `scripts/test_acceptance_evidence.py`, `scripts/agent-harness.mjs`,
+`scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs`,
+`tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs`,
+the paired G06 report validator and its focused test
+`scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs`,
+`tests/harness/write-g06-subject-cast-offline-agent-mcp-report.test.mjs`,
 `tests/harness/agent-harness-cli.test.mjs`,
 `tests/harness/g01-public-query-render-evidence.test.mjs`,
 `tests/harness/g09-public-watch-order-evidence.test.mjs`,

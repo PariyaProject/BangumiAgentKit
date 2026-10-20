@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Buffer } from 'node:buffer';
+import { execFileSync } from 'node:child_process';
 import { createHash, createPublicKey, sign, verify } from 'node:crypto';
 import { closeSync, openSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -11,6 +12,7 @@ import {
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
 import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
+import { sanitizeGitRepositoryEnvironment } from '../lib/g26-mcp-bundle.mjs';
 import {
   assertR04RenderV2SeriesWatchOrderOfflineV2Profile,
   R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE,
@@ -385,13 +387,23 @@ function createRunnerReceipt(payload, { publicKeyBase64, privateKey }) {
 
 function catalogEvidenceMatches(report, root) {
   try {
-    const bytes = readFileSync(path.join(root, 'docs/tool-catalog.json'));
-    const catalog = JSON.parse(bytes.toString('utf8'));
-    const tool = catalog.find((row) => row?.name === PROFILE?.toolName);
+    if (!/^[0-9a-f]{40}$/u.test(report?.sourceRevision ?? '')) return false;
+    const currentBytes = readFileSync(path.join(root, 'docs/tool-catalog.json'));
+    const sourceBytes = execFileSync(
+      'git',
+      ['show', `${report.sourceRevision}:docs/tool-catalog.json`],
+      { cwd: root, env: sanitizeGitRepositoryEnvironment() },
+    );
+    const currentCatalog = JSON.parse(currentBytes.toString('utf8'));
+    const sourceCatalog = JSON.parse(sourceBytes.toString('utf8'));
+    const tool = currentCatalog.find((row) => row?.name === PROFILE?.toolName);
+    const sourceTool = sourceCatalog.find((row) => row?.name === PROFILE?.toolName);
     return Boolean(
       tool?.auth === 'none' &&
       tool?.risk === 'read' &&
-      report.catalogSha256 === sha256(bytes) &&
+      sourceTool &&
+      canonicalSha256(sourceTool) === canonicalSha256(tool) &&
+      report.catalogSha256 === sha256(sourceBytes) &&
       report.toolDescriptionSha256 === sha256(tool.description ?? '') &&
       report.inputSchemaSha256 === canonicalSha256(tool.inputSchema),
     );
