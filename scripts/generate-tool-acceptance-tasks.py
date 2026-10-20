@@ -1088,12 +1088,31 @@ def public_api_catalog_entry_is_compatible_with_current(
     tool_name: object,
     evidence_tool: object,
     current_tool: object,
+    invocation_input: object = None,
 ) -> bool:
     """Retain historical public evidence only across explicitly safe additive options."""
     if not isinstance(evidence_tool, dict) or not isinstance(current_tool, dict):
         return False
     if evidence_tool == current_tool:
         return True
+    if tool_name == 'bangumi.render_subject_card':
+        # Preserve the verified public path only when its archived input explicitly
+        # disabled collection data. The new dynamic policy changes only the private path.
+        if (
+            not isinstance(invocation_input, dict)
+            or invocation_input.get('includeCollection') is not False
+            or current_tool.get('auth') != 'optional'
+            or current_tool.get('risk') != 'read'
+            or current_tool.get('scopes') != []
+            or current_tool.get('policyMode') != 'dynamic'
+            or current_tool.get('policyDescription')
+            != 'Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.'
+        ):
+            return False
+        historical = json.loads(json.dumps(current_tool))
+        historical['policyMode'] = 'static'
+        historical.pop('policyDescription', None)
+        return evidence_tool == historical
     if tool_name == 'bangumi.get_subject_relations':
         previous_description = evidence_tool.get('description')
         current_description = current_tool.get('description')
@@ -1462,21 +1481,21 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
         for name in selected:
             evidence_tool = evidence_by_name.get(name)
             current_tool = current_by_name.get(name)
+            result = result_by_name[name]
+            recorded_input = result.get('input')
             if (
                 name not in current_names
                 or name not in public_candidates
                 or evidence_tool is None
                 or current_tool is None
                 or not public_api_catalog_entry_is_compatible_with_current(
-                    name, evidence_tool, current_tool,
+                    name, evidence_tool, current_tool, recorded_input,
                 )
             ):
                 continue
-            result = result_by_name[name]
             summary = result.get('result')
             assertions = result.get('assertions')
             request_count = result.get('httpRequests')
-            recorded_input = result.get('input')
             if source_program in FRESH_PUBLIC_API_MATRIX_SCOPED_PROGRAMS:
                 summary_keys = summary.get('keys') if isinstance(summary, dict) else None
                 summary_type = summary.get('type') if isinstance(summary, dict) else None

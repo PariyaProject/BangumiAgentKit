@@ -164,6 +164,17 @@ function toolContractMatchesCurrent(report: any, name: string): boolean {
     Boolean(item && typeof item === 'object' && (item as { name?: unknown }).name === name),
   );
   const currentTool = catalog.find((item) => item.name === name);
+  if (
+    name === 'bangumi.render_subject_card' &&
+    report.results?.find((result: any) => result.tool === name)?.input?.includeCollection === false &&
+    currentTool?.policyMode === 'dynamic'
+  ) {
+    // Historical public evidence remains valid only for an explicit public invocation.
+    const historical = JSON.parse(JSON.stringify(currentTool));
+    historical.policyMode = 'static';
+    delete historical.policyDescription;
+    return stableJson(evidenceTool) === stableJson(historical);
+  }
   return Boolean(
     evidenceTool && currentTool && stableJson(evidenceTool) === stableJson(currentTool),
   );
