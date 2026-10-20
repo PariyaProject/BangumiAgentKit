@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-19T06:02:55Z",
+  "updated_at": "2026-10-20T00:46:19Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -12,7 +12,7 @@
     {
       "id": "PRODUCT-OPPORTUNITIES",
       "path": "docs/product/opportunity-log.md",
-      "expected_records": 12
+      "expected_records": 13
     }
   ],
   "protected_boundaries": [
@@ -4178,11 +4178,14 @@
         "packages/renderer/src/templates/SubjectCard.tsx",
         "packages/renderer/src/templates/CastCard.tsx",
         "packages/renderer/src/templates/SubjectOverviewCard.tsx",
-        "docs/research/run95-op008-subject-overview-visual-qa-2026-10-19.md"
+        "docs/research/run95-op008-subject-overview-visual-qa-2026-10-19.md",
+        "docs/research/run95-render-theme-switch-visual-design-plan-2026-10-20.md",
+        "docs/research/run95-render-theme-switch-visual-qa-2026-10-20.json",
+        "packages/renderer/src/components/RendererIcon.tsx"
       ],
       "next_action": "Run #72 makes SubjectCard place the existing Chinese title and distinct original-language title above the cover/metadata row at all widths. Real-browser checks cover 320/360/520 and 640/720/900 CSS px, including long mixed-script titles at 640+; RenderService verifies 360 CSS px at 2x and a 720 CSS px image. 2026-10-19 Run #95 synthetic SubjectOverview QA localized unavailable/not-found title, ID, and media fallbacks, replaced invisible 1x1 fixtures with visible local synthetic cover/avatar assets, and pinned the synthetic retrievedAt timestamp, generated 25 state/width PNGs plus the 720px full-staff stress image twice, confirmed all 26 filenames, dimensions, byte counts, and SHA-256 values repeat exactly, and individually inspected every final PNG; evidence is recorded in the linked visual report. This adds presentation evidence only. Keep PARTIAL until the separate current-source Agent/MCP answer and strict Renderer/MCP evidence pass; QQ/TIM remains a separate client gate.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
-      "related_ids": []
+      "related_ids": ["OP-013"]
     },
     {
       "id": "OP-009",
@@ -4385,6 +4388,36 @@
           "tests/standalone/person-collaboration-command.test.ts"
         ]
       }
+    },
+    {
+      "id": "OP-013",
+      "kind": "opportunity",
+      "user_question": "Can BangumiAgentKit deliver the bounded user value described by QQ Image Theme Preferences?",
+      "lane": "recorded_product_opportunities",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/product/opportunity-log.md",
+        "docs/research/run95-render-theme-switch-visual-design-plan-2026-10-20.md",
+        "packages/renderer/src/components/RendererIcon.tsx",
+        "packages/renderer/src/components/TitleBlock.tsx",
+        "packages/renderer/src/themes/index.ts",
+        "packages/renderer/src/templates/SubjectCard.tsx",
+        "packages/renderer/src/templates/SubjectStatsCard.tsx",
+        "packages/renderer/src/templates/CollectionProgressCard.tsx",
+        "packages/renderer/src/templates/CalendarCard.tsx",
+        "packages/tools/src/definitions/render-presentation-tools.ts",
+        "tests/unit/render-presentation-tools.test.ts",
+        "tests/unit/render-theme-accessibility.test.ts",
+        "tests/render/mobile-layout-audit.setup.ts",
+        "tests/render/helpers/mobile-layout.ts",
+        "docs/research/run95-render-theme-switch-visual-qa-2026-10-20.json"
+      ],
+      "next_action": "The per-image report binds the 580-image offline matrix to candidate a06f9a24f29adfe908bdce5d399105a6a84e88e0; all 58 fixture-specific contact sheets and selected full-resolution stress cases were reviewed. Run exact-Candidate CI and the assigned GPT-6 Luna Max review, then use the Harness integration gate. Keep PARTIAL until those gates pass. Real QQ/TIM delivery remains a separate unverified client gate; no live message is claimed.",
+      "reopen_when": "The user requests additional theme packs/settings surfaces, Renderer templates or image output behavior changes, or real QQ/TIM image display is explicitly selected for offline-to-live acceptance.",
+      "related_ids": [
+        "OP-008",
+        "DIM-RENDERER-STANDALONE"
+      ]
     }
   ]
 }

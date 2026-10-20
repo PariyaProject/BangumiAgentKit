@@ -88,6 +88,7 @@ export const SubjectIdentityCard: React.FC<SubjectIdentityCardProps> = ({
         title="条目身份与元数据"
         subtitle={`条目 ${viewModel.subjectId} · official v0 · ${stateLabel(viewModel.state)}`}
         theme={theme}
+        icon="subject"
       />
 
       {viewModel.presentation.text.truncated ? (

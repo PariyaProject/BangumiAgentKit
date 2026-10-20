@@ -6,6 +6,7 @@ export default mergeConfig(
   defineConfig({
     test: {
       setupFiles: ['tests/render/mobile-layout-audit.setup.ts'],
+      hookTimeout: process.env.PARIYA_RENDER_THEME_MATRIX === '1' ? 600_000 : 10_000,
     },
   }),
 );

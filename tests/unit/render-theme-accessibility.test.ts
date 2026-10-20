@@ -1,0 +1,43 @@
+import { describe, expect, it } from 'vitest';
+import { DARK_THEME, LIGHT_THEME } from '../../packages/renderer/src/themes/index.js';
+
+function relativeLuminance(color: string): number {
+  const [red, green, blue] = color
+    .slice(1)
+    .match(/../gu)!
+    .map((channel) => Number.parseInt(channel, 16) / 255)
+    .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
+
+  return 0.2126 * red! + 0.7152 * green! + 0.0722 * blue!;
+}
+
+function contrastRatio(foreground: string, background: string): number {
+  const foregroundLuminance = relativeLuminance(foreground);
+  const backgroundLuminance = relativeLuminance(background);
+  const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+  const darker = Math.min(foregroundLuminance, backgroundLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+describe('renderer theme text contrast', () => {
+  it.each([DARK_THEME, LIGHT_THEME])('%s keeps text tokens readable on card surfaces', (theme) => {
+    const textColors = [
+      theme.text,
+      theme.textMuted,
+      theme.accent,
+      theme.score,
+      theme.success,
+      theme.warning,
+    ];
+    const surfaces = [theme.background, theme.surface, theme.surfaceAlt];
+
+    for (const foreground of textColors) {
+      for (const background of surfaces) {
+        expect(
+          contrastRatio(foreground, background),
+          `${theme.name}: ${foreground} on ${background}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+});

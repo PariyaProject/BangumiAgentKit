@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { chromium } from '../../packages/renderer/node_modules/playwright/index.js';
-import { buildPersonCollaborationViewModel, renderHtmlTemplate } from '@bangumi-agent-kit/renderer';
+import {
+  buildPersonCollaborationViewModel,
+  RenderService,
+  renderHtmlTemplate,
+} from '@bangumi-agent-kit/renderer';
 import type { PersonCollaborationResult } from '@bangumi-agent-kit/bangumi-core';
 
 const result: PersonCollaborationResult = {
@@ -116,8 +120,11 @@ const result: PersonCollaborationResult = {
 };
 
 describe('Person collaboration renderer', () => {
-  it('keeps ranking, raw labels, evidence limits, and degraded warnings visible', () => {
+  it('keeps ranking, raw labels, evidence limits, and degraded warnings visible', async () => {
     const viewModel = buildPersonCollaborationViewModel(result, { maxCollaborators: 1 });
+    const renderService = new RenderService();
+    await renderService.renderCard(viewModel, { width: 640, deviceScaleFactor: 2, cache: false });
+    await renderService.close();
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
     expect(html).toContain('共同作品数排名');
     expect(html).toContain('合作人物');
@@ -161,6 +168,9 @@ describe('Person collaboration renderer', () => {
       limitations: ['F'.repeat(1400)],
     };
     const viewModel = buildPersonCollaborationViewModel(longResult, { maxCollaborators: 1 });
+    const renderService = new RenderService();
+    await renderService.renderCard(viewModel, { width: 640, deviceScaleFactor: 2, cache: false });
+    await renderService.close();
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
     const browser = await chromium.launch({ headless: true });
     try {

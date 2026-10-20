@@ -120,6 +120,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
         title="我的收藏 Dashboard"
         subtitle={`当前账号 · 三个只读区段 · ${stateLabel(viewModel.state)}`}
         theme={theme}
+        icon="overview"
       />
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>

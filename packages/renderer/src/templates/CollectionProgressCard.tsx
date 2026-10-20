@@ -4,6 +4,7 @@ import { ThemeTokens } from '../themes/index.js';
 import { CardFrame } from '../components/CardFrame.js';
 import { CoverImage } from '../components/CoverImage.js';
 import { TitleBlock } from '../components/TitleBlock.js';
+import { RendererIcon } from '../components/RendererIcon.js';
 import { ProgressBar } from '../components/ProgressBar.js';
 import { Footer } from '../components/Footer.js';
 
@@ -66,6 +67,7 @@ export const CollectionProgressCard: React.FC<CollectionProgressCardProps> = ({
             subtitle={subject.name}
             theme={theme}
             titleFontSize={width && width > 320 && width <= 360 ? '22px' : undefined}
+            icon="collection"
           />
         </div>
 
@@ -85,8 +87,11 @@ export const CollectionProgressCard: React.FC<CollectionProgressCardProps> = ({
             fontSize: '14px',
           }}
         >
-          <span style={{ color: theme.accent, fontWeight: 700, whiteSpace: 'nowrap' }}>
-            {statusLabel}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs }}>
+            <RendererIcon name="collection" theme={theme} size={15} />
+            <span style={{ color: theme.accent, fontWeight: 700, whiteSpace: 'nowrap' }}>
+              {statusLabel}
+            </span>
           </span>
           <span style={{ color: theme.text, whiteSpace: 'nowrap' }}>
             已看 {watchedEpisodes} {totalEpisodes ? `/ ${totalEpisodes}` : ''} 集

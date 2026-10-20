@@ -2,6 +2,7 @@ import React from 'react';
 import { CardFrame } from '../components/CardFrame.js';
 import { Footer } from '../components/Footer.js';
 import { MetaRow } from '../components/MetaRow.js';
+import { TitleBlock } from '../components/TitleBlock.js';
 import { ThemeTokens } from '../themes/index.js';
 import { SubjectComparisonViewModel } from '../view-models/index.js';
 import { formatSafeStatisticsWarnings } from './statisticsWarningLabels.js';
@@ -369,17 +370,12 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
 
   return (
     <CardFrame theme={theme} width={width}>
-      <div>
-        <div style={{ color: theme.accent, fontSize: '11px', letterSpacing: '0.08em' }}>
-          BANGUMI · 条目比较
-        </div>
-        <h1 style={{ fontSize: '22px', lineHeight: 1.3, marginTop: theme.spacing.xs }}>
-          条目并列比较
-        </h1>
-        <div style={{ color: theme.textMuted, fontSize: '13px', marginTop: theme.spacing.xs }}>
-          {stateLabel(viewModel.state)} · 不生成推荐或胜负结论
-        </div>
-      </div>
+      <TitleBlock
+        title="条目并列比较"
+        subtitle={`${stateLabel(viewModel.state)} · 不生成推荐或胜负结论`}
+        theme={theme}
+        icon="comparison"
+      />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
         {columns.map((subject, index) => (

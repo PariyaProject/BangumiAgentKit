@@ -93,6 +93,7 @@ export const CharacterCreditIntegrityCard: React.FC<CharacterCreditIntegrityCard
         title="角色出演作品与 CV 完整性"
         subtitle={`${boundedText(character?.name || '未知角色', 80)} · 角色 #${character?.id ?? '未知'} · ${stateLabel(viewModel.state)}`}
         theme={theme}
+        icon="integrity"
       />
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>

@@ -481,8 +481,8 @@ const scenarioCatalogPath = path.join(root, 'docs/research/user-scenario-catalog
 const opportunityLogPath = path.join(root, 'docs/product/opportunity-log.md');
 const toolCatalogPath = path.join(root, 'docs/tool-catalog.json');
 const expectedOpportunityIds = Array.from(
-  { length: 12 },
-  (_, index) => `OP-${String(index + 1).padStart(3, '0')}`,
+  fs.readFileSync(opportunityLogPath, 'utf8').matchAll(/^##\s+(OP-\d{3})\b/gmu),
+  (match) => match[1],
 );
 const mandatoryCiChecks = [
   'harness-control',

@@ -1,5 +1,9 @@
 export type RenderThemeName = 'bangumi-dark' | 'bangumi-light';
 
+export function isRenderThemeName(value: unknown): value is RenderThemeName {
+  return value === 'bangumi-dark' || value === 'bangumi-light';
+}
+
 export interface ThemeTokens {
   name: RenderThemeName;
   background: string;
@@ -35,11 +39,11 @@ export const DARK_THEME: ThemeTokens = {
   surfaceAlt: '#334155',
   border: '#334155',
   text: '#f8fafc',
-  textMuted: '#94a3b8',
+  textMuted: '#a4b1c2',
   accent: '#38bdf8',
   score: '#fbbf24',
   success: '#34d399',
-  warning: '#f87171',
+  warning: '#ff9999',
   radius: {
     sm: '6px',
     md: '10px',
@@ -58,16 +62,16 @@ export const DARK_THEME: ThemeTokens = {
 
 export const LIGHT_THEME: ThemeTokens = {
   name: 'bangumi-light',
-  background: '#f8fafc',
+  background: '#f5f6f8',
   surface: '#ffffff',
-  surfaceAlt: '#f1f5f9',
-  border: '#e2e8f0',
-  text: '#0f172a',
-  textMuted: '#64748b',
-  accent: '#0284c7',
-  score: '#d97706',
-  success: '#059669',
-  warning: '#dc2626',
+  surfaceAlt: '#f1f3f5',
+  border: '#dfe3e8',
+  text: '#20242b',
+  textMuted: '#596273',
+  accent: '#b23a48',
+  score: '#a65a00',
+  success: '#0f766e',
+  warning: '#b42318',
   radius: {
     sm: '6px',
     md: '10px',
@@ -81,7 +85,7 @@ export const LIGHT_THEME: ThemeTokens = {
     lg: '24px',
     xl: '32px',
   },
-  shadow: '0 10px 25px -5px rgba(0, 0, 0, 0.08)',
+  shadow: '0 8px 24px -8px rgba(31, 41, 55, 0.12)',
 };
 
 export function getThemeTokens(theme: RenderThemeName = 'bangumi-dark'): ThemeTokens {

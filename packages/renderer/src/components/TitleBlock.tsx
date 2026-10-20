@@ -1,10 +1,13 @@
 import React from 'react';
-import { ThemeTokens } from '../themes/index.js';
+import type { ThemeTokens } from '../themes/index.js';
+import { getRendererIconLabel, RendererIcon, type RendererIconName } from './RendererIcon.js';
 
 export interface TitleBlockProps {
   title: string;
   subtitle?: string;
   theme: ThemeTokens;
+  icon?: RendererIconName;
+  eyebrow?: string;
   titleFontSize?: string;
   subtitleFontSize?: string;
 }
@@ -13,18 +16,35 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({
   title,
   subtitle,
   theme,
+  icon = 'subject',
+  eyebrow,
   titleFontSize = '24px',
   subtitleFontSize = '15px',
 }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+        <RendererIcon name={icon} theme={theme} size={16} badge />
+        <div
+          style={{
+            color: theme.accent,
+            fontSize: '10px',
+            fontWeight: 800,
+            letterSpacing: '0.09em',
+            lineHeight: 1.2,
+          }}
+        >
+          {eyebrow || `BANGUMI · ${getRendererIconLabel(icon)}`}
+        </div>
+      </div>
       <h1
         style={{
           fontSize: titleFontSize,
           fontWeight: 700,
-          color: theme.accent,
+          color: theme.text,
           margin: 0,
-          lineHeight: 1.3,
+          lineHeight: 1.24,
+          letterSpacing: '-0.02em',
           overflowWrap: 'anywhere',
           wordBreak: 'break-word',
         }}

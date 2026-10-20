@@ -153,6 +153,7 @@ export const SubjectStatsHistoryCard: React.FC<SubjectStatsHistoryCardProps> = (
         title="条目统计观察历史"
         subtitle={`条目 ${viewModel.subjectId} · official v0 + derived-s7 · ${stateLabel(viewModel.state)}`}
         theme={theme}
+        icon="history"
       />
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>

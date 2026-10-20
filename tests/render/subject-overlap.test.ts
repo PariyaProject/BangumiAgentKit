@@ -3,6 +3,7 @@ import type { SubjectOverlapResult } from '@bangumi-agent-kit/bangumi-core';
 import {
   buildSubjectOverlapViewModel,
   extractImageUrls,
+  RenderService,
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
 import { getTemplate } from '../../packages/renderer/src/templates/TemplateRegistry.js';
@@ -179,11 +180,14 @@ const result: SubjectOverlapResult = {
 };
 
 describe('subject-overlap renderer', () => {
-  it('renders pair ranking, ratios, raw evidence, limits, and no image assets', () => {
+  it('renders pair ranking, ratios, raw evidence, limits, and no image assets', async () => {
     const viewModel = buildSubjectOverlapViewModel(result);
     expect(getTemplate('subject-overlap').version).toBe(1);
     expect(viewModel.template).toBe('subject-overlap');
     expect(extractImageUrls(viewModel)).toEqual([]);
+    const renderService = new RenderService();
+    await renderService.renderCard(viewModel, { width: 640, deviceScaleFactor: 2, cache: false });
+    await renderService.close();
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
     expect(html).toContain('条目关系重合');
     expect(html).toContain('共同主役');
@@ -196,7 +200,7 @@ describe('subject-overlap renderer', () => {
     expect(html).not.toContain('https://');
   });
 
-  it('reports bounded renderer omissions for high-cardinality evidence', () => {
+  it('reports bounded renderer omissions for high-cardinality evidence', async () => {
     const firstPair = result.pairs[0]!;
     const firstPerson = firstPair.cast!.items[0]!;
     const crowded = {
@@ -215,7 +219,15 @@ describe('subject-overlap renderer', () => {
         },
       ],
     };
-    const html = renderHtmlTemplate(buildSubjectOverlapViewModel(crowded), 'bangumi-dark', {}, 640);
+    const crowdedViewModel = buildSubjectOverlapViewModel(crowded);
+    const renderService = new RenderService();
+    await renderService.renderCard(crowdedViewModel, {
+      width: 640,
+      deviceScaleFactor: 2,
+      cache: false,
+    });
+    await renderService.close();
+    const html = renderHtmlTemplate(crowdedViewModel, 'bangumi-dark', {}, 640);
     expect(html).toContain('人物渲染上限：8');
     expect(html).toContain('另有 1 位共同人物未展开');
   });

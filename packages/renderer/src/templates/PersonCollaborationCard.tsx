@@ -66,6 +66,7 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
         title={viewModel.person.nameCn || viewModel.person.name}
         subtitle={`${kindLabel(viewModel.kind)} · Person ID ${viewModel.person.id}`}
         theme={theme}
+        icon="relations"
       />
 
       <div

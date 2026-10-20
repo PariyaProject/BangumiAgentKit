@@ -57,6 +57,7 @@ export const SubjectLatestRevisionCard: React.FC<SubjectLatestRevisionCardProps>
         title="条目最新修订证据"
         subtitle={`条目 ${viewModel.subjectId} · official v0 · ${stateLabel(viewModel.state)}`}
         theme={theme}
+        icon="history"
       />
 
       <div

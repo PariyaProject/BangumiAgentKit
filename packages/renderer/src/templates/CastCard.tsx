@@ -23,7 +23,12 @@ export const CastCard: React.FC<CastCardProps> = ({
 
   return (
     <CardFrame theme={theme} width={width}>
-      <TitleBlock title="角色与声优" subtitle={subject.nameCn || subject.name} theme={theme} />
+      <TitleBlock
+        title="角色与声优"
+        subtitle={subject.nameCn || subject.name}
+        theme={theme}
+        icon="cast"
+      />
 
       {viewModel.coverage ? (
         <div

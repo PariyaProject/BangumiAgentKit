@@ -124,6 +124,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
         title={viewModel.person.nameCn || viewModel.person.name}
         subtitle={`${kindLabel(viewModel.kind)} · Person ID ${viewModel.person.id}`}
         theme={theme}
+        icon="person"
       />
 
       <div

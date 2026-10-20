@@ -12,6 +12,19 @@ const ledger = JSON.parse(
 const agentMcpProfiles = JSON.parse(
   readFileSync(path.join(root, 'scripts/acceptance/agent-mcp-profile-registry.json'), 'utf8'),
 ).profiles;
+const opportunityLog = readFileSync(path.join(root, 'docs/product/opportunity-log.md'), 'utf8');
+const documentedOpportunityIds = Array.from(
+  opportunityLog.matchAll(/^##\s+(OP-\d{3})\b/gmu),
+  (match) => match[1],
+);
+
+test('canonical frontier includes every opportunity listed in the product log', () => {
+  const ledgerOpportunityIds = ledger.records
+    .filter((record) => record.kind === 'opportunity')
+    .map((record) => record.id)
+    .sort();
+  assert.deepEqual(ledgerOpportunityIds, [...documentedOpportunityIds].sort());
+});
 
 function assertOneShotRuntimeIsHarnessOwned(record) {
   const guidance = [record.next_action, record.evidence?.source_contract].filter(Boolean).join(' ');

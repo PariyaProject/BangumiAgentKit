@@ -4,6 +4,7 @@ import { ThemeTokens } from '../themes/index.js';
 import { CardFrame } from '../components/CardFrame.js';
 import { TitleBlock } from '../components/TitleBlock.js';
 import { Footer } from '../components/Footer.js';
+import { RendererIcon } from '../components/RendererIcon.js';
 
 export interface CalendarCardProps {
   viewModel: CalendarViewModel;
@@ -67,6 +68,7 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
         title="Bangumi 每日放送表"
         subtitle={stateLabel ? `官方日历 · ${stateLabel}` : '每日更新动画列表'}
         theme={theme}
+        icon="calendar"
       />
 
       {viewModel.coverage && (
@@ -131,7 +133,10 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
                 justifyContent: 'space-between',
               }}
             >
-              <span>{day.weekdayCn}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs }}>
+                <RendererIcon name="calendar" theme={theme} size={16} />
+                {day.weekdayCn}
+              </span>
               <span style={{ fontSize: '12px', color: theme.textMuted }}>
                 {day.returned ?? day.items.length} 条目
                 {day.observed !== undefined && day.observed !== day.returned

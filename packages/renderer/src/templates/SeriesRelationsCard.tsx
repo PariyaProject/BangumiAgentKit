@@ -377,6 +377,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
         title={root.nameCn || root.name}
         subtitle={`系列关系与观看顺序 · ${stateLabel(viewModel.state)}`}
         theme={theme}
+        icon="relations"
       />
 
       <div
