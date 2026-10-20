@@ -140,6 +140,13 @@ describe('collection-dashboard renderer', () => {
       expect(html).toContain('收藏概览');
       expect(html).toContain('七日播出计划');
       expect(html).toContain('collection-dashboard-v1');
+      expect(html).toContain('data-layout="dashboard-bento"');
+      expect(html).toContain('data-layout="dashboard-metrics"');
+      expect(html).toContain('data-tone="coral"');
+      expect(html).toContain('data-tone="mint"');
+      expect(html).toContain('data-tone="blue"');
+      expect(html).toContain('data-tone="butter"');
+      expect(html).toContain('aria-label="Backlog 条目"');
       expect(html).toContain('日历行上限');
       expect(html).toContain('限制：');
       expect(html).toContain('一个很长的中文收藏标题');

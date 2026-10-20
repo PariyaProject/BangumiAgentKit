@@ -61,7 +61,7 @@ continues to exercise native JPEG delivery with networking disabled.
 
 ## Visual rules
 
-- Clean-gallery light is the QQ default. The current dark palette stays
+- Warm-paper light is the QQ default. The current dark palette stays
   selectable with `图片风格 深色`; `图片风格` toggles and
   `图片风格 当前` reports the selection.
 - Icons identify content families and are always accompanied by Chinese text.
@@ -73,7 +73,10 @@ continues to exercise native JPEG delivery with networking disabled.
 - Charts show the values and populations they represent; decorative marks do
   not imply unsupported scores, recommendations, or trends.
 - Text, muted labels, accent labels, scores, success, and warning tokens must
-  meet a 4.5:1 contrast ratio on the renderer's three surfaces.
+  meet a 4.5:1 contrast ratio on the renderer's base and tinted surfaces.
+- Semantic SVG icons use a small shared palette: coral, mint, butter, plum,
+  indigo, and blue. Every icon remains paired with a Chinese label; badge fills
+  and their icon strokes share a contrast-checked tone.
 
 ## Implementation and acceptance
 
@@ -95,6 +98,125 @@ continues to exercise native JPEG delivery with networking disabled.
    routing only.
 
 The renderer has 29 templates and multiple complete, partial, conflict,
-unavailable, and not-found fixtures. This work remains `PARTIAL` until the
-template families, exact Candidate CI, review, and harness integration gates
-pass. No live QQ/TIM message is claimed.
+unavailable, and not-found fixtures. The first theme-system Candidate passed
+exact CI, same-identity review, and Harness integration as PR #241 on
+2026-10-20. OP-013 remains `PARTIAL`: that synthetic renderer evidence does not
+establish real QQ/TIM delivery. No live QQ/TIM message is claimed.
+
+## Second iteration — visual structure refinement
+
+After reviewing the first 580-image matrix, the user called out that the new
+palette and icons still left some cards looking like dense text reports. The
+contact sheets support that concern: the theme switch works, but Subject
+Overview and Collection Dashboard need stronger content hierarchy. This is a
+layout issue, not another palette request.
+
+The new design reference board is
+[`run95-render-editorial-bento-timeline-board-2026-10-20.png`](assets/run95-render-editorial-bento-timeline-board-2026-10-20.png).
+It compares three structures using the same fictional subject:
+
+- **Editorial cover hero** for a work overview: the real work cover anchors
+  the card; title, available score/rank, and public metadata lead. Public
+  aggregate collection counts may appear as clearly labeled chips; they never
+  imply a personal collection state. Detailed statistics and coverage follow.
+- **Bento metrics** for a collection dashboard: three source-backed sections
+  have distinct panels and direct summary values, with evidence and limits
+  still available at a quieter visual level.
+- **Timeline rail** for revision history: dated observations read in sequence,
+  while entity, author, missing-field, and coverage details remain explicit.
+
+The generated artwork and copy in the board are not product data. Production
+cards use the existing cover resolver, deterministic local fallback, and
+code-rendered SVG icon family. Icons remain paired with text; no generated
+text, fabricated statistics, external icon, or external image enters a card.
+
+The active Run #95 Epoch `run95-render-editorial-layouts-20261020` implements
+these three template-specific structures. The per-sender light/dark command
+and cache separation remain unchanged; layout selection follows content type.
+Acceptance repeats the complete 29-template, two-theme, five-width synthetic
+matrix and records every image receipt. It grants renderer presentation
+evidence only, not Agent/MCP, account, OAuth, QQ, or TIM acceptance.
+
+### Long-card density rule
+
+The first high-resolution pass found that a complete Subject Overview still
+reached 11,160 physical pixels at the 320 CSS-pixel target because it printed
+large staff groups in full. Long revision summaries also dominated narrow
+cards. The image may now show a responsive excerpt, while the ViewModel remains
+complete. Every excerpt reports the exact number returned and the number shown;
+staff rows report visible/total member counts, and omitted groups or relations
+are called out. The card never uses an excerpt as evidence that the source had
+no more data.
+
+Below 520 CSS px, the cover now sits above a full-width title/metadata block.
+The image shows at most two cast rows, two staff groups with one member each,
+and two relation rows; coverage labels keep the returned and displayed counts
+visible so the shorter card does not imply complete detail.
+
+## Third iteration — align rendered colors and icons with the direction board
+
+Review against the generated board showed a second gap beyond layout: the
+product output still used a cool gray paper, nearly neutral card surfaces, and
+mostly coral icons. The board's visual language is warmer and uses semantic
+mint, butter, plum, indigo, and blue as well as coral. The implementation now
+adds those tones as shared, contrast-checked theme tokens. Light surfaces use
+warm ivory and sand; dark mode gets matching subdued surfaces and bright icon
+strokes. Subject Overview panels and the three Dashboard sections receive
+soft semantic fills, while the Revision Timeline uses a deterministic six-tone
+rail and date chips.
+
+The narrow Subject Overview now switches to a stacked panel header below 520
+CSS pixels: the icon/title row receives the full panel width, with the state
+pill on its own line. This avoids a title losing its width to the pill.
+
+Timeline event markers use the documented numeric revision types from the
+[Bangumi server model](https://pkg.go.dev/github.com/bangumi/server/internal/model#RevisionType)
+to select a code-drawn icon, semantic tone, and visible Chinese label. Unknown
+numeric values keep the neutral history marker and display their raw type; the
+renderer does not infer an event category from an undocumented number.
+
+The generated board remains art direction, not a literal target: its cover,
+title, summary, scores, and metrics are fictional. Production keeps real
+Bangumi facts, the existing cover resolver and local placeholder, and the
+code-rendered SVG family. Final acceptance will repeat the complete 580-PNG
+matrix and review every changed template/state contact sheet; exact SHA matches
+to the immediately preceding reviewed pass may inherit that image review. The
+new palette's icon foreground/surface pairs and all text tokens across tinted
+surfaces must retain at least 4.5:1 contrast.
+
+## Fourth iteration — close the PR #242 visual findings
+
+The corrective renderer Candidate is `5c10f28fd9b6916992dc1de9b3e4fbc6bbf76cfe`.
+Its pass7 matrix was rendered from that exact source commit. The complete
+receipt set and source-tree identity are recorded in
+[`run95-render-editorial-layouts-review-correction-visual-qa-2026-10-20.json`](run95-render-editorial-layouts-review-correction-visual-qa-2026-10-20.json).
+The report retains all 580 image receipts and 31 manifest hashes across 29
+templates, 58 fixture groups, two palettes, and five widths. Every PNG's byte
+count, SHA-256, dimensions, and layout measurements were verified. The audit
+found no root or inner-content overflow. Of the pass4 comparison, 418 images
+are byte-identical; 52 changed under the same fixture identity, and 110 belong
+to 11 fixture-ID drift groups. Twenty current contact sheets were inspected,
+along with ten full-resolution samples.
+
+The review corrections are visible in those outputs: Subject Overview puts the
+cover above a full-width mobile hero and reports shown/returned counts for its
+bounded content; Timeline event markers now follow documented revision types,
+with a neutral labeled fallback for unknown values. The selected 320px
+complete overview fell from 5,714 to 4,722 physical pixels. The report also
+keeps two remaining design issues visible: a Person Collaboration stress
+fixture is still 17,742 physical pixels tall, and raw ISO revision timestamps
+are visually dense.
+
+The visual system in this Epoch remains the light/dark palette plus
+content-specific editorial, bento, timeline, or compact-list structures. The
+user has since asked for multiple complete, high-fidelity design systems that
+can be switched from QQ. That request is now recorded as required task UX-002 in
+PariyaAgent's authoritative task ledger and will enter a separate governed
+Epoch after PR #242 is resolved. Its acceptance must require three or more
+structurally distinct design packs, per-sender switching while preserving the
+existing light/dark setting, complete 29-template/state coverage, and visual
+receipts for every produced image. Generated boards remain references; the
+product renderer must implement their layout, typography, iconography, color,
+and spacing with native code/SVG and real data. It must also address the two
+long-card/timestamp issues above. This later requirement does not change the
+Candidate scope or acceptance claim of PR #242.

@@ -232,11 +232,12 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
                   <div
                     style={{
                       ...wrapStyle,
-                      flex: '0 1 auto',
+                      flex: '0 0 auto',
                       color: theme.accent,
                       fontSize: '12px',
                       fontWeight: 700,
                       textAlign: 'right',
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     {collaborator.uniqueSubjects} 部

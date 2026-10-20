@@ -29,7 +29,12 @@ describe('renderer theme text contrast', () => {
       theme.success,
       theme.warning,
     ];
-    const surfaces = [theme.background, theme.surface, theme.surfaceAlt];
+    const surfaces = [
+      theme.background,
+      theme.surface,
+      theme.surfaceAlt,
+      ...Object.values(theme.tones).map((tone) => tone.surface),
+    ];
 
     for (const foreground of textColors) {
       for (const background of surfaces) {
@@ -40,4 +45,16 @@ describe('renderer theme text contrast', () => {
       }
     }
   });
+
+  it.each([DARK_THEME, LIGHT_THEME])(
+    '%s keeps semantic icon tones legible on their surfaces',
+    (theme) => {
+      for (const [name, tone] of Object.entries(theme.tones)) {
+        expect(
+          contrastRatio(tone.foreground, tone.surface),
+          `${theme.name} ${name}: ${tone.foreground} on ${tone.surface}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
 });

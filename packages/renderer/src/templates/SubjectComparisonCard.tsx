@@ -353,6 +353,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
   const right = viewModel.subjects[1];
   const columns = [left, right];
   const compact = width !== undefined && width < 760;
+  const narrowDistribution = width !== undefined && width < 360;
   const completionFormulaEvidenceStatus = columns.map(
     (subject) => subject.statistics?.collection.formulas?.completion?.evidenceStatus,
   );
@@ -663,9 +664,12 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
                     {stats.coverage.ratingBucketsExpected} 档已收到
                   </div>
                   <div
+                    data-layout="rating-distribution"
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+                      gridTemplateColumns: narrowDistribution
+                        ? 'repeat(3, minmax(0, 1fr))'
+                        : 'repeat(5, minmax(0, 1fr))',
                       gap: '5px',
                       marginTop: '4px',
                     }}
@@ -723,9 +727,12 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
                     {stats.coverage.collectionBucketsExpected} 类已收到
                   </div>
                   <div
+                    data-layout="collection-distribution"
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+                      gridTemplateColumns: narrowDistribution
+                        ? 'repeat(3, minmax(0, 1fr))'
+                        : 'repeat(5, minmax(0, 1fr))',
                       gap: '5px',
                       marginTop: '4px',
                     }}

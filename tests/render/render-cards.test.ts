@@ -435,6 +435,26 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
       }
     }
 
+    const longSummaryVm = buildRevisionTimelineViewModel(cases[1]![1]);
+    const longSummaryHtml = renderHtmlTemplate(longSummaryVm, 'bangumi-light', {}, 320);
+    expect(longSummaryHtml).toContain('摘要节选 · 前 160 字符');
+    expect(longSummaryHtml).toContain('图片显示 2 条');
+    expect(longSummaryHtml).toContain('data-tone="indigo"');
+    expect(longSummaryHtml).toContain('data-tone="coral"');
+
+    const typedVm = structuredClone(longSummaryVm);
+    const firstRevision = typedVm.items[0];
+    expect(firstRevision).toBeDefined();
+    typedVm.items = [
+      { ...firstRevision!, id: firstRevision!.id + 100_000, type: 103 },
+      { ...firstRevision!, id: firstRevision!.id + 100_001, type: 999 },
+    ];
+    const typedHtml = renderHtmlTemplate(typedVm, 'bangumi-light', {}, 320);
+    expect(typedHtml).toContain('data-layout="timeline-event-marker"');
+    expect(typedHtml).toContain('条目锁定 · 类型 103');
+    expect(typedHtml).toContain('未分类修订类型 · 类型 999');
+    expect(typedHtml).toContain('data-tone="indigo"');
+
     const partialVm = buildRevisionTimelineViewModel(
       makeResult(
         'partial',
@@ -449,6 +469,8 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
       ),
     );
     const html = renderHtmlTemplate(partialVm, 'bangumi-dark', {}, 640);
+    expect(html).toContain('data-layout="timeline-rail"');
+    expect(html).toContain('aria-label="Bangumi 修订记录时间线"');
     expect(html).toContain('&lt;script&gt;no-html&lt;/script&gt;');
     expect(html).toContain('历史增长趋势：当前源不支持计算');
   });

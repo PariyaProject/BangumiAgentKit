@@ -9,6 +9,11 @@ import { CoverImage } from '../components/CoverImage.js';
 import { Footer } from '../components/Footer.js';
 import { MetaRow } from '../components/MetaRow.js';
 import { PersonAvatar } from '../components/PersonAvatar.js';
+import {
+  getRendererIconTone,
+  RendererIcon,
+  type RendererIconName,
+} from '../components/RendererIcon.js';
 import { ScoreBadge } from '../components/ScoreBadge.js';
 import { TitleBlock } from '../components/TitleBlock.js';
 import { subjectTypeLabel } from '../subject-type-label.js';
@@ -56,7 +61,7 @@ function StatePill({
       style={{
         color: stateColor(state, theme),
         border: `1px solid ${stateColor(state, theme)}`,
-        borderRadius: theme.radius.sm,
+        borderRadius: '999px',
         padding: '2px 7px',
         fontSize: '13px',
         whiteSpace: 'nowrap',
@@ -72,19 +77,24 @@ function Panel({
   state,
   children,
   theme,
+  icon = 'overview',
+  compact = false,
 }: {
   title: string;
   state: SubjectOverviewSectionState;
   children: React.ReactNode;
   theme: ThemeTokens;
+  icon?: RendererIconName;
+  compact?: boolean;
 }) {
+  const tone = theme.tones[getRendererIconTone(icon)];
   return (
     <section
       style={{
         flex: '1 1 285px',
         minWidth: 0,
-        backgroundColor: theme.surfaceAlt,
-        border: `1px solid ${theme.border}`,
+        backgroundColor: tone.surface,
+        border: `1px solid ${tone.border}`,
         borderRadius: theme.radius.md,
         padding: theme.spacing.md,
         display: 'flex',
@@ -92,9 +102,44 @@ function Panel({
         gap: theme.spacing.sm,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-        <h2 style={{ margin: 0, fontSize: '18px', color: theme.text }}>{title}</h2>
-        <StatePill state={state} theme={theme} />
+      <div
+        data-layout={compact ? 'compact-panel-header' : 'panel-header'}
+        style={{
+          display: 'flex',
+          flexDirection: compact ? 'column' : 'row',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          alignItems: compact ? 'stretch' : 'center',
+          gap: theme.spacing.sm,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: theme.spacing.sm,
+            minWidth: 0,
+            flex: compact ? '0 0 auto' : '1 1 160px',
+            width: compact ? '100%' : undefined,
+          }}
+        >
+          <RendererIcon name={icon} theme={theme} size={16} badge />
+          <h2
+            style={{
+              margin: 0,
+              fontSize: '18px',
+              color: theme.text,
+              flex: '1 1 auto',
+              minWidth: 0,
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {title}
+          </h2>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+          <StatePill state={state} theme={theme} />
+        </div>
       </div>
       {children}
     </section>
@@ -105,16 +150,20 @@ function CoverageLine({
   observed,
   returned,
   truncated,
+  displayed,
   theme,
 }: {
   observed: number;
   returned: number;
   truncated: boolean;
+  displayed?: number;
   theme: ThemeTokens;
 }) {
   return (
     <div style={{ color: truncated ? theme.warning : theme.textMuted, fontSize: '13px' }}>
-      观察 {observed} 条 · 返回 {returned} 条{truncated ? ' · 已截断' : ''}
+      观察 {observed} 条 · 返回 {returned} 条
+      {displayed === undefined ? '' : ` · 图片显示 ${displayed} 条`}
+      {truncated ? ' · 已截断' : ''}
     </div>
   );
 }
@@ -122,14 +171,16 @@ function CoverageLine({
 function StatsPanel({
   stats,
   theme,
+  compact,
 }: {
   stats: SubjectOverviewViewModel['stats'];
   theme: ThemeTokens;
+  compact: boolean;
 }) {
   const maxCount = Math.max(1, ...stats.histogram.map((item) => item.count));
   const collection = stats.collection;
   return (
-    <Panel title="评分与收藏统计" state={stats.state} theme={theme}>
+    <Panel title="评分与收藏统计" state={stats.state} theme={theme} icon="stats" compact={compact}>
       {stats.state === 'unavailable' || stats.state === 'not_computable' ? (
         <div style={{ color: theme.textMuted, fontSize: '14px' }}>当前来源没有可用统计值。</div>
       ) : (
@@ -252,10 +303,30 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
   width,
 }) => {
   const { subject } = viewModel;
+  const renderWidth = width ?? 960;
+  const coverWidth = renderWidth < 520 ? 112 : renderWidth < 760 ? 136 : 196;
+  const compactHero = renderWidth < 520;
+  const compactPanelHeader = renderWidth < 520;
+  const summaryLimit = compactHero ? 96 : 180;
+  const castLimit = renderWidth < 520 ? 2 : renderWidth < 900 ? 6 : 12;
+  const staffGroupLimit = renderWidth < 520 ? 2 : renderWidth < 900 ? 6 : 8;
+  const staffMemberLimit = renderWidth < 520 ? 1 : renderWidth < 900 ? 3 : 4;
+  const relationLimit = renderWidth < 520 ? 2 : renderWidth < 900 ? 6 : 8;
+  const castItems = viewModel.cast.items.slice(0, castLimit);
+  const staffGroups = viewModel.staff.groups.slice(0, staffGroupLimit);
+  const relationItems = viewModel.relations.items.slice(0, relationLimit);
+  const displayedStaffMembers = staffGroups.reduce(
+    (count, group) => count + Math.min(group.members.length, staffMemberLimit),
+    0,
+  );
   const cover = subject.image ? resolvedImages[subject.image] : undefined;
   const title = subject.nameCn || subject.name;
   const subtitle =
     subject.nameCn && subject.nameCn !== subject.name ? subject.name : `条目 ID：${subject.id}`;
+  const summary = subject.summary?.replace(/\s+/gu, ' ').trim();
+  const summaryCharacters = summary ? Array.from(summary) : [];
+  const summaryExcerpt = summaryCharacters.slice(0, summaryLimit).join('');
+  const summaryTruncated = summaryCharacters.length > summaryLimit;
   const hasCoverageNotes = viewModel.warnings.length > 0 || viewModel.limitations.length > 0;
   const sourceLabel = viewModel.source.retrievedAt
     ? `${viewModel.source.label} · ${viewModel.source.retrievedAt}`
@@ -263,34 +334,72 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
 
   return (
     <CardFrame theme={theme} width={width}>
-      <div
+      <section
+        data-layout="editorial-cover-hero"
         style={{
-          display: 'flex',
-          gap: theme.spacing.lg,
-          alignItems: 'flex-start',
-          flexWrap: 'wrap',
+          display: 'grid',
+          gridTemplateColumns: compactHero ? 'minmax(0, 1fr)' : `${coverWidth}px minmax(0, 1fr)`,
+          gap: theme.spacing.md,
+          alignItems: 'stretch',
+          padding: theme.spacing.md,
+          backgroundColor: theme.surfaceAlt,
+          border: `1px solid ${theme.border}`,
+          borderRadius: theme.radius.lg,
         }}
       >
-        <CoverImage src={cover} alt={title} theme={theme} width={132} height={184} />
+        <div
+          style={
+            compactHero
+              ? { display: 'flex', justifyContent: 'center', minWidth: 0 }
+              : { minWidth: 0 }
+          }
+        >
+          <CoverImage
+            src={cover}
+            alt={title}
+            theme={theme}
+            width={coverWidth}
+            height={Math.round(coverWidth * 1.42)}
+          />
+        </div>
         <div
           style={{
             flex: '1 1 360px',
             minWidth: 0,
             display: 'flex',
             flexDirection: 'column',
-            gap: theme.spacing.sm,
+            gap: theme.spacing.md,
+            justifyContent: 'center',
           }}
         >
           <div
             style={{
               display: 'flex',
-              justifyContent: 'space-between',
+              flexDirection: 'column',
               gap: theme.spacing.sm,
-              alignItems: 'flex-start',
+              alignItems: 'stretch',
             }}
           >
-            <TitleBlock title={title} subtitle={subtitle} theme={theme} icon="overview" />
-            <StatePill state={viewModel.state} theme={theme} />
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: compactHero ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: theme.spacing.sm,
+              }}
+            >
+              <TitleBlock
+                title={title}
+                subtitle={subtitle}
+                theme={theme}
+                icon="overview"
+                titleFontSize={compactHero ? '20px' : renderWidth < 760 ? '24px' : '30px'}
+                subtitleFontSize={compactHero ? '12px' : '14px'}
+              />
+              <StatePill state={viewModel.state} theme={theme} />
+            </div>
+            <ScoreBadge score={subject.score} rank={subject.rank} theme={theme} />
           </div>
           <MetaRow
             items={[
@@ -303,30 +412,81 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
             ]}
             theme={theme}
           />
-          <ScoreBadge score={subject.score} rank={subject.rank} theme={theme} />
-          {subject.summary && (
+          {viewModel.stats.collection ? (
             <div
+              data-layout="editorial-public-collection"
               style={{
-                color: theme.textMuted,
-                fontSize: '16px',
-                lineHeight: 1.55,
-                overflowWrap: 'anywhere',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: theme.spacing.xs,
               }}
             >
-              {subject.summary}
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
+                <RendererIcon name="collection" theme={theme} size={15} />
+                <span style={{ color: theme.textMuted, fontSize: '11px' }}>社区收藏统计</span>
+              </div>
+              {[
+                ['想看', viewModel.stats.collection.wish],
+                ['看过', viewModel.stats.collection.collect],
+                ['在看', viewModel.stats.collection.doing],
+                ['搁置', viewModel.stats.collection.onHold],
+                ['抛弃', viewModel.stats.collection.dropped],
+              ].map(([label, value]) => (
+                <span
+                  key={String(label)}
+                  style={{
+                    color: theme.accent,
+                    backgroundColor: theme.surface,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '999px',
+                    padding: '3px 7px',
+                    fontSize: '11px',
+                  }}
+                >
+                  {label} {value}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {summary && (
+            <div
+              data-layout="editorial-summary"
+              style={{
+                color: theme.textMuted,
+                fontSize: compactHero ? '13px' : '15px',
+                lineHeight: 1.6,
+                overflowWrap: 'anywhere',
+                borderTop: `1px solid ${theme.border}`,
+                paddingTop: theme.spacing.sm,
+              }}
+            >
+              <div
+                style={{ color: theme.accent, fontSize: '11px', fontWeight: 700, marginBottom: 4 }}
+              >
+                简介{summaryTruncated ? `节选 · 前 ${summaryLimit} 字` : ''}
+              </div>
+              {summaryExcerpt}
+              {summaryTruncated ? '…' : ''}
             </div>
           )}
         </div>
-      </div>
+      </section>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.md }}>
-        <StatsPanel stats={viewModel.stats} theme={theme} />
-        <Panel title="角色与声优" state={viewModel.cast.state} theme={theme}>
+        <StatsPanel stats={viewModel.stats} theme={theme} compact={compactPanelHeader} />
+        <Panel
+          title="角色与声优"
+          state={viewModel.cast.state}
+          theme={theme}
+          icon="cast"
+          compact={compactPanelHeader}
+        >
           {viewModel.cast.items.length === 0 ? (
             <div style={{ color: theme.textMuted, fontSize: '14px' }}>未返回角色关系。</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
-              {viewModel.cast.items.map((item) => (
+              {castItems.map((item) => (
                 <div
                   key={item.character.id}
                   style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'flex-start' }}
@@ -360,14 +520,15 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
                   </div>
                 </div>
               ))}
-              {viewModel.cast.hiddenCount ? (
+              {viewModel.cast.coverage.returned > castItems.length ? (
                 <div style={{ color: theme.textMuted, fontSize: '13px' }}>
-                  另有 {viewModel.cast.hiddenCount} 条已返回角色未展示。
+                  另有 {viewModel.cast.coverage.returned - castItems.length}{' '}
+                  条已返回角色关系未在图片中展示。
                 </div>
               ) : null}
             </div>
           )}
-          <CoverageLine {...viewModel.cast.coverage} theme={theme} />
+          <CoverageLine {...viewModel.cast.coverage} displayed={castItems.length} theme={theme} />
           {viewModel.cast.actorCoverage.truncated ? (
             <div style={{ color: theme.warning, fontSize: '13px', overflowWrap: 'anywhere' }}>
               声优展示达到上限，覆盖数量见本区段统计。
@@ -377,7 +538,13 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.md }}>
-        <Panel title="制作人员" state={viewModel.staff.state} theme={theme}>
+        <Panel
+          title="制作人员"
+          state={viewModel.staff.state}
+          theme={theme}
+          icon="person"
+          compact={compactPanelHeader}
+        >
           <div
             style={{
               color: theme.textMuted,
@@ -393,42 +560,66 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
             <div style={{ color: theme.textMuted, fontSize: '14px' }}>未返回制作人员关系。</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
-              {viewModel.staff.groups.map((group) => (
-                <div
-                  key={group.relation}
-                  style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'baseline' }}
-                >
-                  <span
+              {staffGroups.map((group) => {
+                const members = group.members.slice(0, staffMemberLimit);
+                const groupCount = Math.max(group.count, group.members.length);
+                return (
+                  <div
+                    key={group.relation}
                     style={{
-                      color: theme.accent,
-                      fontSize: '14px',
-                      minWidth: '64px',
-                      overflowWrap: 'anywhere',
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(60px, auto) minmax(0, 1fr) auto',
+                      gap: theme.spacing.sm,
+                      alignItems: 'baseline',
                     }}
                   >
-                    {group.relation}
-                  </span>
-                  <span style={{ color: theme.text, fontSize: '15px', overflowWrap: 'anywhere' }}>
-                    {group.members.map((member) => member.name).join('、') || '成员未知'}
-                  </span>
-                  <span style={{ color: theme.textMuted, fontSize: '12px' }}>({group.count})</span>
-                </div>
-              ))}
-              {viewModel.staff.hiddenCount ? (
-                <div style={{ color: theme.textMuted, fontSize: '13px' }}>
-                  另有 {viewModel.staff.hiddenCount} 条已返回职员关系未展示。
+                    <span
+                      style={{
+                        color: theme.accent,
+                        fontSize: '13px',
+                        minWidth: 0,
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {group.relation}
+                    </span>
+                    <span style={{ color: theme.text, fontSize: '13px', overflowWrap: 'anywhere' }}>
+                      {members.map((member) => member.name).join('、') || '成员未知'}
+                    </span>
+                    <span
+                      style={{ color: theme.textMuted, fontSize: '11px', whiteSpace: 'nowrap' }}
+                    >
+                      显示 {members.length}/{groupCount}
+                    </span>
+                  </div>
+                );
+              })}
+              {viewModel.staff.groups.length > staffGroups.length ? (
+                <div style={{ color: theme.textMuted, fontSize: '12px' }}>
+                  职位分组图片展示 {staffGroups.length}/{viewModel.staff.groups.length}{' '}
+                  组；其余分组未在图片中展开。
                 </div>
               ) : null}
             </div>
           )}
-          <CoverageLine {...viewModel.staff.coverage} theme={theme} />
+          <CoverageLine
+            {...viewModel.staff.coverage}
+            displayed={displayedStaffMembers}
+            theme={theme}
+          />
         </Panel>
-        <Panel title="关联条目" state={viewModel.relations.state} theme={theme}>
+        <Panel
+          title="关联条目"
+          state={viewModel.relations.state}
+          theme={theme}
+          icon="relations"
+          compact={compactPanelHeader}
+        >
           {viewModel.relations.items.length === 0 ? (
             <div style={{ color: theme.textMuted, fontSize: '14px' }}>未返回关联条目。</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
-              {viewModel.relations.items.map((item) => (
+              {relationItems.map((item) => (
                 <div
                   key={`${item.id}-${item.relation}`}
                   style={{
@@ -453,14 +644,19 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
                   </span>
                 </div>
               ))}
-              {viewModel.relations.hiddenCount ? (
+              {viewModel.relations.coverage.returned > relationItems.length ? (
                 <div style={{ color: theme.textMuted, fontSize: '13px' }}>
-                  另有 {viewModel.relations.hiddenCount} 条已返回关系未展示。
+                  另有 {viewModel.relations.coverage.returned - relationItems.length}{' '}
+                  条已返回关系未在图片中展示。
                 </div>
               ) : null}
             </div>
           )}
-          <CoverageLine {...viewModel.relations.coverage} theme={theme} />
+          <CoverageLine
+            {...viewModel.relations.coverage}
+            displayed={relationItems.length}
+            theme={theme}
+          />
         </Panel>
       </div>
 

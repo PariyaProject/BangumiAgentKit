@@ -1,8 +1,9 @@
 import React from 'react';
 import { CardFrame } from '../components/CardFrame.js';
+import { RendererIcon, type RendererIconName } from '../components/RendererIcon.js';
 import { TitleBlock } from '../components/TitleBlock.js';
 import { Footer } from '../components/Footer.js';
-import { ThemeTokens } from '../themes/index.js';
+import { SemanticToneName, ThemeTokens } from '../themes/index.js';
 import { RevisionTimelineViewModel } from '../view-models/index.js';
 
 export interface RevisionTimelineCardProps {
@@ -18,19 +19,65 @@ const ENTITY_LABELS: Record<RevisionTimelineViewModel['entityType'], string> = {
   person: '人物',
 };
 
+interface RevisionTypePresentation {
+  label: string;
+  icon: RendererIconName;
+  tone: SemanticToneName;
+}
+
+const REVISION_TYPE_PRESENTATION: Readonly<Record<number, RevisionTypePresentation>> = {
+  1: { label: '条目修订', icon: 'subject', tone: 'coral' },
+  2: { label: '角色修订', icon: 'cast', tone: 'plum' },
+  3: { label: '人物修订', icon: 'person', tone: 'blue' },
+  4: { label: '角色关联修订', icon: 'relations', tone: 'mint' },
+  5: { label: '条目角色关联修订', icon: 'relations', tone: 'mint' },
+  6: { label: '条目声优关联修订', icon: 'cast', tone: 'plum' },
+  7: { label: '角色声优关联修订', icon: 'cast', tone: 'plum' },
+  8: { label: '人物声优关联修订', icon: 'cast', tone: 'plum' },
+  9: { label: '人物条目关联修订', icon: 'relations', tone: 'mint' },
+  10: { label: '条目人物关联修订', icon: 'person', tone: 'blue' },
+  11: { label: '条目合并管理', icon: 'merge', tone: 'plum' },
+  12: { label: '条目删除管理', icon: 'erase', tone: 'coral' },
+  13: { label: '角色合并管理', icon: 'merge', tone: 'plum' },
+  14: { label: '角色删除管理', icon: 'erase', tone: 'coral' },
+  15: { label: '人物合并管理', icon: 'merge', tone: 'plum' },
+  16: { label: '人物删除管理', icon: 'erase', tone: 'coral' },
+  17: { label: '条目关联修订', icon: 'relations', tone: 'mint' },
+  18: { label: '章节修订', icon: 'episode', tone: 'blue' },
+  103: { label: '条目锁定', icon: 'lock', tone: 'indigo' },
+  104: { label: '条目解锁', icon: 'unlock', tone: 'mint' },
+  181: { label: '章节合并管理', icon: 'merge', tone: 'plum' },
+  182: { label: '章节移动管理', icon: 'move', tone: 'blue' },
+  183: { label: '章节锁定', icon: 'lock', tone: 'indigo' },
+  184: { label: '章节解锁', icon: 'unlock', tone: 'mint' },
+  185: { label: '章节删除管理', icon: 'erase', tone: 'coral' },
+};
+
+function revisionTypePresentation(type: number): RevisionTypePresentation {
+  return (
+    REVISION_TYPE_PRESENTATION[type] ?? {
+      label: '未分类修订类型',
+      icon: 'history',
+      tone: 'indigo',
+    }
+  );
+}
+
 export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
   viewModel,
   theme,
   width,
 }) => {
+  const renderWidth = width ?? 960;
+  const timelineLimit = renderWidth < 520 ? 4 : renderWidth < 900 ? 6 : 10;
+  const summaryLimit = renderWidth < 520 ? 160 : 300;
+  const items = viewModel.items.slice(0, timelineLimit);
   const stateLabel =
     viewModel.state === 'complete'
       ? '覆盖完整'
       : viewModel.state === 'partial'
         ? '部分覆盖'
         : '不可用';
-  const itemBasis = width && width >= 900 ? 'calc(50% - 6px)' : '100%';
-
   return (
     <CardFrame theme={theme} width={width}>
       <TitleBlock
@@ -40,8 +87,19 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
         icon="history"
       />
 
-      <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
-        观察 {viewModel.coverage.observed} 条 · 返回 {viewModel.coverage.returned} 条 ·
+      <div
+        data-layout="timeline-coverage"
+        style={{
+          color: theme.textMuted,
+          fontSize: '12px',
+          lineHeight: 1.5,
+          backgroundColor: theme.surfaceAlt,
+          borderRadius: theme.radius.md,
+          padding: theme.spacing.sm,
+        }}
+      >
+        观察 {viewModel.coverage.observed} 条 · 返回 {viewModel.coverage.returned} 条 · 图片显示{' '}
+        {items.length} 条 ·
         {` 总数 ${viewModel.coverage.totalKind === 'exact' ? viewModel.coverage.total : '未知'}`}
         {viewModel.coverage.truncated ? ' · 有界样本' : ''}
       </div>
@@ -63,43 +121,121 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
         </div>
       ) : null}
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-        {viewModel.items.map((item) => (
-          <div
-            key={item.id}
-            style={{
-              flex: `1 1 ${itemBasis}`,
-              minWidth: 0,
-              backgroundColor: theme.surfaceAlt,
-              border: `1px solid ${theme.border}`,
-              borderRadius: theme.radius.md,
-              padding: theme.spacing.md,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: theme.spacing.xs,
-            }}
-          >
+      <div
+        data-layout="timeline-rail"
+        role="list"
+        aria-label="Bangumi 修订记录时间线"
+        style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}
+      >
+        {items.map((item, index) => {
+          const presentation = revisionTypePresentation(item.type);
+          const toneName = presentation.tone;
+          const tone = theme.tones[toneName];
+          const summary = item.summary || '修订摘要未知';
+          const summaryCharacters = Array.from(summary);
+          const summaryExcerpt = summaryCharacters.slice(0, summaryLimit).join('');
+          const summaryTruncated = summaryCharacters.length > summaryLimit;
+          return (
             <div
+              key={item.id}
+              role="listitem"
               style={{
-                color: theme.text,
-                fontWeight: 600,
-                fontSize: '13px',
-                overflowWrap: 'anywhere',
-                wordBreak: 'break-word',
+                display: 'grid',
+                gridTemplateColumns: '32px minmax(0, 1fr)',
+                gap: theme.spacing.sm,
+                minWidth: 0,
               }}
             >
-              {item.summary || '修订摘要未知'}
+              <div
+                data-layout="timeline-event-marker"
+                aria-hidden="true"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  minHeight: '100%',
+                }}
+              >
+                <RendererIcon
+                  name={presentation.icon}
+                  theme={theme}
+                  size={16}
+                  badge
+                  tone={toneName}
+                />
+                {index < items.length - 1 ? (
+                  <div
+                    style={{
+                      flex: 1,
+                      width: '2px',
+                      minHeight: theme.spacing.md,
+                      backgroundColor: tone.border,
+                    }}
+                  />
+                ) : null}
+              </div>
+              <article
+                style={{
+                  minWidth: 0,
+                  backgroundColor: theme.surfaceAlt,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: theme.radius.md,
+                  padding: theme.spacing.md,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: theme.spacing.xs,
+                }}
+              >
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+                  <span
+                    style={{
+                      color: tone.foreground,
+                      backgroundColor: tone.surface,
+                      borderRadius: '999px',
+                      padding: '3px 8px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {item.createdAt ? item.createdAt : '创建时间未知'}
+                  </span>
+                  <span style={{ color: theme.textMuted, fontSize: '11px', padding: '3px 0' }}>
+                    {presentation.label} · 类型 {item.type} · 修订 ID {item.id}
+                  </span>
+                </div>
+                {summaryTruncated ? (
+                  <div style={{ color: theme.accent, fontSize: '10px', fontWeight: 700 }}>
+                    摘要节选 · 前 {summaryLimit} 字符
+                  </div>
+                ) : null}
+                <div
+                  data-layout="timeline-summary"
+                  style={{
+                    color: theme.text,
+                    fontWeight: 700,
+                    fontSize: '14px',
+                    lineHeight: 1.5,
+                    overflowWrap: 'anywhere',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {summaryExcerpt}
+                  {summaryTruncated ? '…' : ''}
+                </div>
+                <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.4 }}>
+                  修订者：{item.creator?.nickname || item.creator?.username || '未知'}
+                </div>
+              </article>
             </div>
-            <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-              {item.createdAt ? `创建时间 ${item.createdAt}` : '创建时间未知'} · 类型 {item.type}
-              {item.creator?.nickname || item.creator?.username
-                ? ` · 修订者 ${item.creator.nickname || item.creator.username}`
-                : ' · 修订者未知'}
-            </div>
-            <div style={{ color: theme.textMuted, fontSize: '10px' }}>修订 ID {item.id}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {viewModel.coverage.returned > items.length ? (
+        <div style={{ color: theme.textMuted, fontSize: '11px' }}>
+          另有 {viewModel.coverage.returned - items.length} 条已返回修订记录未在图片中展示。
+        </div>
+      ) : null}
 
       {viewModel.coverage.missingFields &&
       Object.keys(viewModel.coverage.missingFields).length > 0 ? (

@@ -101,7 +101,16 @@ export const CharacterCreditIntegrityCard: React.FC<CharacterCreditIntegrityCard
         的同名只表示碰撞风险，不表示是同一个实体。
       </div>
 
-      <div style={{ color: tone, fontSize: '11px', lineHeight: 1.5 }}>
+      <div
+        style={{
+          color: tone,
+          fontSize: '11px',
+          lineHeight: 1.5,
+          minWidth: 0,
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
+        }}
+      >
         状态：{stateLabel(viewModel.state)} · 来源：{viewModel.source.class} · 检索{' '}
         {boundedText(viewModel.source.retrievedAt, 32)} · 显示：
         {viewModel.presentation.state === 'complete' ? '完整' : '部分'}
@@ -117,7 +126,16 @@ export const CharacterCreditIntegrityCard: React.FC<CharacterCreditIntegrityCard
         {summary.map(([label, value]) => (
           <div key={label} style={panelStyle(theme)}>
             <div style={{ color: theme.textMuted, fontSize: '10px' }}>{label}</div>
-            <div style={{ color: theme.text, fontSize: '15px', fontWeight: 700 }}>
+            <div
+              style={{
+                color: theme.text,
+                fontSize: '15px',
+                fontWeight: 700,
+                minWidth: 0,
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+              }}
+            >
               {boundedText(value, 56)}
             </div>
           </div>
