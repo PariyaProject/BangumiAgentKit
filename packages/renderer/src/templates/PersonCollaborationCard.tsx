@@ -141,15 +141,17 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
         {contextChips.map(([label, value]) => (
           <span
             key={label}
+            data-render-mask="tag"
             style={{
               ...wrapStyle,
               color: label === '状态' ? tone : theme.textMuted,
               backgroundColor: label === '状态' ? `${tone}18` : theme.surfaceAlt,
               border: `1px solid ${label === '状态' ? tone : theme.border}`,
               borderRadius: theme.design.badgeRadius,
-              padding: '4px 8px',
+              padding: '4px 12px',
               fontSize: '11px',
               lineHeight: 1.35,
+              clipPath: theme.design.masks.tag,
             }}
           >
             <span style={{ color: theme.textMuted }}>{label}</span> {value}
@@ -362,15 +364,20 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
               );
               const rendererOmittedSharedSubjects =
                 collaborator.sharedSubjects.length - visibleSharedSubjects.length;
+              const collaboratorMaskName = index % 2 === 0 ? 'panel' : 'panelAlt';
+              const collaboratorMask = theme.design.masks[collaboratorMaskName];
               return (
                 <div
                   key={collaborator.id}
+                  data-layout="collaboration-person-card"
+                  data-render-mask={collaboratorMaskName === 'panel' ? 'panel' : 'panel-alt'}
                   style={{
                     ...wrapStyle,
                     backgroundColor: theme.surfaceAlt,
                     border: `1px solid ${theme.border}`,
                     borderRadius: theme.radius.sm,
                     padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                    clipPath: collaboratorMask,
                   }}
                 >
                   <div
