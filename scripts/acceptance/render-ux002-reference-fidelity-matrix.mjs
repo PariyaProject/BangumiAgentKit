@@ -1,3 +1,4 @@
+/* global window */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -371,7 +372,7 @@ try {
             ).map((node) => ({
               kind: node.getAttribute('data-render-mask'),
               token: node.style.clipPath || 'none',
-              clipPath: getComputedStyle(node).clipPath,
+              clipPath: window.getComputedStyle(node).clipPath,
             }));
             const progressTrack = element.querySelector(
               '[data-layout="progress-track"], [data-layout="subject-progress-track"]',
@@ -402,11 +403,11 @@ try {
               rootScrollWidth: element.scrollWidth,
               rootClientWidth: element.clientWidth,
               maskReceipts: {
-                frame: frame ? getComputedStyle(frame).clipPath : null,
+                frame: frame ? window.getComputedStyle(frame).clipPath : null,
                 frameToken: frame?.style.clipPath || null,
-                hero: hero ? getComputedStyle(hero).clipPath : null,
+                hero: hero ? window.getComputedStyle(hero).clipPath : null,
                 heroToken: hero?.style.clipPath || null,
-                panel: panel ? getComputedStyle(panel).clipPath : null,
+                panel: panel ? window.getComputedStyle(panel).clipPath : null,
                 panelToken: panel?.style.clipPath || null,
                 panelPrimaryCount: panelMasks.filter(
                   (mask) => mask.kind === 'panel' && mask.clipPath !== 'none',
@@ -422,7 +423,7 @@ try {
                   panelMasks.find((mask) => mask.kind === 'panel-alt')?.clipPath ?? null,
                 panelAltMaskToken:
                   panelMasks.find((mask) => mask.kind === 'panel-alt')?.token ?? null,
-                progress: progressTrack ? getComputedStyle(progressTrack).clipPath : null,
+                progress: progressTrack ? window.getComputedStyle(progressTrack).clipPath : null,
                 progressToken: progressTrack?.style.clipPath || null,
                 coverStickerCount: element.querySelectorAll(
                   '[data-layout="zine-cover-stickers"] > span',
