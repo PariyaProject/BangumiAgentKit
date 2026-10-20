@@ -183,3 +183,40 @@ matrix and review every changed template/state contact sheet; exact SHA matches
 to the immediately preceding reviewed pass may inherit that image review. The
 new palette's icon foreground/surface pairs and all text tokens across tinted
 surfaces must retain at least 4.5:1 contrast.
+
+## Fourth iteration — close the PR #242 visual findings
+
+The corrective renderer Candidate is `5c10f28fd9b6916992dc1de9b3e4fbc6bbf76cfe`.
+Its pass7 matrix was rendered from that exact source commit. The complete
+receipt set and source-tree identity are recorded in
+[`run95-render-editorial-layouts-review-correction-visual-qa-2026-10-20.json`](run95-render-editorial-layouts-review-correction-visual-qa-2026-10-20.json).
+The report retains all 580 image receipts and 31 manifest hashes across 29
+templates, 58 fixture groups, two palettes, and five widths. Every PNG's byte
+count, SHA-256, dimensions, and layout measurements were verified. The audit
+found no root or inner-content overflow. Of the pass4 comparison, 418 images
+are byte-identical; 52 changed under the same fixture identity, and 110 belong
+to 11 fixture-ID drift groups. Twenty current contact sheets were inspected,
+along with ten full-resolution samples.
+
+The review corrections are visible in those outputs: Subject Overview puts the
+cover above a full-width mobile hero and reports shown/returned counts for its
+bounded content; Timeline event markers now follow documented revision types,
+with a neutral labeled fallback for unknown values. The selected 320px
+complete overview fell from 5,714 to 4,722 physical pixels. The report also
+keeps two remaining design issues visible: a Person Collaboration stress
+fixture is still 17,742 physical pixels tall, and raw ISO revision timestamps
+are visually dense.
+
+The visual system in this Epoch remains the light/dark palette plus
+content-specific editorial, bento, timeline, or compact-list structures. The
+user has since asked for multiple complete, high-fidelity design systems that
+can be switched from QQ. That request is now recorded as required task UX-002 in
+PariyaAgent's authoritative task ledger and will enter a separate governed
+Epoch after PR #242 is resolved. Its acceptance must require three or more
+structurally distinct design packs, per-sender switching while preserving the
+existing light/dark setting, complete 29-template/state coverage, and visual
+receipts for every produced image. Generated boards remain references; the
+product renderer must implement their layout, typography, iconography, color,
+and spacing with native code/SVG and real data. It must also address the two
+long-card/timestamp issues above. This later requirement does not change the
+Candidate scope or acceptance claim of PR #242.
