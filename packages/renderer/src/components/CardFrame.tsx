@@ -54,6 +54,7 @@ export const CardFrame: React.FC<CardFrameProps> = ({ theme, children, width = 9
       data-render-root
       data-render-pack={theme.designPack}
       data-render-theme={theme.name}
+      data-render-mask-system="css-shape-v1"
       style={{
         width: `${width}px`,
         boxSizing: 'border-box',
@@ -68,6 +69,7 @@ export const CardFrame: React.FC<CardFrameProps> = ({ theme, children, width = 9
       }}
     >
       <div
+        data-render-frame="true"
         style={{
           boxSizing: 'border-box',
           minWidth: 0,

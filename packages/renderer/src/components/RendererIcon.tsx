@@ -495,6 +495,7 @@ export const RendererIcon: React.FC<RendererIconProps> = ({
       data-tone={tone ?? getRendererIconTone(name)}
       data-icon-pack={pack}
       data-icon-treatment={treatment}
+      data-icon-mask={badge ? 'badge' : undefined}
       style={{
         width: badge ? 32 : size,
         height: badge ? 32 : size,
@@ -506,6 +507,7 @@ export const RendererIcon: React.FC<RendererIconProps> = ({
         borderRadius: badge ? theme.design.badgeRadius : undefined,
         backgroundColor: badge ? badgeBackground : undefined,
         border: badge ? badgeBorder : undefined,
+        clipPath: badge ? theme.design.masks.badge : undefined,
         boxShadow: badge && pack === 'graphic-zine' ? `2px 2px 0 ${toneTokens.border}` : undefined,
       }}
     >

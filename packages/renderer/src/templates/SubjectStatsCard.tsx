@@ -547,7 +547,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({
       {raw && !zine ? (
         <section
           data-layout={gallery ? 'gallery-score-distribution-hero' : 'warm-score-distribution-hero'}
-          data-render-mask="panel"
+          data-render-mask={gallery ? 'panel' : 'panel-alt'}
           style={{
             display: 'grid',
             gridTemplateColumns:
@@ -558,7 +558,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({
             backgroundColor: gallery ? theme.surface : theme.surfaceAlt,
             border: `1px solid ${theme.border}`,
             borderRadius: gallery ? '4px' : theme.radius.lg,
-            clipPath: theme.design.masks.panel,
+            clipPath: gallery ? theme.design.masks.panel : theme.design.masks.panelAlt,
           }}
         >
           <div data-layout="stats-rating-score">

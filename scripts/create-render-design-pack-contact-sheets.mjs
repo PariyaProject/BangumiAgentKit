@@ -71,6 +71,10 @@ const maskAudit = {
   imagesWithPrimaryPanelMask: 0,
   imagesWithAlternatePanelMask: 0,
   imagesWithProgressMask: 0,
+  primaryPanelMaskCount: 0,
+  alternatePanelMaskCount: 0,
+  progressMaskCount: 0,
+  unsupportedShapeMaskCount: 0,
   invalidMarkedPanelCount: 0,
 };
 
@@ -101,12 +105,27 @@ for (const manifestPath of manifestPaths) {
     if (maskReceipts) {
       maskAudit.imagesWithMaskReceipts += 1;
       const panels = maskReceipts.panels ?? [];
-      if (
+      const primaryPanelCount =
+        maskReceipts.panelPrimaryCount ??
+        panels.filter((mask) => mask.kind === 'panel' && mask.clipPath && mask.clipPath !== 'none')
+          .length;
+      const alternatePanelCount =
+        maskReceipts.panelAltCount ??
+        panels.filter(
+          (mask) => mask.kind === 'panel-alt' && mask.clipPath && mask.clipPath !== 'none',
+        ).length;
+      if (primaryPanelCount > 0) {
+        maskAudit.primaryPanelMaskCount += primaryPanelCount;
+        maskAudit.imagesWithPrimaryPanelMask += 1;
+      } else if (
         panels.some((mask) => mask.kind === 'panel' && mask.clipPath && mask.clipPath !== 'none')
       ) {
         maskAudit.imagesWithPrimaryPanelMask += 1;
       }
-      if (
+      if (alternatePanelCount > 0) {
+        maskAudit.alternatePanelMaskCount += alternatePanelCount;
+        maskAudit.imagesWithAlternatePanelMask += 1;
+      } else if (
         panels.some(
           (mask) => mask.kind === 'panel-alt' && mask.clipPath && mask.clipPath !== 'none',
         )
@@ -117,11 +136,20 @@ for (const manifestPath of manifestPaths) {
         maskAudit.invalidMarkedPanelCount += 1;
         receiptErrors.push(`invalid rendered panel mask: ${imagePath}`);
       }
-      if (maskReceipts.progressTracks?.some((clipPath) => clipPath && clipPath !== 'none')) {
+      const progressMasks = maskReceipts.progressTracks ?? [maskReceipts.progress].filter(Boolean);
+      const validProgressMaskCount = progressMasks.filter(
+        (clipPath) => clipPath && clipPath !== 'none',
+      ).length;
+      if (validProgressMaskCount > 0) {
         maskAudit.imagesWithProgressMask += 1;
+        maskAudit.progressMaskCount += validProgressMaskCount;
       }
       if (maskReceipts.progressTracks?.some((clipPath) => !clipPath || clipPath === 'none')) {
         receiptErrors.push(`invalid rendered progress mask: ${imagePath}`);
+      }
+      if (maskReceipts.unsupportedShapeMasks?.length) {
+        maskAudit.unsupportedShapeMaskCount += maskReceipts.unsupportedShapeMasks.length;
+        receiptErrors.push(`unsupported CSS shape mask: ${imagePath}`);
       }
     }
 

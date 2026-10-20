@@ -218,14 +218,14 @@ async function generateThemeMatrix(): Promise<void> {
           variant.width === themeMatrixWidths[0],
       );
       const panels = sample?.layout.maskReceipts?.panels ?? [];
-      const clipPath = panels.find(
-        (mask) => mask.kind === 'panel' && mask.clipPath !== 'none',
-      )?.clipPath;
+      const clipPath =
+        panels.find((mask) => mask.kind === 'panel' && mask.clipPath !== 'none')?.clipPath ??
+        panels.find((mask) => mask.kind === 'panel-alt' && mask.clipPath !== 'none')?.clipPath;
       if (clipPath) panelMasksByPack.set(designPack, clipPath);
     }
     if (panelMasksByPack.size > 0 && panelMasksByPack.size !== themeMatrixDesignPacks.length) {
       maskFailures.push(
-        `${candidate.template}/${candidate.state} does not apply a panel mask in every design pack`,
+        `${candidate.template}/${candidate.state} does not apply a primary or alternate panel mask in every design pack`,
       );
     }
     if (

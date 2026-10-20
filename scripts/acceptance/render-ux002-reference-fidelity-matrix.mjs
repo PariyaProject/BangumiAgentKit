@@ -348,7 +348,7 @@ try {
           const root = page.locator('[data-render-root]');
           const visual = await root.evaluate((element) => {
             const bounds = element.getBoundingClientRect();
-            const frame = element.children[0];
+            const frame = element.querySelector('[data-render-frame="true"]');
             const hero = element.querySelector('[data-layout="subject-cover-art-stage"]');
             const panel = element.querySelector(
               '[data-layout="warm-score-panel"], [data-layout="zine-score-progress-hero"], [data-layout="subject-card-summary"]',
@@ -377,6 +377,30 @@ try {
             const progressTrack = element.querySelector(
               '[data-layout="progress-track"], [data-layout="subject-progress-track"]',
             );
+            const shapeMaskElements = Array.from(element.querySelectorAll('*')).filter((node) =>
+              node.style.clipPath?.startsWith('shape('),
+            );
+            const expectedShapeMaskElements = Array.from(
+              new Set(
+                [
+                  frame,
+                  hero,
+                  progressTrack,
+                  ...element.querySelectorAll('[data-render-mask]'),
+                  ...element.querySelectorAll('[data-icon-mask="badge"]'),
+                ].filter(Boolean),
+              ),
+            );
+            const unsupportedShapeMasks = expectedShapeMaskElements
+              .map((node) => ({
+                layout: node.getAttribute('data-layout') ?? node.getAttribute('data-render-mask'),
+                clipPath: window.getComputedStyle(node).clipPath,
+              }))
+              .filter(
+                (entry) =>
+                  !entry.clipPath.startsWith('shape(') ||
+                  !window.CSS.supports('clip-path', entry.clipPath),
+              );
             const overflows = Array.from(element.querySelectorAll('*'))
               .map((node) => {
                 const box = node.getBoundingClientRect();
@@ -425,6 +449,9 @@ try {
                   panelMasks.find((mask) => mask.kind === 'panel-alt')?.token ?? null,
                 progress: progressTrack ? window.getComputedStyle(progressTrack).clipPath : null,
                 progressToken: progressTrack?.style.clipPath || null,
+                shapeMaskCount: shapeMaskElements.length,
+                unsupportedShapeMasks,
+                badgeMaskCount: element.querySelectorAll('[data-icon-mask="badge"]').length,
                 coverStickerCount: element.querySelectorAll(
                   '[data-layout="zine-cover-stickers"] > span',
                 ).length,
@@ -443,6 +470,15 @@ try {
             visual.rootScrollWidth,
             visual.rootClientWidth,
             `${fixture.template}/${designPack}/${theme}/${cssWidth} root overflow`,
+          );
+          assert.ok(
+            visual.maskReceipts.shapeMaskCount > 0,
+            `${fixture.template}/${designPack}/${theme}/${cssWidth} missing CSS shape masks`,
+          );
+          assert.deepEqual(
+            visual.maskReceipts.unsupportedShapeMasks,
+            [],
+            `${fixture.template}/${designPack}/${theme}/${cssWidth} has an unsupported CSS shape mask`,
           );
           assert.ok(
             visual.maskReceipts.frame && visual.maskReceipts.frame !== 'none',
@@ -550,28 +586,73 @@ assert.equal(
   PACKS.length,
   'design packs must render distinct frame masks at 320px',
 );
-const panelMaskTokensByPack = new Map();
-const panelMasksAt320ByPack = new Map();
+const panelMaskTokensByTemplatePack = new Map();
+const panelMasksAt320ByTemplatePack = new Map();
+const panelMaskTokensAt320ByTemplatePack = new Map();
+const panelAltCountsByTemplatePack = new Map();
 for (const item of manifest) {
-  const currentToken = panelMaskTokensByPack.get(item.designPack);
-  if (currentToken && currentToken !== item.layout.maskReceipts.panelPrimaryMaskToken) {
-    throw new Error(`Panel mask token drifted within ${item.designPack}`);
+  const key = `${item.template}/${item.designPack}`;
+  const { panelPrimaryMaskToken, panelAltMaskToken, panelAltCount } = item.layout.maskReceipts;
+  if (panelPrimaryMaskToken) {
+    const currentToken = panelMaskTokensByTemplatePack.get(key);
+    if (currentToken && currentToken !== panelPrimaryMaskToken) {
+      throw new Error(`Primary panel mask token drifted within ${key}`);
+    }
+    panelMaskTokensByTemplatePack.set(key, panelPrimaryMaskToken);
   }
-  panelMaskTokensByPack.set(item.designPack, item.layout.maskReceipts.panelPrimaryMaskToken);
-  if (item.cssWidth === 320 && !panelMasksAt320ByPack.has(item.designPack)) {
-    panelMasksAt320ByPack.set(item.designPack, item.layout.maskReceipts.panelPrimaryMask);
+  if (item.cssWidth === 320 && !panelMasksAt320ByTemplatePack.has(key)) {
+    panelMasksAt320ByTemplatePack.set(
+      key,
+      item.layout.maskReceipts.panelPrimaryMask ?? item.layout.maskReceipts.panelAltMask,
+    );
+    panelMaskTokensAt320ByTemplatePack.set(key, panelPrimaryMaskToken ?? panelAltMaskToken);
+  }
+  if (panelAltCount > 0) {
+    const altKey = `${key}/alternate`;
+    const currentAltToken = panelMaskTokensByTemplatePack.get(altKey);
+    if (currentAltToken && currentAltToken !== panelAltMaskToken) {
+      throw new Error(`Alternate panel mask token drifted within ${key}`);
+    }
+    panelMaskTokensByTemplatePack.set(altKey, panelAltMaskToken);
+    panelAltCountsByTemplatePack.set(
+      key,
+      (panelAltCountsByTemplatePack.get(key) ?? 0) + panelAltCount,
+    );
   }
 }
-assert.equal(
-  new Set(panelMaskTokensByPack.values()).size,
-  PACKS.length,
-  'design packs must define distinct panel mask tokens',
-);
-assert.equal(
-  new Set(panelMasksAt320ByPack.values()).size,
-  PACKS.length,
-  'design packs must render distinct panel masks at 320px',
-);
+const referenceTemplates = [...new Set(manifest.map((item) => item.template))];
+for (const template of referenceTemplates) {
+  const maskTokens = PACKS.map((designPack) =>
+    panelMaskTokensAt320ByTemplatePack.get(`${template}/${designPack}`),
+  );
+  const renderedMasks = PACKS.map((designPack) =>
+    panelMasksAt320ByTemplatePack.get(`${template}/${designPack}`),
+  );
+  assert.ok(maskTokens.every(Boolean), `${template} must report a panel mask per pack`);
+  assert.ok(renderedMasks.every(Boolean), `${template} must render a panel mask per pack`);
+  assert.equal(
+    new Set(maskTokens).size,
+    PACKS.length,
+    `${template} must define a distinct panel mask for each pack`,
+  );
+  assert.equal(
+    new Set(renderedMasks).size,
+    PACKS.length,
+    `${template} must render distinct panel masks at 320px`,
+  );
+}
+for (const template of ['subject-card', 'subject-stats']) {
+  const key = `${template}/warm-editorial`;
+  assert.ok(
+    (panelAltCountsByTemplatePack.get(key) ?? 0) > 0,
+    `${key} must exercise its alternate folio mask`,
+  );
+  assert.notEqual(
+    panelMaskTokensByTemplatePack.get(`${key}/alternate`),
+    panelMaskTokensByTemplatePack.get('subject-card/warm-editorial'),
+    `${key} must use a visibly distinct alternate folio mask`,
+  );
+}
 const progressMaskTokensByPack = new Map();
 const progressMasksAt320ByPack = new Map();
 for (const item of manifest.filter((row) => row.template === 'subject-card')) {

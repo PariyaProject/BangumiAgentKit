@@ -465,7 +465,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
       {subject.summary && (
         <div
           data-layout="subject-card-summary"
-          data-render-mask="panel"
+          data-render-mask={theme.designPack === 'warm-editorial' ? 'panel-alt' : 'panel'}
           style={{
             fontSize: '14px',
             lineHeight: 1.7,
@@ -475,7 +475,10 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
             borderRadius: zine ? theme.design.badgeRadius : theme.radius.md,
             border: `${zine ? '2px' : '1px'} solid ${zine ? theme.tones.coral.border : theme.border}`,
             borderLeft: zine ? `6px solid ${theme.tones.coral.foreground}` : undefined,
-            clipPath: theme.design.masks.panel,
+            clipPath:
+              theme.designPack === 'warm-editorial'
+                ? theme.design.masks.panelAlt
+                : theme.design.masks.panel,
             overflowWrap: 'anywhere',
           }}
         >

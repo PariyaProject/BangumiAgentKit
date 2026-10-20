@@ -37,17 +37,80 @@ export interface DesignPackTokens {
   tagRadius: string;
   metricBorderWidth: string;
   markerStyle: 'editorial' | 'gallery' | 'zine';
-  masks: {
-    frame: string;
-    hero: string;
-    cover: string;
-    panel: string;
-    panelAlt: string;
-    progress: string;
-    tag: string;
-    title: string;
-  };
+  masks: Record<RenderMaskName, string>;
 }
+
+export type RenderMaskName =
+  'frame' | 'hero' | 'cover' | 'panel' | 'panelAlt' | 'progress' | 'tag' | 'title' | 'badge';
+
+const GALLERY_PANEL_CUT = 'clamp(12px, 2vw, 20px)';
+const ZINE_PANEL_CUT = 'clamp(10px, 1.6vw, 16px)';
+const EDITORIAL_CURL_START = 'clamp(48px, 8vw, 82px)';
+const EDITORIAL_CURL_PEAK = 'clamp(84px, 14vw, 128px)';
+const EDITORIAL_CURL_END = 'clamp(116px, 20vw, 180px)';
+const EDITORIAL_CURL_LIFT = 'clamp(20px, 4vw, 30px)';
+const EDITORIAL_CURL_TANGENT = 'clamp(12px, 1.6vw, 16px)';
+const EDITORIAL_COVER_CURL_START = 'clamp(22px, 4vw, 40px)';
+const EDITORIAL_COVER_CURL_PEAK = 'clamp(40px, 7vw, 68px)';
+const EDITORIAL_COVER_CURL_END = 'clamp(58px, 10vw, 96px)';
+const EDITORIAL_COVER_CURL_LIFT = 'clamp(10px, 2vw, 18px)';
+const EDITORIAL_COVER_CURL_TANGENT = 'clamp(6px, 1vw, 10px)';
+
+/** CSS shape() mixes fixed-pixel edge details with curves, avoiding height-scaled cuts. */
+const DESIGN_MASKS: Readonly<
+  Record<RenderDesignPackName, Readonly<Record<RenderMaskName, string>>>
+> = {
+  'warm-editorial': {
+    // A folio silhouette with an asymmetric page turn and a visible lower-edge wave.
+    frame:
+      'shape(from 34px 0px, line to calc(100% - 56px) 0px, curve to 100% 34px with 100% 0px / 100% 16px, line to 100% calc(100% - 48px), curve to calc(100% - 28px) 100% with 100% calc(100% - 12px) / calc(100% - 12px) 100%, line to 54px 100%, curve to 0px calc(100% - 38px) with 28px 100% / 0px calc(100% - 14px), line to 0px 36px, curve to 34px 0px with 0px 0px / 18px 0px, close)',
+    hero: `shape(from 30px 0px, line to calc(100% - 54px) 0px, curve to 100% 42px with 100% 0px / 100% 20px, line to 100% calc(100% - 44px), curve to calc(100% - 26px) 100% with 100% calc(100% - 12px) / calc(100% - 8px) 100%, line to calc(100% - ${EDITORIAL_CURL_START}) 100%, curve to calc(100% - ${EDITORIAL_CURL_PEAK}) calc(100% - ${EDITORIAL_CURL_LIFT}) with calc(100% - ${EDITORIAL_CURL_START} - ${EDITORIAL_CURL_TANGENT}) 100% / calc(100% - ${EDITORIAL_CURL_PEAK} + ${EDITORIAL_CURL_TANGENT}) calc(100% - ${EDITORIAL_CURL_LIFT}), curve to calc(100% - ${EDITORIAL_CURL_END}) 100% with calc(100% - ${EDITORIAL_CURL_PEAK} - ${EDITORIAL_CURL_TANGENT}) calc(100% - ${EDITORIAL_CURL_LIFT}) / calc(100% - ${EDITORIAL_CURL_END} + ${EDITORIAL_CURL_TANGENT}) 100%, line to 58px 100%, curve to 0px calc(100% - 30px) with 30px 100% / 0px calc(100% - 12px), line to 0px 30px, curve to 30px 0px with 0px 0px / 16px 0px, close)`,
+    cover: `shape(from 24px 0px, line to calc(100% - 30px) 0px, curve to 100% 24px with 100% 0px / 100% 12px, line to 100% calc(100% - 32px), curve to calc(100% - 22px) 100% with 100% calc(100% - 8px) / calc(100% - 8px) 100%, line to calc(100% - ${EDITORIAL_COVER_CURL_START}) 100%, curve to calc(100% - ${EDITORIAL_COVER_CURL_PEAK}) calc(100% - ${EDITORIAL_COVER_CURL_LIFT}) with calc(100% - ${EDITORIAL_COVER_CURL_START} - ${EDITORIAL_COVER_CURL_TANGENT}) 100% / calc(100% - ${EDITORIAL_COVER_CURL_PEAK} + ${EDITORIAL_COVER_CURL_TANGENT}) calc(100% - ${EDITORIAL_COVER_CURL_LIFT}), curve to calc(100% - ${EDITORIAL_COVER_CURL_END}) 100% with calc(100% - ${EDITORIAL_COVER_CURL_PEAK} - ${EDITORIAL_COVER_CURL_TANGENT}) calc(100% - ${EDITORIAL_COVER_CURL_LIFT}) / calc(100% - ${EDITORIAL_COVER_CURL_END} + ${EDITORIAL_COVER_CURL_TANGENT}) 100%, line to 38px 100%, curve to 0px calc(100% - 24px) with 20px 100% / 0px calc(100% - 8px), line to 0px 22px, curve to 24px 0px with 0px 0px / 12px 0px, close)`,
+    panel: `shape(from 24px 0px, line to calc(100% - 34px) 0px, curve to 100% 28px with 100% 0px / 100% 16px, line to 100% calc(100% - 26px), curve to calc(100% - 24px) calc(100% - 8px) with 100% calc(100% - 12px) / calc(100% - 12px) calc(100% - 8px), curve to calc(100% - 54px) 100% with calc(100% - 34px) calc(100% - 8px) / calc(100% - 42px) 100%, line to 30px 100%, curve to 0px calc(100% - 28px) with 0px 100% / 0px calc(100% - 12px), line to 0px 24px, curve to 24px 0px with 0px 0px / 12px 0px, close)`,
+    panelAlt: `shape(from 34px 0px, line to calc(100% - 18px) 0px, curve to 100% 18px with 100% 0px / 100% 10px, line to 100% calc(100% - 34px), curve to calc(100% - 34px) 100% with 100% calc(100% - 12px) / calc(100% - 18px) 100%, line to 54px 100%, curve to 34px calc(100% - 14px) with 46px 100% / 34px calc(100% - 6px), curve to 0px calc(100% - 34px) with 22px calc(100% - 14px) / 0px calc(100% - 16px), line to 0px 34px, curve to 34px 0px with 0px 0px / 18px 0px, close)`,
+    progress:
+      'shape(from 8px 0px, line to calc(100% - 12px) 0px, curve to 100% 6px with 100% 0px / 100% 3px, line to calc(100% - 4px) 100%, line to 8px 100%, curve to 0px 4px with 0px 100% / 0px 6px, close)',
+    tag: 'shape(from 12px 0px, line to calc(100% - 12px) 0px, curve to 100% 12px with 100% 0px / 100% 7px, line to calc(100% - 10px) 100%, line to 10px 100%, curve to 0px 8px with 0px 100% / 0px 5px, close)',
+    title: 'none',
+    badge:
+      'shape(from 10px 1px, curve to 19px 4px with 14px 0px / 17px 4px, curve to 28px 3px with 23px 5px / 27px 4px, line to 32px 11px, curve to 28px 19px with 32px 15px / 28px 17px, curve to 30px 27px with 28px 21px / 30px 24px, line to 21px 32px, curve to 13px 28px with 18px 32px / 15px 28px, curve to 5px 30px with 10px 28px / 6px 30px, line to 0px 22px, curve to 4px 14px with 0px 18px / 4px 16px, curve to 1px 6px with 3px 12px / 1px 9px, close)',
+  },
+  'clean-gallery': {
+    // A gallery mat with architectural cuts and one curved recess, in fixed px.
+    frame:
+      'shape(from 0px 28px, line to 28px 0px, line to calc(100% - 52px) 0px, line to 100% 52px, line to 100% calc(100% - 46px), line to calc(100% - 18px) calc(100% - 24px), curve to calc(100% - 42px) 100% with calc(100% - 18px) calc(100% - 24px) / calc(100% - 30px) 100%, line to 28px 100%, line to 0px calc(100% - 28px), close)',
+    hero: 'shape(from 0px 34px, line to 34px 0px, line to calc(100% - 58px) 0px, line to 100% 58px, line to 100% calc(100% - 52px), line to calc(100% - 16px) calc(100% - 28px), curve to calc(100% - 46px) 100% with calc(100% - 18px) calc(100% - 28px) / calc(100% - 32px) 100%, line to 34px 100%, line to 0px calc(100% - 34px), close)',
+    cover:
+      'shape(from 0px 22px, line to 22px 0px, line to calc(100% - 26px) 0px, line to 100% 26px, line to 100% calc(100% - 28px), line to calc(100% - 28px) 100%, line to 24px 100%, line to 0px calc(100% - 24px), close)',
+    panel: `shape(from 0px ${GALLERY_PANEL_CUT}, line to ${GALLERY_PANEL_CUT} 0px, line to calc(100% - ${GALLERY_PANEL_CUT}) 0px, line to 100% ${GALLERY_PANEL_CUT}, line to 100% calc(100% - ${GALLERY_PANEL_CUT}), line to calc(100% - 10px) calc(100% - 8px), curve to calc(100% - ${GALLERY_PANEL_CUT}) 100% with calc(100% - 8px) calc(100% - 4px) / calc(100% - ${GALLERY_PANEL_CUT}) 100%, line to ${GALLERY_PANEL_CUT} 100%, line to 0px calc(100% - ${GALLERY_PANEL_CUT}), close)`,
+    panelAlt: `shape(from ${GALLERY_PANEL_CUT} 0px, line to calc(100% - ${GALLERY_PANEL_CUT}) 0px, line to 100% ${GALLERY_PANEL_CUT}, line to 100% calc(100% - ${GALLERY_PANEL_CUT}), line to calc(100% - ${GALLERY_PANEL_CUT}) 100%, line to ${GALLERY_PANEL_CUT} 100%, line to 0px calc(100% - ${GALLERY_PANEL_CUT}), line to 0px ${GALLERY_PANEL_CUT}, close)`,
+    progress:
+      'shape(from 8px 0px, line to calc(100% - 8px) 0px, line to 100% 100%, line to 8px 100%, line to 0px 0px, close)',
+    tag: 'shape(from 8px 0px, line to calc(100% - 8px) 0px, line to 100% 50%, line to calc(100% - 8px) 100%, line to 8px 100%, line to 0px 50%, close)',
+    title: 'none',
+    badge:
+      'shape(from 8px 0px, line to 24px 0px, line to 32px 8px, line to 32px 24px, line to 24px 32px, line to 8px 32px, line to 0px 24px, line to 0px 8px, close)',
+  },
+  'graphic-zine': {
+    // A die-cut cover frame: offset paper teeth stay within the card's padding.
+    frame:
+      'shape(from 24px 0px, line to calc(100% - 40px) 0px, line to calc(100% - 24px) 12px, line to calc(100% - 12px) 4px, line to 100% 32px, line to calc(100% - 10px) 56px, line to 100% 72px, line to 100% calc(100% - 36px), line to calc(100% - 34px) calc(100% - 12px), line to calc(100% - 54px) 100%, line to 42px 100%, line to 28px calc(100% - 12px), line to 14px 100%, line to 0px calc(100% - 34px), line to 0px 24px, close)',
+    hero: 'shape(from 18px 0px, line to calc(100% - 44px) 0px, line to calc(100% - 24px) 14px, line to calc(100% - 10px) 6px, line to 100% 38px, line to calc(100% - 12px) 62px, line to 100% 78px, line to 100% calc(100% - 30px), line to calc(100% - 30px) calc(100% - 10px), line to calc(100% - 50px) 100%, line to 54px 100%, line to 38px calc(100% - 12px), line to 22px 100%, line to 0px calc(100% - 40px), line to 0px 20px, close)',
+    cover:
+      'shape(from 16px 0px, line to calc(100% - 34px) 0px, line to calc(100% - 20px) 12px, line to calc(100% - 8px) 4px, line to 100% 30px, line to calc(100% - 8px) 48px, line to 100% calc(100% - 24px), line to calc(100% - 24px) 100%, line to 38px 100%, line to 26px calc(100% - 10px), line to 14px 100%, line to 0px calc(100% - 22px), line to 0px 16px, close)',
+    panel: `shape(from ${ZINE_PANEL_CUT} 0px, line to calc(100% - 28px) 0px, line to calc(100% - 16px) 10px, line to calc(100% - 8px) 4px, line to 100% ${ZINE_PANEL_CUT}, line to calc(100% - 6px) calc(100% - 12px), line to 100% calc(100% - 6px), line to calc(100% - ${ZINE_PANEL_CUT}) 100%, line to 28px 100%, line to 18px calc(100% - 8px), line to 8px 100%, line to 0px calc(100% - ${ZINE_PANEL_CUT}), line to 0px ${ZINE_PANEL_CUT}, close)`,
+    panelAlt: `shape(from 14px 0px, line to calc(100% - ${ZINE_PANEL_CUT}) 0px, line to 100% ${ZINE_PANEL_CUT}, line to 100% calc(100% - 20px), line to calc(100% - 18px) calc(100% - 8px), line to calc(100% - 8px) 100%, line to ${ZINE_PANEL_CUT} 100%, line to 8px calc(100% - 8px), line to 0px calc(100% - ${ZINE_PANEL_CUT}), line to 0px 22px, close)`,
+    progress:
+      'shape(from 8px 0px, line to calc(100% - 12px) 0px, line to 100% 5px, line to calc(100% - 8px) 100%, line to 10px 100%, line to 0px calc(100% - 5px), close)',
+    tag: 'shape(from 8px 0px, line to calc(100% - 12px) 0px, line to 100% 8px, line to calc(100% - 5px) 100%, line to 6px 100%, line to 0px calc(100% - 8px), close)',
+    title:
+      'shape(from 0px 0px, line to calc(100% - 20px) 0px, line to 100% 18px, line to calc(100% - 8px) 100%, line to 0px 100%, close)',
+    badge:
+      'shape(from 11px 0px, line to 17px 4px, line to 23px 0px, line to 25px 7px, line to 32px 9px, line to 28px 16px, line to 32px 23px, line to 24px 25px, line to 22px 32px, line to 16px 28px, line to 9px 32px, line to 7px 24px, line to 0px 22px, line to 4px 16px, line to 0px 9px, line to 8px 7px, close)',
+  },
+};
+
+const masksFor = (pack: RenderDesignPackName): DesignPackTokens['masks'] => DESIGN_MASKS[pack];
 
 interface ThemePalette {
   name: RenderThemeName;
@@ -151,13 +214,6 @@ const WARM_DARK: ThemePalette = {
   shadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4)',
 };
 
-const WARM_EDITORIAL_MAIN_RADIUS = 'clamp(28px, 4.5vw, 44px)';
-const WARM_EDITORIAL_ALT_RADIUS = 'clamp(22px, 3.5vw, 36px)';
-const GALLERY_CUT = 'clamp(18px, 3.2vw, 32px)';
-const GALLERY_CUT_SMALL = 'clamp(12px, 2vw, 20px)';
-const ZINE_CUT = 'clamp(20px, 4vw, 38px)';
-const ZINE_CUT_SMALL = 'clamp(14px, 2.2vw, 22px)';
-
 const DESIGN_PACKS: Record<RenderDesignPackName, DesignPackTokens> = {
   'warm-editorial': {
     name: 'warm-editorial',
@@ -169,27 +225,18 @@ const DESIGN_PACKS: Record<RenderDesignPackName, DesignPackTokens> = {
     outerPadding: '12px',
     cardPadding: '24px',
     frameBorderWidth: '1px',
-    frameRadius: '16px',
+    frameRadius: '28px',
     titleScale: 1.08,
     titleWeight: 700,
     titleLetterSpacing: '-0.035em',
     iconStrokeWidth: 1.65,
-    badgeRadius: '8px',
-    coverRadius: '8px',
+    badgeRadius: '14px',
+    coverRadius: '18px',
     coverBorderWidth: '1px',
     tagRadius: '999px',
     metricBorderWidth: '1px',
     markerStyle: 'editorial',
-    masks: {
-      frame: `inset(0 round ${WARM_EDITORIAL_MAIN_RADIUS} 6px ${WARM_EDITORIAL_ALT_RADIUS} 6px)`,
-      hero: `inset(0 round ${WARM_EDITORIAL_MAIN_RADIUS} 6px ${WARM_EDITORIAL_MAIN_RADIUS} 6px)`,
-      cover: 'inset(0 round clamp(20px, 3vw, 30px) 4px clamp(16px, 2.5vw, 24px) 4px)',
-      panel: `inset(0 round ${WARM_EDITORIAL_MAIN_RADIUS} 4px ${WARM_EDITORIAL_ALT_RADIUS} 4px)`,
-      panelAlt: `inset(0 round 4px ${WARM_EDITORIAL_MAIN_RADIUS} 4px ${WARM_EDITORIAL_ALT_RADIUS})`,
-      progress: 'inset(0 round 999px)',
-      tag: 'inset(0 round 999px)',
-      title: 'none',
-    },
+    masks: masksFor('warm-editorial'),
   },
   'clean-gallery': {
     name: 'clean-gallery',
@@ -212,16 +259,7 @@ const DESIGN_PACKS: Record<RenderDesignPackName, DesignPackTokens> = {
     tagRadius: '4px',
     metricBorderWidth: '1px',
     markerStyle: 'gallery',
-    masks: {
-      frame: `polygon(0 0, calc(100% - ${GALLERY_CUT}) 0, 100% ${GALLERY_CUT}, 100% calc(100% - ${GALLERY_CUT_SMALL}), calc(100% - ${GALLERY_CUT_SMALL}) 100%, ${GALLERY_CUT} 100%, 0 calc(100% - ${GALLERY_CUT}))`,
-      hero: `polygon(0 0, calc(100% - ${GALLERY_CUT}) 0, 100% ${GALLERY_CUT}, 100% calc(100% - ${GALLERY_CUT_SMALL}), calc(100% - ${GALLERY_CUT_SMALL}) 100%, ${GALLERY_CUT} 100%, 0 calc(100% - ${GALLERY_CUT}))`,
-      cover: `polygon(0 0, calc(100% - ${GALLERY_CUT_SMALL}) 0, 100% ${GALLERY_CUT_SMALL}, 100% 100%, ${GALLERY_CUT_SMALL} 100%, 0 calc(100% - ${GALLERY_CUT_SMALL}))`,
-      panel: `polygon(0 0, calc(100% - ${GALLERY_CUT}) 0, 100% ${GALLERY_CUT}, 100% 100%, ${GALLERY_CUT_SMALL} 100%, 0 calc(100% - ${GALLERY_CUT_SMALL}))`,
-      panelAlt: `polygon(${GALLERY_CUT} 0, 100% 0, 100% calc(100% - ${GALLERY_CUT_SMALL}), calc(100% - ${GALLERY_CUT_SMALL}) 100%, 0 100%, 0 ${GALLERY_CUT})`,
-      progress: 'polygon(0 0, calc(100% - 2px) 0, 100% 100%, 2px 100%)',
-      tag: 'polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%)',
-      title: 'none',
-    },
+    masks: masksFor('clean-gallery'),
   },
   'graphic-zine': {
     name: 'graphic-zine',
@@ -244,16 +282,7 @@ const DESIGN_PACKS: Record<RenderDesignPackName, DesignPackTokens> = {
     tagRadius: '2px',
     metricBorderWidth: '2px',
     markerStyle: 'zine',
-    masks: {
-      frame: `polygon(${ZINE_CUT_SMALL} 0, calc(100% - ${ZINE_CUT}) 0, 100% ${ZINE_CUT_SMALL}, 100% calc(100% - ${ZINE_CUT_SMALL}), calc(100% - ${ZINE_CUT_SMALL}) 100%, ${ZINE_CUT} 100%, 0 calc(100% - ${ZINE_CUT_SMALL}), 0 ${ZINE_CUT})`,
-      hero: `polygon(0 ${ZINE_CUT_SMALL}, ${ZINE_CUT_SMALL} 0, calc(100% - ${ZINE_CUT}) 0, 100% ${ZINE_CUT}, 100% calc(100% - ${ZINE_CUT_SMALL}), calc(100% - ${ZINE_CUT}) 100%, 18% 100%, 11% calc(100% - ${ZINE_CUT_SMALL}), 0 calc(100% - ${ZINE_CUT}))`,
-      cover: `polygon(0 0, calc(100% - ${ZINE_CUT}) 0, 100% ${ZINE_CUT_SMALL}, 100% calc(100% - ${ZINE_CUT}), calc(100% - ${ZINE_CUT}) 100%, 0 100%)`,
-      panel: `polygon(0 0, calc(100% - ${ZINE_CUT}) 0, 100% ${ZINE_CUT_SMALL}, 100% calc(100% - ${ZINE_CUT_SMALL}), calc(100% - ${ZINE_CUT_SMALL}) 100%, ${ZINE_CUT_SMALL} 100%, 0 calc(100% - ${ZINE_CUT_SMALL}))`,
-      panelAlt: `polygon(0 ${ZINE_CUT_SMALL}, ${ZINE_CUT_SMALL} 0, 100% 0, 100% 100%, ${ZINE_CUT} 100%, 0 calc(100% - ${ZINE_CUT}))`,
-      progress: 'polygon(0 0, 100% 0, calc(100% - 8px) 100%, 8px 100%)',
-      tag: 'polygon(8px 0, 100% 0, calc(100% - 10px) 100%, 0 100%)',
-      title: 'polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%)',
-    },
+    masks: masksFor('graphic-zine'),
   },
 };
 
