@@ -1,7 +1,11 @@
 import React from 'react';
 import { CardFrame } from '../components/CardFrame.js';
 import { Footer } from '../components/Footer.js';
-import { RendererIcon, type RendererIconName } from '../components/RendererIcon.js';
+import {
+  getRendererIconTone,
+  RendererIcon,
+  type RendererIconName,
+} from '../components/RendererIcon.js';
 import { TitleBlock } from '../components/TitleBlock.js';
 import { CollectionDashboardViewModel } from '../view-models/index.js';
 import { ThemeTokens } from '../themes/index.js';
@@ -73,6 +77,7 @@ function sectionHeader(
   theme: ThemeTokens,
   icon: RendererIconName,
 ): React.ReactNode {
+  const tone = theme.tones[getRendererIconTone(icon)];
   return (
     <div
       style={{
@@ -84,7 +89,7 @@ function sectionHeader(
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, minWidth: 0 }}>
         <RendererIcon name={icon} theme={theme} size={16} badge />
-        <span style={{ color: theme.accent, fontSize: '15px', fontWeight: 700 }}>{title}</span>
+        <span style={{ color: tone.foreground, fontSize: '15px', fontWeight: 700 }}>{title}</span>
       </div>
       <span
         style={{
@@ -122,7 +127,7 @@ function DashboardMetric({
         display: 'flex',
         alignItems: 'flex-start',
         gap: theme.spacing.sm,
-        backgroundColor: theme.surfaceAlt,
+        backgroundColor: theme.surface,
         border: `1px solid ${theme.border}`,
         borderRadius: theme.radius.md,
         padding: theme.spacing.sm,
@@ -156,7 +161,7 @@ function DashboardFact({
     <div
       style={{
         minWidth: 0,
-        backgroundColor: theme.surfaceAlt,
+        backgroundColor: theme.surface,
         borderRadius: theme.radius.sm,
         padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
       }}
@@ -236,6 +241,9 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
   const backlog = viewModel.sections.backlog.result;
   const schedule = viewModel.sections.schedule.result;
   const sectionGrid = width && width >= 900 ? 'repeat(3, minmax(0, 1fr))' : '1fr';
+  const intelligenceTone = theme.tones.coral;
+  const backlogTone = theme.tones.mint;
+  const scheduleTone = theme.tones.butter;
   const warningMessages = viewModel.warnings
     .filter((warning) => warning.section !== undefined)
     .slice(0, 5)
@@ -259,7 +267,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
           color: theme.textMuted,
           fontSize: '12px',
           lineHeight: 1.55,
-          backgroundColor: theme.surfaceAlt,
+          backgroundColor: theme.tones.blue.surface,
           borderRadius: theme.radius.md,
           padding: theme.spacing.sm,
         }}
@@ -322,11 +330,11 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
       >
         <section
           style={{
-            border: `1px solid ${theme.border}`,
+            border: `1px solid ${intelligenceTone.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
-            borderLeft: `3px solid ${theme.accent}`,
-            backgroundColor: theme.surface,
+            borderLeft: `4px solid ${intelligenceTone.foreground}`,
+            backgroundColor: intelligenceTone.surface,
             minWidth: 0,
           }}
         >
@@ -401,11 +409,11 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
 
         <section
           style={{
-            border: `1px solid ${theme.border}`,
+            border: `1px solid ${backlogTone.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
-            borderLeft: `3px solid ${theme.success}`,
-            backgroundColor: theme.surface,
+            borderLeft: `4px solid ${backlogTone.foreground}`,
+            backgroundColor: backlogTone.surface,
             minWidth: 0,
           }}
         >
@@ -480,11 +488,11 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
 
         <section
           style={{
-            border: `1px solid ${theme.border}`,
+            border: `1px solid ${scheduleTone.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
-            borderLeft: `3px solid ${theme.warning}`,
-            backgroundColor: theme.surface,
+            borderLeft: `4px solid ${scheduleTone.foreground}`,
+            backgroundColor: scheduleTone.surface,
             minWidth: 0,
           }}
         >

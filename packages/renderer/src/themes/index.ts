@@ -1,5 +1,13 @@
 export type RenderThemeName = 'bangumi-dark' | 'bangumi-light';
 
+export type SemanticToneName = 'coral' | 'mint' | 'butter' | 'plum' | 'indigo' | 'blue';
+
+export interface SemanticToneTokens {
+  foreground: string;
+  surface: string;
+  border: string;
+}
+
 export function isRenderThemeName(value: unknown): value is RenderThemeName {
   return value === 'bangumi-dark' || value === 'bangumi-light';
 }
@@ -16,6 +24,7 @@ export interface ThemeTokens {
   score: string;
   success: string;
   warning: string;
+  tones: Record<SemanticToneName, SemanticToneTokens>;
   radius: {
     sm: string;
     md: string;
@@ -44,6 +53,14 @@ export const DARK_THEME: ThemeTokens = {
   score: '#fbbf24',
   success: '#34d399',
   warning: '#ff9999',
+  tones: {
+    coral: { foreground: '#ff9e9a', surface: '#463034', border: '#674249' },
+    mint: { foreground: '#7bd7b8', surface: '#293d37', border: '#3c6256' },
+    butter: { foreground: '#f1cc78', surface: '#423a2b', border: '#665637' },
+    plum: { foreground: '#d2a5e2', surface: '#3d3045', border: '#60486a' },
+    indigo: { foreground: '#aebaff', surface: '#303750', border: '#4d5c8b' },
+    blue: { foreground: '#94c9e6', surface: '#2b3d49', border: '#42677d' },
+  },
   radius: {
     sm: '6px',
     md: '10px',
@@ -62,16 +79,24 @@ export const DARK_THEME: ThemeTokens = {
 
 export const LIGHT_THEME: ThemeTokens = {
   name: 'bangumi-light',
-  background: '#f5f6f8',
-  surface: '#ffffff',
-  surfaceAlt: '#f1f3f5',
-  border: '#dfe3e8',
-  text: '#20242b',
-  textMuted: '#596273',
-  accent: '#b23a48',
-  score: '#a65a00',
-  success: '#0f766e',
-  warning: '#b42318',
+  background: '#f4efe5',
+  surface: '#fffcf5',
+  surfaceAlt: '#f2ebdf',
+  border: '#e3d9c9',
+  text: '#2b2926',
+  textMuted: '#615d56',
+  accent: '#a43a45',
+  score: '#795500',
+  success: '#17695d',
+  warning: '#a53f37',
+  tones: {
+    coral: { foreground: '#a43a45', surface: '#f7e8e3', border: '#e8c9c1' },
+    mint: { foreground: '#17695d', surface: '#e4efe8', border: '#bfd8cb' },
+    butter: { foreground: '#795500', surface: '#f5edcf', border: '#e4d7a7' },
+    plum: { foreground: '#70477c', surface: '#eee6f2', border: '#d9c6e1' },
+    indigo: { foreground: '#40558b', surface: '#e7eaf5', border: '#c9d0e7' },
+    blue: { foreground: '#3d6680', surface: '#e4edf2', border: '#c3d5df' },
+  },
   radius: {
     sm: '6px',
     md: '10px',

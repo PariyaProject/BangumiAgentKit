@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ThemeTokens } from '../themes/index.js';
+import type { SemanticToneName, ThemeTokens } from '../themes/index.js';
 
 export type RendererIconName =
   | 'subject'
@@ -38,6 +38,28 @@ const iconLabels: Record<RendererIconName, string> = {
 
 export function getRendererIconLabel(name: RendererIconName): string {
   return iconLabels[name];
+}
+
+const iconTones: Record<RendererIconName, SemanticToneName> = {
+  subject: 'coral',
+  cast: 'plum',
+  person: 'blue',
+  calendar: 'butter',
+  collection: 'mint',
+  stats: 'coral',
+  history: 'indigo',
+  search: 'blue',
+  discovery: 'plum',
+  relations: 'mint',
+  integrity: 'mint',
+  episode: 'blue',
+  tag: 'butter',
+  overview: 'coral',
+  comparison: 'indigo',
+};
+
+export function getRendererIconTone(name: RendererIconName): SemanticToneName {
+  return iconTones[name];
 }
 
 const iconPaths: Record<RendererIconName, React.ReactNode> = {
@@ -139,6 +161,7 @@ export interface RendererIconProps {
   theme: ThemeTokens;
   size?: number;
   badge?: boolean;
+  tone?: SemanticToneName;
 }
 
 export const RendererIcon: React.FC<RendererIconProps> = ({
@@ -146,33 +169,38 @@ export const RendererIcon: React.FC<RendererIconProps> = ({
   theme,
   size = 18,
   badge = false,
-}) => (
-  <span
-    aria-hidden="true"
-    style={{
-      width: badge ? 32 : size,
-      height: badge ? 32 : size,
-      flex: `0 0 ${badge ? 32 : size}px`,
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: theme.accent,
-      borderRadius: badge ? theme.radius.sm : undefined,
-      backgroundColor: badge ? theme.surfaceAlt : undefined,
-      border: badge ? `1px solid ${theme.border}` : undefined,
-    }}
-  >
-    <svg
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+  tone,
+}) => {
+  const toneTokens = theme.tones[tone ?? getRendererIconTone(name)];
+  return (
+    <span
+      aria-hidden="true"
+      data-tone={tone ?? getRendererIconTone(name)}
+      style={{
+        width: badge ? 32 : size,
+        height: badge ? 32 : size,
+        flex: `0 0 ${badge ? 32 : size}px`,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: toneTokens.foreground,
+        borderRadius: badge ? theme.radius.sm : undefined,
+        backgroundColor: badge ? toneTokens.surface : undefined,
+        border: badge ? `1px solid ${toneTokens.border}` : undefined,
+      }}
     >
-      {iconPaths[name]}
-    </svg>
-  </span>
-);
+      <svg
+        viewBox="0 0 24 24"
+        width={size}
+        height={size}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {iconPaths[name]}
+      </svg>
+    </span>
+  );
+};

@@ -3,7 +3,7 @@ import { CardFrame } from '../components/CardFrame.js';
 import { RendererIcon } from '../components/RendererIcon.js';
 import { TitleBlock } from '../components/TitleBlock.js';
 import { Footer } from '../components/Footer.js';
-import { ThemeTokens } from '../themes/index.js';
+import { SemanticToneName, ThemeTokens } from '../themes/index.js';
 import { RevisionTimelineViewModel } from '../view-models/index.js';
 
 export interface RevisionTimelineCardProps {
@@ -18,6 +18,15 @@ const ENTITY_LABELS: Record<RevisionTimelineViewModel['entityType'], string> = {
   character: '角色',
   person: '人物',
 };
+
+const TIMELINE_TONES: readonly SemanticToneName[] = [
+  'indigo',
+  'coral',
+  'mint',
+  'plum',
+  'butter',
+  'blue',
+];
 
 export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
   viewModel,
@@ -84,6 +93,8 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
         style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}
       >
         {items.map((item, index) => {
+          const toneName = TIMELINE_TONES[index % TIMELINE_TONES.length]!;
+          const tone = theme.tones[toneName];
           const summary = item.summary || '修订摘要未知';
           const summaryCharacters = Array.from(summary);
           const summaryExcerpt = summaryCharacters.slice(0, summaryLimit).join('');
@@ -108,14 +119,14 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
                   minHeight: '100%',
                 }}
               >
-                <RendererIcon name="history" theme={theme} size={16} badge />
+                <RendererIcon name="history" theme={theme} size={16} badge tone={toneName} />
                 {index < items.length - 1 ? (
                   <div
                     style={{
                       flex: 1,
                       width: '2px',
                       minHeight: theme.spacing.md,
-                      backgroundColor: theme.border,
+                      backgroundColor: tone.border,
                     }}
                   />
                 ) : null}
@@ -135,8 +146,8 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.xs }}>
                   <span
                     style={{
-                      color: theme.accent,
-                      backgroundColor: theme.surface,
+                      color: tone.foreground,
+                      backgroundColor: tone.surface,
                       borderRadius: '999px',
                       padding: '3px 8px',
                       fontSize: '11px',

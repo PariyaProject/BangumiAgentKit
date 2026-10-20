@@ -61,7 +61,7 @@ continues to exercise native JPEG delivery with networking disabled.
 
 ## Visual rules
 
-- Clean-gallery light is the QQ default. The current dark palette stays
+- Warm-paper light is the QQ default. The current dark palette stays
   selectable with `图片风格 深色`; `图片风格` toggles and
   `图片风格 当前` reports the selection.
 - Icons identify content families and are always accompanied by Chinese text.
@@ -73,7 +73,10 @@ continues to exercise native JPEG delivery with networking disabled.
 - Charts show the values and populations they represent; decorative marks do
   not imply unsupported scores, recommendations, or trends.
 - Text, muted labels, accent labels, scores, success, and warning tokens must
-  meet a 4.5:1 contrast ratio on the renderer's three surfaces.
+  meet a 4.5:1 contrast ratio on the renderer's base and tinted surfaces.
+- Semantic SVG icons use a small shared palette: coral, mint, butter, plum,
+  indigo, and blue. Every icon remains paired with a Chinese label; badge fills
+  and their icon strokes share a contrast-checked tone.
 
 ## Implementation and acceptance
 
@@ -144,3 +147,28 @@ complete. Every excerpt reports the exact number returned and the number shown;
 staff rows report visible/total member counts, and omitted groups or relations
 are called out. The card never uses an excerpt as evidence that the source had
 no more data.
+
+## Third iteration — align rendered colors and icons with the direction board
+
+Review against the generated board showed a second gap beyond layout: the
+product output still used a cool gray paper, nearly neutral card surfaces, and
+mostly coral icons. The board's visual language is warmer and uses semantic
+mint, butter, plum, indigo, and blue as well as coral. The implementation now
+adds those tones as shared, contrast-checked theme tokens. Light surfaces use
+warm ivory and sand; dark mode gets matching subdued surfaces and bright icon
+strokes. Subject Overview panels and the three Dashboard sections receive
+soft semantic fills, while the Revision Timeline uses a deterministic six-tone
+rail and date chips.
+
+The narrow Subject Overview now switches to a stacked panel header below 520
+CSS pixels: the icon/title row receives the full panel width, with the state
+pill on its own line. This avoids a title losing its width to the pill.
+
+The generated board remains art direction, not a literal target: its cover,
+title, summary, scores, and metrics are fictional. Production keeps real
+Bangumi facts, the existing cover resolver and local placeholder, and the
+code-rendered SVG family. Final acceptance will repeat the complete 580-PNG
+matrix and review every changed template/state contact sheet; exact SHA matches
+to the immediately preceding reviewed pass may inherit that image review. The
+new palette's icon foreground/surface pairs and all text tokens across tinted
+surfaces must retain at least 4.5:1 contrast.

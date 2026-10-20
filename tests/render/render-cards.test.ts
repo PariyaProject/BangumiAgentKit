@@ -439,6 +439,8 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     const longSummaryHtml = renderHtmlTemplate(longSummaryVm, 'bangumi-light', {}, 320);
     expect(longSummaryHtml).toContain('摘要节选 · 前 160 字符');
     expect(longSummaryHtml).toContain('图片显示 2 条');
+    expect(longSummaryHtml).toContain('data-tone="indigo"');
+    expect(longSummaryHtml).toContain('data-tone="coral"');
 
     const partialVm = buildRevisionTimelineViewModel(
       makeResult(

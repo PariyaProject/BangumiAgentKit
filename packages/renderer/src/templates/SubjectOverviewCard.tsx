@@ -9,7 +9,11 @@ import { CoverImage } from '../components/CoverImage.js';
 import { Footer } from '../components/Footer.js';
 import { MetaRow } from '../components/MetaRow.js';
 import { PersonAvatar } from '../components/PersonAvatar.js';
-import { RendererIcon, type RendererIconName } from '../components/RendererIcon.js';
+import {
+  getRendererIconTone,
+  RendererIcon,
+  type RendererIconName,
+} from '../components/RendererIcon.js';
 import { ScoreBadge } from '../components/ScoreBadge.js';
 import { TitleBlock } from '../components/TitleBlock.js';
 import { subjectTypeLabel } from '../subject-type-label.js';
@@ -74,20 +78,23 @@ function Panel({
   children,
   theme,
   icon = 'overview',
+  compact = false,
 }: {
   title: string;
   state: SubjectOverviewSectionState;
   children: React.ReactNode;
   theme: ThemeTokens;
   icon?: RendererIconName;
+  compact?: boolean;
 }) {
+  const tone = theme.tones[getRendererIconTone(icon)];
   return (
     <section
       style={{
         flex: '1 1 285px',
         minWidth: 0,
-        backgroundColor: theme.surfaceAlt,
-        border: `1px solid ${theme.border}`,
+        backgroundColor: tone.surface,
+        border: `1px solid ${tone.border}`,
         borderRadius: theme.radius.md,
         padding: theme.spacing.md,
         display: 'flex',
@@ -96,11 +103,13 @@ function Panel({
       }}
     >
       <div
+        data-layout={compact ? 'compact-panel-header' : 'panel-header'}
         style={{
           display: 'flex',
+          flexDirection: compact ? 'column' : 'row',
           flexWrap: 'wrap',
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: compact ? 'stretch' : 'center',
           gap: theme.spacing.sm,
         }}
       >
@@ -110,7 +119,8 @@ function Panel({
             alignItems: 'center',
             gap: theme.spacing.sm,
             minWidth: 0,
-            flex: '1 1 160px',
+            flex: compact ? '0 0 auto' : '1 1 160px',
+            width: compact ? '100%' : undefined,
           }}
         >
           <RendererIcon name={icon} theme={theme} size={16} badge />
@@ -119,13 +129,17 @@ function Panel({
               margin: 0,
               fontSize: '18px',
               color: theme.text,
+              flex: '1 1 auto',
+              minWidth: 0,
               overflowWrap: 'anywhere',
             }}
           >
             {title}
           </h2>
         </div>
-        <StatePill state={state} theme={theme} />
+        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+          <StatePill state={state} theme={theme} />
+        </div>
       </div>
       {children}
     </section>
@@ -157,14 +171,16 @@ function CoverageLine({
 function StatsPanel({
   stats,
   theme,
+  compact,
 }: {
   stats: SubjectOverviewViewModel['stats'];
   theme: ThemeTokens;
+  compact: boolean;
 }) {
   const maxCount = Math.max(1, ...stats.histogram.map((item) => item.count));
   const collection = stats.collection;
   return (
-    <Panel title="评分与收藏统计" state={stats.state} theme={theme} icon="stats">
+    <Panel title="评分与收藏统计" state={stats.state} theme={theme} icon="stats" compact={compact}>
       {stats.state === 'unavailable' || stats.state === 'not_computable' ? (
         <div style={{ color: theme.textMuted, fontSize: '14px' }}>当前来源没有可用统计值。</div>
       ) : (
@@ -291,6 +307,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
   const coverWidth =
     renderWidth < 360 ? 76 : renderWidth < 520 ? 92 : renderWidth < 760 ? 136 : 196;
   const compactHero = renderWidth < 520;
+  const compactPanelHeader = renderWidth < 520;
   const summaryLimit = compactHero ? 96 : 180;
   const castLimit = renderWidth < 520 ? 4 : renderWidth < 900 ? 6 : 12;
   const staffGroupLimit = renderWidth < 520 ? 4 : renderWidth < 900 ? 6 : 8;
@@ -450,8 +467,14 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
       </section>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.md }}>
-        <StatsPanel stats={viewModel.stats} theme={theme} />
-        <Panel title="角色与声优" state={viewModel.cast.state} theme={theme} icon="cast">
+        <StatsPanel stats={viewModel.stats} theme={theme} compact={compactPanelHeader} />
+        <Panel
+          title="角色与声优"
+          state={viewModel.cast.state}
+          theme={theme}
+          icon="cast"
+          compact={compactPanelHeader}
+        >
           {viewModel.cast.items.length === 0 ? (
             <div style={{ color: theme.textMuted, fontSize: '14px' }}>未返回角色关系。</div>
           ) : (
@@ -508,7 +531,13 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.md }}>
-        <Panel title="制作人员" state={viewModel.staff.state} theme={theme} icon="person">
+        <Panel
+          title="制作人员"
+          state={viewModel.staff.state}
+          theme={theme}
+          icon="person"
+          compact={compactPanelHeader}
+        >
           <div
             style={{
               color: theme.textMuted,
@@ -572,7 +601,13 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
             theme={theme}
           />
         </Panel>
-        <Panel title="关联条目" state={viewModel.relations.state} theme={theme} icon="relations">
+        <Panel
+          title="关联条目"
+          state={viewModel.relations.state}
+          theme={theme}
+          icon="relations"
+          compact={compactPanelHeader}
+        >
           {viewModel.relations.items.length === 0 ? (
             <div style={{ color: theme.textMuted, fontSize: '14px' }}>未返回关联条目。</div>
           ) : (

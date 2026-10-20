@@ -142,6 +142,10 @@ describe('collection-dashboard renderer', () => {
       expect(html).toContain('collection-dashboard-v1');
       expect(html).toContain('data-layout="dashboard-bento"');
       expect(html).toContain('data-layout="dashboard-metrics"');
+      expect(html).toContain('data-tone="coral"');
+      expect(html).toContain('data-tone="mint"');
+      expect(html).toContain('data-tone="blue"');
+      expect(html).toContain('data-tone="butter"');
       expect(html).toContain('aria-label="Backlog 条目"');
       expect(html).toContain('日历行上限');
       expect(html).toContain('限制：');

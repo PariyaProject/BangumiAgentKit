@@ -354,6 +354,7 @@ describe('Subject Overview renderer', () => {
     expect(vm.staff.hiddenCount).toBeGreaterThan(0);
 
     const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, 640);
+    expect(html.match(/data-layout="panel-header"/gu)).toHaveLength(4);
     expect(html).toContain('data-layout="editorial-cover-hero"');
     expect(html).toContain('data-layout="editorial-summary"');
     expect(html).toContain('data-layout="editorial-public-collection"');
@@ -405,6 +406,7 @@ describe('Subject Overview renderer', () => {
     const compactHtml = renderHtmlTemplate(compactVm, 'bangumi-light', {}, 320);
     expect(compactHtml).toContain('简介节选 · 前 96 字');
     expect(compactHtml).toContain('data-layout="editorial-cover-hero"');
+    expect(compactHtml.match(/data-layout="compact-panel-header"/gu)).toHaveLength(4);
   });
 
   it('keeps staff ViewModels complete and labels responsive image excerpts', async () => {
