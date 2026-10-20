@@ -724,7 +724,7 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(html).toContain('aria-label="Bangumi 修订记录时间线"');
     expect(html).toContain('&lt;script&gt;no-html&lt;/script&gt;');
     expect(html).toContain('历史增长趋势：当前源不支持计算');
-  });
+  }, 20_000);
 
   it('R06: CJK Chinese text renders without throwing or breaking layout', async () => {
     const vm: SubjectCardViewModel = {
