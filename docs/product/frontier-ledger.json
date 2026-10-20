@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-20T01:56:52Z",
+  "updated_at": "2026-10-20T13:51:00Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -4417,7 +4417,7 @@
         "packages/renderer/src/templates/RevisionTimelineCard.tsx",
         "docs/research/run95-render-editorial-layouts-visual-qa-2026-10-20.json"
       ],
-      "next_action": "2026-10-20T01:53Z: Pass4 source commit 2a3216d655927163ccf7fe73477ba35c95e38eff records the warm-paper palette, semantic SVG tones, Dashboard panels, and multicolor Timeline. The 580-image report is bound to that source and all 58 fixture sheets/eight full-resolution samples were reviewed. Next, commit/push the exact evidence head, run exact-SHA CI and Harness Candidate check, then use the assigned GPT-6 Luna Max review and integration gate. Keep PARTIAL until those gates pass; real QQ/TIM delivery remains unverified and no live message is claimed.",
+      "next_action": "2026-10-20T13:51Z: PR #243 Candidate 2f35eadefc516c1ba491a15af1fb393016ec405d is source-bound to tree SHA-256 6d2d79114b476e7f09b2f5ca97a3324b051d12b88726b4f5c029f5c96fb08df7 (1,596 paths); exact GitHub CI run 39431029701 is 7/7 SUCCESS. Offline visual evidence is complete: renderer v47 has 1,740 PNGs and 58 contact sheets; auth/message v41 has 290 PNGs and 8 manually inspected callback samples; reference v40 has 90 PNGs, 3 manually inspected sheets, and 6 full-resolution 320px Graphic Zine samples. Hash comparisons confirm output parity with the previously reviewed source, and receipts record the exact current source. Keep OP-013 PARTIAL pending Harness Candidate, independent GPT-6 Luna Max PASS, and integration; no live QQ/TIM delivery has been established.",
       "reopen_when": "The user requests additional theme packs/settings surfaces, Renderer templates or image output behavior changes, or real QQ/TIM image display is explicitly selected for offline-to-live acceptance.",
       "related_ids": [
         "OP-008",
