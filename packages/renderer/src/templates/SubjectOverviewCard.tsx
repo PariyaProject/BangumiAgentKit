@@ -95,10 +95,35 @@ function Panel({
         gap: theme.spacing.sm,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, minWidth: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: theme.spacing.sm,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: theme.spacing.sm,
+            minWidth: 0,
+            flex: '1 1 160px',
+          }}
+        >
           <RendererIcon name={icon} theme={theme} size={16} badge />
-          <h2 style={{ margin: 0, fontSize: '18px', color: theme.text }}>{title}</h2>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: '18px',
+              color: theme.text,
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {title}
+          </h2>
         </div>
         <StatePill state={state} theme={theme} />
       </div>
