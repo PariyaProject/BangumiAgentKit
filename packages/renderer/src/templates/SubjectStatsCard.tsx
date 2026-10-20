@@ -10,6 +10,7 @@ import { safeStatisticsWarningLabels } from './statisticsWarningLabels.js';
 export interface SubjectStatsCardProps {
   viewModel: SubjectStatsViewModel;
   theme: ThemeTokens;
+  resolvedImages?: Record<string, string>;
   width?: number;
 }
 
@@ -200,8 +201,20 @@ function dataNotes(viewModel: SubjectStatsViewModel): string[] {
   );
 }
 
-export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, theme, width }) => {
+export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({
+  viewModel,
+  theme,
+  resolvedImages = {},
+  width,
+}) => {
+  const gallery = theme.designPack === 'clean-gallery';
+  const zine = theme.designPack === 'graphic-zine';
+  const renderWidth = width ?? 960;
   const raw = viewModel.raw;
+  const coverUrl = viewModel.subjectIdentity.coverImage;
+  const coverSrc = coverUrl ? resolvedImages[coverUrl] || coverUrl : undefined;
+  const coverHeight = Math.min(360, Math.max(128, Math.round(renderWidth * 0.36)));
+  const hasRank = typeof raw?.rank === 'number' && Number.isFinite(raw.rank);
   const ratingMax = Math.max(1, ...viewModel.rating.distribution.map((item) => item.count ?? 0));
   const collectionMax = Math.max(
     1,
@@ -211,6 +224,35 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
   const notes = dataNotes(viewModel);
   const displayedNotes = notes.slice(0, 3);
   const omittedNotes = notes.length - displayedNotes.length;
+  const originalTitle =
+    viewModel.subjectIdentity.state === 'available' &&
+    viewModel.subjectIdentity.nameCn &&
+    viewModel.subjectIdentity.name &&
+    viewModel.subjectIdentity.nameCn !== viewModel.subjectIdentity.name
+      ? viewModel.subjectIdentity.name
+      : undefined;
+  const identityMetadata = [
+    `ID ${viewModel.subjectId}`,
+    viewModel.subjectIdentity.state === 'available'
+      ? '官方 v0 身份'
+      : viewModel.subjectIdentity.state === 'id_mismatch'
+        ? '身份冲突'
+        : viewModel.subjectIdentity.state === 'not_found'
+          ? '身份未找到'
+          : '身份不可用',
+    `统计${
+      (
+        {
+          complete: '完整',
+          partial: '部分',
+          conflict: '冲突',
+          unavailable: '不可用',
+          not_found: '未找到',
+          not_computable: '不可计算',
+        } as Record<string, string>
+      )[viewModel.state] || '未知'
+    }`,
+  ];
   const scoreBand8To9Share = viewModel.rating.scoreBand8To9Share;
   const scoreBand8To9ShareValue =
     scoreBand8To9Share?.percentage !== undefined &&
@@ -218,9 +260,227 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
     scoreBand8To9Share.population !== undefined
       ? `${formatPercent(scoreBand8To9Share.percentage)} (${formatNumber(scoreBand8To9Share.count)}/${formatNumber(scoreBand8To9Share.population)})${scoreBand8To9Share.state === 'conflict' ? ' · 来源冲突' : ''}`
       : metricStateLabel(scoreBand8To9Share?.state ?? 'unknown');
+  const summaryMetrics: Array<[string, string]> = [
+    ['8–9 分占比', scoreBand8To9ShareValue],
+    ['分布均值', formatNumber(viewModel.rating.mean, 2)],
+    ['评分离散度', formatNumber(viewModel.rating.standardDeviation, 2)],
+    ['收藏人数', formatNumber(viewModel.collection.total)],
+    ['完成率', formatRatioPercent(viewModel.collection.completionRate)],
+  ];
+  const ratingDistribution = (
+    <section data-layout="stats-rating-distribution">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: theme.spacing.xs,
+          color: theme.accent,
+          fontWeight: 700,
+          fontSize: '15px',
+        }}
+      >
+        <RendererIcon name="stats" theme={theme} size={16} />
+        评分分布
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+        {viewModel.rating.distribution.map((item) => (
+          <div key={item.score} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ width: '24px', color: theme.textMuted, fontSize: '12px' }}>
+              {item.score}
+            </span>
+            <div
+              style={{
+                flex: 1,
+                minWidth: 12,
+                height: zine ? '12px' : gallery ? '5px' : '10px',
+                backgroundColor: theme.surfaceAlt,
+                borderRadius: zine || gallery ? '0' : '5px',
+                border: zine ? `1px solid ${theme.text}` : undefined,
+                overflow: 'hidden',
+              }}
+            >
+              {item.count !== undefined ? (
+                <div
+                  style={{
+                    width: Math.min(100, (item.count / ratingMax) * 100) + '%',
+                    height: '100%',
+                    backgroundColor: zine
+                      ? item.score >= 9
+                        ? theme.tones.coral.foreground
+                        : item.score >= 7
+                          ? theme.accent
+                          : theme.tones.butter.foreground
+                      : item.score >= 8
+                        ? theme.accent
+                        : theme.border,
+                  }}
+                />
+              ) : null}
+            </div>
+            <span
+              style={{
+                width: width && width < 520 ? '78px' : '92px',
+                flexShrink: 0,
+                textAlign: 'right',
+                color: theme.text,
+                fontSize: '11px',
+              }}
+            >
+              {formatNumber(item.count)} · {formatPercent(item.percentage)}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div style={{ color: theme.textMuted, fontSize: '11px', marginTop: '7px' }}>
+        已收到 {viewModel.coverage.ratingBucketsObserved}/{viewModel.coverage.ratingBucketsExpected}{' '}
+        档 · {stateLabel(viewModel.rating.state)}
+      </div>
+    </section>
+  );
+  const collectionDistribution = (
+    <section data-layout="stats-collection-distribution">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: theme.spacing.xs,
+          color: theme.accent,
+          fontWeight: 700,
+          fontSize: '15px',
+        }}
+      >
+        <RendererIcon name="collection" theme={theme} size={16} />
+        收藏状态
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+        {viewModel.collection.distribution.map((item) => (
+          <div key={item.status} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ width: '38px', color: theme.textMuted, fontSize: '12px' }}>
+              {collectionLabels[item.status] || '其他'}
+            </span>
+            <div
+              style={{
+                flex: 1,
+                minWidth: 12,
+                height: zine ? '13px' : gallery ? '6px' : '12px',
+                backgroundColor: theme.surfaceAlt,
+                borderRadius: zine || gallery ? '0' : '6px',
+                border: zine ? `1px solid ${theme.text}` : undefined,
+                overflow: 'hidden',
+              }}
+            >
+              {item.count !== undefined ? (
+                <div
+                  style={{
+                    width: Math.min(100, (item.count / collectionMax) * 100) + '%',
+                    height: '100%',
+                    backgroundColor: theme.accent,
+                  }}
+                />
+              ) : null}
+            </div>
+            <span
+              style={{
+                width: width && width < 520 ? '78px' : '92px',
+                flexShrink: 0,
+                textAlign: 'right',
+                color: theme.text,
+                fontSize: '11px',
+              }}
+            >
+              {formatNumber(item.count)} · {formatPercent(item.percentage)}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div style={{ color: theme.textMuted, fontSize: '11px', marginTop: '7px' }}>
+        已收到 {viewModel.coverage.collectionBucketsObserved}/
+        {viewModel.coverage.collectionBucketsExpected} 类 · {stateLabel(viewModel.collection.state)}
+        {' · 完成率 ' + metricStateLabel(viewModel.collection.completionState)}
+      </div>
+    </section>
+  );
+
+  const coverStage =
+    viewModel.subjectIdentity.state === 'available' ? (
+      <section
+        data-layout="subject-stats-cover-hero"
+        style={{
+          position: 'relative',
+          height: `${coverHeight}px`,
+          overflow: 'hidden',
+          isolation: 'isolate',
+          backgroundColor: theme.surfaceAlt,
+          border: `${zine ? '3px' : gallery ? '2px' : '1px'} solid ${zine ? theme.text : theme.border}`,
+          borderRadius: zine ? '0' : gallery ? '2px' : theme.radius.md,
+          clipPath: zine ? 'polygon(0 0, 100% 0, 100% 92%, 96% 100%, 0 100%)' : undefined,
+        }}
+      >
+        {coverSrc ? (
+          <img
+            src={coverSrc}
+            alt=""
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center 42%',
+              filter: zine
+                ? 'saturate(1.22) contrast(1.08)'
+                : gallery
+                  ? 'saturate(0.84) brightness(1.04)'
+                  : 'saturate(0.92)',
+            }}
+          />
+        ) : (
+          <div
+            role="img"
+            aria-label={`${viewModel.subjectIdentity.nameCn || viewModel.subjectIdentity.name || '作品'}：暂无封面`}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'grid',
+              placeItems: 'center',
+              color: theme.textMuted,
+              backgroundColor: theme.surfaceAlt,
+              fontSize: '13px',
+              fontFamily: theme.design.bodyFontFamily,
+            }}
+          >
+            暂无封面
+          </div>
+        )}
+        {zine ? (
+          <div
+            data-layout="zine-stats-cover-label"
+            style={{
+              position: 'absolute',
+              left: theme.spacing.md,
+              top: theme.spacing.md,
+              zIndex: 1,
+              padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+              color: theme.text,
+              backgroundColor: theme.tones.butter.surface,
+              border: `2px solid ${theme.text}`,
+              boxShadow: `3px 3px 0 ${theme.tones.coral.foreground}`,
+              clipPath: 'polygon(0 0, 100% 0, 96% 100%, 0 100%)',
+              fontFamily: theme.design.displayFontFamily,
+              fontSize: width && width < 520 ? '18px' : '26px',
+              fontWeight: 900,
+            }}
+          >
+            评分分布
+          </div>
+        ) : null}
+      </section>
+    ) : null;
 
   return (
     <CardFrame theme={theme} width={width}>
+      {!gallery ? coverStage : null}
       <TitleBlock
         title={
           viewModel.subjectIdentity.state === 'available'
@@ -229,33 +489,139 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
               '作品名称暂不可用'
             : '作品名称暂不可用'
         }
-        subtitle={[
-          viewModel.subjectIdentity.state === 'available' &&
-          viewModel.subjectIdentity.nameCn &&
-          viewModel.subjectIdentity.name &&
-          viewModel.subjectIdentity.nameCn !== viewModel.subjectIdentity.name
-            ? viewModel.subjectIdentity.name
-            : undefined,
-          'Bangumi ID ' + viewModel.subjectId,
-          viewModel.subjectIdentity.state === 'available'
-            ? '官方 v0 条目名称'
-            : viewModel.subjectIdentity.state === 'id_mismatch'
-              ? '身份与请求不一致'
-              : viewModel.subjectIdentity.state === 'not_found'
-                ? '身份源未找到'
-                : '身份源不可用',
-          '统计' + stateLabel(viewModel.state),
-        ]
-          .filter(Boolean)
-          .join(' · ')}
+        subtitle={originalTitle}
+        subtitleMaxLines={originalTitle ? 2 : undefined}
         theme={theme}
         icon="stats"
+        titleFontSize={
+          renderWidth >= 900 ? (zine ? '46px' : '40px') : renderWidth >= 520 ? '30px' : '24px'
+        }
+        titleMaxLines={2}
       />
+
+      <div
+        data-layout="subject-stats-identity-metadata"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'flex-start',
+          gap: theme.spacing.xs,
+          color: theme.textMuted,
+          fontSize: '11px',
+          lineHeight: 1.35,
+        }}
+      >
+        {identityMetadata.map((item) => (
+          <span
+            key={item}
+            data-layout="subject-stats-identity-chip"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              flex: '0 0 auto',
+              whiteSpace: 'nowrap',
+              padding: '3px 8px',
+              backgroundColor: zine
+                ? theme.tones.butter.surface
+                : gallery
+                  ? theme.surface
+                  : theme.surfaceAlt,
+              border: `${zine ? '2px' : '1px'} solid ${zine ? theme.text : theme.border}`,
+              borderRadius: zine ? theme.design.badgeRadius : gallery ? '2px' : '999px',
+              boxShadow: zine ? `2px 2px 0 ${theme.border}` : undefined,
+              color: zine ? theme.text : theme.textMuted,
+            }}
+          >
+            {item}
+          </span>
+        ))}
+      </div>
 
       <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.5 }}>
         Bangumi 官方数据 · 更新于{' '}
         {formatRetrievedAt(viewModel.retrievedAt || viewModel.source.official.retrievedAt)}
       </div>
+
+      {gallery ? coverStage : null}
+
+      {raw && !zine ? (
+        <section
+          data-layout={gallery ? 'gallery-score-distribution-hero' : 'warm-score-distribution-hero'}
+          style={{
+            display: 'grid',
+            gridTemplateColumns:
+              width && width >= 520 ? 'minmax(0, 0.78fr) minmax(0, 1.22fr)' : 'minmax(0, 1fr)',
+            alignItems: 'start',
+            gap: theme.spacing.md,
+            padding: theme.spacing.md,
+            backgroundColor: gallery ? theme.surface : theme.surfaceAlt,
+            border: `1px solid ${theme.border}`,
+            borderRadius: gallery ? '4px' : theme.radius.lg,
+          }}
+        >
+          <div data-layout="stats-rating-score">
+            <div style={{ color: theme.textMuted, fontSize: '12px' }}>官方评分</div>
+            <div
+              style={{
+                color: gallery ? theme.accent : theme.score,
+                fontFamily: theme.design.displayFontFamily,
+                fontSize: renderWidth < 520 ? '42px' : renderWidth < 900 ? '64px' : '86px',
+                fontWeight: theme.design.titleWeight,
+                lineHeight: 1,
+              }}
+            >
+              {formatNumber(raw.score, 1)}
+              <span style={{ fontSize: '14px', fontWeight: 600 }}> / 10</span>
+            </div>
+            <div style={{ color: theme.textMuted, fontSize: '12px', marginTop: theme.spacing.sm }}>
+              {formatNumber(raw.ratingTotal)} 人评分
+            </div>
+          </div>
+          {ratingDistribution}
+        </section>
+      ) : null}
+
+      {zine && raw ? (
+        <section
+          data-layout="zine-score-hero"
+          style={{
+            display: 'grid',
+            gridTemplateColumns:
+              width && width >= 520 ? 'minmax(0, 0.86fr) minmax(0, 1.14fr)' : '1fr',
+            alignItems: 'center',
+            gap: theme.spacing.md,
+            padding: theme.spacing.md,
+            backgroundColor: theme.tones.coral.surface,
+            border: `3px solid ${theme.text}`,
+            clipPath: 'polygon(0 0, 100% 0, 100% 92%, 96% 100%, 0 100%)',
+            boxShadow: `4px 4px 0 ${theme.border}`,
+          }}
+        >
+          <div data-layout="stats-rating-score">
+            <div style={{ color: theme.tones.coral.foreground, fontSize: '13px', fontWeight: 900 }}>
+              综合评分
+            </div>
+            <div
+              style={{
+                color: theme.tones.coral.foreground,
+                fontFamily: theme.design.displayFontFamily,
+                fontSize: renderWidth < 520 ? '54px' : renderWidth < 900 ? '84px' : '108px',
+                fontWeight: 900,
+                lineHeight: 0.95,
+                letterSpacing: '-0.06em',
+              }}
+            >
+              {formatNumber(raw.score, 1)}
+              <span style={{ fontSize: '20px', letterSpacing: 0 }}> / 10</span>
+            </div>
+            <div style={{ fontSize: '12px', fontWeight: 800, marginTop: theme.spacing.sm }}>
+              评分人数 {formatNumber(raw.ratingTotal)}
+              {hasRank ? ` · 排名 ${formatNumber(raw.rank)}` : ''}
+            </div>
+          </div>
+          {ratingDistribution}
+        </section>
+      ) : null}
 
       {viewModel.state === 'unavailable' || viewModel.state === 'not_found' ? (
         <div
@@ -280,26 +646,37 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: width && width >= 900 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+              gridTemplateColumns: 'minmax(0, 1fr)',
+              gap: theme.spacing.md,
+            }}
+          >
+            {collectionDistribution}
+          </div>
+
+          <div
+            data-layout="stats-secondary-metrics"
+            style={{
+              display: 'grid',
+              gridTemplateColumns:
+                width && width >= 900
+                  ? gallery
+                    ? 'repeat(4, minmax(0, 1fr))'
+                    : 'repeat(3, minmax(0, 1fr))'
+                  : 'repeat(2, minmax(0, 1fr))',
               gap: theme.spacing.sm,
             }}
           >
-            {[
-              ['官方评分', formatNumber(raw.score, 1)],
-              ['评分人数', formatNumber(raw.ratingTotal)],
-              ['8–9 分占比', scoreBand8To9ShareValue],
-              ['分布均值', formatNumber(viewModel.rating.mean, 2)],
-              ['评分离散度', formatNumber(viewModel.rating.standardDeviation, 2)],
-              ['收藏人数', formatNumber(viewModel.collection.total)],
-              ['完成率', formatRatioPercent(viewModel.collection.completionRate)],
-            ].map(([label, value]) => (
+            {summaryMetrics.map(([label, value]) => (
               <div
                 key={label}
                 style={{
-                  backgroundColor: theme.surfaceAlt,
-                  border: '1px solid ' + theme.border,
-                  borderRadius: theme.radius.sm,
-                  padding: theme.spacing.sm,
+                  gridColumn: width && width < 360 && label === '8–9 分占比' ? '1 / -1' : undefined,
+                  backgroundColor: zine ? theme.surface : theme.surfaceAlt,
+                  border: `${theme.design.metricBorderWidth} solid ${zine ? theme.text : theme.border}`,
+                  borderRadius: theme.design.tagRadius,
+                  clipPath: zine ? 'polygon(0 0, 100% 0, 100% 86%, 92% 100%, 0 100%)' : undefined,
+                  padding: gallery ? theme.spacing.md : theme.spacing.sm,
+                  boxShadow: zine ? `2px 2px 0 ${theme.border}` : undefined,
                   minWidth: 0,
                 }}
               >
@@ -307,8 +684,9 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
                 <div
                   style={{
                     color: theme.text,
-                    fontSize: '20px',
-                    fontWeight: 700,
+                    fontFamily: theme.design.displayFontFamily,
+                    fontSize: zine ? '22px' : gallery ? '18px' : '20px',
+                    fontWeight: zine ? 900 : 700,
                     overflowWrap: 'anywhere',
                   }}
                 >
@@ -316,142 +694,6 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
                 </div>
               </div>
             ))}
-          </div>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: width && width >= 900 ? '1fr 1fr' : '1fr',
-              gap: theme.spacing.md,
-            }}
-          >
-            <section>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: theme.spacing.xs,
-                  color: theme.accent,
-                  fontWeight: 700,
-                  fontSize: '15px',
-                }}
-              >
-                <RendererIcon name="stats" theme={theme} size={16} />
-                评分分布
-              </div>
-              <div
-                style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}
-              >
-                {viewModel.rating.distribution.map((item) => (
-                  <div
-                    key={item.score}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    <span style={{ width: '24px', color: theme.textMuted, fontSize: '12px' }}>
-                      {item.score}
-                    </span>
-                    <div
-                      style={{
-                        flex: 1,
-                        height: '10px',
-                        backgroundColor: theme.surfaceAlt,
-                        borderRadius: '5px',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {item.count !== undefined ? (
-                        <div
-                          style={{
-                            width: Math.min(100, (item.count / ratingMax) * 100) + '%',
-                            height: '100%',
-                            backgroundColor: item.score >= 8 ? theme.accent : theme.border,
-                          }}
-                        />
-                      ) : null}
-                    </div>
-                    <span
-                      style={{
-                        width: '92px',
-                        textAlign: 'right',
-                        color: theme.text,
-                        fontSize: '11px',
-                      }}
-                    >
-                      {formatNumber(item.count)} · {formatPercent(item.percentage)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ color: theme.textMuted, fontSize: '11px', marginTop: '7px' }}>
-                已收到 {viewModel.coverage.ratingBucketsObserved}/
-                {viewModel.coverage.ratingBucketsExpected} 档 · {stateLabel(viewModel.rating.state)}
-              </div>
-            </section>
-
-            <section>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: theme.spacing.xs,
-                  color: theme.accent,
-                  fontWeight: 700,
-                  fontSize: '15px',
-                }}
-              >
-                <RendererIcon name="collection" theme={theme} size={16} />
-                收藏状态
-              </div>
-              <div
-                style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}
-              >
-                {viewModel.collection.distribution.map((item) => (
-                  <div
-                    key={item.status}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    <span style={{ width: '38px', color: theme.textMuted, fontSize: '12px' }}>
-                      {collectionLabels[item.status] || '其他'}
-                    </span>
-                    <div
-                      style={{
-                        flex: 1,
-                        height: '12px',
-                        backgroundColor: theme.surfaceAlt,
-                        borderRadius: '6px',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {item.count !== undefined ? (
-                        <div
-                          style={{
-                            width: Math.min(100, (item.count / collectionMax) * 100) + '%',
-                            height: '100%',
-                            backgroundColor: theme.accent,
-                          }}
-                        />
-                      ) : null}
-                    </div>
-                    <span
-                      style={{
-                        width: '92px',
-                        textAlign: 'right',
-                        color: theme.text,
-                        fontSize: '11px',
-                      }}
-                    >
-                      {formatNumber(item.count)} · {formatPercent(item.percentage)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ color: theme.textMuted, fontSize: '11px', marginTop: '7px' }}>
-                已收到 {viewModel.coverage.collectionBucketsObserved}/
-                {viewModel.coverage.collectionBucketsExpected} 类 ·{' '}
-                {stateLabel(viewModel.collection.state)}
-                {' · 完成率 ' + metricStateLabel(viewModel.collection.completionState)}
-              </div>
-            </section>
           </div>
         </>
       ) : null}

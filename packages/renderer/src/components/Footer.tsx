@@ -18,9 +18,10 @@ export const Footer: React.FC<FooterProps> = ({ label = 'Bangumi Agent Kit', the
         gap: theme.spacing.xs,
         marginTop: theme.spacing.md,
         paddingTop: theme.spacing.sm,
-        borderTop: `1px solid ${theme.border}`,
         fontSize: '12px',
         color: theme.textMuted,
+        fontFamily: theme.design.bodyFontFamily,
+        borderTop: `${theme.designPack === 'graphic-zine' ? '2px' : '1px'} ${theme.designPack === 'graphic-zine' ? 'dashed' : 'solid'} ${theme.designPack === 'graphic-zine' ? theme.accent : theme.border}`,
       }}
     >
       <span

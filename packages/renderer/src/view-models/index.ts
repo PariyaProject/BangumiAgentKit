@@ -21,6 +21,7 @@ export interface SubjectCardViewModel {
     rating?: number;
     comment?: string;
     episodeProgress?: string;
+    progressPercentage?: number;
   };
   source: {
     label: string;
@@ -1306,6 +1307,7 @@ export interface SubjectStatsViewModel {
     source: 'official-v0';
     name?: string;
     nameCn?: string;
+    coverImage?: string;
     nameTruncated: boolean;
     nameCnTruncated: boolean;
     retrievedAt?: string;
@@ -1330,6 +1332,7 @@ export interface SubjectStatsIdentitySource {
     id: number;
     name: string;
     nameCn?: string;
+    coverImage?: string;
   };
   retrievedAt?: string;
 }

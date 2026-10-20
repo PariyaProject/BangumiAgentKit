@@ -206,6 +206,11 @@ describe('series-relations renderer', () => {
     const base = buildSeriesRelationsViewModel(fixtures.complete.result);
     const validMaximum = {
       ...base,
+      steps: Array.from({ length: 17 }, (_, index) => ({
+        ...base.steps[0]!,
+        id: 1000 + index,
+        position: index + 1,
+      })),
       state: 'complete' as const,
       related: Array.from({ length: 24 }, (_, index) => ({
         ...base.related[0]!,
@@ -222,6 +227,7 @@ describe('series-relations renderer', () => {
       })),
       coverage: {
         ...base.coverage,
+        maxNodes: 16,
         relatedLimit: 24,
         uniqueRelatedReturned: 24,
         edgeEvidenceLimit: 64,
@@ -255,6 +261,20 @@ describe('series-relations renderer', () => {
       expect(renderedHtml).toContain('最大关系证据 23');
       expect(renderedHtml).toContain('5063 → 6063');
       expect(renderedHtml).not.toContain('安全显示上限');
+
+      const mobileHtml = renderHtmlTemplate(validMaximum, 'bangumi-light', {}, 320);
+      expect(mobileHtml.match(/data-layout="watch-order-step"/gu)).toHaveLength(5);
+      expect(mobileHtml.match(/data-layout="series-related-item"/gu)).toHaveLength(8);
+      expect(mobileHtml.match(/data-layout="relation-evidence-item"/gu)).toHaveLength(12);
+      expect(mobileHtml).toContain('当前图片显示 5/17 步');
+      expect(mobileHtml).toContain('当前图片显示 8/24 条');
+      expect(mobileHtml).toContain('当前图片显示 12/64 条');
+
+      const desktopHtml = renderHtmlTemplate(validMaximum, 'bangumi-light', {}, 960);
+      expect(desktopHtml.match(/data-layout="watch-order-step"/gu)).toHaveLength(17);
+      expect(desktopHtml.match(/data-layout="series-related-item"/gu)).toHaveLength(24);
+      expect(desktopHtml.match(/data-layout="relation-evidence-item"/gu)).toHaveLength(64);
+      expect(desktopHtml).not.toContain('当前图片显示');
     } finally {
       await service.close();
     }

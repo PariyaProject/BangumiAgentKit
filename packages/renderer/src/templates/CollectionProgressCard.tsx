@@ -72,19 +72,23 @@ export const CollectionProgressCard: React.FC<CollectionProgressCardProps> = ({
         </div>
 
         <div
+          data-layout="collection-progress-status-row"
           style={{
             gridColumn: '1 / -1',
             display: 'flex',
-            flexWrap: 'wrap',
-            gap: theme.spacing.sm,
+            flexWrap: narrowWidth ? 'nowrap' : 'wrap',
+            justifyContent: narrowWidth ? 'space-between' : undefined,
+            gap: narrowWidth ? theme.spacing.xs : theme.spacing.sm,
             alignItems: 'center',
             minWidth: 0,
             width: '100%',
             backgroundColor: theme.surfaceAlt,
-            padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+            padding: narrowWidth
+              ? `${theme.spacing.xs} ${theme.spacing.sm}`
+              : `${theme.spacing.xs} ${theme.spacing.md}`,
             borderRadius: theme.radius.sm,
             border: `1px solid ${theme.border}`,
-            fontSize: '14px',
+            fontSize: narrowWidth ? '12px' : '14px',
           }}
         >
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: theme.spacing.xs }}>

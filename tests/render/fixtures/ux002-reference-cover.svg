@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1120" fill="none">
+  <defs>
+    <linearGradient id="sky" x1="400" y1="0" x2="400" y2="820" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#10264F"/>
+      <stop offset=".46" stop-color="#245E82"/>
+      <stop offset=".78" stop-color="#F08B7B"/>
+      <stop offset="1" stop-color="#F6B47D"/>
+    </linearGradient>
+    <linearGradient id="water" x1="400" y1="780" x2="400" y2="1120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#183E66"/>
+      <stop offset="1" stop-color="#071D3C"/>
+    </linearGradient>
+    <linearGradient id="planet" x1="540" y1="150" x2="660" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF0BB"/>
+      <stop offset="1" stop-color="#F9BD82"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="380" y1="320" x2="700" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F6A98E" stop-opacity="0"/>
+      <stop offset=".55" stop-color="#FFB796" stop-opacity=".88"/>
+      <stop offset="1" stop-color="#FFE5A8" stop-opacity=".12"/>
+    </linearGradient>
+    <filter id="glow" x="470" y="90" width="260" height="260" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+  </defs>
+  <path fill="url(#sky)" d="M0 0h800v1120H0z"/>
+  <g fill="#E7F1FF">
+    <circle cx="74" cy="92" r="2" opacity=".78"/><circle cx="150" cy="181" r="1.6" opacity=".65"/>
+    <circle cx="264" cy="78" r="1.8" opacity=".8"/><circle cx="352" cy="160" r="1.4" opacity=".72"/>
+    <circle cx="438" cy="83" r="1.7" opacity=".8"/><circle cx="710" cy="83" r="1.8" opacity=".72"/>
+    <circle cx="748" cy="206" r="1.5" opacity=".8"/><circle cx="86" cy="284" r="1.5" opacity=".62"/>
+    <circle cx="336" cy="274" r="1.4" opacity=".65"/><circle cx="456" cy="372" r="1.5" opacity=".62"/>
+    <circle cx="126" cy="405" r="1.7" opacity=".68"/><circle cx="760" cy="420" r="1.4" opacity=".7"/>
+  </g>
+  <circle cx="602" cy="236" r="91" fill="#FFD994" opacity=".23" filter="url(#glow)"/>
+  <circle cx="602" cy="236" r="59" fill="url(#planet)"/>
+  <path d="M-82 464C119 332 325 320 495 393c120 51 230 55 410-6" stroke="#FFAF96" stroke-width="18" opacity=".18"/>
+  <path d="M-82 464C119 332 325 320 495 393c120 51 230 55 410-6" stroke="url(#beam)" stroke-width="5"/>
+  <path d="M58 532c181-79 310-90 443-49 86 26 177 22 259-8" stroke="#FFD3AE" stroke-width="2" opacity=".62"/>
+  <path d="M0 646h800v143H0z" fill="#142F56"/>
+  <path d="M0 686h800v104H0z" fill="#10284B"/>
+  <g fill="#0D2445">
+    <path d="M20 634h64v155H20zM94 605h52v184H94zM151 650h91v139h-91zM250 584h48v205h-48zM306 626h83v163h-83zM398 596h68v193h-68zM474 638h78v151h-78zM563 568h44v221h-44zM616 620h87v169h-87zM711 588h70v201h-70z"/>
+    <path d="M31 616h4v-46h3v46h4v-52h3v52h4v-42h3v42h4v-57h3v57h4v-38h3v38" fill="#F4B38E" opacity=".85"/>
+    <path d="M263 576h3v-65h2v65h4v-79h2v79h4v-49h2v49h4v-72h2v72" fill="#F6C495" opacity=".82"/>
+    <path d="M572 560h3v-61h2v61h4v-77h2v77h4v-56h2v56" fill="#F3A98B" opacity=".8"/>
+  </g>
+  <path d="M0 784c116-17 190-15 291 2 132 22 250 21 509-12v346H0V784Z" fill="url(#water)"/>
+  <path d="M0 815c172-20 248 21 389 8 159-15 235-24 411-3" stroke="#E69687" stroke-width="4" opacity=".75"/>
+  <path d="M42 858c120-17 198 20 302 13m109-6c91-18 174-19 280-8" stroke="#8BC3D0" stroke-width="3" opacity=".48"/>
+  <path d="M90 912c72-8 118-5 194 8m146 0c123-14 215-7 293 4" stroke="#6FA7BB" stroke-width="2" opacity=".46"/>
+  <path d="M0 1012h800" stroke="#F2B08C" stroke-width="5" opacity=".82"/>
+  <path d="M0 1030h800" stroke="#A9D6D6" stroke-width="3" opacity=".55"/>
+  <path d="M42 1020v100M760 1020v100" stroke="#0A1B36" stroke-width="12"/>
+  <g fill="#071A35">
+    <path d="M254 718c-3-28 4-54 22-69 19-16 42-15 57 2 13 15 18 37 12 67l-8 53 27 83h-24l-28-58-24 59h-24l20-91-22-46Z"/>
+    <path d="M277 670c0-17 12-30 29-30 16 0 28 13 28 30s-12 30-28 30c-17 0-29-13-29-30Z"/>
+    <path d="M267 740c-19 13-31 33-39 59l-18 53h23l29-43 20-34"/>
+    <path d="M297 708h30l31 44-14 12-36-28-23 22-18-10 20-34"/>
+    <path d="M245 844h34l-5 18h-44l15-18Zm46 0h32l13 18h-40l-5-18Z"/>
+  </g>
+  <path d="M271 712h48l-8 53h-36l-4-53Z" fill="#E47F69" opacity=".92"/>
+  <path d="M272 716h42v8h-42zM277 729h31v6h-31z" fill="#FFE1A1" opacity=".86"/>
+  <path d="M0 1120h800v-25H0z" fill="#081B37"/>
+</svg>

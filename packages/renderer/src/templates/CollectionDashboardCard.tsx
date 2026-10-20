@@ -28,6 +28,29 @@ function stateLabel(state: CollectionDashboardViewModel['state']): string {
   return '暂不可用';
 }
 
+function dashboardSectionStyle(
+  theme: ThemeTokens,
+  tone: { foreground: string; surface: string; border: string },
+): React.CSSProperties {
+  const zine = theme.designPack === 'graphic-zine';
+  const gallery = theme.designPack === 'clean-gallery';
+  return {
+    border: `${zine ? '2px' : '1px'} solid ${tone.border}`,
+    borderTop: gallery ? `3px solid ${tone.foreground}` : undefined,
+    borderLeft: zine
+      ? `6px solid ${theme.text}`
+      : gallery
+        ? undefined
+        : `4px solid ${tone.foreground}`,
+    borderRadius:
+      theme.designPack === 'warm-editorial' ? theme.radius.md : theme.design.badgeRadius,
+    padding: theme.designPack === 'clean-gallery' ? theme.spacing.lg : theme.spacing.md,
+    backgroundColor: tone.surface,
+    minWidth: 0,
+    boxShadow: zine ? `3px 3px 0 ${tone.border}` : undefined,
+  };
+}
+
 function boundedText(value: unknown, maximum = 150): string {
   const normalized = String(value ?? '')
     .replace(/\s+/gu, ' ')
@@ -138,29 +161,108 @@ function DashboardMetric({
   detail: string;
   theme: ThemeTokens;
 }): React.ReactNode {
+  const zine = theme.designPack === 'graphic-zine';
+  const gallery = theme.designPack === 'clean-gallery';
+
+  if (gallery) {
+    return (
+      <div
+        data-layout="dashboard-metric"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '32px minmax(0, 1fr)',
+          gridTemplateRows: 'auto auto auto',
+          gap: `2px ${theme.spacing.sm}`,
+          alignItems: 'start',
+          backgroundColor: theme.surface,
+          border: `${theme.design.metricBorderWidth} solid ${theme.border}`,
+          borderRadius: theme.design.badgeRadius,
+          padding: theme.spacing.sm,
+          minWidth: 0,
+        }}
+      >
+        <div style={{ gridColumn: '1', gridRow: '1' }}>
+          <RendererIcon name={icon} theme={theme} size={18} badge />
+        </div>
+        <div
+          data-layout="dashboard-metric-label"
+          style={{ color: theme.textMuted, fontSize: '11px', gridColumn: '2', gridRow: '1' }}
+        >
+          {label}
+        </div>
+        <div
+          data-layout="dashboard-metric-value"
+          style={{
+            color: theme.text,
+            fontSize: '18px',
+            fontWeight: 800,
+            whiteSpace: 'nowrap',
+            gridColumn: '1 / -1',
+            gridRow: '2',
+          }}
+        >
+          {value}
+        </div>
+        <div
+          data-layout="dashboard-metric-detail"
+          style={{
+            color: theme.textMuted,
+            fontSize: '10px',
+            lineHeight: 1.4,
+            gridColumn: '1 / -1',
+            gridRow: '3',
+          }}
+        >
+          {detail}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-layout="dashboard-metric"
       style={{
         display: 'flex',
-        alignItems: 'flex-start',
         gap: theme.spacing.sm,
-        backgroundColor: theme.surface,
-        border: `1px solid ${theme.border}`,
-        borderRadius: theme.radius.md,
+        alignItems: 'start',
+        backgroundColor: zine ? theme.surfaceAlt : theme.surface,
+        border: `${theme.design.metricBorderWidth} solid ${zine ? theme.text : theme.border}`,
+        borderRadius: theme.design.badgeRadius,
         padding: theme.spacing.sm,
+        boxShadow: zine ? `2px 2px 0 ${theme.border}` : undefined,
         minWidth: 0,
       }}
     >
       <RendererIcon name={icon} theme={theme} size={18} badge />
       <div style={{ minWidth: 0 }}>
-        <div style={{ color: theme.textMuted, fontSize: '11px' }}>{label}</div>
         <div
-          style={{ color: theme.text, fontSize: '18px', fontWeight: 800, overflowWrap: 'anywhere' }}
+          data-layout="dashboard-metric-label"
+          style={{ color: theme.textMuted, fontSize: '11px' }}
+        >
+          {label}
+        </div>
+        <div
+          data-layout="dashboard-metric-value"
+          style={{
+            color: theme.text,
+            fontSize: '18px',
+            fontWeight: 800,
+            overflowWrap: 'anywhere',
+          }}
         >
           {value}
         </div>
-        <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>{detail}</div>
+        <div
+          data-layout="dashboard-metric-detail"
+          style={{
+            color: theme.textMuted,
+            fontSize: '10px',
+            lineHeight: 1.4,
+          }}
+        >
+          {detail}
+        </div>
       </div>
     </div>
   );
@@ -289,6 +391,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
       />
 
       <div
+        data-dashboard-pack={theme.designPack}
         data-layout="dashboard-context"
         style={{
           color: theme.textMuted,
@@ -331,7 +434,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
           },
           {
             icon: 'episode' as const,
-            label: 'Backlog 条目',
+            label: 'Backlog',
             value: `${viewModel.coverage.backlogSubjectsSucceeded} / ${viewModel.coverage.backlogSubjectsRequested}`,
             detail: '成功 / 请求',
           },
@@ -355,16 +458,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
           alignItems: 'start',
         }}
       >
-        <section
-          style={{
-            border: `1px solid ${intelligenceTone.border}`,
-            borderRadius: theme.radius.md,
-            padding: theme.spacing.md,
-            borderLeft: `4px solid ${intelligenceTone.foreground}`,
-            backgroundColor: intelligenceTone.surface,
-            minWidth: 0,
-          }}
-        >
+        <section style={dashboardSectionStyle(theme, intelligenceTone)}>
           {sectionHeader('收藏概览', viewModel.sections.intelligence.state, theme, 'overview')}
           <SectionError error={viewModel.sections.intelligence.error} theme={theme} />
           {intelligence ? (
@@ -434,16 +528,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
           )}
         </section>
 
-        <section
-          style={{
-            border: `1px solid ${backlogTone.border}`,
-            borderRadius: theme.radius.md,
-            padding: theme.spacing.md,
-            borderLeft: `4px solid ${backlogTone.foreground}`,
-            backgroundColor: backlogTone.surface,
-            minWidth: 0,
-          }}
-        >
+        <section style={dashboardSectionStyle(theme, backlogTone)}>
           {sectionHeader('Backlog', viewModel.sections.backlog.state, theme, 'collection')}
           <SectionError error={viewModel.sections.backlog.error ?? backlog?.error} theme={theme} />
           {backlog ? (
@@ -513,16 +598,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
           )}
         </section>
 
-        <section
-          style={{
-            border: `1px solid ${scheduleTone.border}`,
-            borderRadius: theme.radius.md,
-            padding: theme.spacing.md,
-            borderLeft: `4px solid ${scheduleTone.foreground}`,
-            backgroundColor: scheduleTone.surface,
-            minWidth: 0,
-          }}
-        >
+        <section style={dashboardSectionStyle(theme, scheduleTone)}>
           {sectionHeader('七日播出计划', viewModel.sections.schedule.state, theme, 'calendar')}
           <SectionError
             error={viewModel.sections.schedule.error ?? schedule?.error}

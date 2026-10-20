@@ -22,6 +22,7 @@ import {
   AssetResolver,
 } from '../../packages/renderer/src/internal/index.js';
 import { getSubjectOverview } from '../../packages/tools/src/subject-overview.js';
+import { closeMobileLayoutBrowser, measureRenderRootLayout } from './helpers/mobile-layout.js';
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const VALID_PNG_BUFFER = Buffer.from(
@@ -336,6 +337,7 @@ describe('Subject Overview renderer', () => {
 
   afterAll(async () => {
     await renderService.close();
+    await closeMobileLayoutBrowser();
   });
 
   it('builds ViewModels from real semantic output and preserves truthful states', async () => {
@@ -355,7 +357,7 @@ describe('Subject Overview renderer', () => {
 
     const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, 640);
     expect(html.match(/data-layout="panel-header"/gu)).toHaveLength(4);
-    expect(html).toContain('data-layout="editorial-cover-hero"');
+    expect(html).toContain('data-layout="warm-editorial-cover-hero"');
     expect(html).toContain('data-layout="editorial-summary"');
     expect(html).toContain('data-layout="editorial-public-collection"');
     expect(html).toContain('社区收藏统计');
@@ -405,7 +407,7 @@ describe('Subject Overview renderer', () => {
     compactVm.subject.summary = '用于验证简介节选且明确标注的合成摘要。'.repeat(20);
     const compactHtml = renderHtmlTemplate(compactVm, 'bangumi-light', {}, 320);
     expect(compactHtml).toContain('简介节选 · 前 96 字');
-    expect(compactHtml).toContain('data-layout="editorial-cover-hero"');
+    expect(compactHtml).toContain('data-layout="warm-editorial-cover-hero"');
     expect(compactHtml.match(/data-layout="compact-panel-header"/gu)).toHaveLength(4);
   });
 
@@ -582,6 +584,28 @@ describe('Subject Overview renderer', () => {
       }
     }
   }, 20_000);
+
+  it('stacks the Clean Gallery overview hero at 320 and 360 CSS pixels', async () => {
+    const overview = await semanticFixture('complete');
+    const viewModel = buildSubjectOverviewViewModel(pinVisualFixtureRetrievedAt(overview));
+
+    for (const width of [320, 360]) {
+      const html = renderHtmlTemplate(viewModel, 'bangumi-light', {}, width, 'clean-gallery');
+      const layout = await measureRenderRootLayout(html, width);
+      expect(layout.titleBlocks[0]?.blockWidth, `title column at ${width}px`).toBeGreaterThanOrEqual(200);
+      expect(layout).toMatchObject({
+        clientWidth: width,
+        scrollWidth: width,
+        overflowing: [],
+      });
+      expect(
+        layout.contentOverflowing.filter(
+          (item) => item.layoutContext === 'clean-gallery-cover-hero',
+        ),
+        `hero content overflow at ${width}px`,
+      ).toEqual([]);
+    }
+  });
 
   it('keeps all nine returned roles through the mobile renderer without hidden truncation', async () => {
     const overview = await semanticFixture('complete');

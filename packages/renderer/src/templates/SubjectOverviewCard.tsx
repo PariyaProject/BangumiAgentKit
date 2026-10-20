@@ -88,14 +88,19 @@ function Panel({
   compact?: boolean;
 }) {
   const tone = theme.tones[getRendererIconTone(icon)];
+  const zine = theme.designPack === 'graphic-zine';
+  const gallery = theme.designPack === 'clean-gallery';
   return (
     <section
       style={{
         flex: '1 1 285px',
         minWidth: 0,
-        backgroundColor: tone.surface,
-        border: `1px solid ${tone.border}`,
-        borderRadius: theme.radius.md,
+        backgroundColor: gallery ? theme.surface : tone.surface,
+        border: `${zine ? '2px' : '1px'} solid ${zine ? tone.foreground : tone.border}`,
+        borderTop: gallery ? `3px solid ${tone.foreground}` : undefined,
+        borderRadius: zine || gallery ? theme.design.badgeRadius : theme.radius.md,
+        clipPath: zine ? 'polygon(0 0, 100% 0, 100% 96%, 96% 100%, 0 100%)' : undefined,
+        boxShadow: zine ? `3px 3px 0 ${tone.border}` : undefined,
         padding: theme.spacing.md,
         display: 'flex',
         flexDirection: 'column',
@@ -304,8 +309,29 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
 }) => {
   const { subject } = viewModel;
   const renderWidth = width ?? 960;
-  const coverWidth = renderWidth < 520 ? 112 : renderWidth < 760 ? 136 : 196;
+  const gallery = theme.designPack === 'clean-gallery';
+  const zine = theme.designPack === 'graphic-zine';
   const compactHero = renderWidth < 520;
+  const galleryStacks = gallery && renderWidth <= 360;
+  const coverWidth =
+    gallery && compactHero
+      ? galleryStacks
+        ? 112
+        : 68
+      : zine && renderWidth >= 760
+        ? 216
+        : renderWidth < 520
+          ? 112
+          : renderWidth < 760
+            ? 136
+            : 196;
+  const heroColumns = compactHero
+    ? gallery && !galleryStacks
+      ? `${coverWidth}px minmax(0, 1fr)`
+      : 'minmax(0, 1fr)'
+    : gallery
+      ? `minmax(0, 1fr) ${coverWidth}px`
+      : `${coverWidth}px minmax(0, 1fr)`;
   const compactPanelHeader = renderWidth < 520;
   const summaryLimit = compactHero ? 96 : 180;
   const castLimit = renderWidth < 520 ? 2 : renderWidth < 900 ? 6 : 12;
@@ -335,23 +361,52 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
   return (
     <CardFrame theme={theme} width={width}>
       <section
-        data-layout="editorial-cover-hero"
+        data-layout={`${theme.designPack}-cover-hero`}
         style={{
           display: 'grid',
-          gridTemplateColumns: compactHero ? 'minmax(0, 1fr)' : `${coverWidth}px minmax(0, 1fr)`,
+          gridTemplateColumns: heroColumns,
           gap: theme.spacing.md,
           alignItems: 'stretch',
           padding: theme.spacing.md,
-          backgroundColor: theme.surfaceAlt,
-          border: `1px solid ${theme.border}`,
-          borderRadius: theme.radius.lg,
+          position: 'relative',
+          overflow: 'hidden',
+          backgroundColor: zine ? theme.surface : theme.surfaceAlt,
+          border: `${zine ? '2px' : '1px'} solid ${theme.border}`,
+          borderRadius: zine ? theme.design.badgeRadius : gallery ? '4px' : theme.radius.lg,
+          boxShadow: zine ? `4px 4px 0 ${theme.border}` : undefined,
         }}
       >
+        {zine ? (
+          <div
+            aria-hidden="true"
+            data-layout="zine-hero-cut"
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: '96px',
+              height: '12px',
+              backgroundColor: theme.accent,
+              clipPath: 'polygon(12% 0, 100% 0, 88% 100%, 0 100%)',
+            }}
+          />
+        ) : null}
         <div
+          data-layout="subject-overview-cover"
           style={
-            compactHero
-              ? { display: 'flex', justifyContent: 'center', minWidth: 0 }
-              : { minWidth: 0 }
+            compactHero && (!gallery || galleryStacks)
+              ? {
+                  display: 'flex',
+                  justifyContent: 'center',
+                  minWidth: 0,
+                  gridColumn: '1',
+                  gridRow: '1',
+                }
+              : {
+                  minWidth: 0,
+                  gridColumn: gallery && !compactHero ? '2' : '1',
+                  gridRow: '1',
+                }
           }
         >
           <CoverImage
@@ -363,9 +418,12 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
           />
         </div>
         <div
+          data-layout="subject-overview-copy"
           style={{
             flex: '1 1 360px',
             minWidth: 0,
+            gridColumn: compactHero ? (gallery && !galleryStacks ? '2' : '1') : gallery ? '1' : '2',
+            gridRow: compactHero ? (gallery && !galleryStacks ? '1' : '2') : '1',
             display: 'flex',
             flexDirection: 'column',
             gap: theme.spacing.md,
@@ -385,7 +443,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
                 display: 'flex',
                 flexDirection: compactHero ? 'column' : 'row',
                 justifyContent: 'space-between',
-                alignItems: 'flex-start',
+                alignItems: compactHero ? 'stretch' : 'flex-start',
                 gap: theme.spacing.sm,
               }}
             >
@@ -396,10 +454,13 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
                 icon="overview"
                 titleFontSize={compactHero ? '20px' : renderWidth < 760 ? '24px' : '30px'}
                 subtitleFontSize={compactHero ? '12px' : '14px'}
+                titleMaxLines={2}
               />
               <StatePill state={viewModel.state} theme={theme} />
             </div>
-            <ScoreBadge score={subject.score} rank={subject.rank} theme={theme} />
+            <div data-layout="subject-overview-score">
+              <ScoreBadge score={subject.score} rank={subject.rank} theme={theme} />
+            </div>
           </div>
           <MetaRow
             items={[

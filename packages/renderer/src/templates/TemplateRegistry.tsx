@@ -259,8 +259,8 @@ registerTemplate<SubjectOverlapViewModel>({
 registerTemplate<SubjectStatsViewModel>({
   id: 'subject-stats',
   version: 1,
-  render: (vm, theme, _resolvedImages, width) => (
-    <SubjectStatsCard viewModel={vm} theme={theme} width={width} />
+  render: (vm, theme, resolvedImages, width) => (
+    <SubjectStatsCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} width={width} />
   ),
 });
 

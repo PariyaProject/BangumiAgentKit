@@ -102,6 +102,9 @@ export function buildSubjectCardViewModel(
       rating?: number;
       comment?: string;
       episodeProgress?: string;
+      watchedEpisodes?: number;
+      totalEpisodes?: number;
+      progressPercentage?: number;
     };
     sourceLabel?: string;
     summaryMaxPoints?: number;
@@ -125,7 +128,39 @@ export function buildSubjectCardViewModel(
       summary: truncatedSummary,
       tags: subject.tags,
     },
-    collection: options?.collection,
+    collection: options?.collection
+      ? {
+          status: options.collection.status,
+          statusLabel: options.collection.statusLabel,
+          rating: options.collection.rating,
+          comment: options.collection.comment,
+          episodeProgress:
+            options.collection.episodeProgress ??
+            (Number.isInteger(options.collection.watchedEpisodes) &&
+            (options.collection.watchedEpisodes ?? -1) >= 0
+              ? `已看 ${options.collection.watchedEpisodes}${
+                  Number.isInteger(options.collection.totalEpisodes) &&
+                  (options.collection.totalEpisodes ?? 0) > 0
+                    ? ` / ${options.collection.totalEpisodes}`
+                    : ''
+                } 集`
+              : undefined),
+          progressPercentage:
+            options.collection.progressPercentage ??
+            (Number.isInteger(options.collection.watchedEpisodes) &&
+            Number.isInteger(options.collection.totalEpisodes) &&
+            (options.collection.watchedEpisodes ?? -1) >= 0 &&
+            (options.collection.totalEpisodes ?? 0) > 0 &&
+            (options.collection.watchedEpisodes ?? Infinity) <=
+              (options.collection.totalEpisodes ?? -1)
+              ? Math.round(
+                  ((options.collection.watchedEpisodes ?? 0) /
+                    (options.collection.totalEpisodes ?? 1)) *
+                    100,
+                )
+              : undefined),
+        }
+      : undefined,
     source: {
       label: options?.sourceLabel || 'Bangumi Agent Kit',
     },
@@ -1135,12 +1170,15 @@ function buildSubjectStatsIdentityViewModel(
   const nameCnDisplay = nameCn
     ? clipSubjectIdentityText(nameCn, SUBJECT_IDENTITY_PRESENTATION_MAX_FIELD_GRAPHEMES)
     : undefined;
+  const coverImage =
+    typeof identity.subject.coverImage === 'string' ? identity.subject.coverImage.trim() : '';
 
   return {
     state: 'available',
     source: 'official-v0',
     name: nameDisplay.text,
     ...(nameCnDisplay?.text ? { nameCn: nameCnDisplay.text } : {}),
+    ...(coverImage ? { coverImage } : {}),
     nameTruncated: nameDisplay.truncated,
     nameCnTruncated: nameCnDisplay?.truncated ?? false,
     ...(identity.retrievedAt ? { retrievedAt: identity.retrievedAt } : {}),

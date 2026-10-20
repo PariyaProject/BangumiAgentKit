@@ -13,7 +13,14 @@ interface LayoutNode {
   parentElement: LayoutNode | null;
   nextElementSibling: LayoutNode | null;
   getAttribute(name: string): string | null;
-  getBoundingClientRect(): { left: number; right: number; width: number };
+  getBoundingClientRect(): {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+    width: number;
+    height: number;
+  };
 }
 
 interface LayoutMeasurement {
@@ -25,6 +32,15 @@ interface LayoutMeasurement {
     titleWidth: number;
     subtitle: string;
     subtitleWidth: number;
+    subtitleHeight: number;
+  }>;
+  layoutElements: Array<{
+    layout: string;
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    text: string;
   }>;
   overflowing: Array<{
     tagName: string;
@@ -113,8 +129,34 @@ export async function measureRenderRootLayout(
           titleWidth: heading.clientWidth,
           subtitle: (subtitle?.textContent ?? '').trim(),
           subtitleWidth: subtitle?.clientWidth ?? 0,
+          subtitleHeight: Math.round((subtitle?.getBoundingClientRect().height ?? 0) * 100) / 100,
         };
       });
+      const layoutElements = Array.from(root.querySelectorAll('[data-layout]'))
+        .filter((element) =>
+          [
+            'gallery-subject-date-label',
+            'gallery-subject-date-value',
+            'score-value',
+            'subject-stats-identity-chip',
+            'timeline-coverage-item',
+            'timeline-event-meta-item',
+            'dashboard-metric-label',
+            'dashboard-metric-value',
+            'dashboard-metric-detail',
+          ].includes(element.getAttribute('data-layout') ?? ''),
+        )
+        .map((element) => {
+          const bounds = element.getBoundingClientRect();
+          return {
+            layout: element.getAttribute('data-layout') ?? '',
+            left: Math.round(bounds.left),
+            top: Math.round(bounds.top),
+            width: Math.round(bounds.width),
+            height: Math.round(bounds.height),
+            text: (element.textContent ?? '').trim(),
+          };
+        });
       const overflowing = Array.from(root.querySelectorAll('*'))
         .map((element) => {
           const bounds = element.getBoundingClientRect();
@@ -165,6 +207,7 @@ export async function measureRenderRootLayout(
         clientWidth: root.clientWidth,
         scrollWidth: root.scrollWidth,
         titleBlocks,
+        layoutElements,
         overflowing,
         contentOverflowing,
       };

@@ -98,9 +98,13 @@ describe('PR-5 BrowserPool, Cache & Options Bounds (R22 - R30)', () => {
     await service.renderCard(vm2);
     expect(spy).toHaveBeenCalledTimes(2);
 
-    // Render with changed theme -> cache miss (count = 3)
-    await service.renderCard(vm1, { theme: 'bangumi-light' });
+    // Render with changed palette -> cache miss (count = 3)
+    await service.renderCard(vm1, { theme: 'bangumi-dark' });
     expect(spy).toHaveBeenCalledTimes(3);
+
+    // Render with changed design pack -> cache miss (count = 4)
+    await service.renderCard(vm1, { theme: 'bangumi-dark', designPack: 'clean-gallery' });
+    expect(spy).toHaveBeenCalledTimes(4);
 
     await service.close();
   });
@@ -117,6 +121,30 @@ describe('PR-5 BrowserPool, Cache & Options Bounds (R22 - R30)', () => {
     const keyLight = computeRenderCacheKey(vm, { theme: 'bangumi-light' });
 
     expect(keyDark).not.toBe(keyLight);
+  });
+
+  it('R25a: Cache key changes with design pack independently of palette', () => {
+    const vm: SubjectCardViewModel = {
+      template: 'subject-card',
+      version: 1,
+      subject: { id: 1, name: 'Design Pack Test', type: 'anime' },
+      source: { label: 'Test' },
+    };
+
+    const editorial = computeRenderCacheKey(vm, {
+      theme: 'bangumi-light',
+      designPack: 'warm-editorial',
+    });
+    const gallery = computeRenderCacheKey(vm, {
+      theme: 'bangumi-light',
+      designPack: 'clean-gallery',
+    });
+    const zine = computeRenderCacheKey(vm, {
+      theme: 'bangumi-light',
+      designPack: 'graphic-zine',
+    });
+
+    expect(new Set([editorial, gallery, zine]).size).toBe(3);
   });
 
   it('R26: Cache key changes with VM content', () => {
@@ -241,9 +269,7 @@ describe('PR-5 BrowserPool, Cache & Options Bounds (R22 - R30)', () => {
             return;
           }
           signal?.addEventListener('abort', () => {
-            reject(
-              new RendererError('ASSET_TIMEOUT', 'Asset fetch aborted due to total deadline'),
-            );
+            reject(new RendererError('ASSET_TIMEOUT', 'Asset fetch aborted due to total deadline'));
           });
         });
       },

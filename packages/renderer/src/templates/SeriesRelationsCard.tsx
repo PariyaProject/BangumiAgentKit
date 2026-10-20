@@ -141,6 +141,7 @@ function StepCard({
 }) {
   return (
     <div
+      data-layout="watch-order-step"
       style={{
         display: 'flex',
         gap: theme.spacing.sm,
@@ -218,6 +219,7 @@ function CompactStepRow({
 }) {
   return (
     <div
+      data-layout="watch-order-step"
       style={{
         display: 'flex',
         gap: theme.spacing.xs,
@@ -271,6 +273,7 @@ function CompactRelatedRow({
 }) {
   return (
     <div
+      data-layout="series-related-item"
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -314,6 +317,7 @@ function EvidenceRow({
 }) {
   return (
     <div
+      data-layout="relation-evidence-item"
       style={{
         display: 'block',
         backgroundColor: theme.surface,
@@ -345,31 +349,54 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
   width,
 }) => {
   const tone = stateColor(viewModel.state, theme);
-  const visibleSteps = viewModel.steps.slice(
+  const viewportWidth = width ?? 960;
+  const presentationLimits =
+    viewportWidth <= 360
+      ? { steps: 5, related: 8, edges: 12, samples: 4, voiceWorks: 2 }
+      : viewportWidth < 520
+        ? { steps: 8, related: 12, edges: 24, samples: 6, voiceWorks: 3 }
+        : viewportWidth < 900
+          ? { steps: 12, related: 16, edges: 32, samples: 6, voiceWorks: 5 }
+          : { steps: 17, related: 24, edges: 64, samples: 8, voiceWorks: 8 };
+  const boundedSteps = viewModel.steps.slice(
     0,
     Math.min(17, Math.max(1, Math.floor(viewModel.coverage.maxNodes) + 1)),
   );
-  const visibleRelated = viewModel.related.slice(
+  const visibleSteps = boundedSteps.slice(0, presentationLimits.steps);
+  const omittedSteps = Math.max(0, boundedSteps.length - visibleSteps.length);
+  const boundedRelated = viewModel.related.slice(
     0,
     Math.min(SERIES_MAX_RENDERED_RELATED, Math.max(0, Math.floor(viewModel.coverage.relatedLimit))),
   );
-  const visibleEdges = viewModel.edges.slice(
+  const visibleRelated = boundedRelated.slice(0, presentationLimits.related);
+  const omittedRelated = Math.max(
+    0,
+    viewModel.coverage.uniqueRelatedReturned - visibleRelated.length,
+  );
+  const boundedEdges = viewModel.edges.slice(
     0,
     Math.min(
       SERIES_MAX_RENDERED_EDGES,
       Math.max(0, Math.floor(viewModel.coverage.edgeEvidenceLimit)),
     ),
   );
-  const visibleSamples = viewModel.excluded.samples.slice(0, 8);
+  const visibleEdges = boundedEdges.slice(0, presentationLimits.edges);
+  const omittedEdges = Math.max(0, viewModel.coverage.edgeEvidenceReturned - visibleEdges.length);
+  const visibleSamples = viewModel.excluded.samples.slice(0, presentationLimits.samples);
   const visibleWarnings = viewModel.warnings.slice(0, 4);
   const visibleLimitations = viewModel.limitations.slice(0, 3);
-  const stepBasis = width && width >= 900 ? 'calc(50% - 6px)' : '100%';
-  const compactSteps = width !== undefined && width < 900 && visibleSteps.length > 8;
-  const compactRelated = visibleRelated.length > 12;
-  const evidenceGridColumns = 'repeat(2, minmax(0, 1fr))';
-  const compactRelatedGridColumns = width && width >= 900 ? 'repeat(2, minmax(0, 1fr))' : '1fr';
+  const stepBasis = viewportWidth >= 900 ? 'calc(50% - 6px)' : '100%';
+  const compactSteps = viewportWidth < 900;
+  const compactRelated = viewportWidth < 900;
+  const evidenceGridColumns =
+    viewportWidth <= 360 ? '1fr' : 'repeat(2, minmax(0, 1fr))';
+  const compactRelatedGridColumns = viewportWidth >= 900 ? 'repeat(2, minmax(0, 1fr))' : '1fr';
   const root = viewModel.root;
   const voiceActorPresence = viewModel.voiceActorPresence;
+  const visibleVoiceWorks = voiceActorPresence?.works.slice(0, presentationLimits.voiceWorks) ?? [];
+  const omittedVoiceWorks = voiceActorPresence
+    ? Math.max(0, voiceActorPresence.works.length - visibleVoiceWorks.length)
+    : 0;
 
   return (
     <CardFrame theme={theme} width={width}>
@@ -449,7 +476,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
       ) : null}
 
       <div style={{ color: theme.accent, fontWeight: 800, fontSize: '15px' }}>
-        建议观看步骤 ({visibleSteps.length}){compactSteps ? ' · 紧凑展示' : ''}
+        建议观看步骤 ({boundedSteps.length}){compactSteps ? ' · 紧凑展示' : ''}
       </div>
       {visibleSteps.length > 0 ? (
         compactSteps ? (
@@ -473,6 +500,11 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
       ) : (
         <div style={{ color: theme.textMuted, fontSize: '12px' }}>没有可确认的观看步骤。</div>
       )}
+      {omittedSteps > 0 ? (
+        <div data-layout="watch-order-step-summary" style={{ color: theme.textMuted, fontSize: '11px' }}>
+          当前图片显示 {visibleSteps.length}/{boundedSteps.length} 步，另有 {omittedSteps} 步未展开；覆盖统计仍按完整范围计算。
+        </div>
+      ) : null}
 
       {voiceActorPresence ? (
         <div
@@ -501,7 +533,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
                   ? '起点不适用，未请求人物角色来源。'
                   : '仅表示当前匿名可见行中的结果。'}
           </div>
-          {voiceActorPresence.works.map((work) => (
+          {visibleVoiceWorks.map((work) => (
             <div
               key={work.subjectId}
               style={{
@@ -556,9 +588,9 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
               ) : null}
             </div>
           ))}
-          {voiceActorPresence.omittedWorks > 0 ? (
+          {voiceActorPresence.omittedWorks + omittedVoiceWorks > 0 ? (
             <div style={{ color: theme.textMuted, fontSize: '10px' }}>
-              另有 {voiceActorPresence.omittedWorks} 部命中作品未在卡片展开。
+              另有 {voiceActorPresence.omittedWorks + omittedVoiceWorks} 部命中作品未在图片中展开。
             </div>
           ) : null}
           <div
@@ -600,7 +632,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
         }}
       >
         <div style={{ color: theme.accent, fontWeight: 800, fontSize: '14px' }}>
-          关系证据 ({visibleEdges.length})
+          关系证据（已返回 {viewModel.coverage.edgeEvidenceReturned} 条）
         </div>
         {visibleEdges.length > 0 ? (
           <div
@@ -621,6 +653,11 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
         ) : (
           <div style={{ color: theme.textMuted, fontSize: '12px' }}>没有返回关系边证据。</div>
         )}
+        {omittedEdges > 0 ? (
+          <div data-layout="relation-evidence-summary" style={{ color: theme.textMuted, fontSize: '11px' }}>
+            当前图片显示 {visibleEdges.length}/{viewModel.coverage.edgeEvidenceReturned} 条，另有 {omittedEdges} 条未展开；覆盖统计保留完整数量。
+          </div>
+        ) : null}
         {viewModel.coverage.edgeEvidenceTruncated ? (
           <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.45 }}>
             边证据已达到 {viewModel.coverage.edgeEvidenceLimit}{' '}
@@ -642,7 +679,8 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
           }}
         >
           <div style={{ color: theme.accent, fontWeight: 800, fontSize: '14px' }}>
-            其他有界关系证据 ({visibleRelated.length}){compactRelated ? ' · 紧凑展示' : ''}
+            其他有界关系证据（已返回 {viewModel.coverage.uniqueRelatedReturned} 条）
+            {compactRelated ? ' · 紧凑展示' : ''}
           </div>
           {compactRelated ? (
             <div
@@ -661,6 +699,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
               {visibleRelated.map((item) => (
                 <div
                   key={item.id}
+                  data-layout="series-related-item"
                   style={{
                     display: 'flex',
                     gap: theme.spacing.sm,
@@ -706,6 +745,11 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
               ))}
             </div>
           )}
+          {omittedRelated > 0 ? (
+            <div data-layout="series-related-summary" style={{ color: theme.textMuted, fontSize: '11px' }}>
+              当前图片显示 {visibleRelated.length}/{viewModel.coverage.uniqueRelatedReturned} 条，另有 {omittedRelated} 条未展开；覆盖统计保留完整数量。
+            </div>
+          ) : null}
           {viewModel.coverage.relatedEvidenceTruncated ? (
             <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.45 }}>
               关系证据已按 relatedLimit={viewModel.coverage.relatedLimit} 有界截断。
@@ -757,9 +801,9 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
               <span style={{ color: theme.warning }}>{exclusionLabel(sample.exclusionReason)}</span>
             </div>
           ))}
-          {viewModel.excluded.samples.length > visibleSamples.length ? (
+          {viewModel.excluded.count > visibleSamples.length ? (
             <div style={{ color: theme.textMuted, fontSize: '11px' }}>
-              另有 {viewModel.excluded.samples.length - visibleSamples.length} 条排除样本未展开。
+              另有 {viewModel.excluded.count - visibleSamples.length} 条排除条目未在图片中展开。
             </div>
           ) : null}
         </div>

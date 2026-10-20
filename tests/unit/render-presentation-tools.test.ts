@@ -49,6 +49,13 @@ describe('render target defaults', () => {
       width: 360,
       deviceScaleFactor: 2,
     });
+    expect(getDefaultRenderOptions('chat', 'bangumi-light', 'graphic-zine')).toEqual({
+      width: 360,
+      deviceScaleFactor: 2,
+      theme: 'bangumi-light',
+      designPack: 'graphic-zine',
+    });
+    expect(getDefaultRenderOptions('full', 'unknown', 'unknown')).toEqual({});
   });
 });
 

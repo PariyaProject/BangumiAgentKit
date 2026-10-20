@@ -1,7 +1,12 @@
 import crypto from 'node:crypto';
 import sharp from 'sharp';
 import { RenderViewModel } from './view-models/index.js';
-import { RenderThemeName } from './themes/index.js';
+import {
+  DEFAULT_RENDER_DESIGN_PACK,
+  DEFAULT_RENDER_THEME,
+  RenderDesignPackName,
+  RenderThemeName,
+} from './themes/index.js';
 import { renderHtmlTemplate } from './template-engine.js';
 import { BrowserPool } from './browser-pool.js';
 import { AssetResolver, RenderWarning, ResolvedAsset } from './asset-resolver.js';
@@ -10,6 +15,7 @@ import { RendererLruCache } from './lru-cache.js';
 
 export interface RenderOptions {
   theme?: RenderThemeName;
+  designPack?: RenderDesignPackName;
   width?: number;
   deviceScaleFactor?: number;
   format?: 'png';
@@ -27,7 +33,7 @@ export interface RenderResult {
   warnings: RenderWarning[];
 }
 
-export const RENDERER_VERSION = '1.0.0';
+export const RENDERER_VERSION = '1.1.0';
 
 const DISCOVERY_MAX_RENDERED_ITEMS = 12;
 const SERIES_MAX_RENDERED_STEPS = 17;
@@ -63,7 +69,8 @@ export function computeRenderCacheKey(
   options: RenderOptions = {},
   assetMap: Record<string, string> = {},
 ): string {
-  const theme = options.theme || 'bangumi-dark';
+  const theme = options.theme || DEFAULT_RENDER_THEME;
+  const designPack = options.designPack || DEFAULT_RENDER_DESIGN_PACK;
   const width = options.width || 960;
   const dpr = options.deviceScaleFactor || 2;
   const format = options.format || 'png';
@@ -71,7 +78,7 @@ export function computeRenderCacheKey(
   const vmCanonical = canonicalizeJson(viewModel);
   const assetCanonical = canonicalizeJson(assetMap);
 
-  const rawKey = `${RENDERER_VERSION}:${viewModel.template}:${viewModel.version}:${theme}:${width}:${dpr}:${format}:${vmCanonical}:${assetCanonical}`;
+  const rawKey = `${RENDERER_VERSION}:${viewModel.template}:${viewModel.version}:${theme}:${designPack}:${width}:${dpr}:${format}:${vmCanonical}:${assetCanonical}`;
   return crypto.createHash('sha256').update(rawKey).digest('hex');
 }
 
@@ -121,6 +128,8 @@ export function extractImageUrls(viewModel: RenderViewModel): string[] {
     }
   } else if (viewModel.template === 'person-profile') {
     if (viewModel.person.image) urls.add(viewModel.person.image);
+  } else if (viewModel.template === 'subject-stats') {
+    if (viewModel.subjectIdentity.coverImage) urls.add(viewModel.subjectIdentity.coverImage);
   } else if (viewModel.template === 'subject-overview') {
     if (viewModel.subject.image) urls.add(viewModel.subject.image);
     for (const item of viewModel.cast.items.slice(0, SUBJECT_OVERVIEW_MAX_RENDERED_CAST)) {
@@ -312,7 +321,8 @@ export class RenderService {
     const normalizedViewModel = normalizeRenderViewModel(viewModel);
     const width = options.width ?? 960;
     const dpr = options.deviceScaleFactor ?? 2;
-    const theme = options.theme ?? 'bangumi-dark';
+    const theme = options.theme ?? DEFAULT_RENDER_THEME;
+    const designPack = options.designPack ?? DEFAULT_RENDER_DESIGN_PACK;
     const cacheEnabled =
       options.cache !== false &&
       !PRIVATE_COLLECTION_RENDER_TEMPLATES.has(normalizedViewModel.template);
@@ -364,7 +374,7 @@ export class RenderService {
 
       const cacheKey = computeRenderCacheKey(
         normalizedViewModel,
-        { ...options, theme, width, deviceScaleFactor: dpr },
+        { ...options, theme, designPack, width, deviceScaleFactor: dpr },
         resolvedImages,
       );
       if (cacheEnabled) {
@@ -381,7 +391,13 @@ export class RenderService {
         );
       }
 
-      const html = renderHtmlTemplate(normalizedViewModel, theme, resolvedImages, width);
+      const html = renderHtmlTemplate(
+        normalizedViewModel,
+        theme,
+        resolvedImages,
+        width,
+        designPack,
+      );
       const buffer = await this.browserPool.renderHtmlToBuffer(html, {
         width,
         deviceScaleFactor: dpr,

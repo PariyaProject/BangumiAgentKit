@@ -51,7 +51,13 @@ describe('subject card responsive title hierarchy', () => {
       const layout = await measureRenderRootLayout(html, width);
       const title = layout.titleBlocks.find((block) => block.title === '孤独摇滚！');
 
-      expect(html, `localized media label at ${width}px`).toContain('类型: 动画');
+      expect(html, `localized media label at ${width}px`).toContain(
+        'data-layout="no-wrap-metadata-label"',
+      );
+      expect(html, `localized media value at ${width}px`).toContain(
+        'data-layout="no-wrap-metadata-value"',
+      );
+      expect(html, `localized media value at ${width}px`).toContain('>动画</span>');
       expect(layout.clientWidth, `root client width at ${width}px`).toBe(width);
       expect(layout.scrollWidth, `root scroll width at ${width}px`).toBe(width);
       expect(layout.overflowing, `overflow at ${width}px`).toEqual([]);

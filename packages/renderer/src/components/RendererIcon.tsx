@@ -3,6 +3,7 @@ import type { SemanticToneName, ThemeTokens } from '../themes/index.js';
 
 export type RendererIconName =
   | 'subject'
+  | 'screen'
   | 'cast'
   | 'person'
   | 'calendar'
@@ -26,6 +27,7 @@ export type RendererIconName =
 
 const iconLabels: Record<RendererIconName, string> = {
   subject: '条目档案',
+  screen: '作品类型',
   cast: '角色与声优',
   person: '人物档案',
   calendar: '放送日历',
@@ -54,6 +56,7 @@ export function getRendererIconLabel(name: RendererIconName): string {
 
 const iconTones: Record<RendererIconName, SemanticToneName> = {
   subject: 'coral',
+  screen: 'blue',
   cast: 'plum',
   person: 'blue',
   calendar: 'butter',
@@ -85,6 +88,12 @@ const iconPaths: Record<RendererIconName, React.ReactNode> = {
     <>
       <rect x="4" y="3.5" width="16" height="17" rx="2.2" />
       <path d="M8 7.5h8M8 11h8M8 14.5h5" />
+    </>
+  ),
+  screen: (
+    <>
+      <rect x="3.5" y="7" width="17" height="12" rx="1.8" />
+      <path d="m8 3.5 4 3 4-3M7 15h3m4 0h3" />
     </>
   ),
   cast: (
@@ -226,10 +235,21 @@ export const RendererIcon: React.FC<RendererIconProps> = ({
   tone,
 }) => {
   const toneTokens = theme.tones[tone ?? getRendererIconTone(name)];
+  const pack = theme.designPack;
+  const badgeBackground =
+    pack === 'graphic-zine'
+      ? toneTokens.foreground
+      : pack === 'clean-gallery'
+        ? theme.surface
+        : toneTokens.surface;
+  const badgeBorder =
+    pack === 'graphic-zine' ? `2px solid ${theme.text}` : `1px solid ${toneTokens.border}`;
+
   return (
     <span
       aria-hidden="true"
       data-tone={tone ?? getRendererIconTone(name)}
+      data-icon-pack={pack}
       style={{
         width: badge ? 32 : size,
         height: badge ? 32 : size,
@@ -237,10 +257,11 @@ export const RendererIcon: React.FC<RendererIconProps> = ({
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: toneTokens.foreground,
-        borderRadius: badge ? theme.radius.sm : undefined,
-        backgroundColor: badge ? toneTokens.surface : undefined,
-        border: badge ? `1px solid ${toneTokens.border}` : undefined,
+        color: badge && pack === 'graphic-zine' ? theme.surface : toneTokens.foreground,
+        borderRadius: badge ? theme.design.badgeRadius : undefined,
+        backgroundColor: badge ? badgeBackground : undefined,
+        border: badge ? badgeBorder : undefined,
+        boxShadow: badge && pack === 'graphic-zine' ? `2px 2px 0 ${toneTokens.border}` : undefined,
       }}
     >
       <svg
@@ -249,7 +270,7 @@ export const RendererIcon: React.FC<RendererIconProps> = ({
         height={size}
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth={theme.design.iconStrokeWidth}
         strokeLinecap="round"
         strokeLinejoin="round"
       >
