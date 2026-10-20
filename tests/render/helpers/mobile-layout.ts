@@ -54,6 +54,8 @@ interface LayoutMeasurement {
   contentOverflowing: Array<{
     tagName: string;
     className: string;
+    layoutContext: string | null;
+    elementPath: string;
     clientWidth: number;
     scrollWidth: number;
     text: string;
@@ -248,8 +250,34 @@ export async function renderThemePreview(
           titleWidth: heading.clientWidth,
           subtitle: (subtitle?.textContent ?? '').trim(),
           subtitleWidth: subtitle?.clientWidth ?? 0,
+          subtitleHeight: Math.round((subtitle?.getBoundingClientRect().height ?? 0) * 100) / 100,
         };
       });
+      const layoutElements = Array.from(root.querySelectorAll('[data-layout]'))
+        .filter((element) =>
+          [
+            'gallery-subject-date-label',
+            'gallery-subject-date-value',
+            'score-value',
+            'subject-stats-identity-chip',
+            'timeline-coverage-item',
+            'timeline-event-meta-item',
+            'dashboard-metric-label',
+            'dashboard-metric-value',
+            'dashboard-metric-detail',
+          ].includes(element.getAttribute('data-layout') ?? ''),
+        )
+        .map((element) => {
+          const bounds = element.getBoundingClientRect();
+          return {
+            layout: element.getAttribute('data-layout') ?? '',
+            left: Math.round(bounds.left),
+            top: Math.round(bounds.top),
+            width: Math.round(bounds.width),
+            height: Math.round(bounds.height),
+            text: (element.textContent ?? '').trim(),
+          };
+        });
       const overflowing = Array.from(root.querySelectorAll('*'))
         .map((element) => {
           const bounds = element.getBoundingClientRect();
@@ -300,6 +328,7 @@ export async function renderThemePreview(
         clientWidth: root.clientWidth,
         scrollWidth: root.scrollWidth,
         titleBlocks,
+        layoutElements,
         overflowing,
         contentOverflowing,
       };
