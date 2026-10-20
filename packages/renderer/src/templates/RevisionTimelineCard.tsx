@@ -63,14 +63,39 @@ function revisionTypePresentation(type: number): RevisionTypePresentation {
   );
 }
 
+function formatRevisionTimestamp(value?: string, includeMidnightTime = false): string {
+  if (!value) return '创建时间未知';
+  const isoDate =
+    /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?/u.exec(
+      value,
+    );
+  if (!isoDate) return value;
+
+  const [, year, month, day, hour, minute, rawZone] = isoDate;
+  if (
+    !hour ||
+    (!includeMidnightTime &&
+      hour === '00' &&
+      minute === '00' &&
+      (!rawZone || rawZone === 'Z' || rawZone === '+00:00' || rawZone === '+0000'))
+  ) {
+    return `${year}-${month}-${day}`;
+  }
+  const zone = rawZone === 'Z' ? ' UTC' : rawZone ? ` ${rawZone}` : '';
+  return `${year}-${month}-${day} ${hour}:${minute}${zone}`;
+}
+
 export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
   viewModel,
   theme,
   width,
 }) => {
   const renderWidth = width ?? 960;
+  const gallery = theme.designPack === 'clean-gallery';
+  const zine = theme.designPack === 'graphic-zine';
+  const narrow = renderWidth < 360;
   const timelineLimit = renderWidth < 520 ? 4 : renderWidth < 900 ? 6 : 10;
-  const summaryLimit = renderWidth < 520 ? 160 : 300;
+  const summaryLimit = narrow ? 72 : renderWidth < 520 ? 100 : 300;
   const items = viewModel.items.slice(0, timelineLimit);
   const stateLabel =
     viewModel.state === 'complete'
@@ -85,27 +110,60 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
         subtitle={`${ENTITY_LABELS[viewModel.entityType]} ${viewModel.entityId} · ${stateLabel}`}
         theme={theme}
         icon="history"
+        titleMaxLines={2}
       />
 
       <div
         data-layout="timeline-coverage"
+        role="group"
+        aria-label="修订覆盖信息"
         style={{
+          display: renderWidth <= 360 ? 'grid' : 'flex',
+          gridTemplateColumns: renderWidth <= 360 ? 'repeat(2, minmax(0, 1fr))' : undefined,
+          flexWrap: renderWidth <= 360 ? undefined : 'wrap',
+          alignItems: 'stretch',
+          gap: theme.spacing.xs,
           color: theme.textMuted,
-          fontSize: '12px',
-          lineHeight: 1.5,
-          backgroundColor: theme.surfaceAlt,
-          borderRadius: theme.radius.md,
-          padding: theme.spacing.sm,
+          fontSize: '11px',
+          lineHeight: 1.35,
         }}
       >
-        观察 {viewModel.coverage.observed} 条 · 返回 {viewModel.coverage.returned} 条 · 图片显示{' '}
-        {items.length} 条 ·
-        {` 总数 ${viewModel.coverage.totalKind === 'exact' ? viewModel.coverage.total : '未知'}`}
-        {viewModel.coverage.truncated ? ' · 有界样本' : ''}
+        {[
+          `观察 ${viewModel.coverage.observed} 条`,
+          `返回 ${viewModel.coverage.returned} 条`,
+          `图片显示 ${items.length} 条`,
+          `总数 ${viewModel.coverage.totalKind === 'exact' ? viewModel.coverage.total : '未知'}`,
+          ...(viewModel.coverage.truncated ? ['有界样本'] : []),
+        ].map((item) => (
+          <span
+            key={item}
+            data-layout="timeline-coverage-item"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: 0,
+              whiteSpace: 'nowrap',
+              padding: '3px 8px',
+              color: zine ? theme.text : theme.textMuted,
+              backgroundColor: zine
+                ? theme.tones.butter.surface
+                : gallery
+                  ? theme.surface
+                  : theme.surfaceAlt,
+              border: `${zine ? '2px' : '1px'} solid ${zine ? theme.text : theme.border}`,
+              borderRadius: zine ? theme.design.badgeRadius : gallery ? '2px' : '999px',
+              boxShadow: zine ? `2px 2px 0 ${theme.border}` : undefined,
+            }}
+          >
+            {item}
+          </span>
+        ))}
       </div>
 
       {viewModel.state === 'unavailable' || viewModel.items.length === 0 ? (
         <div
+          data-render-mask="panel"
           style={{
             color: theme.warning,
             backgroundColor: theme.surfaceAlt,
@@ -113,6 +171,7 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
             fontSize: '12px',
+            clipPath: theme.design.masks.panel,
           }}
         >
           {viewModel.state === 'unavailable'
@@ -139,9 +198,14 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
             <div
               key={item.id}
               role="listitem"
+              data-timeline-pack={theme.designPack}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '32px minmax(0, 1fr)',
+                gridTemplateColumns: gallery
+                  ? '32px minmax(0, 1fr)'
+                  : zine
+                    ? '38px minmax(0, 1fr)'
+                    : '32px minmax(0, 1fr)',
                 gap: theme.spacing.sm,
                 minWidth: 0,
               }}
@@ -175,32 +239,61 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
                 ) : null}
               </div>
               <article
+                data-render-mask="panel"
                 style={{
                   minWidth: 0,
-                  backgroundColor: theme.surfaceAlt,
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: theme.radius.md,
+                  backgroundColor: gallery ? theme.surface : theme.surfaceAlt,
+                  border: gallery
+                    ? '0'
+                    : `${zine ? '2px' : '1px'} solid ${zine ? tone.foreground : theme.border}`,
+                  borderBottom: gallery ? `1px solid ${theme.border}` : undefined,
+                  borderLeft: zine ? `5px solid ${tone.foreground}` : undefined,
+                  borderRadius: gallery ? '0' : zine ? theme.design.badgeRadius : theme.radius.md,
+                  clipPath: theme.design.masks.panel,
+                  boxShadow: zine ? `3px 3px 0 ${tone.border}` : undefined,
                   padding: theme.spacing.md,
                   display: 'flex',
                   flexDirection: 'column',
                   gap: theme.spacing.xs,
                 }}
               >
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+                <div
+                  data-layout="timeline-event-meta"
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: `0 ${theme.spacing.sm}`,
+                    minWidth: 0,
+                    color: theme.textMuted,
+                    fontSize: '11px',
+                  }}
+                >
                   <span
                     style={{
                       color: tone.foreground,
-                      backgroundColor: tone.surface,
-                      borderRadius: '999px',
+                      backgroundColor: zine ? theme.surface : tone.surface,
+                      border: zine ? `2px solid ${tone.foreground}` : undefined,
+                      borderRadius: zine ? theme.design.badgeRadius : gallery ? '0' : '999px',
+                      clipPath: zine ? 'polygon(0 0, 100% 0, 94% 100%, 0 100%)' : undefined,
                       padding: '3px 8px',
                       fontSize: '11px',
                       fontWeight: 700,
                     }}
                   >
-                    {item.createdAt ? item.createdAt : '创建时间未知'}
+                    {formatRevisionTimestamp(item.createdAt)}
                   </span>
-                  <span style={{ color: theme.textMuted, fontSize: '11px', padding: '3px 0' }}>
-                    {presentation.label} · 类型 {item.type} · 修订 ID {item.id}
+                  <span
+                    data-layout="timeline-event-meta-item"
+                    style={{ whiteSpace: 'nowrap', padding: '3px 0' }}
+                  >
+                    {presentation.label} · 类型 {item.type}
+                  </span>
+                  <span
+                    data-layout="timeline-event-meta-item"
+                    style={{ whiteSpace: 'nowrap', padding: '3px 0' }}
+                  >
+                    修订 ID {item.id}
                   </span>
                 </div>
                 {summaryTruncated ? (
@@ -212,9 +305,10 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
                   data-layout="timeline-summary"
                   style={{
                     color: theme.text,
-                    fontWeight: 700,
-                    fontSize: '14px',
-                    lineHeight: 1.5,
+                    fontFamily: zine ? theme.design.displayFontFamily : theme.design.bodyFontFamily,
+                    fontWeight: zine ? 700 : 600,
+                    fontSize: zine ? (narrow ? '14px' : '15px') : narrow ? '13px' : '14px',
+                    lineHeight: 1.45,
                     overflowWrap: 'anywhere',
                     wordBreak: 'break-word',
                   }}
@@ -274,13 +368,34 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
         </div>
       ) : null}
       {viewModel.source ? (
-        <div style={{ color: theme.textMuted, fontSize: '10px' }}>
-          来源：{viewModel.source.label} · {viewModel.source.operation}
-          {viewModel.source.retrievedAt
-            ? ` · 获取于 ${viewModel.source.retrievedAt}`
-            : viewModel.source.attemptedAt
-              ? ` · 尝试于 ${viewModel.source.attemptedAt}`
-              : ''}
+        <div
+          data-layout="timeline-source-info"
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'baseline',
+            gap: `${theme.spacing.xs} ${theme.spacing.sm}`,
+            color: theme.textMuted,
+            fontSize: '10px',
+            lineHeight: 1.4,
+            minWidth: 0,
+          }}
+        >
+          <span
+            data-layout="timeline-source-descriptor"
+            style={{ minWidth: 0, overflowWrap: 'anywhere' }}
+          >
+            来源：{viewModel.source.label} · {viewModel.source.operation}
+          </span>
+          {viewModel.source.retrievedAt ? (
+            <span data-layout="timeline-source-timestamp" style={{ whiteSpace: 'nowrap' }}>
+              获取于 {formatRevisionTimestamp(viewModel.source.retrievedAt, true)}
+            </span>
+          ) : viewModel.source.attemptedAt ? (
+            <span data-layout="timeline-source-timestamp" style={{ whiteSpace: 'nowrap' }}>
+              尝试于 {formatRevisionTimestamp(viewModel.source.attemptedAt, true)}
+            </span>
+          ) : null}
         </div>
       ) : null}
 

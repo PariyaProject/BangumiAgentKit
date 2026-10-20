@@ -42,6 +42,7 @@ function panelStyle(theme: ThemeTokens): React.CSSProperties {
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,
     minWidth: 0,
+    clipPath: theme.design.masks.panel,
   };
 }
 
@@ -124,7 +125,7 @@ export const CharacterCreditIntegrityCard: React.FC<CharacterCreditIntegrityCard
         }}
       >
         {summary.map(([label, value]) => (
-          <div key={label} style={panelStyle(theme)}>
+          <div key={label} data-render-mask="panel" style={panelStyle(theme)}>
             <div style={{ color: theme.textMuted, fontSize: '10px' }}>{label}</div>
             <div
               style={{
@@ -144,6 +145,7 @@ export const CharacterCreditIntegrityCard: React.FC<CharacterCreditIntegrityCard
 
       {!character ? (
         <div
+          data-render-mask="panel"
           style={{ ...panelStyle(theme), color: theme.warning, fontSize: '12px', lineHeight: 1.5 }}
         >
           未取得可验证的角色详情；作品和人物的空列表不构成不存在结论。
@@ -199,7 +201,7 @@ export const CharacterCreditIntegrityCard: React.FC<CharacterCreditIntegrityCard
       ) : null}
 
       {viewModel.risks.length > 0 ? (
-        <section style={panelStyle(theme)}>
+        <section data-render-mask="panel" style={panelStyle(theme)}>
           <h2 style={{ color: theme.warning, fontSize: '14px', margin: 0 }}>
             身份风险（不执行合并）
           </h2>

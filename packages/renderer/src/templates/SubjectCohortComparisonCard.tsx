@@ -150,6 +150,59 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
   width,
 }) => {
   const dimensions = viewModel.cohorts;
+  const viewportWidth = width ?? 960;
+  const visibleSubjectsPerCohort =
+    viewportWidth <= 360 ? 3 : viewportWidth < 520 ? 5 : viewportWidth < 760 ? 6 : 8;
+  const warningLimit = 3;
+  const limitationLimit = viewportWidth <= 360 ? 2 : viewportWidth < 520 ? 3 : 5;
+  const compactTextClamp =
+    viewportWidth <= 360
+      ? {
+          display: '-webkit-box',
+          WebkitBoxOrient: 'vertical' as const,
+          WebkitLineClamp: 2,
+          overflow: 'hidden',
+        }
+      : viewportWidth <= 520
+        ? {
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical' as const,
+            WebkitLineClamp: 3,
+            overflow: 'hidden',
+          }
+        : {};
+  const querySummaryClamp =
+    viewportWidth <= 360
+      ? {
+          display: '-webkit-box',
+          WebkitBoxOrient: 'vertical' as const,
+          WebkitLineClamp: 4,
+          overflow: 'hidden',
+        }
+      : viewportWidth <= 520
+        ? {
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical' as const,
+            WebkitLineClamp: 6,
+            overflow: 'hidden',
+          }
+        : {};
+  const cohortLabelClamp =
+    viewportWidth <= 360
+      ? {
+          display: '-webkit-box',
+          WebkitBoxOrient: 'vertical' as const,
+          WebkitLineClamp: 2,
+          overflow: 'hidden',
+        }
+      : viewportWidth <= 520
+        ? {
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical' as const,
+            WebkitLineClamp: 3,
+            overflow: 'hidden',
+          }
+        : {};
   const showComparison = dimensions.length === 2;
   const officialOperations =
     viewModel.source.official.operations
@@ -177,27 +230,34 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
         {dimensions.map((cohort, index) => {
           const queryCoverage = cohort.coverage.query.coverage;
           const omittedSubjects = viewModel.coverage.omittedSubjectsPerCohort[index] ?? 0;
+          const visibleSubjects = cohort.subjects.slice(0, visibleSubjectsPerCohort);
+          const omittedForPresentation = cohort.subjects.length - visibleSubjects.length;
+          const returnedSubjects = cohort.subjects.length + omittedSubjects;
           return (
             <section
               key={`${cohort.label}-${index}`}
+              data-render-mask="panel"
               style={{
                 backgroundColor: theme.surfaceAlt,
                 border: `1px solid ${theme.border}`,
                 borderRadius: theme.radius.md,
                 padding: theme.spacing.md,
                 minWidth: 0,
+                clipPath: theme.design.masks.panel,
               }}
             >
               <div style={{ color: theme.accent, fontSize: '10px', letterSpacing: '0.08em' }}>
                 {showComparison ? `分组 ${index === 0 ? 'A' : 'B'}` : '样本分组'}
               </div>
               <div
+                data-layout="cohort-label"
                 style={{
                   color: theme.text,
                   fontSize: '17px',
                   fontWeight: 700,
                   marginTop: theme.spacing.xs,
                   overflowWrap: 'anywhere',
+                  ...cohortLabelClamp,
                 }}
               >
                 {cohort.label}
@@ -209,6 +269,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                   lineHeight: 1.5,
                   marginTop: theme.spacing.xs,
                   overflowWrap: 'anywhere',
+                  ...querySummaryClamp,
                 }}
               >
                 {cohort.querySummary}
@@ -248,9 +309,10 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
-                  {cohort.subjects.map((subject) => (
+                  {visibleSubjects.map((subject) => (
                     <div
                       key={subject.id}
+                      data-layout="cohort-subject-item"
                       style={{
                         borderTop: `1px solid ${theme.border}`,
                         paddingTop: theme.spacing.xs,
@@ -258,21 +320,91 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                       }}
                     >
                       <div
-                        style={{ color: theme.text, fontSize: '11px', overflowWrap: 'anywhere' }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '4px',
+                          minWidth: 0,
+                        }}
                       >
-                        {subject.displayName}{' '}
-                        <span style={{ color: theme.textMuted }}>#{subject.id}</span>
+                        <span
+                          style={{
+                            color: theme.text,
+                            fontSize: '11px',
+                            minWidth: 0,
+                            overflowWrap: 'break-word',
+                            ...(viewportWidth <= 520
+                              ? {
+                                  display: '-webkit-box',
+                                  WebkitBoxOrient: 'vertical',
+                                  WebkitLineClamp: viewportWidth <= 360 ? 3 : 4,
+                                  overflow: 'hidden',
+                                }
+                              : {}),
+                          }}
+                        >
+                          {subject.displayName}
+                        </span>
+                        <span
+                          style={{ color: theme.textMuted, flex: '0 0 auto', fontSize: '10px' }}
+                        >
+                          #{subject.id}
+                        </span>
                       </div>
-                      <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-                        评分 {numberLabel(subject.score, 2)} · 评分人数{' '}
-                        {subject.ratingCountState === 'invalid'
-                          ? '无效'
-                          : numberLabel(subject.ratingCount, 0)}{' '}
-                        · 收藏人数 {numberLabel(subject.collectionTotal, 0)}
-                        {' · '}报告话数 {numberLabel(subject.episodesReported, 0)} · 评分分布离散度{' '}
-                        {numberLabel(subject.ratingStandardDeviation, 2)}（样本数{' '}
-                        {numberLabel(subject.ratingHistogramPopulation, 0)}）
-                      </div>
+                      {viewportWidth < 520 ? (
+                        <div
+                          data-layout="cohort-subject-metrics"
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                            gap: '3px 5px',
+                            marginTop: '3px',
+                            color: theme.textMuted,
+                            fontSize: '9px',
+                            lineHeight: 1.35,
+                          }}
+                        >
+                          {[
+                            ['评分', numberLabel(subject.score, 2)],
+                            [
+                              '评分人数',
+                              subject.ratingCountState === 'invalid'
+                                ? '无效'
+                                : numberLabel(subject.ratingCount, 0),
+                            ],
+                            ['收藏', numberLabel(subject.collectionTotal, 0)],
+                            ['报告话数', numberLabel(subject.episodesReported, 0)],
+                            [
+                              '离散度',
+                              `${numberLabel(subject.ratingStandardDeviation, 2)} · 样本 ${numberLabel(subject.ratingHistogramPopulation, 0)}`,
+                            ],
+                          ].map(([label, value]) => (
+                            <div
+                              key={`${subject.id}-${label}`}
+                              style={{
+                                backgroundColor: theme.surfaceAlt,
+                                borderRadius: theme.radius.sm,
+                                padding: '3px 4px',
+                                minWidth: 0,
+                                overflowWrap: 'break-word',
+                              }}
+                            >
+                              {label} <strong style={{ color: theme.text }}>{value}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
+                          评分 {numberLabel(subject.score, 2)} · 评分人数{' '}
+                          {subject.ratingCountState === 'invalid'
+                            ? '无效'
+                            : numberLabel(subject.ratingCount, 0)}{' '}
+                          · 收藏人数 {numberLabel(subject.collectionTotal, 0)}
+                          {' · '}报告话数 {numberLabel(subject.episodesReported, 0)} ·
+                          评分分布离散度 {numberLabel(subject.ratingStandardDeviation, 2)}（样本数{' '}
+                          {numberLabel(subject.ratingHistogramPopulation, 0)}）
+                        </div>
+                      )}
                       {(subject.ratingStandardDeviationConflicts || []).map((conflict, index) => (
                         <div
                           key={`${subject.id}-rating-conflict-${index}`}
@@ -303,11 +435,19 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                   ))}
                 </div>
               )}
-              {omittedSubjects > 0 ? (
+              {omittedSubjects + omittedForPresentation > 0 ? (
                 <div
-                  style={{ color: theme.textMuted, fontSize: '10px', marginTop: theme.spacing.xs }}
+                  data-layout="cohort-subject-summary"
+                  style={{
+                    color: theme.textMuted,
+                    fontSize: '10px',
+                    lineHeight: 1.45,
+                    marginTop: theme.spacing.xs,
+                  }}
                 >
-                  另有 {omittedSubjects} 条已返回样本未在卡片展开。
+                  图片展示 {visibleSubjects.length}/{returnedSubjects} 条已返回样本；另有{' '}
+                  {omittedSubjects + omittedForPresentation}{' '}
+                  条未展开，聚合指标仍按已取得的有效样本计算。
                 </div>
               ) : null}
             </section>
@@ -394,11 +534,13 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
       {hasWarnings ? (
         <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
           <div style={{ fontWeight: 700 }}>数据说明</div>
-          {viewModel.warnings.slice(0, 3).map((warning, index) => (
-            <div key={`${warning.code}-${index}`}>{warningText(warning.code, warning.message)}</div>
+          {viewModel.warnings.slice(0, warningLimit).map((warning, index) => (
+            <div key={`${warning.code}-${index}`} style={compactTextClamp}>
+              {warningText(warning.code, warning.message)}
+            </div>
           ))}
-          {viewModel.warnings.length > 3
-            ? `卡片另有 ${viewModel.warnings.length - 3} 条告警。`
+          {viewModel.warnings.length > warningLimit
+            ? `卡片另有 ${viewModel.warnings.length - warningLimit} 条告警未展开。`
             : null}
           {viewModel.coverage.warnings.omitted > 0
             ? `语义结果另省略 ${viewModel.coverage.warnings.omitted} 条告警（上限 ${viewModel.coverage.warnings.max}）。`
@@ -409,11 +551,13 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
       {viewModel.limitations.length > 0 ? (
         <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
           <div style={{ color: theme.accent, fontWeight: 700 }}>限制</div>
-          {viewModel.limitations.slice(0, 5).map((limitation, index) => (
-            <div key={index}>· {limitation}</div>
+          {viewModel.limitations.slice(0, limitationLimit).map((limitation, index) => (
+            <div key={index} style={compactTextClamp}>
+              · {limitation}
+            </div>
           ))}
-          {viewModel.limitations.length > 5
-            ? `另有 ${viewModel.limitations.length - 5} 条限制。`
+          {viewModel.limitations.length > limitationLimit
+            ? `另有 ${viewModel.limitations.length - limitationLimit} 条限制未展开。`
             : null}
         </div>
       ) : null}

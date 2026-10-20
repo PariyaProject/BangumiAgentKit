@@ -51,6 +51,7 @@ function panelStyle(theme: ThemeTokens): React.CSSProperties {
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,
     minWidth: 0,
+    clipPath: theme.design.masks.panel,
   };
 }
 
@@ -102,7 +103,7 @@ export const SubjectIdentityCard: React.FC<SubjectIdentityCardProps> = ({
       ) : null}
 
       {subject ? (
-        <div style={panelStyle(theme)}>
+        <div data-render-mask="panel" style={panelStyle(theme)}>
           <div style={{ fontSize: '18px', fontWeight: 700, overflowWrap: 'anywhere' }}>
             {subject.name}
           </div>
@@ -126,13 +127,16 @@ export const SubjectIdentityCard: React.FC<SubjectIdentityCardProps> = ({
           </div>
         </div>
       ) : (
-        <div style={{ ...panelStyle(theme), color: theme.warning, fontSize: '13px' }}>
+        <div
+          data-render-mask="panel"
+          style={{ ...panelStyle(theme), color: theme.warning, fontSize: '13px' }}
+        >
           未生成身份数据；不会用猜测值填充缺失字段。
         </div>
       )}
 
       {subject?.metaTags && subject.metaTags.length > 0 ? (
-        <div style={panelStyle(theme)}>
+        <div data-render-mask="panel" style={panelStyle(theme)}>
           <div style={{ fontWeight: 700, marginBottom: theme.spacing.xs }}>元标签</div>
           <div style={{ color: theme.textMuted, fontSize: '13px', overflowWrap: 'anywhere' }}>
             {subject.metaTags.join(' · ')}
@@ -144,7 +148,7 @@ export const SubjectIdentityCard: React.FC<SubjectIdentityCardProps> = ({
       ) : null}
 
       {subject?.tags && subject.tags.length > 0 ? (
-        <div style={panelStyle(theme)}>
+        <div data-render-mask="panel" style={panelStyle(theme)}>
           <div style={{ fontWeight: 700, marginBottom: theme.spacing.xs }}>标签</div>
           <div style={{ color: theme.textMuted, fontSize: '13px', overflowWrap: 'anywhere' }}>
             {subject.tags.join(' · ')}
@@ -155,7 +159,7 @@ export const SubjectIdentityCard: React.FC<SubjectIdentityCardProps> = ({
         </div>
       ) : null}
 
-      <div style={panelStyle(theme)}>
+      <div data-render-mask="panel" style={panelStyle(theme)}>
         <div style={{ fontWeight: 700, marginBottom: theme.spacing.xs }}>
           别名 · {stateLabel(aliases.state)}
         </div>
@@ -179,7 +183,7 @@ export const SubjectIdentityCard: React.FC<SubjectIdentityCardProps> = ({
         ) : null}
       </div>
 
-      <div style={panelStyle(theme)}>
+      <div data-render-mask="panel" style={panelStyle(theme)}>
         <div style={{ fontWeight: 700, marginBottom: theme.spacing.xs }}>
           Infobox · {stateLabel(viewModel.infobox.state)}
         </div>
@@ -223,7 +227,10 @@ export const SubjectIdentityCard: React.FC<SubjectIdentityCardProps> = ({
       </div>
 
       {viewModel.error ? (
-        <div style={{ ...panelStyle(theme), color: theme.warning, fontSize: '12px' }}>
+        <div
+          data-render-mask="panel"
+          style={{ ...panelStyle(theme), color: theme.warning, fontSize: '12px' }}
+        >
           {viewModel.error.message}
         </div>
       ) : null}
@@ -242,7 +249,7 @@ export const SubjectIdentityCard: React.FC<SubjectIdentityCardProps> = ({
       ) : null}
 
       {warnings.length > 0 ? (
-        <div style={panelStyle(theme)}>
+        <div data-render-mask="panel" style={panelStyle(theme)}>
           <div style={{ fontWeight: 700, marginBottom: theme.spacing.xs }}>告警</div>
           {warnings.map((warning, index) => (
             <div

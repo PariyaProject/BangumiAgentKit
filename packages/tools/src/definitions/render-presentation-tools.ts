@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { defineTool } from '../define-tool.js';
+import { defineTool, type ResolvedToolPolicy } from '../define-tool.js';
 import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { compareSubjectCohorts, DiscoveryEngine } from '@bangumi-agent-kit/discovery';
 import {
@@ -47,6 +47,7 @@ import {
 } from '@bangumi-agent-kit/bangumi-core';
 import {
   RenderService,
+  isRenderDesignPackName,
   isRenderThemeName,
   type RenderOptions,
   LocalArtifactStore,
@@ -206,12 +207,13 @@ export async function renderAndSaveArtifact(
 export function getDefaultRenderOptions(
   renderTarget: RenderTarget = 'full',
   themeSetting = process.env.BANGUMI_RENDER_THEME,
+  designPackSetting = process.env.BANGUMI_RENDER_DESIGN_PACK,
 ): RenderOptions {
   const targetDefaults: RenderOptions =
     renderTarget === 'chat' ? { width: 360, deviceScaleFactor: 2 } : {};
-  return isRenderThemeName(themeSetting)
-    ? { ...targetDefaults, theme: themeSetting }
-    : targetDefaults;
+  if (isRenderThemeName(themeSetting)) targetDefaults.theme = themeSetting;
+  if (isRenderDesignPackName(designPackSetting)) targetDefaults.designPack = designPackSetting;
+  return targetDefaults;
 }
 
 export function createRenderPresentationTools(
@@ -243,15 +245,40 @@ export function createRenderPresentationTools(
       includeCollection: z.boolean().optional().describe('是否包含用户的收藏与评分状态'),
     }),
     auth: 'optional',
+    // Public rendering stays unscoped; includeCollection's scope is enforced by resolvePolicy.
     scopes: [],
     risk: 'read',
+    resolvePolicy: (input): ResolvedToolPolicy => ({
+      auth: input.includeCollection ? 'required' : 'optional',
+      requiredCapabilities: input.includeCollection ? ['read:collection'] : [],
+      risk: 'read',
+    }),
     execute: async (input, _context, deps) => {
       const clientProvider = deps?.clientProvider;
-      if (!clientProvider) {
+      const executionSession = deps?.executionSession;
+      if (!clientProvider && !executionSession?.client) {
         throw new BangumiError('INTERNAL_ERROR', 'ClientProvider unavailable', false);
       }
 
-      const client = await clientProvider.getOptionalAuthenticatedClient(_context?.principalId);
+      let client: ConstructorParameters<typeof SubjectService>[0] | undefined;
+      if (input.includeCollection) {
+        if (executionSession?.account) {
+          client = executionSession.client;
+        } else if (clientProvider && _context?.principalId) {
+          ({ client } = await clientProvider.requireAuthenticatedClient(_context.principalId, [
+            'read:collection',
+          ]));
+        } else {
+          throw new BangumiError('AUTH_REQUIRED', '读取收藏进度需要已授权账号', false, 401);
+        }
+      } else if (executionSession?.client) {
+        client = executionSession.client;
+      } else if (clientProvider) {
+        client = await clientProvider.getOptionalAuthenticatedClient(_context?.principalId);
+      }
+      if (!client) {
+        throw new BangumiError('INTERNAL_ERROR', 'ClientProvider returned no client', false);
+      }
       const subjectService = new SubjectService(client);
       const subjectData = await subjectService.getSubjectById(input.subjectId);
 
@@ -266,6 +293,8 @@ export function createRenderPresentationTools(
               statusLabel: userCol.collection.statusLabel,
               rating: userCol.collection.rating,
               comment: userCol.collection.comment,
+              watchedEpisodes: userCol.collection.epStatus,
+              totalEpisodes: subjectData.totalEpisodes || subjectData.eps,
             };
           }
         } catch {
@@ -277,7 +306,17 @@ export function createRenderPresentationTools(
         collection: collectionData,
       });
 
-      return await executeRenderAndSave(viewModel);
+      const artifactPrincipalId =
+        collectionData && (_context?.artifactPrincipalKey || _context?.principalId);
+      if (collectionData && !artifactPrincipalId) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          '包含个人收藏进度的卡片必须绑定明确的账号主体。',
+          false,
+          401,
+        );
+      }
+      return await executeRenderAndSave(viewModel, artifactPrincipalId || undefined);
     },
   });
 
@@ -1046,7 +1085,7 @@ export function createRenderPresentationTools(
   const renderSubjectStats = defineTool({
     name: 'bangumi.render_subject_stats_intelligence',
     description:
-      '生成指定条目的证据型统计智能图片卡片 Artifact。卡片显示官方 v0 评分直方图、8–9 分占比、评分百分比/均值/总体标准差、收藏状态分布与完成率、公式版本、覆盖、冲突和不可计算原因；明确把 8–9 分占比作为当前样本描述值，不以标准差判定两极化；不读取图片资产，不计算历史趋势、社区统计、网站专有图表或推荐结论。',
+      '生成指定条目的证据型统计智能图片卡片 Artifact。卡片显示官方 v0 评分直方图、8–9 分占比、评分百分比/均值/总体标准差、收藏状态分布与完成率、公式版本、覆盖、冲突和不可计算原因；明确把 8–9 分占比作为当前样本描述值，不以标准差判定两极化。可选使用官方条目身份返回的公开封面链接并经 renderer 的统一封面解析器处理；不读取个人收藏数据，不计算历史趋势、社区统计、网站专有图表或推荐结论。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
     }),
@@ -1091,6 +1130,12 @@ export function createRenderPresentationTools(
                       ...(identity.data.nameCn === undefined
                         ? {}
                         : { nameCn: identity.data.nameCn }),
+                      coverImage:
+                        identity.data.images?.large ||
+                        identity.data.images?.common ||
+                        identity.data.images?.medium ||
+                        identity.data.images?.small ||
+                        identity.data.images?.grid,
                     }
                   : undefined,
                 retrievedAt: identity.retrievedAt,

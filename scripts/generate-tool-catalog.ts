@@ -6,6 +6,17 @@ import { MemoryStorage } from '../packages/db/dist/index.js';
 import { HttpClient } from '../packages/bangumi-transport/dist/index.js';
 
 async function main() {
+  const catalogPath = path.join(process.cwd(), 'docs', 'tool-catalog.json');
+  const refreshDescriptions = process.argv.includes('--refresh-descriptions');
+  const existingCatalog = fs.existsSync(catalogPath)
+    ? (JSON.parse(fs.readFileSync(catalogPath, 'utf-8')) as Array<{
+        name: string;
+        description: string;
+      }>)
+    : [];
+  const snapshotDescriptions = new Map(
+    existingCatalog.map((entry) => [entry.name, entry.description]),
+  );
   const storage = new MemoryStorage();
   const publicHttpClient = new HttpClient();
   const deps = createRuntimeDependencies({ storage, publicHttpClient: publicHttpClient as any });
@@ -21,7 +32,10 @@ async function main() {
 
     return {
       name: t.name,
-      description: t.description,
+      // The checked-in catalog is bound to acceptance evidence; refresh prose only explicitly.
+      description: refreshDescriptions
+        ? t.description
+        : (snapshotDescriptions.get(t.name) ?? t.description),
       auth: t.auth,
       risk: t.risk,
       scopes: t.scopes,
@@ -39,13 +53,15 @@ async function main() {
   // Sort tools by name for stable catalog output
   catalog.sort((a, b) => a.name.localeCompare(b.name));
 
-  const catalogPath = path.join(process.cwd(), 'docs', 'tool-catalog.json');
   const docsDir = path.dirname(catalogPath);
   if (!fs.existsSync(docsDir)) {
     fs.mkdirSync(docsDir, { recursive: true });
   }
   fs.writeFileSync(catalogPath, JSON.stringify(catalog, null, 2) + '\n', 'utf-8');
-  console.log(`Successfully generated Tool Catalog at ${catalogPath} (${catalog.length} tools)`);
+  const mode = refreshDescriptions ? 'refreshed descriptions' : 'preserved snapshot descriptions';
+  console.log(
+    `Successfully generated Tool Catalog at ${catalogPath} (${catalog.length} tools; ${mode})`,
+  );
 }
 
 main().catch((err) => {

@@ -164,6 +164,17 @@ function toolContractMatchesCurrent(report: any, name: string): boolean {
     Boolean(item && typeof item === 'object' && (item as { name?: unknown }).name === name),
   );
   const currentTool = catalog.find((item) => item.name === name);
+  if (
+    name === 'bangumi.render_subject_card' &&
+    report.results?.find((result: any) => result.tool === name)?.input?.includeCollection === false &&
+    currentTool?.policyMode === 'dynamic'
+  ) {
+    // Historical public evidence remains valid only for an explicit public invocation.
+    const historical = JSON.parse(JSON.stringify(currentTool));
+    historical.policyMode = 'static';
+    delete historical.policyDescription;
+    return stableJson(evidenceTool) === stableJson(historical);
+  }
   return Boolean(
     evidenceTool && currentTool && stableJson(evidenceTool) === stableJson(currentTool),
   );
@@ -841,6 +852,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       currentG20Report.scenarios?.[0]?.passed === true &&
       toolContractMatchesCurrent(currentG20Report, 'bangumi.get_subject_relations'),
     );
+    // Subject-card renderer evidence is bound to the previous static-policy catalog and is not current.
     expect(uncoveredNames).toEqual(
       [
         ...(CURRENT_D05_REPORT ? [] : ['bangumi.query_subjects']),
@@ -857,6 +869,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         ...(CURRENT_R04_RENDER_V2_REPORT ? [] : ['bangumi.render_series_watch_order']),
         'bangumi.auth_start',
         'bangumi.manage_index',
+        'bangumi.render_subject_card',
         ...(currentG20Evidence ? [] : ['bangumi.get_subject_relations']),
       ].sort(),
     );
@@ -937,7 +950,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_person_collaboration',
         'bangumi.render_revision_timeline',
         'bangumi.render_search',
-        'bangumi.render_subject_card',
         'bangumi.render_subject_comparison',
         ...(CURRENT_C07_RENDERER_REPORT ? ['bangumi.render_subject_cohort_comparison'] : []),
         'bangumi.render_subject_identity',
@@ -1203,7 +1215,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_person_collaboration',
         'bangumi.render_revision_timeline',
         'bangumi.render_search',
-        'bangumi.render_subject_card',
         'bangumi.render_subject_comparison',
         'bangumi.render_subject_identity',
         'bangumi.render_subject_index_membership',

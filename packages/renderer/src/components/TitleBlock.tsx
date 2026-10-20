@@ -10,6 +10,11 @@ export interface TitleBlockProps {
   eyebrow?: string;
   titleFontSize?: string;
   subtitleFontSize?: string;
+  titleMaxLines?: number;
+  subtitleMaxLines?: number;
+  eyebrowSurface?: string;
+  eyebrowColor?: string;
+  showIconEyebrow?: boolean;
 }
 
 export const TitleBlock: React.FC<TitleBlockProps> = ({
@@ -20,42 +25,86 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({
   eyebrow,
   titleFontSize = '24px',
   subtitleFontSize = '15px',
+  titleMaxLines = 2,
+  subtitleMaxLines,
+  eyebrowSurface,
+  eyebrowColor,
+  showIconEyebrow = true,
 }) => {
+  const titleSize = Number.parseFloat(titleFontSize);
+  const designedTitleSize = Number.isFinite(titleSize)
+    ? `${titleSize * theme.design.titleScale}px`
+    : titleFontSize;
+  const packTitleStyle =
+    theme.designPack === 'clean-gallery'
+      ? { borderLeft: `3px solid ${theme.accent}`, paddingLeft: '10px' }
+      : theme.designPack === 'graphic-zine'
+        ? {
+            borderLeft: `6px solid ${theme.accent}`,
+            paddingLeft: '8px',
+            paddingRight: '14px',
+            clipPath: theme.design.masks.title,
+            backgroundColor: theme.surfaceAlt,
+          }
+        : {
+            borderBottom: `1px solid ${theme.border}`,
+            paddingBottom: '5px',
+          };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs, minWidth: 0 }}>
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: theme.spacing.sm,
-          minWidth: 0,
-        }}
-      >
-        <RendererIcon name={icon} theme={theme} size={16} badge />
+    <div
+      data-title-pack={theme.designPack}
+      style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs, minWidth: 0 }}
+    >
+      {showIconEyebrow ? (
         <div
           style={{
-            color: theme.accent,
-            fontSize: '10px',
-            fontWeight: 800,
-            letterSpacing: '0.09em',
-            lineHeight: 1.2,
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: theme.spacing.sm,
             minWidth: 0,
-            overflowWrap: 'anywhere',
-            wordBreak: 'break-word',
           }}
         >
-          {eyebrow || `BANGUMI · ${getRendererIconLabel(icon)}`}
+          <RendererIcon name={icon} theme={theme} size={16} badge />
+          <div
+            data-title-eyebrow-backplate={eyebrowSurface ? 'true' : undefined}
+            style={{
+              color: eyebrowColor ?? theme.accent,
+              fontSize: '10px',
+              fontWeight: 800,
+              letterSpacing: '0.09em',
+              lineHeight: 1.2,
+              minWidth: 0,
+              overflowWrap: 'anywhere',
+              wordBreak: 'break-word',
+              backgroundColor: eyebrowSurface,
+              padding: eyebrowSurface ? '4px 7px' : undefined,
+              border: eyebrowSurface ? `2px solid ${theme.text}` : undefined,
+              boxShadow: eyebrowSurface ? `2px 2px 0 ${theme.border}` : undefined,
+              clipPath: eyebrowSurface ? theme.design.masks.tag : undefined,
+            }}
+          >
+            {eyebrow || `BANGUMI · ${getRendererIconLabel(icon)}`}
+          </div>
         </div>
-      </div>
+      ) : null}
       <h1
+        data-title-max-lines={titleMaxLines}
+        title={title}
         style={{
-          fontSize: titleFontSize,
-          fontWeight: 700,
+          ...packTitleStyle,
+          fontFamily: theme.design.displayFontFamily,
+          fontSize: designedTitleSize,
+          fontWeight: theme.design.titleWeight,
           color: theme.text,
           margin: 0,
-          lineHeight: 1.24,
-          letterSpacing: '-0.02em',
+          lineHeight: theme.designPack === 'graphic-zine' ? 1.16 : 1.24,
+          letterSpacing: theme.design.titleLetterSpacing,
+          display: '-webkit-box',
+          WebkitBoxOrient: 'vertical',
+          WebkitLineClamp: titleMaxLines,
+          overflow: 'hidden',
           overflowWrap: 'anywhere',
           wordBreak: 'break-word',
         }}
@@ -64,12 +113,19 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({
       </h1>
       {subtitle && (
         <div
+          data-subtitle-max-lines={subtitleMaxLines}
+          title={subtitleMaxLines ? subtitle : undefined}
           style={{
             fontSize: subtitleFontSize,
             color: theme.textMuted,
             lineHeight: 1.4,
+            fontFamily: theme.design.bodyFontFamily,
             overflowWrap: 'anywhere',
             wordBreak: 'break-word',
+            display: subtitleMaxLines ? '-webkit-box' : undefined,
+            WebkitBoxOrient: subtitleMaxLines ? 'vertical' : undefined,
+            WebkitLineClamp: subtitleMaxLines,
+            overflow: subtitleMaxLines ? 'hidden' : undefined,
           }}
         >
           {subtitle}

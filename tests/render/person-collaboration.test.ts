@@ -130,11 +130,76 @@ describe('Person collaboration renderer', () => {
     expect(html).toContain('合作人物');
     expect(html).toContain('Subject 101');
     expect(html).toContain('作品一');
-    expect(html).toContain('另有 1 部共同作品因证据显示上限未列出');
+    expect(html).toContain('另有 1 条共同作品在视图模型边界处未列出');
     expect(html).toContain('已达到关系边界');
     expect(html).toContain('官方 v0 共同作品观察');
     expect(html).toContain('证据与来源路径');
     expect(html).toContain('person-collaboration-v1');
+    expect(html).toContain('最近检索：2026-08-15');
+    expect(html).not.toContain('2026-08-15T00:00:00.000Z');
+  });
+
+  it('bounds narrow summaries and reports every renderer-level omission', async () => {
+    const baseViewModel = buildPersonCollaborationViewModel(result, { maxCollaborators: 1 });
+    const collaborator = baseViewModel.collaborators[0];
+    if (!collaborator) throw new Error('fixture collaborator is required');
+    const wideViewModel = {
+      ...baseViewModel,
+      collaborators: Array.from({ length: 18 }, (_, collaboratorIndex) => ({
+        ...collaborator,
+        id: 100 + collaboratorIndex,
+        name: `Collaborator ${collaboratorIndex + 1}`,
+        nameCn: `合作人物 ${collaboratorIndex + 1}`,
+        uniqueSubjects: 8,
+        sharedSubjects: Array.from({ length: 8 }, (_, subjectIndex) => ({
+          ...collaborator.sharedSubjects[0]!,
+          id: 1000 + collaboratorIndex * 10 + subjectIndex,
+          name: `Shared Subject ${collaboratorIndex + 1}-${subjectIndex + 1}`,
+          nameCn: `共同作品 ${collaboratorIndex + 1}-${subjectIndex + 1}`,
+        })),
+        sharedSubjectsOmitted: 0,
+      })),
+      coverage: {
+        ...baseViewModel.coverage,
+        collaboratorsObserved: 21,
+        collaboratorsReturned: 21,
+        sharedSubjectRowsObserved: 144,
+        sharedSubjectRowsReturned: 144,
+        sharedSubjectRowsOmittedAtLimit: 0,
+      },
+      hiddenCollaborators: 3,
+    };
+
+    const html = renderHtmlTemplate(wideViewModel, 'bangumi-light', {}, 320, 'graphic-zine');
+    expect(html).toContain('显示 2/18 位合作人物');
+    expect(html).toContain('另有 16 位已返回合作人物未显示');
+    expect(html).toContain('视图模型边界另省略 3 位');
+    expect(html).toContain('图片省略 7 条已返回共同作品');
+    expect(html).not.toContain('共同作品 1-2');
+    expect(html).toContain('共同作品 1-1');
+    expect(html).toContain('data-layout="collaboration-stats"');
+    expect(html).toContain('data-layout="collaboration-coverage"');
+    expect(html).toContain('data-layout="collaboration-name-secondary-row"');
+    expect(html).not.toContain('data-layout="collaboration-name-secondary-inline"');
+    expect(html).toMatch(/grid-template-columns:repeat\(2,\s*minmax\(0,\s*1fr\)\)/u);
+
+    const renderService = new RenderService();
+    const rendered = await renderService.renderCard(wideViewModel, {
+      width: 320,
+      deviceScaleFactor: 2,
+      designPack: 'graphic-zine',
+      theme: 'bangumi-light',
+      cache: false,
+    });
+    await renderService.close();
+    expect(rendered.height).toBeLessThan(12_000);
+
+    const tabletHtml = renderHtmlTemplate(wideViewModel, 'bangumi-light', {}, 520, 'graphic-zine');
+    expect(tabletHtml).toContain('显示 7/18 位合作人物');
+    expect(tabletHtml).toContain('每人至多 3 部共同作品');
+    expect(tabletHtml).toContain('data-layout="collaboration-name-secondary-inline"');
+    expect(tabletHtml).not.toContain('data-layout="collaboration-name-secondary-row"');
+    expect(tabletHtml).toMatch(/grid-template-columns:repeat\(2,\s*minmax\(0,\s*1fr\)\)/u);
   });
 
   it('keeps the narrow card root within its declared width for long labels and degraded evidence', async () => {

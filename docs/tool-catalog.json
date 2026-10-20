@@ -3696,7 +3696,8 @@
     "auth": "optional",
     "risk": "read",
     "scopes": [],
-    "policyMode": "static",
+    "policyMode": "dynamic",
+    "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
     "inputSchema": {
       "type": "object",
       "properties": {

@@ -11,6 +11,7 @@ export const TagList: React.FC<TagListProps> = ({ tags, theme, maxTags = 8 }) =>
   if (!tags || tags.length === 0) return null;
 
   const displayTags = tags.slice(0, maxTags);
+  const zine = theme.designPack === 'graphic-zine';
 
   return (
     <div
@@ -25,12 +26,14 @@ export const TagList: React.FC<TagListProps> = ({ tags, theme, maxTags = 8 }) =>
         <span
           key={idx}
           style={{
-            backgroundColor: theme.surfaceAlt,
+            backgroundColor: zine ? theme.surface : theme.surfaceAlt,
             color: theme.text,
             fontSize: '12px',
+            fontWeight: zine ? 700 : 500,
             padding: '3px 10px',
-            borderRadius: '20px',
-            border: `1px solid ${theme.border}`,
+            borderRadius: theme.design.tagRadius,
+            border: `${zine ? '2px' : theme.design.metricBorderWidth} solid ${zine ? theme.text : theme.border}`,
+            clipPath: theme.design.masks.tag,
           }}
         >
           {tag}

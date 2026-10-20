@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { DARK_THEME, LIGHT_THEME } from '../../packages/renderer/src/themes/index.js';
+import {
+  getThemeTokens,
+  RenderThemeName,
+  RENDER_DESIGN_PACK_NAMES,
+  RenderDesignPackName,
+} from '../../packages/renderer/src/themes/index.js';
 
 function relativeLuminance(color: string): number {
   const [red, green, blue] = color
@@ -20,7 +25,15 @@ function contrastRatio(foreground: string, background: string): number {
 }
 
 describe('renderer theme text contrast', () => {
-  it.each([DARK_THEME, LIGHT_THEME])('%s keeps text tokens readable on card surfaces', (theme) => {
+  const themeCases = RENDER_DESIGN_PACK_NAMES.flatMap((designPack: RenderDesignPackName) =>
+    (['bangumi-light', 'bangumi-dark'] as const).map((name: RenderThemeName) => ({
+      designPack,
+      name,
+      theme: getThemeTokens(name, designPack),
+    })),
+  );
+
+  it.each(themeCases)('$designPack / $name keeps text tokens readable', ({ theme }) => {
     const textColors = [
       theme.text,
       theme.textMuted,
@@ -46,9 +59,9 @@ describe('renderer theme text contrast', () => {
     }
   });
 
-  it.each([DARK_THEME, LIGHT_THEME])(
-    '%s keeps semantic icon tones legible on their surfaces',
-    (theme) => {
+  it.each(themeCases)(
+    '$designPack / $name keeps semantic icon tones legible on their surfaces',
+    ({ theme }) => {
       for (const [name, tone] of Object.entries(theme.tones)) {
         expect(
           contrastRatio(tone.foreground, tone.surface),
@@ -57,4 +70,20 @@ describe('renderer theme text contrast', () => {
       }
     },
   );
+
+  it.each(themeCases)('$designPack / $name defines distinct render masks', ({ theme }) => {
+    const { masks } = theme.design;
+    for (const mask of [
+      masks.frame,
+      masks.hero,
+      masks.cover,
+      masks.panel,
+      masks.panelAlt,
+      masks.progress,
+      masks.tag,
+    ]) {
+      expect(mask).not.toBe('none');
+    }
+    expect(masks.panel).not.toBe(masks.panelAlt);
+  });
 });

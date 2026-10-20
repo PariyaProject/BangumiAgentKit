@@ -13,6 +13,7 @@ import {
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
 import { RendererLruCache } from '../../packages/renderer/src/lru-cache.js';
+import { closeMobileLayoutBrowser, measureRenderRootLayout } from './helpers/mobile-layout.js';
 
 function response(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -53,6 +54,7 @@ describe('collection-dashboard renderer', () => {
 
   afterAll(async () => {
     await renderService.close();
+    await closeMobileLayoutBrowser();
   });
 
   it('renders the three private sections as one image-free, narrow-readable card', async () => {
@@ -156,6 +158,19 @@ describe('collection-dashboard renderer', () => {
     const rendered = await renderService.renderCard(viewModel, { width: 640 });
     expect(rendered.template).toBe('collection-dashboard');
     expect(rendered.buffer.length).toBeGreaterThan(1000);
+
+    const galleryMobile = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'clean-gallery');
+    const galleryMobileLayout = await measureRenderRootLayout(galleryMobile, 320);
+    const metricValues = galleryMobileLayout.layoutElements.filter(
+      (element) => element.layout === 'dashboard-metric-value',
+    );
+    expect(metricValues).toHaveLength(4);
+    expect(metricValues.every((element) => element.height <= 24)).toBe(true);
+    expect(
+      galleryMobileLayout.contentOverflowing.filter(
+        (item) => item.layoutContext === 'dashboard-metric',
+      ),
+    ).toEqual([]);
 
     const denseResult = structuredClone(result) as CollectionDashboardResult;
     const backlogItem = denseResult.data.sections.backlog.result?.data.items[0];

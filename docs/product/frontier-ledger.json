@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-20T01:56:52Z",
+  "updated_at": "2026-10-20T14:34:59Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -4417,7 +4417,7 @@
         "packages/renderer/src/templates/RevisionTimelineCard.tsx",
         "docs/research/run95-render-editorial-layouts-visual-qa-2026-10-20.json"
       ],
-      "next_action": "2026-10-20T01:53Z: Pass4 source commit 2a3216d655927163ccf7fe73477ba35c95e38eff records the warm-paper palette, semantic SVG tones, Dashboard panels, and multicolor Timeline. The 580-image report is bound to that source and all 58 fixture sheets/eight full-resolution samples were reviewed. Next, commit/push the exact evidence head, run exact-SHA CI and Harness Candidate check, then use the assigned GPT-6 Luna Max review and integration gate. Keep PARTIAL until those gates pass; real QQ/TIM delivery remains unverified and no live message is claimed.",
+      "next_action": "Continue acceptance of the three native image design packs across all 29 templates, synthetic authentication/message states, and actual QQ/TIM image display. Keep offline render evidence separate from live client delivery; retain PARTIAL until each remaining acceptance boundary has direct, reviewed evidence.",
       "reopen_when": "The user requests additional theme packs/settings surfaces, Renderer templates or image output behavior changes, or real QQ/TIM image display is explicitly selected for offline-to-live acceptance.",
       "related_ids": [
         "OP-008",

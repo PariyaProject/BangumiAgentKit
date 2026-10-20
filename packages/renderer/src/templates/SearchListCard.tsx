@@ -43,6 +43,7 @@ export const SearchListCard: React.FC<SearchListCardProps> = ({
           return (
             <div
               key={item.id}
+              data-render-mask="panel"
               style={{
                 backgroundColor: theme.surfaceAlt,
                 border: `1px solid ${theme.border}`,
@@ -52,6 +53,7 @@ export const SearchListCard: React.FC<SearchListCardProps> = ({
                 display: 'flex',
                 gap: theme.spacing.sm,
                 alignItems: 'center',
+                clipPath: theme.design.masks.panel,
               }}
             >
               {imgSrc ? (

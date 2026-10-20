@@ -200,13 +200,17 @@ describe('subject-stats renderer', () => {
     });
     expect(extractImageUrls(viewModel)).toEqual([]);
 
+    const zineHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'graphic-zine');
+    expect(zineHtml).toContain('data-render-pack="graphic-zine"');
+    expect(zineHtml).toContain('data-layout="zine-score-hero"');
+
     const narrowHtml = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 480);
     const wideHtml = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 960);
     for (const html of [narrowHtml, wideHtml]) {
       expect(html).toContain('少女终末旅行');
       expect(html).toContain('Girls&#x27; Last Tour');
-      expect(html).toContain('Bangumi ID 123');
-      expect(html).toContain('官方 v0 条目名称');
+      expect(html).toContain('ID 123');
+      expect(html).toContain('官方 v0 身份');
       expect(html).toContain('评分分布');
       expect(html).toContain('8–9 分占比');
       expect(html).toContain('100.0% (100/100)');
@@ -228,12 +232,60 @@ describe('subject-stats renderer', () => {
       expect(html).not.toContain('Infinity');
     }
 
+    for (const pack of ['warm-editorial', 'clean-gallery', 'graphic-zine'] as const) {
+      const html = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, pack);
+      expect(html.match(/data-layout="stats-rating-distribution"/gu)).toHaveLength(1);
+      expect(html.match(/data-layout="stats-collection-distribution"/gu)).toHaveLength(1);
+      expect(html.indexOf('data-layout="stats-rating-distribution"')).toBeLessThan(
+        html.indexOf('data-layout="stats-secondary-metrics"'),
+      );
+    }
+    expect(renderHtmlTemplate(viewModel, 'bangumi-light', {}, 960, 'clean-gallery')).toContain(
+      'font-size:86px',
+    );
+
     const rendered = await renderService.renderCard(viewModel, {
       width: 640,
       deviceScaleFactor: 1,
     });
     expect(rendered.template).toBe('subject-stats');
     expect(rendered.buffer.length).toBeGreaterThan(1000);
+  });
+
+  it('uses an optional verified public identity cover through the resolved-image map', () => {
+    const coverUrl = 'https://images.example.invalid/subject-123.jpg';
+    const coverDataUrl = 'data:image/svg+xml;base64,PHN2Zy8+';
+    const withCover = buildSubjectStatsViewModel(result, {
+      ...subjectIdentity,
+      subject: { ...subjectIdentity.subject, coverImage: coverUrl },
+    });
+
+    expect(withCover.subjectIdentity.coverImage).toBe(coverUrl);
+    expect(extractImageUrls(withCover)).toEqual([coverUrl]);
+
+    for (const pack of ['warm-editorial', 'clean-gallery', 'graphic-zine'] as const) {
+      const html = renderHtmlTemplate(
+        withCover,
+        'bangumi-light',
+        { [coverUrl]: coverDataUrl },
+        520,
+        pack,
+      );
+      expect(html).toContain('data-layout="subject-stats-cover-hero"');
+      expect(html).toContain(coverDataUrl);
+      expect(html).not.toContain(coverUrl);
+    }
+  });
+
+  it('omits an unavailable rank from the Graphic Zine score hero', () => {
+    const viewModel = buildStatsViewModel();
+    if (viewModel.raw) Reflect.set(viewModel.raw, 'rank', undefined);
+    const html = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 960, 'graphic-zine');
+
+    expect(html).toContain('data-layout="zine-score-hero"');
+    expect(html).toContain('评分人数');
+    expect(html).not.toContain('排名');
+    expect(html).not.toContain('未知');
   });
 
   it('keeps statistics independent when the official subject identity is missing or mismatched', () => {
@@ -245,7 +297,7 @@ describe('subject-stats renderer', () => {
     expect(missing.subjectIdentity.state).toBe('unavailable');
     const missingHtml = renderHtmlTemplate(missing, 'bangumi-dark', {}, 360);
     expect(missingHtml).toContain('作品名称暂不可用');
-    expect(missingHtml).toContain('Bangumi ID 123');
+    expect(missingHtml).toContain('ID 123');
     expect(missingHtml).toContain('官方作品名称本次不可用');
     expect(missingHtml).toContain('评分分布');
     expect(missingHtml).toContain('完成率＝看过人数 ÷ 五类收藏状态总人数');
@@ -294,6 +346,11 @@ describe('subject-stats renderer', () => {
 
     for (const width of [320, 360, 520]) {
       const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
+      expect(html).toContain('data-title-max-lines="2"');
+      expect(html).toContain('data-subtitle-max-lines="2"');
+      expect(html).toContain('data-layout="subject-stats-identity-metadata"');
+      expect(html).toContain('ID 123');
+      expect(html).toContain('统计完整');
       const layout = await measureRenderRootLayout(html, width);
       expect(layout, `layout at ${width}px`).toMatchObject({
         clientWidth: width,
@@ -302,6 +359,17 @@ describe('subject-stats renderer', () => {
         contentOverflowing: [],
       });
       expect(layout.titleBlocks[0]?.title).toContain('少女终末旅行');
+      expect(layout.titleBlocks[0]?.subtitle).toContain("Girls' Last Tour");
+      expect(layout.titleBlocks[0]?.subtitle).not.toContain('ID ');
+      expect(layout.titleBlocks[0]?.subtitleHeight).toBeLessThanOrEqual(42.1);
+      const identityChips = layout.layoutElements.filter(
+        (element) => element.layout === 'subject-stats-identity-chip',
+      );
+      expect(identityChips, `identity metadata chips at ${width}px`).toHaveLength(3);
+      expect(
+        identityChips.every((element) => element.height <= 25),
+        `identity metadata should not split inside a chip at ${width}px`,
+      ).toBe(true);
       expect(html).toContain('样本验证，并非官方 API 契约');
       expect(html).toContain('当前快照，不代表历史趋势。');
       const rendered = await renderService.renderCard(viewModel, {

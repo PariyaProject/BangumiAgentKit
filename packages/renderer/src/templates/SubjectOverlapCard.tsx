@@ -194,12 +194,14 @@ export const SubjectOverlapCard: React.FC<SubjectOverlapCardProps> = ({
           visiblePairs.map((pair) => (
             <div
               key={pair.pairId}
+              data-render-mask="panel"
               style={{
                 ...wrapStyle,
                 backgroundColor: theme.surfaceAlt,
                 border: `1px solid ${theme.border}`,
                 borderRadius: theme.radius.md,
                 padding: theme.spacing.md,
+                clipPath: theme.design.masks.panel,
               }}
             >
               <div style={{ ...wrapStyle, color: theme.text, fontSize: '13px', fontWeight: 700 }}>

@@ -1,15 +1,22 @@
 import ReactDOMServer from 'react-dom/server';
 import { RenderViewModel } from './view-models/index.js';
-import { getThemeTokens, RenderThemeName } from './themes/index.js';
+import {
+  DEFAULT_RENDER_DESIGN_PACK,
+  DEFAULT_RENDER_THEME,
+  getThemeTokens,
+  RenderDesignPackName,
+  RenderThemeName,
+} from './themes/index.js';
 import { getTemplate } from './templates/TemplateRegistry.js';
 
 export function renderHtmlTemplate(
   viewModel: RenderViewModel,
-  themeName: RenderThemeName = 'bangumi-dark',
+  themeName: RenderThemeName = DEFAULT_RENDER_THEME,
   resolvedImages?: Record<string, string>,
   width?: number,
+  designPack: RenderDesignPackName = DEFAULT_RENDER_DESIGN_PACK,
 ): string {
-  const theme = getThemeTokens(themeName);
+  const theme = getThemeTokens(themeName, designPack);
   const template = getTemplate(viewModel.template);
 
   const reactElement = template.render(viewModel, theme, resolvedImages, width);
@@ -22,7 +29,7 @@ export function renderHtmlTemplate(
     html, body {
       background-color: ${theme.background};
       color: ${theme.text};
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Meiryo", sans-serif;
+      font-family: ${theme.design.bodyFontFamily};
       -webkit-font-smoothing: antialiased;
     }
   `;

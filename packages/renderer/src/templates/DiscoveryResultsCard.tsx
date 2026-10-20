@@ -223,6 +223,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
       ) : null}
 
       <div
+        data-render-mask="panel"
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -231,6 +232,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
           border: `1px solid ${theme.border}`,
           borderRadius: theme.radius.md,
           padding: theme.spacing.md,
+          clipPath: theme.design.masks.panel,
         }}
       >
         <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>查询条件</div>
@@ -283,6 +285,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
 
       {visibleItems.length === 0 ? (
         <div
+          data-render-mask="panel-alt"
           style={{
             color: stateTone,
             backgroundColor: theme.surfaceAlt,
@@ -291,6 +294,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
             padding: theme.spacing.md,
             fontSize: '13px',
             lineHeight: 1.55,
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           {viewModel.state === 'unsupported'
@@ -307,6 +311,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
           return (
             <div
               key={item.id}
+              data-render-mask="panel"
               style={{
                 flex: `1 1 ${itemBasis}`,
                 minWidth: 0,
@@ -317,6 +322,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
                 display: 'flex',
                 gap: theme.spacing.sm,
                 alignItems: 'flex-start',
+                clipPath: theme.design.masks.panel,
               }}
             >
               {image ? (

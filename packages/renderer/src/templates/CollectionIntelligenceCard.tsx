@@ -143,6 +143,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
 
       {viewModel.state === 'unavailable' ? (
         <div
+          data-render-mask="panel"
           style={{
             color: theme.warning,
             backgroundColor: theme.surfaceAlt,
@@ -151,6 +152,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
             padding: theme.spacing.md,
             fontSize: '13px',
             lineHeight: 1.5,
+            clipPath: theme.design.masks.panel,
           }}
         >
           官方收藏暂时不可读取，因此没有可用统计；未用猜测填补结果。请稍后重试。
@@ -159,6 +161,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
 
       {completeEmptyResult ? (
         <div
+          data-render-mask="panel-alt"
           style={{
             color: theme.text,
             backgroundColor: theme.surfaceAlt,
@@ -167,6 +170,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
             padding: theme.spacing.md,
             fontSize: '13px',
             lineHeight: 1.6,
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           <div style={{ fontWeight: 700 }}>暂无收藏条目</div>
@@ -178,6 +182,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
 
       {unconfirmedEmptyResult ? (
         <div
+          data-render-mask="panel"
           style={{
             color: theme.text,
             backgroundColor: theme.surfaceAlt,
@@ -186,6 +191,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
             padding: theme.spacing.md,
             fontSize: '13px',
             lineHeight: 1.6,
+            clipPath: theme.design.masks.panel,
           }}
         >
           <div style={{ fontWeight: 700 }}>本次未观察到收藏条目</div>
@@ -386,6 +392,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
 
       {summarizedWarnings.length > 0 && (
         <div
+          data-render-mask="panel-alt"
           style={{
             color: theme.text,
             backgroundColor: theme.surfaceAlt,
@@ -394,6 +401,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
             padding: theme.spacing.md,
             fontSize: '12px',
             lineHeight: 1.55,
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           <div style={{ color: theme.accent, fontWeight: 700, marginBottom: theme.spacing.xs }}>

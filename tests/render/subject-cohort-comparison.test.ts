@@ -218,8 +218,30 @@ describe('subject cohort comparison renderer', () => {
     const viewModel = buildSubjectCohortComparisonViewModel(longResult, {
       maxSubjectsPerCohort: 12,
     });
+    const mobileHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320);
+    expect(mobileHtml.match(/data-layout="cohort-label"/gu)).toHaveLength(2);
+    expect(mobileHtml).toContain('-webkit-line-clamp:2');
+    expect(mobileHtml.match(/data-layout="cohort-subject-item"/gu)).toHaveLength(6);
+    expect(mobileHtml.match(/data-layout="cohort-subject-metrics"/gu)).toHaveLength(6);
+    expect(mobileHtml.match(/data-layout="cohort-subject-summary"/gu)).toHaveLength(2);
+    expect(mobileHtml.match(/图片展示 3\/60 条已返回样本/gu)).toHaveLength(2);
+    expect(mobileHtml).toContain('卡片另有 9 条告警未展开。');
+    expect(mobileHtml).toContain('另有 6 条限制未展开。');
+    expect(mobileHtml).toContain('聚合指标仍按已取得的有效样本计算。');
+
+    const midWidthHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 520);
+    expect(midWidthHtml).toContain('-webkit-line-clamp:3');
+    expect(midWidthHtml.match(/data-layout="cohort-subject-item"/gu)).toHaveLength(12);
+    expect(midWidthHtml.match(/图片展示 6\/60 条已返回样本/gu)).toHaveLength(2);
+
+    const desktopHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 960);
+    expect(desktopHtml.match(/data-layout="cohort-subject-item"/gu)).toHaveLength(16);
+    expect(desktopHtml.match(/图片展示 8\/60 条已返回样本/gu)).toHaveLength(2);
+
     const service = new RenderService();
     try {
+      const mobileRender = await service.renderCard(viewModel, { width: 320, cache: false });
+      expect(mobileRender.height).toBeLessThan(6500);
       for (const width of [640, 960]) {
         const rendered = await service.renderCard(viewModel, { width, cache: false });
         expect(rendered.buffer.subarray(0, 8)).toEqual(

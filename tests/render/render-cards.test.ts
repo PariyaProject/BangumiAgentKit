@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   RenderService,
   SubjectCardViewModel,
+  buildSubjectCardViewModel,
   SearchListViewModel,
   CastCardViewModel,
   CollectionProgressViewModel,
@@ -60,6 +61,203 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(result.mimeType).toBe('image/png');
     expect(result.width).toBe(1920); // 960px * DPR 2
     expect(result.height).toBeGreaterThan(200);
+  });
+
+  it('keeps authenticated subject progress explicit and omits percentages for invalid totals', () => {
+    const subject = {
+      id: 990,
+      name: '星港纪行',
+      nameCn: '星港纪行',
+      type: 'anime' as const,
+      summary: '',
+      nsfw: false,
+      locked: false,
+      eps: 12,
+      totalEpisodes: 12,
+    };
+    const viewModel = buildSubjectCardViewModel(subject, {
+      collection: {
+        status: 'do',
+        statusLabel: '在看',
+        watchedEpisodes: 9,
+        totalEpisodes: 12,
+      },
+    });
+    const html = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320);
+
+    expect(viewModel.collection).toMatchObject({
+      episodeProgress: '已看 9 / 12 集',
+      progressPercentage: 75,
+    });
+    expect(html).toContain('data-layout="subject-progress-track"');
+    expect(html).toContain('aria-valuenow="75"');
+
+    const invalid = buildSubjectCardViewModel(subject, {
+      collection: {
+        status: 'do',
+        watchedEpisodes: 13,
+        totalEpisodes: 12,
+      },
+    });
+    expect(invalid.collection?.progressPercentage).toBeUndefined();
+    expect(renderHtmlTemplate(invalid, 'bangumi-light', {}, 320)).not.toContain(
+      'data-layout="subject-progress-track"',
+    );
+  });
+
+  it('gives each subject-card pack its own reference-led hierarchy', async () => {
+    const viewModel: SubjectCardViewModel = {
+      template: 'subject-card',
+      version: 1,
+      subject: {
+        id: 902025,
+        name: 'Star Harbor Journey',
+        nameCn: '星港纪行',
+        type: 'anime',
+        date: '2025',
+        image: 'data:image/svg+xml;base64,PHN2Zy8+',
+        score: 8.4,
+        tags: ['科幻', '冒险'],
+      },
+      collection: {
+        status: 'do',
+        statusLabel: '在看',
+        episodeProgress: '9 / 12 集',
+        progressPercentage: 75,
+      },
+      source: { label: '合成演示数据' },
+    };
+
+    const warm = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 640, 'warm-editorial');
+    expect(warm).toContain('data-layout="warm-score-progress-hero"');
+    expect(warm).toContain('data-score-size="hero"');
+    expect(warm.match(/data-layout="subject-cover-artwork"/gu)).toHaveLength(1);
+    expect(warm).not.toContain('data-layout="subject-cover-poster"');
+    const warmMobile = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'warm-editorial');
+    const warmMobileLayout = await measureRenderRootLayout(warmMobile, 320);
+    const warmMobileScore = warmMobileLayout.layoutElements.find(
+      (element) => element.layout === 'score-value',
+    );
+    expect(warmMobile).toContain('font-size:36px');
+    expect(warmMobileScore).toBeDefined();
+    expect(warmMobileScore!.height).toBeLessThanOrEqual(55);
+    expect(warmMobileLayout.overflowing).toEqual([]);
+    expect(warmMobileLayout.contentOverflowing).toEqual([]);
+
+    const longTitleGalleryViewModel: SubjectCardViewModel = {
+      ...viewModel,
+      subject: {
+        ...viewModel.subject,
+        name: 'ぼっち・ざ・ろっく！',
+        nameCn: '孤独摇滚！',
+        rank: 73,
+      },
+    };
+    const gallery = renderHtmlTemplate(
+      longTitleGalleryViewModel,
+      'bangumi-light',
+      {},
+      320,
+      'clean-gallery',
+    );
+    expect(gallery.indexOf('data-layout="gallery-category-header"')).toBeLessThan(
+      gallery.indexOf('data-layout="subject-cover-art-stage"'),
+    );
+    expect(gallery).toContain('data-layout="gallery-title-score-row"');
+    expect(gallery).toContain('data-layout="gallery-subject-details"');
+    const galleryDate = renderHtmlTemplate(
+      {
+        ...longTitleGalleryViewModel,
+        subject: { ...longTitleGalleryViewModel.subject, date: '1998-04-03' },
+      },
+      'bangumi-light',
+      {},
+      320,
+      'clean-gallery',
+    );
+    expect(galleryDate).toContain('data-layout="gallery-subject-date-label"');
+    expect(galleryDate).toContain('data-layout="gallery-subject-date-value"');
+    expect(galleryDate).toContain('1998-04-03');
+    for (const width of [320, 360, 520]) {
+      const html = renderHtmlTemplate(
+        {
+          ...longTitleGalleryViewModel,
+          subject: { ...longTitleGalleryViewModel.subject, date: '1998-04-03' },
+        },
+        'bangumi-light',
+        {},
+        width,
+        'clean-gallery',
+      );
+      const layout = await measureRenderRootLayout(html, width);
+      const label = layout.layoutElements.find(
+        (element) => element.layout === 'gallery-subject-date-label',
+      );
+      const date = layout.layoutElements.find(
+        (element) => element.layout === 'gallery-subject-date-value',
+      );
+      expect(label, `date label at ${width}px`).toBeDefined();
+      expect(date, `date value at ${width}px`).toBeDefined();
+      expect(Math.abs(label!.top - date!.top), `date row at ${width}px`).toBeLessThanOrEqual(1);
+      expect(layout.overflowing, `date row overflow at ${width}px`).toEqual([]);
+    }
+    const warmDate = renderHtmlTemplate(
+      {
+        ...longTitleGalleryViewModel,
+        subject: { ...longTitleGalleryViewModel.subject, date: '1998-04-03' },
+      },
+      'bangumi-light',
+      {},
+      320,
+      'warm-editorial',
+    );
+    expect(warmDate).toContain('data-layout="no-wrap-metadata-item"');
+    expect(warmDate).toContain('1998-04-03');
+    expect(gallery).not.toContain('BANGUMI · 条目档案');
+    expect(gallery).toContain('data-layout="subject-cover-artwork"');
+    expect(gallery.match(/data-layout="subject-cover-artwork"/gu)).toHaveLength(1);
+    expect(gallery).toContain('演示数据');
+    expect(gallery).toContain('grid-template-columns:minmax(0, 1fr)');
+    expect(gallery).not.toContain('data-layout="subject-cover-poster"');
+    const galleryWide = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 960, 'clean-gallery');
+    expect(galleryWide).toContain('font-size:76px');
+
+    const zine = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'graphic-zine');
+    expect(zine).toContain('data-layout="zine-subject-title-overlay"');
+    expect(zine).toContain('data-title-eyebrow-backplate="true"');
+    expect(zine).toContain('条目档案');
+    expect(zine).not.toContain('BANGUMI · 条目档案');
+    expect(zine).toContain('data-layout="zine-score-progress-hero"');
+    expect(zine).toContain('综合评分');
+    expect(zine.match(/data-layout="subject-cover-artwork"/gu)).toHaveLength(1);
+    expect(zine).not.toContain('data-layout="subject-cover-poster"');
+
+    const zineNoCover = renderHtmlTemplate(
+      { ...viewModel, subject: { ...viewModel.subject, image: undefined } },
+      'bangumi-light',
+      {},
+      320,
+      'graphic-zine',
+    );
+    expect(zineNoCover).toContain('data-cover-placeholder="poster"');
+    const zineNoCoverLayout = await measureRenderRootLayout(zineNoCover, 320);
+    expect(
+      zineNoCoverLayout.contentOverflowing.filter(
+        (item) => item.layoutContext === 'graphic-zine-cover-hero',
+      ),
+    ).toEqual([]);
+
+    const zineMobileLayout = await measureRenderRootLayout(zine, 320);
+    const zineMobileScore = zineMobileLayout.layoutElements.find(
+      (element) => element.layout === 'score-value',
+    );
+    expect(zineMobileScore).toBeDefined();
+    expect(zineMobileScore!.height).toBeLessThanOrEqual(80);
+    expect(
+      zineMobileLayout.contentOverflowing.filter(
+        (item) => item.layoutContext === 'zine-score-progress-hero',
+      ),
+    ).toEqual([]);
   });
 
   it('R02: Search List returns valid PNG', async () => {
@@ -421,6 +619,17 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
       ['unavailable', makeResult('unavailable', [], 0)],
     ];
 
+    const formattedDateHtml = renderHtmlTemplate(
+      buildRevisionTimelineViewModel(cases[0]![1]),
+      'bangumi-light',
+      {},
+      320,
+    );
+    expect(formattedDateHtml).toContain('2026-08-01');
+    expect(formattedDateHtml).not.toContain('2026-08-01T00:00:00Z');
+    expect(formattedDateHtml).toContain('获取于 2026-08-10 00:00 UTC');
+    expect(formattedDateHtml).not.toContain('2026-08-10T00:00:00.000Z');
+
     for (const [label, result] of cases) {
       const viewModel = buildRevisionTimelineViewModel(result);
       for (const width of [640, 960]) {
@@ -437,8 +646,31 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
 
     const longSummaryVm = buildRevisionTimelineViewModel(cases[1]![1]);
     const longSummaryHtml = renderHtmlTemplate(longSummaryVm, 'bangumi-light', {}, 320);
-    expect(longSummaryHtml).toContain('摘要节选 · 前 160 字符');
+    expect(longSummaryHtml).toContain('摘要节选 · 前 72 字符');
+    expect(longSummaryHtml).not.toContain('摘要节选 · 前 160 字符');
+    expect(longSummaryHtml).toContain('font-size:13px');
     expect(longSummaryHtml).toContain('图片显示 2 条');
+    for (const width of [320, 360, 520]) {
+      for (const pack of ['warm-editorial', 'clean-gallery', 'graphic-zine'] as const) {
+        const coverageHtml = renderHtmlTemplate(longSummaryVm, 'bangumi-light', {}, width, pack);
+        const coverageLayout = await measureRenderRootLayout(coverageHtml, width);
+        const coverageItems = coverageLayout.layoutElements.filter(
+          (element) => element.layout === 'timeline-coverage-item',
+        );
+        expect(coverageItems, `${pack} coverage items at ${width}px`).toHaveLength(
+          4 + (longSummaryVm.coverage.truncated ? 1 : 0),
+        );
+        expect(
+          coverageItems.map((item) => item.text),
+          `${pack} keeps total count with its label at ${width}px`,
+        ).toContain('总数 10');
+        expect(
+          coverageItems.every((element) => element.height <= 25),
+          `${pack} coverage chips should stay on one line at ${width}px`,
+        ).toBe(true);
+        expect(coverageLayout.overflowing, `${pack} coverage overflow at ${width}px`).toEqual([]);
+      }
+    }
     expect(longSummaryHtml).toContain('data-tone="indigo"');
     expect(longSummaryHtml).toContain('data-tone="coral"');
 
@@ -454,6 +686,25 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(typedHtml).toContain('条目锁定 · 类型 103');
     expect(typedHtml).toContain('未分类修订类型 · 类型 999');
     expect(typedHtml).toContain('data-tone="indigo"');
+    for (const width of [320, 360, 520]) {
+      for (const pack of ['warm-editorial', 'clean-gallery', 'graphic-zine'] as const) {
+        const html = renderHtmlTemplate(typedVm, 'bangumi-light', {}, width, pack);
+        const layout = await measureRenderRootLayout(html, width);
+        const metaItems = layout.layoutElements.filter(
+          (element) => element.layout === 'timeline-event-meta-item',
+        );
+        expect(metaItems, `${pack} event metadata at ${width}px`).toHaveLength(4);
+        expect(
+          metaItems.every((element) => element.height <= 25),
+          `${pack} event ID metadata should stay on one line at ${width}px`,
+        ).toBe(true);
+        expect(layout.overflowing).toEqual([]);
+      }
+    }
+
+    const zineHtml = renderHtmlTemplate(typedVm, 'bangumi-light', {}, 320, 'graphic-zine');
+    expect(zineHtml).toContain('data-render-pack="graphic-zine"');
+    expect(zineHtml).toContain('data-timeline-pack="graphic-zine"');
 
     const partialVm = buildRevisionTimelineViewModel(
       makeResult(
@@ -473,7 +724,7 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(html).toContain('aria-label="Bangumi 修订记录时间线"');
     expect(html).toContain('&lt;script&gt;no-html&lt;/script&gt;');
     expect(html).toContain('历史增长趋势：当前源不支持计算');
-  });
+  }, 20_000);
 
   it('R06: CJK Chinese text renders without throwing or breaking layout', async () => {
     const vm: SubjectCardViewModel = {

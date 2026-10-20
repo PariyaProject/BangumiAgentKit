@@ -106,6 +106,7 @@ export const CollectionScheduleCard: React.FC<CollectionScheduleCardProps> = ({
 
       {viewModel.error ? (
         <div
+          data-render-mask="panel"
           style={{
             color: theme.warning,
             backgroundColor: theme.surfaceAlt,
@@ -114,6 +115,7 @@ export const CollectionScheduleCard: React.FC<CollectionScheduleCardProps> = ({
             padding: theme.spacing.md,
             fontSize: '12px',
             lineHeight: 1.5,
+            clipPath: theme.design.masks.panel,
           }}
         >
           {viewModel.error.message} {viewModel.error.nextAction || ''}

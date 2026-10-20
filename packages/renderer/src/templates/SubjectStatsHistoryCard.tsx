@@ -172,6 +172,7 @@ export const SubjectStatsHistoryCard: React.FC<SubjectStatsHistoryCardProps> = (
 
       {observations.length === 0 ? (
         <div
+          data-render-mask="panel"
           style={{
             color: theme.warning,
             backgroundColor: theme.surfaceAlt,
@@ -180,6 +181,7 @@ export const SubjectStatsHistoryCard: React.FC<SubjectStatsHistoryCardProps> = (
             padding: theme.spacing.md,
             fontSize: '12px',
             lineHeight: 1.5,
+            clipPath: theme.design.masks.panel,
           }}
         >
           {viewModel.collection.recordCurrent

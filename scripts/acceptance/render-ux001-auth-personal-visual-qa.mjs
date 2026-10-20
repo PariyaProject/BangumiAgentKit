@@ -1,33 +1,64 @@
 /* global document, window */
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  CollectionIntelligenceService,
-  buildCollectionIntelligence,
-} from '../../packages/bangumi-core/dist/index.js';
-import { formatAuthStatusMessage } from '../../packages/auth/dist/index.js';
-import { GeneratedBangumiOpenApiClient } from '../../packages/bangumi-openapi/dist/index.js';
-import { HttpClient } from '../../packages/bangumi-transport/dist/index.js';
-import {
+  candidateIdentity,
+  distBuildIdentity,
+  renderProvenance,
+  sourceIdentity,
+} from './render-provenance.mjs';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const sourceBeforeBuild = { candidate: candidateIdentity(), source: sourceIdentity() };
+execFileSync('pnpm', ['build'], { cwd: repoRoot, stdio: 'inherit' });
+assert.deepEqual(
+  { candidate: candidateIdentity(), source: sourceIdentity() },
+  sourceBeforeBuild,
+  'Candidate/source changed while building auth matrix dependencies',
+);
+const provenance = {
+  ...sourceBeforeBuild,
+  rendererBuild: distBuildIdentity([
+    'packages/renderer/dist',
+    'packages/bangumi-core/dist',
+    'packages/auth/dist',
+    'packages/bangumi-openapi/dist',
+    'packages/bangumi-transport/dist',
+    'apps/api/dist',
+  ]),
+};
+const { CollectionIntelligenceService, buildCollectionIntelligence } =
+  await import('../../packages/bangumi-core/dist/index.js');
+const { formatAuthStatusMessage } = await import('../../packages/auth/dist/index.js');
+const { GeneratedBangumiOpenApiClient } =
+  await import('../../packages/bangumi-openapi/dist/index.js');
+const { HttpClient } = await import('../../packages/bangumi-transport/dist/index.js');
+const {
   buildCollectionIntelligenceMessage,
   buildCollectionIntelligenceViewModel,
   buildCollectionProgressMessage,
   buildCollectionProgressViewModel,
+  DEFAULT_RENDER_DESIGN_PACK,
+  RENDER_DESIGN_PACK_NAMES,
   renderHtmlTemplate,
-} from '../../packages/renderer/dist/index.js';
-import { AssetResolver } from '../../packages/renderer/dist/asset-resolver.js';
-import { handleOAuthCallbackRoute } from '../../apps/api/dist/routes/oauth.js';
-
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+} = await import('../../packages/renderer/dist/index.js');
+const { AssetResolver } = await import('../../packages/renderer/dist/asset-resolver.js');
+const { handleOAuthCallbackRoute } = await import('../../apps/api/dist/routes/oauth.js');
 const WIDTHS = [320, 360, 520, 640, 960];
-const OUTPUT_DIR = path.join(
-  repoRoot,
-  '.artifacts/render/ux001-auth-personal-visual-qa-2026-10-18',
-);
+const designPackMatrixEnabled = process.env.PARIYA_RENDER_DESIGN_PACK_MATRIX === '1';
+const DESIGN_PACKS = designPackMatrixEnabled
+  ? RENDER_DESIGN_PACK_NAMES
+  : [DEFAULT_RENDER_DESIGN_PACK];
+const THEMES = designPackMatrixEnabled ? ['bangumi-light', 'bangumi-dark'] : ['bangumi-dark'];
+const runId =
+  process.env.PARIYA_RENDER_AUTH_VISUAL_QA_RUN_ID ?? 'ux001-auth-personal-visual-qa-2026-10-18';
+assert.match(runId, /^[a-zA-Z0-9._-]+$/u, 'run id must be a safe filename');
+const OUTPUT_DIR = path.join(repoRoot, '.artifacts/render', runId);
 const rendererRequire = createRequire(path.join(repoRoot, 'packages/renderer/package.json'));
 const standaloneRequire = createRequire(path.join(repoRoot, 'apps/standalone/package.json'));
 const sharp = rendererRequire('sharp');
@@ -468,7 +499,13 @@ async function capturePage(browser, id, width, html, expectedText, extra = {}) {
     throw new Error(`${id} at ${width}px has an unloaded image`);
   }
   const filePath = path.join(OUTPUT_DIR, `${id}-w${width}.png`);
-  const png = Buffer.from(await page.screenshot({ path: filePath, fullPage: true }));
+  const renderRoot = page.locator('[data-render-root]');
+  const captureMode = (await renderRoot.count()) === 1 ? 'render-root' : 'full-page';
+  const png = Buffer.from(
+    captureMode === 'render-root'
+      ? await renderRoot.screenshot({ path: filePath })
+      : await page.screenshot({ path: filePath, fullPage: true }),
+  );
   const imageMetadata = await sharp(png).metadata();
   await page.close();
   const documentText = normalizedText(pageText);
@@ -486,6 +523,7 @@ async function capturePage(browser, id, width, html, expectedText, extra = {}) {
     ),
     imageElements: documentMetrics.images,
     documentText,
+    captureMode,
     interactiveControlCount,
     assetWarningCodes: [],
     ...extra,
@@ -611,7 +649,6 @@ async function main() {
   const authStatusMessages = Object.fromEntries(
     Object.entries(authStatusFixtures).map(([id, fixture]) => [id, fixture.message]),
   );
-
   const browser = await chromium.launch({ headless: true });
   const records = [];
   try {
@@ -620,35 +657,55 @@ async function main() {
         records.push(await capturePage(browser, page.id, width, page.html, page.expectedText));
       }
     }
-    for (const visualCase of visualCases) {
-      for (const width of WIDTHS) {
-        const html = renderHtmlTemplate(
-          visualCase.viewModel,
-          'bangumi-dark',
-          visualCase.resolvedImages ?? {},
-          width,
-        );
-        records.push(
-          await capturePage(browser, visualCase.id, width, html, visualCase.expectedText, {
-            pairedMessages: {
-              authStatusId: visualCase.pairedAuthStatusId,
-              authStatus: visualCase.pairedAuthStatusMessage,
-              companion: visualCase.companionMessage,
-              agreement: visualCase.messageAgreement,
-            },
-            assetWarningCodes: visualCase.assetWarningCodes ?? [],
-            expectedImageCount: visualCase.expectedImageCount,
-          }),
-        );
+    for (const designPack of DESIGN_PACKS) {
+      for (const theme of THEMES) {
+        for (const visualCase of visualCases) {
+          for (const width of WIDTHS) {
+            const html = renderHtmlTemplate(
+              visualCase.viewModel,
+              theme,
+              visualCase.resolvedImages ?? {},
+              width,
+              designPack,
+            );
+            const recordId = designPackMatrixEnabled
+              ? `${visualCase.id}-${designPack}-${theme}`
+              : visualCase.id;
+            records.push(
+              await capturePage(browser, recordId, width, html, visualCase.expectedText, {
+                rendererCaseId: visualCase.id,
+                designPack,
+                theme,
+                pairedMessages: {
+                  authStatusId: visualCase.pairedAuthStatusId,
+                  authStatus: visualCase.pairedAuthStatusMessage,
+                  companion: visualCase.companionMessage,
+                  agreement: visualCase.messageAgreement,
+                },
+                assetWarningCodes: visualCase.assetWarningCodes ?? [],
+                expectedImageCount: visualCase.expectedImageCount,
+              }),
+            );
+          }
+        }
       }
     }
   } finally {
     await browser.close();
   }
 
+  assert.deepEqual(
+    renderProvenance('auth'),
+    provenance,
+    'Candidate/source/build changed while the synthetic auth matrix rendered',
+  );
   const manifest = {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
+    runId,
+    ...provenance,
+    designPacks: DESIGN_PACKS,
+    themes: THEMES,
     fixtureOnly: true,
     liveOauthOrAccountRequests: 0,
     qqOrTimActions: 0,
@@ -658,7 +715,8 @@ async function main() {
     collectionRendererCaseCount: visualCases.length,
     imageCount: records.length,
     authStatusMessages,
-    messagePairingAssertions: visualCases.length * WIDTHS.length,
+    messagePairingAssertions:
+      visualCases.length * WIDTHS.length * DESIGN_PACKS.length * THEMES.length,
     manualVisualReview: {
       evidenceFile: 'docs/research/run95-ux001-auth-status-and-render-visual-review-2026-10-18.md',
       generatorScope:
@@ -673,10 +731,13 @@ async function main() {
     },
     records,
   };
-  assert.equal(manifest.imageCount, 65, 'expected four callback cases and nine collection cases');
+  const expectedImageCount =
+    pages.length * WIDTHS.length +
+    visualCases.length * WIDTHS.length * DESIGN_PACKS.length * THEMES.length;
+  assert.equal(manifest.imageCount, expectedImageCount, 'unexpected synthetic QA image count');
   assert.equal(
     manifest.messagePairingAssertions,
-    45,
+    visualCases.length * WIDTHS.length * DESIGN_PACKS.length * THEMES.length,
     'every collection image must have a paired message',
   );
   assert.ok(records.every((record) => record.manualVisualReview === undefined));
@@ -712,6 +773,8 @@ async function main() {
       imageCount: records.length,
       callbackPageCount: pages.length,
       collectionRendererCaseCount: visualCases.length,
+      designPacks: DESIGN_PACKS,
+      themes: THEMES,
       cssWidths: WIDTHS,
       overflowImages: records.filter((record) => record.horizontalOverflow).length,
       missingTextChecks: records.filter((record) =>

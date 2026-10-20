@@ -35,6 +35,27 @@ function mediaLabel(media: PersonCollaborationViewModel['media']): string {
   return media === 'anime' ? '动画' : '全部媒介';
 }
 
+function formatEvidenceTimestamp(value?: string): string {
+  if (!value) return '未知';
+  const match =
+    /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?/u.exec(
+      value,
+    );
+  if (!match) return value;
+
+  const [, date, hour, minute, rawZone] = match;
+  if (
+    !hour ||
+    (hour === '00' &&
+      minute === '00' &&
+      (!rawZone || rawZone === 'Z' || rawZone === '+00:00' || rawZone === '+0000'))
+  ) {
+    return date!;
+  }
+  const zone = rawZone === 'Z' ? ' UTC' : rawZone ? ` ${rawZone}` : '';
+  return `${date} ${hour}:${minute}${zone}`;
+}
+
 const wrapStyle: React.CSSProperties = {
   boxSizing: 'border-box',
   minWidth: 0,
@@ -48,11 +69,50 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
   theme,
   width,
 }) => {
+  const renderWidth = width ?? 960;
+  const compact = renderWidth < 520;
+  const narrow = renderWidth < 360;
+  const twoColumnStats = renderWidth <= 520;
+  const separateAlternateNames = renderWidth < 520;
+  const collaboratorDisplayLimit = narrow ? 2 : renderWidth < 520 ? 4 : renderWidth < 900 ? 7 : 10;
+  const sharedSubjectDisplayLimit = narrow ? 1 : renderWidth < 520 ? 2 : renderWidth < 900 ? 3 : 5;
+  const visibleCollaborators = viewModel.collaborators.slice(0, collaboratorDisplayLimit);
+  const omittedReturnedCollaborators = viewModel.collaborators.length - visibleCollaborators.length;
   const tone = stateColor(viewModel.state, theme);
-  const visibleWarnings = viewModel.warnings.slice(0, 5);
-  const visibleLimitations = viewModel.limitations.slice(0, 4);
-  const visibleOperations = viewModel.sourceOperations.slice(0, 8);
+  const visibleWarnings = viewModel.warnings.slice(0, narrow ? 2 : compact ? 4 : 5);
+  const visibleLimitations = viewModel.limitations.slice(0, narrow ? 2 : compact ? 3 : 4);
+  const visibleOperations = viewModel.sourceOperations.slice(0, compact ? 4 : 8);
+  const visibleExclusions = viewModel.exclusions.slice(0, compact ? 3 : 10);
   const formulaEvidence = viewModel.evidence.find((item) => item.source === 'derived-s7');
+  const coverageFacts = [
+    [
+      '目标关系',
+      `${viewModel.coverage.relationRowsSelected}/${viewModel.coverage.relationRowsObserved}`,
+    ],
+    ['筛选匹配', String(viewModel.coverage.relationRowsMatchingFilters)],
+    [
+      '作品 fan-out',
+      `${viewModel.coverage.subjectIdsSelected}/${viewModel.coverage.subjectIdsObserved}`,
+    ],
+    [
+      '请求成功 / 失败',
+      `${viewModel.coverage.participantRequestsSucceeded} / ${viewModel.coverage.participantRequestsFailed}`,
+    ],
+    [
+      '参与者采用 / 观察',
+      `${viewModel.coverage.participantRowsReturned}/${viewModel.coverage.participantRowsObserved}`,
+    ],
+    ...(viewModel.coverage.relationRowsDroppedAtLimit > 0
+      ? [['关系省略', String(viewModel.coverage.relationRowsDroppedAtLimit)]]
+      : []),
+    ...(viewModel.coverage.truncated ? [['样本边界', '已触及']] : []),
+  ];
+  const contextChips = [
+    ['状态', stateLabel(viewModel.state)],
+    ['媒介', mediaLabel(viewModel.media)],
+    ...(viewModel.targetRole ? [['目标标签', viewModel.targetRole]] : []),
+    ...(viewModel.collaboratorRole ? [['合作方职位', viewModel.collaboratorRole]] : []),
+  ];
   const stats = [
     ['合作人物', viewModel.coverage.collaboratorsObserved],
     ['返回人物', viewModel.coverage.collaboratorsReturned],
@@ -70,72 +130,137 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
       />
 
       <div
+        data-layout="collaboration-context"
         style={{
           ...wrapStyle,
-          color: tone,
-          backgroundColor: `${tone}18`,
-          border: `1px solid ${tone}`,
-          borderRadius: theme.radius.md,
-          padding: theme.spacing.sm,
-          fontSize: '12px',
-          lineHeight: 1.5,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: theme.spacing.xs,
         }}
       >
-        状态：{stateLabel(viewModel.state)} · 媒介：{mediaLabel(viewModel.media)}
-        {viewModel.targetRole ? ` · 目标标签：${viewModel.targetRole}` : ''}
-        {viewModel.collaboratorRole ? ` · 合作方职位：${viewModel.collaboratorRole}` : ''}
+        {contextChips.map(([label, value]) => (
+          <span
+            key={label}
+            data-render-mask="tag"
+            style={{
+              ...wrapStyle,
+              color: label === '状态' ? tone : theme.textMuted,
+              backgroundColor: label === '状态' ? `${tone}18` : theme.surfaceAlt,
+              border: `1px solid ${label === '状态' ? tone : theme.border}`,
+              borderRadius: theme.design.badgeRadius,
+              padding: '4px 12px',
+              fontSize: '11px',
+              lineHeight: 1.35,
+              clipPath: theme.design.masks.tag,
+            }}
+          >
+            <span style={{ color: theme.textMuted }}>{label}</span> {value}
+          </span>
+        ))}
       </div>
 
-      <div style={{ ...wrapStyle, display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+      <div
+        data-layout="collaboration-stats"
+        style={{
+          ...wrapStyle,
+          display: twoColumnStats ? 'grid' : 'flex',
+          gridTemplateColumns: twoColumnStats ? 'repeat(2, minmax(0, 1fr))' : undefined,
+          flexWrap: twoColumnStats ? undefined : 'wrap',
+          gap: theme.spacing.sm,
+        }}
+      >
         {stats.map(([label, value]) => (
           <div
             key={String(label)}
+            data-layout="collaboration-stat"
+            data-render-mask="panel"
             style={{
               ...wrapStyle,
-              flex: '1 1 130px',
+              flex: twoColumnStats ? undefined : '1 1 130px',
               backgroundColor: theme.surfaceAlt,
               border: `1px solid ${theme.border}`,
               borderRadius: theme.radius.md,
-              padding: theme.spacing.sm,
+              padding: compact ? theme.spacing.xs : theme.spacing.sm,
               textAlign: 'center',
+              clipPath: theme.design.masks.panel,
             }}
           >
-            <div style={{ ...wrapStyle, color: theme.accent, fontSize: '22px', fontWeight: 700 }}>
+            <div
+              style={{
+                ...wrapStyle,
+                color: theme.accent,
+                fontSize: narrow ? '19px' : '22px',
+                fontWeight: 700,
+              }}
+            >
               {value}
             </div>
-            <div style={{ ...wrapStyle, color: theme.textMuted, fontSize: '11px' }}>{label}</div>
+            <div
+              style={{ ...wrapStyle, color: theme.textMuted, fontSize: narrow ? '10px' : '11px' }}
+            >
+              {label}
+            </div>
           </div>
         ))}
       </div>
 
       <div
+        data-layout="collaboration-coverage"
+        data-render-mask="panel-alt"
         style={{
           ...wrapStyle,
           backgroundColor: theme.surfaceAlt,
           border: `1px solid ${theme.border}`,
           borderRadius: theme.radius.md,
-          padding: theme.spacing.md,
-          color: theme.textMuted,
-          fontSize: '12px',
-          lineHeight: 1.55,
+          padding: compact ? theme.spacing.sm : theme.spacing.md,
+          clipPath: theme.design.masks.panelAlt,
         }}
       >
-        目标关系观察 {viewModel.coverage.relationRowsObserved} · 满足筛选{' '}
-        {viewModel.coverage.relationRowsMatchingFilters} · 选取{' '}
-        {viewModel.coverage.relationRowsSelected}
-        {viewModel.coverage.relationRowsDroppedAtLimit > 0
-          ? ` · 关系省略 ${viewModel.coverage.relationRowsDroppedAtLimit}`
-          : ''}{' '}
-        · 作品观察 {viewModel.coverage.subjectIdsObserved} / fan-out{' '}
-        {viewModel.coverage.subjectIdsSelected} · 请求成功{' '}
-        {viewModel.coverage.participantRequestsSucceeded} / 失败{' '}
-        {viewModel.coverage.participantRequestsFailed} · 参与者观察{' '}
-        {viewModel.coverage.participantRowsObserved} / 采用{' '}
-        {viewModel.coverage.participantRowsReturned}
-        {viewModel.coverage.truncated ? ' · 已达到至少一项安全边界' : ''}
+        <div
+          style={{
+            color: theme.text,
+            fontSize: '12px',
+            fontWeight: 700,
+            marginBottom: theme.spacing.xs,
+          }}
+        >
+          覆盖摘要
+        </div>
+        <div
+          role="list"
+          style={{
+            ...wrapStyle,
+            display: 'grid',
+            gridTemplateColumns: compact
+              ? 'repeat(2, minmax(0, 1fr))'
+              : 'repeat(3, minmax(0, 1fr))',
+            gap: theme.spacing.xs,
+          }}
+        >
+          {coverageFacts.map(([label, value]) => (
+            <div
+              key={label}
+              role="listitem"
+              data-layout="collaboration-coverage-item"
+              style={{
+                ...wrapStyle,
+                padding: '5px 7px',
+                borderRadius: theme.radius.sm,
+                backgroundColor: theme.surface,
+                color: theme.textMuted,
+                fontSize: '10px',
+                lineHeight: 1.35,
+              }}
+            >
+              <div>{label}</div>
+              <div style={{ color: theme.text, fontSize: '12px', fontWeight: 700 }}>{value}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div
+        data-render-mask="panel"
         style={{
           ...wrapStyle,
           backgroundColor: theme.surfaceAlt,
@@ -145,6 +270,7 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
           color: theme.textMuted,
           fontSize: '11px',
           lineHeight: 1.5,
+          clipPath: theme.design.masks.panel,
         }}
       >
         <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
@@ -167,7 +293,7 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
                 {operation.rowsOmitted ? ` · 响应省略 ${operation.rowsOmitted}` : ''}
               </div>
               <div>
-                最近检索：{latestOutcome?.retrievedAt || '未知'}
+                最近检索：{formatEvidenceTimestamp(latestOutcome?.retrievedAt)}
                 {failedOutcomes.length > 0
                   ? ` · 失败码：${failedOutcomes.map((outcome) => outcome.errorCode || 'UNKNOWN_ERROR').join('、')}`
                   : ''}
@@ -175,14 +301,48 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
             </div>
           );
         })}
+        {viewModel.sourceOperations.length > visibleOperations.length ? (
+          <div style={{ color: theme.textMuted, marginTop: 4 }}>
+            另有 {viewModel.sourceOperations.length - visibleOperations.length} 条来源路径未列出。
+          </div>
+        ) : null}
       </div>
 
       <div style={wrapStyle}>
         <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
           共同作品数排名
         </div>
-        {viewModel.collaborators.length === 0 ? (
+        {(viewModel.collaborators.length > 0 || viewModel.hiddenCollaborators > 0) && (
           <div
+            style={{
+              ...wrapStyle,
+              color: theme.textMuted,
+              backgroundColor: theme.surfaceAlt,
+              border: `1px solid ${theme.border}`,
+              borderRadius: theme.design.badgeRadius,
+              padding: theme.spacing.sm,
+              fontSize: '11px',
+              lineHeight: 1.5,
+              marginBottom: theme.spacing.sm,
+            }}
+          >
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+              <span>
+                显示 {visibleCollaborators.length}/{viewModel.collaborators.length} 位合作人物
+              </span>
+              <span>每人至多 {sharedSubjectDisplayLimit} 部共同作品</span>
+            </div>
+            {omittedReturnedCollaborators > 0
+              ? `另有 ${omittedReturnedCollaborators} 位已返回合作人物未显示。`
+              : ''}
+            {viewModel.hiddenCollaborators > 0
+              ? `视图模型边界另省略 ${viewModel.hiddenCollaborators} 位。`
+              : ''}
+          </div>
+        )}
+        {viewModel.collaborators.length === 0 && viewModel.hiddenCollaborators === 0 ? (
+          <div
+            data-render-mask="panel-alt"
             style={{
               color: tone,
               backgroundColor: theme.surfaceAlt,
@@ -190,110 +350,237 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
               borderRadius: theme.radius.md,
               padding: theme.spacing.md,
               fontSize: '12px',
+              clipPath: theme.design.masks.panelAlt,
             }}
           >
             当前边界内没有可展示的合作人物；请结合来源状态、职位字段和覆盖数字阅读。
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
-            {viewModel.collaborators.map((collaborator, index) => (
-              <div
-                key={collaborator.id}
-                style={{
-                  ...wrapStyle,
-                  backgroundColor: theme.surfaceAlt,
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: theme.radius.sm,
-                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                }}
-              >
+            {visibleCollaborators.map((collaborator, index) => {
+              const visibleSharedSubjects = collaborator.sharedSubjects.slice(
+                0,
+                sharedSubjectDisplayLimit,
+              );
+              const rendererOmittedSharedSubjects =
+                collaborator.sharedSubjects.length - visibleSharedSubjects.length;
+              const collaboratorMaskName = index % 2 === 0 ? 'panel' : 'panelAlt';
+              const collaboratorMask = theme.design.masks[collaboratorMaskName];
+              return (
                 <div
+                  key={collaborator.id}
+                  data-layout="collaboration-person-card"
+                  data-render-mask={collaboratorMaskName === 'panel' ? 'panel' : 'panel-alt'}
                   style={{
                     ...wrapStyle,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: theme.spacing.sm,
+                    backgroundColor: theme.surfaceAlt,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: theme.radius.sm,
+                    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                    clipPath: collaboratorMask,
                   }}
                 >
                   <div
                     style={{
                       ...wrapStyle,
-                      flex: '1 1 auto',
-                      color: theme.text,
-                      fontSize: '13px',
-                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      gap: theme.spacing.sm,
                     }}
                   >
-                    {index + 1}. {collaborator.nameCn || collaborator.name}
-                    {collaborator.nameCn && collaborator.nameCn !== collaborator.name
-                      ? `（${collaborator.name}）`
-                      : ''}
-                  </div>
-                  <div
-                    style={{
-                      ...wrapStyle,
-                      flex: '0 0 auto',
-                      color: theme.accent,
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      textAlign: 'right',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {collaborator.uniqueSubjects} 部
-                  </div>
-                </div>
-                <div
-                  style={{
-                    ...wrapStyle,
-                    color: theme.textMuted,
-                    fontSize: '11px',
-                    lineHeight: 1.45,
-                  }}
-                >
-                  Person ID {collaborator.id} · {collaborator.relationLabels.join('、') || '关系'} ·{' '}
-                  {collaborator.creditRows} 行
-                  {collaborator.roleLabels.length > 0
-                    ? ` · 合作方原始标签：${collaborator.roleLabels.join('、')}`
-                    : ''}
-                </div>
-                <div
-                  style={{
-                    ...wrapStyle,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 3,
-                    marginTop: 6,
-                  }}
-                >
-                  {collaborator.sharedSubjects.map((subject) => (
                     <div
-                      key={subject.id}
-                      style={{ ...wrapStyle, color: theme.textMuted, fontSize: '11px' }}
+                      style={{
+                        ...wrapStyle,
+                        flex: '1 1 auto',
+                      }}
                     >
-                      <span style={{ color: theme.text }}>
-                        {subject.nameCn || subject.name}
-                        {subject.nameCn && subject.nameCn !== subject.name
-                          ? `（${subject.name}）`
-                          : ''}
-                      </span>{' '}
-                      · Subject {subject.id} · {subject.relationLabels.join('、')}
-                      {subject.targetRoles.length > 0
-                        ? ` · 目标原始标签：${subject.targetRoles.join('、')}`
-                        : ''}
-                      {subject.collaboratorRoles.length > 0
-                        ? ` · 合作方原始标签：${subject.collaboratorRoles.join('、')}`
-                        : ''}
+                      <div
+                        style={{
+                          color: theme.text,
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        <span style={{ color: theme.accent, marginRight: 5 }}>{index + 1}</span>
+                        {collaborator.nameCn || collaborator.name}
+                        {!separateAlternateNames &&
+                        collaborator.nameCn &&
+                        collaborator.nameCn !== collaborator.name ? (
+                          <span
+                            data-layout="collaboration-name-secondary-inline"
+                            style={{
+                              color: theme.textMuted,
+                              fontSize: '10px',
+                              fontWeight: 400,
+                              marginLeft: 6,
+                            }}
+                          >
+                            {collaborator.name}
+                          </span>
+                        ) : null}
+                      </div>
+                      {separateAlternateNames &&
+                      collaborator.nameCn &&
+                      collaborator.nameCn !== collaborator.name ? (
+                        <div
+                          data-layout="collaboration-name-secondary-row"
+                          style={{
+                            color: theme.textMuted,
+                            fontSize: '10px',
+                            lineHeight: 1.35,
+                            marginTop: 2,
+                          }}
+                        >
+                          {collaborator.name}
+                        </div>
+                      ) : null}
                     </div>
-                  ))}
-                  {collaborator.sharedSubjectsOmitted > 0 && (
-                    <div style={{ ...wrapStyle, color: theme.warning, fontSize: '11px' }}>
-                      另有 {collaborator.sharedSubjectsOmitted} 部共同作品因证据显示上限未列出。
+                    <div
+                      style={{
+                        ...wrapStyle,
+                        flex: '0 0 auto',
+                        color: theme.accent,
+                        backgroundColor: theme.surface,
+                        borderRadius: theme.design.badgeRadius,
+                        padding: '3px 7px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        textAlign: 'right',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {collaborator.uniqueSubjects} 部
                     </div>
-                  )}
+                  </div>
+                  <div
+                    style={{
+                      ...wrapStyle,
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '3px 6px',
+                      marginTop: 4,
+                      color: theme.textMuted,
+                      fontSize: '10px',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    <span>Person ID {collaborator.id}</span>
+                    <span>{collaborator.relationLabels.join('、') || '关系'}</span>
+                    <span>{collaborator.creditRows} 行</span>
+                    {collaborator.roleLabels.length > 0 ? (
+                      <span>原始职位：{collaborator.roleLabels.join('、')}</span>
+                    ) : null}
+                  </div>
+                  <div
+                    style={{
+                      ...wrapStyle,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 3,
+                      marginTop: 6,
+                    }}
+                  >
+                    {visibleSharedSubjects.map((subject) => (
+                      <div
+                        key={subject.id}
+                        style={{
+                          ...wrapStyle,
+                          paddingTop: 5,
+                          borderTop: `1px solid ${theme.border}`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            justifyContent: 'space-between',
+                            gap: 6,
+                          }}
+                        >
+                          <span
+                            style={{
+                              ...wrapStyle,
+                              color: theme.text,
+                              fontSize: '11px',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {subject.nameCn || subject.name}
+                            {!separateAlternateNames &&
+                            subject.nameCn &&
+                            subject.nameCn !== subject.name ? (
+                              <span
+                                data-layout="collaboration-name-secondary-inline"
+                                style={{
+                                  color: theme.textMuted,
+                                  fontSize: '9px',
+                                  fontWeight: 400,
+                                  marginLeft: 5,
+                                }}
+                              >
+                                {subject.name}
+                              </span>
+                            ) : null}
+                          </span>
+                          <span
+                            style={{
+                              color: theme.textMuted,
+                              fontSize: '9px',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Subject {subject.id}
+                          </span>
+                        </div>
+                        {separateAlternateNames &&
+                        subject.nameCn &&
+                        subject.nameCn !== subject.name ? (
+                          <div
+                            data-layout="collaboration-name-secondary-row"
+                            style={{
+                              ...wrapStyle,
+                              color: theme.textMuted,
+                              fontSize: '9px',
+                              marginTop: 1,
+                            }}
+                          >
+                            {subject.name}
+                          </div>
+                        ) : null}
+                        <div
+                          style={{
+                            ...wrapStyle,
+                            color: theme.textMuted,
+                            fontSize: '9px',
+                            lineHeight: 1.35,
+                            marginTop: 3,
+                          }}
+                        >
+                          {[
+                            ...subject.relationLabels,
+                            ...subject.targetRoles.map((role) => `目标：${role}`),
+                            ...subject.collaboratorRoles.map((role) => `合作方：${role}`),
+                          ].join(' · ')}
+                        </div>
+                      </div>
+                    ))}
+                    {rendererOmittedSharedSubjects > 0 && (
+                      <div style={{ ...wrapStyle, color: theme.warning, fontSize: '11px' }}>
+                        图片省略 {rendererOmittedSharedSubjects}{' '}
+                        条已返回共同作品；剩余行仍计入上方覆盖数字。
+                      </div>
+                    )}
+                    {collaborator.sharedSubjectsOmitted > 0 && (
+                      <div style={{ ...wrapStyle, color: theme.warning, fontSize: '11px' }}>
+                        另有 {collaborator.sharedSubjectsOmitted} 条共同作品在视图模型边界处未列出。
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {viewModel.hiddenCollaborators > 0 && (
               <div
                 style={{
@@ -303,7 +590,7 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
                   textAlign: 'center',
                 }}
               >
-                另有 {viewModel.hiddenCollaborators} 位合作人物因渲染显示上限未列出。
+                另有 {viewModel.hiddenCollaborators} 位合作人物因视图模型显示边界未列出。
               </div>
             )}
           </div>
@@ -311,42 +598,55 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
       </div>
 
       <div
+        data-layout="collaboration-limits"
+        data-render-mask="panel"
         style={{
           ...wrapStyle,
           backgroundColor: theme.surfaceAlt,
           border: `1px solid ${theme.border}`,
           borderRadius: theme.radius.md,
-          padding: theme.spacing.md,
+          padding: compact ? theme.spacing.sm : theme.spacing.md,
           color: theme.textMuted,
-          fontSize: '11px',
-          lineHeight: 1.5,
+          fontSize: compact ? '10px' : '11px',
+          lineHeight: compact ? 1.4 : 1.5,
+          clipPath: theme.design.masks.panel,
         }}
       >
-        fan-out 并发 {viewModel.coverage.fanoutConcurrency} · 人物输出上限{' '}
-        {viewModel.coverage.maxCollaborators} · 每人共同作品上限{' '}
-        {viewModel.coverage.maxSharedSubjects} · 参与者异常{' '}
-        {viewModel.coverage.malformedParticipantRows} · 自身排除{' '}
-        {viewModel.coverage.selfRowsExcluded} · 职位不匹配{' '}
-        {viewModel.coverage.collaboratorRoleExcludedRows} · 职位不可用{' '}
-        {viewModel.coverage.collaboratorRoleUnavailableRows} · 共同作品证据省略{' '}
-        {viewModel.coverage.sharedSubjectRowsOmittedAtLimit} · 目标标签排除{' '}
-        {viewModel.coverage.targetRoleExcludedRows}
+        <div>
+          并发 {viewModel.coverage.fanoutConcurrency} · 人物上限{' '}
+          {viewModel.coverage.maxCollaborators} · 每人作品上限{' '}
+          {viewModel.coverage.maxSharedSubjects}
+        </div>
+        <div>
+          参与者异常 {viewModel.coverage.malformedParticipantRows} · 自身排除{' '}
+          {viewModel.coverage.selfRowsExcluded}
+        </div>
+        <div>
+          职位不匹配 {viewModel.coverage.collaboratorRoleExcludedRows} · 不可用{' '}
+          {viewModel.coverage.collaboratorRoleUnavailableRows}
+        </div>
+        <div>
+          作品证据省略 {viewModel.coverage.sharedSubjectRowsOmittedAtLimit} · 目标标签排除{' '}
+          {viewModel.coverage.targetRoleExcludedRows}
+        </div>
       </div>
 
       {viewModel.exclusions.length > 0 && (
         <div
+          data-render-mask="panel-alt"
           style={{
             ...wrapStyle,
             backgroundColor: theme.surfaceAlt,
             border: `1px solid ${theme.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
             未计入原因
           </div>
-          {viewModel.exclusions.slice(0, 10).map((item) => (
+          {visibleExclusions.map((item) => (
             <div
               key={item.reason}
               style={{ ...wrapStyle, color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}
@@ -357,6 +657,11 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
                 : ''}
             </div>
           ))}
+          {viewModel.exclusions.length > visibleExclusions.length ? (
+            <div style={{ ...wrapStyle, color: theme.textMuted, fontSize: '10px', marginTop: 4 }}>
+              另有 {viewModel.exclusions.length - visibleExclusions.length} 类未计入原因。
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -365,11 +670,19 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
           {visibleWarnings.map((warning) => (
             <div key={warning.code}>⚠ {warning.message}</div>
           ))}
+          {viewModel.warnings.length > visibleWarnings.length ? (
+            <div>另有 {viewModel.warnings.length - visibleWarnings.length} 条警告未显示。</div>
+          ) : null}
         </div>
       )}
       {visibleLimitations.length > 0 && (
         <div style={{ ...wrapStyle, color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
-          限制：{visibleLimitations.join('；')}
+          <div>限制：{visibleLimitations.join('；')}</div>
+          {viewModel.limitations.length > visibleLimitations.length ? (
+            <div>
+              另有 {viewModel.limitations.length - visibleLimitations.length} 项限制未显示。
+            </div>
+          ) : null}
         </div>
       )}
       <Footer label={viewModel.source.label} theme={theme} />
