@@ -1,6 +1,6 @@
 import React from 'react';
 import { CardFrame } from '../components/CardFrame.js';
-import { RendererIcon } from '../components/RendererIcon.js';
+import { RendererIcon, type RendererIconName } from '../components/RendererIcon.js';
 import { TitleBlock } from '../components/TitleBlock.js';
 import { Footer } from '../components/Footer.js';
 import { SemanticToneName, ThemeTokens } from '../themes/index.js';
@@ -19,14 +19,49 @@ const ENTITY_LABELS: Record<RevisionTimelineViewModel['entityType'], string> = {
   person: '人物',
 };
 
-const TIMELINE_TONES: readonly SemanticToneName[] = [
-  'indigo',
-  'coral',
-  'mint',
-  'plum',
-  'butter',
-  'blue',
-];
+interface RevisionTypePresentation {
+  label: string;
+  icon: RendererIconName;
+  tone: SemanticToneName;
+}
+
+const REVISION_TYPE_PRESENTATION: Readonly<Record<number, RevisionTypePresentation>> = {
+  1: { label: '条目修订', icon: 'subject', tone: 'coral' },
+  2: { label: '角色修订', icon: 'cast', tone: 'plum' },
+  3: { label: '人物修订', icon: 'person', tone: 'blue' },
+  4: { label: '角色关联修订', icon: 'relations', tone: 'mint' },
+  5: { label: '条目角色关联修订', icon: 'relations', tone: 'mint' },
+  6: { label: '条目声优关联修订', icon: 'cast', tone: 'plum' },
+  7: { label: '角色声优关联修订', icon: 'cast', tone: 'plum' },
+  8: { label: '人物声优关联修订', icon: 'cast', tone: 'plum' },
+  9: { label: '人物条目关联修订', icon: 'relations', tone: 'mint' },
+  10: { label: '条目人物关联修订', icon: 'person', tone: 'blue' },
+  11: { label: '条目合并管理', icon: 'merge', tone: 'plum' },
+  12: { label: '条目删除管理', icon: 'erase', tone: 'coral' },
+  13: { label: '角色合并管理', icon: 'merge', tone: 'plum' },
+  14: { label: '角色删除管理', icon: 'erase', tone: 'coral' },
+  15: { label: '人物合并管理', icon: 'merge', tone: 'plum' },
+  16: { label: '人物删除管理', icon: 'erase', tone: 'coral' },
+  17: { label: '条目关联修订', icon: 'relations', tone: 'mint' },
+  18: { label: '章节修订', icon: 'episode', tone: 'blue' },
+  103: { label: '条目锁定', icon: 'lock', tone: 'indigo' },
+  104: { label: '条目解锁', icon: 'unlock', tone: 'mint' },
+  181: { label: '章节合并管理', icon: 'merge', tone: 'plum' },
+  182: { label: '章节移动管理', icon: 'move', tone: 'blue' },
+  183: { label: '章节锁定', icon: 'lock', tone: 'indigo' },
+  184: { label: '章节解锁', icon: 'unlock', tone: 'mint' },
+  185: { label: '章节删除管理', icon: 'erase', tone: 'coral' },
+};
+
+function revisionTypePresentation(type: number): RevisionTypePresentation {
+  return (
+    REVISION_TYPE_PRESENTATION[type] ?? {
+      label: '未分类修订类型',
+      icon: 'history',
+      tone: 'indigo',
+    }
+  );
+}
 
 export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
   viewModel,
@@ -93,7 +128,8 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
         style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}
       >
         {items.map((item, index) => {
-          const toneName = TIMELINE_TONES[index % TIMELINE_TONES.length]!;
+          const presentation = revisionTypePresentation(item.type);
+          const toneName = presentation.tone;
           const tone = theme.tones[toneName];
           const summary = item.summary || '修订摘要未知';
           const summaryCharacters = Array.from(summary);
@@ -105,12 +141,13 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
               role="listitem"
               style={{
                 display: 'grid',
-                gridTemplateColumns: '28px minmax(0, 1fr)',
+                gridTemplateColumns: '32px minmax(0, 1fr)',
                 gap: theme.spacing.sm,
                 minWidth: 0,
               }}
             >
               <div
+                data-layout="timeline-event-marker"
                 aria-hidden="true"
                 style={{
                   display: 'flex',
@@ -119,7 +156,13 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
                   minHeight: '100%',
                 }}
               >
-                <RendererIcon name="history" theme={theme} size={16} badge tone={toneName} />
+                <RendererIcon
+                  name={presentation.icon}
+                  theme={theme}
+                  size={16}
+                  badge
+                  tone={toneName}
+                />
                 {index < items.length - 1 ? (
                   <div
                     style={{
@@ -157,7 +200,7 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
                     {item.createdAt ? item.createdAt : '创建时间未知'}
                   </span>
                   <span style={{ color: theme.textMuted, fontSize: '11px', padding: '3px 0' }}>
-                    类型 {item.type} · 修订 ID {item.id}
+                    {presentation.label} · 类型 {item.type} · 修订 ID {item.id}
                   </span>
                 </div>
                 {summaryTruncated ? (

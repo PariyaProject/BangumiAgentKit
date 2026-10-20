@@ -1,9 +1,6 @@
 import { createRequire } from 'node:module';
 
-interface LayoutRoot {
-  clientWidth: number;
-  scrollWidth: number;
-  getBoundingClientRect(): { left: number; right: number };
+interface LayoutRoot extends LayoutNode {
   querySelectorAll(selector: string): ArrayLike<LayoutNode>;
 }
 
@@ -15,6 +12,7 @@ interface LayoutNode {
   scrollWidth: number;
   parentElement: LayoutNode | null;
   nextElementSibling: LayoutNode | null;
+  getAttribute(name: string): string | null;
   getBoundingClientRect(): { left: number; right: number; width: number };
 }
 
@@ -135,15 +133,34 @@ export async function measureRenderRootLayout(
         )
         .slice(0, 10);
       const contentOverflowing = Array.from(root.querySelectorAll('*'))
-        .map((element) => ({
-          tagName: element.tagName,
-          className: String(element.className),
-          clientWidth: element.clientWidth,
-          scrollWidth: element.scrollWidth,
-          text: (element.textContent ?? '').trim().slice(0, 80),
-        }))
+        .map((element) => {
+          let current: LayoutNode | null = element;
+          let layoutContext: string | null = null;
+          const pathSegments: string[] = [];
+          while (current && current !== root) {
+            const marker = current.getAttribute('data-layout');
+            if (!layoutContext && marker) layoutContext = marker;
+            pathSegments.unshift(
+              `${current.tagName.toLowerCase()}${marker ? `[data-layout=${marker}]` : ''}`,
+            );
+            current = current.parentElement;
+          }
+          return {
+            tagName: element.tagName,
+            className: String(element.className),
+            layoutContext,
+            elementPath: pathSegments.slice(-6).join(' > '),
+            clientWidth: element.clientWidth,
+            scrollWidth: element.scrollWidth,
+            text: (element.textContent ?? '').trim().slice(0, 80),
+          };
+        })
         .filter((element) => element.scrollWidth > element.clientWidth + 1)
-        .slice(0, 10);
+        .sort((left, right) =>
+          `${left.layoutContext ?? ''}:${left.text}`.localeCompare(
+            `${right.layoutContext ?? ''}:${right.text}`,
+          ),
+        );
       return {
         clientWidth: root.clientWidth,
         scrollWidth: root.scrollWidth,
@@ -208,15 +225,34 @@ export async function renderThemePreview(
         )
         .slice(0, 10);
       const contentOverflowing = Array.from(root.querySelectorAll('*'))
-        .map((element) => ({
-          tagName: element.tagName,
-          className: String(element.className),
-          clientWidth: element.clientWidth,
-          scrollWidth: element.scrollWidth,
-          text: (element.textContent ?? '').trim().slice(0, 80),
-        }))
+        .map((element) => {
+          let current: LayoutNode | null = element;
+          let layoutContext: string | null = null;
+          const pathSegments: string[] = [];
+          while (current && current !== root) {
+            const marker = current.getAttribute('data-layout');
+            if (!layoutContext && marker) layoutContext = marker;
+            pathSegments.unshift(
+              `${current.tagName.toLowerCase()}${marker ? `[data-layout=${marker}]` : ''}`,
+            );
+            current = current.parentElement;
+          }
+          return {
+            tagName: element.tagName,
+            className: String(element.className),
+            layoutContext,
+            elementPath: pathSegments.slice(-6).join(' > '),
+            clientWidth: element.clientWidth,
+            scrollWidth: element.scrollWidth,
+            text: (element.textContent ?? '').trim().slice(0, 80),
+          };
+        })
         .filter((element) => element.scrollWidth > element.clientWidth + 1)
-        .slice(0, 10);
+        .sort((left, right) =>
+          `${left.layoutContext ?? ''}:${left.text}`.localeCompare(
+            `${right.layoutContext ?? ''}:${right.text}`,
+          ),
+        );
       return {
         clientWidth: root.clientWidth,
         scrollWidth: root.scrollWidth,

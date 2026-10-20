@@ -304,15 +304,14 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
 }) => {
   const { subject } = viewModel;
   const renderWidth = width ?? 960;
-  const coverWidth =
-    renderWidth < 360 ? 76 : renderWidth < 520 ? 92 : renderWidth < 760 ? 136 : 196;
+  const coverWidth = renderWidth < 520 ? 112 : renderWidth < 760 ? 136 : 196;
   const compactHero = renderWidth < 520;
   const compactPanelHeader = renderWidth < 520;
   const summaryLimit = compactHero ? 96 : 180;
-  const castLimit = renderWidth < 520 ? 4 : renderWidth < 900 ? 6 : 12;
-  const staffGroupLimit = renderWidth < 520 ? 4 : renderWidth < 900 ? 6 : 8;
-  const staffMemberLimit = renderWidth < 520 ? 2 : renderWidth < 900 ? 3 : 4;
-  const relationLimit = renderWidth < 520 ? 4 : renderWidth < 900 ? 6 : 8;
+  const castLimit = renderWidth < 520 ? 2 : renderWidth < 900 ? 6 : 12;
+  const staffGroupLimit = renderWidth < 520 ? 2 : renderWidth < 900 ? 6 : 8;
+  const staffMemberLimit = renderWidth < 520 ? 1 : renderWidth < 900 ? 3 : 4;
+  const relationLimit = renderWidth < 520 ? 2 : renderWidth < 900 ? 6 : 8;
   const castItems = viewModel.cast.items.slice(0, castLimit);
   const staffGroups = viewModel.staff.groups.slice(0, staffGroupLimit);
   const relationItems = viewModel.relations.items.slice(0, relationLimit);
@@ -339,7 +338,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
         data-layout="editorial-cover-hero"
         style={{
           display: 'grid',
-          gridTemplateColumns: `${coverWidth}px minmax(0, 1fr)`,
+          gridTemplateColumns: compactHero ? 'minmax(0, 1fr)' : `${coverWidth}px minmax(0, 1fr)`,
           gap: theme.spacing.md,
           alignItems: 'stretch',
           padding: theme.spacing.md,
@@ -348,13 +347,21 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
           borderRadius: theme.radius.lg,
         }}
       >
-        <CoverImage
-          src={cover}
-          alt={title}
-          theme={theme}
-          width={coverWidth}
-          height={Math.round(coverWidth * 1.42)}
-        />
+        <div
+          style={
+            compactHero
+              ? { display: 'flex', justifyContent: 'center', minWidth: 0 }
+              : { minWidth: 0 }
+          }
+        >
+          <CoverImage
+            src={cover}
+            alt={title}
+            theme={theme}
+            width={coverWidth}
+            height={Math.round(coverWidth * 1.42)}
+          />
+        </div>
         <div
           style={{
             flex: '1 1 360px',

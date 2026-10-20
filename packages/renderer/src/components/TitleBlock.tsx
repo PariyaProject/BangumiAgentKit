@@ -22,8 +22,16 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({
   subtitleFontSize = '15px',
 }) => {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs, minWidth: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: theme.spacing.sm,
+          minWidth: 0,
+        }}
+      >
         <RendererIcon name={icon} theme={theme} size={16} badge />
         <div
           style={{
@@ -32,6 +40,9 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({
             fontWeight: 800,
             letterSpacing: '0.09em',
             lineHeight: 1.2,
+            minWidth: 0,
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
           }}
         >
           {eyebrow || `BANGUMI · ${getRendererIconLabel(icon)}`}

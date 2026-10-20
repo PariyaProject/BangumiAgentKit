@@ -148,6 +148,11 @@ staff rows report visible/total member counts, and omitted groups or relations
 are called out. The card never uses an excerpt as evidence that the source had
 no more data.
 
+Below 520 CSS px, the cover now sits above a full-width title/metadata block.
+The image shows at most two cast rows, two staff groups with one member each,
+and two relation rows; coverage labels keep the returned and displayed counts
+visible so the shorter card does not imply complete detail.
+
 ## Third iteration — align rendered colors and icons with the direction board
 
 Review against the generated board showed a second gap beyond layout: the
@@ -163,6 +168,12 @@ rail and date chips.
 The narrow Subject Overview now switches to a stacked panel header below 520
 CSS pixels: the icon/title row receives the full panel width, with the state
 pill on its own line. This avoids a title losing its width to the pill.
+
+Timeline event markers use the documented numeric revision types from the
+[Bangumi server model](https://pkg.go.dev/github.com/bangumi/server/internal/model#RevisionType)
+to select a code-drawn icon, semantic tone, and visible Chinese label. Unknown
+numeric values keep the neutral history marker and display their raw type; the
+renderer does not infer an event category from an undocumented number.
 
 The generated board remains art direction, not a literal target: its cover,
 title, summary, scores, and metrics are fictional. Production keeps real

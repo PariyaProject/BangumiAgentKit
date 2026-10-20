@@ -442,6 +442,19 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(longSummaryHtml).toContain('data-tone="indigo"');
     expect(longSummaryHtml).toContain('data-tone="coral"');
 
+    const typedVm = structuredClone(longSummaryVm);
+    const firstRevision = typedVm.items[0];
+    expect(firstRevision).toBeDefined();
+    typedVm.items = [
+      { ...firstRevision!, id: firstRevision!.id + 100_000, type: 103 },
+      { ...firstRevision!, id: firstRevision!.id + 100_001, type: 999 },
+    ];
+    const typedHtml = renderHtmlTemplate(typedVm, 'bangumi-light', {}, 320);
+    expect(typedHtml).toContain('data-layout="timeline-event-marker"');
+    expect(typedHtml).toContain('条目锁定 · 类型 103');
+    expect(typedHtml).toContain('未分类修订类型 · 类型 999');
+    expect(typedHtml).toContain('data-tone="indigo"');
+
     const partialVm = buildRevisionTimelineViewModel(
       makeResult(
         'partial',

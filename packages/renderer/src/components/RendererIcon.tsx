@@ -16,7 +16,13 @@ export type RendererIconName =
   | 'episode'
   | 'tag'
   | 'overview'
-  | 'comparison';
+  | 'comparison'
+  | 'edit'
+  | 'merge'
+  | 'erase'
+  | 'lock'
+  | 'unlock'
+  | 'move';
 
 const iconLabels: Record<RendererIconName, string> = {
   subject: '条目档案',
@@ -34,6 +40,12 @@ const iconLabels: Record<RendererIconName, string> = {
   tag: '标签观察',
   overview: '信息总览',
   comparison: '条目比较',
+  edit: '内容修订',
+  merge: '合并管理',
+  erase: '删除管理',
+  lock: '锁定管理',
+  unlock: '解锁管理',
+  move: '移动管理',
 };
 
 export function getRendererIconLabel(name: RendererIconName): string {
@@ -56,6 +68,12 @@ const iconTones: Record<RendererIconName, SemanticToneName> = {
   tag: 'butter',
   overview: 'coral',
   comparison: 'indigo',
+  edit: 'coral',
+  merge: 'plum',
+  erase: 'coral',
+  lock: 'indigo',
+  unlock: 'mint',
+  move: 'blue',
 };
 
 export function getRendererIconTone(name: RendererIconName): SemanticToneName {
@@ -152,6 +170,42 @@ const iconPaths: Record<RendererIconName, React.ReactNode> = {
   comparison: (
     <>
       <path d="M5 7h13M14.5 3.5 18 7l-3.5 3.5M19 17H6M9.5 13.5 6 17l3.5 3.5" />
+    </>
+  ),
+  edit: (
+    <>
+      <path d="m4 16.8-.9 4.1 4.1-.9L19 8.2 15.8 5 4 16.8Z" />
+      <path d="m13.8 7 3.2 3.2M4 17l3 3" />
+    </>
+  ),
+  merge: (
+    <>
+      <circle cx="6" cy="6" r="2" />
+      <circle cx="6" cy="18" r="2" />
+      <circle cx="18" cy="12" r="2" />
+      <path d="M8 6h2a4 4 0 0 1 4 4v2M8 18h2a4 4 0 0 0 4-4v-2" />
+    </>
+  ),
+  erase: (
+    <>
+      <path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13M10 11v5M14 11v5" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="5" y="10" width="14" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
+    </>
+  ),
+  unlock: (
+    <>
+      <rect x="5" y="10" width="14" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 7-2.7M12 14v3" />
+    </>
+  ),
+  move: (
+    <>
+      <path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M21 12l-3-3M21 12l-3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3" />
     </>
   ),
 };

@@ -108,7 +108,17 @@ export const CollectionEntityConsistencyCard: React.FC<CollectionEntityConsisten
         未匹配项只属于本次已观察范围，未观察到不等于不存在。
       </div>
 
-      <div style={{ color: tone, fontSize: '11px', lineHeight: 1.5 }}>
+      <div
+        data-layout="entity-consistency-state"
+        style={{
+          color: tone,
+          fontSize: '11px',
+          lineHeight: 1.5,
+          minWidth: 0,
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
+        }}
+      >
         状态：{stateLabel(viewModel.state)} · 筛选：{filterLabel(viewModel)} · 公式：
         {viewModel.formulaVersion}
       </div>
@@ -239,6 +249,9 @@ export const CollectionEntityConsistencyCard: React.FC<CollectionEntityConsisten
             fontSize: '10px',
             lineHeight: 1.5,
             whiteSpace: 'pre-line',
+            minWidth: 0,
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
           }}
         >
           {visibleWarnings
@@ -253,12 +266,24 @@ export const CollectionEntityConsistencyCard: React.FC<CollectionEntityConsisten
           fontSize: '10px',
           lineHeight: 1.5,
           whiteSpace: 'pre-line',
+          minWidth: 0,
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
         }}
       >
         {visibleLimitations.map((limitation) => `· ${boundedText(limitation)}`).join('\n')}
       </div>
 
-      <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+      <div
+        style={{
+          color: theme.textMuted,
+          fontSize: '10px',
+          lineHeight: 1.5,
+          minWidth: 0,
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
+        }}
+      >
         来源：{viewModel.source.class} · 检索 {boundedText(viewModel.source.retrievedAt, 32)}
         <br />
         证据操作：{viewModel.source.operations.join(' · ')}

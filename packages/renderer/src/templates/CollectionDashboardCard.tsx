@@ -46,7 +46,16 @@ function evidenceLine(
   theme: ThemeTokens,
 ): React.ReactNode {
   return (
-    <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+    <div
+      style={{
+        color: theme.textMuted,
+        fontSize: '10px',
+        lineHeight: 1.5,
+        minWidth: 0,
+        overflowWrap: 'anywhere',
+        wordBreak: 'break-word',
+      }}
+    >
       {label}来源：{boundedText(source, 64)} · 检索 {boundedText(retrievedAt || '未知', 32)}
       <br />
       证据：{boundedText(operation, 110)}
@@ -64,7 +73,16 @@ function omissionLine(
 ): React.ReactNode {
   if (section.omitted === 0) return null;
   return (
-    <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
+    <div
+      style={{
+        color: theme.warning,
+        fontSize: '10px',
+        lineHeight: 1.5,
+        minWidth: 0,
+        overflowWrap: 'anywhere',
+        wordBreak: 'break-word',
+      }}
+    >
       {label}展示 {section.rendered}/{section.available}，省略 {section.omitted} 条；完整计数仍见
       coverage。
     </div>
@@ -225,7 +243,16 @@ function SectionError({
 }): React.ReactNode {
   if (!error) return null;
   return (
-    <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
+    <div
+      style={{
+        color: theme.warning,
+        fontSize: '11px',
+        lineHeight: 1.5,
+        minWidth: 0,
+        overflowWrap: 'anywhere',
+        wordBreak: 'break-word',
+      }}
+    >
       {boundedText(error.message)} {error.nextAction ? boundedText(error.nextAction, 100) : ''}
       <div style={{ fontSize: '10px' }}>错误代码：{boundedText(error.code, 64)}</div>
     </div>
@@ -589,7 +616,16 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
             : ''}
         </div>
       ) : null}
-      <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+      <div
+        style={{
+          color: theme.textMuted,
+          fontSize: '10px',
+          lineHeight: 1.5,
+          minWidth: 0,
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
+        }}
+      >
         组合公式：
         {viewModel.evidence.find((item) => item.section === 'dashboard')?.formulaVersion ||
           '未生成'}{' '}
