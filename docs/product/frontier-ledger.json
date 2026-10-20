@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-20T00:42:59Z",
+  "updated_at": "2026-10-20T00:46:19Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -4389,7 +4389,7 @@
     {
       "id": "OP-013",
       "kind": "opportunity",
-      "user_question": "Can a QQ user choose a light or dark image theme with one message and keep it consistent across renderers?",
+      "user_question": "Can BangumiAgentKit deliver the bounded user value described by QQ Image Theme Preferences?",
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
       "source_refs": [
@@ -4409,7 +4409,7 @@
         "tests/render/helpers/mobile-layout.ts",
         "docs/research/run95-render-theme-switch-visual-qa-2026-10-20.json"
       ],
-      "next_action": "Run #95 render-theme-switch Epoch implements a one-message QQ preference, clean-gallery light default, selectable dark theme, semantic inline icons, and layouts matched to content families. Final offline visual matrix reviewed 580 images across both themes and five widths; finish the exact-Candidate report, then keep PARTIAL until exact-SHA CI, Luna review, and Harness integration pass. Real QQ/TIM delivery remains a separate unverified client gate; no live message is claimed.",
+      "next_action": "The per-image report binds the 580-image offline matrix to candidate a06f9a24f29adfe908bdce5d399105a6a84e88e0; all 58 fixture-specific contact sheets and selected full-resolution stress cases were reviewed. Run exact-Candidate CI and the assigned GPT-6 Luna Max review, then use the Harness integration gate. Keep PARTIAL until those gates pass. Real QQ/TIM delivery remains a separate unverified client gate; no live message is claimed.",
       "reopen_when": "The user requests additional theme packs/settings surfaces, Renderer templates or image output behavior changes, or real QQ/TIM image display is explicitly selected for offline-to-live acceptance.",
       "related_ids": [
         "OP-008",
