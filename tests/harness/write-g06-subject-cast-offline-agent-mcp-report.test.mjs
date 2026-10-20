@@ -287,12 +287,26 @@ test('G06 v2 report accepts bounded non-fatal Codex error counts with exact serv
 test('G06 v2 catalog evidence stays bound to sourceRevision and the current target entry', () => {
   const root = prepareRoot(G06_CAST_OFFLINE_V2_PROFILE_ID);
   try {
+    const catalogPath = path.join(root, 'docs/tool-catalog.json');
+    runGit(root, ['config', 'core.autocrlf', 'false']);
+    const crlfSourceBytes = Buffer.from(
+      readFileSync(catalogPath, 'utf8').replace(/\r?\n/gu, '\r\n'),
+      'utf8',
+    );
+    writeFileSync(catalogPath, crlfSourceBytes);
+    runGit(root, ['add', 'docs/tool-catalog.json']);
+    runGit(root, ['commit', '--quiet', '-m', 'catalog CRLF source fixture']);
     const sourceRevision = runGit(root, ['rev-parse', 'HEAD']);
+    writeFileSync(
+      catalogPath,
+      Buffer.from(crlfSourceBytes.toString('utf8').replace(/\r\n/gu, '\n'), 'utf8'),
+    );
     const { privateKey, publicKeyBase64, claim, input } = fixture(
       G06_CAST_OFFLINE_V2_PROFILE_ID,
       root,
       sourceRevision,
     );
+    input.serverSummary.catalogSha256 = sha256(crlfSourceBytes);
     const reportPath = path.join(root, 'docs/live-probes/g06-source-catalog-test.json');
     mkdirSync(path.dirname(reportPath), { recursive: true });
     const written = writeG06SubjectCastOfflineReport(input, {
@@ -304,7 +318,7 @@ test('G06 v2 catalog evidence stays bound to sourceRevision and the current targ
     assert.equal(written.passed, true, written.reason);
     const bytes = readFileSync(reportPath);
     const report = JSON.parse(bytes.toString('utf8'));
-    const catalogPath = path.join(root, 'docs/tool-catalog.json');
+    assert.equal(report.catalogSha256, sha256(crlfSourceBytes));
     const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
     catalog.push({
       name: 'unrelated.synthetic.catalog.entry',

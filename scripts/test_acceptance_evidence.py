@@ -10714,6 +10714,36 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
         self.catalog_path.write_text(json.dumps(current_catalog), encoding='utf-8')
         self.assertTrue(self.validate_report(report))
 
+    def test_v2_catalog_digest_hashes_exact_crlf_source_blob_bytes(self):
+        subprocess.run(
+            ['git', '-C', str(self.root), 'config', 'core.autocrlf', 'false'],
+            check=True, capture_output=True,
+        )
+        lf_catalog_bytes = self.catalog_path.read_bytes()
+        crlf_catalog_bytes = lf_catalog_bytes.replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')
+        self.catalog_path.write_bytes(crlf_catalog_bytes)
+        self.source_revision = _commit_catalog_source_revision(self.root)
+        self.report = self.build_report()
+        report, _, profile = self.build_v2_report()
+        current_catalog = json.loads(crlf_catalog_bytes.decode('utf-8'))
+        current_tool = next(
+            item for item in current_catalog
+            if item['name'] == profile['toolName']
+        )
+
+        self.assertEqual(report['catalogSha256'], hashlib.sha256(crlf_catalog_bytes).hexdigest())
+        self.assertTrue(GENERATOR._report_catalog_matches_source_revision(
+            report, profile['toolName'], current_tool,
+        ))
+
+        normalized = json.loads(json.dumps(report))
+        normalized['catalogSha256'] = hashlib.sha256(
+            crlf_catalog_bytes.replace(b'\r\n', b'\n'),
+        ).hexdigest()
+        self.assertFalse(GENERATOR._report_catalog_matches_source_revision(
+            normalized, profile['toolName'], current_tool,
+        ))
+
     def test_v2_rejects_changed_target_entry_and_source_catalog_binding(self):
         report, _, _ = self.build_v2_report()
         for field, value in (

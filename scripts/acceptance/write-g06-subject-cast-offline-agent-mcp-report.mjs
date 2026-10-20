@@ -560,13 +560,26 @@ export function writeG06SubjectCastOfflineReport(
   const profile = profileFor(input?.claim?.profileId);
   const profileSpec = getG06CastOfflineProfileSpec(profile);
   const targetReportPath = reportPath ?? (profile ? path.join(root, profile.reportPath) : null);
-  if (!profile || !profileSpec || !input?.claim || !targetReportPath) {
+  if (
+    !profile || !profileSpec || !input?.claim || !targetReportPath ||
+    !/^[0-9a-f]{40}$/u.test(input.claim.sourceCandidateSha ?? '')
+  ) {
     return { passed: false, reason: 'G06_CAST_OFFLINE_PROFILE_INVALID' };
   }
   const selectionBytes = readFileSync(path.join(root, profile.selectionEvidencePath));
   const summary = input.serverSummary;
-  const catalogBytes = readFileSync(path.join(root, 'docs/tool-catalog.json'));
-  const catalog = JSON.parse(catalogBytes.toString('utf8'));
+  let catalogBytes;
+  let catalog;
+  try {
+    catalogBytes = execFileSync(
+      'git',
+      ['show', `${input.claim.sourceCandidateSha}:docs/tool-catalog.json`],
+      { cwd: root, env: sanitizeGitRepositoryEnvironment() },
+    );
+    catalog = JSON.parse(catalogBytes.toString('utf8'));
+  } catch {
+    return { passed: false, reason: 'G06_CAST_OFFLINE_SOURCE_CATALOG_INVALID' };
+  }
   const tool = catalog.find((item) => item?.name === profile.toolName);
   if (!tool || !summary || !tool.inputSchema) {
     return { passed: false, reason: 'G06_CAST_OFFLINE_SUMMARY_INVALID' };

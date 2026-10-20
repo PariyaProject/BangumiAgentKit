@@ -8723,7 +8723,7 @@ def _sanitized_repository_git_environment() -> dict[str, str]:
 
 
 def _run_repository_git(
-    repository_root: str | Path, *arguments: str,
+    repository_root: str | Path, *arguments: str, text: bool = True,
 ) -> subprocess.CompletedProcess:
     """Run a Git read against this checkout, ignoring caller-selected Git metadata/config."""
     return subprocess.run(
@@ -8731,7 +8731,7 @@ def _run_repository_git(
         cwd=repository_root,
         env=_sanitized_repository_git_environment(),
         capture_output=True,
-        text=True,
+        text=text,
         check=False,
     )
 
@@ -8753,11 +8753,12 @@ def _report_catalog_matches_source_revision(
     try:
         result = _run_repository_git(
             ROOT, 'show', f'{source_revision}:docs/tool-catalog.json',
+            text=False,
         )
-        if result.returncode != 0 or not isinstance(result.stdout, str):
+        if result.returncode != 0 or not isinstance(result.stdout, bytes):
             return False
-        catalog_bytes = result.stdout.encode('utf-8')
-        catalog = json.loads(result.stdout)
+        catalog_bytes = result.stdout
+        catalog = json.loads(catalog_bytes.decode('utf-8'))
     except (OSError, ValueError, UnicodeError):
         return False
 
