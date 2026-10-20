@@ -245,7 +245,8 @@ export function createRenderPresentationTools(
       includeCollection: z.boolean().optional().describe('是否包含用户的收藏与评分状态'),
     }),
     auth: 'optional',
-    scopes: ['read:collection'],
+    // Public rendering stays unscoped; includeCollection's scope is enforced by resolvePolicy.
+    scopes: [],
     risk: 'read',
     resolvePolicy: (input): ResolvedToolPolicy => ({
       auth: input.includeCollection ? 'required' : 'optional',
