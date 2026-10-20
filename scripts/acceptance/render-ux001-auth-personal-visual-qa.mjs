@@ -1,20 +1,44 @@
 /* global document, window */
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  CollectionIntelligenceService,
-  buildCollectionIntelligence,
-} from '../../packages/bangumi-core/dist/index.js';
-import { formatAuthStatusMessage } from '../../packages/auth/dist/index.js';
-import { GeneratedBangumiOpenApiClient } from '../../packages/bangumi-openapi/dist/index.js';
-import { HttpClient } from '../../packages/bangumi-transport/dist/index.js';
-import {
+  candidateIdentity,
+  distBuildIdentity,
+  renderProvenance,
+  sourceIdentity,
+} from './render-provenance.mjs';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const sourceBeforeBuild = { candidate: candidateIdentity(), source: sourceIdentity() };
+execFileSync('pnpm', ['build'], { cwd: repoRoot, stdio: 'inherit' });
+assert.deepEqual(
+  { candidate: candidateIdentity(), source: sourceIdentity() },
+  sourceBeforeBuild,
+  'Candidate/source changed while building auth matrix dependencies',
+);
+const provenance = {
+  ...sourceBeforeBuild,
+  rendererBuild: distBuildIdentity([
+    'packages/renderer/dist',
+    'packages/bangumi-core/dist',
+    'packages/auth/dist',
+    'packages/bangumi-openapi/dist',
+    'packages/bangumi-transport/dist',
+    'apps/api/dist',
+  ]),
+};
+const { CollectionIntelligenceService, buildCollectionIntelligence } =
+  await import('../../packages/bangumi-core/dist/index.js');
+const { formatAuthStatusMessage } = await import('../../packages/auth/dist/index.js');
+const { GeneratedBangumiOpenApiClient } =
+  await import('../../packages/bangumi-openapi/dist/index.js');
+const { HttpClient } = await import('../../packages/bangumi-transport/dist/index.js');
+const {
   buildCollectionIntelligenceMessage,
   buildCollectionIntelligenceViewModel,
   buildCollectionProgressMessage,
@@ -22,11 +46,9 @@ import {
   DEFAULT_RENDER_DESIGN_PACK,
   RENDER_DESIGN_PACK_NAMES,
   renderHtmlTemplate,
-} from '../../packages/renderer/dist/index.js';
-import { AssetResolver } from '../../packages/renderer/dist/asset-resolver.js';
-import { handleOAuthCallbackRoute } from '../../apps/api/dist/routes/oauth.js';
-
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+} = await import('../../packages/renderer/dist/index.js');
+const { AssetResolver } = await import('../../packages/renderer/dist/asset-resolver.js');
+const { handleOAuthCallbackRoute } = await import('../../apps/api/dist/routes/oauth.js');
 const WIDTHS = [320, 360, 520, 640, 960];
 const designPackMatrixEnabled = process.env.PARIYA_RENDER_DESIGN_PACK_MATRIX === '1';
 const DESIGN_PACKS = designPackMatrixEnabled
@@ -286,35 +308,6 @@ async function callbackPages() {
 
 function normalizedText(value) {
   return value.replace(/\s+/gu, ' ').trim();
-}
-
-function sourceIdentity() {
-  const headSha = execFileSync('git', ['rev-parse', 'HEAD'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  }).trim();
-  const paths = execFileSync(
-    'git',
-    ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
-    { cwd: repoRoot, encoding: 'utf8' },
-  )
-    .split('\0')
-    .filter(Boolean)
-    .sort();
-  const treeHash = createHash('sha256');
-  for (const file of paths) {
-    treeHash.update(file).update('\0');
-    treeHash.update(
-      createHash('sha256')
-        .update(readFileSync(path.join(repoRoot, file)))
-        .digest('hex'),
-    ).update('\0');
-  }
-  return {
-    headSha,
-    workingTreeSha256: treeHash.digest('hex'),
-    includedPathCount: paths.length,
-  };
 }
 
 function stateLabel(state) {
@@ -656,8 +649,6 @@ async function main() {
   const authStatusMessages = Object.fromEntries(
     Object.entries(authStatusFixtures).map(([id, fixture]) => [id, fixture.message]),
   );
-  const source = sourceIdentity();
-
   const browser = await chromium.launch({ headless: true });
   const records = [];
   try {
@@ -703,11 +694,16 @@ async function main() {
     await browser.close();
   }
 
+  assert.deepEqual(
+    renderProvenance('auth'),
+    provenance,
+    'Candidate/source/build changed while the synthetic auth matrix rendered',
+  );
   const manifest = {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     runId,
-    source,
+    ...provenance,
     designPacks: DESIGN_PACKS,
     themes: THEMES,
     fixtureOnly: true,

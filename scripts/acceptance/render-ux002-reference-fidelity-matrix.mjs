@@ -1,12 +1,13 @@
 /* global window */
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { candidateIdentity, distBuildIdentity, sourceIdentity } from './render-provenance.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const runId =
@@ -30,69 +31,16 @@ function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-function sourceIdentity() {
-  const headSha = execFileSync('git', ['rev-parse', 'HEAD'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  }).trim();
-  const baseSha = execFileSync('git', ['merge-base', 'HEAD', 'origin/master'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  }).trim();
-  const paths = execFileSync(
-    'git',
-    ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
-    { cwd: repoRoot, encoding: 'utf8' },
-  )
-    .split('\0')
-    .filter(Boolean)
-    .sort();
-  const treeHash = createHash('sha256');
-  for (const file of paths) {
-    treeHash.update(file).update('\0');
-    treeHash.update(sha256(readFileSync(path.join(repoRoot, file)))).update('\0');
-  }
-  return {
-    headSha,
-    baseSha,
-    workingTreeSha256: treeHash.digest('hex'),
-    includedPathCount: paths.length,
-  };
-}
-
-function rendererBuildIdentity() {
-  const distDir = path.join(repoRoot, 'packages/renderer/dist');
-  const filesBelow = (directory) =>
-    readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-      const absolute = path.join(directory, entry.name);
-      return entry.isDirectory()
-        ? filesBelow(absolute)
-        : [path.relative(distDir, absolute).split(path.sep).join('/')];
-    });
-  const files = filesBelow(distDir).sort();
-  assert.ok(files.includes('index.js'), 'renderer build must contain dist/index.js');
-  const digest = createHash('sha256');
-  for (const file of files) {
-    digest.update(file).update('\0');
-    digest.update(sha256(readFileSync(path.join(distDir, file)))).update('\0');
-  }
-  return { sha256: digest.digest('hex'), fileCount: files.length };
-}
-
+const candidate = candidateIdentity();
 const sourceBeforeBuild = sourceIdentity();
 execFileSync('pnpm', ['build'], { cwd: repoRoot, stdio: 'inherit' });
-const candidateSource = sourceIdentity();
-assert.deepEqual(
-  candidateSource,
-  sourceBeforeBuild,
-  'tracked source changed while building renderer',
+const source = sourceIdentity();
+assert.deepEqual(source, sourceBeforeBuild, 'tracked source changed while building renderer');
+const rendererBuild = distBuildIdentity(['packages/renderer/dist']);
+assert.ok(
+  rendererBuild.roots.includes('packages/renderer/dist'),
+  'renderer build identity must include the imported distribution',
 );
-const rendererBuild = rendererBuildIdentity();
-const candidate = {
-  ...candidateSource,
-  rendererBuildSha256: rendererBuild.sha256,
-  rendererBuildFileCount: rendererBuild.fileCount,
-};
 const { renderHtmlTemplate } = await import('../../packages/renderer/dist/index.js');
 
 const subjectCard = {
@@ -547,13 +495,9 @@ try {
   await browser.close();
 }
 
+assert.deepEqual(sourceIdentity(), source, 'tracked source changed during reference rendering');
 assert.deepEqual(
-  sourceIdentity(),
-  candidateSource,
-  'tracked source changed during reference rendering',
-);
-assert.deepEqual(
-  rendererBuildIdentity(),
+  distBuildIdentity(['packages/renderer/dist']),
   rendererBuild,
   'renderer dist changed during reference rendering',
 );
@@ -681,6 +625,8 @@ await writeFile(
     {
       runId,
       candidate,
+      source,
+      rendererBuild,
       fixture: {
         subjectId,
         title: '星港纪行',

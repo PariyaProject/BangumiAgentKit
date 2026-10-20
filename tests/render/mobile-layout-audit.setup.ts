@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -59,6 +60,18 @@ const themeMatrixDesignPacks: readonly RenderDesignPackName[] = designPackMatrix
   ? RENDER_DESIGN_PACK_NAMES
   : [DEFAULT_RENDER_DESIGN_PACK];
 const themeMatrixWidths = [320, 360, 520, 640, 960] as const;
+const renderProvenanceScript = path.resolve(
+  process.cwd(),
+  'scripts/acceptance/render-provenance.mjs',
+);
+const visualMatrixProvenance = visualMatrixEnabled
+  ? JSON.parse(
+      execFileSync(process.execPath, [renderProvenanceScript, 'full-render'], {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+      }),
+    )
+  : undefined;
 const syntheticImageData = [
   readFileSync(path.resolve(process.cwd(), 'tests/render/fixtures/subject-overview-cover.png')),
   readFileSync(path.resolve(process.cwd(), 'tests/render/fixtures/subject-overview-character.png')),
@@ -143,6 +156,13 @@ async function generateThemeMatrix(): Promise<void> {
     process.env.PARIYA_RENDER_THEME_MATRIX_RUN_ID ??
     new Date().toISOString().replace(/[:.]/gu, '-');
   const captureId = `${process.pid}-${randomUUID().slice(0, 8)}`;
+  const currentProvenance = JSON.parse(
+    execFileSync(process.execPath, [renderProvenanceScript, 'full-render'], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    }),
+  );
+  expect(currentProvenance).toEqual(visualMatrixProvenance);
   const outputDir = path.resolve(
     process.cwd(),
     '.artifacts',
@@ -300,6 +320,7 @@ async function generateThemeMatrix(): Promise<void> {
       {
         runId,
         captureId,
+        ...visualMatrixProvenance,
         visualFixtureTimestampPolicy: {
           fields: ['retrievedAt', 'retrievedAtLabel'],
           scope: 'retrieval metadata within five minutes of the visual-matrix session clock',

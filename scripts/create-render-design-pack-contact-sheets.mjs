@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { renderProvenance } from './acceptance/render-provenance.mjs';
 
 const requireRendererDependency = createRequire(
   new URL('../packages/renderer/package.json', import.meta.url),
@@ -66,6 +67,7 @@ const fixedReferenceOnly =
 const groups = new Map();
 let totalReceipts = 0;
 const receiptErrors = [];
+let captureProvenance;
 const maskAudit = {
   imagesWithMaskReceipts: 0,
   imagesWithPrimaryPanelMask: 0,
@@ -80,6 +82,25 @@ const maskAudit = {
 
 for (const manifestPath of manifestPaths) {
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  const manifestProvenance = {
+    candidate: manifest.candidate,
+    source: manifest.source,
+    rendererBuild: manifest.rendererBuild,
+  };
+  if (
+    !manifestProvenance.candidate?.headSha ||
+    !manifestProvenance.candidate?.baseSha ||
+    !manifestProvenance.source?.workingTreeSha256 ||
+    !manifestProvenance.source?.includedPathCount ||
+    !manifestProvenance.rendererBuild?.kind ||
+    !manifestProvenance.rendererBuild?.sha256
+  ) {
+    receiptErrors.push(`missing Candidate/source/build provenance: ${manifestPath}`);
+  } else if (!captureProvenance) {
+    captureProvenance = manifestProvenance;
+  } else if (JSON.stringify(manifestProvenance) !== JSON.stringify(captureProvenance)) {
+    receiptErrors.push(`mixed Candidate/source/build provenance: ${manifestPath}`);
+  }
   for (const receipt of manifest.images ?? []) {
     totalReceipts += 1;
     const imagePath = path.join(path.dirname(manifestPath), receipt.filename);
@@ -165,6 +186,15 @@ for (const manifestPath of manifestPaths) {
       receiptErrors.push(`duplicate matrix key: ${key}/${matrixKey}`);
     group.images.set(matrixKey, { ...receipt, imagePath });
     groups.set(key, group);
+  }
+}
+
+if (captureProvenance) {
+  const currentProvenance = renderProvenance(
+    fixedReferenceOnly ? 'fixed-reference' : 'full-render',
+  );
+  if (JSON.stringify(currentProvenance) !== JSON.stringify(captureProvenance)) {
+    receiptErrors.push('capture provenance does not match the current Candidate/source/build');
   }
 }
 
@@ -274,6 +304,7 @@ if (receiptErrors.length > 0) {
     runId,
     matrixKind: fixedReferenceOnly ? 'fixed-reference' : 'full-render',
     matrixRoot: path.relative(process.cwd(), matrixRoot),
+    ...captureProvenance,
     manifestCount: manifestPaths.length,
     imageCount: totalReceipts,
     fixtureGroupCount: groups.size,
