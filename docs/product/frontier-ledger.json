@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-20T00:46:19Z",
+  "updated_at": "2026-10-20T01:56:52Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -4181,9 +4181,11 @@
         "docs/research/run95-op008-subject-overview-visual-qa-2026-10-19.md",
         "docs/research/run95-render-theme-switch-visual-design-plan-2026-10-20.md",
         "docs/research/run95-render-theme-switch-visual-qa-2026-10-20.json",
-        "packages/renderer/src/components/RendererIcon.tsx"
+        "packages/renderer/src/components/RendererIcon.tsx",
+        "packages/renderer/src/themes/index.ts",
+        "docs/research/run95-render-editorial-layouts-visual-qa-2026-10-20.json"
       ],
-      "next_action": "Run #72 makes SubjectCard place the existing Chinese title and distinct original-language title above the cover/metadata row at all widths. Real-browser checks cover 320/360/520 and 640/720/900 CSS px, including long mixed-script titles at 640+; RenderService verifies 360 CSS px at 2x and a 720 CSS px image. 2026-10-19 Run #95 synthetic SubjectOverview QA localized unavailable/not-found title, ID, and media fallbacks, replaced invisible 1x1 fixtures with visible local synthetic cover/avatar assets, and pinned the synthetic retrievedAt timestamp, generated 25 state/width PNGs plus the 720px full-staff stress image twice, confirmed all 26 filenames, dimensions, byte counts, and SHA-256 values repeat exactly, and individually inspected every final PNG; evidence is recorded in the linked visual report. This adds presentation evidence only. Keep PARTIAL until the separate current-source Agent/MCP answer and strict Renderer/MCP evidence pass; QQ/TIM remains a separate client gate.",
+      "next_action": "2026-10-20T01:53Z: Run #95 pass4 visual alignment is recorded in docs/research/run95-render-editorial-layouts-visual-qa-2026-10-20.json: 580 PNGs, 58 fixture sheets inspected, eight full-resolution samples reviewed, no root overflow. The warm-paper palette and semantic panels add presentation evidence only. Keep PARTIAL until the separate current-source Agent/MCP answer and strict Renderer/MCP evidence pass; QQ/TIM remains a separate client gate. Run #72 makes SubjectCard place the existing Chinese title and distinct original-language title above the cover/metadata row at all widths. Real-browser checks cover 320/360/520 and 640/720/900 CSS px, including long mixed-script titles at 640+; RenderService verifies 360 CSS px at 2x and a 720 CSS px image. 2026-10-19 Run #95 synthetic SubjectOverview QA localized unavailable/not-found title, ID, and media fallbacks, replaced invisible 1x1 fixtures with visible local synthetic cover/avatar assets, and pinned the synthetic retrievedAt timestamp, generated 25 state/width PNGs plus the 720px full-staff stress image twice, confirmed all 26 filenames, dimensions, byte counts, and SHA-256 values repeat exactly, and individually inspected every final PNG; evidence is recorded in the linked visual report. This adds presentation evidence only. Keep PARTIAL until the separate current-source Agent/MCP answer and strict Renderer/MCP evidence pass; QQ/TIM remains a separate client gate.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": ["OP-013"]
     },
@@ -4410,9 +4412,12 @@
         "tests/unit/render-theme-accessibility.test.ts",
         "tests/render/mobile-layout-audit.setup.ts",
         "tests/render/helpers/mobile-layout.ts",
-        "docs/research/run95-render-theme-switch-visual-qa-2026-10-20.json"
+        "docs/research/run95-render-theme-switch-visual-qa-2026-10-20.json",
+        "packages/renderer/src/templates/CollectionDashboardCard.tsx",
+        "packages/renderer/src/templates/RevisionTimelineCard.tsx",
+        "docs/research/run95-render-editorial-layouts-visual-qa-2026-10-20.json"
       ],
-      "next_action": "The per-image report binds the 580-image offline matrix to candidate a06f9a24f29adfe908bdce5d399105a6a84e88e0; all 58 fixture-specific contact sheets and selected full-resolution stress cases were reviewed. Run exact-Candidate CI and the assigned GPT-6 Luna Max review, then use the Harness integration gate. Keep PARTIAL until those gates pass. Real QQ/TIM delivery remains a separate unverified client gate; no live message is claimed.",
+      "next_action": "2026-10-20T01:53Z: Pass4 source commit 2a3216d655927163ccf7fe73477ba35c95e38eff records the warm-paper palette, semantic SVG tones, Dashboard panels, and multicolor Timeline. The 580-image report is bound to that source and all 58 fixture sheets/eight full-resolution samples were reviewed. Next, commit/push the exact evidence head, run exact-SHA CI and Harness Candidate check, then use the assigned GPT-6 Luna Max review and integration gate. Keep PARTIAL until those gates pass; real QQ/TIM delivery remains unverified and no live message is claimed.",
       "reopen_when": "The user requests additional theme packs/settings surfaces, Renderer templates or image output behavior changes, or real QQ/TIM image display is explicitly selected for offline-to-live acceptance.",
       "related_ids": [
         "OP-008",
