@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-19T06:02:55Z",
+  "updated_at": "2026-10-20T00:42:59Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -12,7 +12,7 @@
     {
       "id": "PRODUCT-OPPORTUNITIES",
       "path": "docs/product/opportunity-log.md",
-      "expected_records": 12
+      "expected_records": 13
     }
   ],
   "protected_boundaries": [
@@ -4385,6 +4385,36 @@
           "tests/standalone/person-collaboration-command.test.ts"
         ]
       }
+    },
+    {
+      "id": "OP-013",
+      "kind": "opportunity",
+      "user_question": "Can a QQ user choose a light or dark image theme with one message and keep it consistent across renderers?",
+      "lane": "recorded_product_opportunities",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/product/opportunity-log.md",
+        "docs/research/run95-render-theme-switch-visual-design-plan-2026-10-20.md",
+        "packages/renderer/src/components/RendererIcon.tsx",
+        "packages/renderer/src/components/TitleBlock.tsx",
+        "packages/renderer/src/themes/index.ts",
+        "packages/renderer/src/templates/SubjectCard.tsx",
+        "packages/renderer/src/templates/SubjectStatsCard.tsx",
+        "packages/renderer/src/templates/CollectionProgressCard.tsx",
+        "packages/renderer/src/templates/CalendarCard.tsx",
+        "packages/tools/src/definitions/render-presentation-tools.ts",
+        "tests/unit/render-presentation-tools.test.ts",
+        "tests/unit/render-theme-accessibility.test.ts",
+        "tests/render/mobile-layout-audit.setup.ts",
+        "tests/render/helpers/mobile-layout.ts",
+        "docs/research/run95-render-theme-switch-visual-qa-2026-10-20.json"
+      ],
+      "next_action": "Run #95 render-theme-switch Epoch implements a one-message QQ preference, clean-gallery light default, selectable dark theme, semantic inline icons, and layouts matched to content families. Final offline visual matrix reviewed 580 images across both themes and five widths; finish the exact-Candidate report, then keep PARTIAL until exact-SHA CI, Luna review, and Harness integration pass. Real QQ/TIM delivery remains a separate unverified client gate; no live message is claimed.",
+      "reopen_when": "The user requests additional theme packs/settings surfaces, Renderer templates or image output behavior changes, or real QQ/TIM image display is explicitly selected for offline-to-live acceptance.",
+      "related_ids": [
+        "OP-008",
+        "DIM-RENDERER-STANDALONE"
+      ]
     }
   ]
 }

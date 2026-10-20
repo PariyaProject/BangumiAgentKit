@@ -747,3 +747,47 @@ HTML/Structured Web source, authentication, or write authority was needed for th
 read-only cycle. The exact frozen Candidate passed the one-off manual finalization review
 with no P0/P1 findings; integration evidence is recorded in
 `docs/product/loop-status.md` and `docs/product/reviews/PR-7F/manual-finalization-review.md`.
+
+---
+
+## OP-013 QQ Image Theme Preferences
+
+Status:
+SELECTED_IN_RUN_95_EPOCH / RENDER-THEME-SWITCH-20261020
+
+User questions:
+
+“能不能用一条 QQ 消息把 Bangumi 图片切成浅色或深色？”
+
+“当前图片风格是什么，能不能让后续的所有数据卡保持一致？”
+
+User Value:
+4/5
+
+Agent Leverage:
+4/5
+
+Information Gain:
+4/5
+
+Data Availability:
+5/5 — this is a local presentation preference; it adds no Bangumi source or account dependency.
+
+Reliability:
+5/5
+
+Possible Sources:
+Existing BangumiAgentKit light/dark theme tokens and the local Pariya information-card renderer.
+
+Potential Capability:
+Per-sender render-theme preference across QQ reply renderers.
+
+Potential Renderer:
+Clean-gallery light default with a selectable dark theme, controlled by `图片风格`.
+
+Notes:
+The renderer already knows light and dark palettes internally, but QQ users cannot choose one and the two image-producing paths have separate theme controls. The bounded design uses one standalone message to toggle, set, or query a preference. The default is a clean-gallery light palette; dark remains available. Preference scope is platform, bot instance, and sender, stored under private plugin data by a hashed identity key. The selected enum passes through the local Gateway and per-turn container environment to BangumiAgentKit; it never enters the model prompt or OAuth principal. No account call, live QQ/TIM send, external image, or new data source is required. The existing ImageGen concept board and official layout/contrast references guide the palette; every affected final renderer state is compared at mobile and desktop widths with synthetic fixtures.
+
+Visual direction — `docs/research/run95-render-theme-switch-visual-design-plan-2026-10-20.md` records a broader renderer plan prompted by the user's quality bar. Use a cover-led editorial structure for subject cards, bento panels for statistics/collection summaries, and a timeline for history/progress. Shared inline SVG icons identify content families and always accompany text labels. Production images continue to use the existing Bangumi asset pipeline; generated artwork is not used as a subject cover. The three-structure offline prototype is captured on local branch `codex/prototype-run95-card-layouts` at `98953276c614e4e7c84eaaa658249ecf56c9a7b0`.
+
+The matching PariyaAgent local information-card fallback now uses a cover-led title area, category icons for section headings, distinct content panels, and the selected light/dark palette. Its structure preserves supplied answer text and does not infer additional facts. A synthetic light/dark sample was visually checked, and the pinned AstrBot container fixture passed with networking disabled.

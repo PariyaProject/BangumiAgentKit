@@ -96,6 +96,7 @@ export const CollectionScheduleCard: React.FC<CollectionScheduleCardProps> = ({
         title="我的本周播出计划"
         subtitle={`当前账号 · 官方日历 + v0 收藏 · ${stateLabel(viewModel.state)}`}
         theme={theme}
+        icon="calendar"
       />
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>

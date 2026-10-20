@@ -71,6 +71,7 @@ export const CollectionSeriesCard: React.FC<CollectionSeriesCardProps> = ({
         title="我的收藏系列组"
         subtitle={'当前账号 · 官方 v0 直接关系 · ' + stateLabel(viewModel.state)}
         theme={theme}
+        icon="relations"
       />
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>

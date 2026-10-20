@@ -289,7 +289,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
               alignItems: 'flex-start',
             }}
           >
-            <TitleBlock title={title} subtitle={subtitle} theme={theme} />
+            <TitleBlock title={title} subtitle={subtitle} theme={theme} icon="overview" />
             <StatePill state={viewModel.state} theme={theme} />
           </div>
           <MetaRow

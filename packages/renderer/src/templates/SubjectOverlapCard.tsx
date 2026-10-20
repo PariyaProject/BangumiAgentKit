@@ -135,6 +135,7 @@ export const SubjectOverlapCard: React.FC<SubjectOverlapCardProps> = ({
         title="条目关系重合"
         subtitle={`${kindLabel(viewModel.kind)} · ${viewModel.subjects.length} 个候选条目`}
         theme={theme}
+        icon="relations"
       />
 
       <div

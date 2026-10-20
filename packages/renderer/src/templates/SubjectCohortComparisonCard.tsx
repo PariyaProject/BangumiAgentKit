@@ -163,6 +163,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
         title={showComparison ? '条目群体比较' : '条目群体聚合'}
         subtitle={`Bangumi 公共数据 · ${stateLabel(viewModel.state)} · ${showComparison ? '差值按 B − A 展示' : '仅展示单组样本'}，不生成推荐结论`}
         theme={theme}
+        icon="comparison"
       />
 
       <div

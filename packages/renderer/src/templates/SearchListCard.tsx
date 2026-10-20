@@ -26,6 +26,7 @@ export const SearchListCard: React.FC<SearchListCardProps> = ({
         title={`搜索结果: "${query}"`}
         subtitle={`共找到 ${total} 条匹配条目`}
         theme={theme}
+        icon="search"
       />
 
       <div

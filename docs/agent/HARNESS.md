@@ -19,7 +19,8 @@ product knowledge. Normal Agent runtime state is not product history.
 [`docs/product/frontier-ledger.json`](../product/frontier-ledger.json) is the
 canonical versioned product-opportunity inventory. It is stable product
 knowledge, not runtime state: it covers the 103 scenario catalog entries,
-OP-001 through OP-012, both authorized source frontiers, and cross-cutting
+every OP record listed in `docs/product/opportunity-log.md` (currently OP-001
+through OP-013), both authorized source frontiers, and cross-cutting
 product-quality dimensions. `pnpm harness frontier:check` validates its schema,
 ids, references, evidence, relations, and canonical hash. `frontier:status`
 reports counts and the next actionable records.
@@ -148,8 +149,8 @@ paths. `PROTECTED_BOUNDARY` names an exact boundary id declared in the ledger
 and anchored to the Charter. `CLOSED_NO_SAFE_SOURCE` names completed source
 research, its evidence, time, and reopen trigger.
 
-The ledger is complete only when it contains every scenario catalog id,
-OP-001 through OP-012, both source frontiers, and all governed lanes. Research
+The ledger is complete only when it contains every scenario catalog id, every
+OP record listed in the opportunity log, both source frontiers, and all governed lanes. Research
 documents, the opportunity log, code/test references, closure evidence, and the
 Issue control body must agree. A missing id, invented boundary, stale source
 claim, generic repeated assessment, contradictory status, or missing evidence

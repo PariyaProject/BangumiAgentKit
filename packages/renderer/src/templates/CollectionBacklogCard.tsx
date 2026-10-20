@@ -127,6 +127,7 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
         title="我的收藏待看清单"
         subtitle={`当前账号 · 官方 v0 · ${stateLabel(viewModel.state)} · 排序：${sortLabel(viewModel.sortBy)}`}
         theme={theme}
+        icon="collection"
       />
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>

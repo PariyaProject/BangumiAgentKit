@@ -43,6 +43,7 @@ export const SubjectIndexMembershipCard: React.FC<SubjectIndexMembershipCardProp
         title="条目目录归属观察"
         subtitle={`条目 ${viewModel.subjectId} · official v0 · ${stateLabel(viewModel.state)}`}
         theme={theme}
+        icon="subject"
       />
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>

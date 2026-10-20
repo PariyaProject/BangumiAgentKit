@@ -320,7 +320,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
             minWidth: 0,
           }}
         >
-          <TitleBlock title={title} subtitle={subtitle} theme={theme} />
+          <TitleBlock title={title} subtitle={subtitle} theme={theme} icon="person" />
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.xs }}>
             {person.career.length > 0 ? (
               person.career.map((career) => (

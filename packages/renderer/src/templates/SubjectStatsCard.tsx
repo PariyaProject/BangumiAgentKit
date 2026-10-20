@@ -4,6 +4,7 @@ import type { ThemeTokens } from '../themes/index.js';
 import { CardFrame } from '../components/CardFrame.js';
 import { Footer } from '../components/Footer.js';
 import { TitleBlock } from '../components/TitleBlock.js';
+import { RendererIcon } from '../components/RendererIcon.js';
 import { safeStatisticsWarningLabels } from './statisticsWarningLabels.js';
 
 export interface SubjectStatsCardProps {
@@ -248,6 +249,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
           .filter(Boolean)
           .join(' · ')}
         theme={theme}
+        icon="stats"
       />
 
       <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.5 }}>
@@ -324,7 +326,19 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
             }}
           >
             <section>
-              <div style={{ color: theme.accent, fontWeight: 700, fontSize: '15px' }}>评分分布</div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: theme.spacing.xs,
+                  color: theme.accent,
+                  fontWeight: 700,
+                  fontSize: '15px',
+                }}
+              >
+                <RendererIcon name="stats" theme={theme} size={16} />
+                评分分布
+              </div>
               <div
                 style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}
               >
@@ -375,7 +389,19 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
             </section>
 
             <section>
-              <div style={{ color: theme.accent, fontWeight: 700, fontSize: '15px' }}>收藏状态</div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: theme.spacing.xs,
+                  color: theme.accent,
+                  fontWeight: 700,
+                  fontSize: '15px',
+                }}
+              >
+                <RendererIcon name="collection" theme={theme} size={16} />
+                收藏状态
+              </div>
               <div
                 style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}
               >
@@ -483,7 +509,19 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
           padding: theme.spacing.sm,
         }}
       >
-        <div style={{ color: theme.accent, fontWeight: 700, fontSize: '13px' }}>数据说明</div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: theme.spacing.xs,
+            color: theme.accent,
+            fontWeight: 700,
+            fontSize: '13px',
+          }}
+        >
+          <RendererIcon name="overview" theme={theme} size={15} />
+          数据说明
+        </div>
         {displayedNotes.map((note, index) => (
           <div
             key={note + '-' + index}

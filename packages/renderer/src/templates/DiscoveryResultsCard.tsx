@@ -198,6 +198,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
         title={viewModel.query.label}
         subtitle={`Bangumi 条目发现 · ${stateLabel(viewModel.state)}`}
         theme={theme}
+        icon="discovery"
       />
 
       <div

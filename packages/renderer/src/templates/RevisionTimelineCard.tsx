@@ -37,6 +37,7 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
         title="Bangumi 修订历史"
         subtitle={`${ENTITY_LABELS[viewModel.entityType]} ${viewModel.entityId} · ${stateLabel}`}
         theme={theme}
+        icon="history"
       />
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>

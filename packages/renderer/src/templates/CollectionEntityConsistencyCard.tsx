@@ -100,6 +100,7 @@ export const CollectionEntityConsistencyCard: React.FC<CollectionEntityConsisten
         title="收藏角色/人物一致性观察"
         subtitle={`当前账号 ${boundedText(viewModel.account.username, 64)} · ${stateLabel(viewModel.state)}`}
         theme={theme}
+        icon="integrity"
       />
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>

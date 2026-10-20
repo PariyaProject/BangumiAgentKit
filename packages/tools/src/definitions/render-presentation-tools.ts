@@ -47,6 +47,7 @@ import {
 } from '@bangumi-agent-kit/bangumi-core';
 import {
   RenderService,
+  isRenderThemeName,
   type RenderOptions,
   LocalArtifactStore,
   ArtifactStore,
@@ -202,6 +203,17 @@ export async function renderAndSaveArtifact(
   }
 }
 
+export function getDefaultRenderOptions(
+  renderTarget: RenderTarget = 'full',
+  themeSetting = process.env.BANGUMI_RENDER_THEME,
+): RenderOptions {
+  const targetDefaults: RenderOptions =
+    renderTarget === 'chat' ? { width: 360, deviceScaleFactor: 2 } : {};
+  return isRenderThemeName(themeSetting)
+    ? { ...targetDefaults, theme: themeSetting }
+    : targetDefaults;
+}
+
 export function createRenderPresentationTools(
   renderServiceOverride?: RenderService,
   artifactStoreOverride?: ArtifactStore,
@@ -209,8 +221,7 @@ export function createRenderPresentationTools(
 ) {
   const artifactStore = artifactStoreOverride || getArtifactStore();
   const renderService = renderServiceOverride || getRenderService();
-  const targetDefaults: RenderOptions =
-    renderTarget === 'chat' ? { width: 360, deviceScaleFactor: 2 } : {};
+  const targetDefaults = getDefaultRenderOptions(renderTarget);
 
   async function executeRenderAndSave(
     viewModel: any,
@@ -753,7 +764,10 @@ export function createRenderPresentationTools(
       maxSubjects: z.number().int().min(1).max(500).optional().describe('作品关系读取上限'),
       maxCharacters: z.number().int().min(1).max(500).optional().describe('角色关系读取上限'),
       maxCredits: z.number().int().min(1).max(20).optional().describe('每类关系最多展示条数'),
-      includeChronology: z.boolean().optional().describe('是否额外读取受限动画作品详情并展示观察样本发行日期极值；默认 false'),
+      includeChronology: z
+        .boolean()
+        .optional()
+        .describe('是否额外读取受限动画作品详情并展示观察样本发行日期极值；默认 false'),
       maxChronologySubjects: z
         .number()
         .int()

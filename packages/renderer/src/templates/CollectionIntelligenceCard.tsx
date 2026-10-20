@@ -125,6 +125,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
         title="我的收藏智能概览"
         subtitle={`当前账号 · 官方 v0 · ${stateLabel(viewModel.state)}`}
         theme={theme}
+        icon="stats"
       />
 
       <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>

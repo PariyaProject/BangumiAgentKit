@@ -47,7 +47,8 @@ interface LayoutMeasurement {
 }
 
 interface Page {
-  setContent(html: string, options: { waitUntil: 'domcontentloaded' }): Promise<void>;
+  setContent(html: string, options: { waitUntil: 'domcontentloaded' | 'load' }): Promise<void>;
+  screenshot(options: { type: 'png'; fullPage: boolean }): Promise<Buffer>;
   locator(selector: string): {
     evaluate<T>(callback: (element: LayoutRoot) => T): Promise<T>;
   };
@@ -151,6 +152,80 @@ export async function measureRenderRootLayout(
         contentOverflowing,
       };
     });
+  } finally {
+    await context.close();
+  }
+}
+
+export async function renderThemePreview(
+  html: string,
+  width: number,
+): Promise<{ png: Buffer; layout: LayoutMeasurement }> {
+  browserPromise ??= chromium.launch({
+    headless: true,
+    args: ['--disable-gpu', '--disable-dev-shm-usage'],
+  });
+  const browser = await browserPromise;
+  const context = await browser.newContext({
+    viewport: { width, height: 800 },
+    deviceScaleFactor: 2,
+    javaScriptEnabled: false,
+    serviceWorkers: 'block',
+  });
+
+  try {
+    await context.route('**/*', (route) => route.abort());
+    const page = await context.newPage();
+    await page.setContent(html, { waitUntil: 'load' });
+    const layout = await page.locator('[data-render-root]').evaluate((root) => {
+      const rootBounds = root.getBoundingClientRect();
+      const titleBlocks = Array.from(root.querySelectorAll('h1')).map((heading) => {
+        const block = heading.parentElement;
+        const subtitle = heading.nextElementSibling;
+        return {
+          title: (heading.textContent ?? '').trim(),
+          blockWidth: Math.round(block?.getBoundingClientRect().width ?? 0),
+          titleWidth: heading.clientWidth,
+          subtitle: (subtitle?.textContent ?? '').trim(),
+          subtitleWidth: subtitle?.clientWidth ?? 0,
+        };
+      });
+      const overflowing = Array.from(root.querySelectorAll('*'))
+        .map((element) => {
+          const bounds = element.getBoundingClientRect();
+          return {
+            tagName: element.tagName,
+            className: String(element.className),
+            left: Math.round(bounds.left),
+            right: Math.round(bounds.right),
+            clientWidth: element.clientWidth,
+            scrollWidth: element.scrollWidth,
+            text: (element.textContent ?? '').trim().slice(0, 80),
+          };
+        })
+        .filter(
+          (element) => element.left < rootBounds.left - 1 || element.right > rootBounds.right + 1,
+        )
+        .slice(0, 10);
+      const contentOverflowing = Array.from(root.querySelectorAll('*'))
+        .map((element) => ({
+          tagName: element.tagName,
+          className: String(element.className),
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+          text: (element.textContent ?? '').trim().slice(0, 80),
+        }))
+        .filter((element) => element.scrollWidth > element.clientWidth + 1)
+        .slice(0, 10);
+      return {
+        clientWidth: root.clientWidth,
+        scrollWidth: root.scrollWidth,
+        titleBlocks,
+        overflowing,
+        contentOverflowing,
+      };
+    });
+    return { png: await page.screenshot({ type: 'png', fullPage: true }), layout };
   } finally {
     await context.close();
   }

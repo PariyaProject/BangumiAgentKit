@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getPrivateArtifactPrincipal, renderAndSaveArtifact } from '@bangumi-agent-kit/tools';
+import {
+  getDefaultRenderOptions,
+  getPrivateArtifactPrincipal,
+  renderAndSaveArtifact,
+} from '@bangumi-agent-kit/tools';
 import type { ArtifactStore, RenderService } from '@bangumi-agent-kit/renderer';
 
 const renderResult = {
@@ -29,6 +33,24 @@ function createArtifactStore() {
     saveArtifactForPrincipal: ReturnType<typeof vi.fn>;
   };
 }
+
+describe('render target defaults', () => {
+  it('accepts only the two registered themes and keeps chat sizing', () => {
+    expect(getDefaultRenderOptions('full', 'bangumi-light')).toEqual({
+      theme: 'bangumi-light',
+    });
+    expect(getDefaultRenderOptions('chat', 'bangumi-dark')).toEqual({
+      width: 360,
+      deviceScaleFactor: 2,
+      theme: 'bangumi-dark',
+    });
+    expect(getDefaultRenderOptions('full', 'light')).toEqual({});
+    expect(getDefaultRenderOptions('chat', undefined)).toEqual({
+      width: 360,
+      deviceScaleFactor: 2,
+    });
+  });
+});
 
 describe('private render artifact scope', () => {
   it('fails closed for every private collection template without a non-empty principal', () => {

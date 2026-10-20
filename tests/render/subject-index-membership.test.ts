@@ -3,6 +3,7 @@ import type { SubjectIndexMembershipResult } from '@bangumi-agent-kit/bangumi-co
 import {
   buildSubjectIndexMembershipViewModel,
   extractImageUrls,
+  RenderService,
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
 
@@ -94,11 +95,14 @@ const result: SubjectIndexMembershipResult = {
 };
 
 describe('subject index membership renderer', () => {
-  it('builds an image-free view model and registered HTML card', () => {
+  it('builds an image-free view model and registered HTML card', async () => {
     const viewModel = buildSubjectIndexMembershipViewModel(result);
 
     expect(viewModel.template).toBe('subject-index-membership');
     expect(extractImageUrls(viewModel)).toEqual([]);
+    const renderService = new RenderService();
+    await renderService.renderCard(viewModel, { width: 640, deviceScaleFactor: 2, cache: false });
+    await renderService.close();
 
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 960);
     expect(html).toContain('条目目录归属观察');
@@ -107,7 +111,7 @@ describe('subject index membership renderer', () => {
     expect(html).toContain('只扫描调用方提供的 indexIds');
   });
 
-  it('renders an unknown total after inconsistent pagination metadata', () => {
+  it('renders an unknown total after inconsistent pagination metadata', async () => {
     const inconsistentResult = structuredClone(result);
     const index = inconsistentResult.indexes[0]!;
     delete index.coverage.total;
@@ -115,12 +119,11 @@ describe('subject index membership renderer', () => {
     index.state = 'partial';
     index.membership = 'unknown';
 
-    const html = renderHtmlTemplate(
-      buildSubjectIndexMembershipViewModel(inconsistentResult),
-      'bangumi-dark',
-      {},
-      960,
-    );
+    const viewModel = buildSubjectIndexMembershipViewModel(inconsistentResult);
+    const renderService = new RenderService();
+    await renderService.renderCard(viewModel, { width: 640, deviceScaleFactor: 2, cache: false });
+    await renderService.close();
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 960);
 
     expect(html).toContain('原始总数 未知');
   });
