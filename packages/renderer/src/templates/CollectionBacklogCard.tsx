@@ -151,6 +151,7 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
       viewModel.state !== 'conflict' &&
       viewModel.state !== 'not_computable' ? (
         <div
+          data-render-mask="panel"
           style={{
             color: theme.warning,
             backgroundColor: theme.surfaceAlt,
@@ -159,6 +160,7 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
             padding: theme.spacing.md,
             fontSize: '12px',
             lineHeight: 1.5,
+            clipPath: theme.design.masks.panel,
           }}
         >
           {presentation?.errorMessage ||
@@ -172,12 +174,14 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
 
       {!hasItems && presentation?.emptyState ? (
         <div
+          data-render-mask="panel-alt"
           style={{
             color: theme.text,
             backgroundColor: theme.surfaceAlt,
             border: `1px solid ${theme.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           <div style={{ fontWeight: 700, fontSize: '13px' }}>{presentation.emptyState.title}</div>

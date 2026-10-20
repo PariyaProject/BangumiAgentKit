@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -24,7 +24,6 @@ const fixtureDisclosure = '合成演示数据，仅用于视觉与布局验收�
 
 const rendererRequire = createRequire(path.join(repoRoot, 'packages/renderer/package.json'));
 const { chromium } = rendererRequire('playwright');
-const { renderHtmlTemplate } = await import('../../packages/renderer/dist/index.js');
 
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
@@ -59,6 +58,41 @@ function sourceIdentity() {
     includedPathCount: paths.length,
   };
 }
+
+function rendererBuildIdentity() {
+  const distDir = path.join(repoRoot, 'packages/renderer/dist');
+  const filesBelow = (directory) =>
+    readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+      const absolute = path.join(directory, entry.name);
+      return entry.isDirectory()
+        ? filesBelow(absolute)
+        : [path.relative(distDir, absolute).split(path.sep).join('/')];
+    });
+  const files = filesBelow(distDir).sort();
+  assert.ok(files.includes('index.js'), 'renderer build must contain dist/index.js');
+  const digest = createHash('sha256');
+  for (const file of files) {
+    digest.update(file).update('\0');
+    digest.update(sha256(readFileSync(path.join(distDir, file)))).update('\0');
+  }
+  return { sha256: digest.digest('hex'), fileCount: files.length };
+}
+
+const sourceBeforeBuild = sourceIdentity();
+execFileSync('pnpm', ['build'], { cwd: repoRoot, stdio: 'inherit' });
+const candidateSource = sourceIdentity();
+assert.deepEqual(
+  candidateSource,
+  sourceBeforeBuild,
+  'tracked source changed while building renderer',
+);
+const rendererBuild = rendererBuildIdentity();
+const candidate = {
+  ...candidateSource,
+  rendererBuildSha256: rendererBuild.sha256,
+  rendererBuildFileCount: rendererBuild.fileCount,
+};
+const { renderHtmlTemplate } = await import('../../packages/renderer/dist/index.js');
 
 const subjectCard = {
   template: 'subject-card',
@@ -270,7 +304,6 @@ assert.equal(ratingTotal, 1284);
 assert.equal(Math.round(ratingMean * 10) / 10, 8.4);
 assert.equal(Math.round((highScoreCount / ratingTotal) * 1000) / 10, 67);
 
-const candidate = sourceIdentity();
 const fixtureCoverSha256 = sha256(coverBytes);
 const outputDir = path.join(
   repoRoot,
@@ -314,8 +347,15 @@ try {
           const root = page.locator('[data-render-root]');
           const visual = await root.evaluate((element) => {
             const bounds = element.getBoundingClientRect();
+            const frame = element.children[0];
+            const hero = element.querySelector('[data-layout="subject-cover-art-stage"]');
+            const panel = element.querySelector(
+              '[data-layout="warm-score-panel"], [data-layout="zine-score-progress-hero"], [data-layout="subject-card-summary"]',
+            );
             const scorePanelOverflows = Array.from(
-              element.querySelectorAll('[data-layout="warm-score-panel"], [data-layout="zine-score-panel"]'),
+              element.querySelectorAll(
+                '[data-layout="warm-score-panel"], [data-layout="zine-score-panel"]',
+              ),
             )
               .map((node) => ({
                 layout: node.getAttribute('data-layout'),
@@ -324,6 +364,18 @@ try {
                 text: (node.textContent ?? '').trim().slice(0, 48),
               }))
               .filter((node) => node.scrollWidth > node.clientWidth + 1);
+            const panelMasks = Array.from(
+              element.querySelectorAll(
+                '[data-render-mask="panel"], [data-render-mask="panel-alt"]',
+              ),
+            ).map((node) => ({
+              kind: node.getAttribute('data-render-mask'),
+              token: node.style.clipPath || 'none',
+              clipPath: getComputedStyle(node).clipPath,
+            }));
+            const progressTrack = element.querySelector(
+              '[data-layout="progress-track"], [data-layout="subject-progress-track"]',
+            );
             const overflows = Array.from(element.querySelectorAll('*'))
               .map((node) => {
                 const box = node.getBoundingClientRect();
@@ -349,6 +401,33 @@ try {
               cssHeight: Math.round(bounds.height),
               rootScrollWidth: element.scrollWidth,
               rootClientWidth: element.clientWidth,
+              maskReceipts: {
+                frame: frame ? getComputedStyle(frame).clipPath : null,
+                frameToken: frame?.style.clipPath || null,
+                hero: hero ? getComputedStyle(hero).clipPath : null,
+                heroToken: hero?.style.clipPath || null,
+                panel: panel ? getComputedStyle(panel).clipPath : null,
+                panelToken: panel?.style.clipPath || null,
+                panelPrimaryCount: panelMasks.filter(
+                  (mask) => mask.kind === 'panel' && mask.clipPath !== 'none',
+                ).length,
+                panelAltCount: panelMasks.filter(
+                  (mask) => mask.kind === 'panel-alt' && mask.clipPath !== 'none',
+                ).length,
+                panelPrimaryMask:
+                  panelMasks.find((mask) => mask.kind === 'panel')?.clipPath ?? null,
+                panelPrimaryMaskToken:
+                  panelMasks.find((mask) => mask.kind === 'panel')?.token ?? null,
+                panelAltMask:
+                  panelMasks.find((mask) => mask.kind === 'panel-alt')?.clipPath ?? null,
+                panelAltMaskToken:
+                  panelMasks.find((mask) => mask.kind === 'panel-alt')?.token ?? null,
+                progress: progressTrack ? getComputedStyle(progressTrack).clipPath : null,
+                progressToken: progressTrack?.style.clipPath || null,
+                coverStickerCount: element.querySelectorAll(
+                  '[data-layout="zine-cover-stickers"] > span',
+                ).length,
+              },
               scorePanelOverflows,
               overflows,
               text: (element.textContent ?? '').replace(/\s+/gu, ' ').trim(),
@@ -364,6 +443,31 @@ try {
             visual.rootClientWidth,
             `${fixture.template}/${designPack}/${theme}/${cssWidth} root overflow`,
           );
+          assert.ok(
+            visual.maskReceipts.frame && visual.maskReceipts.frame !== 'none',
+            `${fixture.template}/${designPack}/${theme}/${cssWidth} missing frame mask`,
+          );
+          assert.ok(
+            visual.maskReceipts.panelPrimaryCount + visual.maskReceipts.panelAltCount > 0,
+            `${fixture.template}/${designPack}/${theme}/${cssWidth} missing rendered panel mask`,
+          );
+          if (fixture.template === 'subject-card') {
+            assert.ok(
+              visual.maskReceipts.hero && visual.maskReceipts.hero !== 'none',
+              `${fixture.template}/${designPack}/${theme}/${cssWidth} missing hero mask`,
+            );
+            assert.ok(
+              visual.maskReceipts.progress && visual.maskReceipts.progress !== 'none',
+              `${fixture.template}/${designPack}/${theme}/${cssWidth} missing progress mask`,
+            );
+          }
+          if (fixture.template === 'subject-card' && designPack === 'graphic-zine') {
+            assert.equal(
+              visual.maskReceipts.coverStickerCount,
+              2,
+              `${fixture.template}/${designPack}/${theme}/${cssWidth} missing diagonal cover stickers`,
+            );
+          }
           assert.deepEqual(
             visual.scorePanelOverflows,
             [],
@@ -406,12 +510,89 @@ try {
   await browser.close();
 }
 
+assert.deepEqual(
+  sourceIdentity(),
+  candidateSource,
+  'tracked source changed during reference rendering',
+);
+assert.deepEqual(
+  rendererBuildIdentity(),
+  rendererBuild,
+  'renderer dist changed during reference rendering',
+);
+
 manifest.sort((left, right) =>
   `${left.template}/${left.designPack}/${left.theme}/${left.cssWidth}`.localeCompare(
     `${right.template}/${right.designPack}/${right.theme}/${right.cssWidth}`,
   ),
 );
 assert.equal(manifest.length, 90);
+const frameMaskTokensByPack = new Map();
+const frameMasksAt320ByPack = new Map();
+for (const item of manifest) {
+  const currentToken = frameMaskTokensByPack.get(item.designPack);
+  if (currentToken && currentToken !== item.layout.maskReceipts.frameToken) {
+    throw new Error(`Frame mask token drifted within ${item.designPack}`);
+  }
+  frameMaskTokensByPack.set(item.designPack, item.layout.maskReceipts.frameToken);
+  if (item.cssWidth === 320 && !frameMasksAt320ByPack.has(item.designPack)) {
+    frameMasksAt320ByPack.set(item.designPack, item.layout.maskReceipts.frame);
+  }
+}
+assert.equal(
+  new Set(frameMaskTokensByPack.values()).size,
+  PACKS.length,
+  'design packs must define distinct frame mask tokens',
+);
+assert.equal(
+  new Set(frameMasksAt320ByPack.values()).size,
+  PACKS.length,
+  'design packs must render distinct frame masks at 320px',
+);
+const panelMaskTokensByPack = new Map();
+const panelMasksAt320ByPack = new Map();
+for (const item of manifest) {
+  const currentToken = panelMaskTokensByPack.get(item.designPack);
+  if (currentToken && currentToken !== item.layout.maskReceipts.panelPrimaryMaskToken) {
+    throw new Error(`Panel mask token drifted within ${item.designPack}`);
+  }
+  panelMaskTokensByPack.set(item.designPack, item.layout.maskReceipts.panelPrimaryMaskToken);
+  if (item.cssWidth === 320 && !panelMasksAt320ByPack.has(item.designPack)) {
+    panelMasksAt320ByPack.set(item.designPack, item.layout.maskReceipts.panelPrimaryMask);
+  }
+}
+assert.equal(
+  new Set(panelMaskTokensByPack.values()).size,
+  PACKS.length,
+  'design packs must define distinct panel mask tokens',
+);
+assert.equal(
+  new Set(panelMasksAt320ByPack.values()).size,
+  PACKS.length,
+  'design packs must render distinct panel masks at 320px',
+);
+const progressMaskTokensByPack = new Map();
+const progressMasksAt320ByPack = new Map();
+for (const item of manifest.filter((row) => row.template === 'subject-card')) {
+  const currentToken = progressMaskTokensByPack.get(item.designPack);
+  if (currentToken && currentToken !== item.layout.maskReceipts.progressToken) {
+    throw new Error(`Progress mask token drifted within ${item.designPack}`);
+  }
+  progressMaskTokensByPack.set(item.designPack, item.layout.maskReceipts.progressToken);
+  if (item.cssWidth === 320 && !progressMasksAt320ByPack.has(item.designPack)) {
+    progressMasksAt320ByPack.set(item.designPack, item.layout.maskReceipts.progress);
+  }
+}
+assert.equal(
+  new Set(progressMaskTokensByPack.values()).size,
+  PACKS.length,
+  'design packs must define distinct progress mask tokens',
+);
+assert.equal(
+  new Set(progressMasksAt320ByPack.values()).size,
+  PACKS.length,
+  'design packs must render distinct progress masks at 320px',
+);
 await writeFile(
   path.join(outputDir, 'manifest.json'),
   `${JSON.stringify(

@@ -33,6 +33,7 @@ export const TagList: React.FC<TagListProps> = ({ tags, theme, maxTags = 8 }) =>
             padding: '3px 10px',
             borderRadius: theme.design.tagRadius,
             border: `${zine ? '2px' : theme.design.metricBorderWidth} solid ${zine ? theme.text : theme.border}`,
+            clipPath: theme.design.masks.tag,
           }}
         >
           {tag}

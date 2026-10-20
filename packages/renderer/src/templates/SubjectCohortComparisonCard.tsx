@@ -236,12 +236,14 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
           return (
             <section
               key={`${cohort.label}-${index}`}
+              data-render-mask="panel"
               style={{
                 backgroundColor: theme.surfaceAlt,
                 border: `1px solid ${theme.border}`,
                 borderRadius: theme.radius.md,
                 padding: theme.spacing.md,
                 minWidth: 0,
+                clipPath: theme.design.masks.panel,
               }}
             >
               <div style={{ color: theme.accent, fontSize: '10px', letterSpacing: '0.08em' }}>
@@ -343,7 +345,9 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                         >
                           {subject.displayName}
                         </span>
-                        <span style={{ color: theme.textMuted, flex: '0 0 auto', fontSize: '10px' }}>
+                        <span
+                          style={{ color: theme.textMuted, flex: '0 0 auto', fontSize: '10px' }}
+                        >
                           #{subject.id}
                         </span>
                       </div>
@@ -396,8 +400,8 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                             ? '无效'
                             : numberLabel(subject.ratingCount, 0)}{' '}
                           · 收藏人数 {numberLabel(subject.collectionTotal, 0)}
-                          {' · '}报告话数 {numberLabel(subject.episodesReported, 0)} · 评分分布离散度{' '}
-                          {numberLabel(subject.ratingStandardDeviation, 2)}（样本数{' '}
+                          {' · '}报告话数 {numberLabel(subject.episodesReported, 0)} ·
+                          评分分布离散度 {numberLabel(subject.ratingStandardDeviation, 2)}（样本数{' '}
                           {numberLabel(subject.ratingHistogramPopulation, 0)}）
                         </div>
                       )}
@@ -442,7 +446,8 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                   }}
                 >
                   图片展示 {visibleSubjects.length}/{returnedSubjects} 条已返回样本；另有{' '}
-                  {omittedSubjects + omittedForPresentation} 条未展开，聚合指标仍按已取得的有效样本计算。
+                  {omittedSubjects + omittedForPresentation}{' '}
+                  条未展开，聚合指标仍按已取得的有效样本计算。
                 </div>
               ) : null}
             </section>

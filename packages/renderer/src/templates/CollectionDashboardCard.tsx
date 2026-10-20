@@ -48,6 +48,7 @@ function dashboardSectionStyle(
     backgroundColor: tone.surface,
     minWidth: 0,
     boxShadow: zine ? `3px 3px 0 ${tone.border}` : undefined,
+    clipPath: theme.design.masks.panel,
   };
 }
 
@@ -393,6 +394,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
       <div
         data-dashboard-pack={theme.designPack}
         data-layout="dashboard-context"
+        data-render-mask="panel-alt"
         style={{
           color: theme.textMuted,
           fontSize: '12px',
@@ -400,6 +402,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
           backgroundColor: theme.tones.blue.surface,
           borderRadius: theme.radius.md,
           padding: theme.spacing.sm,
+          clipPath: theme.design.masks.panelAlt,
         }}
       >
         三个只读区段：收藏概览、backlog、七日播出计划。日期不表示具体时刻或时区；未观察到的数据不会补猜。
@@ -458,7 +461,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
           alignItems: 'start',
         }}
       >
-        <section style={dashboardSectionStyle(theme, intelligenceTone)}>
+        <section data-render-mask="panel" style={dashboardSectionStyle(theme, intelligenceTone)}>
           {sectionHeader('收藏概览', viewModel.sections.intelligence.state, theme, 'overview')}
           <SectionError error={viewModel.sections.intelligence.error} theme={theme} />
           {intelligence ? (
@@ -528,7 +531,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
           )}
         </section>
 
-        <section style={dashboardSectionStyle(theme, backlogTone)}>
+        <section data-render-mask="panel" style={dashboardSectionStyle(theme, backlogTone)}>
           {sectionHeader('Backlog', viewModel.sections.backlog.state, theme, 'collection')}
           <SectionError error={viewModel.sections.backlog.error ?? backlog?.error} theme={theme} />
           {backlog ? (
@@ -598,7 +601,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
           )}
         </section>
 
-        <section style={dashboardSectionStyle(theme, scheduleTone)}>
+        <section data-render-mask="panel" style={dashboardSectionStyle(theme, scheduleTone)}>
           {sectionHeader('七日播出计划', viewModel.sections.schedule.state, theme, 'calendar')}
           <SectionError
             error={viewModel.sections.schedule.error ?? schedule?.error}

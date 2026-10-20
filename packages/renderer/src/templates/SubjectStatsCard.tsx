@@ -547,6 +547,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({
       {raw && !zine ? (
         <section
           data-layout={gallery ? 'gallery-score-distribution-hero' : 'warm-score-distribution-hero'}
+          data-render-mask="panel"
           style={{
             display: 'grid',
             gridTemplateColumns:
@@ -557,6 +558,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({
             backgroundColor: gallery ? theme.surface : theme.surfaceAlt,
             border: `1px solid ${theme.border}`,
             borderRadius: gallery ? '4px' : theme.radius.lg,
+            clipPath: theme.design.masks.panel,
           }}
         >
           <div data-layout="stats-rating-score">
@@ -584,6 +586,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({
       {zine && raw ? (
         <section
           data-layout="zine-score-hero"
+          data-render-mask="panel"
           style={{
             display: 'grid',
             gridTemplateColumns:
@@ -593,7 +596,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({
             padding: theme.spacing.md,
             backgroundColor: theme.tones.coral.surface,
             border: `3px solid ${theme.text}`,
-            clipPath: 'polygon(0 0, 100% 0, 100% 92%, 96% 100%, 0 100%)',
+            clipPath: theme.design.masks.panel,
             boxShadow: `4px 4px 0 ${theme.border}`,
           }}
         >
@@ -625,6 +628,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({
 
       {viewModel.state === 'unavailable' || viewModel.state === 'not_found' ? (
         <div
+          data-render-mask="panel-alt"
           style={{
             color: theme.warning,
             backgroundColor: theme.surfaceAlt,
@@ -633,6 +637,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({
             padding: theme.spacing.md,
             fontSize: '13px',
             lineHeight: 1.5,
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           {viewModel.state === 'not_found'

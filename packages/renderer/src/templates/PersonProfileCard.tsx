@@ -95,6 +95,7 @@ function DistributionList({
 }) {
   return (
     <div
+      data-render-mask="panel"
       style={{
         flex: compact ? '1 1 100%' : 1,
         minWidth: compact ? 0 : '260px',
@@ -102,6 +103,7 @@ function DistributionList({
         border: `1px solid ${theme.border}`,
         borderRadius: theme.radius.md,
         padding: theme.spacing.md,
+        clipPath: theme.design.masks.panel,
       }}
     >
       <div
@@ -183,6 +185,7 @@ function CreditList({
       </div>
       {items.length === 0 ? (
         <div
+          data-render-mask="panel-alt"
           style={{
             backgroundColor: theme.surfaceAlt,
             border: `1px solid ${theme.border}`,
@@ -190,6 +193,7 @@ function CreditList({
             padding: theme.spacing.md,
             color: theme.textMuted,
             fontSize: '12px',
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           未返回关系明细
@@ -346,6 +350,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
       </div>
 
       <div
+        data-render-mask="panel"
         style={{
           backgroundColor: theme.surfaceAlt,
           border: `1px solid ${theme.border}`,
@@ -354,6 +359,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
           display: 'flex',
           flexDirection: 'column',
           gap: theme.spacing.xs,
+          clipPath: theme.design.masks.panel,
         }}
       >
         <div style={{ color: theme.text, fontSize: '13px', fontWeight: 700 }}>
@@ -395,6 +401,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
         ].map(([label, value]) => (
           <div
             key={String(label)}
+            data-render-mask="panel-alt"
             style={{
               flex: `1 1 ${compactLayout ? '84px' : '140px'}`,
               backgroundColor: theme.surfaceAlt,
@@ -402,6 +409,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
               borderRadius: theme.radius.md,
               padding: theme.spacing.sm,
               textAlign: 'center',
+              clipPath: theme.design.masks.panelAlt,
             }}
           >
             <div style={{ color: theme.accent, fontSize: '22px', fontWeight: 700 }}>{value}</div>
@@ -523,6 +531,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
       )}
 
       <div
+        data-render-mask="panel"
         style={{
           backgroundColor: coverage.state === 'partial' ? `${theme.warning}18` : theme.surfaceAlt,
           border: `1px solid ${coverage.state === 'partial' ? theme.warning : theme.border}`,
@@ -531,6 +540,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
           color: coverage.state === 'partial' ? theme.warning : theme.textMuted,
           fontSize: '12px',
           lineHeight: 1.5,
+          clipPath: theme.design.masks.panel,
         }}
       >
         <div style={{ fontWeight: 700 }}>

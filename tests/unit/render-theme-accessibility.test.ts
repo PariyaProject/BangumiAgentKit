@@ -70,4 +70,20 @@ describe('renderer theme text contrast', () => {
       }
     },
   );
+
+  it.each(themeCases)('$designPack / $name defines distinct render masks', ({ theme }) => {
+    const { masks } = theme.design;
+    for (const mask of [
+      masks.frame,
+      masks.hero,
+      masks.cover,
+      masks.panel,
+      masks.panelAlt,
+      masks.progress,
+      masks.tag,
+    ]) {
+      expect(mask).not.toBe('none');
+    }
+    expect(masks.panel).not.toBe(masks.panelAlt);
+  });
 });

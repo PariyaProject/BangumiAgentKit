@@ -42,6 +42,7 @@ export const CoverImage: React.FC<CoverImageProps> = ({
             ? `linear-gradient(135deg, ${theme.tones.butter.surface} 0%, ${theme.surfaceAlt} 54%, ${theme.tones.blue.surface} 100%)`
             : undefined,
           borderRadius: fill ? 0 : theme.design.coverRadius,
+          clipPath: fill ? theme.design.masks.hero : theme.design.masks.cover,
           display: 'flex',
           alignItems: fill ? 'flex-end' : 'center',
           justifyContent: 'center',
@@ -81,6 +82,7 @@ export const CoverImage: React.FC<CoverImageProps> = ({
         objectFit: 'cover',
         filter,
         borderRadius: fill ? 0 : theme.design.coverRadius,
+        clipPath: fill ? theme.design.masks.hero : theme.design.masks.cover,
         border: fill ? 0 : `${theme.design.coverBorderWidth} solid ${theme.border}`,
         boxShadow:
           !fill && theme.designPack === 'graphic-zine' ? `3px 3px 0 ${theme.text}` : undefined,

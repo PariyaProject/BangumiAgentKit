@@ -7,6 +7,7 @@ interface LayoutRoot extends LayoutNode {
 interface LayoutNode {
   tagName: string;
   className: string;
+  style: { clipPath: string };
   textContent: string | null;
   clientWidth: number;
   scrollWidth: number;
@@ -60,6 +61,10 @@ interface LayoutMeasurement {
     scrollWidth: number;
     text: string;
   }>;
+  maskReceipts?: {
+    panels: Array<{ kind: string; clipPath: string }>;
+    progressTracks: string[];
+  };
 }
 
 interface Page {
@@ -331,6 +336,19 @@ export async function renderThemePreview(
         layoutElements,
         overflowing,
         contentOverflowing,
+        maskReceipts: {
+          panels: Array.from(
+            root.querySelectorAll('[data-render-mask="panel"], [data-render-mask="panel-alt"]'),
+          ).map((element) => ({
+            kind: element.getAttribute('data-render-mask') ?? '',
+            clipPath: element.style.clipPath || 'none',
+          })),
+          progressTracks: Array.from(
+            root.querySelectorAll(
+              '[data-layout="progress-track"], [data-layout="subject-progress-track"]',
+            ),
+          ).map((element) => element.style.clipPath || 'none'),
+        },
       };
     });
     return { png: await page.screenshot({ type: 'png', fullPage: true }), layout };

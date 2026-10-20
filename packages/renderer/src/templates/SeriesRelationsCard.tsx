@@ -142,6 +142,7 @@ function StepCard({
   return (
     <div
       data-layout="watch-order-step"
+      data-render-mask="panel"
       style={{
         display: 'flex',
         gap: theme.spacing.sm,
@@ -151,6 +152,7 @@ function StepCard({
         borderRadius: theme.radius.md,
         padding: theme.spacing.sm,
         minWidth: 0,
+        clipPath: theme.design.masks.panel,
       }}
     >
       <div
@@ -388,8 +390,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
   const stepBasis = viewportWidth >= 900 ? 'calc(50% - 6px)' : '100%';
   const compactSteps = viewportWidth < 900;
   const compactRelated = viewportWidth < 900;
-  const evidenceGridColumns =
-    viewportWidth <= 360 ? '1fr' : 'repeat(2, minmax(0, 1fr))';
+  const evidenceGridColumns = viewportWidth <= 360 ? '1fr' : 'repeat(2, minmax(0, 1fr))';
   const compactRelatedGridColumns = viewportWidth >= 900 ? 'repeat(2, minmax(0, 1fr))' : '1fr';
   const root = viewModel.root;
   const voiceActorPresence = viewModel.voiceActorPresence;
@@ -423,6 +424,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
       </div>
 
       <div
+        data-render-mask="panel-alt"
         style={{
           display: 'flex',
           gap: theme.spacing.md,
@@ -431,6 +433,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
           border: `1px solid ${theme.border}`,
           borderRadius: theme.radius.md,
           padding: theme.spacing.md,
+          clipPath: theme.design.masks.panelAlt,
         }}
       >
         <ImageOrPlaceholder
@@ -461,6 +464,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
 
       {viewModel.state === 'not_computable' ? (
         <div
+          data-render-mask="panel"
           style={{
             color: theme.warning,
             backgroundColor: theme.surfaceAlt,
@@ -469,6 +473,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
             padding: theme.spacing.md,
             fontSize: '13px',
             lineHeight: 1.55,
+            clipPath: theme.design.masks.panel,
           }}
         >
           起点不是动画或没有足够的动画关系数据，当前不能计算观看步骤；下方仍保留已观察到的关系证据。
@@ -501,13 +506,18 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
         <div style={{ color: theme.textMuted, fontSize: '12px' }}>没有可确认的观看步骤。</div>
       )}
       {omittedSteps > 0 ? (
-        <div data-layout="watch-order-step-summary" style={{ color: theme.textMuted, fontSize: '11px' }}>
-          当前图片显示 {visibleSteps.length}/{boundedSteps.length} 步，另有 {omittedSteps} 步未展开；覆盖统计仍按完整范围计算。
+        <div
+          data-layout="watch-order-step-summary"
+          style={{ color: theme.textMuted, fontSize: '11px' }}
+        >
+          当前图片显示 {visibleSteps.length}/{boundedSteps.length} 步，另有 {omittedSteps}{' '}
+          步未展开；覆盖统计仍按完整范围计算。
         </div>
       ) : null}
 
       {voiceActorPresence ? (
         <div
+          data-render-mask="panel-alt"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -516,6 +526,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
             border: `1px solid ${theme.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           <div style={{ color: theme.accent, fontWeight: 800, fontSize: '14px' }}>
@@ -621,6 +632,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
       ) : null}
 
       <div
+        data-render-mask="panel"
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -629,6 +641,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
           border: `1px solid ${theme.border}`,
           borderRadius: theme.radius.md,
           padding: theme.spacing.md,
+          clipPath: theme.design.masks.panel,
         }}
       >
         <div style={{ color: theme.accent, fontWeight: 800, fontSize: '14px' }}>
@@ -654,8 +667,12 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
           <div style={{ color: theme.textMuted, fontSize: '12px' }}>没有返回关系边证据。</div>
         )}
         {omittedEdges > 0 ? (
-          <div data-layout="relation-evidence-summary" style={{ color: theme.textMuted, fontSize: '11px' }}>
-            当前图片显示 {visibleEdges.length}/{viewModel.coverage.edgeEvidenceReturned} 条，另有 {omittedEdges} 条未展开；覆盖统计保留完整数量。
+          <div
+            data-layout="relation-evidence-summary"
+            style={{ color: theme.textMuted, fontSize: '11px' }}
+          >
+            当前图片显示 {visibleEdges.length}/{viewModel.coverage.edgeEvidenceReturned} 条，另有{' '}
+            {omittedEdges} 条未展开；覆盖统计保留完整数量。
           </div>
         ) : null}
         {viewModel.coverage.edgeEvidenceTruncated ? (
@@ -668,6 +685,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
 
       {visibleRelated.length > 0 ? (
         <div
+          data-render-mask="panel-alt"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -676,6 +694,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
             border: `1px solid ${theme.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           <div style={{ color: theme.accent, fontWeight: 800, fontSize: '14px' }}>
@@ -746,8 +765,12 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
             </div>
           )}
           {omittedRelated > 0 ? (
-            <div data-layout="series-related-summary" style={{ color: theme.textMuted, fontSize: '11px' }}>
-              当前图片显示 {visibleRelated.length}/{viewModel.coverage.uniqueRelatedReturned} 条，另有 {omittedRelated} 条未展开；覆盖统计保留完整数量。
+            <div
+              data-layout="series-related-summary"
+              style={{ color: theme.textMuted, fontSize: '11px' }}
+            >
+              当前图片显示 {visibleRelated.length}/{viewModel.coverage.uniqueRelatedReturned}{' '}
+              条，另有 {omittedRelated} 条未展开；覆盖统计保留完整数量。
             </div>
           ) : null}
           {viewModel.coverage.relatedEvidenceTruncated ? (
@@ -774,6 +797,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
 
       {viewModel.excluded.byReason.length > 0 ? (
         <div
+          data-render-mask="panel"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -782,6 +806,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
             border: `1px solid ${theme.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
+            clipPath: theme.design.masks.panel,
           }}
         >
           <div style={{ color: theme.accent, fontWeight: 800, fontSize: '14px' }}>

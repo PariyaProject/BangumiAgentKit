@@ -98,6 +98,7 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
       <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
         {days.length === 0 && viewModel.state !== 'complete' ? (
           <div
+            data-render-mask="panel"
             style={{
               color: theme.warning,
               backgroundColor: theme.surfaceAlt,
@@ -105,6 +106,7 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
               borderRadius: theme.radius.md,
               padding: theme.spacing.md,
               fontSize: '12px',
+              clipPath: theme.design.masks.panel,
             }}
           >
             没有可展示的官方日历数据。
@@ -113,6 +115,7 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
         {days.map((day, idx) => (
           <div
             key={idx}
+            data-render-mask="panel-alt"
             style={{
               backgroundColor: theme.surfaceAlt,
               border: `1px solid ${theme.border}`,
@@ -121,6 +124,7 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
               display: 'flex',
               flexDirection: 'column',
               gap: theme.spacing.sm,
+              clipPath: theme.design.masks.panelAlt,
             }}
           >
             <div

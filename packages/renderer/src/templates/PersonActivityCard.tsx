@@ -171,6 +171,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
         ].map(([label, value]) => (
           <div
             key={String(label)}
+            data-render-mask="panel"
             style={{
               flex: '1 1 110px',
               backgroundColor: theme.surfaceAlt,
@@ -178,6 +179,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
               borderRadius: theme.radius.md,
               padding: theme.spacing.sm,
               textAlign: 'center',
+              clipPath: theme.design.masks.panel,
             }}
           >
             <div style={{ color: theme.accent, fontSize: '22px', fontWeight: 700 }}>{value}</div>
@@ -194,6 +196,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
 
       {viewModel.ranking ? (
         <div
+          data-render-mask="panel-alt"
           style={{
             backgroundColor: theme.surfaceAlt,
             border: `1px solid ${theme.border}`,
@@ -202,6 +205,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
             color: theme.textMuted,
             fontSize: '12px',
             lineHeight: 1.55,
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
@@ -274,6 +278,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
       ) : null}
 
       <div
+        data-render-mask="panel"
         style={{
           backgroundColor: theme.surfaceAlt,
           border: `1px solid ${theme.border}`,
@@ -282,6 +287,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
           color: theme.textMuted,
           fontSize: '12px',
           lineHeight: 1.55,
+          clipPath: theme.design.masks.panel,
         }}
       >
         <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
@@ -312,6 +318,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
       </div>
 
       <div
+        data-render-mask="panel-alt"
         style={{
           backgroundColor: theme.surfaceAlt,
           border: `1px solid ${theme.border}`,
@@ -320,6 +327,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
           color: theme.textMuted,
           fontSize: '12px',
           lineHeight: 1.55,
+          clipPath: theme.design.masks.panelAlt,
         }}
       >
         <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
@@ -346,6 +354,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
 
       {viewModel.comparison && (
         <div
+          data-render-mask="panel"
           style={{
             backgroundColor: theme.surfaceAlt,
             border: `1px solid ${theme.border}`,
@@ -354,6 +363,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
             color: theme.textMuted,
             fontSize: '12px',
             lineHeight: 1.55,
+            clipPath: theme.design.masks.panel,
           }}
         >
           <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
@@ -549,6 +559,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
         </div>
         {viewModel.rows.length === 0 ? (
           <div
+            data-render-mask="panel-alt"
             style={{
               color: tone,
               backgroundColor: theme.surfaceAlt,
@@ -556,6 +567,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
               borderRadius: theme.radius.md,
               padding: theme.spacing.md,
               fontSize: '12px',
+              clipPath: theme.design.masks.panelAlt,
             }}
           >
             当前窗口没有可展示的作品关系；请结合缺失日期、媒介筛选和来源状态阅读。
@@ -606,11 +618,13 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
 
       {viewModel.exclusions.length > 0 && (
         <div
+          data-render-mask="panel"
           style={{
             backgroundColor: theme.surfaceAlt,
             border: `1px solid ${theme.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
+            clipPath: theme.design.masks.panel,
           }}
         >
           <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>

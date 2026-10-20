@@ -75,6 +75,7 @@ export const CardFrame: React.FC<CardFrameProps> = ({ theme, children, width = 9
           backgroundColor: theme.surface,
           border: `${design.frameBorderWidth} solid ${theme.border}`,
           borderRadius: design.frameRadius,
+          clipPath: design.masks.frame,
           padding: design.cardPadding,
           boxShadow: theme.shadow,
           display: 'flex',

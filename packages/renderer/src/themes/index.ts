@@ -37,6 +37,16 @@ export interface DesignPackTokens {
   tagRadius: string;
   metricBorderWidth: string;
   markerStyle: 'editorial' | 'gallery' | 'zine';
+  masks: {
+    frame: string;
+    hero: string;
+    cover: string;
+    panel: string;
+    panelAlt: string;
+    progress: string;
+    tag: string;
+    title: string;
+  };
 }
 
 interface ThemePalette {
@@ -141,6 +151,13 @@ const WARM_DARK: ThemePalette = {
   shadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4)',
 };
 
+const WARM_EDITORIAL_MAIN_RADIUS = 'clamp(28px, 4.5vw, 44px)';
+const WARM_EDITORIAL_ALT_RADIUS = 'clamp(22px, 3.5vw, 36px)';
+const GALLERY_CUT = 'clamp(18px, 3.2vw, 32px)';
+const GALLERY_CUT_SMALL = 'clamp(12px, 2vw, 20px)';
+const ZINE_CUT = 'clamp(20px, 4vw, 38px)';
+const ZINE_CUT_SMALL = 'clamp(14px, 2.2vw, 22px)';
+
 const DESIGN_PACKS: Record<RenderDesignPackName, DesignPackTokens> = {
   'warm-editorial': {
     name: 'warm-editorial',
@@ -163,6 +180,16 @@ const DESIGN_PACKS: Record<RenderDesignPackName, DesignPackTokens> = {
     tagRadius: '999px',
     metricBorderWidth: '1px',
     markerStyle: 'editorial',
+    masks: {
+      frame: `inset(0 round ${WARM_EDITORIAL_MAIN_RADIUS} 6px ${WARM_EDITORIAL_ALT_RADIUS} 6px)`,
+      hero: `inset(0 round ${WARM_EDITORIAL_MAIN_RADIUS} 6px ${WARM_EDITORIAL_MAIN_RADIUS} 6px)`,
+      cover: 'inset(0 round clamp(20px, 3vw, 30px) 4px clamp(16px, 2.5vw, 24px) 4px)',
+      panel: `inset(0 round ${WARM_EDITORIAL_MAIN_RADIUS} 4px ${WARM_EDITORIAL_ALT_RADIUS} 4px)`,
+      panelAlt: `inset(0 round 4px ${WARM_EDITORIAL_MAIN_RADIUS} 4px ${WARM_EDITORIAL_ALT_RADIUS})`,
+      progress: 'inset(0 round 999px)',
+      tag: 'inset(0 round 999px)',
+      title: 'none',
+    },
   },
   'clean-gallery': {
     name: 'clean-gallery',
@@ -185,6 +212,16 @@ const DESIGN_PACKS: Record<RenderDesignPackName, DesignPackTokens> = {
     tagRadius: '4px',
     metricBorderWidth: '1px',
     markerStyle: 'gallery',
+    masks: {
+      frame: `polygon(0 0, calc(100% - ${GALLERY_CUT}) 0, 100% ${GALLERY_CUT}, 100% calc(100% - ${GALLERY_CUT_SMALL}), calc(100% - ${GALLERY_CUT_SMALL}) 100%, ${GALLERY_CUT} 100%, 0 calc(100% - ${GALLERY_CUT}))`,
+      hero: `polygon(0 0, calc(100% - ${GALLERY_CUT}) 0, 100% ${GALLERY_CUT}, 100% calc(100% - ${GALLERY_CUT_SMALL}), calc(100% - ${GALLERY_CUT_SMALL}) 100%, ${GALLERY_CUT} 100%, 0 calc(100% - ${GALLERY_CUT}))`,
+      cover: `polygon(0 0, calc(100% - ${GALLERY_CUT_SMALL}) 0, 100% ${GALLERY_CUT_SMALL}, 100% 100%, ${GALLERY_CUT_SMALL} 100%, 0 calc(100% - ${GALLERY_CUT_SMALL}))`,
+      panel: `polygon(0 0, calc(100% - ${GALLERY_CUT}) 0, 100% ${GALLERY_CUT}, 100% 100%, ${GALLERY_CUT_SMALL} 100%, 0 calc(100% - ${GALLERY_CUT_SMALL}))`,
+      panelAlt: `polygon(${GALLERY_CUT} 0, 100% 0, 100% calc(100% - ${GALLERY_CUT_SMALL}), calc(100% - ${GALLERY_CUT_SMALL}) 100%, 0 100%, 0 ${GALLERY_CUT})`,
+      progress: 'polygon(0 0, calc(100% - 2px) 0, 100% 100%, 2px 100%)',
+      tag: 'polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%)',
+      title: 'none',
+    },
   },
   'graphic-zine': {
     name: 'graphic-zine',
@@ -207,6 +244,16 @@ const DESIGN_PACKS: Record<RenderDesignPackName, DesignPackTokens> = {
     tagRadius: '2px',
     metricBorderWidth: '2px',
     markerStyle: 'zine',
+    masks: {
+      frame: `polygon(${ZINE_CUT_SMALL} 0, calc(100% - ${ZINE_CUT}) 0, 100% ${ZINE_CUT_SMALL}, 100% calc(100% - ${ZINE_CUT_SMALL}), calc(100% - ${ZINE_CUT_SMALL}) 100%, ${ZINE_CUT} 100%, 0 calc(100% - ${ZINE_CUT_SMALL}), 0 ${ZINE_CUT})`,
+      hero: `polygon(0 ${ZINE_CUT_SMALL}, ${ZINE_CUT_SMALL} 0, calc(100% - ${ZINE_CUT}) 0, 100% ${ZINE_CUT}, 100% calc(100% - ${ZINE_CUT_SMALL}), calc(100% - ${ZINE_CUT}) 100%, 18% 100%, 11% calc(100% - ${ZINE_CUT_SMALL}), 0 calc(100% - ${ZINE_CUT}))`,
+      cover: `polygon(0 0, calc(100% - ${ZINE_CUT}) 0, 100% ${ZINE_CUT_SMALL}, 100% calc(100% - ${ZINE_CUT}), calc(100% - ${ZINE_CUT}) 100%, 0 100%)`,
+      panel: `polygon(0 0, calc(100% - ${ZINE_CUT}) 0, 100% ${ZINE_CUT_SMALL}, 100% calc(100% - ${ZINE_CUT_SMALL}), calc(100% - ${ZINE_CUT_SMALL}) 100%, ${ZINE_CUT_SMALL} 100%, 0 calc(100% - ${ZINE_CUT_SMALL}))`,
+      panelAlt: `polygon(0 ${ZINE_CUT_SMALL}, ${ZINE_CUT_SMALL} 0, 100% 0, 100% 100%, ${ZINE_CUT} 100%, 0 calc(100% - ${ZINE_CUT}))`,
+      progress: 'polygon(0 0, 100% 0, calc(100% - 8px) 100%, 8px 100%)',
+      tag: 'polygon(8px 0, 100% 0, calc(100% - 10px) 100%, 0 100%)',
+      title: 'polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%)',
+    },
   },
 };
 

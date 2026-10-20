@@ -84,10 +84,11 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
     : gallery
       ? 'linear-gradient(100deg, rgba(20, 93, 135, 0.04), rgba(255, 255, 255, 0.08))'
       : 'linear-gradient(100deg, rgba(72, 48, 33, 0.20), rgba(72, 48, 33, 0.03) 68%, rgba(176, 108, 73, 0.12))';
-  const heroShape = zine ? 'polygon(0 0, 100% 0, 100% 92%, 96% 100%, 0 100%)' : undefined;
+  const heroShape = theme.design.masks.hero;
   const collectionStatus = collection ? (
     <div
       data-layout="linked-collection-status"
+      data-render-mask="panel"
       style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -97,6 +98,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
         padding: `${theme.spacing.sm} ${theme.spacing.md}`,
         borderRadius: zine ? theme.design.badgeRadius : theme.radius.md,
         border: `${zine ? '2px' : '1px'} solid ${zine ? theme.text : theme.border}`,
+        clipPath: theme.design.masks.panel,
         boxShadow: zine ? `2px 2px 0 ${theme.border}` : undefined,
         fontSize: '13px',
         minWidth: 0,
@@ -140,6 +142,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
             border: zine ? `1px solid ${theme.text}` : `1px solid ${theme.border}`,
             borderRadius: zine ? '0' : gallery ? '999px' : theme.radius.sm,
             overflow: 'hidden',
+            clipPath: theme.design.masks.progress,
           }}
         >
           <div
@@ -204,15 +207,14 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
       style={{
         display: 'grid',
         gridTemplateColumns:
-          collectionStatus && renderWidth >= 520
-            ? 'minmax(0, 1fr) minmax(0, 1fr)'
-            : '1fr',
+          collectionStatus && renderWidth >= 520 ? 'minmax(0, 1fr) minmax(0, 1fr)' : '1fr',
         alignItems: 'stretch',
         gap: theme.spacing.sm,
       }}
     >
       <div
         data-layout="warm-score-panel"
+        data-render-mask="panel"
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -222,6 +224,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
           backgroundColor: theme.surfaceAlt,
           border: `1px solid ${theme.border}`,
           borderRadius: theme.radius.md,
+          clipPath: theme.design.masks.panel,
           minWidth: 0,
         }}
       >
@@ -240,17 +243,17 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   const zineScoreProgress = (
     <div
       data-layout="zine-score-progress-hero"
+      data-render-mask="panel"
       style={{
         display: 'grid',
         gridTemplateColumns:
-          collectionStatus && renderWidth >= 520
-            ? 'minmax(0, 1fr) minmax(0, 1fr)'
-            : '1fr',
+          collectionStatus && renderWidth >= 520 ? 'minmax(0, 1fr) minmax(0, 1fr)' : '1fr',
         alignItems: 'center',
         gap: theme.spacing.sm,
         padding: theme.spacing.sm,
         backgroundColor: theme.tones.butter.surface,
         border: `2px solid ${theme.text}`,
+        clipPath: theme.design.masks.panel,
         boxShadow: `3px 3px 0 ${theme.border}`,
       }}
     >
@@ -274,6 +277,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
     <CardFrame theme={theme} width={width}>
       <section
         data-layout={`${theme.designPack}-cover-hero`}
+        data-render-mask="panel"
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -284,6 +288,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
           borderRadius: zine ? theme.design.badgeRadius : gallery ? '4px' : theme.radius.lg,
           boxShadow: zine ? `4px 4px 0 ${theme.border}` : undefined,
           minWidth: 0,
+          clipPath: theme.design.masks.panel,
         }}
       >
         {gallery ? (
@@ -353,10 +358,42 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
           />
           {zine ? (
             <div
+              aria-hidden="true"
+              data-layout="zine-cover-stickers"
+              style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}
+            >
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '16%',
+                  height: '18%',
+                  backgroundColor: theme.tones.coral.foreground,
+                  clipPath: 'polygon(24% 0, 100% 0, 100% 100%, 0 0)',
+                  opacity: 0.76,
+                }}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  width: '18%',
+                  height: '12%',
+                  backgroundColor: theme.score,
+                  clipPath: 'polygon(0 28%, 100% 0, 78% 100%, 0 100%)',
+                  opacity: 0.68,
+                }}
+              />
+            </div>
+          ) : null}
+          {zine ? (
+            <div
               data-layout="zine-subject-title-overlay"
               style={{
                 position: 'absolute',
-                zIndex: 3,
+                zIndex: 4,
                 top: theme.spacing.sm,
                 left: theme.spacing.sm,
                 width: '76%',
@@ -428,6 +465,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
       {subject.summary && (
         <div
           data-layout="subject-card-summary"
+          data-render-mask="panel"
           style={{
             fontSize: '14px',
             lineHeight: 1.7,
@@ -437,6 +475,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
             borderRadius: zine ? theme.design.badgeRadius : theme.radius.md,
             border: `${zine ? '2px' : '1px'} solid ${zine ? theme.tones.coral.border : theme.border}`,
             borderLeft: zine ? `6px solid ${theme.tones.coral.foreground}` : undefined,
+            clipPath: theme.design.masks.panel,
             overflowWrap: 'anywhere',
           }}
         >

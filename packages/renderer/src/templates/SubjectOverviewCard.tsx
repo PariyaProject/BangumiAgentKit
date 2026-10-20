@@ -362,6 +362,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
     <CardFrame theme={theme} width={width}>
       <section
         data-layout={`${theme.designPack}-cover-hero`}
+        data-render-mask="panel"
         style={{
           display: 'grid',
           gridTemplateColumns: heroColumns,
@@ -374,6 +375,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
           border: `${zine ? '2px' : '1px'} solid ${theme.border}`,
           borderRadius: zine ? theme.design.badgeRadius : gallery ? '4px' : theme.radius.lg,
           boxShadow: zine ? `4px 4px 0 ${theme.border}` : undefined,
+          clipPath: theme.design.masks.panel,
         }}
       >
         {zine ? (
@@ -723,6 +725,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
 
       {hasCoverageNotes && (
         <div
+          data-render-mask="panel-alt"
           style={{
             backgroundColor: theme.surfaceAlt,
             border: `1px solid ${theme.border}`,
@@ -734,6 +737,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
             color: theme.textMuted,
             fontSize: '13px',
             lineHeight: 1.5,
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           部分区段展示的是 Bangumi 当前公开返回的有界样本，完整程度以各区段标注为准。

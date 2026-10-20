@@ -152,6 +152,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
       />
 
       <div
+        data-render-mask="panel"
         style={{
           backgroundColor: theme.surfaceAlt,
           border: '1px solid ' + theme.border,
@@ -162,6 +163,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
           gap: theme.spacing.xs,
           fontSize: '11px',
           color: theme.textMuted,
+          clipPath: theme.design.masks.panel,
         }}
       >
         <div style={{ color: theme.accent, fontWeight: 700 }}>
@@ -198,6 +200,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
         ].map(([label, value]) => (
           <div
             key={String(label)}
+            data-render-mask="panel-alt"
             style={{
               flex: '1 1 132px',
               minWidth: 0,
@@ -205,6 +208,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
               border: '1px solid ' + theme.border,
               borderRadius: theme.radius.md,
               padding: theme.spacing.sm,
+              clipPath: theme.design.masks.panelAlt,
             }}
           >
             <div style={{ color: theme.textMuted, fontSize: '10px' }}>{label}</div>
@@ -216,6 +220,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
       </div>
 
       <div
+        data-render-mask="panel"
         style={{
           backgroundColor: theme.surfaceAlt,
           border: '1px solid ' + theme.border,
@@ -224,6 +229,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
           display: 'flex',
           flexDirection: 'column',
           gap: theme.spacing.xs,
+          clipPath: theme.design.masks.panel,
         }}
       >
         <div style={{ color: theme.accent, fontSize: '12px', fontWeight: 700 }}>
@@ -241,6 +247,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
       </div>
 
       <div
+        data-render-mask="panel-alt"
         style={{
           backgroundColor: theme.surfaceAlt,
           border: '1px solid ' + theme.border,
@@ -249,6 +256,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
           display: 'flex',
           flexDirection: 'column',
           gap: theme.spacing.xs,
+          clipPath: theme.design.masks.panelAlt,
         }}
       >
         <div style={{ color: theme.accent, fontSize: '12px', fontWeight: 700 }}>
@@ -354,6 +362,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
 
       {viewModel.items.length === 0 ? (
         <div
+          data-render-mask="panel"
           style={{
             color: theme.warning,
             backgroundColor: theme.surfaceAlt,
@@ -362,6 +371,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
             padding: theme.spacing.md,
             fontSize: '12px',
             lineHeight: 1.5,
+            clipPath: theme.design.masks.panel,
           }}
         >
           {viewModel.state === 'unavailable'
@@ -374,6 +384,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
         {viewModel.items.map((item) => (
           <div
             key={item.id}
+            data-render-mask="panel-alt"
             style={{
               flex: '1 1 ' + itemBasis,
               minWidth: 0,
@@ -385,6 +396,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
               gridTemplateColumns: compact ? 'minmax(58px, auto) minmax(0, 1fr)' : undefined,
               flexDirection: compact ? undefined : 'column',
               gap: theme.spacing.xs,
+              clipPath: theme.design.masks.panelAlt,
             }}
           >
             <div

@@ -34,6 +34,7 @@ export const CastCard: React.FC<CastCardProps> = ({
         <div
           role="note"
           aria-label="角色来源覆盖"
+          data-render-mask="panel"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -46,6 +47,7 @@ export const CastCard: React.FC<CastCardProps> = ({
             fontSize: '11px',
             lineHeight: 1.5,
             overflowWrap: 'anywhere',
+            clipPath: theme.design.masks.panel,
           }}
         >
           <div>
@@ -82,6 +84,7 @@ export const CastCard: React.FC<CastCardProps> = ({
       {viewModel.multiRoleVoiceActors ? (
         <section
           aria-label="同一声优对应多个角色"
+          data-render-mask="panel-alt"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -90,6 +93,7 @@ export const CastCard: React.FC<CastCardProps> = ({
             borderRadius: theme.radius.md,
             padding: theme.spacing.sm,
             backgroundColor: theme.surfaceAlt,
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           <div style={{ color: theme.text, fontWeight: 700, fontSize: '13px' }}>
@@ -145,6 +149,7 @@ export const CastCard: React.FC<CastCardProps> = ({
           return (
             <div
               key={idx}
+              data-render-mask="panel"
               style={{
                 display: 'flex',
                 flexDirection: compact ? 'column' : 'row',
@@ -156,6 +161,7 @@ export const CastCard: React.FC<CastCardProps> = ({
                 padding: `${theme.spacing.sm} ${theme.spacing.md}`,
                 gap: theme.spacing.sm,
                 minWidth: 0,
+                clipPath: theme.design.masks.panel,
               }}
             >
               {/* Character info */}

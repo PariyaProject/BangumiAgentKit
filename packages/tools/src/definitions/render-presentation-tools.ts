@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { defineTool } from '../define-tool.js';
+import { defineTool, type ResolvedToolPolicy } from '../define-tool.js';
 import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { compareSubjectCohorts, DiscoveryEngine } from '@bangumi-agent-kit/discovery';
 import {
@@ -245,15 +245,39 @@ export function createRenderPresentationTools(
       includeCollection: z.boolean().optional().describe('是否包含用户的收藏与评分状态'),
     }),
     auth: 'optional',
-    scopes: [],
+    scopes: ['read:collection'],
     risk: 'read',
+    resolvePolicy: (input): ResolvedToolPolicy => ({
+      auth: input.includeCollection ? 'required' : 'optional',
+      requiredCapabilities: input.includeCollection ? ['read:collection'] : [],
+      risk: 'read',
+    }),
     execute: async (input, _context, deps) => {
       const clientProvider = deps?.clientProvider;
-      if (!clientProvider) {
+      const executionSession = deps?.executionSession;
+      if (!clientProvider && !executionSession?.client) {
         throw new BangumiError('INTERNAL_ERROR', 'ClientProvider unavailable', false);
       }
 
-      const client = await clientProvider.getOptionalAuthenticatedClient(_context?.principalId);
+      let client: ConstructorParameters<typeof SubjectService>[0] | undefined;
+      if (input.includeCollection) {
+        if (executionSession?.account) {
+          client = executionSession.client;
+        } else if (clientProvider && _context?.principalId) {
+          ({ client } = await clientProvider.requireAuthenticatedClient(_context.principalId, [
+            'read:collection',
+          ]));
+        } else {
+          throw new BangumiError('AUTH_REQUIRED', '读取收藏进度需要已授权账号', false, 401);
+        }
+      } else if (executionSession?.client) {
+        client = executionSession.client;
+      } else if (clientProvider) {
+        client = await clientProvider.getOptionalAuthenticatedClient(_context?.principalId);
+      }
+      if (!client) {
+        throw new BangumiError('INTERNAL_ERROR', 'ClientProvider returned no client', false);
+      }
       const subjectService = new SubjectService(client);
       const subjectData = await subjectService.getSubjectById(input.subjectId);
 
@@ -281,7 +305,17 @@ export function createRenderPresentationTools(
         collection: collectionData,
       });
 
-      return await executeRenderAndSave(viewModel);
+      const artifactPrincipalId =
+        collectionData && (_context?.artifactPrincipalKey || _context?.principalId);
+      if (collectionData && !artifactPrincipalId) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          '包含个人收藏进度的卡片必须绑定明确的账号主体。',
+          false,
+          401,
+        );
+      }
+      return await executeRenderAndSave(viewModel, artifactPrincipalId || undefined);
     },
   });
 

@@ -139,6 +139,7 @@ export const EpisodeGuideCard: React.FC<EpisodeGuideCardProps> = ({ viewModel, t
 
       {viewModel.items.length === 0 ? (
         <div
+          data-render-mask="panel"
           style={{
             color: theme.warning,
             backgroundColor: theme.surfaceAlt,
@@ -147,6 +148,7 @@ export const EpisodeGuideCard: React.FC<EpisodeGuideCardProps> = ({ viewModel, t
             padding: theme.spacing.md,
             fontSize: '12px',
             lineHeight: 1.5,
+            clipPath: theme.design.masks.panel,
           }}
         >
           {emptyMessage}
@@ -157,6 +159,7 @@ export const EpisodeGuideCard: React.FC<EpisodeGuideCardProps> = ({ viewModel, t
         {viewModel.items.map((item) => (
           <div
             key={item.id}
+            data-render-mask="panel-alt"
             style={{
               flex: `1 1 ${itemBasis}`,
               minWidth: 0,
@@ -167,6 +170,7 @@ export const EpisodeGuideCard: React.FC<EpisodeGuideCardProps> = ({ viewModel, t
               display: 'flex',
               flexDirection: 'column',
               gap: theme.spacing.xs,
+              clipPath: theme.design.masks.panelAlt,
             }}
           >
             <div

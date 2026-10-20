@@ -28,9 +28,7 @@ import {
 const rendererRequire = createRequire(
   path.resolve(process.cwd(), 'packages/renderer/package.json'),
 );
-const sharp = rendererRequire('sharp') as (
-  input: Buffer,
-) => {
+const sharp = rendererRequire('sharp') as (input: Buffer) => {
   png: (options: { compressionLevel: number; adaptiveFiltering: boolean }) => {
     toBuffer: () => Promise<Buffer>;
   };
@@ -154,6 +152,7 @@ async function generateThemeMatrix(): Promise<void> {
   await mkdir(outputDir, { recursive: true });
   const manifest: Array<Record<string, unknown>> = [];
   const mobileFailures: string[] = [];
+  const maskFailures: string[] = [];
 
   for (const candidate of themeMatrixCandidates.values()) {
     const renderedVariants: Array<{
@@ -180,6 +179,18 @@ async function generateThemeMatrix(): Promise<void> {
             designPack,
           );
           const { png, layout } = await renderThemePreview(html, width);
+          const panelMasks = layout.maskReceipts?.panels ?? [];
+          if (panelMasks.some((mask) => !mask.clipPath || mask.clipPath === 'none')) {
+            maskFailures.push(
+              `${candidate.template}/${candidate.state}/${designPack}/${theme}/${width} has an invalid panel clip path`,
+            );
+          }
+          const progressMasks = layout.maskReceipts?.progressTracks ?? [];
+          if (progressMasks.some((clipPath) => !clipPath || clipPath === 'none')) {
+            maskFailures.push(
+              `${candidate.template}/${candidate.state}/${designPack}/${theme}/${width} has an invalid progress clip path`,
+            );
+          }
           const canonicalPng = await sharp(png)
             .png({ compressionLevel: 9, adaptiveFiltering: false })
             .toBuffer();
@@ -196,6 +207,34 @@ async function generateThemeMatrix(): Promise<void> {
           }
         }
       }
+    }
+
+    const panelMasksByPack = new Map<RenderDesignPackName, string>();
+    for (const designPack of themeMatrixDesignPacks) {
+      const sample = renderedVariants.find(
+        (variant) =>
+          variant.designPack === designPack &&
+          variant.theme === themeMatrixThemes[0] &&
+          variant.width === themeMatrixWidths[0],
+      );
+      const panels = sample?.layout.maskReceipts?.panels ?? [];
+      const clipPath = panels.find(
+        (mask) => mask.kind === 'panel' && mask.clipPath !== 'none',
+      )?.clipPath;
+      if (clipPath) panelMasksByPack.set(designPack, clipPath);
+    }
+    if (panelMasksByPack.size > 0 && panelMasksByPack.size !== themeMatrixDesignPacks.length) {
+      maskFailures.push(
+        `${candidate.template}/${candidate.state} does not apply a panel mask in every design pack`,
+      );
+    }
+    if (
+      panelMasksByPack.size === themeMatrixDesignPacks.length &&
+      new Set(panelMasksByPack.values()).size !== themeMatrixDesignPacks.length
+    ) {
+      maskFailures.push(
+        `${candidate.template}/${candidate.state} shares a rendered panel shape across design packs`,
+      );
     }
 
     const visualFixtureDigest = createHash('sha256');
@@ -233,6 +272,28 @@ async function generateThemeMatrix(): Promise<void> {
       `${b.template}/${b.state}/${b.designPack}/${b.theme}/${b.cssWidth}`,
     ),
   );
+  const maskAudit = manifest.reduce<{
+    imagesWithPrimaryPanelMask: number;
+    imagesWithAlternatePanelMask: number;
+    imagesWithProgressMask: number;
+  }>(
+    (audit, item) => {
+      const receipts = (item.layout as Awaited<ReturnType<typeof renderThemePreview>>['layout'])
+        .maskReceipts;
+      if (!receipts) return audit;
+      if (receipts.panels.some((mask) => mask.kind === 'panel' && mask.clipPath !== 'none')) {
+        audit.imagesWithPrimaryPanelMask += 1;
+      }
+      if (receipts.panels.some((mask) => mask.kind === 'panel-alt' && mask.clipPath !== 'none')) {
+        audit.imagesWithAlternatePanelMask += 1;
+      }
+      if (receipts.progressTracks.some((clipPath) => clipPath !== 'none')) {
+        audit.imagesWithProgressMask += 1;
+      }
+      return audit;
+    },
+    { imagesWithPrimaryPanelMask: 0, imagesWithAlternatePanelMask: 0, imagesWithProgressMask: 0 },
+  );
   await writeFile(
     path.join(outputDir, 'manifest.json'),
     JSON.stringify(
@@ -252,6 +313,8 @@ async function generateThemeMatrix(): Promise<void> {
         templatesAndStates: themeMatrixCandidates.size,
         designPacks: themeMatrixDesignPacks,
         themes: themeMatrixThemes,
+        maskAudit,
+        maskFailures,
         images: manifest,
       },
       null,
@@ -262,5 +325,8 @@ async function generateThemeMatrix(): Promise<void> {
   console.info(`[VISUAL_MATRIX] receipt manifest: ${path.join(outputDir, 'manifest.json')}`);
   if (mobileFailures.length > 0) {
     throw new Error(`Theme matrix mobile layout overflow: ${mobileFailures.join(', ')}`);
+  }
+  if (maskFailures.length > 0) {
+    throw new Error(`Theme matrix mask audit failed: ${maskFailures.join('; ')}`);
   }
 }

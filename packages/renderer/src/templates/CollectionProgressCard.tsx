@@ -116,6 +116,7 @@ export const CollectionProgressCard: React.FC<CollectionProgressCardProps> = ({
 
       {comment && (
         <div
+          data-render-mask="panel"
           style={{
             marginTop: theme.spacing.sm,
             backgroundColor: theme.surfaceAlt,
@@ -126,6 +127,7 @@ export const CollectionProgressCard: React.FC<CollectionProgressCardProps> = ({
             lineHeight: 1.5,
             color: theme.text,
             overflowWrap: 'anywhere',
+            clipPath: theme.design.masks.panel,
           }}
         >
           <div style={{ fontSize: '12px', color: theme.textMuted, marginBottom: '4px' }}>

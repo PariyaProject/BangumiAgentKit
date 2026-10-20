@@ -43,7 +43,7 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({
             borderLeft: `6px solid ${theme.accent}`,
             paddingLeft: '8px',
             paddingRight: '14px',
-            clipPath: 'polygon(0 0, 100% 0, 96% 100%, 0 100%)',
+            clipPath: theme.design.masks.title,
             backgroundColor: theme.surfaceAlt,
           }
         : {
@@ -82,7 +82,7 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({
               padding: eyebrowSurface ? '4px 7px' : undefined,
               border: eyebrowSurface ? `2px solid ${theme.text}` : undefined,
               boxShadow: eyebrowSurface ? `2px 2px 0 ${theme.border}` : undefined,
-              clipPath: eyebrowSurface ? 'polygon(0 0, 100% 0, 96% 100%, 0 100%)' : undefined,
+              clipPath: eyebrowSurface ? theme.design.masks.tag : undefined,
             }}
           >
             {eyebrow || `BANGUMI · ${getRendererIconLabel(icon)}`}

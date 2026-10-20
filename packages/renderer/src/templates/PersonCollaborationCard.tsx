@@ -44,7 +44,12 @@ function formatEvidenceTimestamp(value?: string): string {
   if (!match) return value;
 
   const [, date, hour, minute, rawZone] = match;
-  if (!hour || (hour === '00' && minute === '00' && (!rawZone || rawZone === 'Z' || rawZone === '+00:00' || rawZone === '+0000'))) {
+  if (
+    !hour ||
+    (hour === '00' &&
+      minute === '00' &&
+      (!rawZone || rawZone === 'Z' || rawZone === '+00:00' || rawZone === '+0000'))
+  ) {
     return date!;
   }
   const zone = rawZone === 'Z' ? ' UTC' : rawZone ? ` ${rawZone}` : '';
@@ -80,11 +85,23 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
   const visibleExclusions = viewModel.exclusions.slice(0, compact ? 3 : 10);
   const formulaEvidence = viewModel.evidence.find((item) => item.source === 'derived-s7');
   const coverageFacts = [
-    ['目标关系', `${viewModel.coverage.relationRowsSelected}/${viewModel.coverage.relationRowsObserved}`],
+    [
+      '目标关系',
+      `${viewModel.coverage.relationRowsSelected}/${viewModel.coverage.relationRowsObserved}`,
+    ],
     ['筛选匹配', String(viewModel.coverage.relationRowsMatchingFilters)],
-    ['作品 fan-out', `${viewModel.coverage.subjectIdsSelected}/${viewModel.coverage.subjectIdsObserved}`],
-    ['请求成功 / 失败', `${viewModel.coverage.participantRequestsSucceeded} / ${viewModel.coverage.participantRequestsFailed}`],
-    ['参与者采用 / 观察', `${viewModel.coverage.participantRowsReturned}/${viewModel.coverage.participantRowsObserved}`],
+    [
+      '作品 fan-out',
+      `${viewModel.coverage.subjectIdsSelected}/${viewModel.coverage.subjectIdsObserved}`,
+    ],
+    [
+      '请求成功 / 失败',
+      `${viewModel.coverage.participantRequestsSucceeded} / ${viewModel.coverage.participantRequestsFailed}`,
+    ],
+    [
+      '参与者采用 / 观察',
+      `${viewModel.coverage.participantRowsReturned}/${viewModel.coverage.participantRowsObserved}`,
+    ],
     ...(viewModel.coverage.relationRowsDroppedAtLimit > 0
       ? [['关系省略', String(viewModel.coverage.relationRowsDroppedAtLimit)]]
       : []),
@@ -154,6 +171,7 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
           <div
             key={String(label)}
             data-layout="collaboration-stat"
+            data-render-mask="panel"
             style={{
               ...wrapStyle,
               flex: twoColumnStats ? undefined : '1 1 130px',
@@ -162,27 +180,48 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
               borderRadius: theme.radius.md,
               padding: compact ? theme.spacing.xs : theme.spacing.sm,
               textAlign: 'center',
+              clipPath: theme.design.masks.panel,
             }}
           >
-            <div style={{ ...wrapStyle, color: theme.accent, fontSize: narrow ? '19px' : '22px', fontWeight: 700 }}>
+            <div
+              style={{
+                ...wrapStyle,
+                color: theme.accent,
+                fontSize: narrow ? '19px' : '22px',
+                fontWeight: 700,
+              }}
+            >
               {value}
             </div>
-            <div style={{ ...wrapStyle, color: theme.textMuted, fontSize: narrow ? '10px' : '11px' }}>{label}</div>
+            <div
+              style={{ ...wrapStyle, color: theme.textMuted, fontSize: narrow ? '10px' : '11px' }}
+            >
+              {label}
+            </div>
           </div>
         ))}
       </div>
 
       <div
         data-layout="collaboration-coverage"
+        data-render-mask="panel-alt"
         style={{
           ...wrapStyle,
           backgroundColor: theme.surfaceAlt,
           border: `1px solid ${theme.border}`,
           borderRadius: theme.radius.md,
           padding: compact ? theme.spacing.sm : theme.spacing.md,
+          clipPath: theme.design.masks.panelAlt,
         }}
       >
-        <div style={{ color: theme.text, fontSize: '12px', fontWeight: 700, marginBottom: theme.spacing.xs }}>
+        <div
+          style={{
+            color: theme.text,
+            fontSize: '12px',
+            fontWeight: 700,
+            marginBottom: theme.spacing.xs,
+          }}
+        >
           覆盖摘要
         </div>
         <div
@@ -190,7 +229,9 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
           style={{
             ...wrapStyle,
             display: 'grid',
-            gridTemplateColumns: compact ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))',
+            gridTemplateColumns: compact
+              ? 'repeat(2, minmax(0, 1fr))'
+              : 'repeat(3, minmax(0, 1fr))',
             gap: theme.spacing.xs,
           }}
         >
@@ -217,6 +258,7 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
       </div>
 
       <div
+        data-render-mask="panel"
         style={{
           ...wrapStyle,
           backgroundColor: theme.surfaceAlt,
@@ -226,6 +268,7 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
           color: theme.textMuted,
           fontSize: '11px',
           lineHeight: 1.5,
+          clipPath: theme.design.masks.panel,
         }}
       >
         <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
@@ -282,7 +325,9 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
             }}
           >
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-              <span>显示 {visibleCollaborators.length}/{viewModel.collaborators.length} 位合作人物</span>
+              <span>
+                显示 {visibleCollaborators.length}/{viewModel.collaborators.length} 位合作人物
+              </span>
               <span>每人至多 {sharedSubjectDisplayLimit} 部共同作品</span>
             </div>
             {omittedReturnedCollaborators > 0
@@ -295,6 +340,7 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
         )}
         {viewModel.collaborators.length === 0 && viewModel.hiddenCollaborators === 0 ? (
           <div
+            data-render-mask="panel-alt"
             style={{
               color: tone,
               backgroundColor: theme.surfaceAlt,
@@ -302,6 +348,7 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
               borderRadius: theme.radius.md,
               padding: theme.spacing.md,
               fontSize: '12px',
+              clipPath: theme.design.masks.panelAlt,
             }}
           >
             当前边界内没有可展示的合作人物；请结合来源状态、职位字段和覆盖数字阅读。
@@ -341,7 +388,14 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
                         flex: '1 1 auto',
                       }}
                     >
-                      <div style={{ color: theme.text, fontSize: '13px', fontWeight: 700, lineHeight: 1.35 }}>
+                      <div
+                        style={{
+                          color: theme.text,
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          lineHeight: 1.35,
+                        }}
+                      >
                         <span style={{ color: theme.accent, marginRight: 5 }}>{index + 1}</span>
                         {collaborator.nameCn || collaborator.name}
                         {!separateAlternateNames &&
@@ -349,7 +403,12 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
                         collaborator.nameCn !== collaborator.name ? (
                           <span
                             data-layout="collaboration-name-secondary-inline"
-                            style={{ color: theme.textMuted, fontSize: '10px', fontWeight: 400, marginLeft: 6 }}
+                            style={{
+                              color: theme.textMuted,
+                              fontSize: '10px',
+                              fontWeight: 400,
+                              marginLeft: 6,
+                            }}
                           >
                             {collaborator.name}
                           </span>
@@ -360,7 +419,12 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
                       collaborator.nameCn !== collaborator.name ? (
                         <div
                           data-layout="collaboration-name-secondary-row"
-                          style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.35, marginTop: 2 }}
+                          style={{
+                            color: theme.textMuted,
+                            fontSize: '10px',
+                            lineHeight: 1.35,
+                            marginTop: 2,
+                          }}
                         >
                           {collaborator.name}
                         </div>
@@ -420,21 +484,46 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
                           borderTop: `1px solid ${theme.border}`,
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
-                          <span style={{ ...wrapStyle, color: theme.text, fontSize: '11px', fontWeight: 600 }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            justifyContent: 'space-between',
+                            gap: 6,
+                          }}
+                        >
+                          <span
+                            style={{
+                              ...wrapStyle,
+                              color: theme.text,
+                              fontSize: '11px',
+                              fontWeight: 600,
+                            }}
+                          >
                             {subject.nameCn || subject.name}
                             {!separateAlternateNames &&
                             subject.nameCn &&
                             subject.nameCn !== subject.name ? (
                               <span
                                 data-layout="collaboration-name-secondary-inline"
-                                style={{ color: theme.textMuted, fontSize: '9px', fontWeight: 400, marginLeft: 5 }}
+                                style={{
+                                  color: theme.textMuted,
+                                  fontSize: '9px',
+                                  fontWeight: 400,
+                                  marginLeft: 5,
+                                }}
                               >
                                 {subject.name}
                               </span>
                             ) : null}
                           </span>
-                          <span style={{ color: theme.textMuted, fontSize: '9px', whiteSpace: 'nowrap' }}>
+                          <span
+                            style={{
+                              color: theme.textMuted,
+                              fontSize: '9px',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
                             Subject {subject.id}
                           </span>
                         </div>
@@ -443,12 +532,25 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
                         subject.nameCn !== subject.name ? (
                           <div
                             data-layout="collaboration-name-secondary-row"
-                            style={{ ...wrapStyle, color: theme.textMuted, fontSize: '9px', marginTop: 1 }}
+                            style={{
+                              ...wrapStyle,
+                              color: theme.textMuted,
+                              fontSize: '9px',
+                              marginTop: 1,
+                            }}
                           >
                             {subject.name}
                           </div>
                         ) : null}
-                        <div style={{ ...wrapStyle, color: theme.textMuted, fontSize: '9px', lineHeight: 1.35, marginTop: 3 }}>
+                        <div
+                          style={{
+                            ...wrapStyle,
+                            color: theme.textMuted,
+                            fontSize: '9px',
+                            lineHeight: 1.35,
+                            marginTop: 3,
+                          }}
+                        >
                           {[
                             ...subject.relationLabels,
                             ...subject.targetRoles.map((role) => `目标：${role}`),
@@ -490,6 +592,7 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
 
       <div
         data-layout="collaboration-limits"
+        data-render-mask="panel"
         style={{
           ...wrapStyle,
           backgroundColor: theme.surfaceAlt,
@@ -499,11 +602,13 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
           color: theme.textMuted,
           fontSize: compact ? '10px' : '11px',
           lineHeight: compact ? 1.4 : 1.5,
+          clipPath: theme.design.masks.panel,
         }}
       >
         <div>
-          并发 {viewModel.coverage.fanoutConcurrency} · 人物上限 {viewModel.coverage.maxCollaborators} ·
-          {' '}每人作品上限 {viewModel.coverage.maxSharedSubjects}
+          并发 {viewModel.coverage.fanoutConcurrency} · 人物上限{' '}
+          {viewModel.coverage.maxCollaborators} · 每人作品上限{' '}
+          {viewModel.coverage.maxSharedSubjects}
         </div>
         <div>
           参与者异常 {viewModel.coverage.malformedParticipantRows} · 自身排除{' '}
@@ -521,12 +626,14 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
 
       {viewModel.exclusions.length > 0 && (
         <div
+          data-render-mask="panel-alt"
           style={{
             ...wrapStyle,
             backgroundColor: theme.surfaceAlt,
             border: `1px solid ${theme.border}`,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
@@ -565,7 +672,9 @@ export const PersonCollaborationCard: React.FC<PersonCollaborationCardProps> = (
         <div style={{ ...wrapStyle, color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
           <div>限制：{visibleLimitations.join('；')}</div>
           {viewModel.limitations.length > visibleLimitations.length ? (
-            <div>另有 {viewModel.limitations.length - visibleLimitations.length} 项限制未显示。</div>
+            <div>
+              另有 {viewModel.limitations.length - visibleLimitations.length} 项限制未显示。
+            </div>
           ) : null}
         </div>
       )}

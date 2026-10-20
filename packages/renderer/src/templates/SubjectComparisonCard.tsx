@@ -382,6 +382,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
         {columns.map((subject, index) => (
           <div
             key={subject.subjectId}
+            data-render-mask="panel"
             style={{
               flex: '1 1 280px',
               minWidth: 0,
@@ -389,6 +390,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
               border: `1px solid ${theme.border}`,
               borderRadius: theme.radius.md,
               padding: theme.spacing.md,
+              clipPath: theme.design.masks.panel,
             }}
           >
             <div style={{ color: theme.accent, fontSize: '10px', letterSpacing: '0.08em' }}>
@@ -582,6 +584,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
 
       {columns.some((subject) => subject.statistics !== undefined) ? (
         <div
+          data-render-mask="panel-alt"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -590,6 +593,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
             backgroundColor: theme.surfaceAlt,
+            clipPath: theme.design.masks.panelAlt,
           }}
         >
           <div style={{ color: theme.accent, fontWeight: 700, fontSize: '15px' }}>
@@ -820,6 +824,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
       ) : null}
 
       <div
+        data-render-mask="panel"
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -828,6 +833,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
           borderRadius: theme.radius.md,
           padding: theme.spacing.md,
           backgroundColor: theme.surfaceAlt,
+          clipPath: theme.design.masks.panel,
         }}
       >
         <MetaRow

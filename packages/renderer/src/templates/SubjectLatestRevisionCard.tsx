@@ -36,6 +36,7 @@ function panelStyle(theme: ThemeTokens): React.CSSProperties {
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,
     minWidth: 0,
+    clipPath: theme.design.masks.panel,
   };
 }
 
@@ -61,6 +62,7 @@ export const SubjectLatestRevisionCard: React.FC<SubjectLatestRevisionCardProps>
       />
 
       <div
+        data-render-mask="panel"
         style={{
           ...panelStyle(theme),
           color: theme.textMuted,
@@ -72,7 +74,7 @@ export const SubjectLatestRevisionCard: React.FC<SubjectLatestRevisionCardProps>
         before/after 差异。
       </div>
 
-      <div style={panelStyle(theme)}>
+      <div data-render-mask="panel" style={panelStyle(theme)}>
         {revision ? (
           <>
             <div style={{ fontSize: '18px', fontWeight: 700, overflowWrap: 'anywhere' }}>
@@ -109,6 +111,7 @@ export const SubjectLatestRevisionCard: React.FC<SubjectLatestRevisionCardProps>
           {fields.map((field) => (
             <div
               key={field.key}
+              data-render-mask="panel"
               style={{
                 ...panelStyle(theme),
                 display: 'grid',
@@ -127,7 +130,10 @@ export const SubjectLatestRevisionCard: React.FC<SubjectLatestRevisionCardProps>
           ))}
         </div>
       ) : (
-        <div style={{ ...panelStyle(theme), color: theme.textMuted, fontSize: '12px' }}>
+        <div
+          data-render-mask="panel"
+          style={{ ...panelStyle(theme), color: theme.textMuted, fontSize: '12px' }}
+        >
           data 未提供可安全展示的对象字段；不会猜测变更内容。
         </div>
       )}

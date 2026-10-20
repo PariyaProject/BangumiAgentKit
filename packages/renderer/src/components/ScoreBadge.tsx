@@ -54,6 +54,7 @@ export const ScoreBadge: React.FC<ScoreBadgeProps> = ({
             borderRadius:
               theme.designPack === 'graphic-zine' ? theme.design.badgeRadius : undefined,
             padding: theme.designPack === 'graphic-zine' ? '1px 7px' : undefined,
+            clipPath: theme.designPack === 'graphic-zine' ? theme.design.masks.panelAlt : undefined,
           }}
         >
           ★ {score.toFixed(1)}
@@ -70,6 +71,7 @@ export const ScoreBadge: React.FC<ScoreBadgeProps> = ({
             padding: '2px 8px',
             borderRadius: theme.design.badgeRadius,
             border: `${theme.design.metricBorderWidth} solid ${theme.border}`,
+            clipPath: theme.design.masks.tag,
           }}
         >
           #{rank}

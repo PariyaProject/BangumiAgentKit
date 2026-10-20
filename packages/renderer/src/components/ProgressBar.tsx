@@ -29,6 +29,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ percentage, label, the
         </div>
       )}
       <div
+        data-layout="progress-track"
         style={{
           width: '100%',
           height: zine ? '12px' : gallery ? '5px' : '8px',
@@ -36,6 +37,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ percentage, label, the
           borderRadius: zine || gallery ? '0' : theme.radius.sm,
           overflow: 'hidden',
           border: `${zine ? '2px' : gallery ? '0' : '1px'} solid ${theme.border}`,
+          clipPath: theme.design.masks.progress,
         }}
       >
         <div

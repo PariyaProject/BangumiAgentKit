@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  createRenderPresentationTools,
   getDefaultRenderOptions,
   getPrivateArtifactPrincipal,
   renderAndSaveArtifact,
 } from '@bangumi-agent-kit/tools';
+import { SubjectService, UserService } from '@bangumi-agent-kit/bangumi-core';
 import type { ArtifactStore, RenderService } from '@bangumi-agent-kit/renderer';
 
 const renderResult = {
@@ -74,6 +76,111 @@ describe('private render artifact scope', () => {
       expect(() => getPrivateArtifactPrincipal(template, '   ')).toThrow('AUTH_REQUIRED');
     }
     expect(getPrivateArtifactPrincipal('subject-card')).toBeUndefined();
+  });
+
+  it('requires collection scope and principal-scopes subject cards containing collection data', async () => {
+    const renderService = {
+      renderCard: vi.fn(async () => renderResult),
+    } as unknown as Pick<RenderService, 'renderCard'>;
+    const artifactStore = createArtifactStore();
+    const client = {} as never;
+    const clientProvider = {
+      getOptionalAuthenticatedClient: vi.fn(async () => client),
+      requireAuthenticatedClient: vi.fn(async () => ({
+        client,
+        account: { id: 'synthetic-account', username: 'synthetic-user', nickname: 'Synthetic' },
+      })),
+    };
+    const subjectLookup = vi.spyOn(SubjectService.prototype, 'getSubjectById').mockResolvedValue({
+      id: 123,
+      name: 'Synthetic English title',
+      nameCn: '合成条目',
+      type: 'anime',
+      date: '2025',
+      platform: 'TV',
+      summary: 'Synthetic public summary',
+      images: { common: '', medium: '', large: '', small: '' },
+      tags: [],
+      rating: { score: 8.4, rank: 1, total: 10, count: {} },
+      collection: { wish: 0, collect: 0, doing: 0, onHold: 0, dropped: 0 },
+      totalEpisodes: 12,
+    } as never);
+    const collectionLookup = vi
+      .spyOn(UserService.prototype, 'getUserSubjectCollection')
+      .mockResolvedValue({
+        found: true,
+        collection: {
+          status: 'do',
+          statusLabel: '在看',
+          rating: 9,
+          comment: 'synthetic private comment',
+          epStatus: 4,
+        },
+      } as never);
+    const context = {
+      principalId: 'bangumi-user-alice',
+      artifactPrincipalKey: 'qq:bot-1:sender-alice',
+      botInstanceId: 'test-bot',
+      conversationId: 'test-conversation',
+    };
+    const tool = createRenderPresentationTools(renderService as never, artifactStore, 'chat').find(
+      (candidate) => candidate.name === 'bangumi.render_subject_card',
+    ) as unknown as {
+      resolvePolicy?: (
+        input: { subjectId: number; includeCollection?: boolean },
+        context: {
+          principalId: string;
+          artifactPrincipalKey: string;
+          botInstanceId: string;
+          conversationId: string;
+        },
+      ) => unknown;
+      execute: (
+        input: { subjectId: number; includeCollection?: boolean },
+        context: {
+          principalId: string;
+          artifactPrincipalKey: string;
+          botInstanceId: string;
+          conversationId: string;
+        },
+        deps?: unknown,
+      ) => Promise<unknown>;
+    };
+
+    expect(tool.resolvePolicy?.({ subjectId: 123, includeCollection: true }, context)).toEqual({
+      auth: 'required',
+      requiredCapabilities: ['read:collection'],
+      risk: 'read',
+    });
+    expect(tool.resolvePolicy?.({ subjectId: 123 }, context)).toEqual({
+      auth: 'optional',
+      requiredCapabilities: [],
+      risk: 'read',
+    });
+
+    await expect(
+      tool.execute({ subjectId: 123, includeCollection: true }, context, {
+        clientProvider,
+      } as never),
+    ).resolves.toMatchObject({ artifact: { id: 'private-qq:bot-1:sender-alice' } });
+
+    expect(clientProvider.requireAuthenticatedClient).toHaveBeenCalledWith('bangumi-user-alice', [
+      'read:collection',
+    ]);
+    expect(clientProvider.getOptionalAuthenticatedClient).not.toHaveBeenCalled();
+    expect(subjectLookup).toHaveBeenCalledWith(123);
+    expect(collectionLookup).toHaveBeenCalledWith('me', 123);
+    expect(artifactStore.saveArtifact).not.toHaveBeenCalled();
+    expect(artifactStore.saveArtifactForPrincipal).toHaveBeenCalledWith(
+      'qq:bot-1:sender-alice',
+      renderResult.buffer,
+      'image/png',
+      { width: 640, height: 320 },
+    );
+    expect(renderService.renderCard).toHaveBeenCalledWith(
+      expect.objectContaining({ template: 'subject-card', collection: expect.any(Object) }),
+      expect.objectContaining({ cache: false, width: 360, deviceScaleFactor: 2 }),
+    );
   });
 
   it('never falls back to an unscoped artifact or crosses principals', async () => {

@@ -163,6 +163,7 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
 
       {viewModel.state === 'unavailable' || viewModel.items.length === 0 ? (
         <div
+          data-render-mask="panel"
           style={{
             color: theme.warning,
             backgroundColor: theme.surfaceAlt,
@@ -170,6 +171,7 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
             fontSize: '12px',
+            clipPath: theme.design.masks.panel,
           }}
         >
           {viewModel.state === 'unavailable'
@@ -237,6 +239,7 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
                 ) : null}
               </div>
               <article
+                data-render-mask="panel"
                 style={{
                   minWidth: 0,
                   backgroundColor: gallery ? theme.surface : theme.surfaceAlt,
@@ -246,7 +249,7 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
                   borderBottom: gallery ? `1px solid ${theme.border}` : undefined,
                   borderLeft: zine ? `5px solid ${tone.foreground}` : undefined,
                   borderRadius: gallery ? '0' : zine ? theme.design.badgeRadius : theme.radius.md,
-                  clipPath: zine ? 'polygon(0 0, 100% 0, 100% 94%, 96% 100%, 0 100%)' : undefined,
+                  clipPath: theme.design.masks.panel,
                   boxShadow: zine ? `3px 3px 0 ${tone.border}` : undefined,
                   padding: theme.spacing.md,
                   display: 'flex',
@@ -378,7 +381,10 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
             minWidth: 0,
           }}
         >
-          <span data-layout="timeline-source-descriptor" style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+          <span
+            data-layout="timeline-source-descriptor"
+            style={{ minWidth: 0, overflowWrap: 'anywhere' }}
+          >
             来源：{viewModel.source.label} · {viewModel.source.operation}
           </span>
           {viewModel.source.retrievedAt ? (

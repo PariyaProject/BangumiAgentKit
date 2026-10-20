@@ -59,10 +59,20 @@ async function findManifests(directory) {
 
 const manifestPaths = await findManifests(matrixRoot);
 if (manifestPaths.length === 0) throw new Error(`No render manifests found under ${matrixRoot}`);
+const fixedReferenceOnly =
+  manifestPaths.length === 1 &&
+  path.basename(path.dirname(manifestPaths[0])) === 'fixed-reference-fixture';
 
 const groups = new Map();
 let totalReceipts = 0;
 const receiptErrors = [];
+const maskAudit = {
+  imagesWithMaskReceipts: 0,
+  imagesWithPrimaryPanelMask: 0,
+  imagesWithAlternatePanelMask: 0,
+  imagesWithProgressMask: 0,
+  invalidMarkedPanelCount: 0,
+};
 
 for (const manifestPath of manifestPaths) {
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
@@ -85,6 +95,34 @@ for (const manifestPath of manifestPaths) {
     ) {
       receiptErrors.push(`receipt mismatch: ${imagePath}`);
       continue;
+    }
+
+    const maskReceipts = receipt.layout?.maskReceipts;
+    if (maskReceipts) {
+      maskAudit.imagesWithMaskReceipts += 1;
+      const panels = maskReceipts.panels ?? [];
+      if (
+        panels.some((mask) => mask.kind === 'panel' && mask.clipPath && mask.clipPath !== 'none')
+      ) {
+        maskAudit.imagesWithPrimaryPanelMask += 1;
+      }
+      if (
+        panels.some(
+          (mask) => mask.kind === 'panel-alt' && mask.clipPath && mask.clipPath !== 'none',
+        )
+      ) {
+        maskAudit.imagesWithAlternatePanelMask += 1;
+      }
+      if (panels.some((mask) => !mask.clipPath || mask.clipPath === 'none')) {
+        maskAudit.invalidMarkedPanelCount += 1;
+        receiptErrors.push(`invalid rendered panel mask: ${imagePath}`);
+      }
+      if (maskReceipts.progressTracks?.some((clipPath) => clipPath && clipPath !== 'none')) {
+        maskAudit.imagesWithProgressMask += 1;
+      }
+      if (maskReceipts.progressTracks?.some((clipPath) => !clipPath || clipPath === 'none')) {
+        receiptErrors.push(`invalid rendered progress mask: ${imagePath}`);
+      }
     }
 
     const key = `${receipt.template}/${receipt.state}/${receipt.fixtureId}`;
@@ -113,6 +151,13 @@ for (const [key, group] of groups) {
   if (actual.size !== expectedKeys.length) {
     receiptErrors.push(`unexpected image count for ${key}: ${actual.size}`);
   }
+}
+if (
+  !fixedReferenceOnly &&
+  maskAudit.imagesWithMaskReceipts > 0 &&
+  maskAudit.imagesWithAlternatePanelMask === 0
+) {
+  receiptErrors.push('full render matrix did not exercise any alternate panel masks');
 }
 
 if (receiptErrors.length > 0) {
@@ -199,6 +244,7 @@ if (receiptErrors.length > 0) {
   const reportPath = path.join(outputRoot, 'contact-sheets.json');
   const report = {
     runId,
+    matrixKind: fixedReferenceOnly ? 'fixed-reference' : 'full-render',
     matrixRoot: path.relative(process.cwd(), matrixRoot),
     manifestCount: manifestPaths.length,
     imageCount: totalReceipts,
@@ -207,6 +253,7 @@ if (receiptErrors.length > 0) {
     themes,
     widths,
     receiptVerification: 'PASS',
+    maskAudit,
     contactSheets,
   };
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
