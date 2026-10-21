@@ -20,8 +20,9 @@ without sending a scale override.
 - Tool: `bangumi.render_subject_card` exactly once.
 - Arguments: `{"subjectId":991902,"includeCollection":false}`.
 - One allowed request: `GET https://api.bgm.tv/v0/subjects/991902`.
-- The response is a local fixed synthetic Subject with Chinese, Japanese, and
-  short English text, rating data, and no external image URLs.
+- The response is a local fixed synthetic Subject with `name: 星海と微光 / Lumen`,
+  `name_cn: 默认字阶测试：星海与微光`, Chinese/Japanese/short English summary text,
+  rating data, and no external image URLs.
 - The tool must return its PNG artifact; the sanitized report stores only
   dimensions, byte length, and SHA-256, never image bytes or fixture rows.
 

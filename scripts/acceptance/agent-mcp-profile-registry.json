@@ -1314,7 +1314,7 @@
       "epochId": "run95-ux002-compact-typography-default-075-20261022",
       "toolName": "bangumi.render_subject_card",
       "argumentProfile": "fixed-ux002-subject-card-991902-no-collection-default-scale-075-v2",
-      "claimLabelName": "harness-r95-render-card-type-v2-claimed",
+      "claimLabelName": "harness-r95-render-card-typography-v2-claimed",
       "reportPath": "docs/live-probes/render-subject-card-compact-typography-v2-agent-mcp-run95.json",
       "selectionEvidencePath": "docs/research/run95-ux002-render-subject-card-compact-typography-v2-source-contract-2026-10-22.md",
       "evidenceKind": "codex_cli_render_subject_card_compact_typography_v2_agent_mcp",

@@ -2,22 +2,22 @@ import { getAgentMcpProfileById } from './agent-mcp-profile-claims.mjs';
 
 export const RENDER_SUBJECT_CARD_OFFLINE_V1_PROFILE_ID = 'render-subject-card-offline-agent-mcp-v1';
 export const RENDER_SUBJECT_CARD_OFFLINE_V1_NETWORK_MODE = 'run95-render-subject-card-offline-v1';
-export const RENDER_SUBJECT_CARD_COMPACT_TYPE_V2_PROFILE_ID =
+export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_PROFILE_ID =
   'render-subject-card-compact-typography-agent-mcp-v2';
-export const RENDER_SUBJECT_CARD_COMPACT_TYPE_V2_NETWORK_MODE =
+export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_NETWORK_MODE =
   'run95-render-subject-card-compact-typography-v2';
-export const RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID = RENDER_SUBJECT_CARD_COMPACT_TYPE_V2_PROFILE_ID;
-export const RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE = RENDER_SUBJECT_CARD_COMPACT_TYPE_V2_NETWORK_MODE;
+export const RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID = RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_PROFILE_ID;
+export const RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE = RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_NETWORK_MODE;
 export const RENDER_SUBJECT_CARD_OFFLINE_TOOL = 'bangumi.render_subject_card';
 export const RENDER_SUBJECT_CARD_OFFLINE_V1_ARGUMENTS = Object.freeze({
   subjectId: 990901,
   includeCollection: false,
 });
-export const RENDER_SUBJECT_CARD_COMPACT_TYPE_V2_ARGUMENTS = Object.freeze({
+export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_ARGUMENTS = Object.freeze({
   subjectId: 991902,
   includeCollection: false,
 });
-export const RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS = RENDER_SUBJECT_CARD_COMPACT_TYPE_V2_ARGUMENTS;
+export const RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS = RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_ARGUMENTS;
 
 const PROFILE_CONFIGS = new Map([
   [
@@ -59,29 +59,29 @@ const PROFILE_CONFIGS = new Map([
     }),
   ],
   [
-    RENDER_SUBJECT_CARD_COMPACT_TYPE_V2_PROFILE_ID,
+    RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_PROFILE_ID,
     Object.freeze({
-      id: RENDER_SUBJECT_CARD_COMPACT_TYPE_V2_PROFILE_ID,
-      networkMode: RENDER_SUBJECT_CARD_COMPACT_TYPE_V2_NETWORK_MODE,
+      id: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_PROFILE_ID,
+      networkMode: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_NETWORK_MODE,
       epochId: 'run95-ux002-compact-typography-default-075-20261022',
       argumentProfile: 'fixed-ux002-subject-card-991902-no-collection-default-scale-075-v2',
-      claimLabelName: 'harness-r95-render-card-type-v2-claimed',
+      claimLabelName: 'harness-r95-render-card-typography-v2-claimed',
       reportPath:
         'docs/live-probes/render-subject-card-compact-typography-v2-agent-mcp-run95.json',
       selectionEvidencePath:
         'docs/research/run95-ux002-render-subject-card-compact-typography-v2-source-contract-2026-10-22.md',
       evidenceKind: 'codex_cli_render_subject_card_compact_typography_v2_agent_mcp',
       answerCheckMethod: 'render-subject-card-compact-typography-v2-artifact',
-      arguments: RENDER_SUBJECT_CARD_COMPACT_TYPE_V2_ARGUMENTS,
+      arguments: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_ARGUMENTS,
       fixture: Object.freeze({
-        id: RENDER_SUBJECT_CARD_COMPACT_TYPE_V2_ARGUMENTS.subjectId,
+        id: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_ARGUMENTS.subjectId,
         type: 2,
-        name: 'Compact Typography Subject Fixture',
+        name: '星海と微光 / Lumen',
         name_cn: '默认字阶测试：星海与微光',
         date: '2026-10-22',
         platform: 'TV',
         summary:
-          '合成条目用于确认默认紧凑字号；固定中文、日文与简短英文标题，不包含外部图片。',
+          '合成条目用于确认默认紧凑字号；标题含日文“星海と微光”与简短英文“Lumen”，无外部图片。',
         images: { common: '', large: '', medium: '', small: '' },
         tags: [
           { name: '合成演示', count: 3 },

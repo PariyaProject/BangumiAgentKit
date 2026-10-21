@@ -67,6 +67,7 @@ test('render_subject_card offline fixture serves one exact synthetic public Subj
   assert.equal(response.headers.get('content-type'), 'application/json');
   const result = await response.json();
   assert.equal(result.id, 991902);
+  assert.equal(result.name, '星海と微光 / Lumen');
   assert.equal(result.name_cn, '默认字阶测试：星海与微光');
   assert.deepEqual(fixture.snapshot(), {
     profile: 'run95-render-subject-card-compact-typography-v2',

@@ -331,6 +331,17 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
             },
         }
 
+    def test_current_candidate_has_v2_implementation_markers(self):
+        revision = subprocess.run(
+            ['git', 'rev-parse', 'HEAD'], cwd=GENERATOR.ROOT, check=True,
+            capture_output=True, text=True,
+        ).stdout.strip()
+        self.assertTrue(
+            GENERATOR.codex_render_subject_card_offline_profile_revision_has_implementation(
+                revision,
+            ),
+        )
+
     def test_matrix_mapper_only_accepts_the_exact_offline_renderer_contract(self):
         self.assertTrue(TABLE_CHECKER.render_subject_card_offline_agent_mcp_matches(
             self.profile['toolName'], self.profile['reportPath'], self.report,

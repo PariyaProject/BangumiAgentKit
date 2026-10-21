@@ -120,6 +120,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   );
   assert.ok(compactTypographySubjectCard);
   assert.equal(compactTypographySubjectCard.epochId, 'run95-ux002-compact-typography-default-075-20261022');
+  assert.equal(compactTypographySubjectCard.claimLabelName, 'harness-r95-render-card-typography-v2-claimed');
   assert.deepEqual(compactTypographySubjectCard.calls[0].arguments, {
     subjectId: 991902,
     includeCollection: false,

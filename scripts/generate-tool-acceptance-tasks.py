@@ -5898,7 +5898,7 @@ CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'isAllowedCodexOneToolCatalogEntry(profile, catalogTool)',
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
-        "profileId === RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID",
+        'isRenderSubjectCardOfflineProfileId(profileId)',
         'summarizeTitleQueryRenderArtifact(result, artifactSummary)',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
