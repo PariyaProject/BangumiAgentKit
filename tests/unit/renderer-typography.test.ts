@@ -107,6 +107,7 @@ describe('renderer typography configuration', () => {
     );
 
     expect(html).toContain('@font-face{font-family:"Rounded Fixture"');
+    expect(html).toContain('font-weight:400;font-display:block');
     expect(html).toContain('font-size:9px');
     const normalKey = computeRenderCacheKey(viewModel);
     const scaledKey = computeRenderCacheKey(viewModel, {

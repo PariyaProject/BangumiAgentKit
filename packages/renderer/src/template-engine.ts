@@ -56,7 +56,7 @@ export function renderHtmlTemplate(
       ) {
         throw new Error('Resolved renderer font face is invalid.');
       }
-      return `@font-face{font-family:${family};src:url("${face.dataUrl}") format("${face.format}");font-style:normal;font-weight:100 900;font-display:block;}`;
+      return `@font-face{font-family:${family};src:url("${face.dataUrl}") format("${face.format}");font-style:normal;font-weight:400;font-display:block;}`;
     })
     .join('\n');
 
