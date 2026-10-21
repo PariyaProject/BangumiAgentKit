@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-21T06:06:56Z",
+  "currentMasterSha": "d610c08b4faf6507ec3b1de9c8996ca5582288fe",
+  "source": "Read-only Harness epoch:agent-mcp-profile-status calls for each recorded profile and PR; the GitHub control-plane claim and terminal labels were present in every response.",
+  "profiles": [
+    {
+      "frontier": "R02",
+      "profile_id": "r02-positive-direct-relations-agent-mcp-v1",
+      "epoch_id": "run95-r02-positive-direct-relations-agent-mcp-20261016",
+      "tool_name": "bangumi.get_subject_relations",
+      "pr": 192,
+      "state": "INCONCLUSIVE",
+      "call_count": 3,
+      "report_written": false,
+      "retry_allowed": false,
+      "claim_label_present": true,
+      "terminal_label_present": true,
+      "candidate_sha": "08ffa52c4b278ffbbf956e9e145b19b9ec2249a8",
+      "base_sha": "616acc7ce87d7205cacccab4456d2229459ce072",
+      "ci_run_id": "38876952251",
+      "ci_status": "SUCCESS",
+      "successful_required_checks": 7
+    },
+    {
+      "frontier": "R04",
+      "profile_id": "r04-series-watch-order-offline-agent-mcp-v1",
+      "epoch_id": "run95-r04-series-watch-order-offline-matrix-20261016",
+      "tool_name": "bangumi.get_series_watch_order",
+      "pr": 186,
+      "state": "INCONCLUSIVE",
+      "call_count": 1,
+      "report_written": false,
+      "retry_allowed": false,
+      "claim_label_present": true,
+      "terminal_label_present": true,
+      "candidate_sha": "850cb82d23d1e9b7d4ddb5e3dbdf9c4098124d0f",
+      "base_sha": "2a659f5cd0143bf0745a441bc03cccfe5f871e2a",
+      "ci_run_id": "38827433049",
+      "ci_status": "SUCCESS",
+      "successful_required_checks": 7
+    },
+    {
+      "frontier": "R04",
+      "profile_id": "r04-series-watch-order-offline-agent-mcp-v2",
+      "epoch_id": "run95-r04-series-watch-order-agent-mcp-offline-v2-20261018",
+      "tool_name": "bangumi.get_series_watch_order",
+      "pr": 228,
+      "state": "INCONCLUSIVE",
+      "call_count": 1,
+      "report_written": false,
+      "retry_allowed": false,
+      "claim_label_present": true,
+      "terminal_label_present": true,
+      "candidate_sha": "e082fd547f9bd74ed0376e0195e99f2ff8a5667c",
+      "base_sha": "3fcae76aa3f71bde9d153ae39f2b800842c3423d",
+      "ci_run_id": "39134640845",
+      "ci_status": "SUCCESS",
+      "successful_required_checks": 7
+    },
+    {
+      "frontier": "R04",
+      "profile_id": "r04-render-series-watch-order-offline-agent-mcp-v1",
+      "epoch_id": "run95-r04-render-series-watch-order-offline-matrix-20261017",
+      "tool_name": "bangumi.render_series_watch_order",
+      "pr": 198,
+      "state": "INCONCLUSIVE",
+      "call_count": 1,
+      "report_written": false,
+      "retry_allowed": false,
+      "claim_label_present": true,
+      "terminal_label_present": true,
+      "candidate_sha": "c7409f58fb7e1d65c4e2b946910da5396c78702c",
+      "base_sha": "ee9703e48795cf1796f5352c53a1d8467aee3dee",
+      "ci_run_id": "38938887983",
+      "ci_status": "SUCCESS",
+      "successful_required_checks": 7
+    },
+    {
+      "frontier": "R04",
+      "profile_id": "r04-render-series-watch-order-offline-agent-mcp-matrix-v2",
+      "epoch_id": "run95-r04-render-series-watch-order-offline-matrix-v2-20261018",
+      "tool_name": "bangumi.render_series_watch_order",
+      "pr": 222,
+      "state": "REPORT_WRITTEN",
+      "call_count": 1,
+      "report_written": true,
+      "retry_allowed": false,
+      "claim_label_present": true,
+      "terminal_label_present": true,
+      "candidate_sha": "7139342cfc8bc69e4d696e601d0b74568a5f2756",
+      "base_sha": "26c9285e6501a7d2c44cf40e0dda236a737a25b8",
+      "ci_run_id": "39094417232",
+      "ci_status": "SUCCESS",
+      "successful_required_checks": 7,
+      "report_path": "docs/live-probes/r04-render-series-watch-order-offline-agent-mcp-v2-run95.json",
+      "report_sha256": "36426cd2733cec03f6d8619f80d6ee7a34b9e9d83657d2d194c7825e778d6498"
+    },
+    {
+      "frontier": "C07",
+      "profile_id": "c07-render-comparison-offline-agent-mcp-matrix-v3",
+      "epoch_id": "run95-c07-render-comparison-offline-agent-mcp-matrix-v3-20261018",
+      "tool_name": "bangumi.render_subject_cohort_comparison",
+      "pr": 229,
+      "state": "INCONCLUSIVE",
+      "call_count": 1,
+      "report_written": false,
+      "retry_allowed": false,
+      "claim_label_present": true,
+      "terminal_label_present": true,
+      "candidate_sha": "7392c6c2621708334a036edb8f723d412de76f55",
+      "base_sha": "77d0245f45ea875a290fd5261a8f2ccff7db6f60",
+      "ci_run_id": "39149183894",
+      "ci_status": "SUCCESS",
+      "successful_required_checks": 7
+    }
+  ],
+  "scenarioDisposition": {
+    "R02": "UNASSESSED",
+    "R04": "UNASSESSED",
+    "C07": "UNASSESSED"
+  },
+  "acceptanceSnapshot": {
+    "agentMcp": {
+      "accepted": 82,
+      "total": 96
+    },
+    "publicApi": {
+      "accepted": 65,
+      "total": 65
+    },
+    "unboundAuthDenial": {
+      "accepted": 22,
+      "total": 22
+    },
+    "qqTim": {
+      "accepted": 0,
+      "total": 96
+    }
+  },
+  "acceptanceBoundary": "This report reconciles durable one-shot state only. INCONCLUSIVE/no-report profiles receive no Agent/MCP credit and must never be retried. The R04 render v2 REPORT_WRITTEN result remains one existing matrix-only row already included in the current 82/96 matrix snapshot; it does not establish R04 scenario acceptance or visual quality. No API, account, community, QQ, or TIM activity occurred."
+}
