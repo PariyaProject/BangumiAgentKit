@@ -547,7 +547,9 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   assert.match(r04.next_action, /does not prove visual quality or the theatrical-film scenario/u);
   assert.ok(r04.next_action.includes('earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry'));
   assert.ok(r04.next_action.includes('separately keyed R04 renderer v2 profile'));
+  assert.ok(r04.next_action.includes('distinct matrix-only render_series_watch_order profile'));
   assert.ok(r04.next_action.includes('It may credit only this Agent/MCP matrix cell'));
+  assert.ok(r04.next_action.includes('Keep the R04 theatrical-film scenario UNASSESSED'));
   assert.ok(r04.next_action.includes('keep the R04 theatrical-film scenario UNASSESSED'));
   assert.ok(r04.next_action.includes('do not claim canonical order or visual quality'));
   assert.doesNotMatch(r04.next_action, /UNCLAIMED|unclaimed|selected.*get_series_watch_order v2/u);
@@ -601,6 +603,8 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
     );
   }
   assert.match(r02.next_action, /profile is terminal INCONCLUSIVE after three calls/u);
+  assert.ok(r02.next_action.includes('The 2026-10-16 source contract records four observed direct rows'));
+  assert.ok(r02.next_action.includes('Keep R02 UNASSESSED until an exact-Candidate signed report is accepted'));
   assert.match(r02.next_action, /Never rerun or recreate this profile/u);
   assert.match(r02.next_action, /another safe, unspent frontier/u);
   assert.doesNotMatch(r02.next_action, /UNCLAIMED|unclaimed|before the one-shot call/iu);
