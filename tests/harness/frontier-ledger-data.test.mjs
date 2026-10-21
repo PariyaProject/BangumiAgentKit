@@ -77,6 +77,7 @@ test('C07 v3 renderer matrix selection keeps the scenario unassessed and binds i
     /c07-render-comparison-offline-agent-mcp-matrix-v3` profile is terminal INCONCLUSIVE after one call/u,
   );
   assert.match(record.next_action, /no C07 scenario or Agent\/MCP matrix credit/u);
+  assert.ok(record.next_action.includes('Never retry or recreate it'));
   assert.doesNotMatch(
     record.next_action,
     /No v3 call or report exists yet|UNCLAIMED|unclaimed|before .*one-shot/iu,
@@ -552,6 +553,7 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   assert.ok(r04.next_action.includes('Keep the R04 theatrical-film scenario UNASSESSED'));
   assert.ok(r04.next_action.includes('keep the R04 theatrical-film scenario UNASSESSED'));
   assert.ok(r04.next_action.includes('do not claim canonical order or visual quality'));
+  assert.ok(r04.next_action.includes('Never invoke any terminal profile'));
   assert.doesNotMatch(r04.next_action, /UNCLAIMED|unclaimed|selected.*get_series_watch_order v2/u);
   for (const source of [
     'scripts/lib/r04-render-series-watch-order-offline-fixture.mjs',
