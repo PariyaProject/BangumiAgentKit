@@ -136,16 +136,15 @@ describe('MCP renderer target', () => {
   });
 
   it('keeps an explicit no-collection subject-card render on the anonymous public path', async () => {
-    const fetchFn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchFn = vi.fn(async (input: Request | string | URL, init?: RequestInit) => {
       const requestUrl = input instanceof Request ? input.url : String(input);
-      assert.equal(new URL(requestUrl).pathname, `/v0/subjects/${subjectFixture.id}`);
-      assert.equal(
+      expect(new URL(requestUrl).pathname).toBe(`/v0/subjects/${subjectFixture.id}`);
+      expect(
         String(init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase(),
-        'GET',
-      );
+      ).toBe('GET');
       const requestHeaders = new Headers(input instanceof Request ? input.headers : undefined);
       new Headers(init?.headers).forEach((value, key) => requestHeaders.set(key, value));
-      assert.equal(requestHeaders.has('authorization'), false);
+      expect(requestHeaders.has('authorization')).toBe(false);
       return new Response(JSON.stringify(subjectFixture), {
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -156,7 +155,7 @@ describe('MCP renderer target', () => {
       fetchFn,
     });
 
-    assert.equal(response.isError, undefined);
+    expect(response.isError).toBeUndefined();
     expect(fetchFn).toHaveBeenCalledOnce();
     expect(renderService.renderCard).toHaveBeenCalledWith(
       expect.objectContaining({
