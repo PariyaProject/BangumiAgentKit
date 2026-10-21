@@ -45,7 +45,7 @@ test('optional-auth allowlist is limited to the exact read-only profile and cata
         calls: [
           {
             toolName: 'bangumi.render_subject_card',
-            arguments: { subjectId: 990901, includeCollection: true },
+            arguments: { subjectId: 991902, includeCollection: true },
           },
         ],
       },
@@ -61,16 +61,16 @@ test('optional-auth allowlist is limited to the exact read-only profile and cata
 
 test('render_subject_card offline fixture serves one exact synthetic public Subject response', async () => {
   const fixture = createRenderSubjectCardOfflineFetch(profile());
-  const response = await fixture.fetchFn('https://api.bgm.tv/v0/subjects/990901');
+  const response = await fixture.fetchFn('https://api.bgm.tv/v0/subjects/991902');
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('content-type'), 'application/json');
   const result = await response.json();
-  assert.equal(result.id, 990901);
-  assert.equal(result.name_cn, '合成卡片：星の町与安静的夜');
+  assert.equal(result.id, 991902);
+  assert.equal(result.name_cn, '默认字阶测试：星海与微光');
   assert.deepEqual(fixture.snapshot(), {
-    profile: 'run95-render-subject-card-offline-v1',
-    expectedOperation: 'GET /v0/subjects/990901',
+    profile: 'run95-render-subject-card-compact-typography-v2',
+    expectedOperation: 'GET /v0/subjects/991902',
     requestCount: 1,
     expectedRequestCount: 1,
     unexpectedRequestCount: 0,
@@ -85,11 +85,11 @@ test('render_subject_card offline fixture rejects every route beyond the fixed s
   const fixture = createRenderSubjectCardOfflineFetch(profile());
 
   await assert.rejects(
-    fixture.fetchFn('https://api.bgm.tv/v0/subjects/990902'),
+    fixture.fetchFn('https://api.bgm.tv/v0/subjects/991903'),
     /RENDER_SUBJECT_CARD_OFFLINE_UNEXPECTED_REQUEST/u,
   );
   await assert.rejects(
-    fixture.fetchFn('https://api.bgm.tv/v0/users/me/collections/990901'),
+    fixture.fetchFn('https://api.bgm.tv/v0/users/me/collections/991902'),
     /RENDER_SUBJECT_CARD_OFFLINE_UNEXPECTED_REQUEST/u,
   );
   await assert.rejects(
@@ -108,13 +108,13 @@ test('render_subject_card offline fixture rejects Authorization and non-GET requ
   const fixture = createRenderSubjectCardOfflineFetch(profile());
 
   await assert.rejects(
-    fixture.fetchFn('https://api.bgm.tv/v0/subjects/990901', {
+    fixture.fetchFn('https://api.bgm.tv/v0/subjects/991902', {
       headers: { Authorization: 'Bearer synthetic-forbidden' },
     }),
     /RENDER_SUBJECT_CARD_OFFLINE_UNEXPECTED_REQUEST/u,
   );
   await assert.rejects(
-    fixture.fetchFn('https://api.bgm.tv/v0/subjects/990901', { method: 'POST' }),
+    fixture.fetchFn('https://api.bgm.tv/v0/subjects/991902', { method: 'POST' }),
     /RENDER_SUBJECT_CARD_OFFLINE_UNEXPECTED_REQUEST/u,
   );
 
@@ -126,10 +126,10 @@ test('render_subject_card offline fixture rejects Authorization and non-GET requ
 
 test('render_subject_card offline fixture rejects a duplicate allowed read', async () => {
   const fixture = createRenderSubjectCardOfflineFetch(profile());
-  await fixture.fetchFn('https://api.bgm.tv/v0/subjects/990901');
+  await fixture.fetchFn('https://api.bgm.tv/v0/subjects/991902');
 
   await assert.rejects(
-    fixture.fetchFn('https://api.bgm.tv/v0/subjects/990901'),
+    fixture.fetchFn('https://api.bgm.tv/v0/subjects/991902'),
     /RENDER_SUBJECT_CARD_OFFLINE_UNEXPECTED_REQUEST/u,
   );
 

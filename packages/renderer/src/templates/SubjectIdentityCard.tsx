@@ -119,7 +119,10 @@ export const SubjectIdentityCard: React.FC<SubjectIdentityCardProps> = ({
             }}
           >
             {directRows.map(([label, value]) => (
-              <div key={label} style={{ minWidth: 0 }}>
+              <div
+                key={label}
+                style={{ minWidth: 0, gridColumn: label === '图片链接' ? '1 / -1' : undefined }}
+              >
                 <div style={{ color: theme.textMuted, fontSize: '11px' }}>{label}</div>
                 <div style={{ fontSize: '13px', overflowWrap: 'anywhere' }}>{display(value)}</div>
               </div>

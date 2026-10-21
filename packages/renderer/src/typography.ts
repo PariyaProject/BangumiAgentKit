@@ -5,6 +5,7 @@ import { RendererError } from './errors.js';
 
 export const MIN_RENDER_FONT_SIZE_SCALE = 0.75;
 export const MAX_RENDER_FONT_SIZE_SCALE = 1.25;
+export const DEFAULT_RENDER_FONT_SIZE_SCALE = 0.75;
 const MAX_RENDER_FONT_FILE_BYTES = 20 * 1024 * 1024;
 
 const GENERIC_FAMILIES = new Set([
@@ -29,7 +30,7 @@ const FONT_FORMATS: Record<string, { mime: string; format: string }> = {
 };
 
 export interface RenderTypographyOptions {
-  /** A global multiplier for template font sizes. Defaults to 1. */
+  /** A global multiplier for template font sizes. Defaults to 0.75. */
   fontSizeScale?: number;
   /** Optional comma-separated CSS family stack for body copy. */
   bodyFontFamily?: string;
@@ -65,9 +66,9 @@ export interface ResolvedRenderTypography {
 }
 
 export const DEFAULT_RESOLVED_RENDER_TYPOGRAPHY: ResolvedRenderTypography = {
-  fontSizeScale: 1,
+  fontSizeScale: DEFAULT_RENDER_FONT_SIZE_SCALE,
   fontFaces: [],
-  cacheIdentity: { fontSizeScale: 1 },
+  cacheIdentity: { fontSizeScale: DEFAULT_RENDER_FONT_SIZE_SCALE },
 };
 
 interface ParsedFontFamily {
@@ -135,7 +136,7 @@ function configuredFontFileName(value: string | undefined, role: string): string
 export function normalizeRenderTypographyOptions(
   options: RenderTypographyOptions = {},
 ): RenderTypographyOptions & { fontSizeScale: number } {
-  const fontSizeScale = options.fontSizeScale ?? 1;
+  const fontSizeScale = options.fontSizeScale ?? DEFAULT_RENDER_FONT_SIZE_SCALE;
   if (
     !Number.isFinite(fontSizeScale) ||
     fontSizeScale < MIN_RENDER_FONT_SIZE_SCALE ||

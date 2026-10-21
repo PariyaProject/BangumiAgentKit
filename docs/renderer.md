@@ -62,7 +62,7 @@ templates:
 
 | Setting                              | Default                   | Bounds / behavior                                                                                 |
 | ------------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------- |
-| `BANGUMI_RENDER_FONT_SIZE_SCALE`     | `1`                       | `0.75`–`1.25`; scales template font-size declarations while preserving each template's hierarchy. |
+| `BANGUMI_RENDER_FONT_SIZE_SCALE`     | `0.75`                    | `0.75`–`1.25`; scales template font-size declarations while preserving each template's hierarchy. |
 | `BANGUMI_RENDER_BODY_FONT_FAMILY`    | Design-pack body stack    | Optional comma-separated, validated CSS family stack.                                             |
 | `BANGUMI_RENDER_DISPLAY_FONT_FAMILY` | Design-pack display stack | Optional comma-separated, validated CSS family stack.                                             |
 | `BANGUMI_RENDER_FONT_DIR`            | unset                     | Absolute directory containing operator-provided font files.                                       |

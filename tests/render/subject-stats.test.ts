@@ -241,7 +241,7 @@ describe('subject-stats renderer', () => {
       );
     }
     expect(renderHtmlTemplate(viewModel, 'bangumi-light', {}, 960, 'clean-gallery')).toContain(
-      'font-size:86px',
+      'font-size:64.5px',
     );
 
     const rendered = await renderService.renderCard(viewModel, {

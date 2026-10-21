@@ -202,8 +202,12 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
             key={String(label)}
             data-render-mask="panel-alt"
             style={{
-              flex: '1 1 132px',
+              flex: '1 1 ' + (compact ? '100px' : '132px'),
               minWidth: 0,
+              // The warm editorial panelAlt mask cuts 34px into the lower-left
+              // corner. Keep this compact tile tall enough that its value sits
+              // above the cut after the renderer applies the default font scale.
+              minHeight: compact ? '88px' : undefined,
               backgroundColor: theme.surfaceAlt,
               border: '1px solid ' + theme.border,
               borderRadius: theme.radius.md,
@@ -424,7 +428,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
             >
               {item.nameCn || item.name || '章节 ' + item.id}
             </div>
-            <div style={{ gridColumn: compact ? '1 / 3' : undefined }}>
+            <div style={{ gridColumn: compact ? '2 / 3' : undefined }}>
               <MetaRow
                 theme={theme}
                 items={[

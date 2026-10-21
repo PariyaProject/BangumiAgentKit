@@ -139,6 +139,10 @@ afterEach(async () => {
         layout.overflowing,
         `[MOBILE_LAYOUT_AUDIT] ${captured.template} elements cross the ${width}px viewport: ${JSON.stringify(layout)}`,
       ).toEqual([]);
+      expect(
+        layout.contentOverflowing,
+        `[MOBILE_LAYOUT_AUDIT] ${captured.template} text/content overflows at ${width}px: ${JSON.stringify(layout)}`,
+      ).toEqual([]);
     }
     observedTemplates.add(captured.template);
   }

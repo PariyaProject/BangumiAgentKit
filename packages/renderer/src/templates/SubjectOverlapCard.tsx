@@ -72,38 +72,57 @@ function relationSummary(
   return `${stateLabel(relation.state)} · ${matched} · ${union} · ${ratio} · 返回 ${coverage.returned} · 省略 ${coverage.omitted}`;
 }
 
-function castEvidence(relation: SubjectOverlapCastRelation): string {
-  return relation.items
-    .slice(0, RENDER_PERSON_LIMIT)
-    .map((person) => {
-      const credits = person.credits
-        .map(
-          (credit) =>
-            `${credit.subjectId}：${
-              credit.characters
-                .map((character) => `${character.name}（${character.relation}）`)
-                .join('、') || '角色未知'
-            }`,
-        )
-        .join('；');
-      return `${person.name} [${person.personId}] · ${credits}`;
-    })
-    .join(' | ');
+function castEvidence(relation: SubjectOverlapCastRelation): string[] {
+  return relation.items.slice(0, RENDER_PERSON_LIMIT).flatMap((person) => {
+    const personLabel = `${person.name} [${person.personId}]`;
+    if (person.credits.length === 0) return [personLabel];
+    return person.credits.map((credit, index) => {
+      const characters =
+        credit.characters
+          .map((character) => `${character.name}（${character.relation}）`)
+          .join('、') || '角色未知';
+      return `${index === 0 ? personLabel + ' · ' : '↳ '}${credit.subjectId}：${characters}`;
+    });
+  });
 }
 
-function staffEvidence(relation: SubjectOverlapStaffRelation): string {
-  return relation.items
-    .slice(0, RENDER_PERSON_LIMIT)
-    .map((person) => {
-      const credits = person.credits
-        .map(
-          (credit) =>
-            `${credit.subjectId}：${credit.rawRelations.join('、') || credit.relations.join('、') || '职位未知'}`,
-        )
-        .join('；');
-      return `${person.name} [${person.personId}] · ${credits}`;
-    })
-    .join(' | ');
+function staffEvidence(relation: SubjectOverlapStaffRelation): string[] {
+  return relation.items.slice(0, RENDER_PERSON_LIMIT).flatMap((person) => {
+    const personLabel = `${person.name} [${person.personId}]`;
+    if (person.credits.length === 0) return [personLabel];
+    return person.credits.map((credit, index) => {
+      const relations = credit.rawRelations.join('、') || credit.relations.join('、') || '职位未知';
+      return `${index === 0 ? personLabel + ' · ' : '↳ '}${credit.subjectId}：${relations}`;
+    });
+  });
+}
+
+function evidenceRows(
+  lines: string[],
+  label: string,
+  theme: ThemeTokens,
+  width?: number,
+): React.ReactNode {
+  const columns = lines.length > 2 && (width === undefined || width > 400) ? 2 : 1;
+  return (
+    <div>
+      <div>{label}：</div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+          gap: `${theme.spacing.xs} ${theme.spacing.md}`,
+          paddingLeft: theme.spacing.sm,
+        }}
+      >
+        {lines.map((line, index) => (
+          <div key={index} style={{ ...wrapStyle, minWidth: 0 }}>
+            {line}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function castRoleEvidence(relation: SubjectOverlapCastRelation): string {
@@ -229,7 +248,9 @@ export const SubjectOverlapCard: React.FC<SubjectOverlapCardProps> = ({
                   }}
                 >
                   <div>声优：{relationSummary(pair.cast)}</div>
-                  {pair.cast.items.length > 0 ? <div>证据：{castEvidence(pair.cast)}</div> : null}
+                  {pair.cast.items.length > 0
+                    ? evidenceRows(castEvidence(pair.cast), '证据', theme, width)
+                    : null}
                   {pair.cast.items.length > RENDER_PERSON_LIMIT ? (
                     <div>
                       人物渲染上限：{RENDER_PERSON_LIMIT}；另有{' '}
@@ -258,9 +279,9 @@ export const SubjectOverlapCard: React.FC<SubjectOverlapCardProps> = ({
                   }}
                 >
                   <div>制作人员：{relationSummary(pair.staff)}</div>
-                  {pair.staff.items.length > 0 ? (
-                    <div>证据：{staffEvidence(pair.staff)}</div>
-                  ) : null}
+                  {pair.staff.items.length > 0
+                    ? evidenceRows(staffEvidence(pair.staff), '证据', theme, width)
+                    : null}
                   {pair.staff.items.length > RENDER_PERSON_LIMIT ? (
                     <div>
                       人物渲染上限：{RENDER_PERSON_LIMIT}；另有{' '}

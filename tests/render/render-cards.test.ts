@@ -138,7 +138,7 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     const warmMobileScore = warmMobileLayout.layoutElements.find(
       (element) => element.layout === 'score-value',
     );
-    expect(warmMobile).toContain('font-size:36px');
+    expect(warmMobile).toContain('font-size:27px');
     expect(warmMobileScore).toBeDefined();
     expect(warmMobileScore!.height).toBeLessThanOrEqual(55);
     expect(warmMobileLayout.overflowing).toEqual([]);
@@ -220,7 +220,7 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(gallery).toContain('grid-template-columns:minmax(0, 1fr)');
     expect(gallery).not.toContain('data-layout="subject-cover-poster"');
     const galleryWide = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 960, 'clean-gallery');
-    expect(galleryWide).toContain('font-size:76px');
+    expect(galleryWide).toContain('font-size:57px');
 
     const zine = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'graphic-zine');
     expect(zine).toContain('data-layout="zine-subject-title-overlay"');
@@ -648,7 +648,7 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     const longSummaryHtml = renderHtmlTemplate(longSummaryVm, 'bangumi-light', {}, 320);
     expect(longSummaryHtml).toContain('摘要节选 · 前 72 字符');
     expect(longSummaryHtml).not.toContain('摘要节选 · 前 160 字符');
-    expect(longSummaryHtml).toContain('font-size:13px');
+    expect(longSummaryHtml).toContain('font-size:9.75px');
     expect(longSummaryHtml).toContain('图片显示 2 条');
     for (const width of [320, 360, 520]) {
       for (const pack of ['warm-editorial', 'clean-gallery', 'graphic-zine'] as const) {

@@ -236,7 +236,7 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
             'scenarioId': None,
             'epochId': self.profile['epochId'],
             'profileId': self.profile['id'],
-            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
             'model': 'gpt-6-luna',
             'reasoningEffort': 'max',
             'reviewerId': f'gpt-6-luna-max-run95-pr{self.pr}-round1',
@@ -281,7 +281,7 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
             'answerUtf8Bytes': len(self.ack),
             'offlineFixture': {
                 'profile': self.profile['networkMode'],
-                'expectedOperation': 'GET /v0/subjects/990901',
+                'expectedOperation': 'GET /v0/subjects/991902',
                 'requestCount': 1,
                 'expectedRequestCount': 1,
                 'unexpectedRequestCount': 0,

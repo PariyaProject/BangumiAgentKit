@@ -12,7 +12,11 @@ import { BrowserPool } from './browser-pool.js';
 import { AssetResolver, RenderWarning, ResolvedAsset } from './asset-resolver.js';
 import { RendererError } from './errors.js';
 import { RendererLruCache } from './lru-cache.js';
-import { type RenderTypographyOptions, resolveRenderTypography } from './typography.js';
+import {
+  DEFAULT_RENDER_FONT_SIZE_SCALE,
+  type RenderTypographyOptions,
+  resolveRenderTypography,
+} from './typography.js';
 
 export interface RenderOptions {
   theme?: RenderThemeName;
@@ -81,7 +85,7 @@ export function computeRenderCacheKey(
   const vmCanonical = canonicalizeJson(viewModel);
   const assetCanonical = canonicalizeJson(assetMap);
   const typographyCanonical = canonicalizeJson({
-    fontSizeScale: options.typography?.fontSizeScale ?? 1,
+    fontSizeScale: options.typography?.fontSizeScale ?? DEFAULT_RENDER_FONT_SIZE_SCALE,
     bodyFontFamily: options.typography?.bodyFontFamily ?? null,
     displayFontFamily: options.typography?.displayFontFamily ?? null,
     bodyFontFile: options.typography?.bodyFontFile ?? null,

@@ -103,7 +103,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 40);
+  assert.equal(listAgentMcpProfiles().length, 41);
   const renderSubjectCardOffline = getAgentMcpProfileById(
     'render-subject-card-offline-agent-mcp-v1',
   );
@@ -115,6 +115,15 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
     includeCollection: false,
   });
   assert.equal(renderSubjectCardOffline.acceptanceScope, 'agent-mcp-matrix-only');
+  const compactTypographySubjectCard = getAgentMcpProfileById(
+    'render-subject-card-compact-typography-agent-mcp-v2',
+  );
+  assert.ok(compactTypographySubjectCard);
+  assert.equal(compactTypographySubjectCard.epochId, 'run95-ux002-compact-typography-default-075-20261022');
+  assert.deepEqual(compactTypographySubjectCard.calls[0].arguments, {
+    subjectId: 991902,
+    includeCollection: false,
+  });
   const p06OfflineV2 = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v2');
   assert.ok(p06OfflineV2);
   assert.equal(p06OfflineV2.epochId, 'run95-p06-render-person-profile-visual-matrix-v2-20261018');

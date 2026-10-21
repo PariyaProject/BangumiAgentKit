@@ -13,8 +13,8 @@ import {
 import {
   createRenderSubjectCardOfflineAssetGuard,
   createRenderSubjectCardOfflineFetch,
-  RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS,
-  RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID,
+  RENDER_SUBJECT_CARD_OFFLINE_V1_ARGUMENTS,
+  RENDER_SUBJECT_CARD_OFFLINE_V1_PROFILE_ID,
 } from '../lib/render-subject-card-offline-profile.mjs';
 import { getAgentMcpProfileById } from '../lib/agent-mcp-profile-claims.mjs';
 
@@ -47,7 +47,7 @@ async function main() {
     throw new Error('RENDER_SUBJECT_CARD_PREFLIGHT_OUTPUT_ALREADY_EXISTS');
   }
 
-  const profile = getAgentMcpProfileById(RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID);
+  const profile = getAgentMcpProfileById(RENDER_SUBJECT_CARD_OFFLINE_V1_PROFILE_ID);
   if (!profile) throw new Error('RENDER_SUBJECT_CARD_OFFLINE_PROFILE_NOT_REGISTERED');
 
   process.env.BANGUMI_RENDER_THEME = 'bangumi-light';
@@ -79,7 +79,7 @@ async function main() {
   try {
     const result = await registry.executeTool(
       profile.toolName,
-      RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS,
+      RENDER_SUBJECT_CARD_OFFLINE_V1_ARGUMENTS,
       {
         principalId: 'anonymous',
         botInstanceId: 'render-subject-card-offline-preflight',
@@ -134,7 +134,7 @@ async function main() {
         exactCandidateEvidence: false,
       },
       toolName: profile.toolName,
-      arguments: RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS,
+      arguments: RENDER_SUBJECT_CARD_OFFLINE_V1_ARGUMENTS,
       render: {
         target: 'chat',
         widthCssPixels: 360,
