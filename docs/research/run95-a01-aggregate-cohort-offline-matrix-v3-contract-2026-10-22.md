@@ -62,3 +62,27 @@ This contract is a static profile specification. It does not itself claim an
 Agent/MCP invocation, a real API request, cohort completeness, statistical
 significance, or visual quality. Only a signed report accepted by the active
 Harness can add the one matrix cell.
+
+## Observed Run #95 v3 attempt
+
+The single authorized v3 invocation ran on Candidate
+`8d2b3ae18322ac7c92178fb1cfc67834827d3b0b`, Base
+`20294c065a9fa41e9bad21daab1e32c287e98e75`, with exact CI run `39690572503`
+and a matching locally rebuilt MCP bundle attestation. Harness terminalized
+the claim as `INCONCLUSIVE`, `reportWritten=false`, `retryAllowed=false`, with
+reason code `A01_AGGREGATE_MATRIX_AGENT_MCP_ASSERTION_FAILED`. The profile is
+consumed; it must not be called again.
+
+The bounded diagnostics report `candidateCurrent`, `claimReadbackValid`,
+`codexExecutionSucceeded`, `eventStreamParsed`, `turnCompleted`,
+`serverSummaryValid`, `answerValid`, and `candidateBundleCurrent` as true.
+`structuredReadback`, `exactCallSequence`, `exactToolEvents`,
+`resultProjectionValid`, `reportBuildValid`, and `runnerReceiptValid` are
+false. Counters include one MCP event, three Codex error items, zero MCP tool
+error results, zero non-MCP events, zero shell calls, 469 answer bytes, 5174
+stdout bytes, and 905 stderr bytes. The report writer produced no report.
+
+The raw prompt, answer, tool result, rows, and event stream were not saved.
+The attempt earns no Agent/MCP matrix cell and no A01 scenario credit; A01
+remains `UNASSESSED`. The clean-tree acceptance matrix therefore remains
+Agent/MCP 82/96, public API 65/65, no-account denials 22/22, and QQ/TIM 0/96.
