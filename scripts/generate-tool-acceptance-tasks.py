@@ -3044,6 +3044,7 @@ CODEX_A01_RENDER_AGGREGATION_REPORT_FIELDS = {
 CODEX_A01_AGGREGATE_MATRIX_PROFILE_IDS = {
     'a01-aggregate-cohort-offline-agent-mcp-matrix-v1',
     'a01-aggregate-cohort-offline-agent-mcp-matrix-v2',
+    'a01-aggregate-cohort-offline-agent-mcp-matrix-v3',
 }
 CODEX_A01_AGGREGATE_MATRIX_PROFILES = {
     profile['id']: profile
@@ -3056,6 +3057,9 @@ CODEX_A01_AGGREGATE_MATRIX_EXPECTED_METRICS_BY_PROFILE = {
     ],
     'a01-aggregate-cohort-offline-agent-mcp-matrix-v2': [
         ('score', 6.5), ('heat', 71), ('episodesReported', 10), ('ratingStandardDeviation', 2),
+    ],
+    'a01-aggregate-cohort-offline-agent-mcp-matrix-v3': [
+        ('score', 7), ('heat', 90), ('episodesReported', 12), ('ratingStandardDeviation', 1),
     ],
 }
 
@@ -15680,6 +15684,10 @@ def codex_a01_aggregate_matrix_profile_revision_has_implementation(
         required_paths.add(
             'docs/research/run95-a01-aggregate-cohort-offline-matrix-v2-contract-2026-10-19.md',
         )
+    if profile_id == 'a01-aggregate-cohort-offline-agent-mcp-matrix-v3':
+        required_paths.add(
+            'docs/research/run95-a01-aggregate-cohort-offline-matrix-v3-contract-2026-10-22.md',
+        )
     return all(
         _run_repository_git(ROOT, 'cat-file', '-e', f'{revision}:{relative_path}').returncode == 0
         for relative_path in required_paths
@@ -25295,6 +25303,11 @@ def model_mcp_e2e_report_paths() -> list[Path]:
     report_paths.append(
         LIVE_PROBE_DIR / CODEX_A01_AGGREGATE_MATRIX_PROFILES[
             'a01-aggregate-cohort-offline-agent-mcp-matrix-v2'
+        ]['reportPath'].split('/')[-1],
+    )
+    report_paths.append(
+        LIVE_PROBE_DIR / CODEX_A01_AGGREGATE_MATRIX_PROFILES[
+            'a01-aggregate-cohort-offline-agent-mcp-matrix-v3'
         ]['reportPath'].split('/')[-1],
     )
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_REPORT_RELATIVE_PATH.split('/')[-1])

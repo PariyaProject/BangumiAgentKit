@@ -11,6 +11,8 @@ import {
 import {
   A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
   A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS,
+  A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+  A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID,
   A01_AGGREGATE_COHORT_TOOL,
   assertA01AggregateCohortOfflineProfile,
   getA01AggregateCohortOfflineProfileSpec,
@@ -35,9 +37,15 @@ function selectA01AggregateProfile(profileId) {
   if (!PROFILE || !spec) throw new Error('A01 aggregate matrix report profile is not registered.');
   assertA01AggregateCohortOfflineProfile(PROFILE);
   REPORT_PATH = path.join(ROOT, PROFILE.reportPath);
-  SERVER_ID = profileId === A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID
-    ? 'bgk_a01_aggregate_cohort_offline'
-    : 'bgk_a01_aggregate_cohort_offline_v2';
+  SERVER_ID =
+    profileId === A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID
+      ? 'bgk_a01_aggregate_cohort_offline'
+      : profileId === A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID
+        ? 'bgk_a01_aggregate_cohort_offline_v2'
+        : profileId === A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID
+          ? 'bgk_a01_aggregate_cohort_offline_v3'
+          : null;
+  if (!SERVER_ID) throw new Error('Unknown A01 aggregate matrix report server ID.');
   EXPECTED_METRICS = spec.expectedMetrics;
 }
 
@@ -239,8 +247,7 @@ export function validateA01AggregateCohortProfileRun(input) {
   const resultSummary = summary?.results?.[0]?.resultSummary;
   const parsedAnswer = parseAnswer(input.answer);
   const answerChecks = {
-    fixedArguments:
-      canonical(call?.arguments) === canonical(PROFILE.calls[0].arguments),
+    fixedArguments: canonical(call?.arguments) === canonical(PROFILE.calls[0].arguments),
     singleToolInvocation:
       events?.codexMcpToolEventCount === 1 &&
       events?.completedMcpCalls?.length === 1 &&

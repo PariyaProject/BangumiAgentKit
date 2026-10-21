@@ -9,6 +9,9 @@ import {
   A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS,
   A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
   A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+  A01_AGGREGATE_COHORT_OFFLINE_V3_EXPECTED_ARGUMENTS,
+  A01_AGGREGATE_COHORT_OFFLINE_V3_NETWORK_MODE,
+  A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID,
   A01_AGGREGATE_COHORT_TOOL,
 } from '../../scripts/lib/a01-aggregate-cohort-offline-matrix-profile.mjs';
 
@@ -46,12 +49,40 @@ test('registered A01 aggregate v2 profile has a distinct offline mode and fresh 
   assert.equal(config.toolName, A01_AGGREGATE_COHORT_TOOL);
   assert.equal(config.profile.id, A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID);
   assert.equal(config.networkMode, A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE);
-  assert.deepEqual(config.expectedArgumentSequence, [A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS]);
+  assert.deepEqual(config.expectedArgumentSequence, [
+    A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS,
+  ]);
   assert.notDeepEqual(
     config.expectedArgumentSequence[0],
     parseCodexOneToolMcpArguments([
       '--profile-id',
       A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+      ...REQUIRED,
+    ]).expectedArgumentSequence[0],
+  );
+});
+
+test('registered A01 aggregate v3 profile reuses the bounded offline mode with fresh input', () => {
+  const config = parseCodexOneToolMcpArguments([
+    '--profile-id',
+    A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID,
+    ...REQUIRED,
+  ]);
+  assert.equal(config.toolName, A01_AGGREGATE_COHORT_TOOL);
+  assert.equal(config.profile.id, A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID);
+  assert.equal(config.networkMode, A01_AGGREGATE_COHORT_OFFLINE_V3_NETWORK_MODE);
+  assert.equal(
+    A01_AGGREGATE_COHORT_OFFLINE_V3_NETWORK_MODE,
+    A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+  );
+  assert.deepEqual(config.expectedArgumentSequence, [
+    A01_AGGREGATE_COHORT_OFFLINE_V3_EXPECTED_ARGUMENTS,
+  ]);
+  assert.notDeepEqual(
+    config.expectedArgumentSequence[0],
+    parseCodexOneToolMcpArguments([
+      '--profile-id',
+      A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
       ...REQUIRED,
     ]).expectedArgumentSequence[0],
   );
@@ -65,7 +96,10 @@ test('MCP server binds the profile to its defining fixture and bounded summary',
   assert.match(fixtureImport[1], /\bassertA01AggregateCohortOfflineProfile\b/u);
   assert.match(fixtureImport[1], /\bcreateA01AggregateCohortOfflineFetch\b/u);
   assert.match(SERVER_SOURCE, /A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE/u);
-  assert.match(SERVER_SOURCE, /A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS\.includes\(config\.profile\?\.id\)/u);
+  assert.match(
+    SERVER_SOURCE,
+    /A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS\.includes\(config\.profile\?\.id\)/u,
+  );
   assert.match(SERVER_SOURCE, /A01_AGGREGATE_SUMMARY_UNAVAILABLE/u);
 });
 
@@ -90,11 +124,13 @@ test('A01 aggregate offline mode rejects arbitrary arguments and caller-selected
       ...REQUIRED,
     ]),
   );
-  assert.throws(() => parseCodexOneToolMcpArguments([
-    '--profile-id',
-    A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
-    '--network-mode',
-    A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
-    ...REQUIRED,
-  ]));
+  assert.throws(() =>
+    parseCodexOneToolMcpArguments([
+      '--profile-id',
+      A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+      '--network-mode',
+      A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+      ...REQUIRED,
+    ]),
+  );
 });

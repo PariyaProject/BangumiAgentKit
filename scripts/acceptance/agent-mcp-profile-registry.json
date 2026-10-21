@@ -608,6 +608,40 @@
       ]
     },
     {
+      "id": "a01-aggregate-cohort-offline-agent-mcp-matrix-v3",
+      "frontierId": "A01",
+      "epochId": "run95-a01-aggregate-cohort-offline-matrix-v3-20261022",
+      "toolName": "bangumi.aggregate_subject_cohort",
+      "argumentProfile": "fixed-a01-synthetic-aggregate-cohort-v3-20261022-one-subject-v1",
+      "claimLabelName": "harness-r95-a01-aggregate-mtx-v3-claimed",
+      "reportPath": "docs/live-probes/a01-aggregate-cohort-offline-agent-mcp-run95-v3.json",
+      "selectionEvidencePath": "docs/research/run95-a01-aggregate-cohort-offline-matrix-v3-contract-2026-10-22.md",
+      "evidenceKind": "codex_cli_a01_aggregate_subject_cohort_offline_matrix_agent_mcp_v3",
+      "answerCheckMethod": "a01-synthetic-aggregate-v3-metric-and-coverage-summary-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-a01-aggregate-cohort-offline-matrix-v2",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 768,
+      "calls": [
+        {
+          "toolName": "bangumi.aggregate_subject_cohort",
+          "arguments": {
+            "cohort": {
+              "label": "Synthetic aggregate matrix v3 sample",
+              "query": {
+                "keyword": "run95 fresh synthetic aggregate profile v3 2026-10-22",
+                "media": "anime",
+                "resultMode": "all",
+                "limit": 1
+              }
+            },
+            "maxSubjects": 1
+          }
+        }
+      ]
+    },
+    {
       "id": "r04-render-series-watch-order-offline-agent-mcp-v1",
       "frontierId": "R04",
       "epochId": "run95-r04-render-series-watch-order-offline-matrix-20261017",
