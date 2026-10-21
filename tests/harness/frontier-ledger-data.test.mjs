@@ -542,8 +542,14 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
     r04.next_action,
     /render_series_watch_order` v2 is REPORT_WRITTEN/u,
   );
+  assert.match(r04.next_action, /^R04 remains UNASSESSED\./u);
   assert.match(r04.next_action, /Keep R04 UNASSESSED.*theatrical-film scenario/u);
   assert.match(r04.next_action, /does not prove visual quality or the theatrical-film scenario/u);
+  assert.ok(r04.next_action.includes('earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry'));
+  assert.ok(r04.next_action.includes('separately keyed R04 renderer v2 profile'));
+  assert.ok(r04.next_action.includes('It may credit only this Agent/MCP matrix cell'));
+  assert.ok(r04.next_action.includes('keep the R04 theatrical-film scenario UNASSESSED'));
+  assert.ok(r04.next_action.includes('do not claim canonical order or visual quality'));
   assert.doesNotMatch(r04.next_action, /UNCLAIMED|unclaimed|selected.*get_series_watch_order v2/u);
   for (const source of [
     'scripts/lib/r04-render-series-watch-order-offline-fixture.mjs',

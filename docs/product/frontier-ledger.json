@@ -2117,7 +2117,7 @@
         "scripts/lib/c07-render-comparison-offline-fixture.mjs",
         "docs/research/run95-r02-r04-c07-terminal-profile-reconciliation-2026-10-21.json"
       ],
-      "next_action": "Keep C07 UNASSESSED. The `c07-render-comparison-offline-agent-mcp-matrix-v3` profile is terminal INCONCLUSIVE after one call: no report, retryAllowed=false, and both permanent labels are present. The attempt earns no C07 scenario or Agent/MCP matrix credit. Never retry or recreate it; continue Run #95 on another safe, unspent frontier. See docs/research/run95-r02-r04-c07-terminal-profile-reconciliation-2026-10-21.json and the C07 v3 profile/visual QA reports.",
+      "next_action": "Keep C07 UNASSESSED. The `c07-render-comparison-offline-agent-mcp-matrix-v3` profile is terminal INCONCLUSIVE after one call: no report, retryAllowed=false, and both permanent labels are present. The earlier selection note ‘A fresh cohort E v3 profile (`c07-render-comparison-offline-agent-mcp-matrix-v3`) was selected for matrix-only visual and Agent/MCP acceptance’ describes this consumed attempt, not new work; ‘Keep C07 UNASSESSED; do not claim compare_subject_cohorts.’ There is no C07 scenario or Agent/MCP matrix credit. Never retry or recreate it; continue Run #95 on another safe, unspent frontier. See docs/research/run95-r02-r04-c07-terminal-profile-reconciliation-2026-10-21.json and the C07 v3 profile/visual QA reports.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -3583,7 +3583,7 @@
         "tests/semantic/series-watch-order.test.ts",
         "docs/research/run95-r02-r04-c07-terminal-profile-reconciliation-2026-10-21.json"
       ],
-      "next_action": "Keep R04 UNASSESSED. `get_series_watch_order` v1/v2 and `render_series_watch_order` v1 are terminal INCONCLUSIVE/no-report/no-retry; never invoke them again. The separately keyed `render_series_watch_order` v2 is REPORT_WRITTEN with retryAllowed=false and remains only its existing Agent/MCP matrix row; it does not prove visual quality or the theatrical-film scenario. Continue on another safe, unspent frontier; future R04 scenario work requires a separate current-source contract. Do not claim canonical order. See docs/research/run95-r02-r04-c07-terminal-profile-reconciliation-2026-10-21.json.",
+      "next_action": "R04 remains UNASSESSED. `get_series_watch_order` v1/v2 and `render_series_watch_order` v1 are terminal INCONCLUSIVE/no-report/no-retry; the earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry. The separately keyed R04 renderer v2 profile, `render_series_watch_order` v2 is REPORT_WRITTEN with retryAllowed=false, and remains only its existing Agent/MCP matrix row. It may credit only this Agent/MCP matrix cell, which is already counted; it does not prove visual quality or the theatrical-film scenario. Keep R04 UNASSESSED as a scenario, keep the R04 theatrical-film scenario UNASSESSED, and do not claim canonical order or visual quality. Never invoke any terminal profile; continue on another safe, unspent frontier. Future R04 scenario work requires a separate current-source contract. See docs/research/run95-r02-r04-c07-terminal-profile-reconciliation-2026-10-21.json.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
