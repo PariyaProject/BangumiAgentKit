@@ -3062,6 +3062,11 @@ CODEX_A01_AGGREGATE_MATRIX_EXPECTED_METRICS_BY_PROFILE = {
         ('score', 7), ('heat', 90), ('episodesReported', 12), ('ratingStandardDeviation', 1),
     ],
 }
+CODEX_A01_AGGREGATE_MATRIX_SERVER_IDS_BY_PROFILE = {
+    'a01-aggregate-cohort-offline-agent-mcp-matrix-v1': 'bgk_a01_aggregate_cohort_offline',
+    'a01-aggregate-cohort-offline-agent-mcp-matrix-v2': 'bgk_a01_aggregate_cohort_offline_v2',
+    'a01-aggregate-cohort-offline-agent-mcp-matrix-v3': 'bgk_a01_aggregate_cohort_offline_v3',
+}
 
 def _select_codex_a01_aggregate_matrix_profile(profile_id):
     if not isinstance(profile_id, str):
@@ -3106,11 +3111,7 @@ def _select_codex_a01_aggregate_matrix_profile(profile_id):
     CODEX_A01_AGGREGATE_MATRIX_EVIDENCE_KIND = profile['evidenceKind']
     CODEX_A01_AGGREGATE_MATRIX_NETWORK_MODE = profile['networkMode']
     CODEX_A01_AGGREGATE_MATRIX_EXPECTED_METRICS = CODEX_A01_AGGREGATE_MATRIX_EXPECTED_METRICS_BY_PROFILE[profile_id]
-    CODEX_A01_AGGREGATE_MATRIX_SERVER_ID = (
-        'bgk_a01_aggregate_cohort_offline'
-        if profile_id == 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1'
-        else 'bgk_a01_aggregate_cohort_offline_v2'
-    )
+    CODEX_A01_AGGREGATE_MATRIX_SERVER_ID = CODEX_A01_AGGREGATE_MATRIX_SERVER_IDS_BY_PROFILE[profile_id]
     return True
 
 CODEX_A01_AGGREGATE_MATRIX_PROFILE = None

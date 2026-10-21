@@ -13360,6 +13360,17 @@ class A01AggregateCohortOfflineMatrixProfileTests(unittest.TestCase):
         self.assertEqual(self.profile['acceptanceScope'], 'agent-mcp-matrix-only')
         self.assertTrue(GENERATOR.codex_a01_aggregate_matrix_profile_frontier_is_unassessed())
 
+    def test_each_profile_selects_its_report_server_id(self):
+        expected_server_ids = {
+            'a01-aggregate-cohort-offline-agent-mcp-matrix-v1': 'bgk_a01_aggregate_cohort_offline',
+            'a01-aggregate-cohort-offline-agent-mcp-matrix-v2': 'bgk_a01_aggregate_cohort_offline_v2',
+            'a01-aggregate-cohort-offline-agent-mcp-matrix-v3': 'bgk_a01_aggregate_cohort_offline_v3',
+        }
+        for profile_id, expected_server_id in expected_server_ids.items():
+            with self.subTest(profile_id=profile_id):
+                self.assertTrue(GENERATOR._select_codex_a01_aggregate_matrix_profile(profile_id))
+                self.assertEqual(GENERATOR.CODEX_A01_AGGREGATE_MATRIX_SERVER_ID, expected_server_id)
+
     def test_routes_only_the_exact_aggregate_matrix_profile(self):
         with patch.object(
             GENERATOR,

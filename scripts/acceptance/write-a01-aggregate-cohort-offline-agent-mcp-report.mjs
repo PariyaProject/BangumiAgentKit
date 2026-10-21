@@ -11,8 +11,6 @@ import {
 import {
   A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
   A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS,
-  A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
-  A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID,
   A01_AGGREGATE_COHORT_TOOL,
   assertA01AggregateCohortOfflineProfile,
   getA01AggregateCohortOfflineProfileSpec,
@@ -37,14 +35,7 @@ function selectA01AggregateProfile(profileId) {
   if (!PROFILE || !spec) throw new Error('A01 aggregate matrix report profile is not registered.');
   assertA01AggregateCohortOfflineProfile(PROFILE);
   REPORT_PATH = path.join(ROOT, PROFILE.reportPath);
-  SERVER_ID =
-    profileId === A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID
-      ? 'bgk_a01_aggregate_cohort_offline'
-      : profileId === A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID
-        ? 'bgk_a01_aggregate_cohort_offline_v2'
-        : profileId === A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID
-          ? 'bgk_a01_aggregate_cohort_offline_v3'
-          : null;
+  SERVER_ID = spec.serverId;
   if (!SERVER_ID) throw new Error('Unknown A01 aggregate matrix report server ID.');
   EXPECTED_METRICS = spec.expectedMetrics;
 }

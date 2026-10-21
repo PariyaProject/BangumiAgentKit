@@ -33,12 +33,7 @@ function createValidRunInput(profileId = A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID
   const profile = getAgentMcpProfileById(profileId);
   const profileSpec = getA01AggregateCohortOfflineProfileSpec(profile);
   const expectedArguments = profile.calls[0].arguments;
-  const serverId =
-    profileId === A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID
-      ? 'bgk_a01_aggregate_cohort_offline'
-      : profileId === A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID
-        ? 'bgk_a01_aggregate_cohort_offline_v2'
-        : 'bgk_a01_aggregate_cohort_offline_v3';
+  const serverId = profileSpec.serverId;
   const keyPair = generateKeyPairSync('ed25519');
   const publicKeyBytes = keyPair.publicKey.export({ format: 'der', type: 'spki' });
   const publicKeyBase64 = publicKeyBytes.toString('base64');

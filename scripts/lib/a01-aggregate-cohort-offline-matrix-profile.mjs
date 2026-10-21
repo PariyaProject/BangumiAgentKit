@@ -69,6 +69,7 @@ const PROFILE_SPECS = new Map([
     {
       epochId: A01_AGGREGATE_COHORT_OFFLINE_EPOCH_ID,
       networkMode: A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE,
+      serverId: 'bgk_a01_aggregate_cohort_offline',
       arguments: A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
       subject: {
         id: 990184,
@@ -102,6 +103,7 @@ const PROFILE_SPECS = new Map([
     {
       epochId: A01_AGGREGATE_COHORT_OFFLINE_V2_EPOCH_ID,
       networkMode: A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+      serverId: 'bgk_a01_aggregate_cohort_offline_v2',
       arguments: A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS,
       subject: {
         id: 991219,
@@ -135,6 +137,7 @@ const PROFILE_SPECS = new Map([
     {
       epochId: A01_AGGREGATE_COHORT_OFFLINE_V3_EPOCH_ID,
       networkMode: A01_AGGREGATE_COHORT_OFFLINE_V3_NETWORK_MODE,
+      serverId: 'bgk_a01_aggregate_cohort_offline_v3',
       arguments: A01_AGGREGATE_COHORT_OFFLINE_V3_EXPECTED_ARGUMENTS,
       subject: {
         id: 991220,
