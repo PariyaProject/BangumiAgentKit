@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-21T22:02:12Z",
+  "updated_at": "2026-10-21T22:23:54Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2986,7 +2986,7 @@
         "docs/research/run95-a01-aggregate-cohort-offline-matrix-v2-contract-2026-10-19.md",
         "docs/research/run95-a01-aggregate-cohort-offline-matrix-v3-contract-2026-10-22.md"
       ],
-      "next_action": "Keep A01 UNASSESSED. The v1 and v2 aggregate-cohort matrix claims are terminal INCONCLUSIVE/no-report/retryAllowed=false and must never be invoked again. A distinct v3 profile with fresh synthetic input is selected under Run #95 Epoch run95-a01-aggregate-cohort-offline-matrix-v3-20261022; require exact Candidate/Base, seven-check CI, Harness candidate:check, same-identity GPT-6 Luna Max PASS, matching bundle attestation, and live UNCLAIMED status before its single call. A valid report may credit only bangumi.aggregate_subject_cohort Agent/MCP; no significance, population, public API, account, community, QQ/TIM, or stability claim is added. If v3 is inconclusive, preserve its terminal state and do not retry.",
+      "next_action": "Keep A01 UNASSESSED: the exact public reports support only their corresponding public API rows, not the cohort-analysis scenario. The aggregate_subject_cohort and three other cohort tools’ 2026-10-16 public-matrix rows are separate from the scenario. The C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks. Distinct v1 and v2 synthetic offline matrix-profile contracts are scoped to bangumi.aggregate_subject_cohort; the v2 contract uses fresh synthetic input and can earn at most the aggregate_subject_cohort Agent/MCP matrix row if an exact signed report is acknowledged by the active Harness. A distinct v3 synthetic matrix-profile contract documents a fresh profile and fixture and can credit only the bangumi.aggregate_subject_cohort Agent/MCP matrix row; it does not create A01 scenario evidence. Inspect profile eligibility in the active Harness Run/Epoch; never retry a consumed claim. No scenario, public API, significance, comparison, history, account, QQ/TIM, or stability credit is inferred. Keep OAuth/account/community/QQ/TIM passive while safe independent work remains.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
