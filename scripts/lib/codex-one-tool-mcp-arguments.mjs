@@ -55,6 +55,11 @@ import {
   S05_NETWORK_MODE,
   S05_PROFILE_ID,
 } from './s05-person-activity-evidence.mjs';
+import {
+  assertS01AnnualTvVoiceProfile,
+  S01_NETWORK_MODE,
+  S01_PROFILE_ID,
+} from './s01-annual-tv-voice-activity-profile.mjs';
 import { assertC03PersonActivityOfflineV2Profile } from './c03-person-activity-offline-matrix-v2-profile.mjs';
 import {
   allowsRenderSubjectCardOptionalTool,
@@ -69,6 +74,7 @@ const ANONYMOUS_PUBLIC_NETWORK_MODES = new Set([
   QUERY_SUBJECTS_FRESH_PUBLIC_V2_NETWORK_MODE,
   R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE,
   S05_NETWORK_MODE,
+  S01_NETWORK_MODE,
 ]);
 
 export function codexOneToolMcpServerProfileForNetworkMode(networkMode) {
@@ -132,6 +138,9 @@ export function parseCodexOneToolMcpArguments(argv) {
     if (profile.id === S05_PROFILE_ID && !assertS05PersonActivityProfile(profile)) {
       throw new Error('Registered S05 profile does not match its fixed public contract.');
     }
+    if (profile.id === S01_PROFILE_ID && !assertS01AnnualTvVoiceProfile(profile)) {
+      throw new Error('Registered S01 profile does not match its fixed public contract.');
+    }
     if (profile.id === C04_COHORT_COMPARISON_PROFILE_ID) {
       if (!/^(0|1)$/u.test(profileCallIndexValue ?? '')) {
         throw new Error('C04 requires a profile-call-index of 0 or 1 for a separate one-tool run.');
@@ -173,6 +182,7 @@ export function parseCodexOneToolMcpArguments(argv) {
           assertC04CohortComparisonPublicProfile(profile) ||
           assertTitleQueryRenderPublicProfile(profile) ||
           assertS05PersonActivityProfile(profile) ||
+          assertS01AnnualTvVoiceProfile(profile) ||
           assertC07RenderComparisonOfflineProfile(profile) ||
           assertG01RenderQueryOfflineProfile(profile) ||
           assertG01QuerySubjectsOfflineProfile(profile) ||

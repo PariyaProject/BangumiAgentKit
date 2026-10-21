@@ -11,6 +11,10 @@ import {
   summarizeS05PersonActivityToolResult,
 } from './s05-person-activity-evidence.mjs';
 import {
+  S01_PROFILE_ID,
+  summarizeS01AnnualTvVoiceResult,
+} from './s01-annual-tv-voice-activity-profile.mjs';
+import {
   R05_PROFILE_ID,
   summarizeR05SubjectOverlapToolResult,
 } from './r05-shared-person-overlap-evidence.mjs';
@@ -602,6 +606,9 @@ export function summarizeProfileToolResult(
   }
   if (profileId === S05_PROFILE_ID) {
     return summarizeS05PersonActivityToolResult(result, expectedArguments);
+  }
+  if (profileId === S01_PROFILE_ID) {
+    return summarizeS01AnnualTvVoiceResult(result, expectedArguments);
   }
   if (profileId === R05_PROFILE_ID) {
     return summarizeR05SubjectOverlapToolResult(result, expectedArguments);

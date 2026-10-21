@@ -1252,6 +1252,37 @@
       ]
     },
     {
+      "id": "s01-annual-tv-voice-agent-mcp-v1",
+      "frontierId": "S01",
+      "epochId": "run95-s01-current-source-annual-tv-agent-mcp-20261021",
+      "toolName": "bangumi.get_person_activity",
+      "argumentProfile": "fixed-s01-voice-tv-36m-48r-16d-8rows-v1",
+      "claimLabelName": "harness-r95-s01-annual-tv-claimed",
+      "reportPath": "docs/live-probes/s01-annual-tv-voice-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-s01-current-source-annual-tv-agent-mcp-contract-2026-10-21.md",
+      "evidenceKind": "codex_cli_s01_annual_tv_voice_agent_mcp",
+      "answerCheckMethod": "s01-yearly-unique-subjects-and-coverage-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-s01-current-source-annual-tv-agent-mcp-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 4096,
+      "calls": [
+        {
+          "toolName": "bangumi.get_person_activity",
+          "arguments": {
+            "personId": 5745,
+            "kind": "voice",
+            "media": "tv",
+            "windowMonths": 36,
+            "maxRelations": 48,
+            "maxSubjectDetails": 16,
+            "maxRows": 8
+          }
+        }
+      ]
+    },
+    {
       "id": "render-subject-card-offline-agent-mcp-v1",
       "frontierId": "OP-008",
       "epochId": "run95-render-subject-card-offline-agent-mcp-20261021",

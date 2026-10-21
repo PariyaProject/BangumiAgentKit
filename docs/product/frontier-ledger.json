@@ -2498,6 +2498,19 @@
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
         "docs/research/s01-voice-actor-annual-tv-count-contract-2026-10-08.md",
+        "docs/research/run95-s01-current-source-annual-tv-agent-mcp-contract-2026-10-21.md",
+        "scripts/acceptance/agent-mcp-profile-registry.json",
+        "scripts/acceptance/run-s01-annual-tv-voice-agent-mcp.mjs",
+        "scripts/acceptance/write-s01-annual-tv-voice-report.mjs",
+        "scripts/acceptance/validate-s01-annual-tv-voice-report.mjs",
+        "scripts/lib/s01-annual-tv-voice-activity-profile.mjs",
+        "scripts/lib/codex-one-tool-mcp-arguments.mjs",
+        "scripts/lib/codex-profile-tool-summary.mjs",
+        "apps/mcp/codex-one-tool-mcp-server.mjs",
+        "scripts/agent-harness.mjs",
+        "tests/harness/s01-annual-tv-voice-activity-profile.test.mjs",
+        "tests/harness/run-s01-annual-tv-voice-agent-mcp.test.mjs",
+        "tests/harness/write-s01-annual-tv-voice-report.test.mjs",
         "packages/bangumi-core/src/models/person-activity.ts",
         "packages/bangumi-core/src/services/person-activity-service.ts",
         "packages/tools/src/definitions/read-tools.ts",
@@ -2521,7 +2534,7 @@
         "tests/unit/s02-agent-answer-check.test.ts",
         "tests/unit/s02-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "Annual buckets now group eligible current relation/detail observations by first-air calendar year, clip the exact 36-calendar-month window boundaries, and deduplicate subject IDs. Keep S01 PARTIAL: the official relation operation is a bare array without paging/total, selection/detail limits and the current TV platform classifier cannot establish complete career counts, and no current-source Agent/MCP query was run in this Epoch. A zero under partial coverage is not evidence of absence. Reopen when source coverage or bounded current-source Agent/MCP evidence materially changes; no live query is in scope here.",
+      "next_action": "A fresh exact-profile public Agent/MCP cell is prepared for one current-source query; the profile is still unclaimed and no live Bangumi API/MCP call has run. Keep S01 PARTIAL. The one call is gated on exact Candidate/Base, all seven required CI checks, same-identity GPT-6 Luna Max PASS, and Harness UNCLAIMED readback. Counts use unique subjects by first-air year with clipped ranges and explicit relation/detail coverage; a zero under partial coverage is not evidence of absence. If the signed report passes, credit at most get_person_activity Agent/MCP and retain all career/history limitations.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
