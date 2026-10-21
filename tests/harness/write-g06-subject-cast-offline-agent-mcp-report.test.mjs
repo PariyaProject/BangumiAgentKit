@@ -1,7 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { createHash, generateKeyPairSync } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -15,6 +23,7 @@ import {
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import { P06_REQUIRED_CI_CHECKS } from '../../scripts/lib/p06-ci-run-evidence.mjs';
+import { sanitizeGitRepositoryEnvironment } from '../../scripts/lib/g26-mcp-bundle.mjs';
 import {
   G06_CAST_OFFLINE_PROFILE_ID,
   G06_CAST_OFFLINE_REPORT_PATH,
@@ -22,9 +31,43 @@ import {
 } from '../../scripts/lib/g06-subject-cast-offline-profile.mjs';
 
 const TOOL_NAME = 'bangumi.get_subject_cast';
+const ROOT = process.cwd();
+const SOURCE_SHA = execFileSync('git', ['rev-parse', 'HEAD'], {
+  cwd: ROOT,
+  encoding: 'utf8',
+  env: sanitizeGitRepositoryEnvironment(),
+}).trim();
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
-function fixture(profileId = G06_CAST_OFFLINE_PROFILE_ID) {
+function runGit(root, args) {
+  return execFileSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+    env: sanitizeGitRepositoryEnvironment(),
+  }).trim();
+}
+
+function prepareRoot(profileId = G06_CAST_OFFLINE_V2_PROFILE_ID) {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'g06-cast-catalog-snapshot-test-'));
+  const profile = getAgentMcpProfileById(profileId);
+  mkdirSync(path.join(root, 'docs/research'), { recursive: true });
+  copyFileSync(path.join(ROOT, 'docs/tool-catalog.json'), path.join(root, 'docs/tool-catalog.json'));
+  const selectionPath = path.join(root, profile.selectionEvidencePath);
+  mkdirSync(path.dirname(selectionPath), { recursive: true });
+  copyFileSync(path.join(ROOT, profile.selectionEvidencePath), selectionPath);
+  runGit(root, ['init', '--quiet']);
+  runGit(root, ['config', 'user.name', 'Acceptance Fixture']);
+  runGit(root, ['config', 'user.email', 'acceptance-fixture@example.invalid']);
+  runGit(root, ['add', 'docs/tool-catalog.json']);
+  runGit(root, ['commit', '--quiet', '-m', 'catalog source fixture']);
+  return root;
+}
+
+function fixture(
+  profileId = G06_CAST_OFFLINE_PROFILE_ID,
+  root = ROOT,
+  sourceRevision = SOURCE_SHA,
+) {
   const profile = getAgentMcpProfileById(profileId);
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
   const publicKeyDer = publicKey.export({ type: 'spki', format: 'der' });
@@ -33,7 +76,7 @@ function fixture(profileId = G06_CAST_OFFLINE_PROFILE_ID) {
     state: 'CLAIMED',
     reportWritten: false,
     retryAllowed: false,
-    claimId: 'profile-run-95-pr-222-aaaaaaaaaaaa-1792200000000',
+    claimId: `profile-run-95-pr-222-${sourceRevision.slice(0, 12)}-1792200000000`,
     profileId: profile.id,
     frontierId: 'G06',
     epochId: profile.epochId,
@@ -43,9 +86,9 @@ function fixture(profileId = G06_CAST_OFFLINE_PROFILE_ID) {
     argumentProfile: profile.argumentProfile,
     expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
     registrySha256: agentMcpProfileRegistrySha256(profile.id),
-    sourceCandidateSha: 'a'.repeat(40),
+    sourceCandidateSha: sourceRevision,
     baseSha: 'b'.repeat(40),
-    ciSha: 'a'.repeat(40),
+    ciSha: sourceRevision,
     ciStatus: 'SUCCESS',
     ciRunId: '38900001234',
     ciChecks: P06_REQUIRED_CI_CHECKS.map((name) => ({
@@ -58,7 +101,8 @@ function fixture(profileId = G06_CAST_OFFLINE_PROFILE_ID) {
     runnerReceiptPublicKey: publicKeyBase64,
     runnerReceiptPublicKeySha256: sha256(publicKeyDer),
   };
-  const tool = JSON.parse(readFileSync('docs/tool-catalog.json', 'utf8')).find(
+  const catalogBytes = readFileSync(path.join(root, 'docs/tool-catalog.json'));
+  const tool = JSON.parse(catalogBytes.toString('utf8')).find(
     (item) => item.name === TOOL_NAME,
   );
   const offlineFixture = {
@@ -80,7 +124,7 @@ function fixture(profileId = G06_CAST_OFFLINE_PROFILE_ID) {
     allowedCallCount: 1,
     deniedCallCount: 0,
     argumentMatch: true,
-    catalogSha256: sha256(readFileSync('docs/tool-catalog.json')),
+    catalogSha256: sha256(catalogBytes),
     toolDescriptionSha256: sha256(tool.description),
     inputSchemaSha256: sha256(canonicalAgentMcpProfileJson(tool.inputSchema)),
     offlineFixture,
@@ -237,5 +281,60 @@ test('G06 v2 report accepts bounded non-fatal Codex error counts with exact serv
     assert.equal(overflow.passed, false);
   } finally {
     rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test('G06 v2 catalog evidence stays bound to sourceRevision and the current target entry', () => {
+  const root = prepareRoot(G06_CAST_OFFLINE_V2_PROFILE_ID);
+  try {
+    const catalogPath = path.join(root, 'docs/tool-catalog.json');
+    runGit(root, ['config', 'core.autocrlf', 'false']);
+    const crlfSourceBytes = Buffer.from(
+      readFileSync(catalogPath, 'utf8').replace(/\r?\n/gu, '\r\n'),
+      'utf8',
+    );
+    writeFileSync(catalogPath, crlfSourceBytes);
+    runGit(root, ['add', 'docs/tool-catalog.json']);
+    runGit(root, ['commit', '--quiet', '-m', 'catalog CRLF source fixture']);
+    const sourceRevision = runGit(root, ['rev-parse', 'HEAD']);
+    writeFileSync(
+      catalogPath,
+      Buffer.from(crlfSourceBytes.toString('utf8').replace(/\r\n/gu, '\n'), 'utf8'),
+    );
+    const { privateKey, publicKeyBase64, claim, input } = fixture(
+      G06_CAST_OFFLINE_V2_PROFILE_ID,
+      root,
+      sourceRevision,
+    );
+    input.serverSummary.catalogSha256 = sha256(crlfSourceBytes);
+    const reportPath = path.join(root, 'docs/live-probes/g06-source-catalog-test.json');
+    mkdirSync(path.dirname(reportPath), { recursive: true });
+    const written = writeG06SubjectCastOfflineReport(input, {
+      privateKey,
+      publicKeyBase64,
+      reportPath,
+      root,
+    });
+    assert.equal(written.passed, true, written.reason);
+    const bytes = readFileSync(reportPath);
+    const report = JSON.parse(bytes.toString('utf8'));
+    assert.equal(report.catalogSha256, sha256(crlfSourceBytes));
+    const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
+    catalog.push({
+      name: 'unrelated.synthetic.catalog.entry',
+      auth: 'none',
+      risk: 'read',
+      description: 'Unrelated fixture entry.',
+      inputSchema: { type: 'object' },
+    });
+    writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
+    assert.equal(validateG06SubjectCastOfflineReport(report, claim, bytes, root).passed, true);
+
+    const changedCatalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
+    changedCatalog.find((item) => item.name === TOOL_NAME).description += ' changed';
+    writeFileSync(catalogPath, `${JSON.stringify(changedCatalog, null, 2)}\n`);
+    assert.equal(validateG06SubjectCastOfflineReport(report, claim, bytes, root).passed, false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });

@@ -280,6 +280,11 @@ const G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
   'scripts/test_acceptance_evidence.py',
   'scripts/generate-tool-acceptance-tasks.py',
   'scripts/agent-harness.mjs',
+  'scripts/lib/source-revision-tool-catalog.mjs',
+  'scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs',
+  'tests/harness/write-g06-subject-cast-offline-agent-mcp-report.test.mjs',
+  'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs',
+  'tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs',
   'tests/harness/agent-harness-cli.test.mjs',
   'tests/harness/g01-public-query-render-evidence.test.mjs',
   'tests/harness/g09-public-watch-order-evidence.test.mjs',
@@ -296,6 +301,12 @@ const R04_RENDER_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
   'scripts/generate-tool-acceptance-tasks.py',
   'scripts/test_acceptance_evidence.py',
   'scripts/agent-harness.mjs',
+  'apps/mcp/codex-one-tool-mcp-server.mjs',
+  'scripts/lib/source-revision-tool-catalog.mjs',
+  'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs',
+  'tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs',
+  'scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs',
+  'tests/harness/write-g06-subject-cast-offline-agent-mcp-report.test.mjs',
   'tests/harness/agent-harness-cli.test.mjs',
   'tests/harness/g01-public-query-render-evidence.test.mjs',
   'tests/harness/g09-public-watch-order-evidence.test.mjs',
@@ -3655,9 +3666,9 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID',
         profile.id === G06_CAST_OFFLINE_V2_PROFILE_ID
-          ? 'A G06 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact acceptance verifier files, and the documented G14 terminal-disposition report/test exception, with the MCP bundle unchanged.'
+          ? 'A G06 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact source-catalog helper and acceptance verifier files, and the documented G14 terminal-disposition report/test exception, with the MCP bundle unchanged.'
           : profile.id === R04_RENDER_V2_PROFILE_ID
-            ? 'An R04 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact acceptance verifier files, the documented G14 terminal-disposition report/test exception, and this policy file, with the MCP bundle unchanged.'
+            ? 'An R04 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact source-catalog MCP server/helper and acceptance verifier files, the documented G14 terminal-disposition report/test exception, and this policy file, with the MCP bundle unchanged.'
             : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
         { profileId: profile.id, changedPaths: changedSinceReport },
       );
@@ -8264,7 +8275,7 @@ function assertG06CastOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNu
     throw new HarnessInvariantError(
       'G06_CAST_OFFLINE_REFRESH_SCOPE_INVALID',
       profile.id === G06_CAST_OFFLINE_V2_PROFILE_ID
-        ? 'The final Candidate may contain only the validated G06 report, its frontier reference, generated matrix, and the exact G06 v2 acceptance verifier files.'
+        ? 'The final Candidate may contain only the validated G06 report, its frontier reference, generated matrix, source-catalog helper, and exact G06 v2 acceptance verifier files.'
         : 'The final Candidate may contain only the validated G06 report, its frontier reference, and generated matrix refresh.',
       { changed: [...changed] },
     );

@@ -3214,6 +3214,11 @@ CODEX_G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = {
     'scripts/test_acceptance_evidence.py',
     'scripts/generate-tool-acceptance-tasks.py',
     'scripts/agent-harness.mjs',
+    'scripts/lib/source-revision-tool-catalog.mjs',
+    'scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs',
+    'tests/harness/write-g06-subject-cast-offline-agent-mcp-report.test.mjs',
+    'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs',
+    'tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs',
     'tests/harness/agent-harness-cli.test.mjs',
     'tests/harness/g01-public-query-render-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
@@ -3481,6 +3486,12 @@ CODEX_R04_RENDER_V2_EVIDENCE_REFRESH_PATHS = {
     'scripts/generate-tool-acceptance-tasks.py',
     'scripts/test_acceptance_evidence.py',
     'scripts/agent-harness.mjs',
+    'apps/mcp/codex-one-tool-mcp-server.mjs',
+    'scripts/lib/source-revision-tool-catalog.mjs',
+    'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs',
+    'tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs',
+    'scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs',
+    'tests/harness/write-g06-subject-cast-offline-agent-mcp-report.test.mjs',
     'tests/harness/agent-harness-cli.test.mjs',
     'tests/harness/g01-public-query-render-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-evidence.test.mjs',
@@ -8715,7 +8726,7 @@ def _sanitized_repository_git_environment() -> dict[str, str]:
 
 
 def _run_repository_git(
-    repository_root: str | Path, *arguments: str,
+    repository_root: str | Path, *arguments: str, text: bool = True,
 ) -> subprocess.CompletedProcess:
     """Run a Git read against this checkout, ignoring caller-selected Git metadata/config."""
     return subprocess.run(
@@ -8723,8 +8734,47 @@ def _run_repository_git(
         cwd=repository_root,
         env=_sanitized_repository_git_environment(),
         capture_output=True,
-        text=True,
+        text=text,
         check=False,
+    )
+
+
+def _report_catalog_matches_source_revision(
+    report: object, tool_name: str, current_tool: object,
+) -> bool:
+    """Bind a report's catalog digest to its source commit, not today's global catalog."""
+    source_revision = report.get('sourceRevision') if isinstance(report, dict) else None
+    if (
+        not isinstance(source_revision, str)
+        or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
+        or not isinstance(report.get('catalogSha256'), str)
+        or re.fullmatch(r'[0-9a-f]{64}', report['catalogSha256']) is None
+        or not isinstance(current_tool, dict)
+    ):
+        return False
+
+    try:
+        result = _run_repository_git(
+            ROOT, 'show', f'{source_revision}:docs/tool-catalog.json',
+            text=False,
+        )
+        if result.returncode != 0 or not isinstance(result.stdout, bytes):
+            return False
+        catalog_bytes = result.stdout
+        catalog = json.loads(catalog_bytes.decode('utf-8'))
+    except (OSError, ValueError, UnicodeError):
+        return False
+
+    if not isinstance(catalog, list):
+        return False
+    source_tools = [
+        item for item in catalog
+        if isinstance(item, dict) and item.get('name') == tool_name
+    ]
+    return (
+        hashlib.sha256(catalog_bytes).hexdigest() == report['catalogSha256']
+        and len(source_tools) == 1
+        and source_tools[0] == current_tool
     )
 
 
@@ -16413,7 +16463,9 @@ def codex_g06_cast_offline_profile_report_is_valid(
         not isinstance(catalog_tool, dict)
         or catalog_tool.get('auth') != 'none'
         or catalog_tool.get('risk') != 'read'
-        or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+        or not _report_catalog_matches_source_revision(
+            report, profile['toolName'], catalog_tool,
+        )
         or report.get('toolDescriptionSha256') != hashlib.sha256(catalog_tool.get('description', '').encode('utf-8')).hexdigest()
         or report.get('inputSchemaSha256') != _canonical_json_sha256(catalog_tool.get('inputSchema'))
     ):
@@ -17652,7 +17704,9 @@ def codex_r04_render_v2_profile_report_is_valid(
         return False
     if (
         not isinstance(current, dict) or current.get('auth') != 'none' or current.get('risk') != 'read'
-        or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+        or not _report_catalog_matches_source_revision(
+            report, CODEX_R04_RENDER_V2_TOOL_NAME, current,
+        )
         or report.get('toolDescriptionSha256') != hashlib.sha256(current.get('description', '').encode('utf-8')).hexdigest()
         or report.get('inputSchemaSha256') != _canonical_json_sha256(current.get('inputSchema'))
     ):

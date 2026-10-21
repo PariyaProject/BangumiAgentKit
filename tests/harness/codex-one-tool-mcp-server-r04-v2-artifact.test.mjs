@@ -11,6 +11,21 @@ const SERVER_SOURCE = readFileSync(
   'utf8',
 );
 
+test('R04 v2 server binds its catalog digest and tool view to sourceRevision bytes', () => {
+  const snapshotStart = SERVER_SOURCE.indexOf('  const sourceRevision = gitRepositoryText(PRODUCT_ROOT,');
+  const snapshotEnd = SERVER_SOURCE.indexOf('  const catalog =', snapshotStart);
+  assert.ok(snapshotStart >= 0 && snapshotEnd > snapshotStart);
+  const snapshot = SERVER_SOURCE.slice(snapshotStart, snapshotEnd);
+  assert.match(snapshot, /config\.networkMode === R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE/u);
+  assert.match(snapshot, /readToolCatalogAtSourceRevision\(PRODUCT_ROOT, sourceRevision\)/u);
+  assert.match(snapshot, /catalogSnapshot\?\.bytes/u);
+  assert.match(SERVER_SOURCE, /catalogSnapshot\?\.catalog/u);
+  assert.match(
+    SERVER_SOURCE,
+    /catalogSha256: createHash\('sha256'\)\.update\(catalogBytes\)\.digest\('hex'\)/u,
+  );
+});
+
 test('R04 v2 projection matches the actual ephemeral MCP artifact summary contract', () => {
   const summarizeStart = SERVER_SOURCE.indexOf('  summarize(id, { verifyPng = false } = {}) {');
   const summarizeEnd = SERVER_SOURCE.indexOf('\n  }\n}', summarizeStart);

@@ -1,10 +1,19 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { Buffer } from 'node:buffer';
 import { createHash, generateKeyPairSync } from 'node:crypto';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { sanitizeGitRepositoryEnvironment } from '../../scripts/lib/g26-mcp-bundle.mjs';
 import {
   agentMcpProfileArgumentsSha256,
   agentMcpProfileRegistrySha256,
@@ -15,6 +24,7 @@ import {
   R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE,
   R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID,
 } from '../../scripts/lib/r04-render-series-watch-order-offline-v2-fixture.mjs';
+import { readToolCatalogAtSourceRevision } from '../../scripts/lib/source-revision-tool-catalog.mjs';
 import {
   buildR04RenderV2ProfileReport,
   validateR04RenderV2ProfileReport,
@@ -23,7 +33,6 @@ import {
 
 const ROOT = process.cwd();
 const PROFILE = getAgentMcpProfileById(R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID);
-const SOURCE_SHA = 'a'.repeat(40);
 const BASE_SHA = 'b'.repeat(40);
 const BUNDLE_SHA = 'c'.repeat(64);
 const SERVER_ID = 'bgk_r04_render_watch_order_v2';
@@ -39,16 +48,26 @@ const CI_CHECKS = [
   'discovery-foundation',
 ].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
 
+function withLineEnding(bytes, lineEnding) {
+  const normalized = bytes.toString('utf8').replace(/\r\n/gu, '\n');
+  return Buffer.from(normalized.replace(/\n/gu, lineEnding === 'crlf' ? '\r\n' : '\n'), 'utf8');
+}
+
 function makeInput(root = ROOT) {
   const keys = generateKeyPairSync('ed25519');
   const publicKeyDer = keys.publicKey.export({ type: 'spki', format: 'der' });
   const publicKeyBase64 = publicKeyDer.toString('base64');
-  const catalogBytes = readFileSync(path.join(root, 'docs/tool-catalog.json'));
-  const catalog = JSON.parse(catalogBytes.toString('utf8'));
-  const tool = catalog.find((row) => row.name === PROFILE.toolName);
+  const sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: root,
+    encoding: 'utf8',
+    env: sanitizeGitRepositoryEnvironment(),
+  }).trim();
+  const sourceCatalog = readToolCatalogAtSourceRevision(root, sourceRevision);
+  const catalogBytes = sourceCatalog.bytes;
+  const tool = sourceCatalog.catalog.find((row) => row.name === PROFILE.toolName);
   const claim = {
     schemaVersion: 1,
-    claimId: `profile-run-95-pr-207-${SOURCE_SHA.slice(0, 12)}-1792200000000`,
+    claimId: `profile-run-95-pr-207-${sourceRevision.slice(0, 12)}-1792200000000`,
     state: 'CLAIMED',
     profileId: PROFILE.id,
     frontierId: 'R04',
@@ -60,9 +79,9 @@ function makeInput(root = ROOT) {
     expectedArguments: PROFILE.calls.map((call) => call.arguments),
     expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
     registrySha256: agentMcpProfileRegistrySha256(PROFILE.id),
-    sourceCandidateSha: SOURCE_SHA,
+    sourceCandidateSha: sourceRevision,
     baseSha: BASE_SHA,
-    ciSha: SOURCE_SHA,
+    ciSha: sourceRevision,
     ciStatus: 'SUCCESS',
     ciRunId: '38822222222',
     ciChecks: CI_CHECKS,
@@ -94,7 +113,7 @@ function makeInput(root = ROOT) {
     argumentProfile: PROFILE.argumentProfile,
     networkMode: R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE,
     expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
-    sourceRevision: SOURCE_SHA,
+    sourceRevision,
     bundleSha256: BUNDLE_SHA,
     catalogSha256: sha256(catalogBytes),
     toolName: PROFILE.toolName,
@@ -139,7 +158,7 @@ function makeInput(root = ROOT) {
   return { keyPair: keys, claim, serverSummary, events, answer: ACK };
 }
 
-function prepareRoot() {
+function prepareRoot({ sourceCatalogEol = 'lf', workingCatalogEol = sourceCatalogEol } = {}) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'r04-render-report-test-'));
   mkdirSync(path.join(root, 'docs/research'), { recursive: true });
   mkdirSync(path.join(root, 'docs/live-probes'), { recursive: true });
@@ -147,10 +166,24 @@ function prepareRoot() {
     path.join(ROOT, 'docs/tool-catalog.json'),
     path.join(root, 'docs/tool-catalog.json'),
   );
+  const catalogPath = path.join(root, 'docs/tool-catalog.json');
+  writeFileSync(catalogPath, withLineEnding(readFileSync(catalogPath), sourceCatalogEol));
   copyFileSync(
     path.join(ROOT, PROFILE.selectionEvidencePath),
     path.join(root, PROFILE.selectionEvidencePath),
   );
+  const gitOptions = {
+    cwd: root,
+    encoding: 'utf8',
+    env: sanitizeGitRepositoryEnvironment(),
+  };
+  execFileSync('git', ['init', '--quiet'], gitOptions);
+  execFileSync('git', ['config', 'user.name', 'Acceptance Fixture'], gitOptions);
+  execFileSync('git', ['config', 'user.email', 'acceptance-fixture@example.invalid'], gitOptions);
+  execFileSync('git', ['config', 'core.autocrlf', 'false'], gitOptions);
+  execFileSync('git', ['add', 'docs/tool-catalog.json'], gitOptions);
+  execFileSync('git', ['commit', '--quiet', '-m', 'catalog source fixture'], gitOptions);
+  writeFileSync(catalogPath, withLineEnding(readFileSync(catalogPath), workingCatalogEol));
   return root;
 }
 
@@ -184,6 +217,95 @@ test('R04 render report signs only artifact metadata and matrix evidence', (t) =
   assert.equal('answer' in validation.report, false);
   assert.equal(validation.report.frontierId, 'R04');
   assert.equal(validation.report.scenarioId, null);
+});
+
+test('R04 v2 catalog evidence stays bound to sourceRevision and the current target entry', (t) => {
+  const root = prepareRoot();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const input = makeInput(root);
+  const reportPath = path.join(root, PROFILE.reportPath);
+  mkdirSync(path.dirname(reportPath), { recursive: true });
+  const written = buildR04RenderV2ProfileReport(
+    {
+      claim: input.claim,
+      serverSummary: input.serverSummary,
+      events: input.events,
+      answer: input.answer,
+      codexCliVersion: '0.1.0',
+      eventStreamSha256: 'e'.repeat(64),
+      serverSummarySha256: 'f'.repeat(64),
+    },
+    { privateKey: input.keyPair.privateKey, root, reportPath },
+  );
+  assert.equal(written.passed, true, written.reason);
+  const reportBytes = readFileSync(reportPath);
+  const report = JSON.parse(reportBytes.toString('utf8'));
+  const catalogPath = path.join(root, 'docs/tool-catalog.json');
+  const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
+  catalog.push({
+    name: 'unrelated.synthetic.catalog.entry',
+    auth: 'none',
+    risk: 'read',
+    description: 'Unrelated fixture entry.',
+    inputSchema: { type: 'object' },
+  });
+  writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
+  assert.equal(validateR04RenderV2ProfileReport(report, input.claim, reportBytes, root).passed, true);
+
+  const changedCatalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
+  changedCatalog.find((row) => row.name === PROFILE.toolName).risk = 'write';
+  writeFileSync(catalogPath, `${JSON.stringify(changedCatalog, null, 2)}\n`);
+  assert.equal(validateR04RenderV2ProfileReport(report, input.claim, reportBytes, root).passed, false);
+});
+
+test('R04 report hashes the raw CRLF sourceRevision catalog when the worktree is LF', (t) => {
+  const root = prepareRoot({ sourceCatalogEol: 'crlf', workingCatalogEol: 'lf' });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const input = makeInput(root);
+  const sourceCatalog = readToolCatalogAtSourceRevision(root, input.claim.sourceCandidateSha);
+  const workingCatalogBytes = readFileSync(path.join(root, 'docs/tool-catalog.json'));
+  assert.equal(sourceCatalog.bytes.includes(Buffer.from('\r\n')), true);
+  assert.equal(workingCatalogBytes.includes(Buffer.from('\r\n')), false);
+  assert.notEqual(sha256(sourceCatalog.bytes), sha256(workingCatalogBytes));
+  assert.equal(input.serverSummary.catalogSha256, sha256(sourceCatalog.bytes));
+
+  const reportPath = path.join(root, PROFILE.reportPath);
+  mkdirSync(path.dirname(reportPath), { recursive: true });
+  const written = buildR04RenderV2ProfileReport(
+    {
+      claim: input.claim,
+      serverSummary: input.serverSummary,
+      events: input.events,
+      answer: input.answer,
+      codexCliVersion: '0.1.0',
+      eventStreamSha256: 'e'.repeat(64),
+      serverSummarySha256: 'f'.repeat(64),
+    },
+    { privateKey: input.keyPair.privateKey, root, reportPath },
+  );
+  assert.equal(written.passed, true, written.reason);
+  const reportBytes = readFileSync(reportPath);
+  const report = JSON.parse(reportBytes.toString('utf8'));
+  assert.equal(report.catalogSha256, sha256(sourceCatalog.bytes));
+  assert.equal(
+    validateR04RenderV2ProfileReport(report, input.claim, reportBytes, root).passed,
+    true,
+  );
+
+  const rejected = buildR04RenderV2ProfileReport(
+    {
+      claim: input.claim,
+      serverSummary: { ...input.serverSummary, catalogSha256: sha256(workingCatalogBytes) },
+      events: input.events,
+      answer: input.answer,
+      codexCliVersion: '0.1.0',
+      eventStreamSha256: 'e'.repeat(64),
+      serverSummarySha256: 'f'.repeat(64),
+    },
+    { privateKey: input.keyPair.privateKey, root },
+  );
+  assert.equal(rejected.passed, false);
+  assert.equal(rejected.reason, 'R04_RENDER_CATALOG_SOURCE_MISMATCH');
 });
 
 test('R04 render report rejects external asset activity and altered readback evidence', () => {

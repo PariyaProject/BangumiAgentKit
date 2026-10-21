@@ -171,6 +171,7 @@ import {
 } from '../../scripts/lib/r02-positive-direct-relations-profile.mjs';
 import { inspectC07PngArtifact } from '../../scripts/lib/c07-png-artifact-validation.mjs';
 import { buildG06PrivacySummary } from '../../scripts/lib/g06-privacy-summary.mjs';
+import { readToolCatalogAtSourceRevision } from '../../scripts/lib/source-revision-tool-catalog.mjs';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { RenderService } from '../../packages/renderer/dist/index.js';
@@ -406,8 +407,15 @@ async function main(argv = process.argv.slice(2)) {
     }
   }
 
-  const catalogBytes = fs.readFileSync(path.join(PRODUCT_ROOT, 'docs/tool-catalog.json'));
-  const catalog = JSON.parse(catalogBytes.toString('utf8'));
+  const sourceRevision = gitRepositoryText(PRODUCT_ROOT, ['rev-parse', 'HEAD']);
+  const catalogSnapshot =
+    config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE
+      ? readToolCatalogAtSourceRevision(PRODUCT_ROOT, sourceRevision)
+      : null;
+  const catalogBytes =
+    catalogSnapshot?.bytes ?? fs.readFileSync(path.join(PRODUCT_ROOT, 'docs/tool-catalog.json'));
+  const catalog =
+    catalogSnapshot?.catalog ?? JSON.parse(catalogBytes.toString('utf8'));
   const catalogTools = config.toolNames.map((toolName) =>
     catalog.find((item) => item?.name === toolName),
   );
@@ -419,7 +427,6 @@ async function main(argv = process.argv.slice(2)) {
       'Only exact catalogued auth=none, risk=read tools may be exposed by this probe server.',
     );
   }
-  const sourceRevision = gitRepositoryText(PRODUCT_ROOT, ['rev-parse', 'HEAD']);
   const bundleSha256 = computeMcpBundleSha256(PRODUCT_ROOT);
   if (
     sourceRevision !== config.candidateSha ||

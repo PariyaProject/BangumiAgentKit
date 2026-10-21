@@ -30,6 +30,29 @@ TABLE_CHECKER = importlib.util.module_from_spec(TABLE_SPEC)
 TABLE_SPEC.loader.exec_module(TABLE_CHECKER)
 
 
+def _commit_catalog_source_revision(root):
+    subprocess.run(
+        ['git', '-C', str(root), 'init', '--quiet'],
+        check=True, capture_output=True,
+    )
+    subprocess.run(
+        ['git', '-C', str(root), '-c', 'user.name=Acceptance Test',
+         '-c', 'user.email=acceptance-test@example.invalid', 'add', '--',
+         'docs/tool-catalog.json'],
+        check=True, capture_output=True,
+    )
+    subprocess.run(
+        ['git', '-C', str(root), '-c', 'user.name=Acceptance Test',
+         '-c', 'user.email=acceptance-test@example.invalid', 'commit',
+         '--quiet', '-m', 'Fixture source catalog'],
+        check=True, capture_output=True,
+    )
+    return subprocess.run(
+        ['git', '-C', str(root), 'rev-parse', 'HEAD'],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+
+
 class G01RenderQueryProfileContractTests(unittest.TestCase):
     def test_v1_and_v2_are_independently_bound_in_acceptance_helpers(self):
         profile_ids = [
@@ -8878,6 +8901,11 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
             'scripts/test_acceptance_evidence.py',
             'scripts/generate-tool-acceptance-tasks.py',
             'scripts/agent-harness.mjs',
+            'scripts/lib/source-revision-tool-catalog.mjs',
+            'scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs',
+            'tests/harness/write-g06-subject-cast-offline-agent-mcp-report.test.mjs',
+            'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs',
+            'tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs',
             'tests/harness/agent-harness-cli.test.mjs',
             'tests/harness/g01-public-query-render-evidence.test.mjs',
             'tests/harness/g09-public-watch-order-evidence.test.mjs',
@@ -8892,6 +8920,10 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         ))
         self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
             (base_paths | verifier_paths) | {'apps/mcp/src/tools/subject-cast.ts'},
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        ))
+        self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
+            (base_paths | verifier_paths) | {'apps/mcp/codex-one-tool-mcp-server.mjs'},
             GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
         ))
         self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
@@ -10342,6 +10374,8 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
         self.catalog_path = self.root / 'docs/tool-catalog.json'
         self.catalog_path.parent.mkdir(parents=True, exist_ok=True)
         self.catalog_path.write_bytes(GENERATOR.CATALOG.read_bytes())
+        self.source_catalog = json.loads(self.catalog_path.read_text(encoding='utf-8'))
+        self.source_revision = _commit_catalog_source_revision(self.root)
         frontier_path = self.root / 'docs/product/frontier-ledger.json'
         frontier_path.parent.mkdir(parents=True, exist_ok=True)
         frontier = json.loads((GENERATOR.ROOT / 'docs/product/frontier-ledger.json').read_text())
@@ -10384,9 +10418,9 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
             'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
             'codexCliVersion': '0.162.0-alpha.17.2',
             'observedAt': '2026-10-17T05:00:00.000Z',
-            'sourceRevision': 'a' * 40,
+            'sourceRevision': self.source_revision,
             'baseSha': 'b' * 40,
-            'ciSha': 'a' * 40,
+            'ciSha': self.source_revision,
             'ciStatus': 'SUCCESS',
             'ciRunId': '38900001234',
             'ciChecks': [
@@ -10394,7 +10428,7 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
                 for name in GENERATOR.CODEX_G06_CAST_OFFLINE_REQUIRED_CI_CHECKS
             ],
             'prNumber': 222,
-            'claimId': 'profile-run-95-pr-222-aaaaaaaaaaaa-1792200000000',
+            'claimId': f'profile-run-95-pr-222-{self.source_revision[:12]}-1792200000000',
             'mcpBundleSha256': 'c' * 64,
             'registrySha256': GENERATOR.CODEX_G06_CAST_OFFLINE_PROFILE_REGISTRY_SHA256,
             'selectionEvidenceSha256': hashlib.sha256(selection_bytes).hexdigest(),
@@ -10473,6 +10507,13 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
                 '',
             )
 
+        real_subprocess_run = subprocess.run
+
+        def run_git_or_validate_report(args, *positional, **kwargs):
+            if isinstance(args, list) and args and args[0] == 'git':
+                return real_subprocess_run(args, *positional, **kwargs)
+            return validate_embedded_report(args, **kwargs)
+
         with (
             patch.object(GENERATOR, 'codex_g06_cast_offline_profile_revision_has_implementation', return_value=True),
             patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
@@ -10480,7 +10521,7 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
             patch.object(GENERATOR, 'codex_g06_cast_offline_profile_report_matches_candidate_revision', return_value=True),
             patch.object(GENERATOR, 'codex_g06_cast_offline_profile_report_candidate_binding_is_current', return_value=True),
             patch.object(GENERATOR, 'codex_g06_cast_offline_profile_disposition_matches_report', return_value={'state': 'REPORT_WRITTEN'}),
-            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=run_git_or_validate_report),
         ):
             return GENERATOR.codex_g06_cast_offline_profile_report_is_valid(
                 report,
@@ -10572,6 +10613,13 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
                 '',
             )
 
+        real_subprocess_run = subprocess.run
+
+        def run_git_or_validate_report(args, *positional, **kwargs):
+            if isinstance(args, list) and args and args[0] == 'git':
+                return real_subprocess_run(args, *positional, **kwargs)
+            return validate_embedded_report(args, **kwargs)
+
         with (
             patch.object(GENERATOR, 'codex_g06_cast_offline_profile_harness_status', return_value=harness_status),
             patch.object(GENERATOR, 'codex_g06_cast_offline_profile_epoch_harness_status', return_value={'fixture': True}),
@@ -10579,7 +10627,7 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
             patch.object(GENERATOR, 'codex_g06_cast_offline_profile_report_matches_candidate_revision', return_value=True),
             patch.object(GENERATOR, 'codex_g06_cast_offline_profile_report_candidate_binding_is_current', return_value=True),
             patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
-            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=run_git_or_validate_report),
         ):
             sources = GENERATOR.model_mcp_e2e_sources(json.loads(self.catalog_path.read_text()))
         return sources, report_bytes
@@ -10657,6 +10705,77 @@ class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
                 },
             },
         )
+
+    def test_v2_accepts_source_catalog_after_unrelated_current_catalog_addition(self):
+        report, _, _ = self.build_v2_report()
+        current_catalog = json.loads(json.dumps(self.source_catalog))
+        current_catalog.append({
+            'name': 'bangumi.unrelated_catalog_extension',
+            'auth': 'none',
+            'risk': 'read',
+            'description': 'Unrelated post-report catalog entry.',
+            'inputSchema': {'type': 'object', 'properties': {}},
+        })
+        self.catalog_path.write_text(json.dumps(current_catalog), encoding='utf-8')
+        self.assertTrue(self.validate_report(report))
+
+    def test_v2_catalog_digest_hashes_exact_crlf_source_blob_bytes(self):
+        subprocess.run(
+            ['git', '-C', str(self.root), 'config', 'core.autocrlf', 'false'],
+            check=True, capture_output=True,
+        )
+        lf_catalog_bytes = self.catalog_path.read_bytes()
+        crlf_catalog_bytes = lf_catalog_bytes.replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')
+        self.catalog_path.write_bytes(crlf_catalog_bytes)
+        self.source_revision = _commit_catalog_source_revision(self.root)
+        self.report = self.build_report()
+        report, _, profile = self.build_v2_report()
+        current_catalog = json.loads(crlf_catalog_bytes.decode('utf-8'))
+        current_tool = next(
+            item for item in current_catalog
+            if item['name'] == profile['toolName']
+        )
+
+        self.assertEqual(report['catalogSha256'], hashlib.sha256(crlf_catalog_bytes).hexdigest())
+        self.assertTrue(GENERATOR._report_catalog_matches_source_revision(
+            report, profile['toolName'], current_tool,
+        ))
+
+        normalized = json.loads(json.dumps(report))
+        normalized['catalogSha256'] = hashlib.sha256(
+            crlf_catalog_bytes.replace(b'\r\n', b'\n'),
+        ).hexdigest()
+        self.assertFalse(GENERATOR._report_catalog_matches_source_revision(
+            normalized, profile['toolName'], current_tool,
+        ))
+
+    def test_v2_rejects_changed_target_entry_and_source_catalog_binding(self):
+        report, _, _ = self.build_v2_report()
+        for field, value in (
+            ('description', 'Changed current description.'),
+            ('inputSchema', {'type': 'object', 'properties': {'changed': {'type': 'boolean'}}}),
+            ('auth', 'required'),
+            ('risk', 'write'),
+        ):
+            with self.subTest(field=field):
+                current_catalog = json.loads(json.dumps(self.source_catalog))
+                current_tool = next(
+                    item for item in current_catalog
+                    if item['name'] == GENERATOR.CODEX_G06_CAST_OFFLINE_TOOL_NAME
+                )
+                current_tool[field] = value
+                self.catalog_path.write_text(json.dumps(current_catalog), encoding='utf-8')
+                self.assertFalse(self.validate_report(report))
+
+        self.catalog_path.write_bytes(json.dumps(self.source_catalog).encode('utf-8'))
+        wrong_catalog_hash = json.loads(json.dumps(report))
+        wrong_catalog_hash['catalogSha256'] = '0' * 64
+        self.assertFalse(self.validate_report(wrong_catalog_hash))
+
+        invalid_source_revision = json.loads(json.dumps(report))
+        invalid_source_revision['sourceRevision'] = 'f' * 40
+        invalid_source_revision['ciSha'] = 'f' * 40
+        self.assertFalse(self.validate_report(invalid_source_revision))
 
 
 class R04OfflineProfileReportValidationTests(unittest.TestCase):
@@ -10952,6 +11071,12 @@ class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
             'scripts/generate-tool-acceptance-tasks.py',
             'scripts/test_acceptance_evidence.py',
             'scripts/agent-harness.mjs',
+            'apps/mcp/codex-one-tool-mcp-server.mjs',
+            'scripts/lib/source-revision-tool-catalog.mjs',
+            'scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs',
+            'tests/harness/write-g06-subject-cast-offline-agent-mcp-report.test.mjs',
+            'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs',
+            'tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs',
             'tests/harness/agent-harness-cli.test.mjs',
             'tests/harness/g01-public-query-render-evidence.test.mjs',
             'tests/harness/g09-public-watch-order-evidence.test.mjs',
@@ -10964,7 +11089,7 @@ class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
             allowed_paths,
         ))
         self.assertFalse(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(
-            allowed_paths | {'apps/mcp/src/tools/rendering.ts'},
+            allowed_paths | {'apps/mcp/codex-auth-start-offline-mcp-server.mjs'},
         ))
         self.assertFalse(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(
             allowed_paths - {GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH},
@@ -11152,6 +11277,8 @@ class R04RenderSeriesWatchOrderV2ProfileReportValidationTests(unittest.TestCase)
             if item.get('name') == GENERATOR.CODEX_R04_RENDER_V2_TOOL_NAME
         )
         self.catalog_path.write_text(json.dumps([self.tool]), encoding='utf-8')
+        self.source_catalog = [self.tool]
+        self.source_revision = _commit_catalog_source_revision(self.root)
         self.report = self.build_report()
 
     def tearDown(self):
@@ -11177,9 +11304,9 @@ class R04RenderSeriesWatchOrderV2ProfileReportValidationTests(unittest.TestCase)
             'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
             'codexCliVersion': '0.162.0-alpha.17.2',
             'observedAt': '2026-10-18T03:00:00.000Z',
-            'sourceRevision': 'a' * 40,
+            'sourceRevision': self.source_revision,
             'baseSha': 'b' * 40,
-            'ciSha': 'a' * 40,
+            'ciSha': self.source_revision,
             'ciStatus': 'SUCCESS',
             'ciRunId': '39092463148',
             'ciChecks': [
@@ -11187,7 +11314,7 @@ class R04RenderSeriesWatchOrderV2ProfileReportValidationTests(unittest.TestCase)
                 for name in GENERATOR.CODEX_R04_REQUIRED_CI_CHECKS
             ],
             'prNumber': 222,
-            'claimId': 'profile-run-95-pr-222-aaaaaaaaaaaa-1792200000000',
+            'claimId': f'profile-run-95-pr-222-{self.source_revision[:12]}-1792200000000',
             'mcpBundleSha256': 'c' * 64,
             'registrySha256': GENERATOR.CODEX_R04_RENDER_V2_PROFILE_REGISTRY_SHA256,
             'selectionEvidenceSha256': hashlib.sha256(selection_bytes).hexdigest(),
@@ -11283,6 +11410,13 @@ class R04RenderSeriesWatchOrderV2ProfileReportValidationTests(unittest.TestCase)
                 '',
             )
 
+        real_subprocess_run = subprocess.run
+
+        def run_git_or_validate_report(args, *positional, **kwargs):
+            if isinstance(args, list) and args and args[0] == 'git':
+                return real_subprocess_run(args, *positional, **kwargs)
+            return validate_embedded_report(args, **kwargs)
+
         with (
             patch.object(GENERATOR, 'ROOT', self.root),
             patch.object(GENERATOR, 'LIVE_PROBE_DIR', self.root / 'docs/live-probes'),
@@ -11291,7 +11425,7 @@ class R04RenderSeriesWatchOrderV2ProfileReportValidationTests(unittest.TestCase)
             patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64),
             patch.object(GENERATOR, 'codex_r04_render_v2_profile_report_candidate_binding_is_current', return_value=True),
             patch.object(GENERATOR, 'codex_r04_render_v2_profile_disposition_matches_report', return_value={'state': 'REPORT_WRITTEN'}),
-            patch.object(GENERATOR.subprocess, 'run', side_effect=validate_embedded_report),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=run_git_or_validate_report),
         ):
             return GENERATOR.codex_r04_render_v2_profile_report_is_valid(
                 report,
@@ -11307,6 +11441,41 @@ class R04RenderSeriesWatchOrderV2ProfileReportValidationTests(unittest.TestCase)
         persisted_report = json.loads(json.dumps(self.report))
         persisted_report['resultSummary']['artifact']['persisted'] = True
         self.assertFalse(self.validate_report(persisted_report))
+
+    def test_accepts_source_catalog_after_unrelated_current_catalog_addition(self):
+        current_catalog = json.loads(json.dumps(self.source_catalog))
+        current_catalog.append({
+            'name': 'bangumi.unrelated_catalog_extension',
+            'auth': 'none',
+            'risk': 'read',
+            'description': 'Unrelated post-report catalog entry.',
+            'inputSchema': {'type': 'object', 'properties': {}},
+        })
+        self.catalog_path.write_text(json.dumps(current_catalog), encoding='utf-8')
+        self.assertTrue(self.validate_report(self.report))
+
+    def test_rejects_changed_target_entry_and_source_catalog_binding(self):
+        for field, value in (
+            ('description', 'Changed current description.'),
+            ('inputSchema', {'type': 'object', 'properties': {'changed': {'type': 'boolean'}}}),
+            ('auth', 'required'),
+            ('risk', 'write'),
+        ):
+            with self.subTest(field=field):
+                current_catalog = json.loads(json.dumps(self.source_catalog))
+                current_catalog[0][field] = value
+                self.catalog_path.write_text(json.dumps(current_catalog), encoding='utf-8')
+                self.assertFalse(self.validate_report(self.report))
+
+        self.catalog_path.write_text(json.dumps(self.source_catalog), encoding='utf-8')
+        wrong_catalog_hash = json.loads(json.dumps(self.report))
+        wrong_catalog_hash['catalogSha256'] = '0' * 64
+        self.assertFalse(self.validate_report(wrong_catalog_hash))
+
+        invalid_source_revision = json.loads(json.dumps(self.report))
+        invalid_source_revision['sourceRevision'] = 'f' * 40
+        invalid_source_revision['ciSha'] = 'f' * 40
+        self.assertFalse(self.validate_report(invalid_source_revision))
 
 
 class R01OfflineRelationsProfileReportValidationTests(unittest.TestCase):

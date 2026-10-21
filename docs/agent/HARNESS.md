@@ -358,7 +358,13 @@ and unchanged-MCP-bundle binding. Its one evidence refresh may also update only
 the G06-specific acceptance verifier, its tests, and this Harness documentation:
 `scripts/check-tool-acceptance-table.py`, `scripts/test_acceptance_evidence.py`,
 `scripts/generate-tool-acceptance-tasks.py`, `scripts/agent-harness.mjs`, and
-`tests/harness/agent-harness-cli.test.mjs`, plus the matrix-count and public-probe
+the shared source-catalog helper `scripts/lib/source-revision-tool-catalog.mjs`,
+`scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs`, its
+focused test `tests/harness/write-g06-subject-cast-offline-agent-mcp-report.test.mjs`,
+the paired R04 report validator and its focused test
+`scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs`,
+`tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs`,
+and `tests/harness/agent-harness-cli.test.mjs`, plus the matrix-count and public-probe
 isolation regressions in `tests/harness/g01-public-query-render-evidence.test.mjs`,
 `tests/harness/g09-public-watch-order-evidence.test.mjs`,
 `tests/harness/g09-public-watch-order-render-evidence.test.mjs`, and
@@ -370,9 +376,13 @@ state in GitHub. The only cross-frontier files permitted by this refresh are the
 sanitized Run #95 G14 terminal-disposition report and its focused regression
 test; they record a no-credit terminal state consumed by the acceptance ledger.
 Both Harness and the acceptance generator enforce this exact G06 v2 refresh set,
-including those two paths. Tool runtime, MCP sources, profile registry, or any
-other unrelated path remains outside the refresh. The report credits one
-Agent/MCP matrix cell only and leaves G06 `PARTIAL`.
+including those two paths. The shared
+`scripts/lib/source-revision-tool-catalog.mjs` helper is the sole
+source-catalog exception: the G06 report writer uses it to hash the immutable
+catalog blob at the report's exact source Candidate. Tool runtime, MCP server
+sources, profile registry, or any other unrelated path remains outside the G06
+refresh. The report credits one Agent/MCP matrix cell only and leaves G06
+`PARTIAL`.
 
 The Run #95 R04 v2 renderer matrix report uses the same source-Candidate and
 unchanged-MCP-bundle binding. Its evidence refresh is limited to that report at
@@ -383,6 +393,13 @@ verifier files: `docs/agent/HARNESS.md`,
 `scripts/check-tool-acceptance-table.py`,
 `scripts/generate-tool-acceptance-tasks.py`,
 `scripts/test_acceptance_evidence.py`, `scripts/agent-harness.mjs`,
+the exact source-catalog MCP server `apps/mcp/codex-one-tool-mcp-server.mjs`
+and helper `scripts/lib/source-revision-tool-catalog.mjs`,
+`scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs`,
+`tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs`,
+the paired G06 report validator and its focused test
+`scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs`,
+`tests/harness/write-g06-subject-cast-offline-agent-mcp-report.test.mjs`,
 `tests/harness/agent-harness-cli.test.mjs`,
 `tests/harness/g01-public-query-render-evidence.test.mjs`,
 `tests/harness/g09-public-watch-order-evidence.test.mjs`,
@@ -392,8 +409,12 @@ verifier files: `docs/agent/HARNESS.md`,
 `tests/integration/tool-e2e-acceptance.test.ts`. The G14 report and test are the
 only cross-frontier paths; this policy file is explicitly included so the exact
 scope stays documented. Harness and the acceptance generator enforce the same
-closed set. Renderer runtime, MCP sources, profile registry, or any other
-unrelated path remains outside the refresh.
+closed set. The only MCP source exception is
+`apps/mcp/codex-one-tool-mcp-server.mjs`, together with the shared
+`scripts/lib/source-revision-tool-catalog.mjs` helper. In R04 v2 mode, that
+server reads the raw catalog blob from the report's immutable source Candidate
+and binds its `catalogSha256` to those bytes. Other renderer runtime, MCP
+sources, profile registry, and unrelated paths remain outside the refresh.
 
 The runner re-reads the durable claim immediately before invoking Codex and
 again before writing a report. Runner completion and recovery compete for one
