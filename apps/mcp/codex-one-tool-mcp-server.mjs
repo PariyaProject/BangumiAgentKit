@@ -50,6 +50,8 @@ import {
 import {
   A01_RENDER_COHORT_AGGREGATION_PROFILE_ID,
   A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE,
+  A01_RENDER_COHORT_AGGREGATION_V2_NETWORK_MODE,
+  A01_RENDER_COHORT_AGGREGATION_V2_PROFILE_ID,
   assertA01RenderCohortAggregationOfflineProfile,
   createA01RenderCohortAggregationOfflineFetch,
 } from '../../scripts/lib/a01-render-cohort-aggregation-offline-fixture.mjs';
@@ -209,6 +211,14 @@ function createTitleQueryRenderOfflineAssetResolver() {
 }
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const P07_PERSON_SEASON_PROFILE_ID = 'p07-person-season-distribution-agent-mcp-v1';
+const A01_RENDER_COHORT_AGGREGATION_PROFILE_IDS = new Set([
+  A01_RENDER_COHORT_AGGREGATION_PROFILE_ID,
+  A01_RENDER_COHORT_AGGREGATION_V2_PROFILE_ID,
+]);
+const A01_RENDER_COHORT_AGGREGATION_NETWORK_MODES = new Set([
+  A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE,
+  A01_RENDER_COHORT_AGGREGATION_V2_NETWORK_MODE,
+]);
 const R04_RENDER_ARTIFACT_PROFILE_IDS = new Set([
   R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID,
   R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID,
@@ -355,7 +365,7 @@ async function main(argv = process.argv.slice(2)) {
       expectedArguments: config.expectedArguments,
     });
   }
-  if (config.networkMode === A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE) {
+  if (A01_RENDER_COHORT_AGGREGATION_NETWORK_MODES.has(config.networkMode)) {
     assertA01RenderCohortAggregationOfflineProfile(config.profile);
   }
   if (
@@ -520,8 +530,8 @@ async function main(argv = process.argv.slice(2)) {
       config.networkMode,
     )
       ? createA01AggregateCohortOfflineFetch(config.profile)
-      : config.networkMode === A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE
-        ? createA01RenderCohortAggregationOfflineFetch()
+      : A01_RENDER_COHORT_AGGREGATION_NETWORK_MODES.has(config.networkMode)
+        ? createA01RenderCohortAggregationOfflineFetch(config.profile.id)
         : config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
           ? createC07CohortRenderOfflineFixtureFetch()
           : [
@@ -882,7 +892,7 @@ async function main(argv = process.argv.slice(2)) {
             isC07RenderComparisonOfflineProfileId(config.profile.id) ||
             isG01RenderQueryOfflineProfileId(config.profile.id)
               ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
-              : config.profile.id === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID
+              : A01_RENDER_COHORT_AGGREGATION_PROFILE_IDS.has(config.profile.id)
                 ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
                 : R04_RENDER_ARTIFACT_PROFILE_IDS.has(config.profile.id)
                   ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
@@ -1071,7 +1081,7 @@ async function main(argv = process.argv.slice(2)) {
             structuredContent: safeProjection,
           };
         }
-        if (config.profile?.id === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID) {
+        if (A01_RENDER_COHORT_AGGREGATION_PROFILE_IDS.has(config.profile?.id)) {
           const safeProjection = summary.results[sequenceIndex]?.resultSummary;
           if (!safeProjection) {
             summary = {

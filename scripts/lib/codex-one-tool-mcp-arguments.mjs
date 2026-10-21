@@ -25,6 +25,7 @@ import {
 } from './r02-positive-direct-relations-profile.mjs';
 import {
   A01_RENDER_COHORT_AGGREGATION_PROFILE_ID,
+  A01_RENDER_COHORT_AGGREGATION_V2_PROFILE_ID,
   assertA01RenderCohortAggregationOfflineProfile,
 } from './a01-render-cohort-aggregation-offline-fixture.mjs';
 import {
@@ -196,7 +197,10 @@ export function parseCodexOneToolMcpArguments(argv) {
           assertQuerySubjectsFreshPublicProfile(profile) ||
           assertQuerySubjectsFreshPublicV2Profile(profile) ||
           assertA01RatingDispersionProfile(profile) ||
-          (profile.id === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID &&
+          ([
+            A01_RENDER_COHORT_AGGREGATION_PROFILE_ID,
+            A01_RENDER_COHORT_AGGREGATION_V2_PROFILE_ID,
+          ].includes(profile.id) &&
             assertA01RenderCohortAggregationOfflineProfile(profile)) ||
           assertR04RenderSeriesWatchOrderOfflineProfile(profile) ||
           assertR04RenderV2SeriesWatchOrderOfflineV2Profile(profile) ||

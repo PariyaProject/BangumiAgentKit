@@ -10,19 +10,13 @@ import {
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
 import {
-  A01_RENDER_COHORT_AGGREGATION_EXPECTED_ARGUMENTS,
-  A01_RENDER_COHORT_AGGREGATION_PROFILE_ID,
   A01_RENDER_COHORT_AGGREGATION_TOOL,
   assertA01RenderCohortAggregationOfflineProfile,
+  getA01RenderCohortAggregationOfflineProfileSpec,
 } from '../lib/a01-render-cohort-aggregation-offline-fixture.mjs';
 import { buildG06PrivacySummary } from '../lib/g06-privacy-summary.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const PROFILE = getAgentMcpProfileById(A01_RENDER_COHORT_AGGREGATION_PROFILE_ID);
-if (!PROFILE) throw new Error('A01 render aggregation profile is not registered.');
-assertA01RenderCohortAggregationOfflineProfile(PROFILE);
-const REPORT_PATH = path.join(ROOT, PROFILE.reportPath);
-const SERVER_ID = 'bgk_a01_render_cohort_aggregation_offline';
 const ANSWER_CHECK_FIELDS = Object.freeze([
   'fixedArguments',
   'singleToolInvocation',
@@ -95,6 +89,25 @@ const REPORT_FIELDS = new Set([
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const canonical = (value) => canonicalAgentMcpProfileJson(value);
 
+function getProfile(profileId) {
+  const profile = getAgentMcpProfileById(profileId);
+  if (!profile || !getA01RenderCohortAggregationOfflineProfileSpec(profileId)) return null;
+  try {
+    assertA01RenderCohortAggregationOfflineProfile(profile);
+    return profile;
+  } catch {
+    return null;
+  }
+}
+
+function serverIdFor(profile) {
+  return getA01RenderCohortAggregationOfflineProfileSpec(profile?.id)?.serverId ?? null;
+}
+
+function reportPathFor(profile) {
+  return path.join(ROOT, profile.reportPath);
+}
+
 function exactKeys(value, expected) {
   return Boolean(
     value &&
@@ -105,6 +118,8 @@ function exactKeys(value, expected) {
 }
 
 function validClaim(claim) {
+  const profile = getProfile(claim?.profileId);
+  if (!profile) return false;
   const publicKeyBytes = Buffer.from(claim?.runnerReceiptPublicKey ?? '', 'base64');
   let validPublicKey = false;
   try {
@@ -118,11 +133,11 @@ function validClaim(claim) {
   return Boolean(
     claim &&
     claim.runNumber === 95 &&
-    claim.frontierId === PROFILE.frontierId &&
-    claim.epochId === PROFILE.epochId &&
-    claim.profileId === PROFILE.id &&
+    claim.frontierId === profile.frontierId &&
+    claim.epochId === profile.epochId &&
+    claim.profileId === profile.id &&
     claim.toolName === A01_RENDER_COHORT_AGGREGATION_TOOL &&
-    claim.argumentProfile === PROFILE.argumentProfile &&
+    claim.argumentProfile === profile.argumentProfile &&
     claim.retryAllowed === false &&
     typeof claim.claimId === 'string' &&
     /^profile-run-95-pr-\d+-[0-9a-f]{12}-\d+$/u.test(claim.claimId) &&
@@ -139,8 +154,8 @@ function validClaim(claim) {
     validPublicKey &&
     /^[0-9a-f]{64}$/u.test(claim.runnerReceiptPublicKeySha256 ?? '') &&
     sha256(publicKeyBytes) === claim.runnerReceiptPublicKeySha256 &&
-    claim.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(PROFILE) &&
-    claim.registrySha256 === agentMcpProfileRegistrySha256(PROFILE.id),
+    claim.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(profile) &&
+    claim.registrySha256 === agentMcpProfileRegistrySha256(profile.id),
   );
 }
 
@@ -179,9 +194,9 @@ function validArtifactSummary(summary) {
   );
 }
 
-function expectedOfflineFixture() {
+function expectedOfflineFixture(profile) {
   return {
-    profile: A01_RENDER_COHORT_AGGREGATION_PROFILE_ID,
+    profile: profile.id,
     requestCount: 2,
     searchRequestCount: 1,
     detailRequestCount: 1,
@@ -210,8 +225,8 @@ function expectedPrivacy() {
   };
 }
 
-function parseAnswer(answer) {
-  if (typeof answer !== 'string' || Buffer.byteLength(answer, 'utf8') > PROFILE.maxAnswerBytes) {
+function parseAnswer(answer, profile) {
+  if (typeof answer !== 'string' || Buffer.byteLength(answer, 'utf8') > profile.maxAnswerBytes) {
     return null;
   }
   try {
@@ -227,12 +242,15 @@ export function validateA01RenderCohortAggregationProfileRun(input) {
     return { passed: false, reason: 'A01_RENDER_AGGREGATION_CLAIM_INVALID', answerChecks: null };
   }
   const claim = input.claim;
+  const profile = getProfile(claim.profileId);
+  const spec = getA01RenderCohortAggregationOfflineProfileSpec(profile.id);
+  const serverId = serverIdFor(profile);
   const summary = input.serverSummary;
   const events = input.events;
   const call = input.completedMcpCalls?.[0];
   const resultSummary = summary?.results?.[0]?.resultSummary;
   const artifact = resultSummary?.artifact;
-  const answer = parseAnswer(input.answer);
+  const answer = parseAnswer(input.answer, profile);
   const expectedAnswer = artifact
     ? {
         resultState: 'artifact_returned',
@@ -245,15 +263,14 @@ export function validateA01RenderCohortAggregationProfileRun(input) {
       }
     : null;
   const answerChecks = {
-    fixedArguments:
-      canonical(call?.arguments) === canonical(A01_RENDER_COHORT_AGGREGATION_EXPECTED_ARGUMENTS),
+    fixedArguments: canonical(call?.arguments) === canonical(spec.expectedArguments),
     singleToolInvocation:
       events?.codexMcpToolEventCount === 1 &&
       events?.completedMcpCalls?.length === 1 &&
       events?.toolCalls?.length === 1 &&
       events?.toolCalls?.[0]?.name === A01_RENDER_COHORT_AGGREGATION_TOOL &&
       events?.toolCalls?.[0]?.state === 'DONE' &&
-      canonical(events?.mcpServerNames) === canonical([SERVER_ID]),
+      canonical(events?.mcpServerNames) === canonical([serverId]),
     structuredResultReadback:
       validArtifactSummary(resultSummary) &&
       canonical(call?.result?.structuredContent) === canonical(resultSummary) &&
@@ -272,7 +289,7 @@ export function validateA01RenderCohortAggregationProfileRun(input) {
       canonical(answer) === canonical(expectedAnswer),
     pngDecodedAndBounded: validArtifactSummary(resultSummary),
     offlineFixtureBounded:
-      canonical(summary?.offlineFixture) === canonical(expectedOfflineFixture()),
+      canonical(summary?.offlineFixture) === canonical(expectedOfflineFixture(profile)),
   };
   const serverSummaryValid = Boolean(
     exactKeys(summary, [
@@ -302,10 +319,10 @@ export function validateA01RenderCohortAggregationProfileRun(input) {
     ]) &&
     summary.schemaVersion === 1 &&
     summary.serverProfile === 'closed-profile-sequence-anonymous-offline-v1' &&
-    summary.profileId === PROFILE.id &&
-    summary.argumentProfile === PROFILE.argumentProfile &&
+    summary.profileId === profile.id &&
+    summary.argumentProfile === profile.argumentProfile &&
     summary.expectedCallCount === 1 &&
-    summary.networkMode === PROFILE.networkMode &&
+    summary.networkMode === profile.networkMode &&
     summary.sourceRevision === claim.sourceCandidateSha &&
     summary.bundleSha256 === claim.bundleSha256 &&
     summary.toolName === A01_RENDER_COHORT_AGGREGATION_TOOL &&
@@ -413,30 +430,35 @@ export function buildA01RenderCohortAggregationProfileReport(input, { privateKey
     return { passed: false, reason: 'A01_RENDER_AGGREGATION_REPORT_INPUT_INVALID' };
   }
   const claim = input.claim;
+  const profile = getProfile(claim.profileId);
+  const expectedServerId = serverIdFor(profile);
+  if (input.serverId !== expectedServerId) {
+    return { passed: false, reason: 'A01_RENDER_AGGREGATION_REPORT_INPUT_INVALID' };
+  }
   const summary = input.serverSummary;
   const resultSummary = summary.results[0].resultSummary;
   const artifact = resultSummary.artifact;
   const projection = {
     schemaVersion: 1,
-    evidenceKind: PROFILE.evidenceKind,
+    evidenceKind: profile.evidenceKind,
     profile: 'codex-luna-max-one-tool-v1',
-    model: PROFILE.model,
-    reasoningEffort: PROFILE.reasoningEffort,
+    model: profile.model,
+    reasoningEffort: profile.reasoningEffort,
     codexCliVersion: input.codexCliVersion,
     runNumber: 95,
-    frontierId: PROFILE.frontierId,
-    epochId: PROFILE.epochId,
-    profileId: PROFILE.id,
+    frontierId: profile.frontierId,
+    epochId: profile.epochId,
+    profileId: profile.id,
     scenarioId: null,
-    acceptanceScope: PROFILE.acceptanceScope,
+    acceptanceScope: profile.acceptanceScope,
     claimId: claim.claimId,
     prNumber: claim.prNumber,
     reviewerId: claim.reviewerId,
     toolName: A01_RENDER_COHORT_AGGREGATION_TOOL,
-    argumentProfile: PROFILE.argumentProfile,
+    argumentProfile: profile.argumentProfile,
     expectedArgumentsSha256: claim.expectedArgumentsSha256,
     registrySha256: claim.registrySha256,
-    selectionEvidenceSha256: sha256(readFileSync(path.join(ROOT, PROFILE.selectionEvidencePath))),
+    selectionEvidenceSha256: sha256(readFileSync(path.join(ROOT, profile.selectionEvidencePath))),
     sourceRevision: claim.sourceCandidateSha,
     baseSha: claim.baseSha,
     ciSha: claim.ciSha,
@@ -445,7 +467,7 @@ export function buildA01RenderCohortAggregationProfileReport(input, { privateKey
     catalogSha256: summary.catalogSha256,
     toolDescriptionSha256: summary.toolDescriptionSha256,
     inputSchemaSha256: summary.inputSchemaSha256,
-    networkMode: PROFILE.networkMode,
+    networkMode: profile.networkMode,
     serverId: input.serverId,
     serverToolNames: [A01_RENDER_COHORT_AGGREGATION_TOOL],
     serverToolCount: 1,
@@ -465,7 +487,7 @@ export function buildA01RenderCohortAggregationProfileReport(input, { privateKey
     writeActionReached: false,
     qqPipelineTested: false,
     timClientTested: false,
-    offlineFixture: expectedOfflineFixture(),
+    offlineFixture: expectedOfflineFixture(profile),
     artifact: {
       returned: true,
       persisted: false,
@@ -505,7 +527,9 @@ export function buildA01RenderCohortAggregationProfileReport(input, { privateKey
   const report = {
     ...projection,
     runnerReceipt: {
-      kind: 'a01-render-cohort-aggregation-agent-mcp-runner-receipt-v1',
+      kind: profile.id.endsWith('-v2')
+        ? 'a01-render-cohort-aggregation-agent-mcp-runner-receipt-v2'
+        : 'a01-render-cohort-aggregation-agent-mcp-runner-receipt-v1',
       publicKeyBase64: claim.runnerReceiptPublicKey,
       publicKeySha256: claim.runnerReceiptPublicKeySha256,
       signature,
@@ -535,10 +559,13 @@ export function verifyA01RenderCohortAggregationProfileReport(report, publicKey)
 }
 
 export function validateA01RenderCohortAggregationProfileReport(report, claim, reportBytes = null) {
+  const profile = getProfile(report?.profileId);
+  if (!profile) return { passed: false, reason: 'A01_RENDER_AGGREGATION_REPORT_CLAIM_INVALID' };
+  const expectedServerId = serverIdFor(profile);
   if (
     !validClaim(claim) ||
     !claimStateIsValid(claim, reportBytes) ||
-    claim.profileId !== PROFILE.id ||
+    claim.profileId !== profile.id ||
     claim.retryAllowed !== false ||
     !exactKeys(report, REPORT_FIELDS) ||
     !matchesClaim(report, claim)
@@ -558,7 +585,7 @@ export function validateA01RenderCohortAggregationProfileReport(report, claim, r
   try {
     selectionEvidenceMatches =
       report.selectionEvidenceSha256 ===
-      sha256(readFileSync(path.join(ROOT, PROFILE.selectionEvidencePath)));
+      sha256(readFileSync(path.join(ROOT, profile.selectionEvidencePath)));
   } catch {
     selectionEvidenceMatches = false;
   }
@@ -622,15 +649,15 @@ export function validateA01RenderCohortAggregationProfileReport(report, claim, r
   );
   let valid = Boolean(
     report.schemaVersion === 1 &&
-    report.evidenceKind === PROFILE.evidenceKind &&
+    report.evidenceKind === profile.evidenceKind &&
     report.profile === 'codex-luna-max-one-tool-v1' &&
     report.model === 'gpt-6-luna' &&
     report.reasoningEffort === 'max' &&
     /^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/u.test(report.codexCliVersion ?? '') &&
     report.runNumber === 95 &&
     report.frontierId === 'A01' &&
-    report.epochId === PROFILE.epochId &&
-    report.profileId === PROFILE.id &&
+    report.epochId === profile.epochId &&
+    report.profileId === profile.id &&
     report.scenarioId === null &&
     report.acceptanceScope === 'agent-mcp-matrix-only' &&
     /^profile-run-95-pr-\d+-[0-9a-f]{12}-\d+$/u.test(report.claimId ?? '') &&
@@ -640,9 +667,9 @@ export function validateA01RenderCohortAggregationProfileReport(report, claim, r
       report.reviewerId ?? '',
     ) &&
     report.toolName === A01_RENDER_COHORT_AGGREGATION_TOOL &&
-    report.argumentProfile === PROFILE.argumentProfile &&
-    report.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(PROFILE) &&
-    report.registrySha256 === agentMcpProfileRegistrySha256(PROFILE.id) &&
+    report.argumentProfile === profile.argumentProfile &&
+    report.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(profile) &&
+    report.registrySha256 === agentMcpProfileRegistrySha256(profile.id) &&
     /^[0-9a-f]{64}$/u.test(report.selectionEvidenceSha256 ?? '') &&
     selectionEvidenceMatches &&
     /^[0-9a-f]{40}$/u.test(report.sourceRevision ?? '') &&
@@ -651,8 +678,8 @@ export function validateA01RenderCohortAggregationProfileReport(report, claim, r
     report.ciStatus === 'SUCCESS' &&
     /^[0-9a-f]{64}$/u.test(report.mcpBundleSha256 ?? '') &&
     catalogEvidenceMatches(report) &&
-    report.networkMode === PROFILE.networkMode &&
-    report.serverId === SERVER_ID &&
+    report.networkMode === profile.networkMode &&
+    report.serverId === expectedServerId &&
     canonical(report.serverToolNames) === canonical([A01_RENDER_COHORT_AGGREGATION_TOOL]) &&
     report.serverToolCount === 1 &&
     report.processExitCode === 0 &&
@@ -671,13 +698,13 @@ export function validateA01RenderCohortAggregationProfileReport(report, claim, r
     report.writeActionReached === false &&
     report.qqPipelineTested === false &&
     report.timClientTested === false &&
-    canonical(report.offlineFixture) === canonical(expectedOfflineFixture()) &&
+    canonical(report.offlineFixture) === canonical(expectedOfflineFixture(profile)) &&
     artifactValid &&
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(report.observedAt ?? '') &&
     /^[0-9a-f]{64}$/u.test(report.answerSha256 ?? '') &&
     Number.isSafeInteger(report.answerUtf8Bytes) &&
     report.answerUtf8Bytes > 0 &&
-    report.answerUtf8Bytes <= PROFILE.maxAnswerBytes &&
+    report.answerUtf8Bytes <= profile.maxAnswerBytes &&
     checksValid &&
     exactKeys(report.privacy, Object.keys(expectedPrivacyValue)) &&
     canonical(report.privacy) === canonical(expectedPrivacyValue) &&
@@ -687,7 +714,10 @@ export function validateA01RenderCohortAggregationProfileReport(report, claim, r
     report.retryAllowed === false &&
     report.reportWritten === true &&
     exactKeys(report.runnerReceipt, ['kind', 'publicKeyBase64', 'publicKeySha256', 'signature']) &&
-    report.runnerReceipt.kind === 'a01-render-cohort-aggregation-agent-mcp-runner-receipt-v1' &&
+    report.runnerReceipt.kind ===
+      (profile.id.endsWith('-v2')
+        ? 'a01-render-cohort-aggregation-agent-mcp-runner-receipt-v2'
+        : 'a01-render-cohort-aggregation-agent-mcp-runner-receipt-v1') &&
     report.runnerReceipt.publicKeyBase64 === claim.runnerReceiptPublicKey &&
     publicKey?.asymmetricKeyType === 'ed25519' &&
     publicKeyBytes.toString('base64') === claim.runnerReceiptPublicKey &&
@@ -699,36 +729,39 @@ export function validateA01RenderCohortAggregationProfileReport(report, claim, r
   if (reportBytes && reportBytes.length > 64 * 1024) {
     return { passed: false, reason: 'A01_RENDER_AGGREGATION_REPORT_TOO_LARGE' };
   }
-  return { passed: true, reportPath: PROFILE.reportPath, report };
+  return { passed: true, reportPath: profile.reportPath, report };
 }
 
 export function validateA01RenderCohortAggregationSanitizedReportFile(
   claim,
   root = ROOT,
-  reportPath = REPORT_PATH,
+  reportPath,
 ) {
   try {
-    const expectedPath = path.join(path.resolve(root), PROFILE.reportPath);
-    if (path.resolve(reportPath) !== expectedPath) {
+    const profile = getProfile(claim?.profileId);
+    if (!profile) return { passed: false, reason: 'A01_RENDER_AGGREGATION_REPORT_PATH_INVALID' };
+    const expectedPath = path.join(path.resolve(root), profile.reportPath);
+    if ((reportPath ? path.resolve(reportPath) : expectedPath) !== expectedPath) {
       return { passed: false, reason: 'A01_RENDER_AGGREGATION_REPORT_PATH_INVALID' };
     }
     const reportBytes = readFileSync(expectedPath);
     const report = JSON.parse(reportBytes.toString('utf8'));
     const validation = validateA01RenderCohortAggregationProfileReport(report, claim, reportBytes);
     return validation.passed
-      ? { ...validation, reportSha256: sha256(reportBytes), reportPath: PROFILE.reportPath }
+      ? { ...validation, reportSha256: sha256(reportBytes), reportPath: profile.reportPath }
       : validation;
   } catch {
     return { passed: false, reason: 'A01_RENDER_AGGREGATION_REPORT_INPUT_INVALID' };
   }
 }
 
-export function writeA01RenderCohortAggregationProfileReport(
-  report,
-  { reportPath = REPORT_PATH } = {},
-) {
-  const outputPath = path.resolve(reportPath);
-  if (outputPath !== REPORT_PATH || existsSync(outputPath)) {
+export function writeA01RenderCohortAggregationProfileReport(report, { reportPath } = {}) {
+  const profile = getProfile(report?.profileId);
+  if (!profile) throw new Error('A01 render aggregation report profile is not registered.');
+  const expectedPath = reportPathFor(profile);
+  const output = reportPath ?? expectedPath;
+  const outputPath = path.resolve(output);
+  if (outputPath !== expectedPath || existsSync(outputPath)) {
     throw new Error('A01 render aggregation report path is fixed and create-once.');
   }
   let descriptor;

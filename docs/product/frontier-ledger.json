@@ -2951,6 +2951,7 @@
         "scripts/smoke-fresh-public-cohort-four-v2-20261016.ts",
         "scripts/lib/fresh-public-cohort-four-v2-scope.ts",
         "docs/research/run95-a01-render-cohort-aggregation-agent-mcp-contract-2026-10-16.md",
+        "docs/research/run95-a01-render-cohort-aggregation-agent-mcp-v2-contract-2026-10-22.md",
         "scripts/lib/a01-render-cohort-aggregation-offline-fixture.mjs",
         "scripts/acceptance/run-a01-render-cohort-aggregation-agent-mcp.mjs",
         "scripts/acceptance/write-a01-render-cohort-aggregation-agent-mcp-report.mjs",

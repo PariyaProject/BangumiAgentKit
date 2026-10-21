@@ -3001,6 +3001,14 @@ CODEX_A01_RENDER_AGGREGATION_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'a01-render-cohort-aggregation-agent-mcp-offline-v1'
 )
+CODEX_A01_RENDER_AGGREGATION_PROFILE_V2 = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'a01-render-cohort-aggregation-agent-mcp-offline-v2'
+)
+CODEX_A01_RENDER_AGGREGATION_PROFILES = {
+    profile['id']: profile
+    for profile in (CODEX_A01_RENDER_AGGREGATION_PROFILE, CODEX_A01_RENDER_AGGREGATION_PROFILE_V2)
+}
 CODEX_A01_RENDER_AGGREGATION_PROFILE_ID = CODEX_A01_RENDER_AGGREGATION_PROFILE['id']
 CODEX_A01_RENDER_AGGREGATION_EPOCH_ID = CODEX_A01_RENDER_AGGREGATION_PROFILE['epochId']
 CODEX_A01_RENDER_AGGREGATION_TOOL_NAME = CODEX_A01_RENDER_AGGREGATION_PROFILE['toolName']
@@ -3022,10 +3030,32 @@ CODEX_A01_RENDER_AGGREGATION_REPORT_RELATIVE_PATH = CODEX_A01_RENDER_AGGREGATION
 CODEX_A01_RENDER_AGGREGATION_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_A01_RENDER_AGGREGATION_PROFILE['selectionEvidencePath']
 CODEX_A01_RENDER_AGGREGATION_EVIDENCE_KIND = CODEX_A01_RENDER_AGGREGATION_PROFILE['evidenceKind']
 CODEX_A01_RENDER_AGGREGATION_NETWORK_MODE = CODEX_A01_RENDER_AGGREGATION_PROFILE['networkMode']
+CODEX_A01_RENDER_AGGREGATION_PROFILE_V2_ID = CODEX_A01_RENDER_AGGREGATION_PROFILE_V2['id']
+CODEX_A01_RENDER_AGGREGATION_EXPECTED_ARGUMENTS_V2 = CODEX_A01_RENDER_AGGREGATION_PROFILE_V2['calls'][0]['arguments']
+CODEX_A01_RENDER_AGGREGATION_EXPECTED_ARGUMENTS_V2_SHA256 = hashlib.sha256(json.dumps(
+    [CODEX_A01_RENDER_AGGREGATION_EXPECTED_ARGUMENTS_V2],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_A01_RENDER_AGGREGATION_PROFILE_V2_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_A01_RENDER_AGGREGATION_PROFILE_V2,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_A01_RENDER_AGGREGATION_NETWORK_MODE_V2 = CODEX_A01_RENDER_AGGREGATION_PROFILE_V2['networkMode']
 CODEX_A01_RENDER_AGGREGATION_ANSWER_CHECK_FIELDS = {
     'fixedArguments', 'singleToolInvocation', 'structuredResultReadback',
     'artifactMetadataMatched', 'pngDecodedAndBounded', 'offlineFixtureBounded',
 }
+
+
+def _select_codex_a01_render_aggregation_profile(profile_id: object) -> dict[str, object] | None:
+    profile = CODEX_A01_RENDER_AGGREGATION_PROFILES.get(profile_id) if isinstance(profile_id, str) else None
+    return profile if isinstance(profile, dict) else None
+
+
 CODEX_A01_RENDER_AGGREGATION_REPORT_FIELDS = {
     'schemaVersion', 'evidenceKind', 'profile', 'model', 'reasoningEffort', 'codexCliVersion',
     'runNumber', 'frontierId', 'epochId', 'profileId', 'scenarioId', 'acceptanceScope',
@@ -6648,7 +6678,7 @@ CODEX_AUTH_START_PROFILE_IMPLEMENTATION_MARKERS = {
         'validateAuthStartProfileReport(',
     ),
     'tests/harness/agent-mcp-profile-claims.test.mjs': (
-        'assert.equal(listAgentMcpProfiles().length, 31)',
+        'assert.equal(listAgentMcpProfiles().length, 43)',
         "getAgentMcpProfileById('auth-start-offline-agent-mcp-v1')",
     ),
     'scripts/test_acceptance_evidence.py': (
@@ -6664,27 +6694,34 @@ CODEX_AUTH_START_PROFILE_IMPLEMENTATION_MARKERS = {
 CODEX_A01_RENDER_AGGREGATION_PROFILE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/agent-mcp-profile-registry.json': (
         '"id": "a01-render-cohort-aggregation-agent-mcp-offline-v1"',
+        '"id": "a01-render-cohort-aggregation-agent-mcp-offline-v2"',
         '"acceptanceScope": "agent-mcp-matrix-only"',
         '"toolName": "bangumi.render_subject_cohort_aggregation"',
         '"keyword": "run95 synthetic cohort aggregation"',
+        '"keyword": "run95 A01 render cohort synthetic v2 2026-10-22"',
     ),
     'scripts/lib/a01-render-cohort-aggregation-offline-fixture.mjs': (
         'export function assertA01RenderCohortAggregationOfflineProfile(',
         'export function createA01RenderCohortAggregationOfflineFetch(',
+        'getA01RenderCohortAggregationOfflineProfileSpec(profileId)',
+        'id: 990104',
         "url.origin === 'https://api.bgm.tv'",
         'authorizationHeaderCount',
         'unexpectedRequestCount',
     ),
     'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
         'assertA01RenderCohortAggregationOfflineProfile(profile)',
+        'A01_RENDER_COHORT_AGGREGATION_V2_PROFILE_ID',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
         'A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE',
-        'A01_RENDER_COHORT_AGGREGATION_PROFILE_ID',
+        'A01_RENDER_COHORT_AGGREGATION_V2_NETWORK_MODE',
+        'A01_RENDER_COHORT_AGGREGATION_V2_PROFILE_ID',
         "A01_SUMMARY_UNAVAILABLE",
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
         'A01_RENDER_COHORT_AGGREGATION_PROFILE_ID',
+        'A01_RENDER_COHORT_AGGREGATION_V2_PROFILE_ID',
         'dimensionsMatch',
     ),
     'scripts/acceptance/run-a01-render-cohort-aggregation-agent-mcp.mjs': (
@@ -6704,12 +6741,19 @@ CODEX_A01_RENDER_AGGREGATION_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/agent-harness.mjs': (
         "case 'a01-render-cohort-aggregation-agent-mcp-offline-v1'",
+        "case 'a01-render-cohort-aggregation-agent-mcp-offline-v2'",
         'validateA01RenderCohortAggregationSanitizedReportFile(',
     ),
     'docs/research/run95-a01-render-cohort-aggregation-agent-mcp-contract-2026-10-16.md': (
         'strict synthetic offline fixture',
         'A01 stays `UNASSESSED`',
         'credit only this one Agent/MCP matrix cell',
+    ),
+    'docs/research/run95-a01-render-cohort-aggregation-agent-mcp-v2-contract-2026-10-22.md': (
+        'bgk_a01_render_cohort_aggregation_offline_v2',
+        'subject `990104`',
+        'A01 remains `UNASSESSED`',
+        'visual design approval',
     ),
     'docs/product/frontier-ledger.json': (
         'A01 render-aggregation profiles are separate Agent/MCP matrix-only checks',
@@ -6718,6 +6762,8 @@ CODEX_A01_RENDER_AGGREGATION_PROFILE_IMPLEMENTATION_MARKERS = {
     'tests/harness/a01-render-cohort-aggregation-agent-mcp.test.mjs': (
         'offline fixture returns one synthetic search and detail',
         'registered MCP arguments select the fixed offline mode',
+        'v2 profile rejects the consumed v1 input and uses a distinct fixture',
+        'MCP server dispatches v2 only through its profile-specific offline fixture',
     ),
     'scripts/test_acceptance_evidence.py': (
         'class A01RenderCohortAggregationMatrixProfileTests(unittest.TestCase):',
@@ -15345,7 +15391,7 @@ def codex_a01_render_aggregation_profile_epoch_harness_status(
 
 
 def codex_a01_render_aggregation_profile_harness_status(
-    pr_number: object,
+    pr_number: object, profile_id: str = CODEX_A01_RENDER_AGGREGATION_PROFILE_ID,
 ) -> dict[str, object] | None:
     if type(pr_number) is not int or pr_number < 1:
         return None
@@ -15354,7 +15400,7 @@ def codex_a01_render_aggregation_profile_harness_status(
             [
                 'node', str(ROOT / 'scripts/agent-harness.mjs'),
                 'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
-                '--profile-id', CODEX_A01_RENDER_AGGREGATION_PROFILE_ID,
+                '--profile-id', profile_id,
             ],
             cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
         )
@@ -15369,18 +15415,32 @@ def codex_a01_render_aggregation_profile_harness_status(
 def codex_a01_render_aggregation_profile_disposition_matches_report(
     report: dict[str, object], harness_status: object, report_sha256: object,
 ) -> dict[str, object] | None:
+    profile = _select_codex_a01_render_aggregation_profile(report.get('profileId'))
+    if profile is None:
+        return None
+    profile_id = profile['id']
+    expected_arguments_sha256 = (
+        CODEX_A01_RENDER_AGGREGATION_EXPECTED_ARGUMENTS_V2_SHA256
+        if profile_id == CODEX_A01_RENDER_AGGREGATION_PROFILE_V2_ID
+        else CODEX_A01_RENDER_AGGREGATION_EXPECTED_ARGUMENTS_SHA256
+    )
+    registry_sha256 = (
+        CODEX_A01_RENDER_AGGREGATION_PROFILE_V2_REGISTRY_SHA256
+        if profile_id == CODEX_A01_RENDER_AGGREGATION_PROFILE_V2_ID
+        else CODEX_A01_RENDER_AGGREGATION_PROFILE_REGISTRY_SHA256
+    )
     if not isinstance(harness_status, dict):
         return None
     receipt = report.get('runnerReceipt')
     disposition = harness_status.get('disposition')
     if (
         harness_status.get('state') != 'REPORT_WRITTEN'
-        or harness_status.get('profile_id') != CODEX_A01_RENDER_AGGREGATION_PROFILE_ID
+        or harness_status.get('profile_id') != profile_id
         or harness_status.get('pr') != report.get('prNumber')
         or harness_status.get('tool_name') != CODEX_A01_RENDER_AGGREGATION_TOOL_NAME
-        or harness_status.get('argument_profile') != CODEX_A01_RENDER_AGGREGATION_ARGUMENT_PROFILE
-        or harness_status.get('expected_arguments_sha256') != CODEX_A01_RENDER_AGGREGATION_EXPECTED_ARGUMENTS_SHA256
-        or harness_status.get('registry_sha256') != CODEX_A01_RENDER_AGGREGATION_PROFILE_REGISTRY_SHA256
+        or harness_status.get('argument_profile') != profile['argumentProfile']
+        or harness_status.get('expected_arguments_sha256') != expected_arguments_sha256
+        or harness_status.get('registry_sha256') != registry_sha256
         or harness_status.get('claim_label_present') is not True
         or harness_status.get('terminal_label_present') is not True
         or not isinstance(disposition, dict)
@@ -15391,9 +15451,9 @@ def codex_a01_render_aggregation_profile_disposition_matches_report(
         return None
     expected = {
         'claimId': report.get('claimId'),
-        'profileId': CODEX_A01_RENDER_AGGREGATION_PROFILE_ID,
+        'profileId': profile_id,
         'frontierId': 'A01',
-        'epochId': CODEX_A01_RENDER_AGGREGATION_EPOCH_ID,
+        'epochId': profile['epochId'],
         'runNumber': 95,
         'prNumber': report.get('prNumber'),
         'state': 'REPORT_WRITTEN',
@@ -15403,12 +15463,12 @@ def codex_a01_render_aggregation_profile_disposition_matches_report(
         'ciStatus': 'SUCCESS',
         'reviewerId': report.get('reviewerId'),
         'bundleSha256': report.get('mcpBundleSha256'),
-        'registrySha256': CODEX_A01_RENDER_AGGREGATION_PROFILE_REGISTRY_SHA256,
+        'registrySha256': registry_sha256,
         'toolName': CODEX_A01_RENDER_AGGREGATION_TOOL_NAME,
-        'argumentProfile': CODEX_A01_RENDER_AGGREGATION_ARGUMENT_PROFILE,
-        'expectedArgumentsSha256': CODEX_A01_RENDER_AGGREGATION_EXPECTED_ARGUMENTS_SHA256,
+        'argumentProfile': profile['argumentProfile'],
+        'expectedArgumentsSha256': expected_arguments_sha256,
         'reportWritten': True,
-        'reportPath': CODEX_A01_RENDER_AGGREGATION_REPORT_RELATIVE_PATH,
+        'reportPath': profile['reportPath'],
         'reportSha256': report_sha256,
         'retryAllowed': False,
         'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
@@ -15421,6 +15481,10 @@ def codex_a01_render_aggregation_profile_disposition_matches_report(
 def codex_a01_render_aggregation_profile_candidate_binding_is_current(
     report: dict[str, object], epoch_status: object, current_bundle_sha256: object,
 ) -> bool:
+    profile = _select_codex_a01_render_aggregation_profile(report.get('profileId'))
+    if profile is None:
+        return False
+    report_path = profile['reportPath']
     if not isinstance(epoch_status, dict):
         return False
     run_result = epoch_status.get('run')
@@ -15474,14 +15538,14 @@ def codex_a01_render_aggregation_profile_candidate_binding_is_current(
         return False
     candidate_paths = {item for item in changed.stdout.splitlines() if item}
     allowed_refresh_paths = {
-        CODEX_A01_RENDER_AGGREGATION_REPORT_RELATIVE_PATH,
+        report_path,
         'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
         'docs/product/frontier-ledger.json',
     }
     refresh_paths_valid = (
         report_candidate_sha == candidate_sha
         or (
-            CODEX_A01_RENDER_AGGREGATION_REPORT_RELATIVE_PATH in candidate_paths
+            report_path in candidate_paths
             and candidate_paths <= allowed_refresh_paths
         )
     )
@@ -15490,7 +15554,7 @@ def codex_a01_render_aggregation_profile_candidate_binding_is_current(
         and pr_number > 0
         and run_result.get('number') == 95
         and (active_pr or merged_pr)
-        and epoch.get('epoch_id') == CODEX_A01_RENDER_AGGREGATION_EPOCH_ID
+        and epoch.get('epoch_id') == profile['epochId']
         and epoch.get('pr_number') == pr_number
         and epoch.get('base_branch') == 'master'
         and epoch.get('base_sha') == report.get('baseSha')
@@ -15513,7 +15577,12 @@ def codex_a01_render_aggregation_profile_candidate_binding_is_current(
     )
 
 
-def codex_a01_render_aggregation_frontier_is_unassessed() -> bool:
+def codex_a01_render_aggregation_frontier_is_unassessed(
+    profile_id: str = CODEX_A01_RENDER_AGGREGATION_PROFILE_ID,
+) -> bool:
+    profile = _select_codex_a01_render_aggregation_profile(profile_id)
+    if profile is None:
+        return False
     try:
         frontier = json.loads(
             (ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'),
@@ -15530,7 +15599,7 @@ def codex_a01_render_aggregation_frontier_is_unassessed() -> bool:
         isinstance(record, dict)
         and record.get('status') == 'UNASSESSED'
         and isinstance(source_refs, list)
-        and CODEX_A01_RENDER_AGGREGATION_SELECTION_EVIDENCE_RELATIVE_PATH in source_refs
+        and profile['selectionEvidencePath'] in source_refs
     )
 
 
@@ -15542,29 +15611,51 @@ def codex_a01_render_aggregation_profile_report_is_valid(
 ) -> bool:
     if not isinstance(report, dict) or set(report) != CODEX_A01_RENDER_AGGREGATION_REPORT_FIELDS:
         return False
+    profile = _select_codex_a01_render_aggregation_profile(report.get('profileId'))
+    if profile is None:
+        return False
+    profile_id = profile['id']
+    is_v2 = profile_id == CODEX_A01_RENDER_AGGREGATION_PROFILE_V2_ID
+    expected_arguments_sha256 = (
+        CODEX_A01_RENDER_AGGREGATION_EXPECTED_ARGUMENTS_V2_SHA256
+        if is_v2
+        else CODEX_A01_RENDER_AGGREGATION_EXPECTED_ARGUMENTS_SHA256
+    )
+    expected_registry_sha256 = (
+        CODEX_A01_RENDER_AGGREGATION_PROFILE_V2_REGISTRY_SHA256
+        if is_v2
+        else CODEX_A01_RENDER_AGGREGATION_PROFILE_REGISTRY_SHA256
+    )
+    expected_network_mode = (
+        CODEX_A01_RENDER_AGGREGATION_NETWORK_MODE_V2
+        if is_v2
+        else CODEX_A01_RENDER_AGGREGATION_NETWORK_MODE
+    )
+    expected_evidence_kind = profile['evidenceKind']
+    expected_report_path = profile['reportPath']
     if (
-        report.get('evidenceKind') != CODEX_A01_RENDER_AGGREGATION_EVIDENCE_KIND
+        report.get('evidenceKind') != expected_evidence_kind
         or report.get('runNumber') != 95
         or report.get('frontierId') != 'A01'
-        or report.get('epochId') != CODEX_A01_RENDER_AGGREGATION_EPOCH_ID
-        or report.get('profileId') != CODEX_A01_RENDER_AGGREGATION_PROFILE_ID
+        or report.get('epochId') != profile['epochId']
+        or report.get('profileId') != profile_id
         or report.get('scenarioId') is not None
         or report.get('acceptanceScope') != 'agent-mcp-matrix-only'
         or report.get('toolName') != CODEX_A01_RENDER_AGGREGATION_TOOL_NAME
-        or report.get('argumentProfile') != CODEX_A01_RENDER_AGGREGATION_ARGUMENT_PROFILE
-        or report.get('expectedArgumentsSha256') != CODEX_A01_RENDER_AGGREGATION_EXPECTED_ARGUMENTS_SHA256
-        or report.get('registrySha256') != CODEX_A01_RENDER_AGGREGATION_PROFILE_REGISTRY_SHA256
-        or report.get('networkMode') != CODEX_A01_RENDER_AGGREGATION_NETWORK_MODE
+        or report.get('argumentProfile') != profile['argumentProfile']
+        or report.get('expectedArgumentsSha256') != expected_arguments_sha256
+        or report.get('registrySha256') != expected_registry_sha256
+        or report.get('networkMode') != expected_network_mode
     ):
         return False
     path = report_path or (
-        LIVE_PROBE_DIR / Path(CODEX_A01_RENDER_AGGREGATION_REPORT_RELATIVE_PATH).name
+        LIVE_PROBE_DIR / Path(expected_report_path).name
     )
     try:
         relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
         report_bytes = path.read_bytes()
-        selection_bytes = (ROOT / CODEX_A01_RENDER_AGGREGATION_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
-        if relative_path != CODEX_A01_RENDER_AGGREGATION_REPORT_RELATIVE_PATH or len(report_bytes) > 64 * 1024:
+        selection_bytes = (ROOT / profile['selectionEvidencePath']).read_bytes()
+        if relative_path != expected_report_path or len(report_bytes) > 64 * 1024:
             return False
         if report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest():
             return False
@@ -15573,7 +15664,7 @@ def codex_a01_render_aggregation_profile_report_is_valid(
     except (OSError, ValueError, UnicodeError):
         return False
     if (
-        not codex_a01_render_aggregation_frontier_is_unassessed()
+        not codex_a01_render_aggregation_frontier_is_unassessed(profile_id)
         or not codex_a01_render_aggregation_profile_report_matches_candidate_revision(
             report, report.get('sourceRevision'),
         )
@@ -15634,7 +15725,7 @@ def codex_a01_render_aggregation_profile_report_is_valid(
     )
     current_harness_status = (
         harness_status if isinstance(harness_status, dict)
-        else codex_a01_render_aggregation_profile_harness_status(pr_number)
+        else codex_a01_render_aggregation_profile_harness_status(pr_number, profile_id)
     )
     epoch_result = current_epoch_status.get('epoch') if isinstance(current_epoch_status, dict) else None
     epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
@@ -24901,13 +24992,15 @@ def codex_mcp_evidence_is_valid(
     argument_profile = report.get('argumentProfile')
     if (
         tool_name == CODEX_A01_RENDER_AGGREGATION_TOOL_NAME
-        or report.get('profileId') == CODEX_A01_RENDER_AGGREGATION_PROFILE_ID
+        or report.get('profileId') in CODEX_A01_RENDER_AGGREGATION_PROFILES
     ):
+        profile = _select_codex_a01_render_aggregation_profile(report.get('profileId'))
         current_tool = current_by_name.get(CODEX_A01_RENDER_AGGREGATION_TOOL_NAME)
         return bool(
-            tool_name == CODEX_A01_RENDER_AGGREGATION_TOOL_NAME
-            and argument_profile == CODEX_A01_RENDER_AGGREGATION_ARGUMENT_PROFILE
-            and report.get('profileId') == CODEX_A01_RENDER_AGGREGATION_PROFILE_ID
+            profile is not None
+            and tool_name == CODEX_A01_RENDER_AGGREGATION_TOOL_NAME
+            and argument_profile == profile['argumentProfile']
+            and report.get('profileId') == profile['id']
             and report.get('acceptanceScope') == 'agent-mcp-matrix-only'
             and current_tool is not None
             and evidence_by_name.get(CODEX_A01_RENDER_AGGREGATION_TOOL_NAME) == current_tool
@@ -25295,8 +25388,9 @@ def model_mcp_e2e_report_paths() -> list[Path]:
     report_paths.append(
         LIVE_PROBE_DIR / CODEX_TITLE_QUERY_RENDER_REPORT_RELATIVE_PATH.split('/')[-1],
     )
-    report_paths.append(
-        LIVE_PROBE_DIR / CODEX_A01_RENDER_AGGREGATION_REPORT_RELATIVE_PATH.split('/')[-1],
+    report_paths.extend(
+        LIVE_PROBE_DIR / Path(str(profile['reportPath'])).name
+        for profile in CODEX_A01_RENDER_AGGREGATION_PROFILES.values()
     )
     report_paths.append(
         LIVE_PROBE_DIR / CODEX_A01_AGGREGATE_MATRIX_REPORT_RELATIVE_PATH.split('/')[-1],
@@ -25369,7 +25463,10 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             continue
         if not isinstance(report, dict):
             continue
-        if report.get('evidenceKind') == CODEX_A01_RENDER_AGGREGATION_EVIDENCE_KIND:
+        if report.get('profileId') in CODEX_A01_RENDER_AGGREGATION_PROFILES:
+            profile = _select_codex_a01_render_aggregation_profile(report.get('profileId'))
+            if profile is None or report.get('evidenceKind') != profile.get('evidenceKind'):
+                continue
             try:
                 report_relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
             except ValueError:
@@ -25377,12 +25474,12 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             evidence_by_name = catalog_for_hash(report.get('catalogSha256'))
             current_tool = current_by_name.get(CODEX_A01_RENDER_AGGREGATION_TOOL_NAME)
             if (
-                report_relative_path != CODEX_A01_RENDER_AGGREGATION_REPORT_RELATIVE_PATH
+                report_relative_path != profile.get('reportPath')
                 or report.get('frontierId') != 'A01'
                 or report.get('scenarioId') is not None
                 or report.get('toolName') != CODEX_A01_RENDER_AGGREGATION_TOOL_NAME
-                or report.get('argumentProfile') != CODEX_A01_RENDER_AGGREGATION_ARGUMENT_PROFILE
-                or report.get('profileId') != CODEX_A01_RENDER_AGGREGATION_PROFILE_ID
+                or report.get('argumentProfile') != profile.get('argumentProfile')
+                or report.get('profileId') != profile.get('id')
                 or report.get('acceptanceScope') != 'agent-mcp-matrix-only'
                 or evidence_by_name is None
                 or current_tool is None

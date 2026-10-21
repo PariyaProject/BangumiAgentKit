@@ -13118,6 +13118,48 @@ class A01RenderCohortAggregationMatrixProfileTests(unittest.TestCase):
 
     def test_frontier_remains_unassessed_with_matrix_only_source_refs(self):
         self.assertTrue(GENERATOR.codex_a01_render_aggregation_frontier_is_unassessed())
+        self.assertTrue(GENERATOR.codex_a01_render_aggregation_frontier_is_unassessed(
+            GENERATOR.CODEX_A01_RENDER_AGGREGATION_PROFILE_V2_ID,
+        ))
+
+    def test_v2_profile_routes_only_its_fresh_renderer_matrix_identity(self):
+        profile = GENERATOR.CODEX_A01_RENDER_AGGREGATION_PROFILE_V2
+        report = {
+            'toolName': profile['toolName'],
+            'argumentProfile': profile['argumentProfile'],
+            'profileId': profile['id'],
+            'acceptanceScope': 'agent-mcp-matrix-only',
+        }
+        current_tool = {
+            'name': profile['toolName'],
+            'auth': 'none',
+            'risk': 'read',
+            'inputSchema': {'type': 'object'},
+        }
+        with patch.object(
+            GENERATOR,
+            'codex_a01_render_aggregation_profile_report_is_valid',
+            return_value=True,
+        ):
+            self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
+                report,
+                {profile['toolName']: current_tool},
+                {profile['toolName']: current_tool},
+            ))
+            crossed_v1_input = dict(
+                report,
+                argumentProfile=GENERATOR.CODEX_A01_RENDER_AGGREGATION_ARGUMENT_PROFILE,
+            )
+            self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+                crossed_v1_input,
+                {profile['toolName']: current_tool},
+                {profile['toolName']: current_tool},
+            ))
+        report_paths = GENERATOR.model_mcp_e2e_report_paths()
+        self.assertIn(
+            GENERATOR.LIVE_PROBE_DIR / Path(profile['reportPath']).name,
+            report_paths,
+        )
 
     def test_routes_only_the_exact_render_aggregation_matrix_profile(self):
         with patch.object(
@@ -13265,6 +13307,7 @@ class A01RenderCohortAggregationMatrixProfileTests(unittest.TestCase):
         reviewer_id = 'gpt-6-luna-max-run95-pr123-round1'
         report = {
             'prNumber': 123,
+            'profileId': GENERATOR.CODEX_A01_RENDER_AGGREGATION_PROFILE_ID,
             'sourceRevision': source_candidate,
             'baseSha': base_sha,
             'reviewerId': reviewer_id,

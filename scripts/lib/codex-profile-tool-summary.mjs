@@ -41,7 +41,10 @@ import {
   R02_POSITIVE_DIRECT_RELATIONS_PROFILE_ID,
   summarizeR02PositiveDirectRelationsToolResult,
 } from './r02-positive-direct-relations-profile.mjs';
-import { A01_RENDER_COHORT_AGGREGATION_PROFILE_ID } from './a01-render-cohort-aggregation-offline-fixture.mjs';
+import {
+  A01_RENDER_COHORT_AGGREGATION_PROFILE_ID,
+  A01_RENDER_COHORT_AGGREGATION_V2_PROFILE_ID,
+} from './a01-render-cohort-aggregation-offline-fixture.mjs';
 import { A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS } from './a01-aggregate-cohort-offline-matrix-profile.mjs';
 import {
   A01_RATING_DISPERSION_PROFILE,
@@ -501,6 +504,7 @@ export function summarizeProfileToolResult(
     profileId === C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID ||
     profileId === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID ||
     profileId === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID ||
+    profileId === A01_RENDER_COHORT_AGGREGATION_V2_PROFILE_ID ||
     profileId === R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID ||
     profileId === R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID
   ) {

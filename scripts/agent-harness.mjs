@@ -4590,6 +4590,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'auth-start-offline-agent-mcp-v1':
       return validateAuthStartSanitizedReportFile(claim, root, reportPath);
     case 'a01-render-cohort-aggregation-agent-mcp-offline-v1':
+    case 'a01-render-cohort-aggregation-agent-mcp-offline-v2':
       return validateA01RenderCohortAggregationSanitizedReportFile(claim, root, reportPath);
     case 'a01-aggregate-cohort-offline-agent-mcp-matrix-v1':
     case 'a01-aggregate-cohort-offline-agent-mcp-matrix-v2':
