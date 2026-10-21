@@ -20,6 +20,7 @@ import {
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 import {
+  isAllowedCodexOneToolCatalogEntry,
   codexOneToolMcpServerProfileForNetworkMode,
   parseCodexOneToolMcpArguments,
 } from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
@@ -92,6 +93,14 @@ import {
   P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
   P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
 } from '../../scripts/lib/p02-person-profile-offline-fixture.mjs';
+import {
+  assertRenderSubjectCardOfflineProfile,
+  allowsRenderSubjectCardOptionalTool,
+  createRenderSubjectCardOfflineAssetGuard,
+  createRenderSubjectCardOfflineFetch,
+  isRenderSubjectCardOfflineProfile,
+  RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
+} from '../../scripts/lib/render-subject-card-offline-profile.mjs';
 import {
   assertG06SubjectCastOfflineProfile,
   createG06SubjectCastOfflineFetch,
@@ -173,6 +182,7 @@ import { inspectC07PngArtifact } from '../../scripts/lib/c07-png-artifact-valida
 import { buildG06PrivacySummary } from '../../scripts/lib/g06-privacy-summary.mjs';
 import { readToolCatalogAtSourceRevision } from '../../scripts/lib/source-revision-tool-catalog.mjs';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
+import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
 import { HttpClient, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { RenderService } from '../../packages/renderer/dist/index.js';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
@@ -295,6 +305,22 @@ export function parseArguments(argv) {
   return parseCodexOneToolMcpArguments(argv);
 }
 
+export function createCodexOneToolMcpToolList(registryTools, config) {
+  const targetTools = config.toolNames.length === 1 ? config.toolName : config.toolNames;
+  // Keep the shared MCP guard anonymous-only. This exact registered profile
+  // fixes includeCollection=false and the runtime below provides a public-only
+  // client whose authenticated path throws. Adapt only a shallow catalog copy
+  // so this one safe profile can use the shared read-only annotation path.
+  const profileSafeRegistryTools = registryTools.map((tool) =>
+    allowsRenderSubjectCardOptionalTool(config.profile, tool) ? { ...tool, auth: 'none' } : tool,
+  );
+  const tools = filterAllowedTools(profileSafeRegistryTools, targetTools);
+  return tools.map((tool) => ({
+    ...toMcpTool(tool),
+    annotations: publicReadOnlyToolAnnotations(tool),
+  }));
+}
+
 function runtimeCandidateMatches(sourceRevision, bundleSha256) {
   try {
     const currentRevision = gitRepositoryText(PRODUCT_ROOT, ['rev-parse', 'HEAD']);
@@ -312,6 +338,11 @@ function runtimeCandidateMatches(sourceRevision, bundleSha256) {
 
 async function main(argv = process.argv.slice(2)) {
   const config = parseArguments(argv);
+  const renderSubjectCardOfflineProfile =
+    config.networkMode === RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE;
+  if (renderSubjectCardOfflineProfile) {
+    assertRenderSubjectCardOfflineProfile(config.profile);
+  }
   if (config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE) {
     assertC07CohortRenderOfflineProfile({
       networkMode: config.networkMode,
@@ -419,12 +450,20 @@ async function main(argv = process.argv.slice(2)) {
   const catalogTools = config.toolNames.map((toolName) =>
     catalog.find((item) => item?.name === toolName),
   );
+  const optionalRenderSubjectCardProfile = Boolean(
+    renderSubjectCardOfflineProfile &&
+    isRenderSubjectCardOfflineProfile(config.profile) &&
+    config.toolNames.length === 1 &&
+    config.toolName === 'bangumi.render_subject_card' &&
+    config.expectedArgumentSequence?.length === 1 &&
+    config.expectedArgumentSequence[0]?.includeCollection === false,
+  );
   if (
-    catalogTools.some((tool) => !tool || tool.auth !== 'none' || tool.risk !== 'read') ||
+    catalogTools.some((tool) => !isAllowedCodexOneToolCatalogEntry(config.profile, tool)) ||
     new Set(config.toolNames).size !== config.toolNames.length
   ) {
     throw new Error(
-      'Only exact catalogued auth=none, risk=read tools may be exposed by this probe server.',
+      'Only exact catalogued read-only tools may be exposed; optional auth requires its fixed anonymous profile.',
     );
   }
   const bundleSha256 = computeMcpBundleSha256(PRODUCT_ROOT);
@@ -461,8 +500,9 @@ async function main(argv = process.argv.slice(2)) {
     config.networkMode === A01_RATING_DISPERSION_NETWORK_MODE
       ? createA01RatingDispersionPublicFetch()
       : null;
-  const offlineFixture =
-    config.networkMode === C03_PERSON_ACTIVITY_OFFLINE_V2_NETWORK_MODE
+  const offlineFixture = renderSubjectCardOfflineProfile
+    ? createRenderSubjectCardOfflineFetch(config.profile)
+    : config.networkMode === C03_PERSON_ACTIVITY_OFFLINE_V2_NETWORK_MODE
       ? createC03PersonActivityOfflineV2Fetch(config.profile)
       : [A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE, A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE].includes(
       config.networkMode,
@@ -518,6 +558,9 @@ async function main(argv = process.argv.slice(2)) {
     ].includes(config.networkMode) && getP06RenderPersonProfileOfflineConfig(config.profile?.id)
       ? createP06RenderPersonProfileAssetGuard()
       : null;
+  const renderSubjectCardAssetGuard = renderSubjectCardOfflineProfile
+    ? createRenderSubjectCardOfflineAssetGuard()
+    : null;
   const c07RenderComparisonAssetGuard = isC07RenderComparisonOfflineProfileId(config.profile?.id)
     ? createC07RenderComparisonOfflineAssetGuard()
     : null;
@@ -528,7 +571,7 @@ async function main(argv = process.argv.slice(2)) {
     config.profile?.id === TITLE_QUERY_RENDER_PROFILE_ID
       ? createTitleQueryRenderOfflineAssetResolver()
       : null;
-  const renderService = g01RenderQueryAssetResolver
+  const defaultRenderService = g01RenderQueryAssetResolver
     ? new RenderService(undefined, undefined, g01RenderQueryAssetResolver.assetResolver)
     : c07RenderComparisonAssetGuard
       ? new RenderService(undefined, undefined, c07RenderComparisonAssetGuard.assetResolver)
@@ -539,6 +582,9 @@ async function main(argv = process.argv.slice(2)) {
           : titleQueryRenderAssetResolver
             ? new RenderService(undefined, undefined, titleQueryRenderAssetResolver)
             : undefined;
+  const renderService = renderSubjectCardAssetGuard
+    ? new RenderService(undefined, undefined, renderSubjectCardAssetGuard.assetResolver)
+    : defaultRenderService;
   const publicHttpClient = new HttpClient({
     baseUrl: 'https://api.bgm.tv',
     timeoutMs: 10000,
@@ -561,6 +607,16 @@ async function main(argv = process.argv.slice(2)) {
     artifactStore,
     ...(renderService ? { renderService } : {}),
   });
+  if (optionalRenderSubjectCardProfile) {
+    const publicClient = new GeneratedBangumiOpenApiClient(publicHttpClient);
+    dependencies.clientProvider = {
+      getPublicClient: async () => publicClient,
+      getOptionalAuthenticatedClient: async () => publicClient,
+      requireAuthenticatedClient: async () => {
+        throw new Error('RENDER_SUBJECT_CARD_PROFILE_ACCOUNT_ACCESS_DISABLED');
+      },
+    };
+  }
   const registry = new ToolRegistry(dependencies, { profile: 'full', renderTarget: 'chat' });
   if (
     config.profile?.id === C04_COHORT_COMPARISON_PROFILE_ID &&
@@ -578,14 +634,7 @@ async function main(argv = process.argv.slice(2)) {
       'The registered A01 rating-dispersion profile does not match its fixed contract.',
     );
   }
-  const tools =
-    config.toolNames.length === 1
-      ? filterAllowedTools(registry.getTools(), config.toolName)
-      : filterAllowedTools(registry.getTools(), config.toolNames);
-  const mcpTools = tools.map((tool) => ({
-    ...toMcpTool(tool),
-    annotations: publicReadOnlyToolAnnotations(tool),
-  }));
+  const mcpTools = createCodexOneToolMcpToolList(registry.getTools(), config);
   const toolDescriptors = mcpTools.map((mcpTool) => ({
     toolName: mcpTool.name,
     descriptionSha256: createHash('sha256').update(mcpTool.description, 'utf8').digest('hex'),
@@ -640,6 +689,9 @@ async function main(argv = process.argv.slice(2)) {
       ? { results: Array(config.expectedArgumentSequence.length).fill(null) }
       : { result: null }),
     ...(offlineFixture ? { offlineFixture: offlineFixture.snapshot() } : {}),
+    ...(renderSubjectCardAssetGuard
+      ? { offlineAssetBoundary: renderSubjectCardAssetGuard.snapshot() }
+      : {}),
     ...(c07RenderComparisonAssetGuard
       ? { offlineAssetBoundary: c07RenderComparisonAssetGuard.snapshot() }
       : {}),
@@ -807,6 +859,7 @@ async function main(argv = process.argv.slice(2)) {
         }
         if (config.profile) {
           const artifactSummary =
+            isRenderSubjectCardOfflineProfile(config.profile) ||
             getP06RenderPersonProfileOfflineConfig(config.profile.id) ||
             isC07RenderComparisonOfflineProfileId(config.profile.id) ||
             isG01RenderQueryOfflineProfileId(config.profile.id)
@@ -857,6 +910,12 @@ async function main(argv = process.argv.slice(2)) {
           };
         }
         if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
+        if (renderSubjectCardAssetGuard) {
+          summary = {
+            ...summary,
+            offlineAssetBoundary: renderSubjectCardAssetGuard.snapshot(),
+          };
+        }
         if (c07RenderComparisonAssetGuard) {
           summary = {
             ...summary,
@@ -871,6 +930,36 @@ async function main(argv = process.argv.slice(2)) {
           summary = { ...summary, rendererAssetBoundary: r04RenderAssetFence.snapshot() };
         }
         persistSummary();
+        if (isRenderSubjectCardOfflineProfile(config.profile)) {
+          const safeProjection = summary.results[sequenceIndex]?.resultSummary;
+          if (
+            !safeProjection?.artifact?.returned ||
+            safeProjection?.artifact?.mimeType !== 'image/png'
+          ) {
+            summary = {
+              ...summary,
+              serverResultStatus: 'ERROR',
+              results: [
+                {
+                  sequenceIndex,
+                  status: 'ERROR',
+                  errorCode: 'RENDER_SUBJECT_CARD_ARTIFACT_INVALID',
+                },
+              ],
+            };
+            persistSummary();
+            return {
+              content: [
+                { type: 'text', text: 'The synthetic subject-card PNG artifact is invalid.' },
+              ],
+              isError: true,
+            };
+          }
+          return {
+            content: [{ type: 'text', text: JSON.stringify(safeProjection) }],
+            structuredContent: safeProjection,
+          };
+        }
         if (config.profile?.id === P07_PERSON_SEASON_PROFILE_ID) {
           const safeProjection = summary.results[sequenceIndex]?.resultSummary;
           if (!safeProjection) {
@@ -1059,6 +1148,12 @@ async function main(argv = process.argv.slice(2)) {
           summary = { ...summary, serverResultStatus: 'ERROR', errorCode };
         }
         if (offlineFixture) summary = { ...summary, offlineFixture: offlineFixture.snapshot() };
+        if (renderSubjectCardAssetGuard) {
+          summary = {
+            ...summary,
+            offlineAssetBoundary: renderSubjectCardAssetGuard.snapshot(),
+          };
+        }
         if (c07RenderComparisonAssetGuard) {
           summary = {
             ...summary,

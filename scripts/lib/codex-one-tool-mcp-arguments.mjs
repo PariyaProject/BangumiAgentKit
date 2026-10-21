@@ -56,6 +56,10 @@ import {
   S05_PROFILE_ID,
 } from './s05-person-activity-evidence.mjs';
 import { assertC03PersonActivityOfflineV2Profile } from './c03-person-activity-offline-matrix-v2-profile.mjs';
+import {
+  allowsRenderSubjectCardOptionalTool,
+  assertRenderSubjectCardOfflineProfile,
+} from './render-subject-card-offline-profile.mjs';
 
 const ANONYMOUS_PUBLIC_NETWORK_MODES = new Set([
   C04_COHORT_COMPARISON_NETWORK_MODE,
@@ -71,6 +75,14 @@ export function codexOneToolMcpServerProfileForNetworkMode(networkMode) {
   return !networkMode || ANONYMOUS_PUBLIC_NETWORK_MODES.has(networkMode)
     ? 'closed-profile-sequence-anonymous-public-v1'
     : 'closed-profile-sequence-anonymous-offline-v1';
+}
+
+export function isAllowedCodexOneToolCatalogEntry(profile, catalogTool) {
+  return Boolean(
+    catalogTool &&
+    catalogTool.risk === 'read' &&
+    (catalogTool.auth === 'none' || allowsRenderSubjectCardOptionalTool(profile, catalogTool)),
+  );
 }
 
 export function parseCodexOneToolMcpArguments(argv) {
@@ -177,7 +189,8 @@ export function parseCodexOneToolMcpArguments(argv) {
           (profile.id === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID &&
             assertA01RenderCohortAggregationOfflineProfile(profile)) ||
           assertR04RenderSeriesWatchOrderOfflineProfile(profile) ||
-          assertR04RenderV2SeriesWatchOrderOfflineV2Profile(profile);
+          assertR04RenderV2SeriesWatchOrderOfflineV2Profile(profile) ||
+          assertRenderSubjectCardOfflineProfile(profile);
       }
       if (!approved) {
         throw new Error('Registered profile network mode is not supported.');

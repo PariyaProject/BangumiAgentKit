@@ -154,6 +154,7 @@ import { validateP07SanitizedReportFile } from './acceptance/write-p07-person-se
 import { validateS05SanitizedReportFile } from './acceptance/write-s05-person-activity-report.mjs';
 import { validateR05SanitizedReportFile } from './acceptance/write-r05-shared-person-overlap-report.mjs';
 import { validateP06SanitizedReportFile } from './acceptance/write-p06-render-person-profile-agent-mcp-report.mjs';
+import { validateRenderSubjectCardOfflineSanitizedReportFile } from './acceptance/write-render-subject-card-offline-agent-mcp-report.mjs';
 import { validateC07RenderComparisonOfflineSanitizedReportFile } from './acceptance/write-c07-render-comparison-offline-agent-mcp-report.mjs';
 import { validateG01RenderQueryOfflineSanitizedReportFile } from './acceptance/write-g01-render-query-subjects-offline-agent-mcp-report.mjs';
 import { validateG01QuerySubjectsOfflineSanitizedReportFile } from './acceptance/write-g01-query-subjects-offline-agent-mcp-report.mjs';
@@ -316,6 +317,7 @@ const R04_RENDER_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
   'tests/integration/tool-e2e-acceptance.test.ts',
 ]);
 const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
+  'render-subject-card-offline-agent-mcp-v1',
   'p06-render-person-profile-offline-agent-mcp-v1',
   'p06-render-person-profile-offline-agent-mcp-v2',
   'c07-render-comparison-offline-agent-mcp-matrix-v1',
@@ -4539,6 +4541,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'p06-render-person-profile-offline-agent-mcp-v1':
     case 'p06-render-person-profile-offline-agent-mcp-v2':
       return validateP06SanitizedReportFile(claim, root, reportPath);
+    case 'render-subject-card-offline-agent-mcp-v1':
+      return validateRenderSubjectCardOfflineSanitizedReportFile(claim, root, reportPath);
     case 'c07-render-comparison-offline-agent-mcp-matrix-v1':
     case 'c07-render-comparison-offline-agent-mcp-matrix-v2':
     case 'c07-render-comparison-offline-agent-mcp-matrix-v3':

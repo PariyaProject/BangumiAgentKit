@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseCodexOneToolMcpArguments } from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
+import {
+  isAllowedCodexOneToolCatalogEntry,
+  parseCodexOneToolMcpArguments,
+} from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
 import { getAgentMcpProfileById } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
+import { assertRenderSubjectCardOfflineProfile } from '../../scripts/lib/render-subject-card-offline-profile.mjs';
 
 test('C04 MCP profile parser exposes one indexed tool per separate Codex run', () => {
   const profile = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
@@ -132,4 +136,88 @@ test('R04 v2 render profile is fixed to the new offline matrix input', () => {
   assert.equal(config.toolName, 'bangumi.render_series_watch_order');
   assert.deepEqual(config.expectedArgumentSequence, [profile.calls[0].arguments]);
   assert.equal(config.networkMode, 'run95-r04-render-series-watch-order-offline-v2');
+});
+
+test('render_subject_card optional-auth profile is fixed to anonymous public arguments', () => {
+  const profile = getAgentMcpProfileById('render-subject-card-offline-agent-mcp-v1');
+  assert.ok(profile);
+  assert.equal(assertRenderSubjectCardOfflineProfile(profile), true);
+  const config = parseCodexOneToolMcpArguments([
+    '--profile-id',
+    profile.id,
+    '--summary-file',
+    '/tmp/render-subject-card-mcp-summary.json',
+    '--candidate-sha',
+    'a'.repeat(40),
+    '--bundle-sha256',
+    'b'.repeat(64),
+  ]);
+  assert.equal(config.profile.id, profile.id);
+  assert.equal(config.toolName, 'bangumi.render_subject_card');
+  assert.deepEqual(config.toolNames, ['bangumi.render_subject_card']);
+  assert.deepEqual(config.expectedArgumentSequence, [
+    { subjectId: 990901, includeCollection: false },
+  ]);
+  assert.equal(config.networkMode, 'run95-render-subject-card-offline-v1');
+  assert.equal(
+    isAllowedCodexOneToolCatalogEntry(profile, {
+      name: 'bangumi.render_subject_card',
+      auth: 'optional',
+      risk: 'read',
+    }),
+    true,
+  );
+  assert.equal(
+    isAllowedCodexOneToolCatalogEntry(profile, {
+      name: 'bangumi.render_cast_card',
+      auth: 'optional',
+      risk: 'read',
+    }),
+    false,
+  );
+  assert.equal(
+    isAllowedCodexOneToolCatalogEntry(profile, {
+      name: 'bangumi.manage_index',
+      auth: 'required',
+      risk: 'write',
+    }),
+    false,
+  );
+  assert.equal(
+    isAllowedCodexOneToolCatalogEntry(null, {
+      name: 'bangumi.render_subject_card',
+      auth: 'optional',
+      risk: 'read',
+    }),
+    false,
+  );
+  assert.throws(
+    () =>
+      assertRenderSubjectCardOfflineProfile({
+        ...profile,
+        calls: [
+          {
+            toolName: 'bangumi.render_subject_card',
+            arguments: { subjectId: 990901, includeCollection: true },
+          },
+        ],
+      }),
+    /profile is invalid/u,
+  );
+  assert.throws(
+    () =>
+      parseCodexOneToolMcpArguments([
+        '--profile-id',
+        profile.id,
+        '--tool',
+        'bangumi.render_subject_card',
+        '--summary-file',
+        '/tmp/render-subject-card-mcp-summary.json',
+        '--candidate-sha',
+        'a'.repeat(40),
+        '--bundle-sha256',
+        'b'.repeat(64),
+      ]),
+    /cannot be combined/u,
+  );
 });

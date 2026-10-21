@@ -2484,6 +2484,53 @@ CODEX_P06_REQUIRED_CI_CHECKS = (
     'provider-foundation',
     'discovery-foundation',
 )
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'render-subject-card-offline-agent-mcp-v1'
+)
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['id']
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_EPOCH_ID = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['epochId']
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_TOOL_NAME = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['toolName']
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_ARGUMENT_PROFILE = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['argumentProfile']
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_EXPECTED_CALLS = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['calls']
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_RENDER_SUBJECT_CARD_OFFLINE_EXPECTED_CALLS],
+    sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE,
+    sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['reportPath']
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['selectionEvidencePath']
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_EVIDENCE_KIND = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['evidenceKind']
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_ANSWER_CHECK_METHOD = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['answerCheckMethod']
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['networkMode']
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_FIELDS = CODEX_P06_REPORT_FIELDS
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_ANSWER_CHECK_FIELDS = {
+    'exactRegisteredProfile', 'oneAllowedMcpTool', 'fixedArguments', 'exactCandidateBundle',
+    'offlineFixtureOnly', 'noAuthorizationOrCollection', 'noAssetResolution',
+    'artifactReturned', 'exactAcknowledgement', 'privacyPreserved',
+}
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_FIXTURE_FIELDS = {
+    'profile', 'expectedOperation', 'requestCount', 'expectedRequestCount',
+    'unexpectedRequestCount', 'authorizationHeaderCount', 'collectionRequestCount',
+    'expectedOperationComplete', 'rawFixturePayloadStored',
+}
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_ASSET_FIELDS = {
+    'assetResolutionCallCount', 'nonEmptyAssetUrlCount', 'blockedAssetRequestCount',
+    'localFallbackUsed',
+}
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_ARTIFACT_FIELDS = CODEX_P06_ARTIFACT_FIELDS
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_PRIVACY_FIELDS = CODEX_P06_PRIVACY_FIELDS
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_RECEIPT_FIELDS = CODEX_P06_RECEIPT_FIELDS
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_RECEIPT_PAYLOAD_FIELDS = CODEX_P06_RECEIPT_PAYLOAD_FIELDS
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_REQUIRED_CI_CHECKS = CODEX_P06_REQUIRED_CI_CHECKS
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_EVIDENCE_REFRESH_PATHS = {
+    CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+}
 CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'c07-render-comparison-offline-agent-mcp-matrix-v1'
@@ -5106,7 +5153,6 @@ CODEX_PROBE_IMPLEMENTATION_MARKERS = {
         "serverProfile: 'one-tool-anonymous-public-v1'",
         'new MemoryStorage()',
         "baseUrl: 'https://api.bgm.tv'",
-        'filterAllowedTools(registry.getTools(), config.toolName)',
         'authorizeToolCall({',
         'claimSingleToolCall(',
         'writeSanitizedSummary(',
@@ -5130,6 +5176,14 @@ CODEX_PROBE_IMPLEMENTATION_MARKERS = {
         "'双峰'",
     ),
 }
+CODEX_PROBE_TOOL_FILTER_IMPLEMENTATIONS = (
+    ('filterAllowedTools(registry.getTools(), config.toolName)',),
+    (
+        'export function createCodexOneToolMcpToolList(registryTools, config)',
+        'allowsRenderSubjectCardOptionalTool(config.profile, tool)',
+        'filterAllowedTools(profileSafeRegistryTools, targetTools)',
+    ),
+)
 CODEX_C07_RENDERER_PROBE_IMPLEMENTATION_MARKERS = {
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
         'assertC07CohortRenderOfflineProfile(',
@@ -5781,6 +5835,76 @@ CODEX_P06_PROBE_IMPLEMENTATION_MARKERS = {
         'def codex_p06_profile_report_matches_candidate_revision(',
         'def codex_p06_profile_disposition_matches_report(',
         'CODEX_P06_REPORT_RELATIVE_PATH',
+    ),
+}
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "render-subject-card-offline-agent-mcp-v1"',
+        '"networkMode": "run95-render-subject-card-offline-v1"',
+        '"toolName": "bangumi.render_subject_card"',
+        '"subjectId": 990901',
+    ),
+    'scripts/lib/render-subject-card-offline-profile.mjs': (
+        'export function assertRenderSubjectCardOfflineProfile(',
+        'export function createRenderSubjectCardOfflineFetch(',
+        'export function createRenderSubjectCardOfflineAssetGuard(',
+        'collectionRequestCount',
+        'RENDER_SUBJECT_CARD_OFFLINE_UNEXPECTED_REQUEST',
+    ),
+    'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
+        'assertRenderSubjectCardOfflineProfile(profile)',
+        'isAllowedCodexOneToolCatalogEntry(profile, catalogTool)',
+    ),
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        "profileId === RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID",
+        'summarizeTitleQueryRenderArtifact(result, artifactSummary)',
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        'optionalRenderSubjectCardProfile',
+        'RENDER_SUBJECT_CARD_PROFILE_ACCOUNT_ACCESS_DISABLED',
+        'createRenderSubjectCardOfflineFetch(config.profile)',
+        'createRenderSubjectCardOfflineAssetGuard()',
+    ),
+    'scripts/acceptance/run-render-subject-card-offline-agent-mcp.mjs': (
+        'export function validateRenderSubjectCardOfflineRunnerArgs(',
+        'export function assertCandidateReviewGate(',
+        'export function buildCodexExecArgs(',
+        'export function validateServerSummary(',
+        'function runProfile(',
+    ),
+    'scripts/acceptance/write-render-subject-card-offline-agent-mcp-report.mjs': (
+        'export function buildRenderSubjectCardOfflineRunnerReceiptPayload(',
+        'export function validateRenderSubjectCardOfflineProfileReport(',
+        'export function validateRenderSubjectCardOfflineSanitizedReportFile(',
+        'openSync(REPORT_PATH, \'wx\', 0o600)',
+    ),
+    'scripts/acceptance/validate-render-subject-card-offline-agent-mcp-report.mjs': (
+        'validateRenderSubjectCardOfflineProfileReport(report, input.claim, reportBytes)',
+    ),
+    'scripts/agent-harness.mjs': (
+        "case 'render-subject-card-offline-agent-mcp-v1'",
+        'validateRenderSubjectCardOfflineSanitizedReportFile(',
+    ),
+    'docs/research/run95-render-subject-card-offline-agent-mcp-contract-2026-10-21.md': (
+        'Frontier: OP-008, subject overview presentation.',
+        'One allowed request: `GET https://api.bgm.tv/v0/subjects/990901`',
+    ),
+    'docs/research/run95-render-subject-card-offline-preflight-2026-10-21.md': (
+        'The synthetic Subject intentionally has no cover URL.',
+    ),
+    'tests/harness/render-subject-card-offline-profile.test.mjs': (
+        'render_subject_card offline fixture serves one exact synthetic public Subject response',
+    ),
+    'tests/harness/run-render-subject-card-offline-agent-mcp.test.mjs': (
+        'runner accepts only the Run 95 invocation and fails closed before an ineligible review',
+        'Codex invocation is read-only and exposes only the fixed render_subject_card MCP tool',
+    ),
+    'tests/harness/write-render-subject-card-offline-agent-mcp-report.test.mjs': (
+        'subject-card report binds the exact claim, fixed offline call, artifact receipt, and signature',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_render_subject_card_offline_profile_report_is_valid(',
+        'CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH',
     ),
 }
 CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
@@ -8796,8 +8920,16 @@ def _codex_revision_has_markers(
 @functools.lru_cache(maxsize=128)
 def _codex_probe_revision_has_implementation(repository_root: str, revision: str) -> bool:
     """Bind a report revision to the tracked one-tool server and its evidence checks."""
-    return _codex_revision_has_markers(
+    if not _codex_revision_has_markers(
         repository_root, revision, CODEX_PROBE_IMPLEMENTATION_MARKERS,
+    ):
+        return False
+    server = _run_repository_git(
+        repository_root, 'show', f'{revision}:apps/mcp/codex-one-tool-mcp-server.mjs',
+    )
+    return server.returncode == 0 and any(
+        all(marker in server.stdout for marker in implementation)
+        for implementation in CODEX_PROBE_TOOL_FILTER_IMPLEMENTATIONS
     )
 
 
@@ -13082,6 +13214,395 @@ def codex_p06_profile_report_is_valid(
         text=True,
         timeout=30,
         check=False,
+    )
+    if validation.returncode != 0:
+        return False
+    try:
+        result = json.loads(validation.stdout)
+    except (TypeError, ValueError):
+        return False
+    return result.get('passed') is True and result.get('reportSha256') == report_sha256
+
+
+def codex_render_subject_card_offline_profile_spec(profile: object) -> dict[str, object] | None:
+    profile_id = profile.get('profileId') if isinstance(profile, dict) and 'profileId' in profile else profile
+    return CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE if profile_id == CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID else None
+
+
+def codex_render_subject_card_offline_profile_frontier_is_partial() -> bool:
+    try:
+        frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    records = frontier.get('records') if isinstance(frontier, dict) else None
+    record = next(
+        (item for item in records or [] if isinstance(item, dict) and item.get('id') == 'OP-008'),
+        None,
+    )
+    refs = record.get('source_refs') if isinstance(record, dict) else None
+    return bool(
+        isinstance(record, dict)
+        and record.get('status') == 'PARTIAL'
+        and isinstance(refs, list)
+        and CODEX_RENDER_SUBJECT_CARD_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH in refs
+    )
+
+
+def codex_render_subject_card_offline_profile_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
+def codex_render_subject_card_offline_profile_report_matches_candidate_revision(
+    report_path: Path, revision: object,
+) -> bool:
+    if not codex_render_subject_card_offline_profile_revision_has_implementation(revision):
+        return False
+    return _codex_relations_report_matches_candidate_revision(
+        report_path, revision, CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH,
+    )
+
+
+def codex_render_subject_card_offline_profile_evidence_refresh_paths_are_valid(paths: object) -> bool:
+    return (
+        isinstance(paths, (list, tuple, set, frozenset))
+        and CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH in paths
+        and all(
+            isinstance(item, str) and item in CODEX_RENDER_SUBJECT_CARD_OFFLINE_EVIDENCE_REFRESH_PATHS
+            for item in paths
+        )
+    )
+
+
+def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+    report: object,
+    epoch_status: object,
+    changed_paths: object,
+    current_bundle_sha256: object,
+) -> bool:
+    if not isinstance(report, dict) or not isinstance(epoch_status, dict):
+        return False
+    run = epoch_status.get('run')
+    epoch_result = epoch_status.get('epoch')
+    if not isinstance(run, dict) or not isinstance(epoch_result, dict):
+        return False
+    run_state = run.get('state')
+    epoch = epoch_result.get('state')
+    if not isinstance(run_state, dict) or not isinstance(epoch, dict):
+        return False
+    candidate_sha = epoch.get('candidate_sha')
+    source_sha = report.get('sourceRevision')
+    pr_number = report.get('prNumber')
+    branch = epoch.get('branch')
+    reviews = epoch.get('review_history', [])
+    latest_review = reviews[-1] if isinstance(reviews, list) and reviews else None
+    active_pr = (
+        run_state.get('state') == 'EPOCH_ACTIVE'
+        and run_state.get('active_epoch_pr') == pr_number
+        and epoch_result.get('github_state') == 'OPEN'
+        and epoch.get('state') != 'MERGED'
+    )
+    merged_pr = (
+        epoch.get('state') == 'MERGED'
+        and epoch_result.get('github_state') == 'MERGED'
+        and isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == candidate_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+    )
+    return (
+        type(pr_number) is int
+        and pr_number > 0
+        and run.get('number') == 95
+        and (active_pr or merged_pr)
+        and epoch.get('epoch_id') == CODEX_RENDER_SUBJECT_CARD_OFFLINE_EPOCH_ID
+        and epoch.get('pr_number') == pr_number
+        and epoch.get('base_branch') == 'master'
+        and isinstance(branch, str)
+        and epoch.get('base_sha') == report.get('baseSha')
+        and epoch_result.get('pr_base_ref_name') == 'master'
+        and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
+        and epoch_result.get('pr_head_ref_name') == branch
+        and epoch_result.get('pr_is_draft') is False
+        and isinstance(candidate_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
+        and epoch_result.get('pr_head_sha') == candidate_sha
+        and isinstance(source_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
+        and codex_render_subject_card_offline_profile_evidence_refresh_paths_are_valid(changed_paths)
+        and current_bundle_sha256 == report.get('mcpBundleSha256')
+    )
+
+
+def codex_render_subject_card_offline_profile_report_candidate_binding_is_current(
+    report: dict[str, object], epoch_status: object,
+) -> bool:
+    candidate = None
+    if isinstance(epoch_status, dict):
+        epoch_result = epoch_status.get('epoch')
+        epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
+        candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
+    paths = _codex_p06_profile_report_candidate_paths(report.get('sourceRevision'), candidate)
+    bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
+    return codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+        report, epoch_status, paths, bundle_sha256,
+    )
+
+
+def codex_render_subject_card_offline_profile_epoch_harness_status(
+    pr_number: object,
+) -> dict[str, object] | None:
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            ['node', str(ROOT / 'scripts/agent-harness.mjs'), 'status', '--run', '95', '--pr', str(pr_number)],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_render_subject_card_offline_profile_harness_status(pr_number: object) -> dict[str, object] | None:
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                'node', str(ROOT / 'scripts/agent-harness.mjs'), 'epoch:agent-mcp-profile-status',
+                '--run', '95', '--pr', str(pr_number), '--profile-id',
+                CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID,
+            ],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_render_subject_card_offline_profile_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+) -> dict[str, object] | None:
+    if not isinstance(harness_status, dict):
+        return None
+    profile = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE
+    receipt = report.get('runnerReceipt')
+    disposition = harness_status.get('disposition')
+    if (
+        harness_status.get('state') != 'REPORT_WRITTEN'
+        or harness_status.get('profile_id') != profile['id']
+        or harness_status.get('pr') != report.get('prNumber')
+        or harness_status.get('tool_name') != profile['toolName']
+        or harness_status.get('argument_profile') != profile['argumentProfile']
+        or harness_status.get('expected_arguments_sha256') != CODEX_RENDER_SUBJECT_CARD_OFFLINE_EXPECTED_ARGUMENTS_SHA256
+        or harness_status.get('registry_sha256') != CODEX_RENDER_SUBJECT_CARD_OFFLINE_REGISTRY_SHA256
+        or harness_status.get('claim_label_present') is not True
+        or harness_status.get('terminal_label_present') is not True
+        or not isinstance(disposition, dict)
+        or not isinstance(receipt, dict)
+        or not isinstance(report_sha256, str)
+        or re.fullmatch(r'[0-9a-f]{64}', report_sha256) is None
+    ):
+        return None
+    expected = {
+        'claimId': report.get('claimId'),
+        'profileId': profile['id'],
+        'frontierId': 'OP-008',
+        'epochId': profile['epochId'],
+        'runNumber': 95,
+        'prNumber': report.get('prNumber'),
+        'state': 'REPORT_WRITTEN',
+        'sourceCandidateSha': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'ciSha': report.get('sourceRevision'),
+        'ciStatus': 'SUCCESS',
+        'ciRunId': report.get('ciRunId'),
+        'ciChecks': report.get('ciChecks'),
+        'reviewerId': report.get('reviewerId'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'registrySha256': CODEX_RENDER_SUBJECT_CARD_OFFLINE_REGISTRY_SHA256,
+        'toolName': profile['toolName'],
+        'argumentProfile': profile['argumentProfile'],
+        'expectedArgumentsSha256': CODEX_RENDER_SUBJECT_CARD_OFFLINE_EXPECTED_ARGUMENTS_SHA256,
+        'reportWritten': True,
+        'reportPath': profile['reportPath'],
+        'reportSha256': report_sha256,
+        'retryAllowed': False,
+        'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
+        'runnerReceiptPublicKeySha256': receipt.get('publicKeySha256'),
+        'runnerReceiptSha256': _canonical_json_sha256(receipt),
+    }
+    if any(disposition.get(key) != value for key, value in expected.items()):
+        return None
+    return disposition
+
+
+def codex_render_subject_card_offline_profile_report_is_valid(
+    report: object,
+    harness_status: object = None,
+    report_path: Path | None = None,
+    epoch_status: object = None,
+) -> bool:
+    """Validate the signed anonymous subject-card profile for one Agent/MCP cell only."""
+    profile = codex_render_subject_card_offline_profile_spec(report)
+    if not isinstance(report, dict) or profile is None or set(report) != CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_FIELDS:
+        return False
+    path = report_path or (LIVE_PROBE_DIR / Path(str(profile['reportPath'])).name)
+    try:
+        relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+        report_bytes = path.read_bytes()
+        selection_bytes = (ROOT / str(profile['selectionEvidencePath'])).read_bytes()
+    except (OSError, ValueError):
+        return False
+    source_revision = report.get('sourceRevision')
+    pr_number = report.get('prNumber')
+    fixture = report.get('offlineFixture')
+    asset = report.get('offlineAssetBoundary')
+    artifact = report.get('artifact')
+    privacy = report.get('privacy')
+    acknowledgement = b'RENDER_SUBJECT_CARD_SYNTHETIC_ARTIFACT_READY'
+    if (
+        relative_path != profile['reportPath']
+        or len(report_bytes) > 64 * 1024
+        or type(report.get('schemaVersion')) is not int or report.get('schemaVersion') != 1
+        or report.get('evidenceKind') != profile['evidenceKind']
+        or type(report.get('runNumber')) is not int or report.get('runNumber') != 95
+        or report.get('frontierId') != 'OP-008' or report.get('scenarioId') is not None
+        or report.get('epochId') != profile['epochId'] or report.get('profileId') != profile['id']
+        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v1'
+        or report.get('model') != 'gpt-6-luna' or report.get('reasoningEffort') != 'max'
+        or not isinstance(report.get('reviewerId'), str)
+        or re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', report['reviewerId']) is None
+        or not isinstance(report.get('codexCliVersion'), str)
+        or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
+        or not isinstance(report.get('observedAt'), str)
+        or re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', report['observedAt']) is None
+        or report.get('registrySha256') != CODEX_RENDER_SUBJECT_CARD_OFFLINE_REGISTRY_SHA256
+        or report.get('expectedArgumentsSha256') != CODEX_RENDER_SUBJECT_CARD_OFFLINE_EXPECTED_ARGUMENTS_SHA256
+        or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
+        or report.get('toolName') != profile['toolName']
+        or report.get('argumentProfile') != profile['argumentProfile']
+        or report.get('networkMode') != profile['networkMode']
+        or report.get('serverToolNames') != [profile['toolName']] or report.get('serverToolCount') != 1
+        or report.get('mcpServerNames') != ['bgk_render_subject_card_offline']
+        or not isinstance(source_revision, str) or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
+        or not codex_render_subject_card_offline_profile_revision_has_implementation(source_revision)
+        or not codex_render_subject_card_offline_profile_frontier_is_partial()
+        or not isinstance(report.get('baseSha'), str) or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
+        or report.get('ciSha') != source_revision or report.get('ciStatus') != 'SUCCESS'
+        or not isinstance(report.get('ciRunId'), str) or re.fullmatch(r'[1-9]\d{3,}', report['ciRunId']) is None
+        or report.get('ciChecks') != [
+            {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+            for name in CODEX_RENDER_SUBJECT_CARD_OFFLINE_REQUIRED_CI_CHECKS
+        ]
+        or type(pr_number) is not int or pr_number < 1
+        or not isinstance(report.get('claimId'), str)
+        or re.fullmatch(rf'profile-run-95-pr-{pr_number}-{source_revision[:12]}-\d+', report['claimId']) is None
+        or report.get('mcpBundleSha256') != codex_g26_candidate_bundle_sha256(source_revision)
+        or report.get('resultStatus') != 'SUCCESS' or report.get('processExitCode') != 0
+        or report.get('eventStreamParsed') is not True or report.get('turnCompleted') is not True
+        or report.get('codexMcpToolEventCount') != 1 or report.get('codexErrorItemCount') != 0
+        or report.get('nonMcpToolEventCount') != 0 or report.get('nonMcpToolTypes') != []
+        or report.get('shellToolCallCount') != 0 or report.get('allowedCallCount') != 1
+        or report.get('deniedCallCount') != 0 or report.get('answerCheckMethod') != profile['answerCheckMethod']
+        or report.get('answerSha256') != hashlib.sha256(acknowledgement).hexdigest()
+        or report.get('answerUtf8Bytes') != len(acknowledgement)
+    ):
+        return False
+    if (
+        not isinstance(report.get('answerChecks'), dict)
+        or set(report['answerChecks']) != CODEX_RENDER_SUBJECT_CARD_OFFLINE_ANSWER_CHECK_FIELDS
+        or any(value is not True for value in report['answerChecks'].values())
+        or not isinstance(fixture, dict)
+        or set(fixture) != CODEX_RENDER_SUBJECT_CARD_OFFLINE_FIXTURE_FIELDS
+        or fixture != {
+            'profile': CODEX_RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
+            'expectedOperation': 'GET /v0/subjects/990901',
+            'requestCount': 1,
+            'expectedRequestCount': 1,
+            'unexpectedRequestCount': 0,
+            'authorizationHeaderCount': 0,
+            'collectionRequestCount': 0,
+            'expectedOperationComplete': True,
+            'rawFixturePayloadStored': False,
+        }
+        or not isinstance(asset, dict)
+        or set(asset) != CODEX_RENDER_SUBJECT_CARD_OFFLINE_ASSET_FIELDS
+        or asset != {
+            'assetResolutionCallCount': 0,
+            'nonEmptyAssetUrlCount': 0,
+            'blockedAssetRequestCount': 0,
+            'localFallbackUsed': True,
+        }
+        or report.get('networkBoundary') != {
+            'liveBangumiApiRequestCount': 0,
+            'rendererAssetRequestCount': 0,
+            'fullCodexHarnessNetworkSandboxed': False,
+        }
+        or not isinstance(artifact, dict)
+        or set(artifact) != CODEX_RENDER_SUBJECT_CARD_OFFLINE_ARTIFACT_FIELDS
+        or artifact.get('returned') is not True or artifact.get('persisted') is not False
+        or artifact.get('mimeType') != 'image/png' or type(artifact.get('width')) is not int
+        or artifact.get('width') != 720 or type(artifact.get('height')) is not int
+        or not 0 < artifact['height'] <= 5000 or type(artifact.get('byteLength')) is not int
+        or not 0 < artifact['byteLength'] <= 5_000_000
+        or not isinstance(artifact.get('sha256'), str)
+        or re.fullmatch(r'[0-9a-f]{64}', artifact['sha256']) is None
+        or artifact.get('pngSignatureValid') is not True
+        or not isinstance(privacy, dict)
+        or set(privacy) != CODEX_RENDER_SUBJECT_CARD_OFFLINE_PRIVACY_FIELDS
+        or privacy != {
+            'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+            'writesAttempted': False, 'communityRead': False, 'qqPipelineTested': False,
+            'timClientTested': False, 'promptStored': False, 'answerStored': False,
+            'rawFixtureRowsStored': False, 'rawToolResultStored': False,
+            'artifactImageBytesStored': False, 'credentialsStored': False,
+        }
+        or not isinstance(report.get('runnerReceipt'), dict)
+        or set(report['runnerReceipt']) != CODEX_RENDER_SUBJECT_CARD_OFFLINE_RECEIPT_FIELDS
+        or not isinstance(report['runnerReceipt'].get('payload'), dict)
+        or set(report['runnerReceipt']['payload']) != CODEX_RENDER_SUBJECT_CARD_OFFLINE_RECEIPT_PAYLOAD_FIELDS
+    ):
+        return False
+    try:
+        catalog_bytes = CATALOG.read_bytes()
+        catalog = json.loads(catalog_bytes)
+        tool = next((item for item in catalog if isinstance(item, dict) and item.get('name') == profile['toolName']), None)
+    except (OSError, ValueError):
+        return False
+    if (
+        not isinstance(tool, dict) or tool.get('auth') != 'optional' or tool.get('risk') != 'read'
+        or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+        or report.get('toolDescriptionSha256') != hashlib.sha256(tool.get('description', '').encode('utf-8')).hexdigest()
+        or report.get('inputSchemaSha256') != _canonical_json_sha256(tool.get('inputSchema'))
+    ):
+        return False
+    report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+    current_epoch_status = epoch_status or codex_render_subject_card_offline_profile_epoch_harness_status(pr_number)
+    if not codex_render_subject_card_offline_profile_report_candidate_binding_is_current(report, current_epoch_status):
+        return False
+    status = harness_status or codex_render_subject_card_offline_profile_harness_status(pr_number)
+    disposition = codex_render_subject_card_offline_profile_disposition_matches_report(report, status, report_sha256)
+    if disposition is None:
+        return False
+    validation = subprocess.run(
+        ['node', str(ROOT / 'scripts/acceptance/validate-render-subject-card-offline-agent-mcp-report.mjs')],
+        cwd=ROOT,
+        input=json.dumps({'claim': disposition, 'reportBytesBase64': base64.b64encode(report_bytes).decode('ascii')}),
+        capture_output=True, text=True, timeout=30, check=False,
     )
     if validation.returncode != 0:
         return False
@@ -24218,6 +24739,9 @@ def model_mcp_e2e_report_paths() -> list[Path]:
         LIVE_PROBE_DIR / Path(CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_REPORT_RELATIVE_PATH).name,
     )
     report_paths.append(LIVE_PROBE_DIR / CODEX_P06_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(
+        LIVE_PROBE_DIR / Path(CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH).name,
+    )
     for c07_profile in CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILES.values():
         report_paths.append(LIVE_PROBE_DIR / Path(str(c07_profile['reportPath'])).name)
     for g01_render_query_profile in CODEX_G01_RENDER_QUERY_OFFLINE_PROFILES.values():
@@ -24586,6 +25110,25 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             ):
                 continue
             sources.setdefault(CODEX_P06_TOOL_NAME, set()).add(report_source_ref(path))
+            continue
+        if report.get('evidenceKind') == CODEX_RENDER_SUBJECT_CARD_OFFLINE_EVIDENCE_KIND:
+            current_status = codex_render_subject_card_offline_profile_harness_status(report.get('prNumber'))
+            current_epoch_status = codex_render_subject_card_offline_profile_epoch_harness_status(
+                report.get('prNumber'),
+            )
+            if (
+                path.name != Path(CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH).name
+                or not codex_render_subject_card_offline_profile_report_is_valid(
+                    report, current_status, path, current_epoch_status,
+                )
+                or not codex_render_subject_card_offline_profile_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault(CODEX_RENDER_SUBJECT_CARD_OFFLINE_TOOL_NAME, set()).add(
+                report_source_ref(path),
+            )
             continue
         if report.get('evidenceKind') in {
             profile.get('evidenceKind')

@@ -1,0 +1,48 @@
+{
+  "schema": "run95-render-subject-card-offline-preflight/v1",
+  "profileId": "render-subject-card-offline-agent-mcp-v1",
+  "sourceRevision": "e867b2f6a22d50148493a028d93bff14ee602707",
+  "toolName": "bangumi.render_subject_card",
+  "arguments": {
+    "subjectId": 990901,
+    "includeCollection": false
+  },
+  "render": {
+    "target": "chat",
+    "widthCssPixels": 360,
+    "deviceScaleFactor": 2,
+    "theme": "bangumi-light",
+    "designPack": "warm-editorial"
+  },
+  "artifact": {
+    "path": "docs/research/assets/run95-render-subject-card-offline-agent-mcp-v1/subject-card-warm-editorial-360x2.png",
+    "mimeType": "image/png",
+    "width": 720,
+    "height": 1576,
+    "byteLength": 257734,
+    "sha256": "75a2de6d4b7c606d2cb84f1efbcbf98864046315bd0d9f635313e1c4b48d5d89",
+    "pngSignatureValid": true
+  },
+  "fetchBoundary": {
+    "profile": "run95-render-subject-card-offline-v1",
+    "expectedOperation": "GET /v0/subjects/990901",
+    "requestCount": 1,
+    "expectedRequestCount": 1,
+    "unexpectedRequestCount": 0,
+    "authorizationHeaderCount": 0,
+    "collectionRequestCount": 0,
+    "expectedOperationComplete": true,
+    "rawFixturePayloadStored": false
+  },
+  "assetBoundary": {
+    "assetResolutionCallCount": 0,
+    "nonEmptyAssetUrlCount": 0,
+    "blockedAssetRequestCount": 0,
+    "localFallbackUsed": true
+  },
+  "rawFixturePayloadStored": false,
+  "sourceBinding": {
+    "workingTreeClean": false,
+    "exactCandidateEvidence": false
+  }
+}
