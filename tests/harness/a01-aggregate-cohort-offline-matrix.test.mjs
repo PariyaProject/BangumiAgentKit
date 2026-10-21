@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   agentMcpProfileArgumentsSha256,
   getAgentMcpProfileById,
+  normalizeAgentMcpProfileDiagnostics,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
   A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
@@ -13,6 +14,10 @@ import {
   A01_AGGREGATE_COHORT_OFFLINE_V2_EPOCH_ID,
   A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
   A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+  A01_AGGREGATE_COHORT_OFFLINE_V3_EXPECTED_ARGUMENTS,
+  A01_AGGREGATE_COHORT_OFFLINE_V3_EPOCH_ID,
+  A01_AGGREGATE_COHORT_OFFLINE_V3_NETWORK_MODE,
+  A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID,
   A01_AGGREGATE_COHORT_TOOL,
   assertA01AggregateCohortOfflineProfile,
   createA01AggregateCohortOfflineFetch,
@@ -21,6 +26,7 @@ import { parseCodexOneToolMcpArguments } from '../../scripts/lib/codex-one-tool-
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 import {
   a01CodexSpawnFacts,
+  buildA01AggregateDiagnostics,
   buildCodexExecArgs,
   classifyA01AggregateFailure,
   parseA01AggregateCohortRunnerArgs,
@@ -81,13 +87,47 @@ test('A01 aggregate matrix v2 is distinct from the spent v1 input and fixture', 
   assert.notEqual(profile.id, v1.id);
   assert.notDeepEqual(profile.calls[0].arguments, v1.calls[0].arguments);
   assert.equal(assertA01AggregateCohortOfflineProfile(profile), true);
-  assert.throws(() => assertA01AggregateCohortOfflineProfile({
-    ...profile,
-    calls: [{
-      ...profile.calls[0],
-      arguments: A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
-    }],
-  }));
+  assert.throws(() =>
+    assertA01AggregateCohortOfflineProfile({
+      ...profile,
+      calls: [
+        {
+          ...profile.calls[0],
+          arguments: A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
+        },
+      ],
+    }),
+  );
+});
+
+test('A01 aggregate matrix v3 is fresh from both terminal profiles and matrix-only', () => {
+  const profile = getAgentMcpProfileById(A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID);
+  const v1 = getAgentMcpProfileById(A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID);
+  const v2 = getAgentMcpProfileById(A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID);
+  assert.ok(profile);
+  assert.equal(profile.frontierId, 'A01');
+  assert.equal(profile.epochId, A01_AGGREGATE_COHORT_OFFLINE_V3_EPOCH_ID);
+  assert.equal(profile.toolName, A01_AGGREGATE_COHORT_TOOL);
+  assert.equal(profile.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(profile.networkMode, A01_AGGREGATE_COHORT_OFFLINE_V3_NETWORK_MODE);
+  assert.equal(
+    A01_AGGREGATE_COHORT_OFFLINE_V3_NETWORK_MODE,
+    A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+  );
+  assert.deepEqual(profile.calls[0].arguments, A01_AGGREGATE_COHORT_OFFLINE_V3_EXPECTED_ARGUMENTS);
+  assert.notEqual(profile.id, v1.id);
+  assert.notEqual(profile.id, v2.id);
+  assert.notDeepEqual(profile.calls[0].arguments, v1.calls[0].arguments);
+  assert.notDeepEqual(profile.calls[0].arguments, v2.calls[0].arguments);
+  assert.equal(assertA01AggregateCohortOfflineProfile(profile), true);
+  assert.throws(() =>
+    assertA01AggregateCohortOfflineProfile({
+      ...profile,
+      calls: [
+        { ...profile.calls[0], arguments: A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS },
+      ],
+    }),
+  );
 });
 
 test('registered MCP arguments select only the exact offline profile and reject overrides', () => {
@@ -134,19 +174,55 @@ test('registered MCP arguments select the distinct v2 mode and inputs', () => {
   ]);
   assert.equal(config.networkMode, A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE);
   assert.deepEqual(config.toolNames, [A01_AGGREGATE_COHORT_TOOL]);
-  assert.deepEqual(config.expectedArgumentSequence, [A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS]);
-  assert.throws(() => parseCodexOneToolMcpArguments([
+  assert.deepEqual(config.expectedArgumentSequence, [
+    A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS,
+  ]);
+  assert.throws(() =>
+    parseCodexOneToolMcpArguments([
+      '--profile-id',
+      A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+      '--network-mode',
+      A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+      '--summary-file',
+      '/tmp/a01-aggregate-summary-v2.json',
+      '--candidate-sha',
+      candidateSha,
+      '--bundle-sha256',
+      bundleSha256,
+    ]),
+  );
+});
+
+test('registered MCP arguments select fresh v3 inputs over the bounded v2 transport', () => {
+  const config = parseCodexOneToolMcpArguments([
     '--profile-id',
-    A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
-    '--network-mode',
-    A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+    A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID,
     '--summary-file',
-    '/tmp/a01-aggregate-summary-v2.json',
+    '/tmp/a01-aggregate-summary-v3.json',
     '--candidate-sha',
     candidateSha,
     '--bundle-sha256',
     bundleSha256,
-  ]));
+  ]);
+  assert.equal(config.networkMode, A01_AGGREGATE_COHORT_OFFLINE_V3_NETWORK_MODE);
+  assert.deepEqual(config.toolNames, [A01_AGGREGATE_COHORT_TOOL]);
+  assert.deepEqual(config.expectedArgumentSequence, [
+    A01_AGGREGATE_COHORT_OFFLINE_V3_EXPECTED_ARGUMENTS,
+  ]);
+  assert.throws(() =>
+    parseCodexOneToolMcpArguments([
+      '--profile-id',
+      A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID,
+      '--network-mode',
+      A01_AGGREGATE_COHORT_OFFLINE_V3_NETWORK_MODE,
+      '--summary-file',
+      '/tmp/a01-aggregate-summary-v3.json',
+      '--candidate-sha',
+      candidateSha,
+      '--bundle-sha256',
+      bundleSha256,
+    ]),
+  );
 });
 
 test('offline fixture serves exactly one anonymous synthetic search and detail response', async () => {
@@ -216,6 +292,56 @@ test('offline v2 fixture serves only the new synthetic input and subject', async
     searchRequestCount: 1,
     detailRequestCount: 1,
     unexpectedRequestCount: 1,
+    authorizationHeaderCount: 0,
+    expectedOperationsComplete: true,
+  });
+});
+
+test('offline v3 fixture rejects v1/v2 inputs and serves only its fresh synthetic subject', async () => {
+  const fixture = createA01AggregateCohortOfflineFetch(A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID);
+  for (const profile of [
+    A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
+    A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS,
+  ]) {
+    const rejected = await fixture.fetchFn(
+      'https://api.bgm.tv/v0/search/subjects?limit=20&offset=0',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          keyword: profile.cohort.query.keyword,
+          sort: 'match',
+          filter: { type: [2] },
+        }),
+      },
+    );
+    assert.equal(rejected.status, 599);
+  }
+  assert.equal(fixture.snapshot().searchRequestCount, 0);
+
+  const search = await fixture.fetchFn('https://api.bgm.tv/v0/search/subjects?limit=20&offset=0', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      keyword: A01_AGGREGATE_COHORT_OFFLINE_V3_EXPECTED_ARGUMENTS.cohort.query.keyword,
+      sort: 'match',
+      filter: { type: [2] },
+    }),
+  });
+  assert.equal(search.status, 200);
+  assert.equal((await search.json()).data[0].id, 991220);
+  const detail = await fixture.fetchFn('https://api.bgm.tv/v0/subjects/991220');
+  const detailBody = await detail.json();
+  assert.equal(detail.status, 200);
+  assert.equal(detailBody.score, 7);
+  assert.equal(detailBody.collection.collect, 80);
+  assert.equal(detailBody.eps, 12);
+  assert.deepEqual(fixture.snapshot(), {
+    profile: A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID,
+    requestCount: 4,
+    searchRequestCount: 1,
+    detailRequestCount: 1,
+    unexpectedRequestCount: 2,
     authorizationHeaderCount: 0,
     expectedOperationsComplete: true,
   });
@@ -362,13 +488,21 @@ test('runner is Run #95/PR-bound, exposes one tool, and disables general capabil
     prNumber: 231,
     profileId: A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
   });
-  assert.deepEqual(parseA01AggregateCohortRunnerArgs([
-    '--run', '95', '--pr', '231', '--profile-id', A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
-  ]), {
-    runNumber: 95,
-    prNumber: 231,
-    profileId: A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
-  });
+  assert.deepEqual(
+    parseA01AggregateCohortRunnerArgs([
+      '--run',
+      '95',
+      '--pr',
+      '231',
+      '--profile-id',
+      A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+    ]),
+    {
+      runNumber: 95,
+      prNumber: 231,
+      profileId: A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+    },
+  );
   assert.deepEqual(parseA01AggregateCohortRunnerArgs(['--help']), { help: true });
   assert.throws(() => parseA01AggregateCohortRunnerArgs(['--run', '94', '--pr', '231']));
   const args = buildCodexExecArgs({
@@ -400,8 +534,23 @@ test('runner is Run #95/PR-bound, exposes one tool, and disables general capabil
     bundleSha256,
     profileId: A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
   });
-  assert.ok(v2Args.at(-1).includes(A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS.cohort.query.keyword));
+  assert.ok(
+    v2Args.at(-1).includes(A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS.cohort.query.keyword),
+  );
   assert.ok(v2Args.some((value) => value.includes(A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID)));
+  const v3Args = buildCodexExecArgs({
+    root: '/repo',
+    nodePath: '/node',
+    summaryPath: '/tmp/summary-v3.json',
+    candidateSha,
+    bundleSha256,
+    profileId: A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID,
+  });
+  assert.ok(
+    v3Args.at(-1).includes(A01_AGGREGATE_COHORT_OFFLINE_V3_EXPECTED_ARGUMENTS.cohort.query.keyword),
+  );
+  assert.ok(v3Args.some((value) => value.includes(A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID)));
+  assert.ok(v3Args.some((value) => value.includes('"average":90')));
 });
 
 test('claim readback failure retains the confirmed claim id without retaining the readback error', () => {
@@ -793,4 +942,64 @@ test('failure reason codes distinguish process, stream, MCP, answer, and postrun
     ),
     'A01_AGGREGATE_MATRIX_ANSWER_INVALID',
   );
+});
+
+test('A01 terminal diagnostics preserve only allowlisted checks and bounded counters', () => {
+  const diagnostics = buildA01AggregateDiagnostics(
+    {
+      invocationAttempted: true,
+      outputLimitExceeded: false,
+      processSpawned: true,
+      processTimedOut: false,
+      failed: false,
+      exitCode: 0,
+      stdoutBytes: 588,
+      stderrBytes: 771,
+    },
+    { parsed: true },
+    {
+      eventStreamComplete: true,
+      turnCompleted: true,
+      codexMcpToolEventCount: 1,
+      codexErrorItemCount: 3,
+      mcpToolErrorResultCount: 0,
+      nonMcpToolEventCount: 0,
+      shellToolCallCount: 0,
+    },
+    {
+      fixedArguments: false,
+      singleToolInvocation: false,
+      structuredResultReadback: false,
+      serverSummaryValid: true,
+      answerChecks: { exactMetricAndCoverageAnswer: false },
+      answerUtf8Bytes: 588,
+      candidateBundleCurrent: true,
+      activeGateCurrent: true,
+      claimReadbackValid: true,
+      reportBuildValid: false,
+      runnerReceiptValid: false,
+      privacyPreserved: true,
+    },
+    'A01_AGGREGATE_MATRIX_ANSWER_INVALID',
+  );
+
+  assert.deepEqual(Object.keys(diagnostics).sort(), [
+    'checks',
+    'counters',
+    'reasonCode',
+    'schemaVersion',
+  ]);
+  assert.equal(diagnostics.reasonCode, 'A01_AGGREGATE_MATRIX_ANSWER_INVALID');
+  assert.equal(diagnostics.checks.exactCallSequence, false);
+  assert.equal(diagnostics.checks.structuredReadback, false);
+  assert.equal(diagnostics.counters.codexMcpToolEvents, 1);
+  assert.equal(diagnostics.counters.codexErrorItems, 3);
+  assert.equal(diagnostics.counters.answerUtf8Bytes, 588);
+  assert.ok(Object.values(diagnostics.checks).every((value) => typeof value === 'boolean'));
+  assert.ok(
+    Object.values(diagnostics.counters).every(
+      (value) => value === null || Number.isSafeInteger(value),
+    ),
+  );
+  assert.deepEqual(normalizeAgentMcpProfileDiagnostics(diagnostics), diagnostics);
 });

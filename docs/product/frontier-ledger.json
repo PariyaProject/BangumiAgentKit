@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-21T19:21:46Z",
+  "updated_at": "2026-10-21T22:23:54Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2983,9 +2983,10 @@
         "tests/harness/write-a01-aggregate-cohort-offline-agent-mcp-report.test.mjs",
         "tests/harness/agent-mcp-profile-claims.test.mjs",
         "tests/harness/agent-harness-cli.test.mjs",
-        "docs/research/run95-a01-aggregate-cohort-offline-matrix-v2-contract-2026-10-19.md"
+        "docs/research/run95-a01-aggregate-cohort-offline-matrix-v2-contract-2026-10-19.md",
+        "docs/research/run95-a01-aggregate-cohort-offline-matrix-v3-contract-2026-10-22.md"
       ],
-      "next_action": "Keep A01 UNASSESSED: the exact public reports support only their corresponding public API rows, not the cohort-analysis scenario. The aggregate_subject_cohort and three other cohort tools’ 2026-10-16 public-matrix rows are separate from the scenario. The C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks. Distinct v1 and v2 synthetic offline matrix-profile contracts are scoped to bangumi.aggregate_subject_cohort; the v2 contract uses fresh synthetic input and can earn at most the aggregate_subject_cohort Agent/MCP matrix row if an exact signed report is acknowledged by the active Harness. Inspect profile eligibility in the active Harness Run/Epoch; never retry a consumed claim. No scenario, public API, significance, comparison, history, account, QQ/TIM, or stability credit is inferred. Keep OAuth/account/community/QQ/TIM passive while safe independent work remains.",
+      "next_action": "Keep A01 UNASSESSED: the exact public reports support only their corresponding public API rows, not the cohort-analysis scenario. The aggregate_subject_cohort and three other cohort tools’ 2026-10-16 public-matrix rows are separate from the scenario. The C04 cohort-comparison matrix contract documents separate single-tool Agent/MCP checks. Distinct v1 and v2 synthetic offline matrix-profile contracts are scoped to bangumi.aggregate_subject_cohort; the v2 contract uses fresh synthetic input and can earn at most the aggregate_subject_cohort Agent/MCP matrix row if an exact signed report is acknowledged by the active Harness. A distinct v3 synthetic matrix-profile contract documents a fresh profile and fixture and can credit only the bangumi.aggregate_subject_cohort Agent/MCP matrix row; it does not create A01 scenario evidence. Inspect profile eligibility in the active Harness Run/Epoch; never retry a consumed claim. No scenario, public API, significance, comparison, history, account, QQ/TIM, or stability credit is inferred. Keep OAuth/account/community/QQ/TIM passive while safe independent work remains.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -3193,6 +3194,15 @@
           "source": "Exact local synthetic search/detail fixture; no external network request.",
           "retry_allowed": false,
           "acceptance_boundary": "Only one exact Harness-acknowledged v2 report may credit one Agent/MCP matrix row. A01 scenario remains UNASSESSED; v1 is terminal INCONCLUSIVE/no-report/no-retry."
+        },
+        "aggregate_cohort_offline_matrix_v3_2026_10_22": {
+          "contract": "docs/research/run95-a01-aggregate-cohort-offline-matrix-v3-contract-2026-10-22.md",
+          "profile_id": "a01-aggregate-cohort-offline-agent-mcp-matrix-v3",
+          "tool": "bangumi.aggregate_subject_cohort",
+          "acceptance_scope": "agent-mcp-matrix-only",
+          "fresh_synthetic_subject_id": 991220,
+          "old_profiles": "v1 and v2 are terminal INCONCLUSIVE/no-report/no-retry; never invoke them again",
+          "acceptance_boundary": "A01 remains UNASSESSED unless separate scenario evidence closes it; this profile can add only one Agent/MCP tool-matrix row."
         }
       }
     },

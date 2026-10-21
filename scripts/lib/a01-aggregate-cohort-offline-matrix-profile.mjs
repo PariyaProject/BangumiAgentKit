@@ -10,10 +10,18 @@ export const A01_AGGREGATE_COHORT_OFFLINE_V2_EPOCH_ID =
   'run95-a01-aggregate-cohort-offline-matrix-v2-20261019';
 export const A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE =
   'run95-a01-aggregate-cohort-offline-matrix-v2';
+export const A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID =
+  'a01-aggregate-cohort-offline-agent-mcp-matrix-v3';
+export const A01_AGGREGATE_COHORT_OFFLINE_V3_EPOCH_ID =
+  'run95-a01-aggregate-cohort-offline-matrix-v3-20261022';
+// V3 uses the existing v2 offline transport; only its claim and synthetic fixture are new.
+export const A01_AGGREGATE_COHORT_OFFLINE_V3_NETWORK_MODE =
+  A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE;
 export const A01_AGGREGATE_COHORT_TOOL = 'bangumi.aggregate_subject_cohort';
 export const A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS = Object.freeze([
   A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
   A01_AGGREGATE_COHORT_OFFLINE_V2_PROFILE_ID,
+  A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID,
 ]);
 
 export const A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS = Object.freeze({
@@ -42,12 +50,26 @@ export const A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS = Object.freeze(
   maxSubjects: 1,
 });
 
+export const A01_AGGREGATE_COHORT_OFFLINE_V3_EXPECTED_ARGUMENTS = Object.freeze({
+  cohort: {
+    label: 'Synthetic aggregate matrix v3 sample',
+    query: {
+      keyword: 'run95 fresh synthetic aggregate profile v3 2026-10-22',
+      media: 'anime',
+      resultMode: 'all',
+      limit: 1,
+    },
+  },
+  maxSubjects: 1,
+});
+
 const PROFILE_SPECS = new Map([
   [
     A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
     {
       epochId: A01_AGGREGATE_COHORT_OFFLINE_EPOCH_ID,
       networkMode: A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE,
+      serverId: 'bgk_a01_aggregate_cohort_offline',
       arguments: A01_AGGREGATE_COHORT_EXPECTED_ARGUMENTS,
       subject: {
         id: 990184,
@@ -81,6 +103,7 @@ const PROFILE_SPECS = new Map([
     {
       epochId: A01_AGGREGATE_COHORT_OFFLINE_V2_EPOCH_ID,
       networkMode: A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+      serverId: 'bgk_a01_aggregate_cohort_offline_v2',
       arguments: A01_AGGREGATE_COHORT_OFFLINE_V2_EXPECTED_ARGUMENTS,
       subject: {
         id: 991219,
@@ -109,6 +132,40 @@ const PROFILE_SPECS = new Map([
       ],
     },
   ],
+  [
+    A01_AGGREGATE_COHORT_OFFLINE_V3_PROFILE_ID,
+    {
+      epochId: A01_AGGREGATE_COHORT_OFFLINE_V3_EPOCH_ID,
+      networkMode: A01_AGGREGATE_COHORT_OFFLINE_V3_NETWORK_MODE,
+      serverId: 'bgk_a01_aggregate_cohort_offline_v3',
+      arguments: A01_AGGREGATE_COHORT_OFFLINE_V3_EXPECTED_ARGUMENTS,
+      subject: {
+        id: 991220,
+        name: 'Synthetic Aggregate Matrix V3 Subject',
+        nameCn: '合成聚合矩阵三版条目',
+        score: 7,
+        rank: 991220,
+        date: '2025-04-01',
+        platform: 'TV',
+        summary: 'Fresh synthetic v3 fixture; not a Bangumi record.',
+        episodeCount: 12,
+        totalEpisodes: 12,
+        collection: { wish: 5, collect: 80, doing: 4, on_hold: 1, dropped: 0 },
+        rating: {
+          score: 7,
+          rank: 991220,
+          total: 10,
+          count: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 5, 7: 0, 8: 5, 9: 0, 10: 0 },
+        },
+      },
+      expectedMetrics: [
+        { key: 'score', value: 7 },
+        { key: 'heat', value: 90 },
+        { key: 'episodesReported', value: 12 },
+        { key: 'ratingStandardDeviation', value: 1 },
+      ],
+    },
+  ],
 ]);
 
 export function getA01AggregateCohortOfflineProfileSpec(profileOrId) {
@@ -131,7 +188,9 @@ export function assertA01AggregateCohortOfflineProfile(profile) {
     call?.toolName !== A01_AGGREGATE_COHORT_TOOL ||
     JSON.stringify(call?.arguments) !== JSON.stringify(spec.arguments)
   ) {
-    throw new Error('A01 aggregate offline mode accepts only a registered exact matrix-only profile.');
+    throw new Error(
+      'A01 aggregate offline mode accepts only a registered exact matrix-only profile.',
+    );
   }
   return true;
 }
@@ -202,7 +261,9 @@ function syntheticSearchSubject(subject) {
   };
 }
 
-export function createA01AggregateCohortOfflineFetch(profile = A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID) {
+export function createA01AggregateCohortOfflineFetch(
+  profile = A01_AGGREGATE_COHORT_OFFLINE_PROFILE_ID,
+) {
   const spec = getA01AggregateCohortOfflineProfileSpec(profile);
   if (!spec) throw new Error('Unknown A01 aggregate offline fixture profile.');
   const syntheticSubject = toBangumiSubject(spec.subject);
@@ -255,7 +316,12 @@ export function createA01AggregateCohortOfflineFetch(profile = A01_AGGREGATE_COH
       if (valid) {
         searchObserved = true;
         counters.searchRequestCount += 1;
-        return jsonResponse({ data: [syntheticSearchSubject(spec.subject)], total: 1, limit: 20, offset: 0 });
+        return jsonResponse({
+          data: [syntheticSearchSubject(spec.subject)],
+          total: 1,
+          limit: 20,
+          offset: 0,
+        });
       }
     }
 

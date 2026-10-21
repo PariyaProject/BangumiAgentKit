@@ -13360,6 +13360,17 @@ class A01AggregateCohortOfflineMatrixProfileTests(unittest.TestCase):
         self.assertEqual(self.profile['acceptanceScope'], 'agent-mcp-matrix-only')
         self.assertTrue(GENERATOR.codex_a01_aggregate_matrix_profile_frontier_is_unassessed())
 
+    def test_each_profile_selects_its_report_server_id(self):
+        expected_server_ids = {
+            'a01-aggregate-cohort-offline-agent-mcp-matrix-v1': 'bgk_a01_aggregate_cohort_offline',
+            'a01-aggregate-cohort-offline-agent-mcp-matrix-v2': 'bgk_a01_aggregate_cohort_offline_v2',
+            'a01-aggregate-cohort-offline-agent-mcp-matrix-v3': 'bgk_a01_aggregate_cohort_offline_v3',
+        }
+        for profile_id, expected_server_id in expected_server_ids.items():
+            with self.subTest(profile_id=profile_id):
+                self.assertTrue(GENERATOR._select_codex_a01_aggregate_matrix_profile(profile_id))
+                self.assertEqual(GENERATOR.CODEX_A01_AGGREGATE_MATRIX_SERVER_ID, expected_server_id)
+
     def test_routes_only_the_exact_aggregate_matrix_profile(self):
         with patch.object(
             GENERATOR,
@@ -13499,6 +13510,66 @@ class A01AggregateCohortOfflineMatrixProfileTests(unittest.TestCase):
             {self.tool_name: {profile['reportPath']}},
         )
         self.assertEqual(collect_sources(self.profile['reportPath']), {})
+
+    def test_v3_uses_a_fresh_profile_and_only_its_registered_report_path(self):
+        profile_id = 'a01-aggregate-cohort-offline-agent-mcp-matrix-v3'
+        self.assertTrue(GENERATOR._select_codex_a01_aggregate_matrix_profile(profile_id))
+        profile = GENERATOR.CODEX_A01_AGGREGATE_MATRIX_PROFILE
+        v2 = GENERATOR.CODEX_A01_AGGREGATE_MATRIX_PROFILES[
+            'a01-aggregate-cohort-offline-agent-mcp-matrix-v2'
+        ]
+        self.assertNotEqual(profile['id'], self.profile['id'])
+        self.assertNotEqual(profile['id'], v2['id'])
+        self.assertNotEqual(profile['reportPath'], self.profile['reportPath'])
+        self.assertNotEqual(profile['reportPath'], v2['reportPath'])
+        self.assertEqual(profile['networkMode'], v2['networkMode'])
+        self.assertNotEqual(profile['networkMode'], self.profile['networkMode'])
+        self.assertNotEqual(profile['calls'][0]['arguments'], v2['calls'][0]['arguments'])
+
+        catalog = [self.current_tool]
+        catalog_bytes = json.dumps(catalog, ensure_ascii=False).encode('utf-8')
+        report = {
+            **self.report,
+            'profileId': profile_id,
+            'argumentProfile': profile['argumentProfile'],
+            'evidenceKind': profile['evidenceKind'],
+            'frontierId': 'A01',
+            'scenarioId': None,
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+        }
+        with tempfile.TemporaryDirectory(prefix='a01-aggregate-matrix-v3-routing-') as temp:
+            root = Path(temp)
+            live_probe_dir = root / 'docs/live-probes'
+            live_probe_dir.mkdir(parents=True)
+            report_path = root / profile['reportPath']
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            report_path.write_text(json.dumps(report), encoding='utf-8')
+            catalog_path = root / 'docs/tool-catalog.json'
+            catalog_path.parent.mkdir(parents=True, exist_ok=True)
+            catalog_path.write_bytes(catalog_bytes)
+            frontier_path = root / 'docs/product/frontier-ledger.json'
+            frontier_path.parent.mkdir(parents=True, exist_ok=True)
+            frontier_path.write_text(json.dumps({
+                'records': [{
+                    'id': 'A01',
+                    'status': 'UNASSESSED',
+                    'source_refs': [profile['selectionEvidencePath']],
+                }],
+            }), encoding='utf-8')
+            with (
+                patch.object(GENERATOR, 'ROOT', root),
+                patch.object(GENERATOR, 'LIVE_PROBE_DIR', live_probe_dir),
+                patch.object(GENERATOR, 'CATALOG', catalog_path),
+                patch.object(
+                    GENERATOR,
+                    'codex_a01_aggregate_matrix_profile_report_is_valid',
+                    return_value=True,
+                ),
+            ):
+                self.assertEqual(
+                    GENERATOR.model_mcp_e2e_sources(catalog),
+                    {self.tool_name: {profile['reportPath']}},
+                )
 
     def test_candidate_refresh_is_limited_to_report_matrix_and_frontier(self):
         source_candidate = 'a' * 40
