@@ -5153,7 +5153,6 @@ CODEX_PROBE_IMPLEMENTATION_MARKERS = {
         "serverProfile: 'one-tool-anonymous-public-v1'",
         'new MemoryStorage()',
         "baseUrl: 'https://api.bgm.tv'",
-        'filterAllowedTools(registry.getTools(), config.toolName)',
         'authorizeToolCall({',
         'claimSingleToolCall(',
         'writeSanitizedSummary(',
@@ -5177,6 +5176,14 @@ CODEX_PROBE_IMPLEMENTATION_MARKERS = {
         "'双峰'",
     ),
 }
+CODEX_PROBE_TOOL_FILTER_IMPLEMENTATIONS = (
+    ('filterAllowedTools(registry.getTools(), config.toolName)',),
+    (
+        'export function createCodexOneToolMcpToolList(registryTools, config)',
+        'allowsRenderSubjectCardOptionalTool(config.profile, tool)',
+        'filterAllowedTools(profileSafeRegistryTools, targetTools)',
+    ),
+)
 CODEX_C07_RENDERER_PROBE_IMPLEMENTATION_MARKERS = {
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
         'assertC07CohortRenderOfflineProfile(',
@@ -8913,8 +8920,16 @@ def _codex_revision_has_markers(
 @functools.lru_cache(maxsize=128)
 def _codex_probe_revision_has_implementation(repository_root: str, revision: str) -> bool:
     """Bind a report revision to the tracked one-tool server and its evidence checks."""
-    return _codex_revision_has_markers(
+    if not _codex_revision_has_markers(
         repository_root, revision, CODEX_PROBE_IMPLEMENTATION_MARKERS,
+    ):
+        return False
+    server = _run_repository_git(
+        repository_root, 'show', f'{revision}:apps/mcp/codex-one-tool-mcp-server.mjs',
+    )
+    return server.returncode == 0 and any(
+        all(marker in server.stdout for marker in implementation)
+        for implementation in CODEX_PROBE_TOOL_FILTER_IMPLEMENTATIONS
     )
 
 

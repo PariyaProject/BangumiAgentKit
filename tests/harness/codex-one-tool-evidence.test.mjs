@@ -43,6 +43,12 @@ test('one-tool profile only exposes the exact anonymous read tool', () => {
   assert.throws(() => filterAllowedTools([...tools, { ...tools[0] }], target), /exactly one/);
 });
 
+test('shared one-tool guards continue to reject optional-auth tools', () => {
+  const render = { name: 'bangumi.render_subject_card', auth: 'optional', risk: 'read' };
+  assert.throws(() => filterAllowedTools([render], render.name), /auth=none, risk=read/u);
+  assert.throws(() => publicReadOnlyToolAnnotations(render), /anonymous read-only/u);
+});
+
 test('multi-tool profile exposes only its exact anonymous read tool set', () => {
   const compare = { name: 'bangumi.compare_subject_cohorts', auth: 'none', risk: 'read' };
   const render = { name: 'bangumi.render_subject_cohort_comparison', auth: 'none', risk: 'read' };

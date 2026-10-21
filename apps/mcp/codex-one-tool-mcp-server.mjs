@@ -95,6 +95,7 @@ import {
 } from '../../scripts/lib/p02-person-profile-offline-fixture.mjs';
 import {
   assertRenderSubjectCardOfflineProfile,
+  allowsRenderSubjectCardOptionalTool,
   createRenderSubjectCardOfflineAssetGuard,
   createRenderSubjectCardOfflineFetch,
   isRenderSubjectCardOfflineProfile,
@@ -302,6 +303,22 @@ function writeSanitizedSummary(summaryPath, summary, serverInstanceId) {
 export function parseArguments(argv) {
   // The pure parser validates mandatory '--candidate-sha' and bundle digests.
   return parseCodexOneToolMcpArguments(argv);
+}
+
+export function createCodexOneToolMcpToolList(registryTools, config) {
+  const targetTools = config.toolNames.length === 1 ? config.toolName : config.toolNames;
+  // Keep the shared MCP guard anonymous-only. This exact registered profile
+  // fixes includeCollection=false and the runtime below provides a public-only
+  // client whose authenticated path throws. Adapt only a shallow catalog copy
+  // so this one safe profile can use the shared read-only annotation path.
+  const profileSafeRegistryTools = registryTools.map((tool) =>
+    allowsRenderSubjectCardOptionalTool(config.profile, tool) ? { ...tool, auth: 'none' } : tool,
+  );
+  const tools = filterAllowedTools(profileSafeRegistryTools, targetTools);
+  return tools.map((tool) => ({
+    ...toMcpTool(tool),
+    annotations: publicReadOnlyToolAnnotations(tool),
+  }));
 }
 
 function runtimeCandidateMatches(sourceRevision, bundleSha256) {
@@ -617,14 +634,7 @@ async function main(argv = process.argv.slice(2)) {
       'The registered A01 rating-dispersion profile does not match its fixed contract.',
     );
   }
-  const tools =
-    config.toolNames.length === 1
-      ? filterAllowedTools(registry.getTools(), config.toolName)
-      : filterAllowedTools(registry.getTools(), config.toolNames);
-  const mcpTools = tools.map((tool) => ({
-    ...toMcpTool(tool),
-    annotations: publicReadOnlyToolAnnotations(tool),
-  }));
+  const mcpTools = createCodexOneToolMcpToolList(registry.getTools(), config);
   const toolDescriptors = mcpTools.map((mcpTool) => ({
     toolName: mcpTool.name,
     descriptionSha256: createHash('sha256').update(mcpTool.description, 'utf8').digest('hex'),
