@@ -56,3 +56,14 @@ The signed sanitized report may include fixed-profile/input hashes, exact Candid
 - Current service inspected at the Candidate base: `packages/bangumi-core/src/services/person-activity-service.ts` and `packages/bangumi-core/src/models/person-activity.ts`.
 - No public Bangumi API or Agent/MCP query was executed while preparing this contract.
 - Selection evidence reference: `docs/research/s01-voice-actor-annual-tv-count-contract-2026-10-08.md`.
+
+## Round-1 corrective and CI recovery record
+
+The first same-identity review returned CORRECTIVE_REQUIRED on Candidate 11d129142065d6ba992138fa942f5b351f67a63e against Base e2643ab814d3c861ef8c16d14840725011e68283. It identified two issues:
+
+- The answer validator did not bind its declared coverage state to the expected summary state, which could let an answer promote PARTIAL coverage to COMPLETE.
+- The summary-level unique-character count was not constrained by total credit rows.
+
+Candidate 43ac40266ccfebd0b0275d9bd5aefd46b6a9182b fixes both. The answer checks now require exact state equality and expose coverageStateMatches; the summary requires uniqueCharacters <= creditRows. Regression tests cover “S01 answer cannot upgrade partial coverage to complete” and “S01 rejects a global unique-character count greater than its credit rows.” The focused S01 test file passed 11/11, and pnpm acceptance:check passed with 284 evidence tests; the current-source matrix stayed at Agent/MCP 82/96, public API 65/65, auth denial 22/22, and QQ/TIM 0/96.
+
+Exact pull_request CI run 39622982266 on Candidate 43ac40266ccfebd0b0275d9bd5aefd46b6a9182b has six successful jobs. provider-foundation reports every step successful but its job and run remain IN_PROGRESS; cancellation and specific-job rerun requests were rejected by GitHub. A same-SHA workflow_dispatch run 39625247769 then completed with all seven jobs successful. GitHub’s commit Check Suites API links that completed suite to PR #249, but the PR statusCheckRollup and merge state still expose only the original pending pull_request suite and remain UNSTABLE. Therefore the manual run is supplemental evidence and does not satisfy the Harness PR Candidate gate. The next Candidate needs a fresh pull_request CI suite on its exact head before candidate:check.
