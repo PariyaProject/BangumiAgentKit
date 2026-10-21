@@ -13,10 +13,23 @@ const agentMcpProfiles = JSON.parse(
   readFileSync(path.join(root, 'scripts/acceptance/agent-mcp-profile-registry.json'), 'utf8'),
 ).profiles;
 const opportunityLog = readFileSync(path.join(root, 'docs/product/opportunity-log.md'), 'utf8');
+const terminalProfileReconciliationPath =
+  'docs/research/run95-r02-r04-c07-terminal-profile-reconciliation-2026-10-21.json';
+const terminalProfileReconciliation = JSON.parse(
+  readFileSync(path.join(root, terminalProfileReconciliationPath), 'utf8'),
+);
 const documentedOpportunityIds = Array.from(
   opportunityLog.matchAll(/^##\s+(OP-\d{3})\b/gmu),
   (match) => match[1],
 );
+
+function terminalProfileStatus(profileId) {
+  const profile = terminalProfileReconciliation.profiles.find(
+    (item) => item.profile_id === profileId,
+  );
+  assert.ok(profile, `terminal profile reconciliation is missing ${profileId}`);
+  return profile;
+}
 
 test('canonical frontier includes every opportunity listed in the product log', () => {
   const ledgerOpportunityIds = ledger.records
@@ -53,9 +66,51 @@ test('C07 v3 renderer matrix selection keeps the scenario unassessed and binds i
   assert.ok(record.source_refs.includes('docs/product/g26-mcp-bundle-attestation.json'));
   assert.ok(record.source_refs.includes('scripts/lib/c07-render-comparison-visual-qa.mjs'));
   assert.ok(record.source_refs.includes('scripts/lib/c07-render-comparison-visual-qa.d.mts'));
-  assert.match(record.next_action, /Luna Max round 1 is Harness-persisted as CORRECTIVE_REQUIRED/u);
-  assert.match(record.next_action, /binds the receipt to the exact built MCP bundle/u);
-  assert.match(record.next_action, /No v3 call or report exists yet/u);
+  assert.ok(record.source_refs.includes(terminalProfileReconciliationPath));
+  const profile = terminalProfileStatus('c07-render-comparison-offline-agent-mcp-matrix-v3');
+  assert.equal(profile.state, 'INCONCLUSIVE');
+  assert.equal(profile.call_count, 1);
+  assert.equal(profile.report_written, false);
+  assert.equal(profile.retry_allowed, false);
+  assert.match(
+    record.next_action,
+    /c07-render-comparison-offline-agent-mcp-matrix-v3` profile is terminal INCONCLUSIVE after one call/u,
+  );
+  assert.match(record.next_action, /no C07 scenario or Agent\/MCP matrix credit/u);
+  assert.doesNotMatch(
+    record.next_action,
+    /No v3 call or report exists yet|UNCLAIMED|unclaimed|before .*one-shot/iu,
+  );
+});
+
+test('R02, R04, and C07 terminal dispositions preserve the current matrix boundary', () => {
+  assert.deepEqual(terminalProfileReconciliation.scenarioDisposition, {
+    R02: 'UNASSESSED',
+    R04: 'UNASSESSED',
+    C07: 'UNASSESSED',
+  });
+  assert.deepEqual(terminalProfileReconciliation.acceptanceSnapshot, {
+    agentMcp: { accepted: 82, total: 96 },
+    publicApi: { accepted: 65, total: 65 },
+    unboundAuthDenial: { accepted: 22, total: 22 },
+    qqTim: { accepted: 0, total: 96 },
+  });
+  for (const profile of terminalProfileReconciliation.profiles) {
+    assert.equal(profile.claim_label_present, true);
+    assert.equal(profile.terminal_label_present, true);
+    assert.equal(profile.retry_allowed, false);
+    assert.equal(profile.ci_status, 'SUCCESS');
+    assert.equal(profile.successful_required_checks, 7);
+  }
+  const r04RenderV2 = terminalProfileStatus(
+    'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
+  );
+  assert.equal(r04RenderV2.state, 'REPORT_WRITTEN');
+  assert.equal(r04RenderV2.report_written, true);
+  assert.equal(
+    r04RenderV2.report_sha256,
+    '36426cd2733cec03f6d8619f80d6ee7a34b9e9d83657d2d194c7825e778d6498',
+  );
 });
 
 test('consumed Run 95 S03 one-shot stays partial and cannot be retried', () => {
@@ -463,26 +518,33 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   const r04 = ledger.records.find(({ id }) => id === 'R04');
   assert.ok(r04, 'R04 must remain in the canonical frontier');
   assert.equal(r04.status, 'UNASSESSED');
+  assert.ok(r04.source_refs.includes(terminalProfileReconciliationPath));
+  for (const profileId of [
+    'r04-series-watch-order-offline-agent-mcp-v1',
+    'r04-series-watch-order-offline-agent-mcp-v2',
+    'r04-render-series-watch-order-offline-agent-mcp-v1',
+  ]) {
+    const profile = terminalProfileStatus(profileId);
+    assert.equal(profile.state, 'INCONCLUSIVE');
+    assert.equal(profile.report_written, false);
+    assert.equal(profile.retry_allowed, false);
+  }
+  const r04RenderV2 = terminalProfileStatus(
+    'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
+  );
+  assert.equal(r04RenderV2.state, 'REPORT_WRITTEN');
+  assert.equal(r04RenderV2.retry_allowed, false);
   assert.match(
     r04.next_action,
-    /existing get_series_watch_order offline profile is terminal INCONCLUSIVE/u,
+    /get_series_watch_order` v1\/v2 and `render_series_watch_order` v1 are terminal/u,
   );
-  assert.ok(
-    r04.next_action.includes(
-      'earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry',
-    ),
-    'the spent R04 renderer v1 profile must stay terminal and non-retriable',
-  );
-  assert.match(r04.next_action, /distinct matrix-only render_series_watch_order profile/u);
-  assert.match(r04.next_action, /separately keyed R04 renderer v2 profile/u);
-  assert.match(r04.next_action, /synthetic subjectId=990803/u);
-  assert.match(r04.next_action, /keep the R04 theatrical-film scenario UNASSESSED/u);
-  assert.match(r04.next_action, /do not claim canonical order or visual quality/u);
   assert.match(
     r04.next_action,
-    /separately keyed R04 get_series_watch_order v2 Epoch is selected.*synthetic root 990817 and prequel 990818/u,
+    /render_series_watch_order` v2 is REPORT_WRITTEN/u,
   );
-  assert.match(r04.next_action, /preserves the terminal v1 profile and adds no credit yet/u);
+  assert.match(r04.next_action, /Keep R04 UNASSESSED.*theatrical-film scenario/u);
+  assert.match(r04.next_action, /does not prove visual quality or the theatrical-film scenario/u);
+  assert.doesNotMatch(r04.next_action, /UNCLAIMED|unclaimed|selected.*get_series_watch_order v2/u);
   for (const source of [
     'scripts/lib/r04-render-series-watch-order-offline-fixture.mjs',
     'scripts/acceptance/run-r04-render-series-watch-order-offline-agent-mcp.mjs',
@@ -512,6 +574,12 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   const r02 = ledger.records.find(({ id }) => id === 'R02');
   assert.ok(r02, 'R02 must remain in the canonical frontier');
   assert.equal(r02.status, 'UNASSESSED');
+  assert.ok(r02.source_refs.includes(terminalProfileReconciliationPath));
+  const r02Profile = terminalProfileStatus('r02-positive-direct-relations-agent-mcp-v1');
+  assert.equal(r02Profile.state, 'INCONCLUSIVE');
+  assert.equal(r02Profile.call_count, 3);
+  assert.equal(r02Profile.report_written, false);
+  assert.equal(r02Profile.retry_allowed, false);
   for (const source of [
     'docs/research/run95-r02-positive-direct-relations-agent-mcp-source-contract-2026-10-16.md',
     'scripts/lib/r02-positive-direct-relations-profile.mjs',
@@ -526,10 +594,10 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
       `R02 source reference is missing: ${source}`,
     );
   }
-  assert.match(
-    r02.next_action,
-    /Keep R02 UNASSESSED until an exact-Candidate signed report is accepted/u,
-  );
+  assert.match(r02.next_action, /profile is terminal INCONCLUSIVE after three calls/u);
+  assert.match(r02.next_action, /Never rerun or recreate this profile/u);
+  assert.match(r02.next_action, /another safe, unspent frontier/u);
+  assert.doesNotMatch(r02.next_action, /UNCLAIMED|unclaimed|before the one-shot call/iu);
   assert.match(
     r02.next_action,
     /does not establish reverse\/transitive edges or graph completeness/u,
