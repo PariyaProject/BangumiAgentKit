@@ -161,6 +161,28 @@ describe('collection-dashboard renderer', () => {
 
     const galleryMobile = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'clean-gallery');
     const galleryMobileLayout = await measureRenderRootLayout(galleryMobile, 320);
+    const editorialMobile = renderHtmlTemplate(
+      viewModel,
+      'bangumi-light',
+      {},
+      320,
+      'warm-editorial',
+    );
+    const editorialMobileLayout = await measureRenderRootLayout(editorialMobile, 320);
+    const contextBounds = editorialMobileLayout.layoutElements.find(
+      (element) => element.layout === 'dashboard-context',
+    );
+    const warningBounds = editorialMobileLayout.layoutElements.find(
+      (element) => element.layout === 'dashboard-context-warning',
+    );
+    expect(contextBounds).toBeDefined();
+    expect(warningBounds).toBeDefined();
+    if (!contextBounds || !warningBounds) {
+      throw new Error('dashboard context bounds were not measured');
+    }
+    const warningBottomGap =
+      contextBounds.top + contextBounds.height - warningBounds.top - warningBounds.height;
+    expect(warningBottomGap).toBeGreaterThanOrEqual(32);
     const metricValues = galleryMobileLayout.layoutElements.filter(
       (element) => element.layout === 'dashboard-metric-value',
     );

@@ -16,9 +16,11 @@ Run ID: `run95-ux002-typography-scale-075`
 - Working-tree SHA-256: `52d76b1c305aa75267765c9f29d49c067960a7f7aa6a00f4d13abf846c47bc16` (1,619 included paths).
 - Renderer transform SHA-256: `43c0057dd4ee4b2706568676ad09ce2ec40a5877350dd7639ab2df855cc7c5d8` (64 inputs; Node v24.14.0).
 - 29 templates, 59 fixture/state groups, 3 design packs, 2 palettes, and five widths (320/360/520/640/960): 1,770 PNGs and 59 contact sheets.
-- All 59 contact sheets were inspected. No visible clipping, horizontal overflow, or invalid mask was found. Automated mask receipts report 1,190 images with primary masks, 660 with alternate masks, 30 with progress masks, zero unsupported shapes, and zero invalid marked panels.
+- The matrix produced 59 contact sheets. The initial sheet-level pass was provisional: a later full-size 320px inspection found the lower-left edge of the warm-editorial collection-dashboard context mask clipped part of its red filter line. Automated mask receipts cannot detect text intersecting a valid mask. The collection-dashboard sheet is marked `FAIL` in the receipt JSON; the other 58 remain `PASS`.
+- The defect is corrected by reserving a 36px lower inset for that warm-editorial context panel. A render-layout regression assertion requires 32px of clearance below the warning line; the exact Candidate matrix must confirm the corrected pixels before review.
+- Mask receipts on the prototype report 1,190 images with primary masks, 660 with alternate masks, 30 with progress masks, zero unsupported shapes, and zero invalid marked panels.
 - At `0.75`, some dense 320px data labels look small. This is an optional size setting; the default stays at `1.0` to preserve existing output.
-- The contact-sheet receipt file records all 59 reviews as `PASS`. Original per-image byte/hash/dimension receipts passed before full-size matrix PNGs were pruned. A second full matrix is required on the committed PR Candidate; its run id is `run95-ux002-typography-scale-075-candidate`. Exact-SHA CI and the visual receipt will be recorded in PR #248 control state.
+- The prototype contact-sheet receipt file records 58 manual `PASS` decisions and one `FAIL` finding. Its `receiptVerification: PASS` covers image bytes, hashes, and dimensions, not manual layout quality. Original per-image receipts passed before full-size matrix PNGs were pruned. A fresh exact-Candidate matrix is required after the layout fix; its run id is `run95-ux002-typography-scale-075-candidate`.
 
 Generated with:
 
