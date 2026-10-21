@@ -374,6 +374,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
   const intelligenceTone = theme.tones.coral;
   const backlogTone = theme.tones.mint;
   const scheduleTone = theme.tones.butter;
+  const contextPaddingBottom = theme.designPack === 'warm-editorial' ? '36px' : theme.spacing.sm;
   const warningMessages = viewModel.warnings
     .filter((warning) => warning.section !== undefined)
     .slice(0, 5)
@@ -402,11 +403,15 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
           backgroundColor: theme.tones.blue.surface,
           borderRadius: theme.radius.md,
           padding: theme.spacing.sm,
+          paddingBottom: contextPaddingBottom,
           clipPath: theme.design.masks.panelAlt,
         }}
       >
         三个只读区段：收藏概览、backlog、七日播出计划。日期不表示具体时刻或时区；未观察到的数据不会补猜。
-        <div style={{ color: theme.accent, fontSize: '11px', marginTop: theme.spacing.xs }}>
+        <div
+          data-layout="dashboard-context-warning"
+          style={{ color: theme.accent, fontSize: '11px', marginTop: theme.spacing.xs }}
+        >
           活跃状态过滤：{viewModel.filters.length ? viewModel.filters.join('、') : '未设置'} ·
           展示内容：
           {viewModel.presentation.state === 'complete' ? '无省略' : '有条目省略'}

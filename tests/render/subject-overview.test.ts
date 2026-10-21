@@ -9,7 +9,7 @@ import {
   type CapabilityResult,
   type SubjectStatsData,
 } from '@bangumi-agent-kit/provider-core';
-import { createRenderPresentationTools } from '@bangumi-agent-kit/tools';
+import { createRenderPresentationTools, getDefaultRenderOptions } from '@bangumi-agent-kit/tools';
 import {
   buildSubjectOverviewViewModel,
   extractImageUrls,
@@ -592,7 +592,10 @@ describe('Subject Overview renderer', () => {
     for (const width of [320, 360]) {
       const html = renderHtmlTemplate(viewModel, 'bangumi-light', {}, width, 'clean-gallery');
       const layout = await measureRenderRootLayout(html, width);
-      expect(layout.titleBlocks[0]?.blockWidth, `title column at ${width}px`).toBeGreaterThanOrEqual(200);
+      expect(
+        layout.titleBlocks[0]?.blockWidth,
+        `title column at ${width}px`,
+      ).toBeGreaterThanOrEqual(200);
       expect(layout).toMatchObject({
         clientWidth: width,
         scrollWidth: width,
@@ -669,7 +672,11 @@ describe('Subject Overview renderer', () => {
     expect(renderedViewModel.staff.hiddenCount).toBeUndefined();
     expect(renderCard).toHaveBeenCalledWith(
       expect.objectContaining({ template: 'subject-overview' }),
-      { width: 720, deviceScaleFactor: 1 },
+      {
+        width: 720,
+        deviceScaleFactor: 1,
+        ...getDefaultRenderOptions('full'),
+      },
     );
     expect(artifactStore.saveArtifact).toHaveBeenCalledWith(VALID_PNG_BUFFER, 'image/png', {
       width: 720,
@@ -722,7 +729,7 @@ describe('Subject Overview renderer', () => {
     expect(rendered).toMatchObject({ artifact: { width: 720, height: 1200 } });
     expect(renderCard).toHaveBeenCalledWith(
       expect.objectContaining({ template: 'subject-overview' }),
-      { width: 360, deviceScaleFactor: 2 },
+      getDefaultRenderOptions('chat'),
     );
   });
 });

@@ -151,6 +151,8 @@ export async function measureRenderRootLayout(
             'dashboard-metric-label',
             'dashboard-metric-value',
             'dashboard-metric-detail',
+            'dashboard-context',
+            'dashboard-context-warning',
           ].includes(element.getAttribute('data-layout') ?? ''),
         )
         .map((element) => {
@@ -270,6 +272,8 @@ export async function renderThemePreview(
             'dashboard-metric-label',
             'dashboard-metric-value',
             'dashboard-metric-detail',
+            'dashboard-context',
+            'dashboard-context-warning',
           ].includes(element.getAttribute('data-layout') ?? ''),
         )
         .map((element) => {

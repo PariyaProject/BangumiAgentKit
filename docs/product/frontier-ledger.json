@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-21T05:15:16Z",
+  "updated_at": "2026-10-21T12:00:26Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -4410,6 +4410,8 @@
         "packages/renderer/src/components/RendererIcon.tsx",
         "packages/renderer/src/components/TitleBlock.tsx",
         "packages/renderer/src/themes/index.ts",
+        "packages/renderer/src/typography.ts",
+        "docs/renderer.md",
         "packages/renderer/src/templates/SubjectCard.tsx",
         "packages/renderer/src/templates/SubjectStatsCard.tsx",
         "packages/renderer/src/templates/CollectionProgressCard.tsx",
@@ -4422,9 +4424,11 @@
         "docs/research/run95-render-theme-switch-visual-qa-2026-10-20.json",
         "packages/renderer/src/templates/CollectionDashboardCard.tsx",
         "packages/renderer/src/templates/RevisionTimelineCard.tsx",
-        "docs/research/run95-render-editorial-layouts-visual-qa-2026-10-20.json"
+        "docs/research/run95-render-editorial-layouts-visual-qa-2026-10-20.json",
+        "tests/unit/renderer-typography.test.ts",
+        "docs/research/run95-ux002-renderer-typography-visual-qa-2026-10-21.md"
       ],
-      "next_action": "Continue acceptance of the three native image design packs across all 29 templates, synthetic authentication/message states, and actual QQ/TIM image display. Keep offline render evidence separate from live client delivery; retain PARTIAL until each remaining acceptance boundary has direct, reviewed evidence.",
+      "next_action": "Continue acceptance of the three native image design packs across all 29 templates, synthetic authentication/message states, and actual QQ/TIM image display. Keep offline render evidence separate from live client delivery. Typography now supports bounded global scaling, operator font stacks, and safe local font files; finish exact-Candidate review/integration for this Epoch and retain PARTIAL until every remaining acceptance boundary has direct, reviewed evidence.",
       "reopen_when": "The user requests additional theme packs/settings surfaces, Renderer templates or image output behavior changes, or real QQ/TIM image display is explicitly selected for offline-to-live acceptance.",
       "related_ids": [
         "OP-008",

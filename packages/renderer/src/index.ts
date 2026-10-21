@@ -11,6 +11,12 @@ export {
   extractImageUrls,
 } from './render-service.js';
 export type { RenderResult, RenderOptions } from './render-service.js';
+export type { RenderTypographyOptions } from './typography.js';
+export {
+  MAX_RENDER_FONT_SIZE_SCALE,
+  MIN_RENDER_FONT_SIZE_SCALE,
+  normalizeRenderTypographyOptions,
+} from './typography.js';
 export { AssetResolver } from './asset-resolver.js';
 export { NodeAssetHttpTransport } from './asset-transport.js';
 export type {
