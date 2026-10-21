@@ -302,13 +302,94 @@ export function renderFontFamilyStack(
     .join(', ');
 }
 
+function scaleFontSizeDeclaration(declaration: string, scale: number): string {
+  const colon = declaration.indexOf(':');
+  if (colon < 0 || declaration.slice(0, colon).trim().toLowerCase() !== 'font-size') {
+    return declaration;
+  }
+
+  const value = declaration.slice(colon + 1);
+  const match = /^(\s*)(\d+(?:\.\d+)?)(px|pt|rem|em|%)(\s*)$/i.exec(value);
+  if (!match) return declaration;
+
+  const [, leadingWhitespace, amount, unit, trailingWhitespace] = match;
+  const scaled = Number((Number(amount) * scale).toFixed(3));
+  return `${declaration.slice(0, colon + 1)}${leadingWhitespace}${scaled}${unit}${trailingWhitespace}`;
+}
+
+function scaleCssDeclarations(style: string, scale: number): string {
+  let output = '';
+  let declarationStart = 0;
+  let quote: "'" | '"' | '&quot;' | '&#x27;' | '&#39;' | null = null;
+  let parenthesesDepth = 0;
+  let insideComment = false;
+  let escaped = false;
+
+  for (let index = 0; index < style.length; index += 1) {
+    const character = style[index];
+    const nextCharacter = style[index + 1];
+
+    if (insideComment) {
+      if (character === '*' && nextCharacter === '/') {
+        insideComment = false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (quote) {
+      if (quote.startsWith('&')) {
+        const candidate = style.slice(index, index + quote.length);
+        if (candidate.toLowerCase() === quote) {
+          quote = null;
+          index += candidate.length - 1;
+        }
+        continue;
+      }
+      if (escaped) {
+        escaped = false;
+      } else if (character === '\\') {
+        escaped = true;
+      } else if (character === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (character === '/' && nextCharacter === '*') {
+      insideComment = true;
+      index += 1;
+    } else if (style.startsWith('&quot;', index)) {
+      quote = '&quot;';
+      index += '&quot;'.length - 1;
+    } else if (/^&#(?:x27|39);/iu.test(style.slice(index))) {
+      const entity = /^&#(?:x27|39);/iu.exec(style.slice(index))?.[0];
+      if (entity) {
+        quote = entity.toLowerCase() === '&#x27;' ? '&#x27;' : '&#39;';
+        index += entity.length - 1;
+      }
+    } else if (character === '"' || character === "'") {
+      quote = character;
+    } else if (character === '(') {
+      parenthesesDepth += 1;
+    } else if (character === ')') {
+      parenthesesDepth = Math.max(0, parenthesesDepth - 1);
+    } else if (character === ';' && parenthesesDepth === 0) {
+      output += `${scaleFontSizeDeclaration(style.slice(declarationStart, index), scale)};`;
+      declarationStart = index + 1;
+    }
+  }
+
+  return output + scaleFontSizeDeclaration(style.slice(declarationStart), scale);
+}
+
 export function scaleInlineFontSizeDeclarations(markup: string, scale: number): string {
   if (scale === 1) return markup;
+  // React's static markup uses double-quoted attributes and escapes embedded quotes,
+  // so this selector finds style attributes without matching serialized user text.
   return markup.replace(
-    /(\bfont-size\s*:\s*)(\d+(?:\.\d+)?)(px|pt|rem|em|%)(?=\s*(?:;|"))/gi,
-    (_match, prefix: string, amount: string, unit: string) => {
-      const scaled = Number((Number(amount) * scale).toFixed(3));
-      return `${prefix}${scaled}${unit}`;
-    },
+    /(\sstyle=")([^"]*)(")/gi,
+    (_match, prefix: string, style: string, suffix: string) =>
+      `${prefix}${scaleCssDeclarations(style, scale)}${suffix}`,
   );
 }

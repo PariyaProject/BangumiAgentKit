@@ -39,6 +39,14 @@ describe('renderer typography configuration', () => {
     ).toBe('<span style="font-size: 9px; line-height: 1.4">Type</span>');
   });
 
+  it('scales only font-size declarations in actual style attributes', () => {
+    const markup = `<div aria-label="font-size: 12px;" title="style='font-size: 16px;'" style="font-size: 20px; content: &#x27;caption; font-size: 18px;&#x27;; line-height: 1.4">font-size: 14px;</div>`;
+
+    expect(scaleInlineFontSizeDeclarations(markup, 0.75)).toBe(
+      `<div aria-label="font-size: 12px;" title="style='font-size: 16px;'" style="font-size: 15px; content: &#x27;caption; font-size: 18px;&#x27;; line-height: 1.4">font-size: 14px;</div>`,
+    );
+  });
+
   it('rejects invalid scales and CSS-injection-like font-family values', () => {
     expect(() => normalizeRenderTypographyOptions({ fontSizeScale: 0.74 })).toThrow(
       'RENDER_VALIDATION_ERROR',
@@ -88,7 +96,7 @@ describe('renderer typography configuration', () => {
     const viewModel: SubjectCardViewModel = {
       template: 'subject-card',
       version: 1,
-      subject: { id: 1, name: '字体测试作品', type: 'anime' },
+      subject: { id: 1, name: '字体测试作品 font-size: 12px;', type: 'anime' },
       source: { label: 'Typography fixture' },
     };
     const typography = await resolveRenderTypography({
@@ -109,6 +117,7 @@ describe('renderer typography configuration', () => {
     expect(html).toContain('@font-face{font-family:"Rounded Fixture"');
     expect(html).toContain('font-weight:400;font-display:block');
     expect(html).toContain('font-size:9px');
+    expect(html).toContain('字体测试作品 font-size: 12px;');
     const normalKey = computeRenderCacheKey(viewModel);
     const scaledKey = computeRenderCacheKey(viewModel, {
       typography: { fontSizeScale: 0.75 },
