@@ -4206,9 +4206,10 @@
         "docs/research/assets/run95-render-subject-card-offline-agent-mcp-v1/manifest.json",
         "docs/research/run95-ux002-renderer-typography-visual-qa-2026-10-21.md",
         "docs/research/run95-ux002-render-subject-card-compact-typography-v2-source-contract-2026-10-22.md",
-        "docs/research/run95-ux002-default-075-render-matrix-visual-qa-2026-10-22.md"
+        "docs/research/run95-ux002-default-075-render-matrix-visual-qa-2026-10-22.md",
+        "docs/research/assets/run95-ux002-default075-exact-matrix-ed45febb-summary.json"
       ],
-      "next_action": "2026-10-22: The complete no-override Renderer matrix r7 passed 142 test files (1 skipped), 1,020 tests (2 skipped), and 1,770 PNG receipts. All 59 final contact sheets and full-size narrow samples are reviewed; viewport/content overflow and mask receipts are clean. Evidence: docs/research/run95-ux002-default-075-render-matrix-visual-qa-2026-10-22.md. This is pre-commit working-tree evidence. Next bind the report to the exact committed Candidate, pass exact CI and same-identity review, then make the one guarded v2 Agent/MCP call and validate its signed sanitized report and current-source matrix credit. Keep OP-008 PARTIAL; QQ/TIM remains separate.",
+      "next_action": "The user-approved 0.75 compact typography default has an exact implementation-Candidate visual matrix: ed45febb787301d44080756fa6edc2792897fe53/Base ac20862, all 1,770 PNGs and 59 contact sheets match reviewed R7 by SHA-256 and byte count, with zero viewport/content overflow or mask failures. Tracked receipts: docs/research/run95-ux002-default-075-render-matrix-visual-qa-2026-10-22.md and docs/research/assets/run95-ux002-default075-exact-matrix-ed45febb-summary.json. Exact CI run 39666755725 passed 7/7. The generated acceptance table is the source of truth for current Agent/MCP rows and profile validation; the visual receipt adds no Agent/MCP credit. Harness round 1 found stale tracked visual evidence, and the corrective refresh resolves it. Follow current PR #250 exact-head CI/review state, then make the single guarded synthetic v2 Agent/MCP call only after same-identity PASS. Keep OP-008 PARTIAL; QQ/TIM and production-font proof remain separate.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": ["OP-013"]
     },
@@ -4444,9 +4445,10 @@
         "tests/unit/renderer-typography.test.ts",
         "docs/research/run95-ux002-renderer-typography-visual-qa-2026-10-21.md",
         "docs/research/run95-ux002-default-075-render-matrix-visual-qa-2026-10-22.md",
+        "docs/research/assets/run95-ux002-default075-exact-matrix-ed45febb-summary.json",
         "docs/research/run95-ux002-render-subject-card-compact-typography-v2-source-contract-2026-10-22.md"
       ],
-      "next_action": "2026-10-22: The 0.75 scale is the documented Renderer default; per-call scale, body/display stacks, and trusted local font overrides remain supported. The complete no-override 1,770-image matrix and manual visual review passed with zero viewport/content overflow; see docs/research/run95-ux002-default-075-render-matrix-visual-qa-2026-10-22.md. This matrix is pre-commit. Next verify the exact committed Candidate, CI, same-identity review, and integration gates. Continue acceptance of all three native design packs across 29 templates, synthetic auth/message states, and actual QQ/TIM image display; retain PARTIAL until those boundaries have direct evidence.",
+      "next_action": "The 0.75 default remains configurable: explicit per-render scale, body/display stacks, and trusted local font files are preserved. Exact implementation Candidate ed45febb/Base ac20862 passed the 1,770-image no-override matrix; all 59 contact sheets and image receipts match reviewed R7 by SHA-256 and byte count, with zero overflow/mask failures. Tracked records: docs/research/run95-ux002-default-075-render-matrix-visual-qa-2026-10-22.md and docs/research/assets/run95-ux002-default075-exact-matrix-ed45febb-summary.json. Exact CI run 39666755725 passed 7/7. The generated acceptance table and each source-bound profile report are the source of truth for current Agent/MCP status; this UX-002 visual receipt adds no profile credit. The separate PR #250 corrective review and fresh synthetic v2 profile remain Harness-gated. Continue all three design packs across 29 templates and the remaining auth/message/client states; retain PARTIAL.",
       "reopen_when": "The user requests additional theme packs/settings surfaces, Renderer templates or image output behavior changes, or real QQ/TIM image display is explicitly selected for offline-to-live acceptance.",
       "related_ids": [
         "OP-008",
