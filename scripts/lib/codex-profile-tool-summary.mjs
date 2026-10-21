@@ -74,7 +74,7 @@ import {
   C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE_ID,
   summarizeC03PersonActivityOfflineV2Result,
 } from './c03-person-activity-offline-matrix-v2-profile.mjs';
-import { RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID } from './render-subject-card-offline-profile.mjs';
+import { isRenderSubjectCardOfflineProfileId } from './render-subject-card-offline-profile.mjs';
 
 const C04_RESULT_STATES = new Set([
   'ok',
@@ -468,7 +468,7 @@ export function summarizeProfileToolResult(
       ? summarizeTitleQueryRenderArtifact(result, artifactSummary)
       : summarizeTitleQueryResult(result);
   }
-  if (profileId === RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID) {
+  if (isRenderSubjectCardOfflineProfileId(profileId)) {
     return toolName === 'bangumi.render_subject_card'
       ? summarizeTitleQueryRenderArtifact(result, artifactSummary)
       : { resultState: 'unexpected_tool' };

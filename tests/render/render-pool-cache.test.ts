@@ -155,8 +155,8 @@ describe('PR-5 BrowserPool, Cache & Options Bounds (R22 - R30)', () => {
       source: { label: 'Cache test' },
     };
     const defaultTypography = computeRenderCacheKey(vm);
-    const compactTypography = computeRenderCacheKey(vm, {
-      typography: { fontSizeScale: 0.75 },
+    const explicitStandardTypography = computeRenderCacheKey(vm, {
+      typography: { fontSizeScale: 1 },
     });
     const roundedFamily = computeRenderCacheKey(vm, {
       typography: { fontSizeScale: 0.75, bodyFontFamily: 'GenSen Rounded, sans-serif' },
@@ -174,9 +174,9 @@ describe('PR-5 BrowserPool, Cache & Options Bounds (R22 - R30)', () => {
       { body: 'b'.repeat(64) },
     );
 
-    expect(new Set([defaultTypography, compactTypography, roundedFamily, fontFileOne]).size).toBe(
-      4,
-    );
+    expect(
+      new Set([defaultTypography, explicitStandardTypography, roundedFamily, fontFileOne]).size,
+    ).toBe(4);
     expect(fontFileOne).not.toBe(fontFileTwo);
   });
 

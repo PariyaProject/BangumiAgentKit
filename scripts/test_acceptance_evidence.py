@@ -236,7 +236,7 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
             'scenarioId': None,
             'epochId': self.profile['epochId'],
             'profileId': self.profile['id'],
-            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
             'model': 'gpt-6-luna',
             'reasoningEffort': 'max',
             'reviewerId': f'gpt-6-luna-max-run95-pr{self.pr}-round1',
@@ -281,7 +281,7 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
             'answerUtf8Bytes': len(self.ack),
             'offlineFixture': {
                 'profile': self.profile['networkMode'],
-                'expectedOperation': 'GET /v0/subjects/990901',
+                'expectedOperation': 'GET /v0/subjects/991902',
                 'requestCount': 1,
                 'expectedRequestCount': 1,
                 'unexpectedRequestCount': 0,
@@ -330,6 +330,17 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
                 'payload': {}, 'signature': 'signature',
             },
         }
+
+    def test_current_candidate_has_v2_implementation_markers(self):
+        revision = subprocess.run(
+            ['git', 'rev-parse', 'HEAD'], cwd=GENERATOR.ROOT, check=True,
+            capture_output=True, text=True,
+        ).stdout.strip()
+        self.assertTrue(
+            GENERATOR.codex_render_subject_card_offline_profile_revision_has_implementation(
+                revision,
+            ),
+        )
 
     def test_matrix_mapper_only_accepts_the_exact_offline_renderer_contract(self):
         self.assertTrue(TABLE_CHECKER.render_subject_card_offline_agent_mcp_matches(

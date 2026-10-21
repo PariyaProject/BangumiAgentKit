@@ -12,13 +12,11 @@ import {
 import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   assertRenderSubjectCardOfflineProfile,
-  RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS,
-  RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
-  RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID,
+  RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_PROFILE_ID,
 } from '../lib/render-subject-card-offline-profile.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const PROFILE = getAgentMcpProfileById(RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID);
+const PROFILE = getAgentMcpProfileById(RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_PROFILE_ID);
 const REPORT_PATH = PROFILE ? path.join(ROOT, PROFILE.reportPath) : null;
 const SERVER_ID = 'bgk_render_subject_card_offline';
 const ACKNOWLEDGEMENT = 'RENDER_SUBJECT_CARD_SYNTHETIC_ARTIFACT_READY';
@@ -198,7 +196,7 @@ function exactKeys(value, fields) {
   );
 }
 
-function getProfile(profileId = RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID) {
+function getProfile(profileId = RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_PROFILE_ID) {
   const profile = getAgentMcpProfileById(profileId);
   if (!profile || !assertRenderSubjectCardOfflineProfile(profile)) return null;
   return profile;
@@ -343,8 +341,8 @@ export function validateRenderSubjectCardOfflineProfileReport(report, claim, rep
     return { passed: false, reason: 'RENDER_SUBJECT_CARD_REPORT_CLAIM_INVALID' };
 
   const expectedFixture = {
-    profile: RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
-    expectedOperation: 'GET /v0/subjects/990901',
+    profile: profile.networkMode,
+    expectedOperation: `GET /v0/subjects/${profile.calls[0].arguments.subjectId}`,
     requestCount: 1,
     expectedRequestCount: 1,
     unexpectedRequestCount: 0,
@@ -388,7 +386,7 @@ export function validateRenderSubjectCardOfflineProfileReport(report, claim, rep
     report.frontierId !== 'OP-008' ||
     report.scenarioId !== null ||
     report.epochId !== profile.epochId ||
-    report.profile !== 'codex-luna-max-offline-agent-mcp-matrix-v1' ||
+    report.profile !== 'codex-luna-max-offline-agent-mcp-matrix-v2' ||
     report.model !== 'gpt-6-luna' ||
     report.reasoningEffort !== 'max' ||
     !/^gpt-6-luna-max-run95-pr\d+-round[1-9]\d*$/u.test(report.reviewerId ?? '') ||
@@ -511,7 +509,7 @@ export function buildRenderSubjectCardOfflineProfileReport(
   const assetBoundary = serverSummary?.offlineAssetBoundary;
   const result = serverSummary?.results?.[0];
   const artifactSummary = result?.resultSummary?.artifact;
-  const expectedArguments = RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS;
+  const expectedArguments = profile.calls[0].arguments;
   const valid =
     profile &&
     claim?.state === 'CLAIMED' &&
@@ -520,7 +518,7 @@ export function buildRenderSubjectCardOfflineProfileReport(
     serverSummary?.serverProfile === 'closed-profile-sequence-anonymous-offline-v1' &&
     serverSummary.profileId === profile.id &&
     serverSummary.argumentProfile === profile.argumentProfile &&
-    serverSummary.networkMode === RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE &&
+    serverSummary.networkMode === profile.networkMode &&
     serverSummary.sourceRevision === claim.sourceCandidateSha &&
     serverSummary.bundleSha256 === claim.bundleSha256 &&
     serverSummary.toolName === profile.toolName &&
@@ -566,8 +564,8 @@ export function buildRenderSubjectCardOfflineProfileReport(
     artifactSummary.dimensionsMatch === true &&
     canonicalAgentMcpProfileJson(fixture) ===
       canonicalAgentMcpProfileJson({
-        profile: RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
-        expectedOperation: 'GET /v0/subjects/990901',
+        profile: profile.networkMode,
+        expectedOperation: `GET /v0/subjects/${profile.calls[0].arguments.subjectId}`,
         requestCount: 1,
         expectedRequestCount: 1,
         unexpectedRequestCount: 0,
@@ -616,7 +614,7 @@ export function buildRenderSubjectCardOfflineProfileReport(
     scenarioId: null,
     epochId: profile.epochId,
     profileId: profile.id,
-    profile: 'codex-luna-max-offline-agent-mcp-matrix-v1',
+    profile: 'codex-luna-max-offline-agent-mcp-matrix-v2',
     model: profile.model,
     reasoningEffort: profile.reasoningEffort,
     reviewerId: claim.reviewerId,

@@ -105,7 +105,7 @@ import {
   createRenderSubjectCardOfflineAssetGuard,
   createRenderSubjectCardOfflineFetch,
   isRenderSubjectCardOfflineProfile,
-  RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
+  isRenderSubjectCardOfflineNetworkMode,
 } from '../../scripts/lib/render-subject-card-offline-profile.mjs';
 import {
   assertG06SubjectCastOfflineProfile,
@@ -344,8 +344,7 @@ function runtimeCandidateMatches(sourceRevision, bundleSha256) {
 
 async function main(argv = process.argv.slice(2)) {
   const config = parseArguments(argv);
-  const renderSubjectCardOfflineProfile =
-    config.networkMode === RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE;
+  const renderSubjectCardOfflineProfile = isRenderSubjectCardOfflineNetworkMode(config.networkMode);
   if (renderSubjectCardOfflineProfile) {
     assertRenderSubjectCardOfflineProfile(config.profile);
   }

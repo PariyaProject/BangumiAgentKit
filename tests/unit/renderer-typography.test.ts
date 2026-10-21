@@ -8,6 +8,7 @@ import {
   SubjectCardViewModel,
 } from '@bangumi-agent-kit/renderer';
 import {
+  DEFAULT_RENDER_FONT_SIZE_SCALE,
   normalizeRenderTypographyOptions,
   renderHtmlTemplate,
   resolveRenderTypography,
@@ -29,8 +30,9 @@ afterEach(async () => {
 });
 
 describe('renderer typography configuration', () => {
-  it('keeps default typography scale at 1 and scales rendered CSS font-size values', () => {
-    expect(normalizeRenderTypographyOptions()).toMatchObject({ fontSizeScale: 1 });
+  it('defaults to the compact typography scale and scales rendered CSS font-size values', () => {
+    expect(DEFAULT_RENDER_FONT_SIZE_SCALE).toBe(0.75);
+    expect(normalizeRenderTypographyOptions()).toMatchObject({ fontSizeScale: 0.75 });
     expect(
       scaleInlineFontSizeDeclarations(
         '<span style="font-size: 12px; line-height: 1.4">Type</span>',
@@ -128,7 +130,11 @@ describe('renderer typography configuration', () => {
       {},
       { body: typography.cacheIdentity.bodyFontSha256 },
     );
-    expect(normalKey).not.toBe(scaledKey);
+    expect(normalKey).toBe(scaledKey);
+    const standardScaleKey = computeRenderCacheKey(viewModel, {
+      typography: { fontSizeScale: 1 },
+    });
+    expect(normalKey).not.toBe(standardScaleKey);
     expect(scaledKey).not.toBe(fontKey);
   });
 

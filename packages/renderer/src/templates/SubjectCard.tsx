@@ -193,7 +193,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
           </span>
           <strong
             data-layout="gallery-subject-date-value"
-            style={{ color: theme.text, whiteSpace: 'nowrap', fontSize: '14px' }}
+            style={{ color: theme.text, whiteSpace: 'nowrap', fontSize: '14px', lineHeight: '16px' }}
           >
             {subject.date}
           </strong>
