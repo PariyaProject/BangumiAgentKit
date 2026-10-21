@@ -1250,6 +1250,32 @@
           }
         }
       ]
+    },
+    {
+      "id": "render-subject-card-offline-agent-mcp-v1",
+      "frontierId": "OP-008",
+      "epochId": "run95-render-subject-card-offline-agent-mcp-20261021",
+      "toolName": "bangumi.render_subject_card",
+      "argumentProfile": "fixed-render-subject-card-offline-990901-no-collection-v1",
+      "claimLabelName": "harness-r95-render-subject-card-v1-claimed",
+      "reportPath": "docs/live-probes/render-subject-card-offline-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-render-subject-card-offline-agent-mcp-contract-2026-10-21.md",
+      "evidenceKind": "codex_cli_render_subject_card_offline_agent_mcp",
+      "answerCheckMethod": "render-subject-card-synthetic-artifact-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-render-subject-card-offline-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 128,
+      "calls": [
+        {
+          "toolName": "bangumi.render_subject_card",
+          "arguments": {
+            "subjectId": 990901,
+            "includeCollection": false
+          }
+        }
+      ]
     }
   ]
 }

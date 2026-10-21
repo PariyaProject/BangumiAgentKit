@@ -213,6 +213,187 @@ class G01RenderQueryProfileContractTests(unittest.TestCase):
         )
 
 
+class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
+    def setUp(self):
+        self.profile = TABLE_CHECKER.RENDER_SUBJECT_CARD_OFFLINE_PROFILE
+        self.ack = b'RENDER_SUBJECT_CARD_SYNTHETIC_ARTIFACT_READY'
+        self.source = 'a' * 40
+        self.base = 'b' * 40
+        self.pr = 257
+        self.calls = self.profile['calls']
+        self.registry_sha = hashlib.sha256(json.dumps(
+            self.profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
+        self.arguments_sha = hashlib.sha256(json.dumps(
+            [call['arguments'] for call in self.calls],
+            sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
+        self.report = {
+            'schemaVersion': 1,
+            'evidenceKind': self.profile['evidenceKind'],
+            'runNumber': 95,
+            'frontierId': 'OP-008',
+            'scenarioId': None,
+            'epochId': self.profile['epochId'],
+            'profileId': self.profile['id'],
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': f'gpt-6-luna-max-run95-pr{self.pr}-round1',
+            'codexCliVersion': '1.2.14',
+            'sourceRevision': self.source,
+            'baseSha': self.base,
+            'ciSha': self.source,
+            'ciStatus': 'SUCCESS',
+            'ciRunId': '39577770000',
+            'ciChecks': [
+                {'name': name, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+                for name in (
+                    'harness-control', 'sqlite-default', 'host-integration',
+                    'standalone-release-smoke', 'postgres-compat', 'provider-foundation',
+                    'discovery-foundation',
+                )
+            ],
+            'prNumber': self.pr,
+            'claimId': f'profile-run-95-pr-{self.pr}-{self.source[:12]}-1792600000000',
+            'mcpBundleSha256': 'c' * 64,
+            'registrySha256': self.registry_sha,
+            'toolName': self.profile['toolName'],
+            'argumentProfile': self.profile['argumentProfile'],
+            'expectedArgumentsSha256': self.arguments_sha,
+            'serverToolNames': [self.profile['toolName']],
+            'serverToolCount': 1,
+            'networkMode': self.profile['networkMode'],
+            'mcpServerNames': ['bgk_render_subject_card_offline'],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'answerCheckMethod': self.profile['answerCheckMethod'],
+            'answerSha256': hashlib.sha256(self.ack).hexdigest(),
+            'answerUtf8Bytes': len(self.ack),
+            'offlineFixture': {
+                'profile': self.profile['networkMode'],
+                'expectedOperation': 'GET /v0/subjects/990901',
+                'requestCount': 1,
+                'expectedRequestCount': 1,
+                'unexpectedRequestCount': 0,
+                'authorizationHeaderCount': 0,
+                'collectionRequestCount': 0,
+                'expectedOperationComplete': True,
+                'rawFixturePayloadStored': False,
+            },
+            'offlineAssetBoundary': {
+                'assetResolutionCallCount': 0,
+                'nonEmptyAssetUrlCount': 0,
+                'blockedAssetRequestCount': 0,
+                'localFallbackUsed': True,
+            },
+            'networkBoundary': {
+                'liveBangumiApiRequestCount': 0,
+                'rendererAssetRequestCount': 0,
+                'fullCodexHarnessNetworkSandboxed': False,
+            },
+            'artifact': {
+                'returned': True, 'persisted': False, 'mimeType': 'image/png',
+                'width': 720, 'height': 1576, 'byteLength': 257734,
+                'sha256': 'd' * 64, 'pngSignatureValid': True,
+            },
+            'answerChecks': {
+                'exactRegisteredProfile': True,
+                'oneAllowedMcpTool': True,
+                'fixedArguments': True,
+                'exactCandidateBundle': True,
+                'offlineFixtureOnly': True,
+                'noAuthorizationOrCollection': True,
+                'noAssetResolution': True,
+                'artifactReturned': True,
+                'exactAcknowledgement': True,
+                'privacyPreserved': True,
+            },
+            'privacy': {
+                'authProfile': 'anonymous', 'oauthAttempted': False,
+                'accountDataRead': False, 'writesAttempted': False, 'communityRead': False,
+                'qqPipelineTested': False, 'timClientTested': False, 'promptStored': False,
+                'answerStored': False, 'rawFixtureRowsStored': False, 'rawToolResultStored': False,
+                'artifactImageBytesStored': False, 'credentialsStored': False,
+            },
+            'runnerReceipt': {
+                'kind': 'render-subject-card-offline-agent-mcp-runner-receipt-v1',
+                'payload': {}, 'signature': 'signature',
+            },
+        }
+
+    def test_matrix_mapper_only_accepts_the_exact_offline_renderer_contract(self):
+        self.assertTrue(TABLE_CHECKER.render_subject_card_offline_agent_mcp_matches(
+            self.profile['toolName'], self.profile['reportPath'], self.report,
+        ))
+        mutations = [
+            ('toolName', 'bangumi.render_subject_stats'),
+            ('frontierId', 'P06'),
+            ('codexMcpToolEventCount', 2),
+            ('shellToolCallCount', 1),
+        ]
+        for field, value in mutations:
+            with self.subTest(field=field):
+                changed = dict(self.report)
+                changed[field] = value
+                self.assertFalse(TABLE_CHECKER.render_subject_card_offline_agent_mcp_matches(
+                    self.profile['toolName'], self.profile['reportPath'], changed,
+                ))
+        changed = json.loads(json.dumps(self.report))
+        changed['offlineFixture']['collectionRequestCount'] = 1
+        self.assertFalse(TABLE_CHECKER.render_subject_card_offline_agent_mcp_matches(
+            self.profile['toolName'], self.profile['reportPath'], changed,
+        ))
+
+    def test_candidate_binding_uses_the_selected_epoch_and_evidence_refresh_allowlist(self):
+        branch = 'codex/epoch-run95-render-subject-card-offline-agent-mcp-20261021'
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': self.pr},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'candidate_sha': self.source,
+                    'epoch_id': self.profile['epochId'],
+                    'pr_number': self.pr,
+                    'base_branch': 'master',
+                    'base_sha': self.base,
+                    'branch': branch,
+                    'review_history': [],
+                },
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': self.base,
+                'pr_head_ref_name': branch,
+                'pr_is_draft': False,
+                'pr_head_sha': self.source,
+            },
+        }
+        paths = [
+            self.profile['reportPath'],
+            'docs/product/frontier-ledger.json',
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+        ]
+        self.assertTrue(GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+            self.report, epoch_status, paths, self.report['mcpBundleSha256'],
+        ))
+        self.assertTrue(GENERATOR.codex_render_subject_card_offline_profile_frontier_is_partial())
+        paths.append('scripts/agent-harness.mjs')
+        self.assertFalse(GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+            self.report, epoch_status, paths, self.report['mcpBundleSha256'],
+        ))
+
+
 class C03PersonActivityOfflineV2MatrixTests(unittest.TestCase):
     def setUp(self):
         self.profile = TABLE_CHECKER.C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE

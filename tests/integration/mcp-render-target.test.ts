@@ -135,6 +135,38 @@ describe('MCP renderer target', () => {
     );
   });
 
+  it('keeps an explicit no-collection subject-card render on the anonymous public path', async () => {
+    const fetchFn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const requestUrl = input instanceof Request ? input.url : String(input);
+      assert.equal(new URL(requestUrl).pathname, `/v0/subjects/${subjectFixture.id}`);
+      assert.equal(
+        String(init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase(),
+        'GET',
+      );
+      const requestHeaders = new Headers(input instanceof Request ? input.headers : undefined);
+      new Headers(init?.headers).forEach((value, key) => requestHeaders.set(key, value));
+      assert.equal(requestHeaders.has('authorization'), false);
+      return new Response(JSON.stringify(subjectFixture), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    const { response, renderService } = await callMcpRender({
+      arguments: { subjectId: subjectFixture.id, includeCollection: false },
+      fetchFn,
+    });
+
+    assert.equal(response.isError, undefined);
+    expect(fetchFn).toHaveBeenCalledOnce();
+    expect(renderService.renderCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        template: 'subject-card',
+        subject: expect.objectContaining({ id: subjectFixture.id }),
+      }),
+      { width: 360, deviceScaleFactor: 2 },
+    );
+  });
+
   it('allows an MCP caller to explicitly request the full-resolution target', async () => {
     const { response, renderService } = await callMcpRender({ renderTarget: 'full' });
 

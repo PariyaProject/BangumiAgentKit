@@ -4187,9 +4187,12 @@
         "docs/research/run95-render-theme-switch-visual-qa-2026-10-20.json",
         "packages/renderer/src/components/RendererIcon.tsx",
         "packages/renderer/src/themes/index.ts",
-        "docs/research/run95-render-editorial-layouts-visual-qa-2026-10-20.json"
+        "docs/research/run95-render-editorial-layouts-visual-qa-2026-10-20.json",
+        "docs/research/run95-render-subject-card-offline-agent-mcp-contract-2026-10-21.md",
+        "docs/research/run95-render-subject-card-offline-preflight-2026-10-21.md",
+        "docs/research/assets/run95-render-subject-card-offline-agent-mcp-v1/manifest.json"
       ],
-      "next_action": "2026-10-20T01:53Z: Run #95 pass4 visual alignment is recorded in docs/research/run95-render-editorial-layouts-visual-qa-2026-10-20.json: 580 PNGs, 58 fixture sheets inspected, eight full-resolution samples reviewed, no root overflow. The warm-paper palette and semantic panels add presentation evidence only. Keep PARTIAL until the separate current-source Agent/MCP answer and strict Renderer/MCP evidence pass; QQ/TIM remains a separate client gate. Run #72 makes SubjectCard place the existing Chinese title and distinct original-language title above the cover/metadata row at all widths. Real-browser checks cover 320/360/520 and 640/720/900 CSS px, including long mixed-script titles at 640+; RenderService verifies 360 CSS px at 2x and a 720 CSS px image. 2026-10-19 Run #95 synthetic SubjectOverview QA localized unavailable/not-found title, ID, and media fallbacks, replaced invisible 1x1 fixtures with visible local synthetic cover/avatar assets, and pinned the synthetic retrievedAt timestamp, generated 25 state/width PNGs plus the 720px full-staff stress image twice, confirmed all 26 filenames, dimensions, byte counts, and SHA-256 values repeat exactly, and individually inspected every final PNG; evidence is recorded in the linked visual report. This adds presentation evidence only. Keep PARTIAL until the separate current-source Agent/MCP answer and strict Renderer/MCP evidence pass; QQ/TIM remains a separate client gate.",
+      "next_action": "2026-10-21: the fixed synthetic render_subject_card preflight is recorded in docs/research/run95-render-subject-card-offline-preflight-2026-10-21.md; it is pre-commit visual evidence only. The separate current-source Agent/MCP matrix profile is pinned in docs/research/run95-render-subject-card-offline-agent-mcp-contract-2026-10-21.md. Keep OP-008 PARTIAL until the exact Candidate passes CI and same-identity review, its single guarded Codex MCP call produces a signed sanitized report, and the current-source Agent/MCP matrix credit is validated. QQ/TIM remains a separate client gate; this profile does not access accounts or external APIs.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": ["OP-013"]
     },

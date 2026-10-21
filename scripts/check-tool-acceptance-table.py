@@ -34,6 +34,11 @@ C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE = next(
     if isinstance(profile, dict)
     and profile.get('id') == 'c03-person-activity-offline-agent-mcp-matrix-v2'
 )
+RENDER_SUBJECT_CARD_OFFLINE_PROFILE = next(
+    profile for profile in PROFILE_REGISTRY.get('profiles', [])
+    if isinstance(profile, dict)
+    and profile.get('id') == 'render-subject-card-offline-agent-mcp-v1'
+)
 sys.path.insert(0, str(ROOT / 'scripts'))
 from acceptance.c03_person_activity_offline_v2_acceptance import (
     c03_person_activity_offline_v2_signed_report_matches,
@@ -126,6 +131,139 @@ def g01_render_query_report_matches(name: str, relative_path: str, report: objec
         and report.get('answerCheckMethod') == profile['answerCheckMethod']
         and report.get('answerSha256') == hashlib.sha256(acknowledgement.encode()).hexdigest()
         and report.get('answerUtf8Bytes') == len(acknowledgement.encode())
+    )
+
+
+def render_subject_card_offline_agent_mcp_matches(
+    name: str, relative_path: str, report: object,
+) -> bool:
+    """Map only the fixed synthetic render_subject_card call to its Agent/MCP cell."""
+    if not isinstance(report, dict):
+        return False
+    profile = RENDER_SUBJECT_CARD_OFFLINE_PROFILE
+    calls = profile.get('calls')
+    expected_arguments = calls[0].get('arguments') if isinstance(calls, list) and len(calls) == 1 else None
+    registry_sha256 = hashlib.sha256(json.dumps(
+        profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+    arguments_sha256 = hashlib.sha256(json.dumps(
+        [call.get('arguments') for call in calls] if isinstance(calls, list) else None,
+        sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+    fixture = report.get('offlineFixture')
+    asset = report.get('offlineAssetBoundary')
+    artifact = report.get('artifact')
+    checks = report.get('answerChecks')
+    receipt = report.get('runnerReceipt')
+    acknowledgement = b'RENDER_SUBJECT_CARD_SYNTHETIC_ARTIFACT_READY'
+    expected_fixture = {
+        'profile': profile.get('networkMode'),
+        'expectedOperation': 'GET /v0/subjects/990901',
+        'requestCount': 1,
+        'expectedRequestCount': 1,
+        'unexpectedRequestCount': 0,
+        'authorizationHeaderCount': 0,
+        'collectionRequestCount': 0,
+        'expectedOperationComplete': True,
+        'rawFixturePayloadStored': False,
+    }
+    expected_asset = {
+        'assetResolutionCallCount': 0,
+        'nonEmptyAssetUrlCount': 0,
+        'blockedAssetRequestCount': 0,
+        'localFallbackUsed': True,
+    }
+    expected_checks = {
+        'exactRegisteredProfile', 'oneAllowedMcpTool', 'fixedArguments', 'exactCandidateBundle',
+        'offlineFixtureOnly', 'noAuthorizationOrCollection', 'noAssetResolution',
+        'artifactReturned', 'exactAcknowledgement', 'privacyPreserved',
+    }
+    expected_privacy = {
+        'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+        'writesAttempted': False, 'communityRead': False, 'qqPipelineTested': False,
+        'timClientTested': False, 'promptStored': False, 'answerStored': False,
+        'rawFixtureRowsStored': False, 'rawToolResultStored': False,
+        'artifactImageBytesStored': False, 'credentialsStored': False,
+    }
+    source_revision = report.get('sourceRevision')
+    pr_number = report.get('prNumber')
+    return bool(
+        profile.get('acceptanceScope') == 'agent-mcp-matrix-only'
+        and name == profile.get('toolName')
+        and relative_path == profile.get('reportPath')
+        and type(report.get('schemaVersion')) is int and report.get('schemaVersion') == 1
+        and report.get('evidenceKind') == profile.get('evidenceKind')
+        and report.get('profileId') == profile.get('id')
+        and report.get('epochId') == profile.get('epochId')
+        and type(report.get('runNumber')) is int and report.get('runNumber') == 95
+        and report.get('frontierId') == 'OP-008' and report.get('scenarioId') is None
+        and report.get('profile') == 'codex-luna-max-offline-agent-mcp-matrix-v1'
+        and report.get('model') == 'gpt-6-luna' and report.get('reasoningEffort') == 'max'
+        and report.get('toolName') == profile.get('toolName')
+        and report.get('argumentProfile') == profile.get('argumentProfile')
+        and expected_arguments == {'subjectId': 990901, 'includeCollection': False}
+        and report.get('expectedArgumentsSha256') == arguments_sha256
+        and report.get('registrySha256') == registry_sha256
+        and report.get('networkMode') == profile.get('networkMode')
+        and report.get('serverToolNames') == [profile.get('toolName')]
+        and type(report.get('serverToolCount')) is int and report.get('serverToolCount') == 1
+        and report.get('mcpServerNames') == ['bgk_render_subject_card_offline']
+        and report.get('resultStatus') == 'SUCCESS'
+        and type(report.get('processExitCode')) is int and report.get('processExitCode') == 0
+        and report.get('eventStreamParsed') is True and report.get('turnCompleted') is True
+        and type(report.get('codexMcpToolEventCount')) is int and report.get('codexMcpToolEventCount') == 1
+        and type(report.get('codexErrorItemCount')) is int and report.get('codexErrorItemCount') == 0
+        and type(report.get('nonMcpToolEventCount')) is int and report.get('nonMcpToolEventCount') == 0
+        and report.get('nonMcpToolTypes') == []
+        and type(report.get('shellToolCallCount')) is int and report.get('shellToolCallCount') == 0
+        and type(report.get('allowedCallCount')) is int and report.get('allowedCallCount') == 1
+        and type(report.get('deniedCallCount')) is int and report.get('deniedCallCount') == 0
+        and fixture == expected_fixture and asset == expected_asset
+        and report.get('networkBoundary') == {
+            'liveBangumiApiRequestCount': 0,
+            'rendererAssetRequestCount': 0,
+            'fullCodexHarnessNetworkSandboxed': False,
+        }
+        and isinstance(artifact, dict)
+        and artifact.get('returned') is True and artifact.get('persisted') is False
+        and artifact.get('mimeType') == 'image/png'
+        and type(artifact.get('width')) is int and artifact.get('width') == 720
+        and type(artifact.get('height')) is int and 0 < artifact['height'] <= 5000
+        and type(artifact.get('byteLength')) is int and 0 < artifact['byteLength'] <= 5_000_000
+        and isinstance(artifact.get('sha256'), str)
+        and re.fullmatch(r'[0-9a-f]{64}', artifact['sha256']) is not None
+        and artifact.get('pngSignatureValid') is True
+        and report.get('answerCheckMethod') == profile.get('answerCheckMethod')
+        and report.get('answerSha256') == hashlib.sha256(acknowledgement).hexdigest()
+        and report.get('answerUtf8Bytes') == len(acknowledgement)
+        and isinstance(checks, dict) and set(checks) == expected_checks
+        and all(value is True for value in checks.values())
+        and report.get('privacy') == expected_privacy
+        and isinstance(source_revision, str)
+        and re.fullmatch(r'[0-9a-f]{40}', source_revision) is not None
+        and report.get('ciSha') == source_revision and report.get('ciStatus') == 'SUCCESS'
+        and isinstance(report.get('ciRunId'), str)
+        and re.fullmatch(r'[1-9][0-9]{3,}', report['ciRunId']) is not None
+        and isinstance(report.get('baseSha'), str)
+        and re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is not None
+        and type(pr_number) is int and pr_number > 0
+        and isinstance(report.get('reviewerId'), str)
+        and re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9][0-9]*', report['reviewerId']) is not None
+        and isinstance(report.get('claimId'), str)
+        and re.fullmatch(rf'profile-run-95-pr-{pr_number}-{source_revision[:12]}-[0-9]+', report['claimId']) is not None
+        and isinstance(report.get('mcpBundleSha256'), str)
+        and re.fullmatch(r'[0-9a-f]{64}', report['mcpBundleSha256']) is not None
+        and report.get('ciChecks') == [
+            {'name': check, 'status': 'COMPLETED', 'conclusion': 'SUCCESS'}
+            for check in (
+                'harness-control', 'sqlite-default', 'host-integration', 'standalone-release-smoke',
+                'postgres-compat', 'provider-foundation', 'discovery-foundation',
+            )
+        ]
+        and isinstance(receipt, dict)
+        and receipt.get('kind') == 'render-subject-card-offline-agent-mcp-runner-receipt-v1'
+        and isinstance(receipt.get('payload'), dict)
+        and isinstance(receipt.get('signature'), str)
     )
 
 
@@ -1180,12 +1318,15 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
             c03_person_activity_offline_v2_matches = c03_person_activity_offline_v2_report_matches(
                 name, relative_path, report, report_path=path,
             )
+            render_subject_card_offline_matches = render_subject_card_offline_agent_mcp_matches(
+                name, relative_path, report,
+            )
             matches = (
                 scenario_matches or c04_matches or title_query_render_matches
                 or g01_render_query_matches or g01_query_subjects_offline_matches
                 or r01_offline_matches or r04_render_v2_matches
                 or g06_cast_offline_v2_matches or r02_positive_matches
-                or c03_person_activity_offline_v2_matches
+                or c03_person_activity_offline_v2_matches or render_subject_card_offline_matches
             )
         else:
             try:
