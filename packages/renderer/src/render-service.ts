@@ -12,10 +12,12 @@ import { BrowserPool } from './browser-pool.js';
 import { AssetResolver, RenderWarning, ResolvedAsset } from './asset-resolver.js';
 import { RendererError } from './errors.js';
 import { RendererLruCache } from './lru-cache.js';
+import { type RenderTypographyOptions, resolveRenderTypography } from './typography.js';
 
 export interface RenderOptions {
   theme?: RenderThemeName;
   designPack?: RenderDesignPackName;
+  typography?: RenderTypographyOptions;
   width?: number;
   deviceScaleFactor?: number;
   format?: 'png';
@@ -33,7 +35,7 @@ export interface RenderResult {
   warnings: RenderWarning[];
 }
 
-export const RENDERER_VERSION = '1.1.0';
+export const RENDERER_VERSION = '1.2.0';
 
 const DISCOVERY_MAX_RENDERED_ITEMS = 12;
 const SERIES_MAX_RENDERED_STEPS = 17;
@@ -68,6 +70,7 @@ export function computeRenderCacheKey(
   viewModel: RenderViewModel,
   options: RenderOptions = {},
   assetMap: Record<string, string> = {},
+  fontFileHashes: { body?: string; display?: string } = {},
 ): string {
   const theme = options.theme || DEFAULT_RENDER_THEME;
   const designPack = options.designPack || DEFAULT_RENDER_DESIGN_PACK;
@@ -77,8 +80,17 @@ export function computeRenderCacheKey(
 
   const vmCanonical = canonicalizeJson(viewModel);
   const assetCanonical = canonicalizeJson(assetMap);
+  const typographyCanonical = canonicalizeJson({
+    fontSizeScale: options.typography?.fontSizeScale ?? 1,
+    bodyFontFamily: options.typography?.bodyFontFamily ?? null,
+    displayFontFamily: options.typography?.displayFontFamily ?? null,
+    bodyFontFile: options.typography?.bodyFontFile ?? null,
+    displayFontFile: options.typography?.displayFontFile ?? null,
+    bodyFontSha256: fontFileHashes.body ?? null,
+    displayFontSha256: fontFileHashes.display ?? null,
+  });
 
-  const rawKey = `${RENDERER_VERSION}:${viewModel.template}:${viewModel.version}:${theme}:${designPack}:${width}:${dpr}:${format}:${vmCanonical}:${assetCanonical}`;
+  const rawKey = `${RENDERER_VERSION}:${viewModel.template}:${viewModel.version}:${theme}:${designPack}:${width}:${dpr}:${format}:${typographyCanonical}:${vmCanonical}:${assetCanonical}`;
   return crypto.createHash('sha256').update(rawKey).digest('hex');
 }
 
@@ -340,6 +352,8 @@ export class RenderService {
       );
     }
 
+    const typography = await resolveRenderTypography(options.typography);
+
     const controller = new AbortController();
     let timeoutTimer: NodeJS.Timeout | null = setTimeout(() => {
       controller.abort();
@@ -376,6 +390,10 @@ export class RenderService {
         normalizedViewModel,
         { ...options, theme, designPack, width, deviceScaleFactor: dpr },
         resolvedImages,
+        {
+          body: typography.cacheIdentity.bodyFontSha256,
+          display: typography.cacheIdentity.displayFontSha256,
+        },
       );
       if (cacheEnabled) {
         const cached = this.cache.get(cacheKey);
@@ -397,6 +415,7 @@ export class RenderService {
         resolvedImages,
         width,
         designPack,
+        typography,
       );
       const buffer = await this.browserPool.renderHtmlToBuffer(html, {
         width,

@@ -8,6 +8,13 @@ import {
   RenderThemeName,
 } from './themes/index.js';
 import { getTemplate } from './templates/TemplateRegistry.js';
+import {
+  DEFAULT_RESOLVED_RENDER_TYPOGRAPHY,
+  normalizeFontFamilyStack,
+  renderFontFamilyStack,
+  type ResolvedRenderTypography,
+  scaleInlineFontSizeDeclarations,
+} from './typography.js';
 
 export function renderHtmlTemplate(
   viewModel: RenderViewModel,
@@ -15,16 +22,46 @@ export function renderHtmlTemplate(
   resolvedImages?: Record<string, string>,
   width?: number,
   designPack: RenderDesignPackName = DEFAULT_RENDER_DESIGN_PACK,
+  typography: ResolvedRenderTypography = DEFAULT_RESOLVED_RENDER_TYPOGRAPHY,
 ): string {
-  const theme = getThemeTokens(themeName, designPack);
+  const baseTheme = getThemeTokens(themeName, designPack);
+  const theme = {
+    ...baseTheme,
+    design: {
+      ...baseTheme.design,
+      bodyFontFamily: renderFontFamilyStack('body', baseTheme.design.bodyFontFamily, typography),
+      displayFontFamily: renderFontFamilyStack(
+        'display',
+        baseTheme.design.displayFontFamily,
+        typography,
+      ),
+    },
+  };
   const template = getTemplate(viewModel.template);
 
   const reactElement = template.render(viewModel, theme, resolvedImages, width);
-  const staticMarkup = ReactDOMServer.renderToStaticMarkup(reactElement);
+  const staticMarkup = scaleInlineFontSizeDeclarations(
+    ReactDOMServer.renderToStaticMarkup(reactElement),
+    typography.fontSizeScale,
+  );
 
   const cspMeta = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:; script-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none';" />`;
 
+  const fontFacesCss = typography.fontFaces
+    .map((face) => {
+      const family = normalizeFontFamilyStack(face.family);
+      if (
+        !/^data:font\/(?:otf|ttf|woff|woff2);base64,[A-Za-z0-9+/=]+$/.test(face.dataUrl) ||
+        !['opentype', 'truetype', 'woff', 'woff2'].includes(face.format)
+      ) {
+        throw new Error('Resolved renderer font face is invalid.');
+      }
+      return `@font-face{font-family:${family};src:url("${face.dataUrl}") format("${face.format}");font-style:normal;font-weight:100 900;font-display:block;}`;
+    })
+    .join('\n');
+
   const resetCss = `
+    ${fontFacesCss}
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       background-color: ${theme.background};

@@ -54,6 +54,43 @@ PNG Buffer + RenderResult Metadata
 - **Render Cache**: Bounded LRU cache in `RenderService` keyed by canonical JSON hash of `RenderViewModel` + options.
 - **Render Timeout**: Configurable per-render timeout (`RENDERER_TIMEOUT_MS`, default 5000–10000ms).
 
+## Typography configuration
+
+The React renderer keeps each design pack's body/display font pairing by default.
+Operators can tune the text scale or provide local font files without changing
+templates:
+
+| Setting                              | Default                   | Bounds / behavior                                                                                 |
+| ------------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------- |
+| `BANGUMI_RENDER_FONT_SIZE_SCALE`     | `1`                       | `0.75`–`1.25`; scales template font-size declarations while preserving each template's hierarchy. |
+| `BANGUMI_RENDER_BODY_FONT_FAMILY`    | Design-pack body stack    | Optional comma-separated, validated CSS family stack.                                             |
+| `BANGUMI_RENDER_DISPLAY_FONT_FAMILY` | Design-pack display stack | Optional comma-separated, validated CSS family stack.                                             |
+| `BANGUMI_RENDER_FONT_DIR`            | unset                     | Absolute directory containing operator-provided font files.                                       |
+| `BANGUMI_RENDER_BODY_FONT_FILE`      | unset                     | Optional body font basename under `BANGUMI_RENDER_FONT_DIR`.                                      |
+| `BANGUMI_RENDER_DISPLAY_FONT_FILE`   | unset                     | Optional display font basename under `BANGUMI_RENDER_FONT_DIR`.                                   |
+
+Font files must be regular `.otf`, `.ttf`, `.woff`, or `.woff2` files no larger
+than 20 MiB. File settings accept basenames only; path traversal and symlinks
+that resolve outside the configured directory are rejected. Mount the directory
+read-only when running in a container. The renderer reads the configured files
+and embeds their bytes as `data:` font faces; Chromium remains network-isolated.
+If a custom file is not configured, each design pack's font stack remains the
+fallback. An explicit font stack may include local and generic fallbacks, such
+as `GenSen Rounded, Noto Sans SC, sans-serif`.
+
+Example:
+
+```text
+BANGUMI_RENDER_FONT_SIZE_SCALE=0.75
+BANGUMI_RENDER_BODY_FONT_FAMILY=GenSen Rounded, Noto Sans SC, sans-serif
+BANGUMI_RENDER_FONT_DIR=/opt/bangumi/fonts
+BANGUMI_RENDER_BODY_FONT_FILE=GenSenRounded2TW-R.otf
+```
+
+The font file's SHA-256, selected family stacks, and scale are part of the render
+cache key. Updating a configured font therefore produces a new artifact. Font
+files are operator-managed and are not bundled with BangumiAgentKit.
+
 ## Template Registry & Error Model
 
 The `TemplateRegistry` maps `RenderViewModel['template']` to React card templates

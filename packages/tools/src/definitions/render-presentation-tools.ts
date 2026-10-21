@@ -47,9 +47,11 @@ import {
 } from '@bangumi-agent-kit/bangumi-core';
 import {
   RenderService,
+  normalizeRenderTypographyOptions,
   isRenderDesignPackName,
   isRenderThemeName,
   type RenderOptions,
+  type RenderTypographyOptions,
   LocalArtifactStore,
   ArtifactStore,
   isPrincipalScopedArtifactStore,
@@ -208,11 +210,33 @@ export function getDefaultRenderOptions(
   renderTarget: RenderTarget = 'full',
   themeSetting = process.env.BANGUMI_RENDER_THEME,
   designPackSetting = process.env.BANGUMI_RENDER_DESIGN_PACK,
+  environment: NodeJS.ProcessEnv = process.env,
 ): RenderOptions {
   const targetDefaults: RenderOptions =
     renderTarget === 'chat' ? { width: 360, deviceScaleFactor: 2 } : {};
   if (isRenderThemeName(themeSetting)) targetDefaults.theme = themeSetting;
   if (isRenderDesignPackName(designPackSetting)) targetDefaults.designPack = designPackSetting;
+
+  const typographySettings: RenderTypographyOptions = {};
+  const fontSizeScaleSetting = environment.BANGUMI_RENDER_FONT_SIZE_SCALE?.trim();
+  if (fontSizeScaleSetting) typographySettings.fontSizeScale = Number(fontSizeScaleSetting);
+
+  const bodyFontFamily = environment.BANGUMI_RENDER_BODY_FONT_FAMILY?.trim();
+  if (bodyFontFamily) typographySettings.bodyFontFamily = bodyFontFamily;
+  const displayFontFamily = environment.BANGUMI_RENDER_DISPLAY_FONT_FAMILY?.trim();
+  if (displayFontFamily) typographySettings.displayFontFamily = displayFontFamily;
+
+  const bodyFontFile = environment.BANGUMI_RENDER_BODY_FONT_FILE?.trim();
+  if (bodyFontFile) typographySettings.bodyFontFile = bodyFontFile;
+  const displayFontFile = environment.BANGUMI_RENDER_DISPLAY_FONT_FILE?.trim();
+  if (displayFontFile) typographySettings.displayFontFile = displayFontFile;
+  if (typographySettings.bodyFontFile || typographySettings.displayFontFile) {
+    typographySettings.fontDirectory = environment.BANGUMI_RENDER_FONT_DIR;
+  }
+
+  if (Object.values(typographySettings).some((value) => value !== undefined)) {
+    targetDefaults.typography = normalizeRenderTypographyOptions(typographySettings);
+  }
   return targetDefaults;
 }
 

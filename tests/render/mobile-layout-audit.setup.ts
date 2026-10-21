@@ -15,6 +15,7 @@ import {
   type RenderDesignPackName,
   type RenderThemeName,
 } from '../../packages/renderer/src/themes/index.js';
+import { resolveRenderTypography } from '../../packages/renderer/src/typography.js';
 import {
   closeMobileLayoutBrowser,
   measureRenderRootLayout,
@@ -163,6 +164,22 @@ async function generateThemeMatrix(): Promise<void> {
     }),
   );
   expect(currentProvenance).toEqual(visualMatrixProvenance);
+  const fontSizeScale = process.env.BANGUMI_RENDER_FONT_SIZE_SCALE?.trim();
+  const bodyFontFamily = process.env.BANGUMI_RENDER_BODY_FONT_FAMILY?.trim();
+  const displayFontFamily = process.env.BANGUMI_RENDER_DISPLAY_FONT_FAMILY?.trim();
+  const bodyFontFile = process.env.BANGUMI_RENDER_BODY_FONT_FILE?.trim();
+  const displayFontFile = process.env.BANGUMI_RENDER_DISPLAY_FONT_FILE?.trim();
+  const typographyOptions = {
+    ...(fontSizeScale ? { fontSizeScale: Number(fontSizeScale) } : {}),
+    ...(bodyFontFamily ? { bodyFontFamily } : {}),
+    ...(displayFontFamily ? { displayFontFamily } : {}),
+    ...(bodyFontFile ? { bodyFontFile } : {}),
+    ...(displayFontFile ? { displayFontFile } : {}),
+    ...(bodyFontFile || displayFontFile
+      ? { fontDirectory: process.env.BANGUMI_RENDER_FONT_DIR }
+      : {}),
+  };
+  const typography = await resolveRenderTypography(typographyOptions);
   const outputDir = path.resolve(
     process.cwd(),
     '.artifacts',
@@ -197,6 +214,7 @@ async function generateThemeMatrix(): Promise<void> {
             resolvedImages,
             width,
             designPack,
+            typography,
           );
           const { png, layout } = await renderThemePreview(html, width);
           const panelMasks = layout.maskReceipts?.panels ?? [];
@@ -334,6 +352,11 @@ async function generateThemeMatrix(): Promise<void> {
         templatesAndStates: themeMatrixCandidates.size,
         designPacks: themeMatrixDesignPacks,
         themes: themeMatrixThemes,
+        typography: typography.cacheIdentity,
+        typographyFontFiles: {
+          body: bodyFontFile || null,
+          display: displayFontFile || null,
+        },
         maskAudit,
         maskFailures,
         images: manifest,

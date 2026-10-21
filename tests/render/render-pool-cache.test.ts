@@ -147,6 +147,39 @@ describe('PR-5 BrowserPool, Cache & Options Bounds (R22 - R30)', () => {
     expect(new Set([editorial, gallery, zine]).size).toBe(3);
   });
 
+  it('R25b: Cache key changes with typography scale, font family, and font content', () => {
+    const vm: SubjectCardViewModel = {
+      template: 'subject-card',
+      version: 1,
+      subject: { id: 1, name: 'Typography Cache Test', type: 'anime' },
+      source: { label: 'Cache test' },
+    };
+    const defaultTypography = computeRenderCacheKey(vm);
+    const compactTypography = computeRenderCacheKey(vm, {
+      typography: { fontSizeScale: 0.75 },
+    });
+    const roundedFamily = computeRenderCacheKey(vm, {
+      typography: { fontSizeScale: 0.75, bodyFontFamily: 'GenSen Rounded, sans-serif' },
+    });
+    const fontFileOne = computeRenderCacheKey(
+      vm,
+      { typography: { fontSizeScale: 0.75, bodyFontFile: 'rounded.woff2' } },
+      {},
+      { body: 'a'.repeat(64) },
+    );
+    const fontFileTwo = computeRenderCacheKey(
+      vm,
+      { typography: { fontSizeScale: 0.75, bodyFontFile: 'rounded.woff2' } },
+      {},
+      { body: 'b'.repeat(64) },
+    );
+
+    expect(new Set([defaultTypography, compactTypography, roundedFamily, fontFileOne]).size).toBe(
+      4,
+    );
+    expect(fontFileOne).not.toBe(fontFileTwo);
+  });
+
   it('R26: Cache key changes with VM content', () => {
     const vm1: SubjectCardViewModel = {
       template: 'subject-card',

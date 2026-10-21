@@ -38,26 +38,60 @@ function createArtifactStore() {
 
 describe('render target defaults', () => {
   it('accepts only the two registered themes and keeps chat sizing', () => {
-    expect(getDefaultRenderOptions('full', 'bangumi-light')).toEqual({
+    expect(getDefaultRenderOptions('full', 'bangumi-light', 'unknown', {})).toEqual({
       theme: 'bangumi-light',
     });
-    expect(getDefaultRenderOptions('chat', 'bangumi-dark')).toEqual({
+    expect(getDefaultRenderOptions('chat', 'bangumi-dark', 'unknown', {})).toEqual({
       width: 360,
       deviceScaleFactor: 2,
       theme: 'bangumi-dark',
     });
-    expect(getDefaultRenderOptions('full', 'light')).toEqual({});
-    expect(getDefaultRenderOptions('chat', undefined)).toEqual({
+    expect(getDefaultRenderOptions('full', 'light', 'unknown', {})).toEqual({});
+    expect(getDefaultRenderOptions('chat', 'unknown', 'unknown', {})).toEqual({
       width: 360,
       deviceScaleFactor: 2,
     });
-    expect(getDefaultRenderOptions('chat', 'bangumi-light', 'graphic-zine')).toEqual({
+    expect(getDefaultRenderOptions('chat', 'bangumi-light', 'graphic-zine', {})).toEqual({
       width: 360,
       deviceScaleFactor: 2,
       theme: 'bangumi-light',
       designPack: 'graphic-zine',
     });
-    expect(getDefaultRenderOptions('full', 'unknown', 'unknown')).toEqual({});
+    expect(getDefaultRenderOptions('full', 'unknown', 'unknown', {})).toEqual({});
+  });
+
+  it('reads bounded typography defaults from operator environment settings', () => {
+    expect(
+      getDefaultRenderOptions('full', 'bangumi-light', 'clean-gallery', {
+        BANGUMI_RENDER_FONT_SIZE_SCALE: '0.75',
+        BANGUMI_RENDER_BODY_FONT_FAMILY: 'GenSen Rounded, sans-serif',
+        BANGUMI_RENDER_BODY_FONT_FILE: 'GenSenRounded2TW-R.otf',
+        BANGUMI_RENDER_FONT_DIR: '/opt/bangumi/fonts',
+      }),
+    ).toMatchObject({
+      theme: 'bangumi-light',
+      designPack: 'clean-gallery',
+      typography: {
+        fontSizeScale: 0.75,
+        bodyFontFamily: '"GenSen Rounded", sans-serif',
+        bodyFontFile: 'GenSenRounded2TW-R.otf',
+        fontDirectory: '/opt/bangumi/fonts',
+      },
+    });
+  });
+
+  it('fails fast for invalid operator typography settings', () => {
+    expect(() =>
+      getDefaultRenderOptions('full', undefined, undefined, {
+        BANGUMI_RENDER_FONT_SIZE_SCALE: '0.5',
+      }),
+    ).toThrow('RENDER_VALIDATION_ERROR');
+    expect(() =>
+      getDefaultRenderOptions('full', undefined, undefined, {
+        BANGUMI_RENDER_BODY_FONT_FILE: '../secret.otf',
+        BANGUMI_RENDER_FONT_DIR: '/opt/bangumi/fonts',
+      }),
+    ).toThrow('RENDER_VALIDATION_ERROR');
   });
 });
 
