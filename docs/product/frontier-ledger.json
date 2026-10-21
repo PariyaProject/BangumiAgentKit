@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-20T14:34:59Z",
+  "updated_at": "2026-10-21T05:15:16Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2007,9 +2007,10 @@
         "scripts/acceptance/write-c03-person-activity-offline-v2-report.mjs",
         "scripts/lib/c03-person-activity-offline-matrix-v2-profile.mjs",
         "tests/harness/run-c03-person-activity-offline-matrix-v2.test.mjs",
-        "tests/harness/write-c03-person-activity-offline-v2-report.test.mjs"
+        "tests/harness/write-c03-person-activity-offline-v2-report.test.mjs",
+        "docs/research/run95-c03-v2-terminal-disposition-2026-10-21.md"
       ],
-      "next_action": "Run #95 has a separately registered C03 v2 synthetic offline Agent/MCP matrix-only profile for bangumi.get_person_activity; the active v2 Candidate has not been claimed or invoked. After exact Candidate/Base/seven-check CI/same-identity Luna Max gates, the one-shot may credit only that tool matrix cell. C03 remains UNASSESSED as the two-voice-actor common-work/main-role-share scenario. The old v1 claim ended INCONCLUSIVE without a report (retryAllowed=false); the missing report does not restore eligibility. Never rerun this consumed Run #95 profile. Continue through another safe unspent frontier; after the v2 matrix disposition, the full comparison scenario requires a separately selected safe unspent method.",
+      "next_action": "2026-10-21 live Harness status and merged PR #240 confirm the C03 v2 synthetic bangumi.get_person_activity profile is terminal INCONCLUSIVE: one call, no report, retryAllowed=false, and both permanent claim/terminal labels are present. Exact Candidate a1428126216060690d70e042dfd0a673ff3da5ca / Base d0edc19dcd7b28cd9437556a90dc52fad5c89239 / CI 39271436606 SUCCESS 7/7 and same-identity GPT-6 Luna Max PASS are recorded in PR #240. The C03 v1 profile is separately terminal no-report/no-retry. Never invoke or recreate either profile. Keep C03 UNASSESSED; no scenario, Agent/MCP, or public API credit is earned from the v2 attempt, and the current get_person_activity Agent/MCP cell remains uncredited at 82/96. Continue Run #95 on a different safe, genuinely unspent frontier. Disposition: docs/research/run95-c03-v2-terminal-disposition-2026-10-21.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
