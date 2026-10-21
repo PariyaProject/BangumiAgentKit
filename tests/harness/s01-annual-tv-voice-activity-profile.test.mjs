@@ -157,6 +157,20 @@ test('S01 rejects a global unique-character count greater than its credit rows',
   assert.equal(summarizeS01AnnualTvVoiceResult(result), null);
 });
 
+test('S01 rejects a global unique-character count below any yearly count', () => {
+  const result = makeResult();
+  result.summary.uniqueCharacters = 0;
+  result.coverage.uniqueCharacters = 0;
+  assert.equal(summarizeS01AnnualTvVoiceResult(result), null);
+});
+
+test('S01 rejects a global unique-character count above the sum of yearly counts', () => {
+  const result = makeResult();
+  result.summary.uniqueCharacters = 4;
+  result.coverage.uniqueCharacters = 4;
+  assert.equal(summarizeS01AnnualTvVoiceResult(result), null);
+});
+
 test('S01 rejects incorrect boundary-year clipping and missing years', () => {
   const wrongRange = makeResult();
   wrongRange.summary.byYear[0].start = '2023-01-01';

@@ -383,6 +383,20 @@ export function validateS01AnnualTvVoiceSummary(summary) {
       return false;
     }
   }
+  const yearlyUniqueCharacterCounts = summary.annualObservedCounts.map(
+    (item) => item.uniqueCharacters,
+  );
+  const largestYearlyUniqueCharacterCount = Math.max(...yearlyUniqueCharacterCounts);
+  const summedYearlyUniqueCharacterCount = yearlyUniqueCharacterCounts.reduce(
+    (sum, count) => sum + count,
+    0,
+  );
+  if (
+    summary.uniqueCharacters < largestYearlyUniqueCharacterCount ||
+    summary.uniqueCharacters > summedYearlyUniqueCharacterCount
+  ) {
+    return false;
+  }
   const coverage = summary.coverage;
   if (
     !COVERAGE_COUNTERS.every((key) => nonnegativeInteger(coverage[key])) ||
