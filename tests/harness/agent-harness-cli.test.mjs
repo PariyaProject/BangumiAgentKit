@@ -4243,6 +4243,7 @@ function g06V2ReportRefreshEnvironment(disposition, overrides = {}, epochOverrid
     'scripts/test_acceptance_evidence.py',
     'scripts/generate-tool-acceptance-tasks.py',
     'scripts/agent-harness.mjs',
+    'scripts/lib/source-revision-tool-catalog.mjs',
     'scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs',
     'tests/harness/write-g06-subject-cast-offline-agent-mcp-report.test.mjs',
     'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs',
@@ -4324,6 +4325,8 @@ function r04RenderV2ReportRefreshEnvironment(disposition, overrides = {}, epochO
     'scripts/generate-tool-acceptance-tasks.py',
     'scripts/test_acceptance_evidence.py',
     'scripts/agent-harness.mjs',
+    'apps/mcp/codex-one-tool-mcp-server.mjs',
+    'scripts/lib/source-revision-tool-catalog.mjs',
     'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs',
     'tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs',
     'scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs',
@@ -4518,7 +4521,7 @@ test('G06 v2 report Candidate refresh rejects product code and unrelated validat
       'scripts/generate-tool-acceptance-tasks.py',
       'scripts/agent-harness.mjs',
       'tests/harness/agent-harness-cli.test.mjs',
-      'apps/mcp/src/tools/subject-cast.ts',
+      'apps/mcp/codex-one-tool-mcp-server.mjs',
     ],
   });
   try {
@@ -4601,7 +4604,7 @@ test('R04 v2 report Candidate refresh rejects runtime and unrelated validation p
       'scripts/agent-harness.mjs',
       'tests/harness/agent-harness-cli.test.mjs',
       'tests/integration/tool-e2e-acceptance.test.ts',
-      'apps/mcp/src/tools/render-presentation-tools.ts',
+      'apps/mcp/codex-auth-start-offline-mcp-server.mjs',
     ],
   });
   try {
@@ -7974,6 +7977,7 @@ test('G06 v2 merge gate permits its exact verifier refresh and rejects runtime c
     'scripts/test_acceptance_evidence.py',
     'scripts/generate-tool-acceptance-tasks.py',
     'scripts/agent-harness.mjs',
+    'scripts/lib/source-revision-tool-catalog.mjs',
     'tests/harness/agent-harness-cli.test.mjs',
     'tests/harness/g01-public-query-render-evidence.test.mjs',
     'tests/harness/g09-public-watch-order-evidence.test.mjs',

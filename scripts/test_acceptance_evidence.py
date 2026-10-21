@@ -8901,6 +8901,7 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
             'scripts/test_acceptance_evidence.py',
             'scripts/generate-tool-acceptance-tasks.py',
             'scripts/agent-harness.mjs',
+            'scripts/lib/source-revision-tool-catalog.mjs',
             'scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs',
             'tests/harness/write-g06-subject-cast-offline-agent-mcp-report.test.mjs',
             'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs',
@@ -8919,6 +8920,10 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         ))
         self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
             (base_paths | verifier_paths) | {'apps/mcp/src/tools/subject-cast.ts'},
+            GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
+        ))
+        self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
+            (base_paths | verifier_paths) | {'apps/mcp/codex-one-tool-mcp-server.mjs'},
             GENERATOR.CODEX_G06_CAST_OFFLINE_V2_PROFILE_ID,
         ))
         self.assertFalse(GENERATOR.codex_g06_cast_offline_profile_evidence_refresh_paths_are_valid(
@@ -11066,6 +11071,8 @@ class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
             'scripts/generate-tool-acceptance-tasks.py',
             'scripts/test_acceptance_evidence.py',
             'scripts/agent-harness.mjs',
+            'apps/mcp/codex-one-tool-mcp-server.mjs',
+            'scripts/lib/source-revision-tool-catalog.mjs',
             'scripts/acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs',
             'tests/harness/write-g06-subject-cast-offline-agent-mcp-report.test.mjs',
             'scripts/acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs',
@@ -11082,7 +11089,7 @@ class R04RenderSeriesWatchOrderV2MatrixProfileTests(unittest.TestCase):
             allowed_paths,
         ))
         self.assertFalse(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(
-            allowed_paths | {'apps/mcp/src/tools/rendering.ts'},
+            allowed_paths | {'apps/mcp/codex-auth-start-offline-mcp-server.mjs'},
         ))
         self.assertFalse(GENERATOR.codex_r04_render_v2_profile_evidence_refresh_paths_are_valid(
             allowed_paths - {GENERATOR.CODEX_R04_RENDER_V2_REPORT_RELATIVE_PATH},
