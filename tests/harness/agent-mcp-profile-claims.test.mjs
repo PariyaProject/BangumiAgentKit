@@ -103,7 +103,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 39);
+  assert.equal(listAgentMcpProfiles().length, 40);
   const renderSubjectCardOffline = getAgentMcpProfileById(
     'render-subject-card-offline-agent-mcp-v1',
   );
@@ -852,6 +852,16 @@ test('profile failure diagnostics keep only bounded allowlisted checks and count
     'S05_REPORT_ALREADY_EXISTS_OR_UNWRITABLE',
     'S05_ANSWER_CHECKS_FAILED',
     'S05_RUNNER_FAILED_AFTER_CLAIM',
+    'S01_AGENT_MCP_ASSERTION_FAILED',
+    'S01_ACTIVE_GATE_CHANGED_DURING_QUERY',
+    'S01_CLAIM_READBACK_MISMATCH',
+    'S01_PREINVOKE_GATE_MISMATCH',
+    'S01_REPORT_FIELDS_INVALID',
+    'S01_REPORT_PUBLIC_REQUEST_SCOPE_INVALID',
+    'S01_REPORT_RESULT_SUMMARY_INVALID',
+    'S01_REPORT_ALREADY_EXISTS_OR_UNWRITABLE',
+    'S01_ANSWER_CHECKS_FAILED',
+    'S01_RUNNER_FAILED_AFTER_CLAIM',
   ]) {
     assert.equal(
       normalizeAgentMcpProfileDiagnostics({

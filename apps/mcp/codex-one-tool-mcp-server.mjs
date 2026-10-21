@@ -26,6 +26,12 @@ import {
 } from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
 import { S05_PROFILE_ID } from '../../scripts/lib/s05-person-activity-evidence.mjs';
 import {
+  assertS01AnnualTvVoiceProfile,
+  createS01AnnualTvPublicFetch,
+  S01_NETWORK_MODE,
+  S01_PROFILE_ID,
+} from '../../scripts/lib/s01-annual-tv-voice-activity-profile.mjs';
+import {
   assertC03PersonActivityOfflineV2Profile,
   C03_PERSON_ACTIVITY_OFFLINE_V2_NETWORK_MODE,
   C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE_ID,
@@ -431,6 +437,11 @@ async function main(argv = process.argv.slice(2)) {
       );
     }
   }
+  if (config.networkMode === S01_NETWORK_MODE) {
+    if (!assertS01AnnualTvVoiceProfile(config.profile)) {
+      throw new Error('The S01 annual TV voice profile does not match its fixed public contract.');
+    }
+  }
   const serverInstanceId = randomUUID();
   for (const key of Object.keys(process.env)) {
     if (/(?:BANGUMI|BGM_|OAUTH|TOKEN|SECRET|CREDENTIAL|API[_-]?KEY)/iu.test(key)) {
@@ -500,6 +511,8 @@ async function main(argv = process.argv.slice(2)) {
     config.networkMode === A01_RATING_DISPERSION_NETWORK_MODE
       ? createA01RatingDispersionPublicFetch()
       : null;
+  const s01AnnualTvPublicFetch =
+    config.networkMode === S01_NETWORK_MODE ? createS01AnnualTvPublicFetch() : null;
   const offlineFixture = renderSubjectCardOfflineProfile
     ? createRenderSubjectCardOfflineFetch(config.profile)
     : config.networkMode === C03_PERSON_ACTIVITY_OFFLINE_V2_NETWORK_MODE
@@ -592,15 +605,17 @@ async function main(argv = process.argv.slice(2)) {
       ? { fetchFn: offlineFixture.fetchFn }
       : a01RatingDispersionPublicFetch
         ? { fetchFn: a01RatingDispersionPublicFetch.fetchFn }
-        : c04PublicFetch
-          ? { fetchFn: c04PublicFetch.fetchFn }
-          : querySubjectsFreshPublicFetch
-            ? { fetchFn: querySubjectsFreshPublicFetch.fetchFn }
-            : titleQueryRenderPublicFetch
-              ? { fetchFn: titleQueryRenderPublicFetch.fetchFn }
-              : r02PublicFetch
-                ? { fetchFn: r02PublicFetch.fetchFn }
-                : {}),
+        : s01AnnualTvPublicFetch
+          ? { fetchFn: s01AnnualTvPublicFetch.fetchFn }
+          : c04PublicFetch
+            ? { fetchFn: c04PublicFetch.fetchFn }
+            : querySubjectsFreshPublicFetch
+              ? { fetchFn: querySubjectsFreshPublicFetch.fetchFn }
+              : titleQueryRenderPublicFetch
+                ? { fetchFn: titleQueryRenderPublicFetch.fetchFn }
+                : r02PublicFetch
+                  ? { fetchFn: r02PublicFetch.fetchFn }
+                  : {}),
   });
   const dependencies = createRuntimeDependenciesWithStorage(storage, {
     publicHttpClient,
@@ -704,6 +719,9 @@ async function main(argv = process.argv.slice(2)) {
     ...(a01RatingDispersionPublicFetch
       ? { publicRequestScope: a01RatingDispersionPublicFetch.snapshot() }
       : {}),
+    ...(s01AnnualTvPublicFetch
+      ? { publicRequestScope: s01AnnualTvPublicFetch.snapshot() }
+      : {}),
     ...(r02PublicFetch ? { publicRequestScope: r02PublicFetch.snapshot() } : {}),
     ...(titleQueryRenderPublicFetch
       ? { publicRequestScope: titleQueryRenderPublicFetch.snapshot() }
@@ -723,6 +741,7 @@ async function main(argv = process.argv.slice(2)) {
   };
   const publicRequestFetch =
     a01RatingDispersionPublicFetch ||
+    s01AnnualTvPublicFetch ||
     c04PublicFetch ||
     r02PublicFetch ||
     titleQueryRenderPublicFetch ||
@@ -995,6 +1014,31 @@ async function main(argv = process.argv.slice(2)) {
               content: [
                 { type: 'text', text: 'S05 positive non-TV sample summary is unavailable.' },
               ],
+              isError: true,
+            };
+          }
+          return {
+            content: [{ type: 'text', text: JSON.stringify(safeProjection) }],
+            structuredContent: safeProjection,
+          };
+        }
+        if (config.profile?.id === S01_PROFILE_ID) {
+          const safeProjection = summary.results[sequenceIndex]?.resultSummary;
+          if (!safeProjection) {
+            summary = {
+              ...summary,
+              serverResultStatus: 'ERROR',
+              results: [
+                {
+                  sequenceIndex,
+                  status: 'ERROR',
+                  errorCode: 'S01_ANNUAL_TV_SUMMARY_UNAVAILABLE',
+                },
+              ],
+            };
+            persistSummary();
+            return {
+              content: [{ type: 'text', text: 'S01 annual TV voice summary is unavailable.' }],
               isError: true,
             };
           }
