@@ -4178,7 +4178,8 @@ CODEX_S01_EVIDENCE_REFRESH_PATHS = {
 CODEX_S01_REPORT_FIELDS = set(CODEX_P07_REPORT_FIELDS) | {'publicRequestScope'}
 CODEX_S01_ANSWER_CHECK_FIELDS = {
     'answerIsJson', 'exactKeys', 'annualCountsMatch', 'yearRangesMatch',
-    'coverageMatches', 'caveatExact', 'boundedUtf8', 'rawIdentityAndTitlesAbsent',
+    'coverageMatches', 'coverageStateMatches', 'caveatExact', 'boundedUtf8',
+    'rawIdentityAndTitlesAbsent',
 }
 CODEX_S01_PRIVACY_FIELDS = set(CODEX_P07_PRIVACY_FIELDS)
 CODEX_S01_RECEIPT_FIELDS = set(CODEX_P07_RECEIPT_FIELDS)

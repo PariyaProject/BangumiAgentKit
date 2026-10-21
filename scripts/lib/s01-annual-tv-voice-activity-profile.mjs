@@ -26,6 +26,7 @@ export const S01_ANSWER_CHECK_FIELDS = Object.freeze([
   'annualCountsMatch',
   'yearRangesMatch',
   'coverageMatches',
+  'coverageStateMatches',
   'caveatExact',
   'boundedUtf8',
   'rawIdentityAndTitlesAbsent',
@@ -357,6 +358,7 @@ export function validateS01AnnualTvVoiceSummary(summary) {
     !Array.isArray(summary.annualObservedCounts) ||
     !nonnegativeInteger(summary.creditRows) ||
     !nonnegativeInteger(summary.uniqueCharacters) ||
+    summary.uniqueCharacters > summary.creditRows ||
     !summary.coverage ||
     !exactKeys(summary.coverage, COVERAGE_KEYS)
   ) {
@@ -454,6 +456,7 @@ export function verifyS01AnnualTvVoiceAnswer(answer, expectedSummary, maxBytes =
     annualCountsMatch: false,
     yearRangesMatch: false,
     coverageMatches: false,
+    coverageStateMatches: false,
     caveatExact: false,
     boundedUtf8: false,
     rawIdentityAndTitlesAbsent: false,
@@ -479,6 +482,7 @@ export function verifyS01AnnualTvVoiceAnswer(answer, expectedSummary, maxBytes =
       canonicalJson(parsed.window) === canonicalJson(expectedSummary.window) &&
       parsed.annualObservedCounts.every((item) => exactKeys(item, YEAR_KEYS));
     checks.coverageMatches = canonicalJson(parsed.coverage) === canonicalJson(expectedSummary.coverage);
+    checks.coverageStateMatches = parsed.state === expectedSummary.state;
     checks.caveatExact = parsed.caveat === S01_CANONICAL_CAVEAT;
     checks.rawIdentityAndTitlesAbsent =
       canonicalJson(parsed).includes('personId') === false &&

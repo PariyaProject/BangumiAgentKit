@@ -150,6 +150,13 @@ test('S01 rejects a credit-row count used in place of a distinct-work count', ()
   assert.equal(summarizeS01AnnualTvVoiceResult(result), null);
 });
 
+test('S01 rejects a global unique-character count greater than its credit rows', () => {
+  const result = makeResult();
+  result.summary.uniqueCharacters = 5;
+  result.coverage.uniqueCharacters = 5;
+  assert.equal(summarizeS01AnnualTvVoiceResult(result), null);
+});
+
 test('S01 rejects incorrect boundary-year clipping and missing years', () => {
   const wrongRange = makeResult();
   wrongRange.summary.byYear[0].start = '2023-01-01';
@@ -173,6 +180,23 @@ test('S01 preserves a zero observation as a partial sample, not a no-work conclu
   assert.equal(summary.annualObservedCounts[1].uniqueSubjects, 0);
   assert.match(summary.caveat, /0 不代表当年没有作品/u);
   assert.equal(verifyS01AnnualTvVoiceAnswer(JSON.stringify(summary), summary).valid, true);
+});
+
+test('S01 answer cannot upgrade partial coverage to complete', () => {
+  const result = makeResult({ state: 'partial' });
+  Object.assign(result.coverage, {
+    relationRowsObserved: 52,
+    relationRowsSelected: 48,
+    relationRowsDroppedAtLimit: 4,
+    sampled: true,
+    truncated: true,
+  });
+  const summary = summarizeS01AnnualTvVoiceResult(result);
+  assert.ok(summary);
+  const overclaimed = JSON.stringify({ ...summary, state: 'complete' });
+  const validation = verifyS01AnnualTvVoiceAnswer(overclaimed, summary);
+  assert.equal(validation.valid, false);
+  assert.equal(validation.answerChecks.coverageStateMatches, false);
 });
 
 test('S01 answer is bound to summary values and rejects identity, title, or extra claims', () => {
