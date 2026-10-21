@@ -554,7 +554,7 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   );
 });
 
-test('C03 terminal no-report profile stays unassessed and cannot be retried', () => {
+test('C03 v1 and v2 terminal no-report profiles stay unassessed and cannot be retried', () => {
   const record = ledger.records.find(({ id }) => id === 'C03');
   assert.ok(record, 'C03 must remain in the canonical frontier');
   assert.equal(record.status, 'UNASSESSED');
@@ -567,11 +567,13 @@ test('C03 terminal no-report profile stays unassessed and cannot be retried', ()
 
   const dispositionPath = 'docs/research/run95-c03-profile-terminal-disposition-2026-10-15.md';
   assert.ok(record.source_refs.includes(dispositionPath));
-  assert.match(record.next_action, /INCONCLUSIVE without a report/u);
-  assert.match(record.next_action, /retryAllowed=false/u);
-  assert.match(record.next_action, /missing report does not restore eligibility/u);
-  assert.match(record.next_action, /Never rerun this consumed Run #95 profile/u);
-  assert.match(record.next_action, /another safe unspent frontier/u);
+  assert.match(
+    record.next_action,
+    /C03 v2 .* terminal INCONCLUSIVE: one call, no report, retryAllowed=false/u,
+  );
+  assert.match(record.next_action, /C03 v1 profile is separately terminal no-report\/no-retry/u);
+  assert.match(record.next_action, /Never invoke or recreate either profile/u);
+  assert.match(record.next_action, /a different safe, genuinely unspent frontier/u);
   assert.doesNotMatch(record.next_action, /run the registered one-shot profile once/iu);
 
   const disposition = readFileSync(path.join(root, dispositionPath), 'utf8');
@@ -583,6 +585,39 @@ test('C03 terminal no-report profile stays unassessed and cannot be retried', ()
   assert.match(disposition, /reportWritten=false/u);
   assert.match(disposition, /retryAllowed=false/u);
   assert.doesNotMatch(disposition, /expectedArguments|runnerReceiptPublicKey|4765|17075/iu);
+
+  const v2Profile = agentMcpProfiles.find(
+    ({ id }) => id === 'c03-person-activity-offline-agent-mcp-matrix-v2',
+  );
+  assert.ok(v2Profile, 'C03 v2 profile remains registered for audit only');
+  const v2ReportPath = v2Profile.reportPath;
+  assert.equal(
+    existsSync(path.join(root, v2ReportPath)),
+    false,
+    'the terminal C03 v2 profile wrote no accepted Agent/MCP report',
+  );
+  const v2DispositionPath =
+    'docs/research/run95-c03-v2-terminal-disposition-2026-10-21.md';
+  assert.ok(record.source_refs.includes(v2DispositionPath));
+  assert.match(record.next_action, /C03 v2 .* terminal INCONCLUSIVE/u);
+  assert.match(record.next_action, /one call, no report, retryAllowed=false/u);
+  assert.match(record.next_action, /Never invoke or recreate either profile/u);
+  assert.match(record.next_action, /a different safe, genuinely unspent frontier/u);
+  assert.doesNotMatch(
+    record.next_action,
+    /active v2 Candidate has not been claimed or invoked|may credit only that tool matrix cell/iu,
+  );
+
+  const v2Disposition = readFileSync(path.join(root, v2DispositionPath), 'utf8');
+  assert.match(v2Disposition, /PR #240/u);
+  assert.match(v2Disposition, /INCONCLUSIVE/u);
+  assert.match(v2Disposition, /reportWritten=false/u);
+  assert.match(v2Disposition, /retryAllowed=false/u);
+  assert.match(v2Disposition, /no Agent\/MCP matrix credit/u);
+  assert.doesNotMatch(
+    v2Disposition,
+    /991237|personId|expectedArguments|claimId|runnerReceiptPublicKey/iu,
+  );
 });
 
 test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retriable', () => {
