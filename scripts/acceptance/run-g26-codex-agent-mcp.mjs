@@ -14,6 +14,7 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import {
   assertG26McpBundleAttestationMatches,
   computeMcpBundleSha256,
@@ -188,6 +189,29 @@ export function parseCodexJsonl(text) {
   return { events, parsed: malformedLinesCount === 0 && events.length > 0, malformedLinesCount };
 }
 
+function normalizeCodexMcpToolCall(item) {
+  const result = item?.result;
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return item;
+  const normalizedResult = { ...result };
+  for (const [camelCase, snakeCase] of [
+    ['structuredContent', 'structured_content'],
+    ['isError', 'is_error'],
+  ]) {
+    const hasCamelCase = Object.hasOwn(normalizedResult, camelCase);
+    const hasSnakeCase = Object.hasOwn(normalizedResult, snakeCase);
+    if (hasCamelCase && hasSnakeCase) {
+      if (!isDeepStrictEqual(normalizedResult[camelCase], normalizedResult[snakeCase])) {
+        delete normalizedResult[camelCase];
+        normalizedResult.isError = true;
+      }
+    } else if (hasSnakeCase) {
+      normalizedResult[camelCase] = normalizedResult[snakeCase];
+    }
+    delete normalizedResult[snakeCase];
+  }
+  return { ...item, result: normalizedResult };
+}
+
 export function summarizeCodexEvents(events) {
   const callsById = new Map();
   const anonymousCalls = [];
@@ -236,7 +260,7 @@ export function summarizeCodexEvents(events) {
     else anonymousNonMcpCalls.push(item.type);
   }
 
-  const mcpCalls = [...callsById.values(), ...anonymousCalls];
+  const mcpCalls = [...callsById.values(), ...anonymousCalls].map(normalizeCodexMcpToolCall);
   const nonMcpTypes = [...nonMcpCalls.values(), ...anonymousNonMcpCalls];
   const shellToolCallCount = nonMcpTypes.filter((type) => SHELL_ITEM_TYPES.has(type)).length;
   return {
