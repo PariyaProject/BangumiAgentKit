@@ -1,5 +1,5 @@
 export const P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE_ID =
-  'p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023';
+  'p01-person-director-offline-matrix-v1-20261023';
 export const P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_EPOCH_ID =
   'run95-p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023';
 export const P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_NETWORK_MODE =

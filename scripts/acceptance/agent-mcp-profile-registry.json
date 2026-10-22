@@ -1536,7 +1536,7 @@
       ]
     },
     {
-      "id": "p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023",
+      "id": "p01-person-director-offline-matrix-v1-20261023",
       "frontierId": "P01",
       "epochId": "run95-p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023",
       "toolName": "bangumi.get_person_activity",

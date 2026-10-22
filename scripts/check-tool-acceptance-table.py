@@ -37,7 +37,7 @@ C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE = next(
 P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE = next(
     profile for profile in PROFILE_REGISTRY.get('profiles', [])
     if isinstance(profile, dict)
-    and profile.get('id') == 'p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023'
+    and profile.get('id') == 'p01-person-director-offline-matrix-v1-20261023'
 )
 RENDER_SUBJECT_CARD_OFFLINE_PROFILE = next(
     profile for profile in PROFILE_REGISTRY.get('profiles', [])

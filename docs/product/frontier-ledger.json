@@ -2156,7 +2156,7 @@
         "tests/unit/p01-codex-agent-mcp-runner.test.ts",
         "tests/unit/p01-agent-mcp-report.test.ts"
       ],
-      "next_action": "Keep P01 UNASSESSED: the selected 2026-10-23 synthetic director-filter profile is matrix-only and cannot answer which roles a real person most often performs. It may credit only bangumi.get_person_activity Agent/MCP after all current Harness gates and a validated one-shot report. Never claim career completeness or role absence; never retry any terminal profile.",
+      "next_action": "Keep P01 UNASSESSED: the selected 2026-10-23 synthetic director-filter profile is matrix-only and cannot establish a bounded role distribution for a real person or career-wide completeness. Consult the active Harness Run/Epoch for claim state; it may credit only bangumi.get_person_activity Agent/MCP after all current gates and a validated one-shot report. Never claim career completeness or role absence; never retry a consumed claim or recreate a terminal profile.",
       "reopen_when": "Accepted direct P01 answer evidence, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

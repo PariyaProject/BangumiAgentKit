@@ -103,7 +103,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 48);
+  assert.equal(listAgentMcpProfiles().length, 49);
   const renderSubjectCardV4 = getAgentMcpProfileById(
     'render-subject-card-compact-typography-agent-mcp-v4',
   );

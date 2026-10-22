@@ -13,7 +13,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 PROFILE_REGISTRY_PATH = ROOT / 'scripts/acceptance/agent-mcp-profile-registry.json'
 PROFILE_REGISTRY = json.loads(PROFILE_REGISTRY_PATH.read_text(encoding='utf-8'))
-PROFILE_ID = 'p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023'
+PROFILE_ID = 'p01-person-director-offline-matrix-v1-20261023'
 PROFILE = next(
     item for item in PROFILE_REGISTRY.get('profiles', [])
     if isinstance(item, dict) and item.get('id') == PROFILE_ID

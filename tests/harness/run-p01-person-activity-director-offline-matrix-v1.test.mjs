@@ -191,7 +191,7 @@ test('P01 director v1 invocation gate rejects a Base change after the review PAS
 });
 
 test('P01 director v1 post-write candidate check allows only its registered report', () => {
-  const profile = getAgentMcpProfileById('p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023');
+  const profile = getAgentMcpProfileById('p01-person-director-offline-matrix-v1-20261023');
   assert.ok(profile);
   const candidate = 'a'.repeat(40);
   const bundleSha256 = 'b'.repeat(64);
@@ -310,7 +310,7 @@ test('P01 director v1 runner reconciles an ambiguous permanent latch only as no-
     '--pr',
     '240',
     '--profile-id',
-    'p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023',
+    'p01-person-director-offline-matrix-v1-20261023',
   ]);
 });
 
@@ -339,7 +339,7 @@ test('P01 director v1 runner refuses ambiguous reconciliation if a report alread
 });
 
 test('P01 director v1 replays a REPORT_WRITTEN terminal latch after a lost PR-body write', () => {
-  const profile = getAgentMcpProfileById('p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023');
+  const profile = getAgentMcpProfileById('p01-person-director-offline-matrix-v1-20261023');
   assert.ok(profile);
   const claim = { state: 'CLAIMED', claimId: 'p01-v2-claim-1', ciRunId: '39200000001' };
   const reportSha256 = 'd'.repeat(64);
@@ -381,7 +381,7 @@ test('P01 director v1 replays a REPORT_WRITTEN terminal latch after a lost PR-bo
 });
 
 test('P01 director v1 replays a no-report INCONCLUSIVE terminal latch for a durable claim', () => {
-  const profile = getAgentMcpProfileById('p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023');
+  const profile = getAgentMcpProfileById('p01-person-director-offline-matrix-v1-20261023');
   assert.ok(profile);
   const claim = { state: 'CLAIMED', claimId: 'p01-v2-claim-3', ciRunId: '39200000003' };
   const status = {
