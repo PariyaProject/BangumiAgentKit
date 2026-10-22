@@ -4344,13 +4344,15 @@
         "packages/renderer/src/templates/SubjectComparisonCard.tsx",
         "tests/integration/mcp-render-target.test.ts",
         "tests/render/subject-stats.test.ts",
+        "docs/research/run95-op012-score-share-layout-visual-qa-2026-10-22.md",
+        "docs/research/run95-op012-score-share-layout-visual-qa-2026-10-22.json",
         "tests/render/subject-comparison.test.ts",
         "tests/render/mobile-layout-audit.setup.ts",
         "tests/render/helpers/mobile-layout.ts",
         "tests/render/render-cards.test.ts",
         "docs/research/run69-subject-stats-identity-agent-mcp.md"
       ],
-      "next_action": "The stats card includes official-v0 title/nameCn and stable ID, keeps stats evidence when identity lookup fails, and explains the formula/snapshot caveats. Fixtures cover 320/360/520 CSS px, 360px/2x MCP, and direct full-resolution PNG output; shared evidence remains 96/96 Agent/MCP. Exact-source natural-language stats acceptance passed on Candidate 9798f2d and must be repeated for every changed Candidate before review. Real QQ/TIM image display and the separate account paths remain unverified.",
+      "next_action": "Separate the 8–9 score-band percentage from its labeled sample fraction while preserving derivation, conflict, partial, unavailable, and unknown states. The renderer keeps a 0.75 default font-size scale and supports configurable body/display stacks and operator-provided font files. Synthetic visual receipts verify presentation and layout only; they do not establish source completeness, Agent/MCP acceptance, public API, account, QQ, or TIM credit. Keep PARTIAL until independent evidence changes; read eligibility from the active Harness Run/Epoch. The Harness PR/Run is authoritative. Never retry or recreate a consumed profile.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },

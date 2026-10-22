@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -172,8 +173,11 @@ const subjectIdentity = {
   retrievedAt: '2026-08-15T00:00:00.000Z',
 };
 
-function buildStatsViewModel(stats: SubjectStatsIntelligenceResult = result) {
-  return buildSubjectStatsViewModel(stats, subjectIdentity);
+function buildStatsViewModel(
+  stats: SubjectStatsIntelligenceResult = result,
+  identity: Parameters<typeof buildSubjectStatsViewModel>[1] = subjectIdentity,
+) {
+  return buildSubjectStatsViewModel(stats, identity);
 }
 
 describe('subject-stats renderer', () => {
@@ -213,7 +217,9 @@ describe('subject-stats renderer', () => {
       expect(html).toContain('官方 v0 身份');
       expect(html).toContain('评分分布');
       expect(html).toContain('8–9 分占比');
-      expect(html).toContain('100.0% (100/100)');
+      expect(html).toContain('100.0%');
+      expect(html).toContain('样本数 100 / 100');
+      expect(html).not.toContain('100.0% (100/100)');
       expect(html).toContain('不能单独判定两极化、质量、原因或推荐');
       expect(html).toContain('40.0%');
       expect(html).toContain('完成率');
@@ -236,6 +242,12 @@ describe('subject-stats renderer', () => {
       const html = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, pack);
       expect(html.match(/data-layout="stats-rating-distribution"/gu)).toHaveLength(1);
       expect(html.match(/data-layout="stats-collection-distribution"/gu)).toHaveLength(1);
+      expect(html.match(/data-layout="stats-summary-metric-detail"/gu)).toHaveLength(1);
+      expect(html).toContain('样本数 100 / 100');
+      expect(html).not.toContain('100.0% (100/100)');
+      expect(html).toMatch(
+        />100\.0%<\/div><div[^>]*data-layout="stats-summary-metric-detail"[^>]*>样本数 100 \/ 100/u,
+      );
       expect(html.indexOf('data-layout="stats-rating-distribution"')).toBeLessThan(
         html.indexOf('data-layout="stats-secondary-metrics"'),
       );
@@ -562,7 +574,7 @@ describe('subject-stats renderer', () => {
     expect(notFoundHtml).not.toContain('not_found');
   });
 
-  it('renders complete, sparse, partial, conflict, unavailable, and not-computable states at both widths', async () => {
+  it('renders eight truthful statistics states from 320 through 960 CSS pixels', async () => {
     const sparse = structuredClone(result);
     sparse.raw = {
       ...sparse.raw!,
@@ -652,6 +664,10 @@ describe('subject-stats renderer', () => {
     const conflict = structuredClone(result);
     conflict.state = 'conflict';
     conflict.rating.state = 'conflict';
+    conflict.rating.scoreBand8To9Share = {
+      ...conflict.rating.scoreBand8To9Share!,
+      state: 'conflict',
+    };
     conflict.rating.conflicts = [
       {
         state: 'conflict',
@@ -751,34 +767,74 @@ describe('subject-stats renderer', () => {
     notFoundState.state = 'not_found';
     notFoundState.warnings = [];
 
+    const denseLongIdentity = {
+      requestedSubjectId: 123,
+      state: 'complete' as const,
+      subject: {
+        id: 123,
+        name: `Girls' Last Tour / ${'Romanized title '.repeat(20)}`,
+        nameCn: `少女终末旅行${'长标题'.repeat(120)}`,
+      },
+      retrievedAt: '2026-08-15T00:00:00.000Z',
+    };
+
     const partialHtml = renderHtmlTemplate(buildStatsViewModel(partial), 'bangumi-dark', {}, 480);
     expect(partialHtml).toContain('已收到 9/10 档');
     expect(partialHtml).toContain('8–9 分占比');
     expect(partialHtml).toContain('数据不全');
-    expect(partialHtml).not.toContain('100.0% (100/100)');
+    expect(partialHtml).not.toContain('100.0%');
+    expect(partialHtml).not.toContain('样本数 100 / 100');
+    expect(partialHtml).not.toContain('data-layout="stats-summary-metric-detail"');
     expect(partialHtml).toContain('未知 · 未知');
     expect(partialHtml).toContain('部分统计字段未返回，相关指标保持未知。');
     expect(partialHtml).not.toContain('MISSING_FIELD');
     expect(partialHtml).not.toContain('bangumi.rating.percentages.v1');
 
-    const states: Array<[string, SubjectStatsIntelligenceResult]> = [
-      ['complete', result],
-      ['sparse', sparse],
-      ['partial', partial],
-      ['conflict', conflict],
-      ['unavailable', unavailable],
-      ['not-found', notFoundState],
-      ['not-computable', notComputable],
+    const states = [
+      { label: 'complete', fixture: result, identity: subjectIdentity },
+      { label: 'sparse', fixture: sparse, identity: subjectIdentity },
+      { label: 'partial', fixture: partial, identity: subjectIdentity },
+      { label: 'conflict', fixture: conflict, identity: subjectIdentity },
+      { label: 'unavailable', fixture: unavailable, identity: subjectIdentity },
+      { label: 'not-found', fixture: notFoundState, identity: subjectIdentity },
+      { label: 'not-computable', fixture: notComputable, identity: subjectIdentity },
+      { label: 'dense-long-identity', fixture: result, identity: denseLongIdentity },
     ];
-    for (const [label, fixture] of states) {
-      const viewModel = buildStatsViewModel(fixture);
-      for (const width of [360, 480, 640, 960]) {
+    for (const { label, fixture, identity } of states) {
+      const viewModel = buildStatsViewModel(fixture, identity);
+      expect(extractImageUrls(viewModel), `${label} image-free fixture`).toEqual([]);
+      for (const width of [320, 360, 520, 640, 960]) {
         const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
         expect(html, `${label} HTML at ${width}`).toContain('Bangumi 条目统计 · 当前快照');
         expect(html, `${label} HTML at ${width}`).not.toContain('bangumi.rating.population_sd.v1');
         expect(html, `${label} HTML at ${width}`).not.toContain('UPSTREAM_UNAVAILABLE');
         expect(html, `${label} HTML at ${width}`).not.toContain('NaN');
         expect(html, `${label} HTML at ${width}`).not.toContain('Infinity');
+        if (['complete', 'sparse', 'conflict', 'dense-long-identity'].includes(label)) {
+          expect(html, `${label} sample detail at ${width}`).toContain(
+            'data-layout="stats-summary-metric-detail"',
+          );
+          expect(html, `${label} sample detail at ${width}`).not.toMatch(/%\s*\([^)]*\)/u);
+          if (label === 'sparse') {
+            expect(html, `${label} sample count at ${width}`).toContain('样本数 1 / 1');
+          }
+          if (label === 'conflict') {
+            expect(html, `${label} conflict state at ${width}`).toContain(
+              '样本数 100 / 100 · 来源冲突',
+            );
+          }
+        } else {
+          expect(html, `${label} must not fabricate a sample value at ${width}`).not.toContain(
+            'data-layout="stats-summary-metric-detail"',
+          );
+        }
+        const layout = await measureRenderRootLayout(html, width);
+        expect(layout, `${label} DOM layout at ${width}`).toMatchObject({
+          clientWidth: width,
+          scrollWidth: width,
+          overflowing: [],
+          contentOverflowing: [],
+        });
         const rendered = await renderService.renderCard(viewModel, {
           width,
           deviceScaleFactor: width === 640 ? 1 : 2,
@@ -792,5 +848,78 @@ describe('subject-stats renderer', () => {
         if (width === 360) captureVisualQa('single-mobile-' + label + '.png', rendered.buffer);
       }
     }
-  }, 60_000);
+
+    if (process.env.BANGUMI_STATS_RENDER_QA_MATRIX === '1') {
+      const outputDirectory = process.env.BANGUMI_STATS_RENDER_QA_DIR;
+      if (!outputDirectory) {
+        throw new Error('BANGUMI_STATS_RENDER_QA_DIR is required for the visual matrix.');
+      }
+      const widths = [320, 360, 520, 640, 960] as const;
+      const designPacks = ['warm-editorial', 'clean-gallery', 'graphic-zine'] as const;
+      const palettes = ['bangumi-light', 'bangumi-dark'] as const;
+      const receipts: Array<Record<string, unknown>> = [];
+
+      for (const { label, fixture, identity } of states) {
+        const viewModel = buildStatsViewModel(fixture, identity);
+        for (const width of widths) {
+          for (const designPack of designPacks) {
+            for (const theme of palettes) {
+              const variant = `${label}-${width}-${designPack}-${theme}`;
+              const html = renderHtmlTemplate(viewModel, theme, {}, width, designPack);
+              const layout = await measureRenderRootLayout(html, width);
+              expect(layout, `${variant} DOM layout`).toMatchObject({
+                clientWidth: width,
+                scrollWidth: width,
+                overflowing: [],
+                contentOverflowing: [],
+              });
+
+              const rendered = await renderService.renderCard(viewModel, {
+                width,
+                deviceScaleFactor: 1,
+                theme,
+                designPack,
+                cache: false,
+              });
+              const file = `matrix-${variant}.png`;
+              captureVisualQa(file, rendered.buffer);
+              const pngWidth = rendered.buffer.readUInt32BE(16);
+              const pngHeight = rendered.buffer.readUInt32BE(20);
+              expect(pngWidth, `${variant} PNG width`).toBe(width);
+              expect(pngWidth, `${variant} renderer width`).toBe(rendered.width);
+              expect(pngHeight, `${variant} renderer height`).toBe(rendered.height);
+              receipts.push({
+                state: label,
+                cssWidth: width,
+                designPack,
+                palette: theme,
+                file,
+                width: pngWidth,
+                height: pngHeight,
+                bytes: rendered.buffer.length,
+                sha256: createHash('sha256').update(rendered.buffer).digest('hex'),
+                layout: {
+                  clientWidth: layout.clientWidth,
+                  scrollWidth: layout.scrollWidth,
+                  overflowCount: layout.overflowing.length,
+                  contentOverflowCount: layout.contentOverflowing.length,
+                },
+              });
+            }
+          }
+        }
+      }
+
+      expect(receipts).toHaveLength(240);
+      mkdirSync(outputDirectory, { recursive: true });
+      writeFileSync(
+        path.join(outputDirectory, 'matrix-receipts.json'),
+        JSON.stringify(
+          { states: states.map(({ label }) => label), widths, designPacks, palettes, receipts },
+          null,
+          2,
+        ) + '\n',
+      );
+    }
+  }, 300_000);
 });

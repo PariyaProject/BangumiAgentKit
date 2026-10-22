@@ -254,18 +254,25 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({
     }`,
   ];
   const scoreBand8To9Share = viewModel.rating.scoreBand8To9Share;
-  const scoreBand8To9ShareValue =
-    scoreBand8To9Share?.percentage !== undefined &&
+  const scoreBand8To9ShareWithSamples =
+    scoreBand8To9Share &&
+    scoreBand8To9Share.percentage !== undefined &&
     scoreBand8To9Share.count !== undefined &&
     scoreBand8To9Share.population !== undefined
-      ? `${formatPercent(scoreBand8To9Share.percentage)} (${formatNumber(scoreBand8To9Share.count)}/${formatNumber(scoreBand8To9Share.population)})${scoreBand8To9Share.state === 'conflict' ? ' · 来源冲突' : ''}`
-      : metricStateLabel(scoreBand8To9Share?.state ?? 'unknown');
-  const summaryMetrics: Array<[string, string]> = [
-    ['8–9 分占比', scoreBand8To9ShareValue],
-    ['分布均值', formatNumber(viewModel.rating.mean, 2)],
-    ['评分离散度', formatNumber(viewModel.rating.standardDeviation, 2)],
-    ['收藏人数', formatNumber(viewModel.collection.total)],
-    ['完成率', formatRatioPercent(viewModel.collection.completionRate)],
+      ? scoreBand8To9Share
+      : undefined;
+  const scoreBand8To9ShareValue = scoreBand8To9ShareWithSamples
+    ? formatPercent(scoreBand8To9ShareWithSamples.percentage)
+    : metricStateLabel(scoreBand8To9Share?.state ?? 'unknown');
+  const scoreBand8To9ShareDetail = scoreBand8To9ShareWithSamples
+    ? `样本数 ${formatNumber(scoreBand8To9ShareWithSamples.count)} / ${formatNumber(scoreBand8To9ShareWithSamples.population)}${scoreBand8To9ShareWithSamples.state === 'conflict' ? ' · 来源冲突' : ''}`
+    : undefined;
+  const summaryMetrics: Array<{ label: string; value: string; detail?: string }> = [
+    { label: '8–9 分占比', value: scoreBand8To9ShareValue, detail: scoreBand8To9ShareDetail },
+    { label: '分布均值', value: formatNumber(viewModel.rating.mean, 2) },
+    { label: '评分离散度', value: formatNumber(viewModel.rating.standardDeviation, 2) },
+    { label: '收藏人数', value: formatNumber(viewModel.collection.total) },
+    { label: '完成率', value: formatRatioPercent(viewModel.collection.completionRate) },
   ];
   const ratingDistribution = (
     <section data-layout="stats-rating-distribution">
@@ -671,7 +678,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({
               gap: theme.spacing.sm,
             }}
           >
-            {summaryMetrics.map(([label, value]) => (
+            {summaryMetrics.map(({ label, value, detail }) => (
               <div
                 key={label}
                 style={{
@@ -697,6 +704,21 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({
                 >
                   {value}
                 </div>
+                {detail ? (
+                  <div
+                    data-layout="stats-summary-metric-detail"
+                    style={{
+                      color: theme.textMuted,
+                      fontFamily: theme.design.bodyFontFamily,
+                      fontSize: '11px',
+                      lineHeight: 1.3,
+                      marginTop: theme.spacing.xs,
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
+                    {detail}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

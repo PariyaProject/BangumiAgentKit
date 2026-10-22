@@ -371,6 +371,8 @@ boundaries.
 
 Renderer follow-up — 2026-10-03 (Harness Epoch PR #65): a shared real-browser layout audit now checks successful fixtures across the Renderer suite at 320, 360, and 520 CSS px. It found three overflow cases across compact cards and the breakpoint grid, all fixed with responsive layout; focused tests verify 720px PNG output. Statistics formulas and source semantics are unchanged, and current-source Agent/MCP plus QQ/TIM evidence remain outstanding.
 
+Renderer follow-up — 2026-10-22 (Harness Epoch): the 8–9 score-band percentage is separated from its labeled sample fraction, including explicit source-conflict wording. A synthetic 240-image matrix checks eight statistics/identity states across five widths, three design packs, and both palettes. It records the default 0.75 font-size scale and existing configurable body/display stacks; no custom font file is configured in this local render environment. These images verify visual layout only and add no source, Agent/MCP, account, QQ, or TIM acceptance. See the [visual QA report](../research/run95-op012-score-share-layout-visual-qa-2026-10-22.md) and [machine-readable receipts](../research/run95-op012-score-share-layout-visual-qa-2026-10-22.json).
+
 Status:
 SELECTED_IN_HARNESS_V3_EPOCH / SUBJECT-STATS-INTELLIGENCE-V1
 

@@ -46,10 +46,12 @@ function assertHarnessOwnsProfileState(record) {
 test('S01 and renderer opportunity guidance keeps profile state in Harness', () => {
   const s01 = ledger.records.find(({ id }) => id === 'S01');
   const op008 = ledger.records.find(({ id }) => id === 'OP-008');
+  const op012 = ledger.records.find(({ id }) => id === 'OP-012');
   const op013 = ledger.records.find(({ id }) => id === 'OP-013');
   for (const [id, record] of [
     ['S01', s01],
     ['OP-008', op008],
+    ['OP-012', op012],
     ['OP-013', op013],
   ]) {
     assert.ok(record, `${id} must remain in the canonical frontier`);
@@ -70,6 +72,18 @@ test('S01 and renderer opportunity guidance keeps profile state in Harness', () 
     /1,770-image\/59-sheet synthetic matrix remain visual evidence only/u,
   );
   assert.match(op008.next_action, /no Agent\/MCP, production-font, QQ, or TIM credit/u);
+  assert.match(
+    op012.next_action,
+    /Separate the 8–9 score-band percentage from its labeled sample fraction/u,
+  );
+  assert.match(op012.next_action, /0\.75 default font-size scale/u);
+  assert.match(
+    op012.next_action,
+    /configurable body\/display stacks and operator-provided font files/u,
+  );
+  assert.match(op012.next_action, /Synthetic visual receipts verify presentation and layout only/u);
+  assert.match(op012.next_action, /do not establish source completeness, Agent\/MCP acceptance/u);
+  assert.match(op012.next_action, /QQ, or TIM credit/u);
   assert.match(op013.next_action, /0\.75 default remains configurable per render/u);
   assert.match(op013.next_action, /body\/display stacks/u);
   assert.match(op013.next_action, /trusted operator-provided font files/u);
