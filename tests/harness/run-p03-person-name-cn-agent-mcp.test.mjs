@@ -15,6 +15,7 @@ import {
 import {
   summarizeP03PersonProfileToolResult,
   P03_PROFILE_ID,
+  P03_V2_PROFILE_ID,
 } from '../../scripts/lib/p03-person-name-cn-evidence.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 
@@ -42,6 +43,10 @@ function resultFixture() {
 test('P03 runner accepts only the fixed Run 95 entry point', () => {
   assert.equal(validateP03RunnerArgs(['--help']), 'help');
   assert.equal(validateP03RunnerArgs(['--run', '95']), 'run');
+  assert.equal(validateP03RunnerArgs(['--run', '95', '--profile-id', P03_V2_PROFILE_ID]), 'run');
+  assert.throws(() =>
+    validateP03RunnerArgs(['--run', '95', '--profile-id', 'p03-person-name-cn-agent-mcp-v3']),
+  );
   assert.throws(() => validateP03RunnerArgs([]));
   assert.throws(() => validateP03RunnerArgs(['--run', '94']));
   assert.throws(() => validateP03RunnerArgs(['--run', '95', '--retry']));
@@ -131,4 +136,18 @@ test('P03 MCP profile summary dispatches to the title-source projection', () => 
   const actual = summarizeProfileToolResult(result, profile.calls[0].arguments, profile.id);
   const expected = summarizeP03PersonProfileToolResult(result, profile.calls[0].arguments);
   assert.deepEqual(actual, expected);
+});
+
+test('P03 v2 MCP profile summary uses its own registered arguments', () => {
+  const v2Profile = getAgentMcpProfileById(P03_V2_PROFILE_ID);
+  const result = resultFixture();
+  result.person.id = 19306;
+  const actual = summarizeProfileToolResult(result, v2Profile.calls[0].arguments, v2Profile.id);
+  const expected = summarizeP03PersonProfileToolResult(
+    result,
+    v2Profile.calls[0].arguments,
+    v2Profile.id,
+  );
+  assert.deepEqual(actual, expected);
+  assert.equal(actual.personId, 19306);
 });
