@@ -2486,7 +2486,7 @@ CODEX_P06_REQUIRED_CI_CHECKS = (
 )
 CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
-    if profile.get('id') == 'render-subject-card-compact-typography-agent-mcp-v2'
+    if profile.get('id') == 'render-subject-card-compact-typography-agent-mcp-v3'
 )
 CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['id']
 CODEX_RENDER_SUBJECT_CARD_OFFLINE_EPOCH_ID = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['epochId']
@@ -5886,10 +5886,10 @@ CODEX_P06_PROBE_IMPLEMENTATION_MARKERS = {
 }
 CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/agent-mcp-profile-registry.json': (
-        '"id": "render-subject-card-compact-typography-agent-mcp-v2"',
-        '"networkMode": "run95-render-subject-card-compact-typography-v2"',
+        '"id": "render-subject-card-compact-typography-agent-mcp-v3"',
+        '"networkMode": "run95-render-subject-card-compact-typography-v3"',
         '"toolName": "bangumi.render_subject_card"',
-        '"subjectId": 991902',
+        '"subjectId": 991903',
     ),
     'scripts/lib/render-subject-card-offline-profile.mjs': (
         'export function assertRenderSubjectCardOfflineProfile(',
@@ -5930,15 +5930,15 @@ CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'input.claim,',
     ),
     'scripts/agent-harness.mjs': (
-        "case 'render-subject-card-compact-typography-agent-mcp-v2'",
+        "case 'render-subject-card-compact-typography-agent-mcp-v3'",
         'validateRenderSubjectCardOfflineSanitizedReportFile(',
     ),
-    'docs/research/run95-ux002-render-subject-card-compact-typography-v2-source-contract-2026-10-22.md': (
+    'docs/research/run95-ux002-render-subject-card-compact-typography-v3-source-contract-2026-10-22.md': (
         'Frontier: OP-008, subject overview presentation.',
-        'One allowed request: `GET https://api.bgm.tv/v0/subjects/991902`',
+        'One allowed request: `GET https://api.bgm.tv/v0/subjects/991903`',
     ),
     'tests/harness/render-subject-card-offline-profile.test.mjs': (
-        'render_subject_card offline fixture serves one exact synthetic public Subject response',
+        'render_subject_card v3 offline fixture serves one exact synthetic public Subject response',
     ),
     'tests/harness/run-render-subject-card-offline-agent-mcp.test.mjs': (
         'runner accepts only the Run 95 invocation and fails closed before an ineligible review',
@@ -13605,7 +13605,7 @@ def codex_render_subject_card_offline_profile_report_is_valid(
         or type(report.get('runNumber')) is not int or report.get('runNumber') != 95
         or report.get('frontierId') != 'OP-008' or report.get('scenarioId') is not None
         or report.get('epochId') != profile['epochId'] or report.get('profileId') != profile['id']
-        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v2'
+        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v3'
         or report.get('model') != 'gpt-6-luna' or report.get('reasoningEffort') != 'max'
         or not isinstance(report.get('reviewerId'), str)
         or re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', report['reviewerId']) is None

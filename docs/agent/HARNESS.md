@@ -617,6 +617,14 @@ contracts, tests, evidence/coverage, resource bounds, user value, Agent UX, and
 Renderer when applicable. It inspects the repository and evidence, not merely
 the implementation report.
 
+For Run #95 Agent/MCP profile work, `reviewer_id` is an opaque durable
+identity. Keep its exact value across same-reviewer rounds; a stable Codex task
+or thread handle may serve as that identity. Do not infer model or reasoning
+effort from the ID's spelling. Select GPT-6 Luna Max explicitly at reviewer
+dispatch, and keep any mapping between the runtime handle and model choice in
+the local recovery note. The profile runner validates the nonempty ID and its
+exact PASS/Candidate/Base binding before it creates a one-shot claim.
+
 A launched reviewer has a durable id. Durable control state alone never proves
 that its backing task is still active. The Goal runner must observe the real
 task runtime and record exactly one runtime classification:

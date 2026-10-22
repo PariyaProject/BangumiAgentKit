@@ -12,11 +12,11 @@ import {
 import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   assertRenderSubjectCardOfflineProfile,
-  RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_PROFILE_ID,
+  RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_PROFILE_ID,
 } from '../lib/render-subject-card-offline-profile.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const PROFILE = getAgentMcpProfileById(RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_PROFILE_ID);
+const PROFILE = getAgentMcpProfileById(RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_PROFILE_ID);
 const REPORT_PATH = PROFILE ? path.join(ROOT, PROFILE.reportPath) : null;
 const SERVER_ID = 'bgk_render_subject_card_offline';
 const ACKNOWLEDGEMENT = 'RENDER_SUBJECT_CARD_SYNTHETIC_ARTIFACT_READY';
@@ -196,7 +196,7 @@ function exactKeys(value, fields) {
   );
 }
 
-function getProfile(profileId = RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_PROFILE_ID) {
+function getProfile(profileId = RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_PROFILE_ID) {
   const profile = getAgentMcpProfileById(profileId);
   if (!profile || !assertRenderSubjectCardOfflineProfile(profile)) return null;
   return profile;
@@ -386,7 +386,7 @@ export function validateRenderSubjectCardOfflineProfileReport(report, claim, rep
     report.frontierId !== 'OP-008' ||
     report.scenarioId !== null ||
     report.epochId !== profile.epochId ||
-    report.profile !== 'codex-luna-max-offline-agent-mcp-matrix-v2' ||
+    report.profile !== 'codex-luna-max-offline-agent-mcp-matrix-v3' ||
     report.model !== 'gpt-6-luna' ||
     report.reasoningEffort !== 'max' ||
     !/^gpt-6-luna-max-run95-pr\d+-round[1-9]\d*$/u.test(report.reviewerId ?? '') ||
@@ -614,7 +614,7 @@ export function buildRenderSubjectCardOfflineProfileReport(
     scenarioId: null,
     epochId: profile.epochId,
     profileId: profile.id,
-    profile: 'codex-luna-max-offline-agent-mcp-matrix-v2',
+    profile: 'codex-luna-max-offline-agent-mcp-matrix-v3',
     model: profile.model,
     reasoningEffort: profile.reasoningEffort,
     reviewerId: claim.reviewerId,

@@ -37,7 +37,7 @@ C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE = next(
 RENDER_SUBJECT_CARD_OFFLINE_PROFILE = next(
     profile for profile in PROFILE_REGISTRY.get('profiles', [])
     if isinstance(profile, dict)
-    and profile.get('id') == 'render-subject-card-compact-typography-agent-mcp-v2'
+    and profile.get('id') == 'render-subject-card-compact-typography-agent-mcp-v3'
 )
 sys.path.insert(0, str(ROOT / 'scripts'))
 from acceptance.c03_person_activity_offline_v2_acceptance import (
@@ -199,11 +199,11 @@ def render_subject_card_offline_agent_mcp_matches(
         and report.get('epochId') == profile.get('epochId')
         and type(report.get('runNumber')) is int and report.get('runNumber') == 95
         and report.get('frontierId') == 'OP-008' and report.get('scenarioId') is None
-        and report.get('profile') == 'codex-luna-max-offline-agent-mcp-matrix-v2'
+        and report.get('profile') == 'codex-luna-max-offline-agent-mcp-matrix-v3'
         and report.get('model') == 'gpt-6-luna' and report.get('reasoningEffort') == 'max'
         and report.get('toolName') == profile.get('toolName')
         and report.get('argumentProfile') == profile.get('argumentProfile')
-        and expected_arguments == {'subjectId': 991902, 'includeCollection': False}
+        and expected_arguments == {'subjectId': 991903, 'includeCollection': False}
         and report.get('expectedArgumentsSha256') == arguments_sha256
         and report.get('registrySha256') == registry_sha256
         and report.get('networkMode') == profile.get('networkMode')

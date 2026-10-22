@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   assertCandidateReviewGate,
   buildCodexExecArgs,
+  hasDurableReviewerId,
   validateRenderSubjectCardOfflineRunnerArgs,
   validateServerSummary,
 } from '../../scripts/acceptance/run-render-subject-card-offline-agent-mcp.mjs';
@@ -37,6 +38,14 @@ test('runner accepts only the Run 95 invocation and fails closed before an ineli
       },
     ),
   );
+});
+
+test('profile review gate treats reviewer IDs as opaque stable identities', () => {
+  assert.equal(hasDurableReviewerId('/root/pr254_luna_max_review'), true);
+  assert.equal(hasDurableReviewerId('gpt-6-luna-max-run95-pr254-round1'), true);
+  assert.equal(hasDurableReviewerId(''), false);
+  assert.equal(hasDurableReviewerId('  '), false);
+  assert.equal(hasDurableReviewerId(null), false);
 });
 
 test('Codex invocation is read-only and exposes only the fixed render_subject_card MCP tool', () => {
@@ -111,7 +120,7 @@ test('server summary accepts only one local synthetic PNG with zero assets and n
     ],
     offlineFixture: {
       profile: RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
-      expectedOperation: 'GET /v0/subjects/991902',
+      expectedOperation: 'GET /v0/subjects/991903',
       requestCount: 1,
       expectedRequestCount: 1,
       unexpectedRequestCount: 0,
