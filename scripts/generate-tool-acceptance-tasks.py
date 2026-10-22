@@ -2967,8 +2967,10 @@ CODEX_P03_PROFILE_EVIDENCE_REFRESH_PATHS_BY_ID = {
         'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
     } | ({
         'scripts/agent-harness.mjs',
+        'scripts/check-tool-acceptance-table.py',
         'scripts/generate-tool-acceptance-tasks.py',
         'scripts/test_acceptance_evidence.py',
+        'tests/harness/frontier-ledger-data.test.mjs',
         'tests/harness/agent-harness-cli.test.mjs',
         'tests/integration/tool-e2e-acceptance.test.ts',
     } if profile_id == CODEX_P03_V4_PROFILE_ID else set())

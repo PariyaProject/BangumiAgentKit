@@ -776,6 +776,7 @@ test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retr
   assert.deepEqual(Object.keys(record.evidence).sort(), [
     'p03_agent_mcp_profile_preflight',
     'p03_agent_mcp_profile_result',
+    'p03_agent_mcp_profile_result_v4_2026_10_22',
     'p03_profile_terminal_recheck_2026_10_22',
   ]);
 

@@ -8800,6 +8800,113 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
             'bangumi.get_subject', '✅<br>`docs/live-probes/agent-mcp-fixture.json`', 'agent_mcp'
         ))
 
+    def test_p03_v4_report_reference_maps_only_the_person_profile_agent_mcp_cell(self):
+        profile = TABLE_CHECKER.P03_V4_AGENT_MCP_PROFILE
+        calls = profile['calls']
+        arguments_sha = hashlib.sha256(json.dumps(
+            [call['arguments'] for call in calls],
+            sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
+        registry_sha = hashlib.sha256(json.dumps(
+            profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
+        relative_path = profile['reportPath']
+        source = 'a' * 40
+        base = 'b' * 40
+        claim_id = 'profile-run-95-pr-261-aaaaaaaaaaaa-1700000000000'
+        payload = {
+            'kind': 'p03-person-name-cn-agent-mcp-runner-receipt-v4',
+            'profileId': profile['id'],
+            'claimId': claim_id,
+            'runNumber': 95,
+            'prNumber': 261,
+            'sourceRevision': source,
+            'baseSha': base,
+            'ciSha': source,
+            'ciStatus': 'SUCCESS',
+            'toolName': profile['toolName'],
+            'argumentProfile': profile['argumentProfile'],
+        }
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': profile['evidenceKind'],
+            'profile': 'codex-luna-max-agent-mcp-matrix-v4',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'runNumber': 95,
+            'frontierId': 'P03',
+            'scenarioId': None,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+            'epochId': profile['epochId'],
+            'profileId': profile['id'],
+            'prNumber': 261,
+            'claimId': claim_id,
+            'toolName': profile['toolName'],
+            'argumentProfile': profile['argumentProfile'],
+            'expectedArgumentsSha256': arguments_sha,
+            'registrySha256': registry_sha,
+            'sourceRevision': source,
+            'baseSha': base,
+            'ciSha': source,
+            'ciStatus': 'SUCCESS',
+            'resultStatus': 'SUCCESS',
+            'processExitCode': 0,
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'serverToolNames': [profile['toolName']],
+            'mcpServerNames': ['bgk_p03_name_cn'],
+            'mcpTextProjectionValid': True,
+            'structuredContentCompatible': True,
+            'sourceCompletenessDocumented': False,
+            'resultCounters': {
+                'subjectsObserved': 18,
+                'subjectsReturned': 5,
+                'subjectsTruncated': True,
+                'returnedCreditRowsObserved': 5,
+                'positiveNameCnRowsObserved': 5,
+            },
+            'answerChecks': {'exactPositiveRows': True},
+            'privacy': {
+                'authProfile': 'anonymous',
+                'oauthAttempted': False,
+                'accountDataRead': False,
+                'writesAttempted': False,
+                'communityRead': False,
+                'qqPipelineTested': False,
+                'timClientTested': False,
+                'promptStored': False,
+                'answerStored': False,
+                'rawSourceRowsStored': False,
+                'rawToolResultStored': False,
+                'eventStreamStored': False,
+                'credentialsStored': False,
+            },
+            'runnerReceipt': {'payload': payload, 'signature': 'signed-fixture'},
+        }
+        report_path = self.root / relative_path
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        cell = f'✅<br>`{relative_path}`'
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_person_profile', cell, 'agent_mcp',
+        ))
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_person', cell, 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_person', error)
+
+        report['toolName'] = 'bangumi.get_person'
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_person_profile', cell, 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_person_profile', error)
+
     def test_c04_report_reference_maps_only_its_two_agent_mcp_tools(self):
         relative_path = 'docs/live-probes/c04-cohort-comparison-agent-mcp-run95.json'
         tool_names = [
@@ -10896,8 +11003,10 @@ class P03FreshPublicV4ProfileRouteTests(unittest.TestCase):
             'docs/product/frontier-ledger.json',
             'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
             'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
             'scripts/generate-tool-acceptance-tasks.py',
             'scripts/test_acceptance_evidence.py',
+            'tests/harness/frontier-ledger-data.test.mjs',
             'tests/harness/agent-harness-cli.test.mjs',
             'tests/integration/tool-e2e-acceptance.test.ts',
         }
