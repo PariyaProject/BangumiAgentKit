@@ -4,6 +4,7 @@ import { ThemeTokens } from '../themes/index.js';
 import { CardFrame } from '../components/CardFrame.js';
 import { Footer } from '../components/Footer.js';
 import { PersonAvatar } from '../components/PersonAvatar.js';
+import { RendererIcon } from '../components/RendererIcon.js';
 import { TitleBlock } from '../components/TitleBlock.js';
 
 export interface PersonProfileCardProps {
@@ -280,6 +281,349 @@ function CreditList({
   );
 }
 
+function ReleaseChronologyPanel({
+  chronology,
+  theme,
+  compact,
+}: {
+  chronology: NonNullable<PersonProfileViewModel['releaseChronology']>;
+  theme: ThemeTokens;
+  compact: boolean;
+}) {
+  const observations = [
+    ...(chronology.earliestObserved
+      ? [{ label: '本次样本中最早日期', extreme: chronology.earliestObserved }]
+      : []),
+    ...(chronology.latestObserved
+      ? [{ label: '本次样本中最近日期', extreme: chronology.latestObserved }]
+      : []),
+  ];
+  const coverageItems = [
+    ['动画关系', `${chronology.animeRelationRowsReturned} 行`],
+    ['去重条目', `${chronology.uniqueAnimeSubjects} 部`],
+    [
+      '详情读取',
+      `${chronology.selectedSubjectDetails} 部 · ${chronology.succeededSubjectDetails} 成功 · ${chronology.failedSubjectDetails} 失败`,
+    ],
+    ['缺少日期', `${chronology.missingDateSubjects}`],
+    ['日期无效', `${chronology.invalidDateSubjects}`],
+    ['样本外', `${chronology.omittedAnimeSubjects} 部`],
+  ];
+
+  return (
+    <section
+      data-layout="person-profile-release-chronology"
+      data-render-mask="panel-alt"
+      style={{
+        position: 'relative',
+        backgroundColor: theme.surfaceAlt,
+        border: `1px solid ${theme.border}`,
+        borderRadius: theme.radius.lg,
+        clipPath: theme.design.masks.panelAlt,
+        color: theme.text,
+        padding: compact ? `${theme.spacing.md} ${theme.spacing.lg}` : theme.spacing.lg,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: theme.spacing.sm,
+          flexWrap: 'wrap',
+          marginBottom: theme.spacing.md,
+        }}
+      >
+        <RendererIcon name="calendar" theme={theme} badge />
+        <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+          <div
+            style={{
+              color: theme.text,
+              fontSize: '15px',
+              fontWeight: 700,
+              lineHeight: 1.3,
+              overflowWrap: 'anywhere',
+            }}
+          >
+            动画播出 / 发行日期观察
+          </div>
+          <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.4 }}>
+            只观察本次受限样本
+          </div>
+        </div>
+        <span
+          data-render-mask="tag"
+          style={{
+            backgroundColor: theme.tones.butter.surface,
+            border: `1px solid ${theme.tones.butter.border}`,
+            clipPath: theme.design.masks.tag,
+            color: theme.tones.butter.foreground,
+            flex: '0 0 auto',
+            fontSize: '10px',
+            fontWeight: 700,
+            padding: '4px 10px',
+          }}
+        >
+          受限样本
+        </span>
+      </div>
+
+      {chronology.state === 'not_computable' || observations.length === 0 ? (
+        <div
+          data-layout="chronology-empty-state"
+          style={{
+            backgroundColor: theme.background,
+            borderLeft: `2px solid ${theme.tones.butter.border}`,
+            borderRadius: theme.radius.sm,
+            color: theme.textMuted,
+            fontSize: '12px',
+            lineHeight: 1.55,
+            padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+          }}
+        >
+          已选取 {chronology.selectedSubjectDetails}{' '}
+          部动画作品详情，但样本中没有可用于比较的有效日期。
+        </div>
+      ) : (
+        <div
+          data-layout="chronology-timeline"
+          style={{
+            display: compact ? 'flex' : 'grid',
+            flexDirection: compact ? 'column' : undefined,
+            gap: compact ? 0 : theme.spacing.lg,
+            gridTemplateColumns:
+              observations.length > 1 ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)',
+            position: 'relative',
+          }}
+        >
+          {!compact && observations.length > 1 && (
+            <svg
+              aria-hidden="true"
+              data-layout="chronology-connector"
+              viewBox="0 0 100 32"
+              preserveAspectRatio="none"
+              style={{
+                height: 32,
+                left: 0,
+                overflow: 'visible',
+                pointerEvents: 'none',
+                position: 'absolute',
+                top: 0,
+                width: '100%',
+                zIndex: 0,
+              }}
+            >
+              <path
+                d="M25 16 C36 -1 64 33 75 16"
+                fill="none"
+                stroke={theme.tones.butter.border}
+                strokeDasharray={theme.design.markerStyle === 'gallery' ? undefined : '2 3'}
+                strokeWidth={theme.design.markerStyle === 'zine' ? 2.5 : 1.5}
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+          )}
+          {observations.map(({ label, extreme }, index) => {
+            const visibleSubjects = extreme.subjects.slice(0, 3);
+            const omittedTies = Math.max(0, extreme.subjects.length - visibleSubjects.length);
+            return (
+              <div
+                key={label}
+                data-layout="chronology-observation"
+                style={{
+                  alignItems: compact ? 'stretch' : undefined,
+                  display: compact ? 'flex' : 'block',
+                  gap: compact ? theme.spacing.sm : undefined,
+                  minWidth: 0,
+                  paddingTop: compact ? 0 : 32,
+                  position: 'relative',
+                  zIndex: 1,
+                }}
+              >
+                {compact ? (
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      alignItems: 'center',
+                      display: 'flex',
+                      flex: '0 0 16px',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <span
+                      data-layout="chronology-node"
+                      style={{
+                        backgroundColor: theme.tones.butter.foreground,
+                        border: `3px solid ${theme.tones.butter.surface}`,
+                        borderRadius: '50%',
+                        boxSizing: 'border-box',
+                        flex: '0 0 14px',
+                        height: 14,
+                        width: 14,
+                      }}
+                    />
+                    {index < observations.length - 1 && (
+                      <svg
+                        aria-hidden="true"
+                        data-layout="chronology-connector"
+                        viewBox="0 0 12 100"
+                        preserveAspectRatio="none"
+                        style={{
+                          flex: '1 1 auto',
+                          minHeight: 22,
+                          overflow: 'visible',
+                          width: 12,
+                        }}
+                      >
+                        <path
+                          d="M6 0 C1 28 11 68 6 100"
+                          fill="none"
+                          stroke={theme.tones.butter.border}
+                          strokeDasharray={
+                            theme.design.markerStyle === 'gallery' ? undefined : '2 3'
+                          }
+                          strokeWidth={theme.design.markerStyle === 'zine' ? 2.5 : 1.5}
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                ) : (
+                  <span
+                    data-layout="chronology-node"
+                    aria-hidden="true"
+                    style={{
+                      backgroundColor: theme.tones.butter.foreground,
+                      border: `3px solid ${theme.tones.butter.surface}`,
+                      borderRadius: '50%',
+                      boxSizing: 'border-box',
+                      height: 14,
+                      left: '50%',
+                      position: 'absolute',
+                      top: 9,
+                      transform: 'translateX(-50%)',
+                      width: 14,
+                      zIndex: 2,
+                    }}
+                  />
+                )}
+                <div
+                  style={{
+                    flex: compact ? '1 1 auto' : undefined,
+                    minWidth: 0,
+                    paddingBottom:
+                      compact && index < observations.length - 1 ? theme.spacing.sm : 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      color: theme.textMuted,
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {label}
+                  </div>
+                  <div
+                    data-layout="chronology-date"
+                    style={{
+                      color: theme.text,
+                      fontSize: compact ? '18px' : '20px',
+                      fontVariantNumeric: 'tabular-nums',
+                      fontWeight: 750,
+                      letterSpacing: '-0.025em',
+                      lineHeight: 1.2,
+                      marginTop: '2px',
+                    }}
+                  >
+                    {extreme.date}
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: theme.spacing.xs,
+                      marginTop: theme.spacing.xs,
+                      minWidth: 0,
+                    }}
+                  >
+                    {visibleSubjects.map((subject) => (
+                      <span
+                        key={`${subject.id}-${subject.name}`}
+                        style={{
+                          backgroundColor: theme.background,
+                          borderRadius: theme.design.tagRadius,
+                          color: theme.textMuted,
+                          fontSize: '11px',
+                          lineHeight: 1.4,
+                          maxWidth: '100%',
+                          overflowWrap: 'anywhere',
+                          padding: '3px 7px',
+                        }}
+                      >
+                        {subject.name} (#{subject.id})
+                      </span>
+                    ))}
+                    {omittedTies > 0 && (
+                      <span style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.4 }}>
+                        同日另有 {omittedTies} 部
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div
+        data-layout="chronology-coverage"
+        style={{
+          borderTop: `1px solid ${theme.border}`,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: theme.spacing.xs,
+          marginTop: theme.spacing.md,
+          paddingTop: theme.spacing.sm,
+        }}
+      >
+        {coverageItems.map(([label, value]) => (
+          <span
+            key={label}
+            data-render-mask="tag"
+            style={{
+              backgroundColor: theme.background,
+              border: `1px solid ${theme.border}`,
+              clipPath: theme.design.masks.tag,
+              color: theme.textMuted,
+              fontSize: '10px',
+              lineHeight: 1.35,
+              padding: '4px 8px',
+            }}
+          >
+            {label} <strong style={{ color: theme.text }}>{value}</strong>
+          </span>
+        ))}
+      </div>
+
+      <div
+        data-layout="chronology-limitations"
+        style={{
+          color: theme.textMuted,
+          fontSize: '10px',
+          lineHeight: 1.5,
+          marginTop: theme.spacing.sm,
+          overflowWrap: 'anywhere',
+        }}
+      >
+        上游未说明人物作品关系是否完整；日期仅表示条目的播出 /
+        发行日期，不代表人物实际参与时间或完整生涯。
+      </div>
+    </section>
+  );
+}
+
 export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
   viewModel,
   theme,
@@ -469,65 +813,11 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
       </div>
 
       {viewModel.releaseChronology && (
-        <div
-          style={{
-            backgroundColor: `${theme.warning}12`,
-            border: `1px solid ${theme.warning}`,
-            borderRadius: theme.radius.md,
-            padding: theme.spacing.md,
-            color: theme.text,
-            fontSize: '12px',
-            lineHeight: 1.5,
-          }}
-        >
-          <div style={{ fontWeight: 700, marginBottom: theme.spacing.xs }}>
-            动画播出/发行日期观察（受限样本）
-          </div>
-          {viewModel.releaseChronology.state === 'not_computable' ? (
-            <div style={{ color: theme.textMuted }}>
-              已选取 {viewModel.releaseChronology.selectedSubjectDetails}{' '}
-              部动画作品详情，但没有可用的有效日期，无法计算样本极值。
-            </div>
-          ) : (
-            (
-              [
-                {
-                  label: '本次样本中最早日期',
-                  extreme: viewModel.releaseChronology.earliestObserved,
-                },
-                {
-                  label: '本次样本中最近日期',
-                  extreme: viewModel.releaseChronology.latestObserved,
-                },
-              ] as const
-            ).map(({ label, extreme }) => {
-              if (!extreme) return null;
-              const visibleSubjects = extreme.subjects.slice(0, 3);
-              return (
-                <div key={label} style={{ marginBottom: theme.spacing.xs }}>
-                  <span style={{ color: theme.accent, fontWeight: 700 }}>
-                    {label}：{extreme.date}
-                  </span>
-                  {' · '}
-                  {visibleSubjects.map((subject) => `${subject.name} (#${subject.id})`).join('、')}
-                  {extreme.subjects.length > visibleSubjects.length
-                    ? ` 等（同日共 ${extreme.subjects.length} 部）`
-                    : ''}
-                </div>
-              );
-            })
-          )}
-          <div style={{ color: theme.textMuted }}>
-            动画关系 {viewModel.releaseChronology.animeRelationRowsReturned} 行，去重后{' '}
-            {viewModel.releaseChronology.uniqueAnimeSubjects} 部；读取{' '}
-            {viewModel.releaseChronology.selectedSubjectDetails} 部详情，成功{' '}
-            {viewModel.releaseChronology.succeededSubjectDetails}，失败{' '}
-            {viewModel.releaseChronology.failedSubjectDetails}；缺日期{' '}
-            {viewModel.releaseChronology.missingDateSubjects}，日期无效{' '}
-            {viewModel.releaseChronology.invalidDateSubjects}，样本外{' '}
-            {viewModel.releaseChronology.omittedAnimeSubjects} 部。上游关系完整性未说明。
-          </div>
-        </div>
+        <ReleaseChronologyPanel
+          chronology={viewModel.releaseChronology}
+          theme={theme}
+          compact={compactLayout}
+        />
       )}
 
       <div

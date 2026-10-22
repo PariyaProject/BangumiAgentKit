@@ -173,6 +173,18 @@ const OFFLINE_FIXTURE_FIELDS = new Set([
   'authorizationHeaderCount',
   'expectedOperationsComplete',
 ]);
+
+function offlineFixtureFields(profileConfig) {
+  return profileConfig.chronologySubjectDetails
+    ? new Set([...OFFLINE_FIXTURE_FIELDS, 'chronologyRequestCount'])
+    : OFFLINE_FIXTURE_FIELDS;
+}
+
+function answerCheckFields(profileConfig) {
+  return profileConfig.chronologySubjectDetails
+    ? new Set([...ANSWER_CHECK_FIELDS, 'expectedChronologyResponses'])
+    : ANSWER_CHECK_FIELDS;
+}
 const OFFLINE_ASSET_FIELDS = new Set([
   'assetResolutionCallCount',
   'nonEmptyAssetUrlCount',
@@ -365,12 +377,16 @@ export function validateP06ProfileReport(report, claim, reportBytes = null) {
     artifactImageBytesStored: false,
     credentialsStored: false,
   };
+  const expectedChronologyRequests = profileConfig.chronologySubjectDetails?.length ?? 0;
   const expectedFixture = {
     profile: profileConfig.networkMode,
-    requestCount: 3,
+    requestCount: 3 + expectedChronologyRequests,
     personRequestCount: 1,
     subjectsRequestCount: 1,
     charactersRequestCount: 1,
+    ...(expectedChronologyRequests > 0
+      ? { chronologyRequestCount: expectedChronologyRequests }
+      : {}),
     duplicateRequestCount: 0,
     unexpectedRequestCount: 0,
     authorizationHeaderCount: 0,
@@ -430,7 +446,7 @@ export function validateP06ProfileReport(report, claim, reportBytes = null) {
     report.answerCheckMethod !== profile.answerCheckMethod ||
     report.answerSha256 !== sha256(ACKNOWLEDGEMENT) ||
     report.answerUtf8Bytes !== Buffer.byteLength(ACKNOWLEDGEMENT, 'utf8') ||
-    !exactKeys(report.offlineFixture, OFFLINE_FIXTURE_FIELDS) ||
+    !exactKeys(report.offlineFixture, offlineFixtureFields(profileConfig)) ||
     canonicalAgentMcpProfileJson(report.offlineFixture) !==
       canonicalAgentMcpProfileJson(expectedFixture) ||
     !exactKeys(report.offlineAssetBoundary, OFFLINE_ASSET_FIELDS) ||
@@ -451,7 +467,7 @@ export function validateP06ProfileReport(report, claim, reportBytes = null) {
     artifact.byteLength < 1 ||
     !/^[0-9a-f]{64}$/u.test(artifact.sha256 ?? '') ||
     artifact.pngSignatureValid !== true ||
-    !exactKeys(answerChecks, ANSWER_CHECK_FIELDS) ||
+    !exactKeys(answerChecks, answerCheckFields(profileConfig)) ||
     Object.values(answerChecks).some((value) => value !== true) ||
     !exactKeys(report.privacy, PRIVACY_FIELDS) ||
     canonicalAgentMcpProfileJson(report.privacy) !==
@@ -560,7 +576,7 @@ export function buildP06ProfileReport(
     serverSummary.results[0]?.sequenceIndex !== 0 ||
     serverSummary.results[0]?.status !== 'SUCCESS' ||
     serverSummary.results[0]?.resultSummary?.resultState !== 'artifact_returned' ||
-    !exactKeys(serverSummary.offlineFixture, OFFLINE_FIXTURE_FIELDS) ||
+    !exactKeys(serverSummary.offlineFixture, offlineFixtureFields(profileConfig)) ||
     !exactKeys(serverSummary.offlineAssetBoundary, OFFLINE_ASSET_FIELDS) ||
     answer !== ACKNOWLEDGEMENT ||
     typeof privateKey === 'undefined' ||
@@ -628,6 +644,7 @@ export function buildP06ProfileReport(
       exactCandidateBundle: true,
       offlineFixtureOnly: true,
       threeExpectedLocalResponses: true,
+      ...(profileConfig.chronologySubjectDetails ? { expectedChronologyResponses: true } : {}),
       noAssetUrls: true,
       artifactReturned: true,
       exactAcknowledgement: true,

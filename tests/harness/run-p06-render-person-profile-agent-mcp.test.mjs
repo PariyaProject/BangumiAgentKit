@@ -7,11 +7,14 @@ import {
 import {
   P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
   P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+  P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID,
+  getP06RenderPersonProfileOfflineConfig,
 } from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 import {
   assertCandidateReviewGate,
   buildP06CodexExecArgs,
   validateP06RunnerArgs,
+  validateP06OfflineFixtureSnapshot,
   validateServerSummary,
 } from '../../scripts/acceptance/run-p06-render-person-profile-agent-mcp.mjs';
 
@@ -154,9 +157,45 @@ test('P06 runner accepts only its single governed Run #95 entry point', () => {
     ]),
     'run',
   );
+  assert.equal(
+    validateP06RunnerArgs(['--run', '95', '--profile-id', P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID]),
+    'run',
+  );
   for (const args of [[], ['--run', '94'], ['--run', '95', '--retry'], ['--help', '--run']]) {
     assert.throws(() => validateP06RunnerArgs(args));
   }
+});
+
+test('P06 offline fixture runner validation binds chronology-v3 request counts and routes', () => {
+  const profileConfig = getP06RenderPersonProfileOfflineConfig(
+    P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID,
+  );
+  const fixture = {
+    profile: profileConfig.networkMode,
+    requestCount: 6,
+    personRequestCount: 1,
+    subjectsRequestCount: 1,
+    charactersRequestCount: 1,
+    duplicateRequestCount: 0,
+    unexpectedRequestCount: 0,
+    authorizationHeaderCount: 0,
+    expectedOperationsComplete: true,
+    chronologyRequestCount: 3,
+  };
+
+  assert.equal(validateP06OfflineFixtureSnapshot(profileConfig, fixture), true);
+  assert.equal(
+    validateP06OfflineFixtureSnapshot(profileConfig, { ...fixture, chronologyRequestCount: 2 }),
+    false,
+  );
+  assert.equal(
+    validateP06OfflineFixtureSnapshot(profileConfig, { ...fixture, requestCount: 5 }),
+    false,
+  );
+  assert.equal(
+    validateP06OfflineFixtureSnapshot(profileConfig, { ...fixture, unexpectedRoute: 1 }),
+    false,
+  );
 });
 
 test('P06 Candidate gate requires exact CI, Base, and same-identity Luna Max PASS', () => {

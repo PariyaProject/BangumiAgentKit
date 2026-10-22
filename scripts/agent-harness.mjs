@@ -3598,8 +3598,7 @@ function agentMcpProfileBundleMatches(
     return (
       bundleSha256 === process.env.HARNESS_G04_BUNDLE_SHA256 &&
       currentHead() === candidateSha &&
-      (status === '' ||
-        (allowReportWorktree && (reportOnly || p01ReportWithValidatorFix)))
+      (status === '' || (allowReportWorktree && (reportOnly || p01ReportWithValidatorFix)))
     );
   }
   try {
@@ -3688,7 +3687,7 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
               ? 'A P03 v4 report refresh may also include only the exact acceptance validator, Harness allowlist, and their regressions needed to record the signed source-Candidate result; the MCP bundle must remain unchanged.'
               : profile.id === 'p01-person-director-offline-matrix-v1-20261023'
                 ? 'A P01 director report refresh may include its sanitized report, acceptance matrix, frontier evidence, Harness report-validator allowlist, and its exact public-probe and per-tool acceptance regressions; the MCP bundle must remain unchanged.'
-              : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
+                : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
         { profileId: profile.id, changedPaths: changedSinceReport },
       );
     }
@@ -4565,6 +4564,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateP01PersonActivityDirectorOfflineSanitizedReportFile(claim, root, reportPath);
     case 'p06-render-person-profile-offline-agent-mcp-v1':
     case 'p06-render-person-profile-offline-agent-mcp-v2':
+    case 'p06-render-person-profile-offline-agent-mcp-v3':
       return validateP06SanitizedReportFile(claim, root, reportPath);
     case 'render-subject-card-offline-agent-mcp-v1':
     case 'render-subject-card-compact-typography-agent-mcp-v2':

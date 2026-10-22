@@ -237,6 +237,36 @@
       ]
     },
     {
+      "id": "p06-render-person-profile-offline-agent-mcp-v3",
+      "frontierId": "P06",
+      "epochId": "run95-p06-render-person-profile-chronology-v3-20261023",
+      "toolName": "bangumi.render_person_profile",
+      "argumentProfile": "fixed-p06-synthetic-person-990606-four-subjects-chronology-three-20261023-v3",
+      "claimLabelName": "harness-r95-p06-person-chronology-v3-claimed",
+      "reportPath": "docs/live-probes/p06-render-person-profile-agent-mcp-v3-run95.json",
+      "selectionEvidencePath": "docs/research/run95-p06-render-person-profile-chronology-v3-source-contract-2026-10-23.md",
+      "evidenceKind": "codex_cli_p06_render_person_profile_offline_agent_mcp_v3",
+      "answerCheckMethod": "p06-exact-synthetic-chronology-renderer-execution-only-v3",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-p06-render-person-profile-offline-v3",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 2048,
+      "calls": [
+        {
+          "toolName": "bangumi.render_person_profile",
+          "arguments": {
+            "personId": 990606,
+            "maxSubjects": 4,
+            "maxCharacters": 1,
+            "maxCredits": 2,
+            "includeChronology": true,
+            "maxChronologySubjects": 3
+          }
+        }
+      ]
+    },
+    {
       "id": "p03-person-name-cn-agent-mcp-v4",
       "frontierId": "P03",
       "epochId": "run95-p03-person-name-cn-fresh-profile-v4-20261022",

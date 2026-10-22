@@ -103,7 +103,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 49);
+  assert.equal(listAgentMcpProfiles().length, 50);
   const renderSubjectCardV4 = getAgentMcpProfileById(
     'render-subject-card-compact-typography-agent-mcp-v4',
   );
@@ -467,6 +467,25 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   );
   assert.match(agentMcpProfileArgumentsSha256(p06), /^[0-9a-f]{64}$/u);
   assert.match(agentMcpProfileRegistrySha256(p06.id), /^[0-9a-f]{64}$/u);
+  const p06ChronologyV3 = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v3');
+  assert.ok(p06ChronologyV3);
+  assert.equal(p06ChronologyV3.frontierId, 'P06');
+  assert.equal(p06ChronologyV3.epochId, 'run95-p06-render-person-profile-chronology-v3-20261023');
+  assert.equal(p06ChronologyV3.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.deepEqual(p06ChronologyV3.calls[0].arguments, {
+    personId: 990606,
+    maxSubjects: 4,
+    maxCharacters: 1,
+    maxCredits: 2,
+    includeChronology: true,
+    maxChronologySubjects: 3,
+  });
+  assert.equal(
+    agentMcpProfileClaimLabelDescription(p06ChronologyV3),
+    'Run 95 P06 profile p06-render-person-profile-offline-agent-mcp-v3; permanent one-shot latch.',
+  );
+  assert.match(agentMcpProfileArgumentsSha256(p06ChronologyV3), /^[0-9a-f]{64}$/u);
+  assert.match(agentMcpProfileRegistrySha256(p06ChronologyV3.id), /^[0-9a-f]{64}$/u);
   const p02 = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
   assert.ok(p02);
   assert.equal(p02.frontierId, 'P02');

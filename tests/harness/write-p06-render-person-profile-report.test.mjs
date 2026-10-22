@@ -11,6 +11,7 @@ import {
 import {
   P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS,
   P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+  P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID,
   getP06RenderPersonProfileOfflineConfig,
 } from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 import {
@@ -37,6 +38,7 @@ function fixtureInput(profileId = DEFAULT_PROFILE_ID) {
   const profileConfig = getP06RenderPersonProfileOfflineConfig(profileId);
   const expectedArguments = profileConfig.expectedArguments;
   const networkMode = profileConfig.networkMode;
+  const chronologyRequestCount = profileConfig.chronologySubjectDetails?.length ?? 0;
   const keyPair = generateKeyPairSync('ed25519');
   const publicKeyBase64 = keyPair.publicKey
     .export({ type: 'spki', format: 'der' })
@@ -71,10 +73,11 @@ function fixtureInput(profileId = DEFAULT_PROFILE_ID) {
   };
   const offlineFixture = {
     profile: networkMode,
-    requestCount: 3,
+    requestCount: 3 + chronologyRequestCount,
     personRequestCount: 1,
     subjectsRequestCount: 1,
     charactersRequestCount: 1,
+    ...(chronologyRequestCount > 0 ? { chronologyRequestCount } : {}),
     duplicateRequestCount: 0,
     unexpectedRequestCount: 0,
     authorizationHeaderCount: 0,
@@ -197,6 +200,24 @@ test('P06 v2 report binds the distinct offline profile without claiming scenario
   assert.equal(built.report.scenarioId, null);
   assert.equal(built.report.networkMode, input.serverSummary.networkMode);
   assert.equal(validateP06ProfileReport(built.report, input.claim).passed, true);
+});
+
+test('P06 v3 report binds sampled chronology reads and keeps its matrix-only boundary', () => {
+  const { input, keyPair } = fixtureInput(P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID);
+  const built = buildP06ProfileReport(input, { privateKey: keyPair.privateKey });
+
+  assert.equal(built.passed, true, JSON.stringify(built));
+  assert.equal(built.report.profileId, P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID);
+  assert.equal(built.report.profile, 'codex-luna-max-offline-agent-mcp-matrix-v3');
+  assert.equal(built.report.scenarioId, null);
+  assert.equal(built.report.offlineFixture.requestCount, 6);
+  assert.equal(built.report.offlineFixture.chronologyRequestCount, 3);
+  assert.equal(built.report.answerChecks.expectedChronologyResponses, true);
+  assert.equal(validateP06ProfileReport(built.report, input.claim).passed, true);
+
+  const wrongChronologyCount = structuredClone(built.report);
+  wrongChronologyCount.offlineFixture.chronologyRequestCount = 2;
+  assert.equal(validateP06ProfileReport(wrongChronologyCount, input.claim).passed, false);
 });
 
 test('P06 report validator rejects changed fixture counters and any modified signed evidence', () => {

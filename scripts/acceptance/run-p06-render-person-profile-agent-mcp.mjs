@@ -28,6 +28,7 @@ import {
   getP06RenderPersonProfileOfflineConfig,
   P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID,
   P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+  P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID,
 } from '../lib/p06-render-person-profile-offline-fixture.mjs';
 import {
   validateP06SanitizedReportFile,
@@ -67,12 +68,15 @@ export function validateP06RunnerArgs(args) {
     args[0] === '--run' &&
     args[1] === String(RUN_NUMBER) &&
     args[2] === '--profile-id' &&
-    args[3] === P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID
+    [
+      P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
+      P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID,
+    ].includes(args[3])
   ) {
     return 'run';
   }
   throw new Error(
-    'Pass --run 95, optionally with the exact new v2 profile id, only after exact-Candidate CI, Harness Candidate, and Luna Max PASS gates.',
+    'Pass --run 95, optionally with the exact registered v2 or v3 profile id, only after exact-Candidate CI, Harness Candidate, and Luna Max PASS gates.',
   );
 }
 
@@ -384,6 +388,37 @@ function readServerSummary(file) {
   }
 }
 
+export function validateP06OfflineFixtureSnapshot(profileConfig, fixture) {
+  if (!profileConfig || !fixture) return false;
+  const expectedChronologyRequests = profileConfig.chronologySubjectDetails?.length ?? 0;
+  const expectedFields = [
+    'profile',
+    'requestCount',
+    'personRequestCount',
+    'subjectsRequestCount',
+    'charactersRequestCount',
+    'duplicateRequestCount',
+    'unexpectedRequestCount',
+    'authorizationHeaderCount',
+    'expectedOperationsComplete',
+    ...(expectedChronologyRequests > 0 ? ['chronologyRequestCount'] : []),
+  ];
+  return Boolean(
+    Object.keys(fixture).sort().join('\0') === expectedFields.sort().join('\0') &&
+    fixture.profile === profileConfig.networkMode &&
+    fixture.requestCount === 3 + expectedChronologyRequests &&
+    fixture.personRequestCount === 1 &&
+    fixture.subjectsRequestCount === 1 &&
+    fixture.charactersRequestCount === 1 &&
+    (expectedChronologyRequests === 0 ||
+      fixture.chronologyRequestCount === expectedChronologyRequests) &&
+    fixture.duplicateRequestCount === 0 &&
+    fixture.unexpectedRequestCount === 0 &&
+    fixture.authorizationHeaderCount === 0 &&
+    fixture.expectedOperationsComplete === true,
+  );
+}
+
 export function validateServerSummary(summary, sourceRevision, bundleSha256) {
   if (
     !summary ||
@@ -409,18 +444,9 @@ export function validateServerSummary(summary, sourceRevision, bundleSha256) {
     summary.results[0]?.resultSummary?.resultState !== 'artifact_returned'
   )
     return false;
-  const fixture = summary.offlineFixture;
   const asset = summary.offlineAssetBoundary;
   return Boolean(
-    fixture?.profile === EXPECTED_NETWORK_MODE &&
-    fixture.requestCount === 3 &&
-    fixture.personRequestCount === 1 &&
-    fixture.subjectsRequestCount === 1 &&
-    fixture.charactersRequestCount === 1 &&
-    fixture.duplicateRequestCount === 0 &&
-    fixture.unexpectedRequestCount === 0 &&
-    fixture.authorizationHeaderCount === 0 &&
-    fixture.expectedOperationsComplete === true &&
+    validateP06OfflineFixtureSnapshot(PROFILE_CONFIG, summary.offlineFixture) &&
     asset?.assetResolutionCallCount === 0 &&
     asset.nonEmptyAssetUrlCount === 0 &&
     asset.blockedAssetRequestCount === 0,

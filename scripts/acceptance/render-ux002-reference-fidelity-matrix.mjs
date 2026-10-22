@@ -41,7 +41,8 @@ assert.ok(
   rendererBuild.roots.includes('packages/renderer/dist'),
   'renderer build identity must include the imported distribution',
 );
-const { renderHtmlTemplate } = await import('../../packages/renderer/dist/index.js');
+const { buildPersonProfileViewModel, renderHtmlTemplate } =
+  await import('../../packages/renderer/dist/index.js');
 
 const subjectCard = {
   template: 'subject-card',
@@ -248,7 +249,111 @@ const revisionTimeline = {
   warnings: [],
 };
 
-const fixtures = [subjectCard, subjectStats, revisionTimeline];
+const personChronology = buildPersonProfileViewModel(
+  {
+    person: {
+      id: 902059,
+      name: '星港旅人 / 星港の案内人',
+      nameCn: '星港旅人',
+      type: 1,
+      typeLabel: '个人',
+      career: ['artist'],
+      aliases: ['合成称呼'],
+      summary: '合成演示人物资料，用于观察日期轴、混合文字和窄屏布局。',
+    },
+    subjects: {
+      items: [
+        {
+          id: 902061,
+          name: '春灯航路 / 春灯航路',
+          nameCn: '春灯航路：一段跨越星海的长篇合成作品标题',
+          nameCnSource: '春灯航路：一段跨越星海的长篇合成作品标题',
+          mediaType: 'anime',
+          mediaTypeCode: 2,
+          staffRole: 'artist',
+        },
+        {
+          id: 902062,
+          name: '玻璃潮汐 / Glass Tide',
+          nameCn: '玻璃潮汐：合成的夏日故事',
+          nameCnSource: '玻璃潮汐：合成的夏日故事',
+          mediaType: 'anime',
+          mediaTypeCode: 2,
+          staffRole: 'artist',
+        },
+        {
+          id: 902063,
+          name: '夜行列车 / 夜行列車',
+          nameCn: '夜行列车：归航篇',
+          nameCnSource: '夜行列车：归航篇',
+          mediaType: 'anime',
+          mediaTypeCode: 2,
+          staffRole: 'artist',
+        },
+        {
+          id: 902064,
+          name: '海雾信笺 / 海霧の手紙',
+          nameCn: '海雾信笺：本次固定样本外的作品',
+          nameCnSource: '海雾信笺：本次固定样本外的作品',
+          mediaType: 'anime',
+          mediaTypeCode: 2,
+          staffRole: 'artist',
+        },
+      ],
+      observed: 4,
+      returned: 4,
+      truncated: false,
+    },
+    characters: { items: [], observed: 0, returned: 0, truncated: false },
+    summary: {
+      uniqueSubjects: 4,
+      subjectCredits: 4,
+      uniqueCharacters: 0,
+      characterCredits: 0,
+      characterSubjects: 0,
+      subjectMedia: [{ key: 'anime', label: 'anime', count: 4, uniqueSubjects: 4, rawCodes: [2] }],
+      subjectRoles: [{ key: 'artist', label: 'artist', count: 4, uniqueSubjects: 4 }],
+      characterMedia: [],
+      characterRoles: [],
+    },
+    releaseChronology: {
+      state: 'partial',
+      sourceCompleteness: 'undocumented',
+      dateSemantics: 'official-subject-air-release-date',
+      samplingStrategy: 'evenly-spaced-returned-anime-relations',
+      relationRowsObserved: 4,
+      relationRowsReturned: 4,
+      relationRowsTruncated: false,
+      animeRelationRowsReturned: 4,
+      uniqueAnimeSubjects: 4,
+      selectedSubjectIds: [902061, 902062, 902063],
+      selectedSubjectDetails: 3,
+      succeededSubjectDetails: 3,
+      failedSubjectDetails: 0,
+      validDateSubjects: 3,
+      missingDateSubjects: 0,
+      invalidDateSubjects: 0,
+      omittedAnimeSubjects: 1,
+      maxConcurrency: 4,
+      responseByteLimit: 1_048_576,
+      earliestObserved: {
+        date: '2018-04-01',
+        subjects: [{ id: 902061, name: '春灯航路：一段跨越星海的长篇合成作品标题' }],
+      },
+      latestObserved: {
+        date: '2020-06-01',
+        subjects: [{ id: 902063, name: '夜行列车：归航篇' }],
+      },
+      limitations: [
+        '极值只代表本次采样到的动画条目官方 subject.date；官方字段语义是播出/发行日期，不代表人物实际参与或工作的日期。',
+        '人物作品关系接口未声明顺序、总数、分页或完整性；本次样本不能代表完整人物生涯。',
+      ],
+    },
+  },
+  { maxSubjectCredits: 2, maxCharacterCredits: 1, retrievedAt: '2025-06-01T00:00:00.000Z' },
+);
+
+const fixtures = [subjectCard, subjectStats, revisionTimeline, personChronology];
 assert.equal(ratingTotal, 1284);
 assert.equal(Math.round(ratingMean * 10) / 10, 8.4);
 assert.equal(Math.round((highScoreCount / ratingTotal) * 1000) / 10, 67);
@@ -284,7 +389,17 @@ try {
         ? ['Bangumi 修订历史', '条目修订', '合成修订事件', '合成演示数据']
         : fixture.template === 'subject-stats'
           ? ['星港纪行', '1,284', '8.4', '合成演示数据']
-          : ['星港纪行', '8.4', '9 / 12 集', '合成演示数据'];
+          : fixture.template === 'person-profile'
+            ? [
+                '星港旅人',
+                '动画播出 / 发行日期观察',
+                '受限样本',
+                '2018-04-01',
+                '2020-06-01',
+                '详情读取',
+                '上游未说明人物作品关系是否完整',
+              ]
+            : ['星港纪行', '8.4', '9 / 12 集', '合成演示数据'];
 
     for (const designPack of PACKS) {
       for (const theme of THEMES) {
@@ -324,6 +439,9 @@ try {
             }));
             const progressTrack = element.querySelector(
               '[data-layout="progress-track"], [data-layout="subject-progress-track"]',
+            );
+            const chronology = element.querySelector(
+              '[data-layout="person-profile-release-chronology"]',
             );
             const shapeMaskElements = Array.from(element.querySelectorAll('*')).filter((node) =>
               node.style.clipPath?.startsWith('shape('),
@@ -405,6 +523,21 @@ try {
                 ).length,
               },
               scorePanelOverflows,
+              chronology: chronology
+                ? {
+                    observationCount: chronology.querySelectorAll(
+                      '[data-layout="chronology-observation"]',
+                    ).length,
+                    nodeCount: chronology.querySelectorAll('[data-layout="chronology-node"]')
+                      .length,
+                    connectorCount: chronology.querySelectorAll(
+                      '[data-layout="chronology-connector"]',
+                    ).length,
+                    limitationVisible: Boolean(
+                      chronology.querySelector('[data-layout="chronology-limitations"]'),
+                    ),
+                  }
+                : null,
               overflows,
               text: (element.textContent ?? '').replace(/\s+/gu, ' ').trim(),
             };
@@ -451,6 +584,13 @@ try {
               visual.maskReceipts.coverStickerCount,
               2,
               `${fixture.template}/${designPack}/${theme}/${cssWidth} missing diagonal cover stickers`,
+            );
+          }
+          if (fixture.template === 'person-profile') {
+            assert.deepEqual(
+              visual.chronology,
+              { observationCount: 2, nodeCount: 2, connectorCount: 1, limitationVisible: true },
+              `${fixture.template}/${designPack}/${theme}/${cssWidth} chronology composition`,
             );
           }
           assert.deepEqual(
@@ -507,7 +647,7 @@ manifest.sort((left, right) =>
     `${right.template}/${right.designPack}/${right.theme}/${right.cssWidth}`,
   ),
 );
-assert.equal(manifest.length, 90);
+assert.equal(manifest.length, 120);
 const frameMaskTokensByPack = new Map();
 const frameMasksAt320ByPack = new Map();
 for (const item of manifest) {
