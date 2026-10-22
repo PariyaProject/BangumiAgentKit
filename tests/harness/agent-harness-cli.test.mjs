@@ -148,6 +148,7 @@ const A01_AGGREGATE_PROFILE = getAgentMcpProfileById(
 );
 const P03_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v1');
 const P03_V2_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v2');
+const P03_V3_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v3');
 const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const P06_PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
 const G06_V2_PROFILE = getAgentMcpProfileById(G06_CAST_OFFLINE_V2_PROFILE_ID);
@@ -3228,6 +3229,55 @@ test('P03 v2 uses an independent one-shot claim and leaves the terminal v1 profi
     const v1 = environment.execute(['epoch:agent-mcp-profile-status', ...v1Args]);
     assert.equal(v1.status, 0, v1.stderr);
     assert.equal(JSON.parse(v1.stdout).state, 'UNCLAIMED');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('P03 v3 uses a distinct bounded one-shot claim', () => {
+  assert.ok(P03_V3_PROFILE);
+  assert.notEqual(P03_V3_PROFILE.id, P03_V2_PROFILE.id);
+  assert.notEqual(P03_V3_PROFILE.argumentProfile, P03_V2_PROFILE.argumentProfile);
+  assert.notEqual(P03_V3_PROFILE.claimLabelName, P03_V2_PROFILE.claimLabelName);
+  assert.notEqual(P03_V3_PROFILE.reportPath, P03_V2_PROFILE.reportPath);
+  assert.equal(P03_V3_PROFILE.calls[0].arguments.personId, 58609);
+  assert.equal(P03_V3_PROFILE.calls[0].arguments.maxSubjects, 5);
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(P03_V3_PROFILE);
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const args = ['--run', '95', '--pr', '42', '--profile-id', P03_V3_PROFILE.id];
+  try {
+    const initial = environment.execute(['epoch:agent-mcp-profile-status', ...args]);
+    assert.equal(initial.status, 0, initial.stderr);
+    assert.equal(JSON.parse(initial.stdout).state, 'UNCLAIMED');
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...args,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claim = JSON.parse(claimed.stdout);
+    assert.equal(claim.profileId, P03_V3_PROFILE.id);
+    assert.equal(claim.expectedArgumentsSha256, agentMcpProfileArgumentsSha256(P03_V3_PROFILE));
+    assert.equal(claim.retryAllowed, false);
+
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...args,
+      '--claim-id',
+      claim.claimId,
+      '--state',
+      'INCONCLUSIVE',
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    const status = environment.execute(['epoch:agent-mcp-profile-status', ...args]);
+    assert.equal(status.status, 0, status.stderr);
+    assert.equal(JSON.parse(status.stdout).state, 'INCONCLUSIVE');
+    assert.equal(JSON.parse(status.stdout).retry_allowed, false);
   } finally {
     environment.cleanup();
   }

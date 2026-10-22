@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash, generateKeyPairSync } from 'node:crypto';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import {
   closeSync,
   existsSync,
@@ -15,6 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import {
+  buildP03V2RunnerReceiptPayload,
   validateP03V2ProfileReport,
   validateP03V2SanitizedReportFile,
   writeP03V2PersonNameCnReport,
@@ -28,32 +29,49 @@ import {
 import {
   P03_CANONICAL_COVERAGE_NOTE,
   P03_V2_PROFILE_ID,
+  P03_V3_PROFILE_ID,
   summarizeP03PersonProfileToolResult,
 } from '../../scripts/lib/p03-person-name-cn-evidence.mjs';
 
 const profile = getAgentMcpProfileById(P03_V2_PROFILE_ID);
+const v3Profile = getAgentMcpProfileById(P03_V3_PROFILE_ID);
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
-function makeFixture(root) {
-  const result = {
-    state: 'partial',
-    person: { id: 19306, name: 'Public Person', nameCn: '公开人物' },
-    coverage: {
-      state: 'partial',
-      subjects: { observed: 9, returned: 3, truncated: true, sourceCompleteness: 'undocumented' },
-    },
-    credits: {
-      subjects: [
+function makeFixture(root, selectedProfile = profile) {
+  const isV3 = selectedProfile.id === P03_V3_PROFILE_ID;
+  const creditRows = isV3
+    ? Array.from({ length: 5 }, (_, index) => ({
+        id: 501 + index,
+        name: `Original bounded ${index + 1}`,
+        nameCnSource: `来源作品${index + 1}`,
+      }))
+    : [
         { id: 21, name: 'Original A', nameCnSource: '作品甲' },
         { id: 22, name: 'Original B', nameCnSource: '作品乙' },
         { id: 23, name: 'Empty', nameCnSource: '   ' },
-      ],
+      ];
+  const result = {
+    state: 'partial',
+    person: {
+      id: selectedProfile.calls[0].arguments.personId,
+      name: isV3 ? 'Selected public person' : 'Public Person',
+      nameCn: isV3 ? '精选公开人物' : '公开人物',
     },
+    coverage: {
+      state: 'partial',
+      subjects: {
+        observed: isV3 ? 35 : 9,
+        returned: creditRows.length,
+        truncated: true,
+        sourceCompleteness: 'undocumented',
+      },
+    },
+    credits: { subjects: creditRows },
   };
   const resultSummary = summarizeP03PersonProfileToolResult(
     result,
-    profile.calls[0].arguments,
-    profile.id,
+    selectedProfile.calls[0].arguments,
+    selectedProfile.id,
   );
   const compactText = JSON.stringify({
     state: resultSummary.state,
@@ -102,16 +120,16 @@ function makeFixture(root) {
   const claim = {
     claimId: 'profile-run-95-pr-260-aaaaaaaaaaaa-123',
     state: 'CLAIMED',
-    profileId: profile.id,
+    profileId: selectedProfile.id,
     frontierId: 'P03',
-    epochId: profile.epochId,
+    epochId: selectedProfile.epochId,
     runNumber: 95,
     prNumber: 260,
-    toolName: profile.toolName,
-    argumentProfile: profile.argumentProfile,
-    expectedArguments: profile.calls.map((call) => call.arguments),
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
-    registrySha256: agentMcpProfileRegistrySha256(profile.id),
+    toolName: selectedProfile.toolName,
+    argumentProfile: selectedProfile.argumentProfile,
+    expectedArguments: selectedProfile.calls.map((call) => call.arguments),
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(selectedProfile),
+    registrySha256: agentMcpProfileRegistrySha256(selectedProfile.id),
     sourceCandidateSha: 'a'.repeat(40),
     baseSha: 'c'.repeat(40),
     ciSha: 'a'.repeat(40),
@@ -124,18 +142,18 @@ function makeFixture(root) {
   };
   const catalogBytes = readFileSync(new URL('../../docs/tool-catalog.json', import.meta.url));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
-  const tool = catalog.find((entry) => entry.name === profile.toolName);
+  const tool = catalog.find((entry) => entry.name === selectedProfile.toolName);
   const serverSummary = {
-    profileId: profile.id,
+    profileId: selectedProfile.id,
     serverProfile: 'closed-profile-sequence-anonymous-public-v1',
     sourceRevision: claim.sourceCandidateSha,
     bundleSha256: claim.bundleSha256,
     registrySha256: claim.registrySha256,
-    argumentProfile: profile.argumentProfile,
-    serverToolNames: [profile.toolName],
+    argumentProfile: selectedProfile.argumentProfile,
+    serverToolNames: [selectedProfile.toolName],
     serverToolCount: 1,
     expectedCallCount: 1,
-    toolName: profile.toolName,
+    toolName: selectedProfile.toolName,
     expectedArgumentsSha256: claim.expectedArgumentsSha256,
     serverResultStatus: 'SUCCESS',
     allowedCallCount: 1,
@@ -151,6 +169,9 @@ function makeFixture(root) {
     turnCompleted: true,
     codexMcpToolEventCount: 1,
     codexErrorItemCount: 0,
+    blockedWebSearchErrorItemCount: 0,
+    unexpectedCodexErrorItemCount: 0,
+    codexErrorCountsMatch: true,
     nonMcpToolEventCount: 0,
     nonMcpToolTypes: [],
     shellToolCallCount: 0,
@@ -220,6 +241,211 @@ test('P03 v2 writes a matrix-only signed report without person or title text', (
     const tampered = structuredClone(validation.report);
     tampered.resultCounters.subjectsObserved += 1;
     assert.equal(validateP03V2ProfileReport(tampered, fixture.claim).passed, false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('P03 v3 writes a signed five-row report under its own profile identity', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'p03-v3-report-test-'));
+  mkdirSync(path.join(root, 'docs/live-probes'), { recursive: true });
+  const fixture = makeFixture(root, v3Profile);
+  fixture.events = {
+    ...fixture.events,
+    codexErrorItemCount: 3,
+    blockedWebSearchErrorItemCount: 3,
+  };
+  try {
+    const sixRowResult = structuredClone(fixture.result);
+    sixRowResult.coverage.subjects.returned = 6;
+    sixRowResult.credits.subjects.push({
+      id: 506,
+      name: 'Original bounded 6',
+      nameCnSource: '来源作品6',
+    });
+    const overLimitSummary = summarizeP03PersonProfileToolResult(
+      sixRowResult,
+      v3Profile.calls[0].arguments,
+      v3Profile.id,
+    );
+    const overLimitServerSummary = structuredClone(fixture.serverSummary);
+    overLimitServerSummary.results[0].resultSummary = overLimitSummary;
+    const rejectedOverLimitWrite = writeP03V2PersonNameCnReport(
+      {
+        ...fixture,
+        serverSummary: overLimitServerSummary,
+        completedMcpCalls: [
+          {
+            tool: v3Profile.toolName,
+            arguments: v3Profile.calls[0].arguments,
+            result: { content: [{ type: 'text', text: fixture.compactText }] },
+          },
+        ],
+        codexCliVersion: '1.2.3',
+        eventStreamSha256: 'd'.repeat(64),
+        serverSummarySha256: 'e'.repeat(64),
+      },
+      { privateKey: fixture.keyPair.privateKey },
+    );
+    assert.equal(rejectedOverLimitWrite.passed, false);
+    assert.equal(rejectedOverLimitWrite.reason, 'P03_V2_RUNNER_GATE_INVALID');
+    assert.equal(existsSync(path.join(root, v3Profile.reportPath)), false);
+
+    const written = writeP03V2PersonNameCnReport(
+      {
+        ...fixture,
+        completedMcpCalls: [
+          {
+            tool: v3Profile.toolName,
+            arguments: v3Profile.calls[0].arguments,
+            result: { content: [{ type: 'text', text: fixture.compactText }] },
+          },
+        ],
+        codexCliVersion: '1.2.3',
+        eventStreamSha256: 'd'.repeat(64),
+        serverSummarySha256: 'e'.repeat(64),
+      },
+      { privateKey: fixture.keyPair.privateKey },
+    );
+    assert.equal(written.passed, true, written.reason);
+    const validation = validateP03V2SanitizedReportFile(fixture.claim, root);
+    assert.equal(validation.passed, true, validation.reason);
+    assert.equal(validation.report.profileId, v3Profile.id);
+    assert.equal(validation.report.epochId, v3Profile.epochId);
+    assert.equal(validation.report.profile, 'codex-luna-max-agent-mcp-matrix-v3');
+    assert.equal(validation.report.codexErrorItemCount, 3);
+    assert.equal(validation.report.blockedWebSearchErrorItemCount, 3);
+    assert.equal(validation.report.unexpectedCodexErrorItemCount, 0);
+    assert.equal(
+      validation.report.runnerReceipt.kind,
+      'p03-person-name-cn-agent-mcp-runner-receipt-v3',
+    );
+    assert.deepEqual(validation.report.resultCounters, {
+      subjectsObserved: 35,
+      subjectsReturned: 5,
+      subjectsTruncated: true,
+      returnedCreditRowsObserved: 5,
+      positiveNameCnRowsObserved: 5,
+      emptyNameCnRowsObserved: 0,
+      unavailableNameCnRowsObserved: 0,
+      nameCnRowsOmittedFromText: 0,
+    });
+    const serialized = JSON.stringify(validation.report);
+    for (const sensitiveValue of ['精选公开人物', 'Selected public person', '来源作品1']) {
+      assert.equal(serialized.includes(sensitiveValue), false, `report contains ${sensitiveValue}`);
+    }
+
+    const forgedOverLimit = structuredClone(validation.report);
+    Object.assign(forgedOverLimit.resultCounters, {
+      subjectsReturned: 6,
+      returnedCreditRowsObserved: 6,
+      positiveNameCnRowsObserved: 6,
+    });
+    const payload = buildP03V2RunnerReceiptPayload(forgedOverLimit, {
+      eventStreamSha256: forgedOverLimit.runnerReceipt.payload.eventStreamSha256,
+      serverSummarySha256: forgedOverLimit.runnerReceipt.payload.serverSummarySha256,
+    });
+    forgedOverLimit.runnerReceipt.payload = payload;
+    forgedOverLimit.runnerReceipt.signature = sign(
+      null,
+      Buffer.from(canonicalAgentMcpProfileJson(payload)),
+      fixture.keyPair.privateKey,
+    ).toString('base64');
+    assert.equal(validateP03V2ProfileReport(forgedOverLimit, fixture.claim).passed, false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('P03 v2 rejects classified web-search errors in both writer and report validator', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'p03-v2-error-report-test-'));
+  mkdirSync(path.join(root, 'docs/live-probes'), { recursive: true });
+  const fixture = makeFixture(root);
+  try {
+    const commonInput = {
+      ...fixture,
+      completedMcpCalls: [
+        {
+          tool: profile.toolName,
+          arguments: profile.calls[0].arguments,
+          result: { content: [{ type: 'text', text: fixture.compactText }] },
+        },
+      ],
+      codexCliVersion: '1.2.3',
+      eventStreamSha256: 'd'.repeat(64),
+      serverSummarySha256: 'e'.repeat(64),
+    };
+    const rejected = writeP03V2PersonNameCnReport(
+      {
+        ...commonInput,
+        events: {
+          ...fixture.events,
+          codexErrorItemCount: 1,
+          blockedWebSearchErrorItemCount: 1,
+        },
+      },
+      { privateKey: fixture.keyPair.privateKey },
+    );
+    assert.equal(rejected.passed, false);
+    assert.equal(rejected.reason, 'P03_V2_RUNNER_GATE_INVALID');
+    assert.equal(existsSync(path.join(root, profile.reportPath)), false);
+
+    const written = writeP03V2PersonNameCnReport(
+      commonInput,
+      { privateKey: fixture.keyPair.privateKey },
+    );
+    assert.equal(written.passed, true, written.reason);
+    const validation = validateP03V2SanitizedReportFile(fixture.claim, root);
+    assert.equal(validation.passed, true, validation.reason);
+    const forged = structuredClone(validation.report);
+    forged.codexErrorItemCount = 1;
+    forged.blockedWebSearchErrorItemCount = 1;
+    const payload = buildP03V2RunnerReceiptPayload(forged, {
+      eventStreamSha256: forged.runnerReceipt.payload.eventStreamSha256,
+      serverSummarySha256: forged.runnerReceipt.payload.serverSummarySha256,
+    });
+    forged.runnerReceipt.payload = payload;
+    forged.runnerReceipt.signature = sign(
+      null,
+      Buffer.from(canonicalAgentMcpProfileJson(payload)),
+      fixture.keyPair.privateKey,
+    ).toString('base64');
+    assert.equal(validateP03V2ProfileReport(forged, fixture.claim).passed, false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('P03 v3 report rejects unclassified Codex error items', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'p03-v3-error-report-test-'));
+  mkdirSync(path.join(root, 'docs/live-probes'), { recursive: true });
+  const fixture = makeFixture(root, v3Profile);
+  fixture.events = {
+    ...fixture.events,
+    codexErrorItemCount: 1,
+    blockedWebSearchErrorItemCount: 0,
+    unexpectedCodexErrorItemCount: 1,
+  };
+  try {
+    const result = writeP03V2PersonNameCnReport(
+      {
+        ...fixture,
+        completedMcpCalls: [
+          {
+            tool: v3Profile.toolName,
+            arguments: v3Profile.calls[0].arguments,
+            result: { content: [{ type: 'text', text: fixture.compactText }] },
+          },
+        ],
+        codexCliVersion: '1.2.3',
+        eventStreamSha256: 'd'.repeat(64),
+        serverSummarySha256: 'e'.repeat(64),
+      },
+      { privateKey: fixture.keyPair.privateKey },
+    );
+    assert.equal(result.passed, false);
+    assert.equal(result.reason, 'P03_V2_RUNNER_GATE_INVALID');
+    assert.equal(existsSync(path.join(root, v3Profile.reportPath)), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

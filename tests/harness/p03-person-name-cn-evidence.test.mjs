@@ -4,6 +4,7 @@ import {
   P03_CANONICAL_COVERAGE_NOTE,
   P03_PROFILE_ID,
   P03_V2_PROFILE_ID,
+  P03_V3_PROFILE_ID,
   createP03McpTextProjection,
   summarizeP03PersonProfileToolResult,
   validateP03McpTextProjection,
@@ -14,6 +15,7 @@ import { getAgentMcpProfileById } from '../../scripts/lib/agent-mcp-profile-clai
 
 const profile = getAgentMcpProfileById(P03_PROFILE_ID);
 const v2Profile = getAgentMcpProfileById(P03_V2_PROFILE_ID);
+const v3Profile = getAgentMcpProfileById(P03_V3_PROFILE_ID);
 
 function resultFixture() {
   return {
@@ -291,6 +293,71 @@ test('P03 v2 labels a fallback person name neutrally when nameCn is unavailable'
   assert.equal(
     validateP03McpTextProjection(JSON.stringify(projection), summary, v2Profile.id).passed,
     true,
+  );
+});
+
+test('P03 v3 projection is bound to its distinct five-row public profile', () => {
+  const result = resultFixture();
+  result.person = { id: 58609, name: 'Selected public person', nameCn: '公开人物' };
+  result.coverage.subjects = {
+    observed: 35,
+    returned: 5,
+    truncated: true,
+    sourceCompleteness: 'undocumented',
+  };
+  result.credits.subjects = Array.from({ length: 5 }, (_, index) => ({
+    id: 501 + index,
+    name: `Source title ${index + 1}`,
+    nameCnSource: `来源中文名${index + 1}`,
+  }));
+
+  assert.ok(v3Profile);
+  assert.notEqual(v3Profile.id, v2Profile.id);
+  assert.notEqual(v3Profile.argumentProfile, v2Profile.argumentProfile);
+  assert.notEqual(v3Profile.claimLabelName, v2Profile.claimLabelName);
+  assert.notEqual(v3Profile.reportPath, v2Profile.reportPath);
+  assert.equal(v3Profile.calls[0].arguments.personId, 58609);
+  assert.equal(v3Profile.calls[0].arguments.maxSubjects, 5);
+
+  const summary = summarizeP03PersonProfileToolResult(
+    result,
+    v3Profile.calls[0].arguments,
+    v3Profile.id,
+  );
+  const projection = createP03McpTextProjection(summary, v3Profile.id);
+  assert.equal(summary.coverage.subjectsReturned, 5);
+  assert.equal(summary.positiveNameCnRowsObserved, 5);
+  assert.equal(summary.nameCnRowsOmittedFromText, 0);
+  assert.equal(projection.sourceNameCnRows.length, 5);
+  assert.equal(validateP03ResultSummary(summary, v3Profile.calls[0].arguments, v3Profile.id), true);
+  assert.equal(
+    validateP03McpTextProjection(JSON.stringify(projection), summary, v3Profile.id).passed,
+    true,
+  );
+  assert.equal(
+    validateP03ResultSummary(summary, v2Profile.calls[0].arguments, v2Profile.id),
+    false,
+  );
+
+  const sixRowResult = structuredClone(result);
+  sixRowResult.coverage.subjects.returned = 6;
+  sixRowResult.credits.subjects.push({
+    id: 506,
+    name: 'Source title 6',
+    nameCnSource: '来源中文名6',
+  });
+  const overLimitSummary = summarizeP03PersonProfileToolResult(
+    sixRowResult,
+    v3Profile.calls[0].arguments,
+    v3Profile.id,
+  );
+  assert.equal(
+    validateP03ResultSummary(overLimitSummary, v3Profile.calls[0].arguments, v3Profile.id),
+    false,
+  );
+  assert.throws(
+    () => createP03McpTextProjection(overLimitSummary, v3Profile.id),
+    /requires a validated profile result summary/u,
   );
 });
 
