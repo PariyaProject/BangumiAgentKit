@@ -30,16 +30,20 @@ import {
   P03_CANONICAL_COVERAGE_NOTE,
   P03_V2_PROFILE_ID,
   P03_V3_PROFILE_ID,
+  P03_V4_PROFILE_ID,
   summarizeP03PersonProfileToolResult,
 } from '../../scripts/lib/p03-person-name-cn-evidence.mjs';
 
 const profile = getAgentMcpProfileById(P03_V2_PROFILE_ID);
 const v3Profile = getAgentMcpProfileById(P03_V3_PROFILE_ID);
+const v4Profile = getAgentMcpProfileById(P03_V4_PROFILE_ID);
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
 function makeFixture(root, selectedProfile = profile) {
   const isV3 = selectedProfile.id === P03_V3_PROFILE_ID;
-  const creditRows = isV3
+  const isV4 = selectedProfile.id === P03_V4_PROFILE_ID;
+  const isFreshPublic = isV3 || isV4;
+  const creditRows = isFreshPublic
     ? Array.from({ length: 5 }, (_, index) => ({
         id: 501 + index,
         name: `Original bounded ${index + 1}`,
@@ -54,13 +58,13 @@ function makeFixture(root, selectedProfile = profile) {
     state: 'partial',
     person: {
       id: selectedProfile.calls[0].arguments.personId,
-      name: isV3 ? 'Selected public person' : 'Public Person',
-      nameCn: isV3 ? '精选公开人物' : '公开人物',
+      name: isFreshPublic ? 'Selected public person' : 'Public Person',
+      nameCn: isFreshPublic ? '精选公开人物' : '公开人物',
     },
     coverage: {
       state: 'partial',
       subjects: {
-        observed: isV3 ? 35 : 9,
+        observed: isV3 ? 35 : isV4 ? 18 : 9,
         returned: creditRows.length,
         truncated: true,
         sourceCompleteness: 'undocumented',
@@ -177,6 +181,7 @@ function makeFixture(root, selectedProfile = profile) {
     shellToolCallCount: 0,
     mcpTextProjectionValid: true,
     structuredContentReadbackAvailable: false,
+    structuredContentCompatible: true,
     mcpServerNames: ['bgk_p03_name_cn'],
     allowedCallCount: 1,
     deniedCallCount: 0,
@@ -357,6 +362,84 @@ test('P03 v3 writes a signed five-row report under its own profile identity', ()
   }
 });
 
+test('P03 v4 writes a signed report when structuredContent exactly duplicates the bounded projection', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'p03-v4-report-test-'));
+  mkdirSync(path.join(root, 'docs/live-probes'), { recursive: true });
+  const fixture = makeFixture(root, v4Profile);
+  const projection = JSON.parse(fixture.compactText);
+  fixture.events = {
+    ...fixture.events,
+    codexErrorItemCount: 3,
+    blockedWebSearchErrorItemCount: 3,
+    structuredContentReadbackAvailable: true,
+    structuredContentCompatible: true,
+  };
+  try {
+    const rejectedConflict = writeP03V2PersonNameCnReport(
+      {
+        ...fixture,
+        events: { ...fixture.events, structuredContentCompatible: false },
+        completedMcpCalls: [
+          {
+            tool: v4Profile.toolName,
+            arguments: v4Profile.calls[0].arguments,
+            result: {
+              content: [{ type: 'text', text: fixture.compactText }],
+              structuredContent: { ...projection, extra: 'unbounded' },
+            },
+          },
+        ],
+        codexCliVersion: '1.2.3',
+        eventStreamSha256: 'd'.repeat(64),
+        serverSummarySha256: 'e'.repeat(64),
+      },
+      { privateKey: fixture.keyPair.privateKey },
+    );
+    assert.equal(rejectedConflict.passed, false);
+    assert.equal(rejectedConflict.reason, 'P03_V2_RUNNER_GATE_INVALID');
+    assert.equal(existsSync(path.join(root, v4Profile.reportPath)), false);
+
+    const written = writeP03V2PersonNameCnReport(
+      {
+        ...fixture,
+        completedMcpCalls: [
+          {
+            tool: v4Profile.toolName,
+            arguments: v4Profile.calls[0].arguments,
+            result: {
+              content: [{ type: 'text', text: fixture.compactText }],
+              structuredContent: structuredClone(projection),
+            },
+          },
+        ],
+        codexCliVersion: '1.2.3',
+        eventStreamSha256: 'd'.repeat(64),
+        serverSummarySha256: 'e'.repeat(64),
+      },
+      { privateKey: fixture.keyPair.privateKey },
+    );
+    assert.equal(written.passed, true, written.reason);
+    const validation = validateP03V2SanitizedReportFile(fixture.claim, root);
+    assert.equal(validation.passed, true, validation.reason);
+    assert.equal(validation.report.profileId, v4Profile.id);
+    assert.equal(validation.report.epochId, v4Profile.epochId);
+    assert.equal(validation.report.profile, 'codex-luna-max-agent-mcp-matrix-v4');
+    assert.equal(validation.report.structuredContentReadbackAvailable, true);
+    assert.equal(validation.report.structuredContentCompatible, true);
+    assert.equal(validation.report.codexErrorItemCount, 3);
+    const serialized = JSON.stringify(validation.report);
+    for (const sensitiveValue of ['Selected public person', '精选公开人物', '来源作品1']) {
+      assert.equal(serialized.includes(sensitiveValue), false, `report contains ${sensitiveValue}`);
+    }
+    assert.equal(
+      validation.report.runnerReceipt.kind,
+      'p03-person-name-cn-agent-mcp-runner-receipt-v4',
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('P03 v2 rejects classified web-search errors in both writer and report validator', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'p03-v2-error-report-test-'));
   mkdirSync(path.join(root, 'docs/live-probes'), { recursive: true });
@@ -390,10 +473,9 @@ test('P03 v2 rejects classified web-search errors in both writer and report vali
     assert.equal(rejected.reason, 'P03_V2_RUNNER_GATE_INVALID');
     assert.equal(existsSync(path.join(root, profile.reportPath)), false);
 
-    const written = writeP03V2PersonNameCnReport(
-      commonInput,
-      { privateKey: fixture.keyPair.privateKey },
-    );
+    const written = writeP03V2PersonNameCnReport(commonInput, {
+      privateKey: fixture.keyPair.privateKey,
+    });
     assert.equal(written.passed, true, written.reason);
     const validation = validateP03V2SanitizedReportFile(fixture.claim, root);
     assert.equal(validation.passed, true, validation.reason);
@@ -451,7 +533,7 @@ test('P03 v3 report rejects unclassified Codex error items', () => {
   }
 });
 
-test('P03 v2 rejects unexpected structuredContent instead of relying on it', () => {
+test('P03 v2 rejects conflicting structuredContent instead of relying on it', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'p03-v2-structured-test-'));
   mkdirSync(path.join(root, 'docs/live-probes'), { recursive: true });
   const fixture = makeFixture(root);

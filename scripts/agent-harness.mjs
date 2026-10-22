@@ -4535,6 +4535,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateP03SanitizedReportFile(claim, root, reportPath);
     case 'p03-person-name-cn-agent-mcp-v2':
     case 'p03-person-name-cn-agent-mcp-v3':
+    case 'p03-person-name-cn-agent-mcp-v4':
       return validateP03V2SanitizedReportFile(claim, root, reportPath);
     case 'p07-person-season-distribution-agent-mcp-v1':
       return validateP07SanitizedReportFile(claim, root, reportPath);

@@ -7,7 +7,32 @@ import {
 export const P03_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v1';
 export const P03_V2_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v2';
 export const P03_V3_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v3';
-export const P03_FRESH_PUBLIC_PROFILE_IDS = Object.freeze([P03_V2_PROFILE_ID, P03_V3_PROFILE_ID]);
+export const P03_V4_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v4';
+export const P03_FRESH_PUBLIC_PROFILE_IDS = Object.freeze([
+  P03_V2_PROFILE_ID,
+  P03_V3_PROFILE_ID,
+  P03_V4_PROFILE_ID,
+]);
+
+export function p03StructuredReadbackSatisfied(result, textProjection, profileId) {
+  const structuredContentPresent =
+    Boolean(result) &&
+    typeof result === 'object' &&
+    !Array.isArray(result) &&
+    Object.hasOwn(result, 'structuredContent');
+  const structuredReadback = structuredContentPresent && Boolean(result.structuredContent);
+  const structuredReadbackExpected = !P03_FRESH_PUBLIC_PROFILE_IDS.includes(profileId);
+  if (structuredReadbackExpected) return structuredReadback;
+  // Fresh profiles use the bounded text projection as their data boundary.
+  // A null placeholder adds no data; a structured object must be an exact duplicate.
+  if (!structuredContentPresent || result.structuredContent === null) return true;
+  return (
+    textProjection?.passed === true &&
+    canonicalAgentMcpProfileJson(result.structuredContent) ===
+      canonicalAgentMcpProfileJson(textProjection.projection)
+  );
+}
+
 export const P03_MAX_TITLE_BYTES = 160;
 export const P03_MAX_LISTED_ROWS = 6;
 export const P03_CANONICAL_COVERAGE_NOTE =

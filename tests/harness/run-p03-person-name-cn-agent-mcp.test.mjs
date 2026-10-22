@@ -9,7 +9,10 @@ import {
   validateP03RunnerArgs,
   validateP03ServerSummary,
 } from '../../scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs';
-import { parseCodexJsonl, summarizeCodexEvents } from '../../scripts/acceptance/run-g26-codex-agent-mcp.mjs';
+import {
+  parseCodexJsonl,
+  summarizeCodexEvents,
+} from '../../scripts/acceptance/run-g26-codex-agent-mcp.mjs';
 import {
   agentMcpProfileArgumentsSha256,
   canonicalAgentMcpProfileJson,
@@ -20,11 +23,13 @@ import {
   P03_PROFILE_ID,
   P03_V2_PROFILE_ID,
   P03_V3_PROFILE_ID,
+  P03_V4_PROFILE_ID,
 } from '../../scripts/lib/p03-person-name-cn-evidence.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 
 const profile = getAgentMcpProfileById(P03_PROFILE_ID);
 const v3Profile = getAgentMcpProfileById(P03_V3_PROFILE_ID);
+const v4Profile = getAgentMcpProfileById(P03_V4_PROFILE_ID);
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
 function resultFixture() {
@@ -50,12 +55,13 @@ test('P03 runner accepts only the fixed Run 95 entry point', () => {
   assert.equal(validateP03RunnerArgs(['--run', '95']), 'run');
   assert.equal(validateP03RunnerArgs(['--run', '95', '--profile-id', P03_V2_PROFILE_ID]), 'run');
   assert.equal(validateP03RunnerArgs(['--run', '95', '--profile-id', P03_V3_PROFILE_ID]), 'run');
+  assert.equal(validateP03RunnerArgs(['--run', '95', '--profile-id', P03_V4_PROFILE_ID]), 'run');
   assert.throws(() => validateP03RunnerArgs([]));
   assert.throws(() => validateP03RunnerArgs(['--run', '94']));
   assert.throws(() => validateP03RunnerArgs(['--run', '95', '--retry']));
 });
 
-test('only P03 v3 accepts the narrow disabled-web-search error class', () => {
+test('only P03 v3 and v4 accept the narrow disabled-web-search error class', () => {
   assert.equal(
     p03CodexErrorSummaryIsSafe(
       {
@@ -65,6 +71,18 @@ test('only P03 v3 accepts the narrow disabled-web-search error class', () => {
         countsMatch: true,
       },
       P03_V3_PROFILE_ID,
+    ),
+    true,
+  );
+  assert.equal(
+    p03CodexErrorSummaryIsSafe(
+      {
+        errorItemCount: 3,
+        blockedWebSearchErrorItemCount: 3,
+        unexpectedCodexErrorItemCount: 0,
+        countsMatch: true,
+      },
+      P03_V4_PROFILE_ID,
     ),
     true,
   );
@@ -113,6 +131,7 @@ test('only P03 v3 accepts the narrow disabled-web-search error class', () => {
     },
   ]) {
     assert.equal(p03CodexErrorSummaryIsSafe(summary, P03_V3_PROFILE_ID), false);
+    assert.equal(p03CodexErrorSummaryIsSafe(summary, P03_V4_PROFILE_ID), false);
   }
   assert.equal(
     p03CodexErrorSummaryIsSafe(
@@ -253,6 +272,33 @@ test('P03 v3 MCP summary uses the distinct person and five-row arguments', () =>
   assert.equal(actual.returnedCreditRowsObserved, 5);
 });
 
+test('P03 v4 MCP summary binds the new person and five-row public input', () => {
+  const result = resultFixture();
+  result.person.id = 54025;
+  result.coverage.subjects = {
+    observed: 18,
+    returned: 5,
+    truncated: true,
+    sourceCompleteness: 'undocumented',
+  };
+  result.credits.subjects = Array.from({ length: 5 }, (_, index) => ({
+    id: 100 + index,
+    name: `Fixture ${index + 1}`,
+    nameCnSource: `测试作品${index + 1}`,
+  }));
+  const actual = summarizeProfileToolResult(result, v4Profile.calls[0].arguments, v4Profile.id);
+  const expected = summarizeP03PersonProfileToolResult(
+    result,
+    v4Profile.calls[0].arguments,
+    v4Profile.id,
+  );
+  assert.deepEqual(actual, expected);
+  assert.equal(actual.personId, 54025);
+  assert.equal(actual.coverage.subjectsObserved, 18);
+  assert.equal(actual.coverage.subjectsReturned, 5);
+  assert.equal(actual.returnedCreditRowsObserved, 5);
+});
+
 test('P03 fresh-profile gate permits only a structured duplicate of the bounded text projection', () => {
   const projection = { person: { id: 58609 }, rows: [], observed: 5 };
   const event = {
@@ -276,11 +322,7 @@ test('P03 fresh-profile gate permits only a structured duplicate of the bounded 
   assert.deepEqual(JSON.parse(call.result.content[0].text), projection);
   assert.equal(Object.hasOwn(call.result, 'structuredContent'), true);
   assert.equal(
-    p03StructuredReadbackSatisfied(
-      call.result,
-      { passed: true, projection },
-      P03_V3_PROFILE_ID,
-    ),
+    p03StructuredReadbackSatisfied(call.result, { passed: true, projection }, P03_V3_PROFILE_ID),
     true,
   );
   assert.equal(
@@ -308,11 +350,7 @@ test('P03 fresh-profile gate permits only a structured duplicate of the bounded 
     false,
   );
   assert.equal(
-    p03StructuredReadbackSatisfied(
-      call.result,
-      { passed: false, projection },
-      P03_V3_PROFILE_ID,
-    ),
+    p03StructuredReadbackSatisfied(call.result, { passed: false, projection }, P03_V3_PROFILE_ID),
     false,
   );
   assert.equal(
@@ -320,6 +358,52 @@ test('P03 fresh-profile gate permits only a structured duplicate of the bounded 
       { content: call.result.content },
       { passed: true, projection },
       P03_PROFILE_ID,
+    ),
+    false,
+  );
+
+  const v4Projection = { person: { id: 54025 }, rows: [], observed: 5 };
+  const v4Result = {
+    content: [{ type: 'text', text: JSON.stringify(v4Projection) }],
+    structuredContent: structuredClone(v4Projection),
+  };
+  assert.equal(
+    p03StructuredReadbackSatisfied(
+      v4Result,
+      { passed: true, projection: v4Projection },
+      v4Profile.id,
+    ),
+    true,
+  );
+  assert.equal(
+    p03StructuredReadbackSatisfied(
+      { content: v4Result.content, structuredContent: null },
+      { passed: true, projection: v4Projection },
+      v4Profile.id,
+    ),
+    true,
+  );
+  assert.equal(
+    p03StructuredReadbackSatisfied(
+      { content: v4Result.content },
+      { passed: true, projection: v4Projection },
+      v4Profile.id,
+    ),
+    true,
+  );
+  assert.equal(
+    p03StructuredReadbackSatisfied(
+      { ...v4Result, structuredContent: { ...v4Projection, extra: 'unbounded' } },
+      { passed: true, projection: v4Projection },
+      v4Profile.id,
+    ),
+    false,
+  );
+  assert.equal(
+    p03StructuredReadbackSatisfied(
+      v4Result,
+      { passed: false, projection: v4Projection },
+      v4Profile.id,
     ),
     false,
   );

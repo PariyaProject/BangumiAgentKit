@@ -13,6 +13,8 @@ import {
   P03_ANSWER_CHECK_FIELDS,
   P03_FRESH_PUBLIC_PROFILE_IDS,
   P03_V3_PROFILE_ID,
+  P03_V4_PROFILE_ID,
+  p03StructuredReadbackSatisfied,
   validateP03McpTextProjection,
   validateP03ResultSummary,
   verifyP03Answer,
@@ -99,6 +101,7 @@ const REPORT_FIELDS = [
   'answerCheckMethod',
   'mcpTextProjectionValid',
   'structuredContentReadbackAvailable',
+  'structuredContentCompatible',
   'answerSha256',
   'answerUtf8Bytes',
   'answerChecks',
@@ -140,6 +143,7 @@ const RECEIPT_PAYLOAD_FIELDS = [
   'resultStatus',
   'mcpTextProjectionValid',
   'structuredContentReadbackAvailable',
+  'structuredContentCompatible',
   'eventStreamParsed',
   'turnCompleted',
   'codexMcpToolEventCount',
@@ -177,7 +181,7 @@ function p03CodexErrorSummaryIsValid(profileId, summary) {
   ) {
     return false;
   }
-  if (profileId !== P03_V3_PROFILE_ID) {
+  if (![P03_V3_PROFILE_ID, P03_V4_PROFILE_ID].includes(profileId)) {
     return (
       summary.codexErrorItemCount === 0 &&
       summary.blockedWebSearchErrorItemCount === 0 &&
@@ -192,12 +196,14 @@ function p03CodexErrorSummaryIsValid(profileId, summary) {
 }
 
 function receiptKindFor(profile) {
+  if (profile?.id === P03_V4_PROFILE_ID) return 'p03-person-name-cn-agent-mcp-runner-receipt-v4';
   return profile?.id === P03_V3_PROFILE_ID
     ? 'p03-person-name-cn-agent-mcp-runner-receipt-v3'
     : 'p03-person-name-cn-agent-mcp-runner-receipt-v2';
 }
 
 function reportProfileName(profile) {
+  if (profile?.id === P03_V4_PROFILE_ID) return 'codex-luna-max-agent-mcp-matrix-v4';
   return profile?.id === P03_V3_PROFILE_ID
     ? 'codex-luna-max-agent-mcp-matrix-v3'
     : 'codex-luna-max-agent-mcp-matrix-v2';
@@ -287,6 +293,7 @@ export function buildP03V2RunnerReceiptPayload(report, { eventStreamSha256, serv
     resultStatus: report.resultStatus,
     mcpTextProjectionValid: report.mcpTextProjectionValid,
     structuredContentReadbackAvailable: report.structuredContentReadbackAvailable,
+    structuredContentCompatible: report.structuredContentCompatible,
     eventStreamParsed: report.eventStreamParsed,
     turnCompleted: report.turnCompleted,
     codexMcpToolEventCount: report.codexMcpToolEventCount,
@@ -388,7 +395,8 @@ export function validateP03V2ProfileReport(report, claim, reportBytes = null) {
     answer:
       report.answerCheckMethod === profile.answerCheckMethod &&
       report.mcpTextProjectionValid === true &&
-      report.structuredContentReadbackAvailable === false &&
+      typeof report.structuredContentReadbackAvailable === 'boolean' &&
+      report.structuredContentCompatible === true &&
       /^[0-9a-f]{64}$/u.test(report.answerSha256 ?? '') &&
       Number.isSafeInteger(report.answerUtf8Bytes) &&
       report.answerUtf8Bytes > 0 &&
@@ -505,6 +513,17 @@ export function writeP03V2PersonNameCnReport(
   const call = completedMcpCalls?.[0];
   const text = call?.result?.content?.find((item) => item?.type === 'text')?.text;
   const result = resultSummary;
+  const textProjection = profile
+    ? validateP03McpTextProjection(text, result, profile.id)
+    : { passed: false, projection: null };
+  const structuredContentReadbackAvailable =
+    Boolean(call?.result) &&
+    typeof call.result === 'object' &&
+    !Array.isArray(call.result) &&
+    Object.hasOwn(call.result, 'structuredContent');
+  const structuredContentCompatible = Boolean(
+    profile && p03StructuredReadbackSatisfied(call?.result, textProjection, profile.id),
+  );
   if (
     !profile ||
     claim?.state !== 'CLAIMED' ||
@@ -517,7 +536,9 @@ export function writeP03V2PersonNameCnReport(
     events.eventStreamParsed !== true ||
     events.turnCompleted !== true ||
     events.mcpTextProjectionValid !== true ||
-    events.structuredContentReadbackAvailable !== false ||
+    events.structuredContentReadbackAvailable !== structuredContentReadbackAvailable ||
+    events.structuredContentCompatible !== true ||
+    events.structuredContentCompatible !== structuredContentCompatible ||
     events.codexMcpToolEventCount !== 1 ||
     events.codexErrorCountsMatch !== true ||
     !p03CodexErrorSummaryIsValid(profile.id, events) ||
@@ -548,9 +569,9 @@ export function writeP03V2PersonNameCnReport(
     call?.tool !== profile.toolName ||
     canonicalAgentMcpProfileJson(call?.arguments) !==
       canonicalAgentMcpProfileJson(profile.calls[0].arguments) ||
-    call?.result?.structuredContent !== undefined ||
     !validateP03ResultSummary(result, profile.calls[0].arguments, profile.id) ||
-    !validateP03McpTextProjection(text, result, profile.id).passed
+    !textProjection.passed ||
+    !structuredContentCompatible
   ) {
     return { passed: false, reason: 'P03_V2_RUNNER_GATE_INVALID' };
   }
@@ -610,7 +631,8 @@ export function writeP03V2PersonNameCnReport(
     deniedCallCount: serverSummary.deniedCallCount,
     answerCheckMethod: profile.answerCheckMethod,
     mcpTextProjectionValid: true,
-    structuredContentReadbackAvailable: false,
+    structuredContentReadbackAvailable,
+    structuredContentCompatible,
     answerSha256: sha256(answer),
     answerUtf8Bytes: Buffer.byteLength(answer, 'utf8'),
     answerChecks: answerResult.answerChecks,

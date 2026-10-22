@@ -5,6 +5,7 @@ import {
   P03_PROFILE_ID,
   P03_V2_PROFILE_ID,
   P03_V3_PROFILE_ID,
+  P03_V4_PROFILE_ID,
   createP03McpTextProjection,
   summarizeP03PersonProfileToolResult,
   validateP03McpTextProjection,
@@ -16,6 +17,7 @@ import { getAgentMcpProfileById } from '../../scripts/lib/agent-mcp-profile-clai
 const profile = getAgentMcpProfileById(P03_PROFILE_ID);
 const v2Profile = getAgentMcpProfileById(P03_V2_PROFILE_ID);
 const v3Profile = getAgentMcpProfileById(P03_V3_PROFILE_ID);
+const v4Profile = getAgentMcpProfileById(P03_V4_PROFILE_ID);
 
 function resultFixture() {
   return {
@@ -358,6 +360,50 @@ test('P03 v3 projection is bound to its distinct five-row public profile', () =>
   assert.throws(
     () => createP03McpTextProjection(overLimitSummary, v3Profile.id),
     /requires a validated profile result summary/u,
+  );
+});
+
+test('P03 v4 projection is bound to its distinct five-row public profile', () => {
+  const result = resultFixture();
+  result.person = { id: 54025, name: 'Selected public person', nameCn: '公开人物' };
+  result.coverage.subjects = {
+    observed: 18,
+    returned: 5,
+    truncated: true,
+    sourceCompleteness: 'undocumented',
+  };
+  result.credits.subjects = Array.from({ length: 5 }, (_, index) => ({
+    id: 601 + index,
+    name: `Source title ${index + 1}`,
+    nameCnSource: `来源中文名${index + 1}`,
+  }));
+
+  assert.ok(v4Profile);
+  assert.notEqual(v4Profile.id, v3Profile.id);
+  assert.notEqual(v4Profile.argumentProfile, v3Profile.argumentProfile);
+  assert.notEqual(v4Profile.claimLabelName, v3Profile.claimLabelName);
+  assert.notEqual(v4Profile.reportPath, v3Profile.reportPath);
+  assert.equal(v4Profile.calls[0].arguments.personId, 54025);
+  assert.equal(v4Profile.calls[0].arguments.maxSubjects, 5);
+
+  const summary = summarizeP03PersonProfileToolResult(
+    result,
+    v4Profile.calls[0].arguments,
+    v4Profile.id,
+  );
+  const projection = createP03McpTextProjection(summary, v4Profile.id);
+  assert.equal(summary.coverage.subjectsReturned, 5);
+  assert.equal(summary.positiveNameCnRowsObserved, 5);
+  assert.equal(summary.nameCnRowsOmittedFromText, 0);
+  assert.equal(projection.sourceNameCnRows.length, 5);
+  assert.equal(validateP03ResultSummary(summary, v4Profile.calls[0].arguments, v4Profile.id), true);
+  assert.equal(
+    validateP03McpTextProjection(JSON.stringify(projection), summary, v4Profile.id).passed,
+    true,
+  );
+  assert.equal(
+    validateP03ResultSummary(summary, v3Profile.calls[0].arguments, v3Profile.id),
+    false,
   );
 });
 

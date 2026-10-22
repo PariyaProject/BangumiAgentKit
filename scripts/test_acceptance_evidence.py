@@ -10582,20 +10582,24 @@ class P03FreshPublicV2ProfileRouteTests(unittest.TestCase):
             ),
         )
 
-    def test_only_v3_accepts_bounded_classified_web_search_errors(self):
-        v3_profile_id = GENERATOR.CODEX_P03_V3_PROFILE_ID
+    def test_only_v3_and_v4_accept_bounded_classified_web_search_errors(self):
+        fresh_profile_ids = (
+            GENERATOR.CODEX_P03_V3_PROFILE_ID,
+            GENERATOR.CODEX_P03_V4_PROFILE_ID,
+        )
         v2_profile_id = GENERATOR.CODEX_P03_V2_PROFILE_ID
-        for count in range(4):
-            self.assertTrue(
-                GENERATOR.codex_p03_profile_error_summary_is_valid(
-                    {
-                        'codexErrorItemCount': count,
-                        'blockedWebSearchErrorItemCount': count,
-                        'unexpectedCodexErrorItemCount': 0,
-                    },
-                    v3_profile_id,
-                ),
-            )
+        for profile_id in fresh_profile_ids:
+            for count in range(4):
+                self.assertTrue(
+                    GENERATOR.codex_p03_profile_error_summary_is_valid(
+                        {
+                            'codexErrorItemCount': count,
+                            'blockedWebSearchErrorItemCount': count,
+                            'unexpectedCodexErrorItemCount': 0,
+                        },
+                        profile_id,
+                    ),
+                )
         for invalid in (
             {
                 'codexErrorItemCount': 4,
@@ -10618,12 +10622,13 @@ class P03FreshPublicV2ProfileRouteTests(unittest.TestCase):
                 'unexpectedCodexErrorItemCount': 0,
             },
         ):
-            self.assertFalse(
-                GENERATOR.codex_p03_profile_error_summary_is_valid(
-                    invalid,
-                    v3_profile_id,
-                ),
-            )
+            for profile_id in fresh_profile_ids:
+                self.assertFalse(
+                    GENERATOR.codex_p03_profile_error_summary_is_valid(
+                        invalid,
+                        profile_id,
+                    ),
+                )
         self.assertTrue(
             GENERATOR.codex_p03_profile_error_summary_is_valid(
                 {
@@ -10838,6 +10843,65 @@ class P03FreshPublicV3ProfileRouteTests(unittest.TestCase):
                 {
                     'bangumi.get_person_profile': {
                         Path(GENERATOR.CODEX_P03_V3_REPORT_RELATIVE_PATH).name,
+                    },
+                },
+            )
+
+
+class P03FreshPublicV4ProfileRouteTests(unittest.TestCase):
+    def test_v4_profile_is_distinct_bounded_and_keeps_frontier_partial(self):
+        profile = GENERATOR.CODEX_P03_V4_PROFILE
+        arguments = profile['calls'][0]['arguments']
+        self.assertEqual(profile['id'], 'p03-person-name-cn-agent-mcp-v4')
+        self.assertEqual(profile['frontierId'], 'P03')
+        self.assertEqual(profile['acceptanceScope'], 'agent-mcp-matrix-only')
+        self.assertEqual(profile['calls'][0]['toolName'], 'bangumi.get_person_profile')
+        self.assertEqual(arguments['personId'], 54025)
+        self.assertEqual(arguments['maxSubjects'], 5)
+        self.assertEqual(arguments['maxCharacters'], 1)
+        self.assertIs(arguments['includeCredits'], True)
+        self.assertIs(arguments['includeChronology'], False)
+        self.assertNotEqual(profile['id'], GENERATOR.CODEX_P03_V2_PROFILE_ID)
+        self.assertNotEqual(profile['id'], GENERATOR.CODEX_P03_V3_PROFILE_ID)
+        self.assertNotEqual(profile['calls'], GENERATOR.CODEX_P03_V3_PROFILE['calls'])
+        self.assertTrue(GENERATOR.codex_p03_v4_frontier_is_partial())
+        frontier = json.loads((GENERATOR.ROOT / 'docs/product/frontier-ledger.json').read_text())
+        p03 = next(record for record in frontier['records'] if record['id'] == 'P03')
+        self.assertIn(
+            GENERATOR.CODEX_P03_V4_SELECTION_EVIDENCE_RELATIVE_PATH,
+            p03['source_refs'],
+        )
+        report_name = Path(GENERATOR.CODEX_P03_V4_REPORT_RELATIVE_PATH).name
+        self.assertIn(report_name, [path.name for path in GENERATOR.model_mcp_e2e_report_paths()])
+        self.assertFalse(GENERATOR.codex_p03_v4_profile_report_is_valid({}))
+        self.assertEqual(GENERATOR.CODEX_P03_V4_REPORT_FIELDS, GENERATOR.CODEX_P03_V2_REPORT_FIELDS)
+
+    def test_v4_report_route_adds_only_the_registered_person_profile_matrix_row(self):
+        with tempfile.TemporaryDirectory(prefix='p03-v4-matrix-route-') as directory:
+            live_probe_dir = Path(directory)
+            report_path = live_probe_dir / Path(GENERATOR.CODEX_P03_V4_REPORT_RELATIVE_PATH).name
+            report_path.write_text(
+                json.dumps({
+                    'evidenceKind': GENERATOR.CODEX_P03_V4_EVIDENCE_KIND,
+                    'profileId': GENERATOR.CODEX_P03_V4_PROFILE_ID,
+                    'prNumber': 262,
+                }),
+                encoding='utf-8',
+            )
+            catalog = json.loads(GENERATOR.CATALOG.read_text(encoding='utf-8'))
+            with (
+                patch.object(GENERATOR, 'LIVE_PROBE_DIR', live_probe_dir),
+                patch.object(GENERATOR, 'codex_p03_profile_harness_status', return_value={'fixture': True}),
+                patch.object(GENERATOR, 'codex_p03_profile_epoch_harness_status', return_value={'fixture': True}),
+                patch.object(GENERATOR, 'codex_p03_profile_report_is_valid', return_value=True),
+                patch.object(GENERATOR, 'codex_p03_profile_report_matches_candidate_revision', return_value=True),
+            ):
+                sources = GENERATOR.model_mcp_e2e_sources(catalog)
+            self.assertEqual(
+                sources,
+                {
+                    'bangumi.get_person_profile': {
+                        Path(GENERATOR.CODEX_P03_V4_REPORT_RELATIVE_PATH).name,
                     },
                 },
             )

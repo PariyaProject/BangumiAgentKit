@@ -237,6 +237,34 @@
       ]
     },
     {
+      "id": "p03-person-name-cn-agent-mcp-v4",
+      "frontierId": "P03",
+      "epochId": "run95-p03-person-name-cn-fresh-profile-v4-20261022",
+      "toolName": "bangumi.get_person_profile",
+      "argumentProfile": "fixed-p03-person-name-cn-54025-5-subjects-1-character-v4",
+      "claimLabelName": "harness-r95-p03-person-name-cn-public-v4-claimed",
+      "reportPath": "docs/live-probes/p03-person-name-cn-public-v4-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-p03-person-name-cn-fresh-profile-v4-selection-2026-10-22.md",
+      "evidenceKind": "codex_cli_p03_person_name_cn_public_v4_agent_mcp",
+      "answerCheckMethod": "p03-positive-name-cn-source-rows-and-coverage-v4",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 16384,
+      "calls": [
+        {
+          "toolName": "bangumi.get_person_profile",
+          "arguments": {
+            "personId": 54025,
+            "includeCredits": true,
+            "maxSubjects": 5,
+            "maxCharacters": 1,
+            "includeChronology": false
+          }
+        }
+      ]
+    },
+    {
       "id": "p02-person-profile-offline-agent-mcp-v1",
       "frontierId": "P02",
       "epochId": "run95-p02-get-person-profile-agent-mcp-offline-20261016",
