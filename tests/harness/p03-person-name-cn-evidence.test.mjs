@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   P03_CANONICAL_COVERAGE_NOTE,
   P03_PROFILE_ID,
+  P03_V2_PROFILE_ID,
   summarizeP03PersonProfileToolResult,
   validateP03McpTextProjection,
   validateP03ResultSummary,
@@ -11,6 +12,7 @@ import {
 import { getAgentMcpProfileById } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 
 const profile = getAgentMcpProfileById(P03_PROFILE_ID);
+const v2Profile = getAgentMcpProfileById(P03_V2_PROFILE_ID);
 
 function resultFixture() {
   return {
@@ -93,6 +95,41 @@ test('P03 profile fixes one anonymous current person-profile call', () => {
   assert.equal(profile.calls[0].arguments.maxCharacters, 1);
   assert.equal(profile.model, 'gpt-6-luna');
   assert.equal(profile.reasoningEffort, 'max');
+});
+
+test('P03 v2 is an independent matrix-only profile bound to a fresh public person', () => {
+  assert.ok(v2Profile);
+  assert.notEqual(v2Profile.id, profile.id);
+  assert.notEqual(v2Profile.claimLabelName, profile.claimLabelName);
+  assert.notEqual(v2Profile.reportPath, profile.reportPath);
+  assert.equal(v2Profile.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.deepEqual(v2Profile.calls[0].arguments, {
+    personId: 19306,
+    includeCredits: true,
+    maxSubjects: 500,
+    maxCharacters: 1,
+    includeChronology: false,
+  });
+
+  const result = resultFixture();
+  result.person.id = 19306;
+  const summary = summarizeP03PersonProfileToolResult(
+    result,
+    v2Profile.calls[0].arguments,
+    v2Profile.id,
+  );
+  assert.equal(summary.personId, 19306);
+  assert.equal(validateP03ResultSummary(summary, v2Profile.calls[0].arguments, v2Profile.id), true);
+  assert.equal(validateP03ResultSummary(summary), false);
+  assert.throws(
+    () =>
+      summarizeP03PersonProfileToolResult(
+        result,
+        { ...v2Profile.calls[0].arguments, personId: 4765 },
+        v2Profile.id,
+      ),
+    /exact registered person-profile arguments/u,
+  );
 });
 
 test('P03 summary counts positive, empty and unavailable source values and bounds listed titles', () => {

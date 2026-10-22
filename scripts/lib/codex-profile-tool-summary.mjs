@@ -1,5 +1,6 @@
 import {
   P03_PROFILE_ID,
+  P03_V2_PROFILE_ID,
   summarizeP03PersonProfileToolResult,
 } from './p03-person-name-cn-evidence.mjs';
 import {
@@ -598,8 +599,8 @@ export function summarizeProfileToolResult(
         : null,
     };
   }
-  if (profileId === P03_PROFILE_ID) {
-    return summarizeP03PersonProfileToolResult(result, expectedArguments);
+  if (profileId === P03_PROFILE_ID || profileId === P03_V2_PROFILE_ID) {
+    return summarizeP03PersonProfileToolResult(result, expectedArguments, profileId);
   }
   if (profileId === P07_PROFILE_ID) {
     return summarizeP07PersonActivityToolResult(result, expectedArguments);

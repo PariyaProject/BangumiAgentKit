@@ -5,6 +5,7 @@ import {
 } from './agent-mcp-profile-claims.mjs';
 
 export const P03_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v1';
+export const P03_V2_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v2';
 export const P03_MAX_TITLE_BYTES = 160;
 export const P03_MAX_LISTED_ROWS = 6;
 export const P03_CANONICAL_COVERAGE_NOTE =
@@ -56,15 +57,20 @@ function resultPersonName(person) {
   return typeof value === 'string' ? clipUtf8(value).value : null;
 }
 
-export function summarizeP03PersonProfileToolResult(result, expectedArguments) {
+export function summarizeP03PersonProfileToolResult(
+  result,
+  expectedArguments,
+  profileId = P03_PROFILE_ID,
+) {
+  const profile = getAgentMcpProfileById(profileId);
   if (
-    !PROFILE ||
+    !profile ||
     !result ||
     typeof result !== 'object' ||
     Array.isArray(result) ||
     !expectedArguments ||
     canonicalAgentMcpProfileJson(expectedArguments) !==
-      canonicalAgentMcpProfileJson(PROFILE.calls[0].arguments)
+      canonicalAgentMcpProfileJson(profile.calls[0].arguments)
   ) {
     throw new TypeError('P03 summary requires the exact registered person-profile arguments.');
   }
@@ -288,8 +294,10 @@ export function validateP03McpTextProjection(text, resultSummary) {
 export function validateP03ResultSummary(
   summary,
   expectedArguments = PROFILE?.calls?.[0]?.arguments,
+  profileId = P03_PROFILE_ID,
 ) {
-  if (!PROFILE || !summary || typeof summary !== 'object' || Array.isArray(summary)) return false;
+  const profile = getAgentMcpProfileById(profileId);
+  if (!profile || !summary || typeof summary !== 'object' || Array.isArray(summary)) return false;
   const fields = [
     'personId',
     'personName',
@@ -303,7 +311,10 @@ export function validateP03ResultSummary(
   ];
   if (
     canonicalAgentMcpProfileJson(Object.keys(summary).sort()) !==
-    canonicalAgentMcpProfileJson([...fields].sort())
+      canonicalAgentMcpProfileJson([...fields].sort()) ||
+    !expectedArguments ||
+    canonicalAgentMcpProfileJson(expectedArguments) !==
+      canonicalAgentMcpProfileJson(profile.calls[0].arguments)
   )
     return false;
   const counts = summary.nameCnSourceCounts;

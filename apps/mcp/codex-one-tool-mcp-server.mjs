@@ -1173,6 +1173,9 @@ async function main(argv = process.argv.slice(2)) {
           };
         }
         const toolPresentation = presentMcpToolResult(expectedToolName, result);
+        if (config.profile?.id === 'p03-person-name-cn-agent-mcp-v2') {
+          return { content: [{ type: 'text', text: toolPresentation.text }] };
+        }
         return {
           content: [{ type: 'text', text: toolPresentation.text }],
           ...(toolPresentation.structuredContent

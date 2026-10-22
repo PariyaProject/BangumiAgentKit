@@ -150,6 +150,7 @@ import { validateC01SanitizedReportFile } from './acceptance/write-c01-rating-co
 import { validateC03SanitizedReportFile } from './acceptance/write-c03-profile-report.mjs';
 import { validateC03PersonActivityOfflineV2SanitizedReportFile } from './acceptance/write-c03-person-activity-offline-v2-report.mjs';
 import { validateP03SanitizedReportFile } from './acceptance/write-p03-person-name-cn-report.mjs';
+import { validateP03V2SanitizedReportFile } from './acceptance/write-p03-person-name-cn-v2-report.mjs';
 import { validateP07SanitizedReportFile } from './acceptance/write-p07-person-season-report.mjs';
 import { validateS05SanitizedReportFile } from './acceptance/write-s05-person-activity-report.mjs';
 import { validateS01SanitizedReportFile } from './acceptance/write-s01-annual-tv-voice-report.mjs';
@@ -4532,6 +4533,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateC02SanitizedReportFile(claim, root, reportPath);
     case 'p03-person-name-cn-agent-mcp-v1':
       return validateP03SanitizedReportFile(claim, root, reportPath);
+    case 'p03-person-name-cn-agent-mcp-v2':
+      return validateP03V2SanitizedReportFile(claim, root, reportPath);
     case 'p07-person-season-distribution-agent-mcp-v1':
       return validateP07SanitizedReportFile(claim, root, reportPath);
     case 's05-bounded-non-tv-voice-agent-mcp-v1':

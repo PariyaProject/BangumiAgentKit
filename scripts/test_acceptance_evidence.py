@@ -10551,6 +10551,149 @@ class P02OfflineProfileReportValidationTests(unittest.TestCase):
         )
 
 
+class P03FreshPublicV2ProfileRouteTests(unittest.TestCase):
+    def test_v2_profile_is_fresh_and_frontier_remains_partial(self):
+        profile = GENERATOR.CODEX_P03_V2_PROFILE
+        self.assertEqual(profile['id'], 'p03-person-name-cn-agent-mcp-v2')
+        self.assertEqual(profile['frontierId'], 'P03')
+        self.assertEqual(profile['acceptanceScope'], 'agent-mcp-matrix-only')
+        self.assertEqual(profile['calls'][0]['toolName'], 'bangumi.get_person_profile')
+        self.assertEqual(profile['calls'][0]['arguments']['personId'], 19306)
+        self.assertEqual(profile['calls'][0]['arguments']['includeChronology'], False)
+        self.assertNotEqual(profile['id'], GENERATOR.CODEX_P03_V2_PROFILE_ID.replace('-v2', '-v1'))
+        self.assertTrue(GENERATOR.codex_p03_v2_frontier_is_partial())
+        self.assertIn(
+            Path(GENERATOR.CODEX_P03_V2_REPORT_RELATIVE_PATH).name,
+            [path.name for path in GENERATOR.model_mcp_e2e_report_paths()],
+        )
+        self.assertFalse(GENERATOR.codex_p03_v2_profile_report_is_valid({}))
+        self.assertTrue(
+            GENERATOR.codex_p03_v2_same_reviewer_identity(
+                'gpt-6-luna-max-run95-pr260-round1',
+                'gpt-6-luna-max-run95-pr260-round2',
+                260,
+            ),
+        )
+        self.assertFalse(
+            GENERATOR.codex_p03_v2_same_reviewer_identity(
+                'gpt-6-luna-max-run95-pr260-round1',
+                'gpt-6-luna-max-run95-pr261-round2',
+                260,
+            ),
+        )
+
+    def test_report_bound_review_refresh_is_same_identity_and_evidence_only(self):
+        source = 'a' * 40
+        candidate = 'b' * 40
+        base = 'c' * 40
+        reviewer = 'gpt-6-luna-max-run95-pr260-round1'
+        allowed_paths = {
+            GENERATOR.CODEX_P03_V2_REPORT_RELATIVE_PATH,
+            'docs/product/frontier-ledger.json',
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+        }
+        report = {
+            'prNumber': 260,
+            'sourceRevision': source,
+            'baseSha': base,
+            'reviewerId': reviewer,
+            'mcpBundleSha256': 'd' * 64,
+        }
+        epoch_status = {
+            'run': {'number': 95, 'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 260}},
+            'epoch': {
+                'github_state': 'OPEN',
+                'pr_head_sha': candidate,
+                'pr_head_ref_name': 'codex/p03-v2',
+                'pr_base_ref_name': 'master',
+                'pr_is_draft': False,
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_P03_V2_EPOCH_ID,
+                    'state': 'REVIEW_PASSED',
+                    'pr_number': 260,
+                    'base_branch': 'master',
+                    'base_sha': base,
+                    'reviewed_base_sha': base,
+                    'candidate_sha': candidate,
+                    'review_pass_sha': candidate,
+                    'branch': 'codex/p03-v2',
+                    'ci': {'sha': candidate, 'status': 'SUCCESS'},
+                    'advances_frontier_ids': ['P03'],
+                    'scope_closure': {'related_work_remaining': False},
+                    'review_history': [
+                        {
+                            'candidate_sha': source,
+                            'reviewed_base_sha': base,
+                            'reviewer_id': reviewer,
+                            'verdict': 'PASS',
+                        },
+                        {
+                            'candidate_sha': candidate,
+                            'reviewed_base_sha': base,
+                            'reviewer_id': 'gpt-6-luna-max-run95-pr260-round2',
+                            'verdict': 'PASS',
+                        },
+                    ],
+                },
+            },
+        }
+        with (
+            patch.object(GENERATOR, 'codex_p03_v2_profile_report_candidate_paths', return_value=allowed_paths),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='d' * 64),
+        ):
+            self.assertTrue(
+                GENERATOR.codex_p03_v2_candidate_binding_is_current(report, epoch_status),
+            )
+            merged_epoch_status = {
+                **epoch_status,
+                'epoch': {
+                    **epoch_status['epoch'],
+                    'github_state': 'MERGED',
+                    'state': {**epoch_status['epoch']['state'], 'state': 'MERGED'},
+                },
+            }
+            self.assertTrue(
+                GENERATOR.codex_p03_v2_candidate_binding_is_current(
+                    report,
+                    merged_epoch_status,
+                ),
+            )
+            altered = set(allowed_paths) | {'packages/tools/src/definitions/read-tools.ts'}
+            patcher = patch.object(
+                GENERATOR, 'codex_p03_v2_profile_report_candidate_paths', return_value=altered,
+            )
+            with patcher:
+                self.assertFalse(
+                    GENERATOR.codex_p03_v2_candidate_binding_is_current(report, epoch_status),
+                )
+
+    def test_report_route_adds_only_the_registered_person_profile_matrix_row(self):
+        with tempfile.TemporaryDirectory(prefix='p03-v2-matrix-route-') as directory:
+            live_probe_dir = Path(directory)
+            report_path = live_probe_dir / Path(GENERATOR.CODEX_P03_V2_REPORT_RELATIVE_PATH).name
+            report_path.write_text(
+                json.dumps({'evidenceKind': GENERATOR.CODEX_P03_V2_EVIDENCE_KIND, 'prNumber': 260}),
+                encoding='utf-8',
+            )
+            catalog = json.loads(GENERATOR.CATALOG.read_text(encoding='utf-8'))
+            with (
+                patch.object(GENERATOR, 'LIVE_PROBE_DIR', live_probe_dir),
+                patch.object(GENERATOR, 'codex_p03_v2_profile_harness_status', return_value={'fixture': True}),
+                patch.object(GENERATOR, 'codex_p03_v2_profile_epoch_harness_status', return_value={'fixture': True}),
+                patch.object(GENERATOR, 'codex_p03_v2_profile_report_is_valid', return_value=True),
+                patch.object(GENERATOR, 'codex_p03_v2_profile_report_matches_candidate_revision', return_value=True),
+            ):
+                sources = GENERATOR.model_mcp_e2e_sources(catalog)
+            self.assertEqual(
+                sources,
+                {
+                    'bangumi.get_person_profile': {
+                        Path(GENERATOR.CODEX_P03_V2_REPORT_RELATIVE_PATH).name,
+                    },
+                },
+            )
+
+
 class G06CastOfflineProfileReportValidationTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='g06-cast-offline-profile-report-test-')
