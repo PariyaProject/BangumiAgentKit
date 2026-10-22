@@ -8800,6 +8800,113 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
             'bangumi.get_subject', '✅<br>`docs/live-probes/agent-mcp-fixture.json`', 'agent_mcp'
         ))
 
+    def test_p03_v4_report_reference_maps_only_the_person_profile_agent_mcp_cell(self):
+        profile = TABLE_CHECKER.P03_V4_AGENT_MCP_PROFILE
+        calls = profile['calls']
+        arguments_sha = hashlib.sha256(json.dumps(
+            [call['arguments'] for call in calls],
+            sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
+        registry_sha = hashlib.sha256(json.dumps(
+            profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
+        relative_path = profile['reportPath']
+        source = 'a' * 40
+        base = 'b' * 40
+        claim_id = 'profile-run-95-pr-261-aaaaaaaaaaaa-1700000000000'
+        payload = {
+            'kind': 'p03-person-name-cn-agent-mcp-runner-receipt-v4',
+            'profileId': profile['id'],
+            'claimId': claim_id,
+            'runNumber': 95,
+            'prNumber': 261,
+            'sourceRevision': source,
+            'baseSha': base,
+            'ciSha': source,
+            'ciStatus': 'SUCCESS',
+            'toolName': profile['toolName'],
+            'argumentProfile': profile['argumentProfile'],
+        }
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': profile['evidenceKind'],
+            'profile': 'codex-luna-max-agent-mcp-matrix-v4',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'runNumber': 95,
+            'frontierId': 'P03',
+            'scenarioId': None,
+            'acceptanceScope': 'agent-mcp-matrix-only',
+            'epochId': profile['epochId'],
+            'profileId': profile['id'],
+            'prNumber': 261,
+            'claimId': claim_id,
+            'toolName': profile['toolName'],
+            'argumentProfile': profile['argumentProfile'],
+            'expectedArgumentsSha256': arguments_sha,
+            'registrySha256': registry_sha,
+            'sourceRevision': source,
+            'baseSha': base,
+            'ciSha': source,
+            'ciStatus': 'SUCCESS',
+            'resultStatus': 'SUCCESS',
+            'processExitCode': 0,
+            'eventStreamParsed': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'serverToolNames': [profile['toolName']],
+            'mcpServerNames': ['bgk_p03_name_cn'],
+            'mcpTextProjectionValid': True,
+            'structuredContentCompatible': True,
+            'sourceCompletenessDocumented': False,
+            'resultCounters': {
+                'subjectsObserved': 18,
+                'subjectsReturned': 5,
+                'subjectsTruncated': True,
+                'returnedCreditRowsObserved': 5,
+                'positiveNameCnRowsObserved': 5,
+            },
+            'answerChecks': {'exactPositiveRows': True},
+            'privacy': {
+                'authProfile': 'anonymous',
+                'oauthAttempted': False,
+                'accountDataRead': False,
+                'writesAttempted': False,
+                'communityRead': False,
+                'qqPipelineTested': False,
+                'timClientTested': False,
+                'promptStored': False,
+                'answerStored': False,
+                'rawSourceRowsStored': False,
+                'rawToolResultStored': False,
+                'eventStreamStored': False,
+                'credentialsStored': False,
+            },
+            'runnerReceipt': {'payload': payload, 'signature': 'signed-fixture'},
+        }
+        report_path = self.root / relative_path
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        cell = f'✅<br>`{relative_path}`'
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_person_profile', cell, 'agent_mcp',
+        ))
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_person', cell, 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_person', error)
+
+        report['toolName'] = 'bangumi.get_person'
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_person_profile', cell, 'agent_mcp',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_person_profile', error)
+
     def test_c04_report_reference_maps_only_its_two_agent_mcp_tools(self):
         relative_path = 'docs/live-probes/c04-cohort-comparison-agent-mcp-run95.json'
         tool_names = [
@@ -10582,20 +10689,24 @@ class P03FreshPublicV2ProfileRouteTests(unittest.TestCase):
             ),
         )
 
-    def test_only_v3_accepts_bounded_classified_web_search_errors(self):
-        v3_profile_id = GENERATOR.CODEX_P03_V3_PROFILE_ID
+    def test_only_v3_and_v4_accept_bounded_classified_web_search_errors(self):
+        fresh_profile_ids = (
+            GENERATOR.CODEX_P03_V3_PROFILE_ID,
+            GENERATOR.CODEX_P03_V4_PROFILE_ID,
+        )
         v2_profile_id = GENERATOR.CODEX_P03_V2_PROFILE_ID
-        for count in range(4):
-            self.assertTrue(
-                GENERATOR.codex_p03_profile_error_summary_is_valid(
-                    {
-                        'codexErrorItemCount': count,
-                        'blockedWebSearchErrorItemCount': count,
-                        'unexpectedCodexErrorItemCount': 0,
-                    },
-                    v3_profile_id,
-                ),
-            )
+        for profile_id in fresh_profile_ids:
+            for count in range(4):
+                self.assertTrue(
+                    GENERATOR.codex_p03_profile_error_summary_is_valid(
+                        {
+                            'codexErrorItemCount': count,
+                            'blockedWebSearchErrorItemCount': count,
+                            'unexpectedCodexErrorItemCount': 0,
+                        },
+                        profile_id,
+                    ),
+                )
         for invalid in (
             {
                 'codexErrorItemCount': 4,
@@ -10618,12 +10729,13 @@ class P03FreshPublicV2ProfileRouteTests(unittest.TestCase):
                 'unexpectedCodexErrorItemCount': 0,
             },
         ):
-            self.assertFalse(
-                GENERATOR.codex_p03_profile_error_summary_is_valid(
-                    invalid,
-                    v3_profile_id,
-                ),
-            )
+            for profile_id in fresh_profile_ids:
+                self.assertFalse(
+                    GENERATOR.codex_p03_profile_error_summary_is_valid(
+                        invalid,
+                        profile_id,
+                    ),
+                )
         self.assertTrue(
             GENERATOR.codex_p03_profile_error_summary_is_valid(
                 {
@@ -10838,6 +10950,178 @@ class P03FreshPublicV3ProfileRouteTests(unittest.TestCase):
                 {
                     'bangumi.get_person_profile': {
                         Path(GENERATOR.CODEX_P03_V3_REPORT_RELATIVE_PATH).name,
+                    },
+                },
+            )
+
+
+class P03FreshPublicV4ProfileRouteTests(unittest.TestCase):
+    def test_v4_profile_is_distinct_bounded_and_keeps_frontier_partial(self):
+        profile = GENERATOR.CODEX_P03_V4_PROFILE
+        arguments = profile['calls'][0]['arguments']
+        self.assertEqual(profile['id'], 'p03-person-name-cn-agent-mcp-v4')
+        self.assertEqual(profile['frontierId'], 'P03')
+        self.assertEqual(profile['acceptanceScope'], 'agent-mcp-matrix-only')
+        self.assertEqual(profile['calls'][0]['toolName'], 'bangumi.get_person_profile')
+        self.assertEqual(arguments['personId'], 54025)
+        self.assertEqual(arguments['maxSubjects'], 5)
+        self.assertEqual(arguments['maxCharacters'], 1)
+        self.assertIs(arguments['includeCredits'], True)
+        self.assertIs(arguments['includeChronology'], False)
+        self.assertNotEqual(profile['id'], GENERATOR.CODEX_P03_V2_PROFILE_ID)
+        self.assertNotEqual(profile['id'], GENERATOR.CODEX_P03_V3_PROFILE_ID)
+        self.assertNotEqual(profile['calls'], GENERATOR.CODEX_P03_V3_PROFILE['calls'])
+        self.assertTrue(GENERATOR.codex_p03_v4_frontier_is_partial())
+        frontier = json.loads((GENERATOR.ROOT / 'docs/product/frontier-ledger.json').read_text())
+        p03 = next(record for record in frontier['records'] if record['id'] == 'P03')
+        self.assertIn(
+            GENERATOR.CODEX_P03_V4_SELECTION_EVIDENCE_RELATIVE_PATH,
+            p03['source_refs'],
+        )
+        report_name = Path(GENERATOR.CODEX_P03_V4_REPORT_RELATIVE_PATH).name
+        self.assertIn(report_name, [path.name for path in GENERATOR.model_mcp_e2e_report_paths()])
+        self.assertFalse(GENERATOR.codex_p03_v4_profile_report_is_valid({}))
+        self.assertEqual(GENERATOR.CODEX_P03_V4_REPORT_FIELDS, GENERATOR.CODEX_P03_V2_REPORT_FIELDS)
+
+    def test_report_counts_from_reviewed_source_during_allowlisted_refresh(self):
+        profile = GENERATOR.CODEX_P03_V4_PROFILE
+        source = 'b' * 40
+        candidate = 'e' * 40
+        base = 'a' * 40
+        branch = 'codex/epoch-' + profile['epochId']
+        source_reviewer = 'gpt-6-luna-max-run95-pr261-round2'
+        report = {
+            'profileId': profile['id'],
+            'prNumber': 261,
+            'sourceRevision': source,
+            'baseSha': base,
+            'reviewerId': source_reviewer,
+            'mcpBundleSha256': 'd' * 64,
+        }
+        allowed_paths = {
+            profile['reportPath'],
+            'docs/product/frontier-ledger.json',
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/harness/frontier-ledger-data.test.mjs',
+            'tests/harness/agent-harness-cli.test.mjs',
+            'tests/integration/tool-e2e-acceptance.test.ts',
+        }
+        source_review = {
+            'review_number': 2,
+            'reviewer_id': source_reviewer,
+            'candidate_sha': source,
+            'reviewed_base_sha': base,
+            'verdict': 'PASS',
+        }
+        epoch_state = {
+            'epoch_id': profile['epochId'],
+            'state': 'REVIEW_PASSED',
+            'pr_number': 261,
+            'base_branch': 'master',
+            'base_sha': base,
+            'reviewed_base_sha': base,
+            'candidate_sha': source,
+            'review_pass_sha': source,
+            'branch': branch,
+            'ci': {'sha': source, 'status': 'SUCCESS'},
+            'advances_frontier_ids': ['P03'],
+            'scope_closure': {'related_work_remaining': False},
+            'review_history': [source_review],
+        }
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 261},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'pr_head_sha': candidate,
+                'pr_head_ref_name': branch,
+                'pr_base_ref_name': 'master',
+                'pr_is_draft': False,
+                'state': epoch_state,
+            },
+        }
+        with (
+            patch.object(
+                GENERATOR,
+                'codex_p03_profile_report_candidate_paths',
+                return_value=allowed_paths,
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_g26_candidate_bundle_sha256',
+                return_value=report['mcpBundleSha256'],
+            ),
+        ):
+            self.assertTrue(
+                GENERATOR.codex_p03_v4_candidate_binding_is_current(report, epoch_status),
+            )
+
+            current_review = {
+                'review_number': 3,
+                'reviewer_id': 'gpt-6-luna-max-run95-pr261-round3',
+                'candidate_sha': candidate,
+                'reviewed_base_sha': base,
+                'verdict': 'PASS',
+            }
+            current_status = {
+                **epoch_status,
+                'epoch': {
+                    **epoch_status['epoch'],
+                    'state': {
+                        **epoch_state,
+                        'candidate_sha': candidate,
+                        'review_pass_sha': candidate,
+                        'ci': {'sha': candidate, 'status': 'SUCCESS'},
+                        'review_history': [source_review, current_review],
+                    },
+                },
+            }
+            self.assertTrue(
+                GENERATOR.codex_p03_v4_candidate_binding_is_current(report, current_status),
+            )
+
+            unapproved_paths = allowed_paths | {'packages/tools/src/definitions/read-tools.ts'}
+            with patch.object(
+                GENERATOR,
+                'codex_p03_profile_report_candidate_paths',
+                return_value=unapproved_paths,
+            ):
+                self.assertFalse(
+                    GENERATOR.codex_p03_v4_candidate_binding_is_current(report, epoch_status),
+                )
+
+    def test_v4_report_route_adds_only_the_registered_person_profile_matrix_row(self):
+        with tempfile.TemporaryDirectory(prefix='p03-v4-matrix-route-') as directory:
+            live_probe_dir = Path(directory)
+            report_path = live_probe_dir / Path(GENERATOR.CODEX_P03_V4_REPORT_RELATIVE_PATH).name
+            report_path.write_text(
+                json.dumps({
+                    'evidenceKind': GENERATOR.CODEX_P03_V4_EVIDENCE_KIND,
+                    'profileId': GENERATOR.CODEX_P03_V4_PROFILE_ID,
+                    'prNumber': 262,
+                }),
+                encoding='utf-8',
+            )
+            catalog = json.loads(GENERATOR.CATALOG.read_text(encoding='utf-8'))
+            with (
+                patch.object(GENERATOR, 'LIVE_PROBE_DIR', live_probe_dir),
+                patch.object(GENERATOR, 'codex_p03_profile_harness_status', return_value={'fixture': True}),
+                patch.object(GENERATOR, 'codex_p03_profile_epoch_harness_status', return_value={'fixture': True}),
+                patch.object(GENERATOR, 'codex_p03_profile_report_is_valid', return_value=True),
+                patch.object(GENERATOR, 'codex_p03_profile_report_matches_candidate_revision', return_value=True),
+            ):
+                sources = GENERATOR.model_mcp_e2e_sources(catalog)
+            self.assertEqual(
+                sources,
+                {
+                    'bangumi.get_person_profile': {
+                        Path(GENERATOR.CODEX_P03_V4_REPORT_RELATIVE_PATH).name,
                     },
                 },
             )

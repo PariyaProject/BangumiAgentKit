@@ -2883,6 +2883,7 @@ CODEX_P02_EVIDENCE_REFRESH_PATHS = CODEX_P02_EVIDENCE_REFRESH_PATHS_BY_PROFILE[
 ]
 CODEX_P03_V2_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v2'
 CODEX_P03_V3_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v3'
+CODEX_P03_V4_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v4'
 CODEX_P03_V2_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == CODEX_P03_V2_PROFILE_ID
@@ -2891,9 +2892,14 @@ CODEX_P03_V3_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == CODEX_P03_V3_PROFILE_ID
 )
+CODEX_P03_V4_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == CODEX_P03_V4_PROFILE_ID
+)
 CODEX_P03_PROFILES = {
     CODEX_P03_V2_PROFILE_ID: CODEX_P03_V2_PROFILE,
     CODEX_P03_V3_PROFILE_ID: CODEX_P03_V3_PROFILE,
+    CODEX_P03_V4_PROFILE_ID: CODEX_P03_V4_PROFILE,
 }
 CODEX_P03_PUBLIC_PROFILE_IDS = frozenset(CODEX_P03_PROFILES)
 CODEX_P03_V2_EPOCH_ID = CODEX_P03_V2_PROFILE['epochId']
@@ -2935,12 +2941,39 @@ CODEX_P03_V3_REPORT_RELATIVE_PATH = CODEX_P03_V3_PROFILE['reportPath']
 CODEX_P03_V3_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_P03_V3_PROFILE['selectionEvidencePath']
 CODEX_P03_V3_EVIDENCE_KIND = CODEX_P03_V3_PROFILE['evidenceKind']
 CODEX_P03_V3_ANSWER_CHECK_METHOD = CODEX_P03_V3_PROFILE['answerCheckMethod']
+CODEX_P03_V4_EPOCH_ID = CODEX_P03_V4_PROFILE['epochId']
+CODEX_P03_V4_TOOL_NAME = CODEX_P03_V4_PROFILE['toolName']
+CODEX_P03_V4_ARGUMENT_PROFILE = CODEX_P03_V4_PROFILE['argumentProfile']
+CODEX_P03_V4_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_P03_V4_PROFILE['calls']],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_P03_V4_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_P03_V4_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_P03_V4_REPORT_RELATIVE_PATH = CODEX_P03_V4_PROFILE['reportPath']
+CODEX_P03_V4_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_P03_V4_PROFILE['selectionEvidencePath']
+CODEX_P03_V4_EVIDENCE_KIND = CODEX_P03_V4_PROFILE['evidenceKind']
+CODEX_P03_V4_ANSWER_CHECK_METHOD = CODEX_P03_V4_PROFILE['answerCheckMethod']
 CODEX_P03_PROFILE_EVIDENCE_REFRESH_PATHS_BY_ID = {
     profile_id: {
         profile['reportPath'],
         'docs/product/frontier-ledger.json',
         'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
-    }
+    } | ({
+        'scripts/agent-harness.mjs',
+        'scripts/check-tool-acceptance-table.py',
+        'scripts/generate-tool-acceptance-tasks.py',
+        'scripts/test_acceptance_evidence.py',
+        'tests/harness/frontier-ledger-data.test.mjs',
+        'tests/harness/agent-harness-cli.test.mjs',
+        'tests/integration/tool-e2e-acceptance.test.ts',
+    } if profile_id == CODEX_P03_V4_PROFILE_ID else set())
     for profile_id, profile in CODEX_P03_PROFILES.items()
 }
 CODEX_P03_V2_EVIDENCE_REFRESH_PATHS = {
@@ -3277,7 +3310,7 @@ CODEX_P03_V2_REPORT_FIELDS = {
     'unexpectedCodexErrorItemCount', 'nonMcpToolEventCount',
     'nonMcpToolTypes', 'shellToolCallCount', 'allowedCallCount', 'deniedCallCount',
     'answerCheckMethod', 'mcpTextProjectionValid', 'structuredContentReadbackAvailable',
-    'answerSha256', 'answerUtf8Bytes', 'answerChecks', 'resultCounters',
+    'structuredContentCompatible', 'answerSha256', 'answerUtf8Bytes', 'answerChecks', 'resultCounters',
     'sourceCompletenessDocumented', 'privacy', 'runnerReceipt',
 }
 CODEX_P03_V2_ANSWER_CHECK_FIELDS = {
@@ -3306,7 +3339,8 @@ CODEX_P03_V2_RECEIPT_PAYLOAD_FIELDS = {
     'frontierId', 'epochId', 'prNumber', 'sourceRevision', 'baseSha', 'ciSha', 'ciStatus',
     'reviewerId', 'bundleSha256', 'registrySha256', 'toolName', 'argumentProfile',
     'expectedArgumentsSha256', 'codexCliVersion', 'processExitCode', 'resultStatus',
-    'mcpTextProjectionValid', 'structuredContentReadbackAvailable', 'eventStreamParsed',
+    'mcpTextProjectionValid', 'structuredContentReadbackAvailable', 'structuredContentCompatible',
+    'eventStreamParsed',
     'turnCompleted', 'codexMcpToolEventCount', 'codexErrorItemCount',
     'blockedWebSearchErrorItemCount', 'unexpectedCodexErrorItemCount',
     'nonMcpToolEventCount', 'shellToolCallCount', 'allowedCallCount', 'deniedCallCount',
@@ -3319,6 +3353,12 @@ CODEX_P03_V3_COUNTER_FIELDS = CODEX_P03_V2_COUNTER_FIELDS
 CODEX_P03_V3_PRIVACY_FIELDS = CODEX_P03_V2_PRIVACY_FIELDS
 CODEX_P03_V3_RECEIPT_FIELDS = CODEX_P03_V2_RECEIPT_FIELDS
 CODEX_P03_V3_RECEIPT_PAYLOAD_FIELDS = CODEX_P03_V2_RECEIPT_PAYLOAD_FIELDS
+CODEX_P03_V4_REPORT_FIELDS = CODEX_P03_V2_REPORT_FIELDS
+CODEX_P03_V4_ANSWER_CHECK_FIELDS = CODEX_P03_V2_ANSWER_CHECK_FIELDS
+CODEX_P03_V4_COUNTER_FIELDS = CODEX_P03_V2_COUNTER_FIELDS
+CODEX_P03_V4_PRIVACY_FIELDS = CODEX_P03_V2_PRIVACY_FIELDS
+CODEX_P03_V4_RECEIPT_FIELDS = CODEX_P03_V2_RECEIPT_FIELDS
+CODEX_P03_V4_RECEIPT_PAYLOAD_FIELDS = CODEX_P03_V2_RECEIPT_PAYLOAD_FIELDS
 CODEX_G06_CAST_OFFLINE_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'g06-cast-offline-agent-mcp-matrix-v1'
@@ -7704,18 +7744,18 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
         'P03_FRESH_PUBLIC_PROFILE_IDS.includes(config.profile?.id)',
-        'return { content: [{ type: \'text\', text: toolPresentation.text }] };',
+        'createP03McpTextProjection(resultSummary, config.profile.id)',
     ),
     'scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs': (
         'P03_FRESH_PUBLIC_PROFILE_IDS.includes(PROFILE.id)',
-        'if (profileId !== P03_V3_PROFILE_ID)',
+        'if (![P03_V3_PROFILE_ID, P03_V4_PROFILE_ID].includes(profileId))',
         'summary.errorItemCount === 0',
         'summary.blockedWebSearchErrorItemCount === 0',
         'summary.unexpectedCodexErrorItemCount === 0',
         'summarizeCodexErrorItems(parsed.events)',
         'p03CodexErrorSummaryIsSafe(',
         "Object.hasOwn(events.completedMcpCalls[0]?.result ?? {}, 'structuredContent')",
-        'structuredReadbackExpected ? structuredReadback : !structuredContentPresent',
+        'p03StructuredReadbackSatisfied(',
         'writeP03V2PersonNameCnReport',
         "args[2] === '--profile-id' ? args[3] : P03_PROFILE_ID",
     ),
@@ -7724,11 +7764,11 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function validateP03V2SanitizedReportFile(',
         'export function writeP03V2PersonNameCnReport(',
         'report.resultCounters.subjectsReturned <= profileMaxSubjects',
-        'structuredContentReadbackAvailable: false',
+        'p03StructuredReadbackSatisfied(',
+        'report.structuredContentCompatible === true',
         'nameCnRowsOmittedFromText: result.nameCnRowsOmittedFromText',
         'blockedWebSearchErrorItemCount',
         'unexpectedCodexErrorItemCount',
-        'if (profileId !== P03_V3_PROFILE_ID)',
         'summary.codexErrorItemCount === 0',
     ),
     'scripts/acceptance/validate-p03-person-name-cn-v2-report.mjs': (
@@ -7745,20 +7785,21 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'docs/product/frontier-ledger.json': (
         'Keep P03 PARTIAL and uncredited.',
-        'P03 v1 (personId 4765), P03 v2 (personId 19306)',
-        'personId 58609 with maxSubjects=5',
+        'P03 v1/v2/v3 are terminal INCONCLUSIVE/no-report with retryAllowed=false',
+        'P03 v2 retains its strict zero-error gate',
+        'A distinct P03 v4 source selection for public personId 54025',
     ),
     'tests/harness/write-p03-person-name-cn-v2-report.test.mjs': (
         'P03 v2 writes a matrix-only signed report without person or title text',
         'P03 v2 rejects classified web-search errors in both writer and report validator',
-        'P03 v2 rejects unexpected structuredContent instead of relying on it',
+        'P03 v2 rejects conflicting structuredContent instead of relying on it',
     ),
     'tests/harness/agent-harness-cli.test.mjs': (
         'P03 v2 uses an independent one-shot claim',
         'leaves the terminal v1 profile untouched',
     ),
     'scripts/test_acceptance_evidence.py': (
-        'test_only_v3_accepts_bounded_classified_web_search_errors',
+        'test_only_v3_and_v4_accept_bounded_classified_web_search_errors',
         'test_report_bound_review_refresh_is_same_identity_and_evidence_only',
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
@@ -7766,7 +7807,7 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
         'def codex_p03_profile_subject_limit_is_valid(',
         'codex_p03_profile_subject_limit_is_valid(profile, counters)',
         'def codex_p03_profile_error_summary_is_valid(',
-        'if profile_id != CODEX_P03_V3_PROFILE_ID:',
+        'if profile_id not in {CODEX_P03_V3_PROFILE_ID, CODEX_P03_V4_PROFILE_ID}:',
         'return error_count == blocked_count == unexpected_count == 0',
         'blockedWebSearchErrorItemCount',
         'def codex_p03_v2_candidate_binding_is_current(',
@@ -7799,9 +7840,9 @@ CODEX_P03_V3_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs': (
         'P03_FRESH_PUBLIC_PROFILE_IDS.includes(profile.id)',
-        'if (profileId !== P03_V3_PROFILE_ID)',
+        'if (![P03_V3_PROFILE_ID, P03_V4_PROFILE_ID].includes(profileId))',
         'summary.errorItemCount <= MAX_BLOCKED_WEB_SEARCH_ERROR_ITEMS',
-        'structuredReadbackExpected ? structuredReadback : !structuredContentPresent',
+        'p03StructuredReadbackSatisfied(',
         'summarizeCodexErrorItems(parsed.events)',
         'p03CodexErrorSummaryIsSafe(',
         'writeP03V2PersonNameCnReport',
@@ -7837,9 +7878,9 @@ CODEX_P03_V3_PROFILE_IMPLEMENTATION_MARKERS = {
         'Any post-claim failure is terminal `INCONCLUSIVE`',
     ),
     'docs/product/frontier-ledger.json': (
-        'personId 58609 with maxSubjects=5',
-        'P03 v1 (personId 4765), P03 v2 (personId 19306)',
-        'At most three Codex error items are acceptable only when each is explicitly classified',
+        'P03 v1/v2/v3 are terminal INCONCLUSIVE/no-report with retryAllowed=false',
+        'P03 v2 retains its strict zero-error gate',
+        'A distinct P03 v4 source selection for public personId 54025',
         'Keep P03 PARTIAL and uncredited.',
     ),
     'tests/harness/p03-person-name-cn-evidence.test.mjs': (
@@ -7848,12 +7889,93 @@ CODEX_P03_V3_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'tests/harness/agent-mcp-profile-claims.test.mjs': (
         'p03-person-name-cn-agent-mcp-v3',
-        'fixed-p03-person-name-cn-58609-5-subjects-1-character-v3',
+        'p03v3.calls[0].arguments.personId, 58609',
+    ),
+}
+CODEX_P03_V4_PROFILE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "p03-person-name-cn-agent-mcp-v4"',
+        '"personId": 54025',
+        '"maxSubjects": 5',
+        '"claimLabelName": "harness-r95-p03-person-name-cn-public-v4-claimed"',
+    ),
+    'scripts/lib/p03-person-name-cn-evidence.mjs': (
+        "export const P03_V4_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v4'",
+        'P03_FRESH_PUBLIC_PROFILE_IDS.includes(profileId)',
+        'export function p03StructuredReadbackSatisfied(',
+    ),
+    'scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs': (
+        'P03_V4_PROFILE_ID',
+        'structuredContentCompatible',
+        'p03StructuredReadbackSatisfied(',
+        'writeP03V2PersonNameCnReport',
+        'p03-person-name-cn-agent-mcp-v4]',
+    ),
+    'scripts/acceptance/write-p03-person-name-cn-v2-report.mjs': (
+        'P03_V4_PROFILE_ID',
+        'p03StructuredReadbackSatisfied(',
+        'structuredContentCompatible',
+        'p03-person-name-cn-agent-mcp-runner-receipt-v4',
+        'codex-luna-max-agent-mcp-matrix-v4',
+    ),
+    'scripts/acceptance/validate-p03-person-name-cn-v2-report.mjs': (
+        'validateP03V2ProfileReport(report, claim, reportBytes)',
+    ),
+    'scripts/agent-harness.mjs': (
+        "case 'p03-person-name-cn-agent-mcp-v4':",
+        'validateP03V2SanitizedReportFile(claim, root, reportPath)',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        "CODEX_P03_V4_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v4'",
+        'CODEX_P03_V4_EVIDENCE_KIND',
+        'codex_p03_v4_profile_report_is_valid(',
+        "report.get('structuredContentCompatible') is not True",
+    ),
+    'docs/research/run95-p03-person-name-cn-fresh-profile-v4-selection-2026-10-22.md': (
+        'person ID `54025` appeared with the raw relation',
+        'The first five each had a non-empty `name_cn`',
+        'Any incomplete attempt is terminal `INCONCLUSIVE`',
+    ),
+    'docs/product/frontier-ledger.json': (
+        'public personId 54025',
+        'P03 v1/v2/v3 are terminal INCONCLUSIVE/no-report with retryAllowed=false',
+        'Never retry or recreate them',
+        'P03 v4 source selection',
+    ),
+    'tests/harness/run-p03-person-name-cn-agent-mcp.test.mjs': (
+        'P03 v4 MCP summary binds the new person and five-row public input',
+        'p03StructuredReadbackSatisfied(',
+        'v4Result',
+    ),
+    'tests/harness/write-p03-person-name-cn-v2-report.test.mjs': (
+        'P03 v4 writes a signed report when structuredContent exactly duplicates the bounded projection',
+        'P03 v2 rejects conflicting structuredContent instead of relying on it',
+    ),
+    'tests/harness/agent-harness-cli.test.mjs': (
+        "getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v4')",
+        'P03 v4 uses a distinct bounded one-shot claim',
+    ),
+    'tests/harness/agent-mcp-profile-claims.test.mjs': (
+        "getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v4')",
+        'p03v4.calls[0].arguments.personId, 54025',
+    ),
+    'tests/harness/codex-one-tool-mcp-server-p03-profile.test.mjs': (
+        'P03 v4 profile binds a distinct five-row person-profile call',
+        'personId: 54025',
+    ),
+    'tests/harness/p03-person-name-cn-evidence.test.mjs': (
+        'P03 v4 projection is bound to its distinct five-row public profile',
+        'v4Profile.calls[0].arguments.personId, 54025',
+    ),
+    'scripts/test_acceptance_evidence.py': (
+        'class P03FreshPublicV4ProfileRouteTests',
+        'test_v4_report_route_adds_only_the_registered_person_profile_matrix_row',
     ),
 }
 CODEX_P03_PROFILE_IMPLEMENTATION_MARKERS_BY_ID = {
     CODEX_P03_V2_PROFILE_ID: CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS,
     CODEX_P03_V3_PROFILE_ID: CODEX_P03_V3_PROFILE_IMPLEMENTATION_MARKERS,
+    CODEX_P03_V4_PROFILE_ID: CODEX_P03_V4_PROFILE_IMPLEMENTATION_MARKERS,
 }
 CODEX_P07_PROFILE_IMPLEMENTATION_MARKERS = {
     'docs/research/run95-p07-person-season-distribution-agent-mcp-source-contract-2026-10-16.md': (
@@ -16935,6 +17057,10 @@ def codex_p03_v3_profile_revision_has_implementation(revision: object) -> bool:
     return codex_p03_profile_revision_has_implementation(revision, CODEX_P03_V3_PROFILE_ID)
 
 
+def codex_p03_v4_profile_revision_has_implementation(revision: object) -> bool:
+    return codex_p03_profile_revision_has_implementation(revision, CODEX_P03_V4_PROFILE_ID)
+
+
 def codex_p03_profile_report_matches_candidate_revision(
     report_path: Path, revision: object, profile_id: object,
 ) -> bool:
@@ -16962,6 +17088,14 @@ def codex_p03_v3_profile_report_matches_candidate_revision(
 ) -> bool:
     return codex_p03_profile_report_matches_candidate_revision(
         report_path, revision, CODEX_P03_V3_PROFILE_ID,
+    )
+
+
+def codex_p03_v4_profile_report_matches_candidate_revision(
+    report_path: Path, revision: object,
+) -> bool:
+    return codex_p03_profile_report_matches_candidate_revision(
+        report_path, revision, CODEX_P03_V4_PROFILE_ID,
     )
 
 
@@ -16997,6 +17131,10 @@ def codex_p03_v2_frontier_is_partial(require_report_ref: bool = False) -> bool:
 
 def codex_p03_v3_frontier_is_partial(require_report_ref: bool = False) -> bool:
     return codex_p03_profile_frontier_is_partial(CODEX_P03_V3_PROFILE_ID, require_report_ref)
+
+
+def codex_p03_v4_frontier_is_partial(require_report_ref: bool = False) -> bool:
+    return codex_p03_profile_frontier_is_partial(CODEX_P03_V4_PROFILE_ID, require_report_ref)
 
 
 def codex_p03_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
@@ -17051,6 +17189,10 @@ def codex_p03_v2_profile_harness_status(pr_number: object) -> dict[str, object] 
 
 def codex_p03_v3_profile_harness_status(pr_number: object) -> dict[str, object] | None:
     return codex_p03_profile_harness_status(pr_number, CODEX_P03_V3_PROFILE_ID)
+
+
+def codex_p03_v4_profile_harness_status(pr_number: object) -> dict[str, object] | None:
+    return codex_p03_profile_harness_status(pr_number, CODEX_P03_V4_PROFILE_ID)
 
 
 def codex_p03_profile_disposition_matches_report(
@@ -17174,28 +17316,45 @@ def codex_p03_profile_candidate_binding_is_current(
         and latest_review.get('reviewed_base_sha') == report.get('baseSha')
         and latest_review.get('verdict') == 'PASS'
     )
+    source_candidate_refresh = (
+        active_pr
+        and epoch.get('candidate_sha') == report.get('sourceRevision')
+        and epoch.get('review_pass_sha') == report.get('sourceRevision')
+        and isinstance(epoch.get('ci'), dict)
+        and epoch['ci'].get('sha') == report.get('sourceRevision')
+        and epoch['ci'].get('status') == 'SUCCESS'
+        and isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == report.get('sourceRevision')
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('reviewer_id') == report.get('reviewerId')
+        and latest_review.get('verdict') == 'PASS'
+    )
+    current_candidate_reviewed = (
+        (active_pr or merged_pr)
+        and epoch.get('candidate_sha') == candidate_sha
+        and epoch.get('review_pass_sha') == candidate_sha
+        and isinstance(epoch.get('ci'), dict)
+        and epoch['ci'].get('sha') == candidate_sha
+        and epoch['ci'].get('status') == 'SUCCESS'
+        and isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == candidate_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+    )
     return bool(
         type(report.get('prNumber')) is int
         and report['prNumber'] > 0
         and run_result.get('number') == 95
-        and (active_pr or merged_pr)
+        and (source_candidate_refresh or current_candidate_reviewed)
         and isinstance(latest_review, dict)
         and epoch.get('epoch_id') == profile['epochId']
         and epoch.get('pr_number') == report.get('prNumber')
         and epoch.get('base_branch') == 'master'
         and epoch.get('base_sha') == report.get('baseSha')
         and epoch.get('reviewed_base_sha') == report.get('baseSha')
-        and epoch_result.get('pr_head_sha') == candidate_sha
         and epoch_result.get('pr_head_ref_name') == epoch.get('branch')
         and epoch_result.get('pr_base_ref_name') == 'master'
         and epoch_result.get('pr_is_draft') is False
-        and epoch.get('candidate_sha') == candidate_sha
-        and epoch.get('review_pass_sha') == candidate_sha
-        and isinstance(epoch.get('ci'), dict)
-        and epoch['ci'].get('sha') == candidate_sha
-        and epoch['ci'].get('status') == 'SUCCESS'
-        and latest_review.get('candidate_sha') == candidate_sha
-        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
         and codex_p03_v2_same_reviewer_identity(
             report.get('reviewerId'), latest_review.get('reviewer_id'), report.get('prNumber'),
         )
@@ -17218,6 +17377,12 @@ def codex_p03_v2_candidate_binding_is_current(
 
 
 def codex_p03_v3_candidate_binding_is_current(
+    report: dict[str, object], epoch_status: object,
+) -> bool:
+    return codex_p03_profile_candidate_binding_is_current(report, epoch_status)
+
+
+def codex_p03_v4_candidate_binding_is_current(
     report: dict[str, object], epoch_status: object,
 ) -> bool:
     return codex_p03_profile_candidate_binding_is_current(report, epoch_status)
@@ -17276,7 +17441,7 @@ def codex_p03_v2_profile_report_candidate_paths(
 
 
 def codex_p03_profile_error_summary_is_valid(report: object, profile_id: object) -> bool:
-    """Keep P03 v2 strict; only v3 accepts bounded classified disabled-web-search errors."""
+    """Keep P03 v2 strict; v3/v4 accept bounded classified disabled-web-search errors."""
     if not isinstance(report, dict) or profile_id not in CODEX_P03_PUBLIC_PROFILE_IDS:
         return False
     error_count = report.get('codexErrorItemCount')
@@ -17284,7 +17449,7 @@ def codex_p03_profile_error_summary_is_valid(report: object, profile_id: object)
     unexpected_count = report.get('unexpectedCodexErrorItemCount')
     if any(type(value) is not int for value in (error_count, blocked_count, unexpected_count)):
         return False
-    if profile_id != CODEX_P03_V3_PROFILE_ID:
+    if profile_id not in {CODEX_P03_V3_PROFILE_ID, CODEX_P03_V4_PROFILE_ID}:
         return error_count == blocked_count == unexpected_count == 0
     return (
         0 <= error_count <= 3
@@ -17298,6 +17463,14 @@ def codex_p03_v3_profile_report_candidate_paths(
 ) -> set[str] | None:
     return codex_p03_profile_report_candidate_paths(
         source_revision, candidate_sha, CODEX_P03_V3_PROFILE_ID,
+    )
+
+
+def codex_p03_v4_profile_report_candidate_paths(
+    source_revision: object, candidate_sha: object,
+) -> set[str] | None:
+    return codex_p03_profile_report_candidate_paths(
+        source_revision, candidate_sha, CODEX_P03_V4_PROFILE_ID,
     )
 
 
@@ -17349,7 +17522,9 @@ def codex_p03_profile_report_is_valid(
     counters = report.get('resultCounters')
     privacy = report.get('privacy')
     expected_profile_name = (
-        'codex-luna-max-agent-mcp-matrix-v3'
+        'codex-luna-max-agent-mcp-matrix-v4'
+        if profile['id'] == CODEX_P03_V4_PROFILE_ID
+        else 'codex-luna-max-agent-mcp-matrix-v3'
         if profile['id'] == CODEX_P03_V3_PROFILE_ID
         else 'codex-luna-max-agent-mcp-matrix-v2'
     )
@@ -17411,7 +17586,8 @@ def codex_p03_profile_report_is_valid(
         or report.get('mcpServerNames') != ['bgk_p03_name_cn']
         or report.get('answerCheckMethod') != profile['answerCheckMethod']
         or report.get('mcpTextProjectionValid') is not True
-        or report.get('structuredContentReadbackAvailable') is not False
+        or type(report.get('structuredContentReadbackAvailable')) is not bool
+        or report.get('structuredContentCompatible') is not True
         or not isinstance(report.get('answerSha256'), str)
         or re.fullmatch(r'[0-9a-f]{64}', report['answerSha256']) is None
         or type(report.get('answerUtf8Bytes')) is not int
@@ -17516,6 +17692,17 @@ def codex_p03_v3_profile_report_is_valid(
 ) -> bool:
     return codex_p03_profile_report_is_valid(
         report, CODEX_P03_V3_PROFILE_ID, harness_status, report_path, epoch_status,
+    )
+
+
+def codex_p03_v4_profile_report_is_valid(
+    report: object,
+    harness_status: object = None,
+    report_path: Path | None = None,
+    epoch_status: object = None,
+) -> bool:
+    return codex_p03_profile_report_is_valid(
+        report, CODEX_P03_V4_PROFILE_ID, harness_status, report_path, epoch_status,
     )
 
 def codex_g06_cast_offline_profile_spec(profile_id: object = None) -> dict[str, object] | None:
@@ -26177,6 +26364,7 @@ def model_mcp_e2e_report_paths() -> list[Path]:
     )
     report_paths.append(LIVE_PROBE_DIR / Path(CODEX_P03_V2_REPORT_RELATIVE_PATH).name)
     report_paths.append(LIVE_PROBE_DIR / Path(CODEX_P03_V3_REPORT_RELATIVE_PATH).name)
+    report_paths.append(LIVE_PROBE_DIR / Path(CODEX_P03_V4_REPORT_RELATIVE_PATH).name)
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_CAST_OFFLINE_V2_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_M07_REPORT_RELATIVE_PATH.split('/')[-1])
@@ -26657,6 +26845,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
         if report.get('evidenceKind') in {
             CODEX_P03_V2_EVIDENCE_KIND,
             CODEX_P03_V3_EVIDENCE_KIND,
+            CODEX_P03_V4_EVIDENCE_KIND,
         }:
             profile = codex_p03_profile_spec(report.get('profileId'))
             if profile is None or profile.get('evidenceKind') != report.get('evidenceKind'):

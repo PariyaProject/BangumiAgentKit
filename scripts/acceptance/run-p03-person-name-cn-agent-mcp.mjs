@@ -28,6 +28,8 @@ import {
   P03_PROFILE_ID,
   P03_FRESH_PUBLIC_PROFILE_IDS,
   P03_V3_PROFILE_ID,
+  P03_V4_PROFILE_ID,
+  p03StructuredReadbackSatisfied,
   validateP03McpTextProjection,
   validateP03ResultSummary,
   verifyP03Answer,
@@ -76,7 +78,8 @@ export function p03CodexErrorSummaryIsSafe(summary, profileId) {
   ) {
     return false;
   }
-  if (profileId !== P03_V3_PROFILE_ID) {
+  // v3/v4 allow only explicitly disabled web-search errors; web search stays disabled.
+  if (![P03_V3_PROFILE_ID, P03_V4_PROFILE_ID].includes(profileId)) {
     return (
       summary.errorItemCount === 0 &&
       summary.blockedWebSearchErrorItemCount === 0 &&
@@ -90,24 +93,7 @@ export function p03CodexErrorSummaryIsSafe(summary, profileId) {
   );
 }
 
-export function p03StructuredReadbackSatisfied(result, textProjection, profileId) {
-  const structuredContentPresent =
-    Boolean(result) &&
-    typeof result === 'object' &&
-    !Array.isArray(result) &&
-    Object.hasOwn(result, 'structuredContent');
-  const structuredReadback = structuredContentPresent && Boolean(result.structuredContent);
-  const structuredReadbackExpected = !P03_FRESH_PUBLIC_PROFILE_IDS.includes(profileId);
-  if (structuredReadbackExpected) return structuredReadback;
-  // Fresh profiles use the bounded text projection as their data boundary.
-  // A null placeholder adds no data; a structured object must be an exact duplicate.
-  if (!structuredContentPresent || result.structuredContent === null) return true;
-  return (
-    textProjection?.passed === true &&
-    canonicalAgentMcpProfileJson(result.structuredContent) ===
-      canonicalAgentMcpProfileJson(textProjection.projection)
-  );
-}
+export { p03StructuredReadbackSatisfied };
 
 function buildPrompt(profile) {
   const matrixOnlyGuidance = P03_FRESH_PUBLIC_PROFILE_IDS.includes(profile.id)
@@ -843,6 +829,7 @@ export function runP03Profile({ runNumber, profileId = P03_PROFILE_ID }) {
       turnCompleted: events.turnCompleted === true,
       mcpTextProjectionValid: textProjection.passed,
       structuredContentReadbackAvailable: structuredContentPresent,
+      structuredContentCompatible,
       codexMcpToolEventCount: events.codexMcpToolEventCount,
       codexErrorItemCount: events.codexErrorItemCount,
       blockedWebSearchErrorItemCount: events.blockedWebSearchErrorItemCount,
@@ -1017,7 +1004,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const mode = validateP03RunnerArgs(args);
     if (mode === 'help') {
       process.stdout.write(
-        'Usage: node scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs --run 95 [--profile-id p03-person-name-cn-agent-mcp-v2|p03-person-name-cn-agent-mcp-v3]\n',
+        'Usage: node scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs --run 95 [--profile-id p03-person-name-cn-agent-mcp-v2|p03-person-name-cn-agent-mcp-v3|p03-person-name-cn-agent-mcp-v4]\n',
       );
     } else {
       process.exitCode = runP03Profile({

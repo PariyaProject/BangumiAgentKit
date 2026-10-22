@@ -39,6 +39,11 @@ RENDER_SUBJECT_CARD_OFFLINE_PROFILE = next(
     if isinstance(profile, dict)
     and profile.get('id') == 'render-subject-card-compact-typography-agent-mcp-v3'
 )
+P03_V4_AGENT_MCP_PROFILE = next(
+    profile for profile in PROFILE_REGISTRY.get('profiles', [])
+    if isinstance(profile, dict)
+    and profile.get('id') == 'p03-person-name-cn-agent-mcp-v4'
+)
 sys.path.insert(0, str(ROOT / 'scripts'))
 from acceptance.c03_person_activity_offline_v2_acceptance import (
     c03_person_activity_offline_v2_signed_report_matches,
@@ -266,6 +271,101 @@ def render_subject_card_offline_agent_mcp_matches(
         and receipt.get('kind') == 'render-subject-card-offline-agent-mcp-runner-receipt-v1'
         and isinstance(receipt.get('payload'), dict)
         and isinstance(receipt.get('signature'), str)
+    )
+
+
+def p03_v4_agent_mcp_matches(name: str, relative_path: str, report: object) -> bool:
+    """Map the signed bounded P03 v4 report only to get_person_profile Agent/MCP."""
+    if not isinstance(report, dict):
+        return False
+    profile = P03_V4_AGENT_MCP_PROFILE
+    calls = profile.get('calls')
+    expected_arguments = calls[0].get('arguments') if isinstance(calls, list) and len(calls) == 1 else None
+    if not isinstance(expected_arguments, dict):
+        return False
+    arguments_sha256 = hashlib.sha256(json.dumps(
+        [call.get('arguments') for call in calls] if isinstance(calls, list) else None,
+        sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+    registry_sha256 = hashlib.sha256(json.dumps(
+        profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+    receipt = report.get('runnerReceipt')
+    receipt_payload = receipt.get('payload') if isinstance(receipt, dict) else None
+    counters = report.get('resultCounters')
+    checks = report.get('answerChecks')
+    privacy = report.get('privacy')
+    source_revision = report.get('sourceRevision')
+    base_sha = report.get('baseSha')
+    return bool(
+        name == profile.get('toolName')
+        and relative_path == profile.get('reportPath')
+        and type(report.get('schemaVersion')) is int
+        and report.get('schemaVersion') == 1
+        and report.get('evidenceKind') == profile.get('evidenceKind')
+        and report.get('profileId') == profile.get('id')
+        and report.get('epochId') == profile.get('epochId')
+        and report.get('runNumber') == 95
+        and report.get('prNumber') == 261
+        and report.get('frontierId') == 'P03'
+        and report.get('scenarioId') is None
+        and report.get('acceptanceScope') == 'agent-mcp-matrix-only'
+        and report.get('profile') == 'codex-luna-max-agent-mcp-matrix-v4'
+        and report.get('model') == 'gpt-6-luna'
+        and report.get('reasoningEffort') == 'max'
+        and report.get('toolName') == profile.get('toolName')
+        and report.get('argumentProfile') == profile.get('argumentProfile')
+        and report.get('expectedArgumentsSha256') == arguments_sha256
+        and report.get('registrySha256') == registry_sha256
+        and isinstance(receipt_payload, dict)
+        and report.get('baseSha') == receipt_payload.get('baseSha')
+        and isinstance(source_revision, str)
+        and re.fullmatch(r'[0-9a-f]{40}', source_revision) is not None
+        and isinstance(base_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', base_sha) is not None
+        and report.get('ciSha') == source_revision
+        and report.get('ciStatus') == 'SUCCESS'
+        and report.get('resultStatus') == 'SUCCESS'
+        and report.get('processExitCode') == 0
+        and report.get('codexMcpToolEventCount') == 1
+        and report.get('nonMcpToolEventCount') == 0
+        and report.get('shellToolCallCount') == 0
+        and report.get('allowedCallCount') == 1
+        and report.get('deniedCallCount') == 0
+        and report.get('serverToolNames') == [profile.get('toolName')]
+        and report.get('mcpServerNames') == ['bgk_p03_name_cn']
+        and report.get('mcpTextProjectionValid') is True
+        and report.get('structuredContentCompatible') is True
+        and report.get('sourceCompletenessDocumented') is False
+        and isinstance(counters, dict)
+        and counters.get('subjectsReturned') == counters.get('returnedCreditRowsObserved')
+        and type(counters.get('subjectsReturned')) is int
+        and 0 <= counters['subjectsReturned'] <= expected_arguments.get('maxSubjects', -1)
+        and type(counters.get('subjectsObserved')) is int
+        and counters['subjectsObserved'] >= counters['subjectsReturned']
+        and counters.get('subjectsTruncated') is (
+            counters['subjectsObserved'] > counters['subjectsReturned']
+        )
+        and type(counters.get('positiveNameCnRowsObserved')) is int
+        and counters['positiveNameCnRowsObserved'] > 0
+        and isinstance(checks, dict)
+        and bool(checks)
+        and all(value is True for value in checks.values())
+        and isinstance(privacy, dict)
+        and privacy.get('authProfile') == 'anonymous'
+        and all(value is False for key, value in privacy.items() if key != 'authProfile')
+        and receipt_payload.get('kind') == 'p03-person-name-cn-agent-mcp-runner-receipt-v4'
+        and receipt_payload.get('profileId') == profile.get('id')
+        and receipt_payload.get('claimId') == report.get('claimId')
+        and receipt_payload.get('runNumber') == 95
+        and receipt_payload.get('prNumber') == 261
+        and receipt_payload.get('sourceRevision') == source_revision
+        and receipt_payload.get('ciSha') == source_revision
+        and receipt_payload.get('ciStatus') == 'SUCCESS'
+        and receipt_payload.get('toolName') == profile.get('toolName')
+        and receipt_payload.get('argumentProfile') == profile.get('argumentProfile')
+        and isinstance(receipt.get('signature'), str)
+        and bool(receipt['signature'])
     )
 
 
@@ -1323,12 +1423,14 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
             render_subject_card_offline_matches = render_subject_card_offline_agent_mcp_matches(
                 name, relative_path, report,
             )
+            p03_v4_matches = p03_v4_agent_mcp_matches(name, relative_path, report)
             matches = (
                 scenario_matches or c04_matches or title_query_render_matches
                 or g01_render_query_matches or g01_query_subjects_offline_matches
                 or r01_offline_matches or r04_render_v2_matches
                 or g06_cast_offline_v2_matches or r02_positive_matches
                 or c03_person_activity_offline_v2_matches or render_subject_card_offline_matches
+                or p03_v4_matches
             )
         else:
             try:

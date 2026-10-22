@@ -5,6 +5,7 @@ import { parseCodexOneToolMcpArguments } from '../../scripts/lib/codex-one-tool-
 import {
   P03_V2_PROFILE_ID,
   P03_V3_PROFILE_ID,
+  P03_V4_PROFILE_ID,
 } from '../../scripts/lib/p03-person-name-cn-evidence.mjs';
 
 const REQUIRED = [
@@ -39,6 +40,18 @@ test('P03 v3 profile binds a distinct five-row person-profile call', () => {
   assert.equal(config.profile.id, P03_V3_PROFILE_ID);
   assert.deepEqual(config.expectedArgumentSequence[0], {
     personId: 58609,
+    includeCredits: true,
+    maxSubjects: 5,
+    maxCharacters: 1,
+    includeChronology: false,
+  });
+});
+
+test('P03 v4 profile binds a distinct five-row person-profile call', () => {
+  const config = parseCodexOneToolMcpArguments(['--profile-id', P03_V4_PROFILE_ID, ...REQUIRED]);
+  assert.equal(config.profile.id, P03_V4_PROFILE_ID);
+  assert.deepEqual(config.expectedArgumentSequence[0], {
+    personId: 54025,
     includeCredits: true,
     maxSubjects: 5,
     maxCharacters: 1,
