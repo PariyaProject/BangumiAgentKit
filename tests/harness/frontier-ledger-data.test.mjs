@@ -1127,11 +1127,20 @@ test('G06 current-catalog cast probe is public-only, hash-bound, and does not im
   assert.ok(record, 'G06 must remain in the canonical frontier');
   assert.equal(record.status, 'PARTIAL');
 
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-g06-frontier-current-state-reconciliation-2026-10-22.md',
+    ),
+    'G06 must link the current-state reconciliation report',
+  );
   const reportPath = 'docs/live-probes/public-tools-2026-10-15-092632892-50913.json';
   assert.ok(record.source_refs.includes(reportPath));
   assert.match(record.next_action, /Never rerun the G06 profile/u);
   assert.match(record.next_action, /does not count as Agent\/MCP answer acceptance/u);
   assert.match(record.next_action, /do not claim a complete cast\/CV list/u);
+  assert.match(record.next_action, /PR #244 merged the sourceRevision\/catalog binding/u);
+  assert.match(record.next_action, /the exact accepted matrix is 82\/96 Agent\/MCP/u);
+  assert.doesNotMatch(record.next_action, /80\/96|when PR #244 source-binds|at Base 21072/u);
 
   const evidence = record.evidence?.direct_public_get_subject_cast_current_catalog;
   assert.ok(evidence, 'G06 must point at the refreshed current-catalog report');
