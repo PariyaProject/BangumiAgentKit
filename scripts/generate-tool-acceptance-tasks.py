@@ -6187,7 +6187,7 @@ CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'export function buildRenderSubjectCardOfflineRunnerReceiptPayload(',
         'export function validateRenderSubjectCardOfflineProfileReport(',
         'export function validateRenderSubjectCardOfflineSanitizedReportFile(',
-        'openSync(REPORT_PATH, \'wx\', 0o600)',
+        ", 'wx', 0o600)",
     ),
     'scripts/acceptance/validate-render-subject-card-offline-agent-mcp-report.mjs': (
         'validateRenderSubjectCardOfflineProfileReport(',

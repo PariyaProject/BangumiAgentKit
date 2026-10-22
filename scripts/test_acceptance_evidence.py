@@ -331,7 +331,7 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
             },
         }
 
-    def test_current_candidate_has_v2_implementation_markers(self):
+    def test_current_candidate_has_offline_render_subject_card_implementation_markers(self):
         revision = subprocess.run(
             ['git', 'rev-parse', 'HEAD'], cwd=GENERATOR.ROOT, check=True,
             capture_output=True, text=True,
