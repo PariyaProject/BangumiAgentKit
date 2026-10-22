@@ -35,9 +35,12 @@ function assertHarnessOwnsProfileState(record) {
   assert.match(record.next_action, /active Harness Run\/Epoch/u);
   assert.match(record.next_action, /Harness PR\/Run is authoritative/u);
   assert.match(record.next_action, /Never retry or recreate a consumed profile/u);
-  assert.doesNotMatch(record.next_action, /\bunclaimed\b|\bINCONCLUSIVE\b/iu);
-  assert.doesNotMatch(record.next_action, /retryAllowed\s*=|reportWritten\s*=/iu);
-  assert.doesNotMatch(record.next_action, /\bPR #\d+\b|Candidate [0-9a-f]{7,}/iu);
+  assert.doesNotMatch(
+    record.next_action,
+    /\b(?:unclaimed|INCONCLUSIVE|reportWritten|retryAllowed)\b/iu,
+  );
+  assert.doesNotMatch(record.next_action, /\bPR\s*#?\d+\b/iu);
+  assert.doesNotMatch(record.next_action, /\b(?:Candidate|Base)\b/iu);
 }
 
 test('S01 and renderer opportunity guidance keeps profile state in Harness', () => {
@@ -54,17 +57,28 @@ test('S01 and renderer opportunity guidance keeps profile state in Harness', () 
     assertHarnessOwnsProfileState(record);
   }
 
+  assert.match(s01.next_action, /unique subjects by first-air year/u);
+  assert.match(s01.next_action, /clipped ranges/u);
+  assert.match(s01.next_action, /explicit relation\/detail coverage/u);
   assert.match(s01.next_action, /partial coverage is not evidence of absence/u);
+  assert.match(s01.next_action, /career\/history limits remain/u);
+  assert.match(s01.next_action, /Grant no S01\/Agent\/MCP credit/u);
   assert.match(op008.next_action, /0\.75 compact typography default/u);
+  assert.match(op008.next_action, /configurable body\/display font stacks/u);
   assert.match(
     op008.next_action,
     /1,770-image\/59-sheet synthetic matrix remain visual evidence only/u,
   );
+  assert.match(op008.next_action, /no Agent\/MCP, production-font, QQ, or TIM credit/u);
+  assert.match(op013.next_action, /0\.75 default remains configurable per render/u);
+  assert.match(op013.next_action, /body\/display stacks/u);
   assert.match(op013.next_action, /trusted operator-provided font files/u);
+  assert.match(op013.next_action, /1,770-image\/59-sheet synthetic matrix is visual evidence only/u);
   assert.match(
     op013.next_action,
-    /real QQ\/TIM display remain separate acceptance evidence/u,
+    /Theme-pack preference, production-font delivery, and real QQ\/TIM display remain separate acceptance evidence/u,
   );
+  assert.match(op013.next_action, /No QQ\/TIM display credit is established/u);
 });
 
 test('canonical frontier includes every opportunity listed in the product log', () => {
