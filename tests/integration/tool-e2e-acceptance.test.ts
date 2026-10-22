@@ -85,7 +85,11 @@ function reportReferencesInMatrixCell(cell: unknown): string[] {
   const references = cell.matchAll(
     /(?:^|[\s`<>"'|,;()])([^\s`<>"'|,;()]*docs\/live-probes\/[^\s`<>"'|,;()]+)(?=$|[\s`<>"'|,;()])/gu,
   );
-  return [...references].map((match) => match[1]);
+  const paths: string[] = [];
+  for (const match of references) {
+    if (match[1] !== undefined) paths.push(match[1]);
+  }
+  return paths;
 }
 
 function hasExactMatrixReportReference(cell: unknown, expectedPath: string): boolean {
