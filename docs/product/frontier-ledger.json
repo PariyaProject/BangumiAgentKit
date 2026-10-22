@@ -2594,7 +2594,7 @@
         "tests/unit/s02-agent-answer-check.test.ts",
         "tests/unit/s02-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "A fresh exact-profile public Agent/MCP cell is prepared for one current-source query; the profile is still unclaimed and no live Bangumi API/MCP call has run. Keep S01 PARTIAL. The one call is gated on exact Candidate/Base, all seven required CI checks, same-identity GPT-6 Luna Max PASS, and Harness UNCLAIMED readback. Counts use unique subjects by first-air year with clipped ranges and explicit relation/detail coverage; a zero under partial coverage is not evidence of absence. If the signed report passes, credit at most get_person_activity Agent/MCP and retain all career/history limitations.",
+      "next_action": "Keep PARTIAL. S01's source contract counts unique subjects by first-air year with clipped ranges and explicit relation/detail coverage; zero under partial coverage is not evidence of absence, and career/history limits remain. Before any future S01 acceptance, read the active Harness Run/Epoch and select a distinct, unspent profile. Never retry or recreate a consumed profile; the Harness PR/Run is authoritative for claim availability and terminal results. Grant no S01/Agent/MCP credit without a validated report.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -4283,7 +4283,7 @@
         "docs/research/assets/run95-ux002-default075-exact-matrix-ed45febb-summary.json",
         "docs/research/run95-ux002-render-subject-card-compact-typography-v3-source-contract-2026-10-22.md"
       ],
-      "next_action": "Keep PARTIAL. The user-approved 0.75 compact typography default and configurable body/display fonts have a separate exact-source synthetic visual matrix: 1,770 PNGs and 59 contact sheets, all reviewed; this earns no Agent/MCP or production-font/QQ/TIM credit. Profile v2 on PR #250 is terminal INCONCLUSIVE, one call, no report, retryAllowed=false; never rerun or reconcile it. A distinct v3 contract for subjectId 991903 is recorded at docs/research/run95-ux002-render-subject-card-compact-typography-v3-source-contract-2026-10-22.md, but v3 is not yet claimed or run. Keep the row uncredited unless the exact current Candidate, seven-check CI, same-identity review, fresh UNCLAIMED status, single call, sanitized report, and Harness result all pass.",
+      "next_action": "Keep PARTIAL. The user-approved 0.75 compact typography default with configurable body/display font stacks and the exact 1,770-image/59-sheet synthetic matrix remain visual evidence only; they earn no Agent/MCP, production-font, QQ, or TIM credit. Before selecting a renderer profile, read the active Harness Run/Epoch; the Harness PR/Run is authoritative for claim availability and terminal results. Never retry or recreate a consumed profile or infer profile availability from this product ledger. Any new acceptance must use a distinct profile and input with fresh gates.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": ["OP-013"]
     },
@@ -4523,7 +4523,7 @@
         "docs/research/run95-ux002-render-subject-card-compact-typography-v2-source-contract-2026-10-22.md",
         "docs/research/run95-ux002-render-subject-card-compact-typography-v3-source-contract-2026-10-22.md"
       ],
-      "next_action": "Keep PARTIAL. The 0.75 default remains configurable per render, with body/display stacks and trusted operator-provided font files; docs/renderer.md has the configuration example. The exact 1,770-image/59-sheet synthetic matrix is visual evidence only. Typography profile v2 is terminal INCONCLUSIVE/no-report/no-retry and must not be repeated. A separate OP-008 v3 Agent/MCP profile contract now uses a distinct synthetic input; it remains unclaimed and supplies no credit until its own gates and report pass. Remaining design-pack preference, production-font delivery, and QQ/TIM display evidence remain separate.",
+      "next_action": "Keep PARTIAL. The 0.75 default remains configurable per render, with body/display stacks and trusted operator-provided font files. The 1,770-image/59-sheet synthetic matrix is visual evidence only. Theme-pack preference, production-font delivery, and real QQ/TIM display remain separate acceptance evidence. Before selecting a renderer profile, read the active Harness Run/Epoch; the Harness PR/Run is authoritative for claim availability and terminal results. Never retry or recreate a consumed profile. No QQ/TIM display credit is established.",
       "reopen_when": "The user requests additional theme packs/settings surfaces, Renderer templates or image output behavior changes, or real QQ/TIM image display is explicitly selected for offline-to-live acceptance.",
       "related_ids": [
         "OP-008",
