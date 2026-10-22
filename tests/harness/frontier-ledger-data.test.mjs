@@ -31,6 +31,42 @@ function terminalProfileStatus(profileId) {
   return profile;
 }
 
+function assertHarnessOwnsProfileState(record) {
+  assert.match(record.next_action, /active Harness Run\/Epoch/u);
+  assert.match(record.next_action, /Harness PR\/Run is authoritative/u);
+  assert.match(record.next_action, /Never retry or recreate a consumed profile/u);
+  assert.doesNotMatch(record.next_action, /\bunclaimed\b|\bINCONCLUSIVE\b/iu);
+  assert.doesNotMatch(record.next_action, /retryAllowed\s*=|reportWritten\s*=/iu);
+  assert.doesNotMatch(record.next_action, /\bPR #\d+\b|Candidate [0-9a-f]{7,}/iu);
+}
+
+test('S01 and renderer opportunity guidance keeps profile state in Harness', () => {
+  const s01 = ledger.records.find(({ id }) => id === 'S01');
+  const op008 = ledger.records.find(({ id }) => id === 'OP-008');
+  const op013 = ledger.records.find(({ id }) => id === 'OP-013');
+  for (const [id, record] of [
+    ['S01', s01],
+    ['OP-008', op008],
+    ['OP-013', op013],
+  ]) {
+    assert.ok(record, `${id} must remain in the canonical frontier`);
+    assert.equal(record.status, 'PARTIAL');
+    assertHarnessOwnsProfileState(record);
+  }
+
+  assert.match(s01.next_action, /partial coverage is not evidence of absence/u);
+  assert.match(op008.next_action, /0\.75 compact typography default/u);
+  assert.match(
+    op008.next_action,
+    /1,770-image\/59-sheet synthetic matrix remain visual evidence only/u,
+  );
+  assert.match(op013.next_action, /trusted operator-provided font files/u);
+  assert.match(
+    op013.next_action,
+    /real QQ\/TIM display remain separate acceptance evidence/u,
+  );
+});
+
 test('canonical frontier includes every opportunity listed in the product log', () => {
   const ledgerOpportunityIds = ledger.records
     .filter((record) => record.kind === 'opportunity')
