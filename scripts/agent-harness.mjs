@@ -3666,7 +3666,7 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
           ]
         : []),
       ...(profile.id === 'p01-person-director-offline-matrix-v1-20261023'
-        ? ['scripts/agent-harness.mjs']
+        ? ['scripts/agent-harness.mjs', 'tests/harness/public-probe-coverage.test.mjs']
         : []),
     ]);
     if (
@@ -3683,7 +3683,7 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
             : profile.id === 'p03-person-name-cn-agent-mcp-v4'
               ? 'A P03 v4 report refresh may also include only the exact acceptance validator, Harness allowlist, and their regressions needed to record the signed source-Candidate result; the MCP bundle must remain unchanged.'
               : profile.id === 'p01-person-director-offline-matrix-v1-20261023'
-                ? 'A P01 director report refresh may include its sanitized report, acceptance matrix, frontier evidence, and this Harness report-validator allowlist; the MCP bundle must remain unchanged.'
+                ? 'A P01 director report refresh may include its sanitized report, acceptance matrix, frontier evidence, Harness report-validator allowlist, and its exact public-probe report-routing regression; the MCP bundle must remain unchanged.'
               : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
         { profileId: profile.id, changedPaths: changedSinceReport },
       );
