@@ -4344,6 +4344,8 @@
         "packages/renderer/src/templates/SubjectComparisonCard.tsx",
         "tests/integration/mcp-render-target.test.ts",
         "tests/render/subject-stats.test.ts",
+        "docs/research/run95-op012-score-share-layout-visual-qa-2026-10-22.md",
+        "docs/research/run95-op012-score-share-layout-visual-qa-2026-10-22.json",
         "tests/render/subject-comparison.test.ts",
         "tests/render/mobile-layout-audit.setup.ts",
         "tests/render/helpers/mobile-layout.ts",
