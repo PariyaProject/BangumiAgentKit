@@ -1132,6 +1132,9 @@ test('G06 current-catalog cast probe is public-only, hash-bound, and does not im
   assert.match(record.next_action, /Never rerun the G06 profile/u);
   assert.match(record.next_action, /does not count as Agent\/MCP answer acceptance/u);
   assert.match(record.next_action, /do not claim a complete cast\/CV list/u);
+  assert.match(record.next_action, /PR #244 merged the sourceRevision\/catalog binding/u);
+  assert.match(record.next_action, /the exact accepted matrix is 82\/96 Agent\/MCP/u);
+  assert.doesNotMatch(record.next_action, /80\/96|when PR #244 source-binds|at Base 21072/u);
 
   const evidence = record.evidence?.direct_public_get_subject_cast_current_catalog;
   assert.ok(evidence, 'G06 must point at the refreshed current-catalog report');

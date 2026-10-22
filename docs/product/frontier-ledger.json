@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-22T07:37:23Z",
+  "updated_at": "2026-10-22T07:41:37Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -540,7 +540,7 @@
         "tests/harness/agent-harness-cli.test.mjs",
         "docs/research/run95-g06-subject-cast-offline-agent-mcp-matrix-v2-2026-10-18.md"
       ],
-      "next_action": "Keep G06 PARTIAL; no complete cast/CV scenario credit. The fixed G06 v1 profile {subjectId:990804,limit:2} and the real-cast scenario {subjectId:218707,limit:100} are terminal no-report/no-retry; never rerun. The v2 synthetic report earns only the get_subject_cast Agent/MCP matrix cell: PR #221 accepted it, and PR #244 merged the sourceRevision/catalog binding at 8605f4bb61cf0f3f0664665b56ae4f816c3200ac. On current master 054d8dd1256d8e0749008dddc176213d55fc130b, the exact accepted matrix remains 82/96 Agent/MCP, 65/65 public, 22/22 no-account denials, and 0/96 QQ/TIM; this reconciliation adds no credit. Do not claim a complete cast/CV list. Keep OAuth/account, community, QQ, and TIM passive.",
+      "next_action": "Keep G06 PARTIAL; do not claim a complete cast/CV list. Never rerun the G06 profile v1 {subjectId:990804,limit:2} or the real-cast scenario {subjectId:218707,limit:100}; both are terminal no-report/no-retry. The direct-public get_subject_cast evidence remains in docs/live-probes/public-tools-2026-10-15-092632892-50913.json and does not count as Agent/MCP answer acceptance. The v2 synthetic report earns only the get_subject_cast Agent/MCP matrix cell: PR #221 accepted it, and PR #244 merged the sourceRevision/catalog binding at 8605f4bb61cf0f3f0664665b56ae4f816c3200ac. On the verified 2026-10-22 master snapshot 054d8dd1256d8e0749008dddc176213d55fc130b, the exact accepted matrix is 82/96 Agent/MCP, 65/65 public, 22/22 no-account denials, and 0/96 QQ/TIM; this reconciliation adds no credit. Keep OAuth/account, community, QQ, and TIM passive.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
