@@ -6,10 +6,13 @@ import { fileURLToPath } from 'node:url';
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-// The QA report records the source digest, so exclude it to avoid a self-referential hash.
-// It is still bound to the rendered source by the Candidate SHA and all renderer inputs.
+// QA reports, their manifest, and reviewed contact sheets record this digest, so exclude them
+// to avoid a self-referential hash. Candidate SHA, renderer build, and per-image hashes bind them.
 export const sourceIdentityExclusions = [
   'docs/research/run95-ux002-flexible-mask-visual-qa-2026-10-21.md',
+  'docs/research/run95-p06-render-person-profile-chronology-v3-visual-qa-2026-10-23.md',
+  'docs/research/assets/run95-p06-render-person-profile-chronology-v3-image-manifest-2026-10-23.json',
+  'docs/research/assets/run95-p06-render-person-profile-chronology-v3-contact-sheet-2026-10-23.png',
 ];
 
 function sha256(value) {
