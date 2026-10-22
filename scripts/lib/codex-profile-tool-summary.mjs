@@ -76,6 +76,10 @@ import {
   C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE_ID,
   summarizeC03PersonActivityOfflineV2Result,
 } from './c03-person-activity-offline-matrix-v2-profile.mjs';
+import {
+  P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE_ID,
+  summarizeP01PersonActivityDirectorOfflineResult,
+} from './p01-person-activity-director-offline-profile.mjs';
 import { isRenderSubjectCardOfflineProfileId } from './render-subject-card-offline-profile.mjs';
 
 const C04_RESULT_STATES = new Set([
@@ -621,6 +625,9 @@ export function summarizeProfileToolResult(
   }
   if (profileId === C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE_ID) {
     return summarizeC03PersonActivityOfflineV2Result(result);
+  }
+  if (profileId === P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE_ID) {
+    return summarizeP01PersonActivityDirectorOfflineResult(result);
   }
   const summary = result?.summary;
   const coverage = result?.coverage;

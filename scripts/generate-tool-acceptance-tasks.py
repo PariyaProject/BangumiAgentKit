@@ -21,6 +21,9 @@ from acceptance.c03_person_activity_offline_v2_acceptance import (
     c03_person_activity_offline_v2_harness_status,
     c03_person_activity_offline_v2_signed_report_matches,
 )
+from acceptance.p01_person_activity_director_offline_acceptance import (
+    p01_person_activity_director_offline_signed_report_matches,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / 'docs/tool-catalog.json'
@@ -2238,6 +2241,14 @@ CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE_ID = CODEX_C03_PERSON_ACTIVITY_OFFL
 CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_TOOL_NAME = CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE['toolName']
 CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_REPORT_RELATIVE_PATH = CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE['reportPath']
 CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_EVIDENCE_KIND = CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE['evidenceKind']
+CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023'
+)
+CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE_ID = CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE['id']
+CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_TOOL_NAME = CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE['toolName']
+CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_REPORT_RELATIVE_PATH = CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE['reportPath']
+CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_EVIDENCE_KIND = CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE['evidenceKind']
 CODEX_C03_PROFILE_ID = CODEX_C03_PROFILE['id']
 CODEX_C03_EPOCH_ID = CODEX_C03_PROFILE['epochId']
 CODEX_C03_TOOL_NAME = CODEX_C03_PROFILE['toolName']
@@ -13499,6 +13510,37 @@ def codex_c03_person_activity_offline_v2_report_is_valid(
         report,
         report_path,
         harness_status=status,
+        root=root,
+    )
+
+
+def codex_p01_person_activity_director_offline_report_is_valid(
+    report: object,
+    report_path: Path,
+    harness_status: object = None,
+    root: Path = ROOT,
+) -> bool:
+    """Accept only the P01 director-filter matrix profile with a signed exact report."""
+    if not isinstance(report, dict):
+        return False
+    try:
+        relative_path = report_path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return False
+    if (
+        relative_path != CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_REPORT_RELATIVE_PATH
+        or report.get('evidenceKind') != CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_EVIDENCE_KIND
+        or report.get('profileId') != CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE_ID
+        or report.get('frontierId') != 'P01'
+        or report.get('scenarioId') is not None
+        or report.get('runNumber') != 95
+        or report.get('toolName') != CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_TOOL_NAME
+    ):
+        return False
+    return p01_person_activity_director_offline_signed_report_matches(
+        report,
+        report_path,
+        harness_status=harness_status,
         root=root,
     )
 
@@ -26527,6 +26569,9 @@ def model_mcp_e2e_report_paths() -> list[Path]:
     report_paths.append(
         LIVE_PROBE_DIR / Path(CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_REPORT_RELATIVE_PATH).name,
     )
+    report_paths.append(
+        LIVE_PROBE_DIR / Path(CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_REPORT_RELATIVE_PATH).name,
+    )
     report_paths.append(LIVE_PROBE_DIR / CODEX_P06_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(
         LIVE_PROBE_DIR / Path(CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH).name,
@@ -26864,6 +26909,13 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             if not codex_c03_person_activity_offline_v2_report_is_valid(report, path):
                 continue
             sources.setdefault(CODEX_C03_PERSON_ACTIVITY_OFFLINE_V2_TOOL_NAME, set()).add(
+                report_source_ref(path),
+            )
+            continue
+        if report.get('evidenceKind') == CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_EVIDENCE_KIND:
+            if not codex_p01_person_activity_director_offline_report_is_valid(report, path):
+                continue
+            sources.setdefault(CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_TOOL_NAME, set()).add(
                 report_source_ref(path),
             )
             continue

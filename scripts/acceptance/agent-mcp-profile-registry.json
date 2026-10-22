@@ -1534,6 +1534,38 @@
           }
         }
       ]
+    },
+    {
+      "id": "p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023",
+      "frontierId": "P01",
+      "epochId": "run95-p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023",
+      "toolName": "bangumi.get_person_activity",
+      "argumentProfile": "fixed-p01-synthetic-person-activity-director-36m-one-person-v1-20261023",
+      "claimLabelName": "harness-r95-p01-person-director-mtx-v1-claimed",
+      "reportPath": "docs/live-probes/p01-person-activity-director-offline-run95-v1.json",
+      "selectionEvidencePath": "docs/research/run95-p01-person-activity-director-offline-matrix-contract-2026-10-23.md",
+      "evidenceKind": "codex_cli_p01_person_activity_director_offline_agent_mcp_matrix_v1",
+      "answerCheckMethod": "p01-director-filter-result-schema-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-p01-person-activity-director-offline-matrix-v1-20261023",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 1536,
+      "calls": [
+        {
+          "toolName": "bangumi.get_person_activity",
+          "arguments": {
+            "personId": 991337,
+            "kind": "staff",
+            "staffRole": "director",
+            "media": "anime",
+            "windowMonths": 36,
+            "maxRelations": 3,
+            "maxSubjectDetails": 1,
+            "maxRows": 1
+          }
+        }
+      ]
     }
   ]
 }

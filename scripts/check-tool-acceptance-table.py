@@ -34,6 +34,11 @@ C03_PERSON_ACTIVITY_OFFLINE_V2_PROFILE = next(
     if isinstance(profile, dict)
     and profile.get('id') == 'c03-person-activity-offline-agent-mcp-matrix-v2'
 )
+P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE = next(
+    profile for profile in PROFILE_REGISTRY.get('profiles', [])
+    if isinstance(profile, dict)
+    and profile.get('id') == 'p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023'
+)
 RENDER_SUBJECT_CARD_OFFLINE_PROFILE = next(
     profile for profile in PROFILE_REGISTRY.get('profiles', [])
     if isinstance(profile, dict)
@@ -47,6 +52,9 @@ P03_V4_AGENT_MCP_PROFILE = next(
 sys.path.insert(0, str(ROOT / 'scripts'))
 from acceptance.c03_person_activity_offline_v2_acceptance import (
     c03_person_activity_offline_v2_signed_report_matches,
+)
+from acceptance.p01_person_activity_director_offline_acceptance import (
+    p01_person_activity_director_offline_signed_report_matches,
 )
 from client_evidence import tool_client_e2e_sources
 TOOL_ROW = re.compile(r'^\| `(bangumi\.[a-z0-9_]+)` \|')
@@ -517,6 +525,159 @@ def c03_person_activity_offline_v2_report_matches(
             'credentialsStored': False,
         })
         and c03_person_activity_offline_v2_signed_report_matches(
+            report,
+            report_path or (ROOT / relative_path),
+            harness_status=harness_status,
+            root=root,
+        )
+    )
+
+
+def p01_person_activity_director_offline_report_matches(
+    name: str,
+    relative_path: str,
+    report: object,
+    *,
+    report_path: Path | None = None,
+    harness_status: object = None,
+    root: Path = ROOT,
+) -> bool:
+    if not isinstance(report, dict):
+        return False
+    profile = P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE
+    result = report.get('resultSummary')
+    fixture = report.get('offlineFixture')
+    checks = report.get('answerChecks')
+    privacy = report.get('privacy')
+    result_keys = {
+        'resultState', 'windowMonths', 'matchedDirectorRows', 'excludedOtherRoleRows',
+        'unknownRoleRows', 'coverage',
+    }
+    coverage_keys = {
+        'relationRowsObserved', 'relationRowsSelected', 'relationRowsDroppedAtLimit',
+        'subjectDetailsSucceeded', 'subjectDetailsFailed', 'rowsEligible', 'rowsReturned',
+        'outputTruncated', 'truncated',
+    }
+    answer_check_fields = {
+        'exactRegisteredProfile', 'oneAllowedMcpTool', 'fixedArguments',
+        'exactCandidateBundle', 'offlineFixtureOnly', 'resultReadbackMatched',
+        'answerEchoedToolResult', 'outputSchemaApplied', 'noScenarioCredit',
+        'privacyPreserved',
+    }
+    coverage = result.get('coverage') if isinstance(result, dict) else None
+    count_values = [
+        result.get(key) if isinstance(result, dict) else None
+        for key in ('matchedDirectorRows', 'excludedOtherRoleRows', 'unknownRoleRows')
+    ]
+    if isinstance(coverage, dict):
+        count_values.extend(
+            coverage.get(key)
+            for key in coverage_keys - {'outputTruncated', 'truncated'}
+        )
+    try:
+        selection_sha256 = hashlib.sha256(
+            (root / profile['selectionEvidencePath']).read_bytes(),
+        ).hexdigest()
+    except OSError:
+        return False
+    canonical_json = lambda value: json.dumps(
+        value, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+    )
+    expected_fixture = {
+        'profile': profile['networkMode'],
+        'requestCount': 3,
+        'personRequestCount': 1,
+        'subjectsRequestCount': 1,
+        'subjectDetailRequestCount': 1,
+        'unexpectedRequestCount': 0,
+        'authorizationHeaderCount': 0,
+        'expectedOperationsComplete': True,
+        'operations': ['person', 'subjects', 'subject_detail'],
+    }
+    return bool(
+        name == profile['toolName']
+        and relative_path == profile['reportPath']
+        and type(report.get('schemaVersion')) is int and report.get('schemaVersion') == 1
+        and report.get('evidenceKind') == profile['evidenceKind']
+        and report.get('profileId') == profile['id']
+        and report.get('epochId') == profile['epochId']
+        and type(report.get('runNumber')) is int and report.get('runNumber') == 95
+        and report.get('frontierId') == 'P01'
+        and report.get('scenarioId') is None
+        and report.get('profile') == 'codex-luna-max-offline-agent-mcp-matrix-v1'
+        and report.get('model') == 'gpt-6-luna'
+        and report.get('reasoningEffort') == 'max'
+        and report.get('resultStatus') == 'SUCCESS'
+        and type(report.get('processExitCode')) is int and report.get('processExitCode') == 0
+        and report.get('eventStreamParsed') is True
+        and report.get('turnCompleted') is True
+        and type(report.get('codexMcpToolEventCount')) is int and report.get('codexMcpToolEventCount') == 1
+        and type(report.get('codexErrorItemCount')) is int and report.get('codexErrorItemCount') == 0
+        and type(report.get('nonMcpToolEventCount')) is int and report.get('nonMcpToolEventCount') == 0
+        and report.get('nonMcpToolTypes') == []
+        and type(report.get('shellToolCallCount')) is int and report.get('shellToolCallCount') == 0
+        and type(report.get('allowedCallCount')) is int and report.get('allowedCallCount') == 1
+        and type(report.get('deniedCallCount')) is int and report.get('deniedCallCount') == 0
+        and report.get('toolName') == profile['toolName']
+        and report.get('argumentProfile') == profile['argumentProfile']
+        and report.get('registrySha256') == hashlib.sha256(canonical_json(profile).encode()).hexdigest()
+        and report.get('selectionEvidenceSha256') == selection_sha256
+        and report.get('serverToolNames') == [profile['toolName']]
+        and type(report.get('serverToolCount')) is int and report.get('serverToolCount') == 1
+        and report.get('mcpServerNames') == ['bgk_p01_person_activity_director_offline_v1']
+        and report.get('networkMode') == profile['networkMode']
+        and isinstance(result, dict)
+        and set(result) == result_keys
+        and result.get('resultState') in {'complete', 'partial', 'unavailable', 'not_computable', 'unknown'}
+        and type(result.get('windowMonths')) is int and result.get('windowMonths') == 36
+        and all(type(value) is int and value >= 0 for value in count_values)
+        and result.get('matchedDirectorRows') == 1
+        and result.get('excludedOtherRoleRows') == 1
+        and result.get('unknownRoleRows') == 1
+        and isinstance(coverage, dict)
+        and set(coverage) == coverage_keys
+        and coverage == {
+            'relationRowsObserved': 3,
+            'relationRowsSelected': 1,
+            'relationRowsDroppedAtLimit': 0,
+            'subjectDetailsSucceeded': 1,
+            'subjectDetailsFailed': 0,
+            'rowsEligible': 1,
+            'rowsReturned': 1,
+            'outputTruncated': False,
+            'truncated': False,
+        }
+        and fixture == expected_fixture
+        and report.get('networkBoundary') == {
+            'liveBangumiApiRequestCount': 0,
+            'unexpectedNetworkRequestCount': 0,
+            'rendererAssetRequestCount': 0,
+            'fullCodexHarnessNetworkSandboxed': False,
+        }
+        and isinstance(checks, dict)
+        and set(checks) == answer_check_fields
+        and all(value is True for value in checks.values())
+        and report.get('answerCheckMethod') == profile['answerCheckMethod']
+        and isinstance(report.get('answerSha256'), str)
+        and re.fullmatch(r'[0-9a-f]{64}', report['answerSha256']) is not None
+        and type(report.get('answerUtf8Bytes')) is int
+        and 0 < report['answerUtf8Bytes'] <= profile['maxAnswerBytes']
+        and privacy == {
+            'authProfile': 'anonymous',
+            'oauthAttempted': False,
+            'accountDataRead': False,
+            'writesAttempted': False,
+            'communityRead': False,
+            'qqPipelineTested': False,
+            'timClientTested': False,
+            'promptStored': False,
+            'answerStored': False,
+            'rawFixtureRowsStored': False,
+            'rawToolResultStored': False,
+            'artifactImageBytesStored': False,
+            'credentialsStored': False,
+        }
+        and p01_person_activity_director_offline_signed_report_matches(
             report,
             report_path or (ROOT / relative_path),
             harness_status=harness_status,
@@ -1468,6 +1629,11 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
             c03_person_activity_offline_v2_matches = c03_person_activity_offline_v2_report_matches(
                 name, relative_path, report, report_path=path,
             )
+            p01_person_activity_director_offline_matches = (
+                p01_person_activity_director_offline_report_matches(
+                    name, relative_path, report, report_path=path,
+                )
+            )
             render_subject_card_offline_matches = render_subject_card_offline_agent_mcp_matches(
                 name, relative_path, report,
             )
@@ -1478,6 +1644,7 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                 or r01_offline_matches or r04_render_v2_matches
                 or g06_cast_offline_v2_matches or r02_positive_matches
                 or c03_person_activity_offline_v2_matches or render_subject_card_offline_matches
+                or p01_person_activity_director_offline_matches
                 or p03_v4_matches
             )
         else:

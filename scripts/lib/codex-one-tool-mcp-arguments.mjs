@@ -64,6 +64,7 @@ import {
   S01_PROFILE_ID,
 } from './s01-annual-tv-voice-activity-profile.mjs';
 import { assertC03PersonActivityOfflineV2Profile } from './c03-person-activity-offline-matrix-v2-profile.mjs';
+import { assertP01PersonActivityDirectorOfflineProfile } from './p01-person-activity-director-offline-profile.mjs';
 import {
   allowsRenderSubjectCardOptionalTool,
   assertRenderSubjectCardOfflineProfile,
@@ -181,6 +182,7 @@ export function parseCodexOneToolMcpArguments(argv) {
       } else {
         approved =
           assertC03PersonActivityOfflineV2Profile(profile) ||
+          assertP01PersonActivityDirectorOfflineProfile(profile) ||
           assertG06SubjectCastOfflineProfile(profile) ||
           assertC04CohortComparisonPublicProfile(profile) ||
           assertTitleQueryRenderPublicProfile(profile) ||
