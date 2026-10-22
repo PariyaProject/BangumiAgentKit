@@ -59,6 +59,13 @@ QQ, or TIM.
 
 No v4 profile claim or MCP call has occurred as of this selection record.
 
+## Implementation references
+
+- `packages/renderer/src/templates/SubjectCard.tsx` lowers the graphic-zine
+  title scale and allows up to three title lines.
+- `packages/renderer/src/components/TitleBlock.tsx` balances graphic-zine title
+  wrapping.
+
 ## Preview-only visual QA
 
 The exact v4 fixture was rendered through the local ToolRegistry with the
