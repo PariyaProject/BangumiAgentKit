@@ -707,7 +707,7 @@ test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retr
   assert.match(record.next_action, /PARTIAL and uncredited/u);
   assert.match(record.next_action, /INCONCLUSIVE/u);
   assert.match(record.next_action, /retryAllowed=false/u);
-  assert.match(record.next_action, /Do not repeat this call/u);
+  assert.match(record.next_action, /Do not repeat either P03 v1\/v2 claim/u);
   assert.deepEqual(Object.keys(record.evidence).sort(), [
     'p03_agent_mcp_profile_preflight',
     'p03_agent_mcp_profile_result',
@@ -806,6 +806,48 @@ test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retr
   });
 });
 
+test('P02 v1 and v2 terminal claims stay partial, uncredited, and non-retriable', () => {
+  const p02 = ledger.records.find(({ id }) => id === 'P02');
+  assert.ok(p02, 'P02 must remain in the canonical frontier');
+  assert.equal(p02.status, 'PARTIAL');
+  assert.match(p02.next_action, /P02 v1 \(PR #185\) and v2 \(PR #237\).*terminal INCONCLUSIVE/u);
+  assert.match(p02.next_action, /reportWritten=false and retryAllowed=false/u);
+  assert.match(p02.next_action, /neither attempt earns Agent\/MCP matrix or P02 scenario credit/u);
+  assert.match(p02.next_action, /Agent\/MCP 82\/96/u);
+  assert.doesNotMatch(p02.next_action, /has not been claimed or invoked|Invoke v2 once/iu);
+  assert.deepEqual(p02.evidence.p02_agent_mcp_terminal_reconciliation_2026_10_22.profiles, [
+    {
+      pr_number: 185,
+      profile_id: 'p02-person-profile-offline-agent-mcp-v1',
+      state: 'INCONCLUSIVE',
+      call_count: 1,
+      report_written: false,
+      retry_allowed: false,
+    },
+    {
+      pr_number: 237,
+      profile_id: 'p02-person-profile-offline-agent-mcp-v2',
+      state: 'INCONCLUSIVE',
+      call_count: 1,
+      report_written: false,
+      retry_allowed: false,
+    },
+  ]);
+  assert.equal(
+    p02.evidence.p02_synthetic_agent_mcp_matrix_v2_implementation_2026_10_19.state,
+    'TERMINAL_INCONCLUSIVE_NO_REPORT',
+  );
+  assert.equal(
+    p02.evidence.p02_synthetic_agent_mcp_matrix_v2_implementation_2026_10_19.retry_allowed,
+    false,
+  );
+
+  const p03 = ledger.records.find(({ id }) => id === 'P03');
+  assert.ok(p03, 'P03 must remain in the canonical frontier');
+  assert.doesNotMatch(p03.next_action, /P02/);
+  assert.match(p03.next_action, /P03 v2 retains its strict zero-error gate/u);
+});
+
 test('P06 offline renderer matrix evidence cannot close the latest-20 scenario', () => {
   const record = ledger.records.find(({ id }) => id === 'P06');
   assert.ok(record, 'P06 must remain in the canonical frontier');
@@ -833,10 +875,10 @@ test('P02 offline person-profile matrix evidence cannot close first/latest parti
   assert.ok(record, 'P02 must remain in the canonical frontier');
   assert.equal(record.status, 'PARTIAL');
   assert.match(record.next_action, /Keep P02 PARTIAL/u);
-  assert.match(record.next_action, /no P02 scenario credit/u);
+  assert.match(record.next_action, /P02 scenario credit/u);
   assert.match(
     record.next_action,
-    /public matrix refresh in this Run #95 Epoch records 65\/65, compared with the 57\/65 master baseline at Epoch start/u,
+    /last clean accepted Candidate 4bb2c7e has a Run #95 acceptance snapshot of Agent\/MCP 82\/96, anonymous public API 65\/65/u,
   );
   assert.ok(
     record.source_refs.includes(

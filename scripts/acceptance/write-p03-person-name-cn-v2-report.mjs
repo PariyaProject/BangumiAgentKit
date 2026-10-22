@@ -165,6 +165,32 @@ function profileForId(profileId) {
     : null;
 }
 
+function p03CodexErrorSummaryIsValid(profileId, summary) {
+  if (
+    !summary ||
+    !Number.isSafeInteger(summary.codexErrorItemCount) ||
+    summary.codexErrorItemCount < 0 ||
+    !Number.isSafeInteger(summary.blockedWebSearchErrorItemCount) ||
+    summary.blockedWebSearchErrorItemCount < 0 ||
+    !Number.isSafeInteger(summary.unexpectedCodexErrorItemCount) ||
+    summary.unexpectedCodexErrorItemCount < 0
+  ) {
+    return false;
+  }
+  if (profileId !== P03_V3_PROFILE_ID) {
+    return (
+      summary.codexErrorItemCount === 0 &&
+      summary.blockedWebSearchErrorItemCount === 0 &&
+      summary.unexpectedCodexErrorItemCount === 0
+    );
+  }
+  return (
+    summary.codexErrorItemCount <= 3 &&
+    summary.blockedWebSearchErrorItemCount === summary.codexErrorItemCount &&
+    summary.unexpectedCodexErrorItemCount === 0
+  );
+}
+
 function receiptKindFor(profile) {
   return profile?.id === P03_V3_PROFILE_ID
     ? 'p03-person-name-cn-agent-mcp-runner-receipt-v3'
@@ -352,11 +378,7 @@ export function validateP03V2ProfileReport(report, claim, reportBytes = null) {
       report.eventStreamParsed === true &&
       report.turnCompleted === true &&
       report.codexMcpToolEventCount === 1 &&
-      Number.isSafeInteger(report.codexErrorItemCount) &&
-      report.codexErrorItemCount >= 0 &&
-      report.codexErrorItemCount <= 3 &&
-      report.blockedWebSearchErrorItemCount === report.codexErrorItemCount &&
-      report.unexpectedCodexErrorItemCount === 0 &&
+      p03CodexErrorSummaryIsValid(profile.id, report) &&
       report.nonMcpToolEventCount === 0 &&
       canonicalAgentMcpProfileJson(report.nonMcpToolTypes) === '[]' &&
       report.shellToolCallCount === 0 &&
@@ -494,11 +516,7 @@ export function writeP03V2PersonNameCnReport(
     events.structuredContentReadbackAvailable !== false ||
     events.codexMcpToolEventCount !== 1 ||
     events.codexErrorCountsMatch !== true ||
-    !Number.isSafeInteger(events.codexErrorItemCount) ||
-    events.codexErrorItemCount < 0 ||
-    events.codexErrorItemCount > 3 ||
-    events.blockedWebSearchErrorItemCount !== events.codexErrorItemCount ||
-    events.unexpectedCodexErrorItemCount !== 0 ||
+    !p03CodexErrorSummaryIsValid(profile.id, events) ||
     events.nonMcpToolEventCount !== 0 ||
     events.shellToolCallCount !== 0 ||
     events.allowedCallCount !== 1 ||

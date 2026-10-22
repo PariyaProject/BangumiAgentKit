@@ -27,6 +27,7 @@ import {
   P03_CANONICAL_COVERAGE_NOTE,
   P03_PROFILE_ID,
   P03_FRESH_PUBLIC_PROFILE_IDS,
+  P03_V3_PROFILE_ID,
   validateP03McpTextProjection,
   validateP03ResultSummary,
   verifyP03Answer,
@@ -67,11 +68,21 @@ export function p03CodexErrorSummaryIsSafe(summary, profileId) {
     !summary ||
     !Number.isSafeInteger(summary.errorItemCount) ||
     summary.errorItemCount < 0 ||
+    !Number.isSafeInteger(summary.blockedWebSearchErrorItemCount) ||
+    summary.blockedWebSearchErrorItemCount < 0 ||
+    !Number.isSafeInteger(summary.unexpectedCodexErrorItemCount) ||
+    summary.unexpectedCodexErrorItemCount < 0 ||
     summary.countsMatch !== true
   ) {
     return false;
   }
-  if (!P03_FRESH_PUBLIC_PROFILE_IDS.includes(profileId)) return summary.errorItemCount === 0;
+  if (profileId !== P03_V3_PROFILE_ID) {
+    return (
+      summary.errorItemCount === 0 &&
+      summary.blockedWebSearchErrorItemCount === 0 &&
+      summary.unexpectedCodexErrorItemCount === 0
+    );
+  }
   return (
     summary.errorItemCount <= MAX_BLOCKED_WEB_SEARCH_ERROR_ITEMS &&
     summary.blockedWebSearchErrorItemCount === summary.errorItemCount &&

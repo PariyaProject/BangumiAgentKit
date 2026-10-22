@@ -7707,6 +7707,10 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs': (
         'P03_FRESH_PUBLIC_PROFILE_IDS.includes(PROFILE.id)',
+        'if (profileId !== P03_V3_PROFILE_ID)',
+        'summary.errorItemCount === 0',
+        'summary.blockedWebSearchErrorItemCount === 0',
+        'summary.unexpectedCodexErrorItemCount === 0',
         'summarizeCodexErrorItems(parsed.events)',
         'p03CodexErrorSummaryIsSafe(',
         "Object.hasOwn(events.completedMcpCalls[0]?.result ?? {}, 'structuredContent')",
@@ -7722,6 +7726,8 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
         'nameCnRowsOmittedFromText: result.nameCnRowsOmittedFromText',
         'blockedWebSearchErrorItemCount',
         'unexpectedCodexErrorItemCount',
+        'if (profileId !== P03_V3_PROFILE_ID)',
+        'summary.codexErrorItemCount === 0',
     ),
     'scripts/acceptance/validate-p03-person-name-cn-v2-report.mjs': (
         'validateP03V2ProfileReport(report, claim, reportBytes)',
@@ -7742,6 +7748,7 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'tests/harness/write-p03-person-name-cn-v2-report.test.mjs': (
         'P03 v2 writes a matrix-only signed report without person or title text',
+        'P03 v2 rejects classified web-search errors in both writer and report validator',
         'P03 v2 rejects unexpected structuredContent instead of relying on it',
     ),
     'tests/harness/agent-harness-cli.test.mjs': (
@@ -7749,11 +7756,14 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
         'leaves the terminal v1 profile untouched',
     ),
     'scripts/test_acceptance_evidence.py': (
+        'test_only_v3_accepts_bounded_classified_web_search_errors',
         'test_report_bound_review_refresh_is_same_identity_and_evidence_only',
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_p03_v2_profile_report_is_valid(',
         'def codex_p03_profile_error_summary_is_valid(',
+        'if profile_id != CODEX_P03_V3_PROFILE_ID:',
+        'return error_count == blocked_count == unexpected_count == 0',
         'blockedWebSearchErrorItemCount',
         'def codex_p03_v2_candidate_binding_is_current(',
         'def codex_p03_v2_same_reviewer_identity(',
@@ -7784,6 +7794,8 @@ CODEX_P03_V3_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs': (
         'P03_FRESH_PUBLIC_PROFILE_IDS.includes(profile.id)',
+        'if (profileId !== P03_V3_PROFILE_ID)',
+        'summary.errorItemCount <= MAX_BLOCKED_WEB_SEARCH_ERROR_ITEMS',
         'structuredReadbackExpected ? structuredReadback : !structuredContentPresent',
         'summarizeCodexErrorItems(parsed.events)',
         'p03CodexErrorSummaryIsSafe(',
@@ -7793,6 +7805,7 @@ CODEX_P03_V3_PROFILE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/write-p03-person-name-cn-v2-report.mjs': (
         'function profileForId(profileId)',
         'function reportProfileName(profile)',
+        'summary.codexErrorItemCount <= 3',
         'profile.selectionEvidencePath',
         'blockedWebSearchErrorItemCount',
         'unexpectedCodexErrorItemCount',
@@ -7806,8 +7819,8 @@ CODEX_P03_V3_PROFILE_IMPLEMENTATION_MARKERS = {
         'def codex_p03_profile_error_summary_is_valid(',
         'CODEX_P03_V3_EVIDENCE_KIND',
         'CODEX_P03_V3_REPORT_RELATIVE_PATH',
-        'blockedWebSearchErrorItemCount',
         '0 <= error_count <= 3',
+        'blockedWebSearchErrorItemCount',
     ),
     'docs/research/run95-p03-person-name-cn-fresh-profile-v3-selection-2026-10-22.md': (
         'Of the first five rows, all five had a non-empty `name_cn`',
@@ -17255,7 +17268,7 @@ def codex_p03_v2_profile_report_candidate_paths(
 
 
 def codex_p03_profile_error_summary_is_valid(report: object, profile_id: object) -> bool:
-    """Accept only bounded, explicitly classified disabled-web-search errors."""
+    """Keep P03 v2 strict; only v3 accepts bounded classified disabled-web-search errors."""
     if not isinstance(report, dict) or profile_id not in CODEX_P03_PUBLIC_PROFILE_IDS:
         return False
     error_count = report.get('codexErrorItemCount')
@@ -17263,6 +17276,8 @@ def codex_p03_profile_error_summary_is_valid(report: object, profile_id: object)
     unexpected_count = report.get('unexpectedCodexErrorItemCount')
     if any(type(value) is not int for value in (error_count, blocked_count, unexpected_count)):
         return False
+    if profile_id != CODEX_P03_V3_PROFILE_ID:
+        return error_count == blocked_count == unexpected_count == 0
     return (
         0 <= error_count <= 3
         and blocked_count == error_count

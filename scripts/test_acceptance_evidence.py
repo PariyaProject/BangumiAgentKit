@@ -10582,47 +10582,68 @@ class P03FreshPublicV2ProfileRouteTests(unittest.TestCase):
             ),
         )
 
-    def test_public_profiles_accept_only_bounded_classified_web_search_errors(self):
-        for profile_id in GENERATOR.CODEX_P03_PUBLIC_PROFILE_IDS:
-            for count in range(4):
-                self.assertTrue(
-                    GENERATOR.codex_p03_profile_error_summary_is_valid(
-                        {
-                            'codexErrorItemCount': count,
-                            'blockedWebSearchErrorItemCount': count,
-                            'unexpectedCodexErrorItemCount': 0,
-                        },
-                        profile_id,
-                    ),
-                )
-            for invalid in (
+    def test_only_v3_accepts_bounded_classified_web_search_errors(self):
+        v3_profile_id = GENERATOR.CODEX_P03_V3_PROFILE_ID
+        v2_profile_id = GENERATOR.CODEX_P03_V2_PROFILE_ID
+        for count in range(4):
+            self.assertTrue(
+                GENERATOR.codex_p03_profile_error_summary_is_valid(
+                    {
+                        'codexErrorItemCount': count,
+                        'blockedWebSearchErrorItemCount': count,
+                        'unexpectedCodexErrorItemCount': 0,
+                    },
+                    v3_profile_id,
+                ),
+            )
+        for invalid in (
+            {
+                'codexErrorItemCount': 4,
+                'blockedWebSearchErrorItemCount': 4,
+                'unexpectedCodexErrorItemCount': 0,
+            },
+            {
+                'codexErrorItemCount': 3,
+                'blockedWebSearchErrorItemCount': 2,
+                'unexpectedCodexErrorItemCount': 1,
+            },
+            {
+                'codexErrorItemCount': 3,
+                'blockedWebSearchErrorItemCount': 2,
+                'unexpectedCodexErrorItemCount': 0,
+            },
+            {
+                'codexErrorItemCount': True,
+                'blockedWebSearchErrorItemCount': True,
+                'unexpectedCodexErrorItemCount': 0,
+            },
+        ):
+            self.assertFalse(
+                GENERATOR.codex_p03_profile_error_summary_is_valid(
+                    invalid,
+                    v3_profile_id,
+                ),
+            )
+        self.assertTrue(
+            GENERATOR.codex_p03_profile_error_summary_is_valid(
                 {
-                    'codexErrorItemCount': 4,
-                    'blockedWebSearchErrorItemCount': 4,
+                    'codexErrorItemCount': 0,
+                    'blockedWebSearchErrorItemCount': 0,
                     'unexpectedCodexErrorItemCount': 0,
                 },
+                v2_profile_id,
+            ),
+        )
+        self.assertFalse(
+            GENERATOR.codex_p03_profile_error_summary_is_valid(
                 {
-                    'codexErrorItemCount': 3,
-                    'blockedWebSearchErrorItemCount': 2,
-                    'unexpectedCodexErrorItemCount': 1,
-                },
-                {
-                    'codexErrorItemCount': 3,
-                    'blockedWebSearchErrorItemCount': 2,
+                    'codexErrorItemCount': 1,
+                    'blockedWebSearchErrorItemCount': 1,
                     'unexpectedCodexErrorItemCount': 0,
                 },
-                {
-                    'codexErrorItemCount': True,
-                    'blockedWebSearchErrorItemCount': True,
-                    'unexpectedCodexErrorItemCount': 0,
-                },
-            ):
-                self.assertFalse(
-                    GENERATOR.codex_p03_profile_error_summary_is_valid(
-                        invalid,
-                        profile_id,
-                    ),
-                )
+                v2_profile_id,
+            ),
+        )
         self.assertFalse(
             GENERATOR.codex_p03_profile_error_summary_is_valid(
                 {

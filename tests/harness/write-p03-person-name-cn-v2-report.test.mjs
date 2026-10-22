@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash, generateKeyPairSync } from 'node:crypto';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import {
   closeSync,
   existsSync,
@@ -15,6 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import {
+  buildP03V2RunnerReceiptPayload,
   validateP03V2ProfileReport,
   validateP03V2SanitizedReportFile,
   writeP03V2PersonNameCnReport,
@@ -303,7 +304,66 @@ test('P03 v3 writes a signed five-row report under its own profile identity', ()
   }
 });
 
-test('P03 fresh public report rejects unclassified Codex error items', () => {
+test('P03 v2 rejects classified web-search errors in both writer and report validator', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'p03-v2-error-report-test-'));
+  mkdirSync(path.join(root, 'docs/live-probes'), { recursive: true });
+  const fixture = makeFixture(root);
+  try {
+    const commonInput = {
+      ...fixture,
+      completedMcpCalls: [
+        {
+          tool: profile.toolName,
+          arguments: profile.calls[0].arguments,
+          result: { content: [{ type: 'text', text: fixture.compactText }] },
+        },
+      ],
+      codexCliVersion: '1.2.3',
+      eventStreamSha256: 'd'.repeat(64),
+      serverSummarySha256: 'e'.repeat(64),
+    };
+    const rejected = writeP03V2PersonNameCnReport(
+      {
+        ...commonInput,
+        events: {
+          ...fixture.events,
+          codexErrorItemCount: 1,
+          blockedWebSearchErrorItemCount: 1,
+        },
+      },
+      { privateKey: fixture.keyPair.privateKey },
+    );
+    assert.equal(rejected.passed, false);
+    assert.equal(rejected.reason, 'P03_V2_RUNNER_GATE_INVALID');
+    assert.equal(existsSync(path.join(root, profile.reportPath)), false);
+
+    const written = writeP03V2PersonNameCnReport(
+      commonInput,
+      { privateKey: fixture.keyPair.privateKey },
+    );
+    assert.equal(written.passed, true, written.reason);
+    const validation = validateP03V2SanitizedReportFile(fixture.claim, root);
+    assert.equal(validation.passed, true, validation.reason);
+    const forged = structuredClone(validation.report);
+    forged.codexErrorItemCount = 1;
+    forged.blockedWebSearchErrorItemCount = 1;
+    const payload = buildP03V2RunnerReceiptPayload(forged, {
+      eventStreamSha256: forged.runnerReceipt.payload.eventStreamSha256,
+      serverSummarySha256: forged.runnerReceipt.payload.serverSummarySha256,
+    });
+    forged.runnerReceipt.payload = payload;
+    forged.runnerReceipt.signature = sign(
+      null,
+      Buffer.from(canonicalAgentMcpProfileJson(payload)),
+      fixture.keyPair.privateKey,
+    ).toString('base64');
+    assert.equal(validateP03V2ProfileReport(forged, fixture.claim).passed, false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('P03 v3 report rejects unclassified Codex error items', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'p03-v3-error-report-test-'));
   mkdirSync(path.join(root, 'docs/live-probes'), { recursive: true });
   const fixture = makeFixture(root, v3Profile);

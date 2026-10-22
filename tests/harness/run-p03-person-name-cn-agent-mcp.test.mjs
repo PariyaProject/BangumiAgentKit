@@ -53,7 +53,7 @@ test('P03 runner accepts only the fixed Run 95 entry point', () => {
   assert.throws(() => validateP03RunnerArgs(['--run', '95', '--retry']));
 });
 
-test('P03 accepts only the narrow disabled-web-search error class on fresh public profiles', () => {
+test('only P03 v3 accepts the narrow disabled-web-search error class', () => {
   assert.equal(
     p03CodexErrorSummaryIsSafe(
       {
@@ -71,6 +71,18 @@ test('P03 accepts only the narrow disabled-web-search error class on fresh publi
       {
         errorItemCount: 2,
         blockedWebSearchErrorItemCount: 2,
+        unexpectedCodexErrorItemCount: 0,
+        countsMatch: true,
+      },
+      P03_V2_PROFILE_ID,
+    ),
+    false,
+  );
+  assert.equal(
+    p03CodexErrorSummaryIsSafe(
+      {
+        errorItemCount: 0,
+        blockedWebSearchErrorItemCount: 0,
         unexpectedCodexErrorItemCount: 0,
         countsMatch: true,
       },
@@ -101,7 +113,15 @@ test('P03 accepts only the narrow disabled-web-search error class on fresh publi
     assert.equal(p03CodexErrorSummaryIsSafe(summary, P03_V3_PROFILE_ID), false);
   }
   assert.equal(
-    p03CodexErrorSummaryIsSafe({ errorItemCount: 1, countsMatch: true }, P03_PROFILE_ID),
+    p03CodexErrorSummaryIsSafe(
+      {
+        errorItemCount: 1,
+        blockedWebSearchErrorItemCount: 1,
+        unexpectedCodexErrorItemCount: 0,
+        countsMatch: true,
+      },
+      P03_PROFILE_ID,
+    ),
     false,
   );
 });
