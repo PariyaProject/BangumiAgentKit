@@ -32,5 +32,5 @@ test('M07 Codex invocation is ephemeral, read-only, and exposes only manage_inde
   );
   assert.ok(configEntries.includes('features.shell_tool=false'));
   assert.ok(configEntries.includes('features.browser_use=false'));
-  assert.ok(configEntries.includes('features.web_search=false'));
+  assert.ok(configEntries.includes('web_search="disabled"'));
 });

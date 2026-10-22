@@ -121,7 +121,7 @@ describe('G02 current catalog one-tool runner', () => {
       'g02-2024-isekai-query-v1',
     );
     expect(values).toContain('features.shell_tool=false');
-    expect(values).toContain('features.web_search=false');
+    expect(values).toContain('web_search="disabled"');
     expect(values).toContain('features.browser_use=false');
     expect(values).toContain('features.computer_use=false');
     expect(values).toContain('features.multi_agent=false');

@@ -344,8 +344,7 @@ test('G01 Codex invocation is ephemeral, read-only, and exposes only the fixed o
     'features.computer_use=false',
     'features.multi_agent=false',
     'features.shell_tool=false',
-    'features.web_search=false',
-    'features.web_search_request=false',
+    'web_search="disabled"',
     'features.remote_plugin=false',
     'mcp_servers.bgk_g01_render_query.enabled_tools=["bangumi.render_query_subjects"]',
   ]) {

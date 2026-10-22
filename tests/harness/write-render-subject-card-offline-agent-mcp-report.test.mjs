@@ -13,9 +13,8 @@ import {
   validateRenderSubjectCardOfflineProfileReport,
 } from '../../scripts/acceptance/write-render-subject-card-offline-agent-mcp-report.mjs';
 import {
-  RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS,
-  RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
   RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID,
+  RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_PROFILE_ID,
 } from '../../scripts/lib/render-subject-card-offline-profile.mjs';
 
 const PROFILE = getAgentMcpProfileById(RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID);
@@ -30,7 +29,7 @@ const CI_CHECKS = [
 ].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
-function fixtureInput() {
+function fixtureInput(profile = PROFILE) {
   const keyPair = generateKeyPairSync('ed25519');
   const publicKeyBase64 = keyPair.publicKey
     .export({ type: 'spki', format: 'der' })
@@ -38,21 +37,21 @@ function fixtureInput() {
   const publicKeyDer = Buffer.from(publicKeyBase64, 'base64');
   const catalogBytes = readFileSync(new URL('../../docs/tool-catalog.json', import.meta.url));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
-  const catalogTool = catalog.find((item) => item.name === PROFILE.toolName);
+  const catalogTool = catalog.find((item) => item.name === profile.toolName);
   const claim = {
     schemaVersion: 1,
     claimId: 'profile-run-95-pr-257-000000000000-1792600000000',
     state: 'CLAIMED',
-    profileId: PROFILE.id,
-    frontierId: PROFILE.frontierId,
-    epochId: PROFILE.epochId,
+    profileId: profile.id,
+    frontierId: profile.frontierId,
+    epochId: profile.epochId,
     runNumber: 95,
     prNumber: 257,
-    toolName: PROFILE.toolName,
-    argumentProfile: PROFILE.argumentProfile,
-    expectedArguments: [RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS],
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
-    registrySha256: agentMcpProfileRegistrySha256(PROFILE.id),
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
+    expectedArguments: [profile.calls[0].arguments],
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+    registrySha256: agentMcpProfileRegistrySha256(profile.id),
     sourceCandidateSha: '0'.repeat(40),
     baseSha: '1'.repeat(40),
     ciSha: '0'.repeat(40),
@@ -67,8 +66,8 @@ function fixtureInput() {
     retryAllowed: false,
   };
   const offlineFixture = {
-    profile: RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
-    expectedOperation: 'GET /v0/subjects/991903',
+    profile: profile.networkMode,
+    expectedOperation: 'GET /v0/subjects/' + profile.calls[0].arguments.subjectId,
     requestCount: 1,
     expectedRequestCount: 1,
     unexpectedRequestCount: 0,
@@ -97,16 +96,16 @@ function fixtureInput() {
   };
   const serverSummary = {
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
-    profileId: PROFILE.id,
-    argumentProfile: PROFILE.argumentProfile,
-    networkMode: RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
+    profileId: profile.id,
+    argumentProfile: profile.argumentProfile,
+    networkMode: profile.networkMode,
     sourceRevision: claim.sourceCandidateSha,
     bundleSha256: claim.bundleSha256,
     catalogSha256: sha256(catalogBytes),
-    toolName: PROFILE.toolName,
+    toolName: profile.toolName,
     toolDescriptionSha256: sha256(catalogTool.description),
     inputSchemaSha256: sha256(canonicalAgentMcpProfileJson(catalogTool.inputSchema)),
-    serverToolNames: [PROFILE.toolName],
+    serverToolNames: [profile.toolName],
     serverToolCount: 1,
     expectedArgumentsSha256: claim.expectedArgumentsSha256,
     expectedCallCount: 1,
@@ -140,9 +139,7 @@ function fixtureInput() {
       claim,
       serverSummary,
       events,
-      completedMcpCalls: [
-        { tool: PROFILE.toolName, arguments: RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS },
-      ],
+      completedMcpCalls: [{ tool: profile.toolName, arguments: profile.calls[0].arguments }],
       answer: 'RENDER_SUBJECT_CARD_SYNTHETIC_ARTIFACT_READY',
       codexCliVersion: '1.2.14',
       eventStreamSha256: '4'.repeat(64),
@@ -194,5 +191,22 @@ test('subject-card report rejects collection access, artifact mutation, and clai
   assert.equal(
     validateRenderSubjectCardOfflineProfileReport(built.report, changedClaim).passed,
     false,
+  );
+});
+
+test('v4 report binds its own profile label, source contract, and synthetic subject input', () => {
+  const profile = getAgentMcpProfileById(RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_PROFILE_ID);
+  const { input, keyPair } = fixtureInput(profile);
+  const built = buildRenderSubjectCardOfflineProfileReport(input, {
+    privateKey: keyPair.privateKey,
+  });
+
+  assert.equal(built.passed, true, JSON.stringify(built));
+  assert.equal(built.report.profileId, profile.id);
+  assert.equal(built.report.profile, 'codex-luna-max-offline-agent-mcp-matrix-v4');
+  assert.equal(built.report.offlineFixture.expectedOperation, 'GET /v0/subjects/991904');
+  assert.equal(
+    validateRenderSubjectCardOfflineProfileReport(built.report, input.claim).passed,
+    true,
   );
 });

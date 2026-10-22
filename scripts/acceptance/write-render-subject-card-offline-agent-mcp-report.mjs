@@ -13,11 +13,10 @@ import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   assertRenderSubjectCardOfflineProfile,
   RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_PROFILE_ID,
+  getRenderSubjectCardOfflineConfig,
 } from '../lib/render-subject-card-offline-profile.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const PROFILE = getAgentMcpProfileById(RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_PROFILE_ID);
-const REPORT_PATH = PROFILE ? path.join(ROOT, PROFILE.reportPath) : null;
 const SERVER_ID = 'bgk_render_subject_card_offline';
 const ACKNOWLEDGEMENT = 'RENDER_SUBJECT_CARD_SYNTHETIC_ARTIFACT_READY';
 const RECEIPT_KIND = 'render-subject-card-offline-agent-mcp-runner-receipt-v1';
@@ -386,7 +385,7 @@ export function validateRenderSubjectCardOfflineProfileReport(report, claim, rep
     report.frontierId !== 'OP-008' ||
     report.scenarioId !== null ||
     report.epochId !== profile.epochId ||
-    report.profile !== 'codex-luna-max-offline-agent-mcp-matrix-v3' ||
+    report.profile !== getRenderSubjectCardOfflineConfig(profile.id)?.reportProfile ||
     report.model !== 'gpt-6-luna' ||
     report.reasoningEffort !== 'max' ||
     !/^gpt-6-luna-max-run95-pr\d+-round[1-9]\d*$/u.test(report.reviewerId ?? '') ||
@@ -614,7 +613,7 @@ export function buildRenderSubjectCardOfflineProfileReport(
     scenarioId: null,
     epochId: profile.epochId,
     profileId: profile.id,
-    profile: 'codex-luna-max-offline-agent-mcp-matrix-v3',
+    profile: getRenderSubjectCardOfflineConfig(profile.id)?.reportProfile,
     model: profile.model,
     reasoningEffort: profile.reasoningEffort,
     reviewerId: claim.reviewerId,
@@ -694,13 +693,15 @@ export function buildRenderSubjectCardOfflineProfileReport(
 
 export function writeRenderSubjectCardOfflineProfileReport(input, options = {}) {
   const built = buildRenderSubjectCardOfflineProfileReport(input, options);
-  if (!built.passed || !PROFILE || !REPORT_PATH) return built;
+  const profile = built.passed ? getProfile(built.report.profileId) : null;
+  if (!built.passed || !profile) return built;
+  const reportPath = path.join(ROOT, profile.reportPath);
   const bytes = Buffer.from(`${JSON.stringify(built.report, null, 2)}\n`, 'utf8');
   if (bytes.length > 64 * 1024)
     return { passed: false, reason: 'RENDER_SUBJECT_CARD_REPORT_TOO_LARGE' };
   let descriptor;
   try {
-    descriptor = openSync(REPORT_PATH, 'wx', 0o600);
+    descriptor = openSync(reportPath, 'wx', 0o600);
     writeFileSync(descriptor, bytes);
     closeSync(descriptor);
   } catch {
@@ -713,7 +714,7 @@ export function writeRenderSubjectCardOfflineProfileReport(input, options = {}) 
     }
     return { passed: false, reason: 'RENDER_SUBJECT_CARD_REPORT_ALREADY_EXISTS_OR_UNWRITABLE' };
   }
-  return { passed: true, reportPath: PROFILE.reportPath, reportSha256: sha256(bytes) };
+  return { passed: true, reportPath: profile.reportPath, reportSha256: sha256(bytes) };
 }
 
 export function validateRenderSubjectCardOfflineSanitizedReportFile(

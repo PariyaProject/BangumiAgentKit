@@ -10,6 +10,10 @@ export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_PROFILE_ID =
   'render-subject-card-compact-typography-agent-mcp-v3';
 export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_NETWORK_MODE =
   'run95-render-subject-card-compact-typography-v3';
+export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_PROFILE_ID =
+  'render-subject-card-compact-typography-agent-mcp-v4';
+export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_NETWORK_MODE =
+  'run95-render-subject-card-compact-typography-v4';
 export const RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID =
   RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_PROFILE_ID;
 export const RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE =
@@ -25,6 +29,10 @@ export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_ARGUMENTS = Object.freeze
 });
 export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_ARGUMENTS = Object.freeze({
   subjectId: 991903,
+  includeCollection: false,
+});
+export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_ARGUMENTS = Object.freeze({
+  subjectId: 991904,
   includeCollection: false,
 });
 export const RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS =
@@ -44,6 +52,7 @@ const PROFILE_CONFIGS = new Map([
         'docs/research/run95-render-subject-card-offline-agent-mcp-contract-2026-10-21.md',
       evidenceKind: 'codex_cli_render_subject_card_offline_agent_mcp',
       answerCheckMethod: 'render-subject-card-synthetic-artifact-v1',
+      reportProfile: 'codex-luna-max-offline-agent-mcp-matrix-v1',
       arguments: RENDER_SUBJECT_CARD_OFFLINE_V1_ARGUMENTS,
       fixture: Object.freeze({
         id: RENDER_SUBJECT_CARD_OFFLINE_V1_ARGUMENTS.subjectId,
@@ -82,6 +91,7 @@ const PROFILE_CONFIGS = new Map([
         'docs/research/run95-ux002-render-subject-card-compact-typography-v2-source-contract-2026-10-22.md',
       evidenceKind: 'codex_cli_render_subject_card_compact_typography_v2_agent_mcp',
       answerCheckMethod: 'render-subject-card-compact-typography-v2-artifact',
+      reportProfile: 'codex-luna-max-offline-agent-mcp-matrix-v2',
       arguments: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_ARGUMENTS,
       fixture: Object.freeze({
         id: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_ARGUMENTS.subjectId,
@@ -121,6 +131,7 @@ const PROFILE_CONFIGS = new Map([
         'docs/research/run95-ux002-render-subject-card-compact-typography-v3-source-contract-2026-10-22.md',
       evidenceKind: 'codex_cli_render_subject_card_compact_typography_v3_agent_mcp',
       answerCheckMethod: 'render-subject-card-compact-typography-v3-artifact',
+      reportProfile: 'codex-luna-max-offline-agent-mcp-matrix-v3',
       arguments: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_ARGUMENTS,
       fixture: Object.freeze({
         id: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_ARGUMENTS.subjectId,
@@ -144,6 +155,47 @@ const PROFILE_CONFIGS = new Map([
         },
         collection: { wish: 2, collect: 6, doing: 3, on_hold: 1, dropped: 0 },
         total_episodes: 13,
+      }),
+    }),
+  ],
+  [
+    RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_PROFILE_ID,
+    Object.freeze({
+      id: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_PROFILE_ID,
+      networkMode: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_NETWORK_MODE,
+      epochId: 'run95-op008-render-card-v4-codex-config-20261022',
+      argumentProfile: 'fixed-ux002-subject-card-991904-no-collection-default-scale-075-v4',
+      claimLabelName: 'harness-r95-render-card-typography-v4-claimed',
+      reportPath: 'docs/live-probes/render-subject-card-compact-typography-v4-agent-mcp-run95.json',
+      selectionEvidencePath:
+        'docs/research/run95-ux002-render-subject-card-compact-typography-v4-source-contract-2026-10-22.md',
+      evidenceKind: 'codex_cli_render_subject_card_compact_typography_v4_agent_mcp',
+      answerCheckMethod: 'render-subject-card-compact-typography-v4-artifact',
+      reportProfile: 'codex-luna-max-offline-agent-mcp-matrix-v4',
+      arguments: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_ARGUMENTS,
+      fixture: Object.freeze({
+        id: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_ARGUMENTS.subjectId,
+        type: 2,
+        name: '星降る海辺のアトリエ / Atelier of Falling Stars',
+        name_cn: '星海手记：一段关于旅途、夏夜、旧书店与远方灯火的故事',
+        date: '2026-10-23',
+        platform: 'TV',
+        summary: '从海边旧书店出发，沿途收集退潮后的玻璃、陌生人的故事，以及一张没有寄出的明信片。',
+        images: { common: '', large: '', medium: '', small: '' },
+        tags: [
+          { name: '治愈', count: 4 },
+          { name: '旅行', count: 3 },
+          { name: '日常', count: 2 },
+          { name: '合成样例', count: 1 },
+        ],
+        rating: {
+          score: 8.3,
+          rank: 57,
+          total: 18,
+          count: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 6: 1, 7: 4, 8: 7, 9: 4, 10: 1 },
+        },
+        collection: { wish: 3, collect: 8, doing: 4, on_hold: 2, dropped: 1 },
+        total_episodes: 11,
       }),
     }),
   ],

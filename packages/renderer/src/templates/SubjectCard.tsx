@@ -38,7 +38,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   const titleFontSize = gallery
     ? Math.round(Math.min(54, Math.max(18, renderWidth * 0.056)))
     : zine
-      ? Math.round(Math.min(72, Math.max(22, renderWidth * 0.074)))
+      ? Math.round(Math.min(54, Math.max(22, renderWidth * 0.058)))
       : Math.round(Math.min(50, Math.max(22, renderWidth * 0.052)));
   const heroScoreFontSize = gallery
     ? renderWidth >= 900
@@ -69,6 +69,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
       titleFontSize={`${titleFontSize}px`}
       eyebrowSurface={zine ? theme.tones.butter.surface : undefined}
       eyebrowColor={zine ? theme.text : undefined}
+      titleMaxLines={zine ? 3 : 2}
       showIconEyebrow={!gallery}
     />
   );

@@ -53,7 +53,7 @@ describe('A01 aggregate Codex MCP runner', () => {
     expect(args).toContain('read-only');
     expect(args.at(-1)).toContain('bangumi.aggregate_subject_cohort');
     expect(args).toContain('features.shell_tool=false');
-    expect(args).toContain('features.web_search=false');
+    expect(args).toContain('web_search="disabled"');
     expect(args).toContain('features.multi_agent=false');
     expect(args).toContain(
       'mcp_servers.bgk_a01_aggregate_one_tool.enabled_tools=["bangumi.aggregate_subject_cohort"]',

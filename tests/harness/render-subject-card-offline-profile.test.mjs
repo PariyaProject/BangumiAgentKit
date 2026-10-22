@@ -6,10 +6,11 @@ import {
   createRenderSubjectCardOfflineAssetGuard,
   createRenderSubjectCardOfflineFetch,
   RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID,
+  RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_PROFILE_ID,
 } from '../../scripts/lib/render-subject-card-offline-profile.mjs';
 
-function profile() {
-  return getAgentMcpProfileById(RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID);
+function profile(profileId = RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID) {
+  return getAgentMcpProfileById(profileId);
 }
 
 test('optional-auth allowlist is limited to the exact read-only profile and catalog tool', () => {
@@ -72,6 +73,30 @@ test('render_subject_card v3 offline fixture serves one exact synthetic public S
   assert.deepEqual(fixture.snapshot(), {
     profile: 'run95-render-subject-card-compact-typography-v3',
     expectedOperation: 'GET /v0/subjects/991903',
+    requestCount: 1,
+    expectedRequestCount: 1,
+    unexpectedRequestCount: 0,
+    authorizationHeaderCount: 0,
+    collectionRequestCount: 0,
+    expectedOperationComplete: true,
+    rawFixturePayloadStored: false,
+  });
+});
+
+test('render_subject_card v4 fixture has a distinct mixed-script subject and one exact read', async () => {
+  const fixture = createRenderSubjectCardOfflineFetch(
+    profile(RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_PROFILE_ID),
+  );
+  const response = await fixture.fetchFn('https://api.bgm.tv/v0/subjects/991904');
+
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.id, 991904);
+  assert.equal(result.name, '星降る海辺のアトリエ / Atelier of Falling Stars');
+  assert.equal(result.name_cn, '星海手记：一段关于旅途、夏夜、旧书店与远方灯火的故事');
+  assert.deepEqual(fixture.snapshot(), {
+    profile: 'run95-render-subject-card-compact-typography-v4',
+    expectedOperation: 'GET /v0/subjects/991904',
     requestCount: 1,
     expectedRequestCount: 1,
     unexpectedRequestCount: 0,

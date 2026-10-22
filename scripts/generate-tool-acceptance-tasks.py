@@ -5408,7 +5408,7 @@ CODEX_D04_PROBE_IMPLEMENTATION_MARKERS = {
         'physicalPathForComparison(',
         'isPathWithin(',
         "'features.shell_tool=false'",
-        "'features.web_search=false'",
+        "'web_search=\"disabled\"'",
     ),
     'scripts/acceptance/d04-discovery-answer-check.mjs': (
         'export function verifyD04DiscoveryAnswer(',
@@ -5423,7 +5423,7 @@ CODEX_G02_PROBE_IMPLEMENTATION_MARKERS = {
         'createG02OneShotClaim(',
         'G02_TOOL_PROFILES',
         "'features.shell_tool=false'",
-        "'features.web_search=false'",
+        "'web_search=\"disabled\"'",
     ),
     'scripts/acceptance/write-g02-agent-mcp-report.mjs': (
         'export function writeG02AgentMcpReports(',
@@ -5529,7 +5529,7 @@ CODEX_C07_RENDERER_PROBE_IMPLEMENTATION_MARKERS = {
         'function readFinalMessage(lastMessagePath)',
         'function assertCurrentGate(sourceRevision)',
         "'features.shell_tool=false'",
-        "'features.web_search=false'",
+        "'web_search=\"disabled\"'",
         'function verifyObservation({',
         "'codex_cli_mcp_tool_use'",
     ),
@@ -6187,7 +6187,7 @@ CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'export function buildRenderSubjectCardOfflineRunnerReceiptPayload(',
         'export function validateRenderSubjectCardOfflineProfileReport(',
         'export function validateRenderSubjectCardOfflineSanitizedReportFile(',
-        'openSync(REPORT_PATH, \'wx\', 0o600)',
+        ", 'wx', 0o600)",
     ),
     'scripts/acceptance/validate-render-subject-card-offline-agent-mcp-report.mjs': (
         'validateRenderSubjectCardOfflineProfileReport(',

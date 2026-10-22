@@ -13,12 +13,12 @@ import {
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
-  RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS,
-  RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
-  RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID,
+  RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_ARGUMENTS,
+  RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_NETWORK_MODE,
+  RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_PROFILE_ID,
 } from '../../scripts/lib/render-subject-card-offline-profile.mjs';
 
-const PROFILE = getAgentMcpProfileById(RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID);
+const PROFILE = getAgentMcpProfileById(RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_PROFILE_ID);
 
 test('runner accepts only the Run 95 invocation and fails closed before an ineligible review', () => {
   assert.equal(validateRenderSubjectCardOfflineRunnerArgs(['--run', '95']), 'run');
@@ -85,7 +85,7 @@ test('server summary accepts only one local synthetic PNG with zero assets and n
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
     profileId: PROFILE.id,
     argumentProfile: PROFILE.argumentProfile,
-    networkMode: RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
+    networkMode: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_NETWORK_MODE,
     expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
     sourceRevision: '0'.repeat(40),
     bundleSha256: '1'.repeat(64),
@@ -119,8 +119,8 @@ test('server summary accepts only one local synthetic PNG with zero assets and n
       },
     ],
     offlineFixture: {
-      profile: RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
-      expectedOperation: 'GET /v0/subjects/991903',
+      profile: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_NETWORK_MODE,
+      expectedOperation: 'GET /v0/subjects/991904',
       requestCount: 1,
       expectedRequestCount: 1,
       unexpectedRequestCount: 0,
@@ -145,7 +145,7 @@ test('server summary accepts only one local synthetic PNG with zero assets and n
   assert.equal(validateServerSummary(extraTool, '0'.repeat(40), '1'.repeat(64)), false);
   const wrongArguments = structuredClone(summary);
   wrongArguments.expectedArgumentsSha256 = canonicalAgentMcpProfileJson([
-    RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS,
+    RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_ARGUMENTS,
   ]);
   assert.equal(validateServerSummary(wrongArguments, '0'.repeat(40), '1'.repeat(64)), false);
 });

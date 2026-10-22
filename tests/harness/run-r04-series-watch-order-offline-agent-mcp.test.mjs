@@ -93,7 +93,7 @@ test('R04 Codex invocation is ephemeral, read-only, and exposes only its fixed t
   for (const setting of [
     'features.multi_agent=false',
     'features.shell_tool=false',
-    'features.web_search=false',
+    'web_search="disabled"',
     `mcp_servers.${SERVER_ID}.required=true`,
     `mcp_servers.${SERVER_ID}.enabled_tools=["${PROFILE.toolName}"]`,
   ])

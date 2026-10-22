@@ -241,7 +241,7 @@ test('Codex invocation is ephemeral, read-only, and exposes only query_subjects'
   for (const setting of [
     'features.multi_agent=false',
     'features.shell_tool=false',
-    'features.web_search=false',
+    'web_search="disabled"',
     `mcp_servers.${G01_QUERY_SUBJECTS_OFFLINE_SERVER_ID}.required=true`,
     `mcp_servers.${G01_QUERY_SUBJECTS_OFFLINE_SERVER_ID}.enabled_tools=["${PROFILE.toolName}"]`,
   ])

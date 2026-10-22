@@ -107,7 +107,7 @@ describe('G05 one-tool Codex runner gates', () => {
     expect(serialized).toContain('model_reasoning_effort="max"');
     expect(serialized).toContain('features.shell_tool=false');
     expect(serialized).toContain('features.multi_agent=false');
-    expect(serialized).toContain('features.web_search=false');
+    expect(serialized).toContain('web_search="disabled"');
     expect(serialized).toContain('enabled_tools=["bangumi.get_person_activity"]');
     expect(serialized).toContain('comparePreviousWindow":true');
     expect(serialized).toContain('exactly once');
