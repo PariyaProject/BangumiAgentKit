@@ -382,7 +382,8 @@ test('P02 Codex invocation is ephemeral, read-only, and exposes only the fixed o
   assert.match(joined, /bangumi\.get_person_profile/u);
   assert.match(joined, /p02-person-profile-offline-agent-mcp-v1/u);
   assert.match(joined, /features\.shell_tool=false/u);
-  assert.match(joined, /features\.web_search=false/u);
+  assert.match(joined, /web_search="disabled"/u);
+  assert.doesNotMatch(joined, /features\.web_search(?:_cached|_request)?=false/u);
   assert.doesNotMatch(joined, /render_person_profile/u);
   const v2Args = buildP02CodexExecArgs({
     nodePath: '/usr/bin/node',

@@ -1508,6 +1508,32 @@
           }
         }
       ]
+    },
+    {
+      "id": "render-subject-card-compact-typography-agent-mcp-v4",
+      "frontierId": "OP-008",
+      "epochId": "run95-op008-render-card-v4-codex-config-20261022",
+      "toolName": "bangumi.render_subject_card",
+      "argumentProfile": "fixed-ux002-subject-card-991904-no-collection-default-scale-075-v4",
+      "claimLabelName": "harness-r95-render-card-typography-v4-claimed",
+      "reportPath": "docs/live-probes/render-subject-card-compact-typography-v4-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-ux002-render-subject-card-compact-typography-v4-source-contract-2026-10-22.md",
+      "evidenceKind": "codex_cli_render_subject_card_compact_typography_v4_agent_mcp",
+      "answerCheckMethod": "render-subject-card-compact-typography-v4-artifact",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-render-subject-card-compact-typography-v4",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 128,
+      "calls": [
+        {
+          "toolName": "bangumi.render_subject_card",
+          "arguments": {
+            "subjectId": 991904,
+            "includeCollection": false
+          }
+        }
+      ]
     }
   ]
 }

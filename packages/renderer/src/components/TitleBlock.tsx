@@ -101,6 +101,7 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({
           margin: 0,
           lineHeight: theme.designPack === 'graphic-zine' ? 1.16 : 1.24,
           letterSpacing: theme.design.titleLetterSpacing,
+          textWrap: theme.designPack === 'graphic-zine' ? 'balance' : undefined,
           display: '-webkit-box',
           WebkitBoxOrient: 'vertical',
           WebkitLineClamp: titleMaxLines,

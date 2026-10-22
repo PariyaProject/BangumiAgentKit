@@ -122,7 +122,7 @@ describe('A01 Codex/MCP runner gates', () => {
       'mcp_servers.bgk_a01_one_tool.enabled_tools=["bangumi.compare_subject_cohorts"]',
     );
     expect(config).toContain('features.shell_tool=false');
-    expect(config).toContain('features.web_search=false');
+    expect(config).toContain('web_search="disabled"');
     expect(config).toContain('features.multi_agent=false');
     expect(args.at(-1) ?? '').toContain(
       'call its sole tool bangumi.compare_subject_cohorts exactly once',

@@ -66,7 +66,7 @@ test('R05 runner accepts only Run 95 and configures one closed read-only server'
   assert.ok(args.includes('--sandbox') && args.includes('read-only'));
   assert.ok(args.some((arg) => arg.includes('mcp_servers.bgk_r05_overlap.enabled_tools')));
   assert.ok(args.some((arg) => arg.includes('features.shell_tool=false')));
-  assert.ok(args.some((arg) => arg.includes('features.web_search=false')));
+  assert.ok(args.some((arg) => arg.includes('web_search="disabled"')));
 });
 
 test('R05 prompt and answer validator share the exact coverage note', () => {

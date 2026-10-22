@@ -86,7 +86,7 @@ test('P07 Codex config is ephemeral/read-only and exposes exactly the fixed MCP 
     'features.browser_use=false',
     'features.computer_use=false',
     'features.multi_agent=false',
-    'features.web_search=false',
+    'web_search="disabled"',
   ]) {
     assert.ok(args.includes(disabled), `missing ${disabled}`);
   }

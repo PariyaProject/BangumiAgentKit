@@ -232,6 +232,28 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(zine.match(/data-layout="subject-cover-artwork"/gu)).toHaveLength(1);
     expect(zine).not.toContain('data-layout="subject-cover-poster"');
 
+    const zineLongTitle = renderHtmlTemplate(
+      {
+        ...viewModel,
+        subject: {
+          ...viewModel.subject,
+          nameCn: '星海手记：一段关于旅途、夏夜、旧书店与远方灯火的故事',
+        },
+      },
+      'bangumi-light',
+      {},
+      720,
+      'graphic-zine',
+    );
+    expect(zineLongTitle).toContain('font-size:34.65px');
+    expect(zineLongTitle).toContain('data-title-max-lines="3"');
+    const zineLongTitleLayout = await measureRenderRootLayout(zineLongTitle, 720);
+    expect(
+      zineLongTitleLayout.contentOverflowing.filter(
+        (item) => item.layoutContext === 'graphic-zine-cover-hero',
+      ),
+    ).toEqual([]);
+
     const zineNoCover = renderHtmlTemplate(
       { ...viewModel, subject: { ...viewModel.subject, image: undefined } },
       'bangumi-light',

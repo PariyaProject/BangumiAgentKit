@@ -125,7 +125,7 @@ test('A01 Codex invocation exposes one tool and disables shell, browser, web, an
   assert.equal(serverArgs[profileIdIndex + 1], profile.id);
   assert.equal(serialized.includes('features.shell_tool=false'), true);
   assert.equal(serialized.includes('features.browser_use=false'), true);
-  assert.equal(serialized.includes('features.web_search=false'), true);
+  assert.equal(serialized.includes('web_search="disabled"'), true);
   assert.equal(serialized.includes('features.multi_agent=false'), true);
   assert.equal(serialized.includes('enabled_tools=["bangumi.compare_subject_cohorts"]'), true);
   assert.equal(

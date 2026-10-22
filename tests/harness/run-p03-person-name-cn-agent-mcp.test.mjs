@@ -165,7 +165,7 @@ test('P03 Codex config exposes one read-only MCP tool and disables other routes'
     'features.browser_use=false',
     'features.computer_use=false',
     'features.multi_agent=false',
-    'features.web_search=false',
+    'web_search="disabled"',
   ]) {
     assert.ok(args.includes(forbidden), `missing ${forbidden}`);
   }

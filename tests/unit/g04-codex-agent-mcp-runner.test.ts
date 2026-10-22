@@ -175,7 +175,7 @@ describe('G04 one-tool Codex runner preflight', () => {
     expect(args).toContain('model_reasoning_effort="max"');
     expect(args).toContain('read-only');
     expect(args).toContain('features.shell_tool=false');
-    expect(args).toContain('features.web_search=false');
+    expect(args).toContain('web_search="disabled"');
     expect(args.some((value) => value.includes(G04_REQUIRED_CAVEAT))).toBe(true);
     expect(
       args.some((value) => value.includes('enabled_tools=["bangumi.get_person_activity"]')),
