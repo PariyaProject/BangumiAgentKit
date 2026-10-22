@@ -7696,6 +7696,7 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
         "export const P03_V2_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v2'",
         'profileId = P03_PROFILE_ID',
         'profile.calls[0].arguments',
+        'coverage.subjectsReturned > profileMaxSubjects',
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
         'P03_FRESH_PUBLIC_PROFILE_IDS,',
@@ -7722,6 +7723,7 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function validateP03V2ProfileReport(',
         'export function validateP03V2SanitizedReportFile(',
         'export function writeP03V2PersonNameCnReport(',
+        'report.resultCounters.subjectsReturned <= profileMaxSubjects',
         'structuredContentReadbackAvailable: false',
         'nameCnRowsOmittedFromText: result.nameCnRowsOmittedFromText',
         'blockedWebSearchErrorItemCount',
@@ -7761,6 +7763,8 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_p03_v2_profile_report_is_valid(',
+        'def codex_p03_profile_subject_limit_is_valid(',
+        'codex_p03_profile_subject_limit_is_valid(profile, counters)',
         'def codex_p03_profile_error_summary_is_valid(',
         'if profile_id != CODEX_P03_V3_PROFILE_ID:',
         'return error_count == blocked_count == unexpected_count == 0',
@@ -7783,6 +7787,7 @@ CODEX_P03_V3_PROFILE_IMPLEMENTATION_MARKERS = {
     'scripts/lib/p03-person-name-cn-evidence.mjs': (
         "export const P03_V3_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v3'",
         'P03_FRESH_PUBLIC_PROFILE_IDS.includes(profileId)',
+        'coverage.subjectsReturned > profileMaxSubjects',
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
         'P03_FRESH_PUBLIC_PROFILE_IDS.includes(profileId)',
@@ -7805,6 +7810,7 @@ CODEX_P03_V3_PROFILE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/write-p03-person-name-cn-v2-report.mjs': (
         'function profileForId(profileId)',
         'function reportProfileName(profile)',
+        'report.resultCounters.subjectsReturned <= profileMaxSubjects',
         'summary.codexErrorItemCount <= 3',
         'profile.selectionEvidencePath',
         'blockedWebSearchErrorItemCount',
@@ -7816,6 +7822,8 @@ CODEX_P03_V3_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_p03_v3_profile_report_is_valid(',
+        'def codex_p03_profile_subject_limit_is_valid(',
+        'codex_p03_profile_subject_limit_is_valid(profile, counters)',
         'def codex_p03_profile_error_summary_is_valid(',
         'CODEX_P03_V3_EVIDENCE_KIND',
         'CODEX_P03_V3_REPORT_RELATIVE_PATH',
@@ -17293,6 +17301,26 @@ def codex_p03_v3_profile_report_candidate_paths(
     )
 
 
+def codex_p03_profile_subject_limit_is_valid(profile: object, counters: object) -> bool:
+    """Ensure returned P03 subject rows do not exceed the selected registry arguments."""
+    if not isinstance(profile, dict) or not isinstance(counters, dict):
+        return False
+    calls = profile.get('calls')
+    if not isinstance(calls, list) or not calls or not isinstance(calls[0], dict):
+        return False
+    arguments = calls[0].get('arguments')
+    if not isinstance(arguments, dict):
+        return False
+    max_subjects = arguments.get('maxSubjects')
+    subjects_returned = counters.get('subjectsReturned')
+    return (
+        type(max_subjects) is int
+        and max_subjects >= 0
+        and type(subjects_returned) is int
+        and 0 <= subjects_returned <= max_subjects
+    )
+
+
 def codex_p03_profile_report_is_valid(
     report: object,
     profile_id: object = None,
@@ -17391,6 +17419,7 @@ def codex_p03_profile_report_is_valid(
         or report.get('answerUtf8Bytes') > profile['maxAnswerBytes']
         or report.get('sourceCompletenessDocumented') is not False
         or not isinstance(counters, dict)
+        or not codex_p03_profile_subject_limit_is_valid(profile, counters)
         or set(counters) != CODEX_P03_V2_COUNTER_FIELDS
         or any(
             (type(value) is not bool if key == 'subjectsTruncated' else type(value) is not int or value < 0)

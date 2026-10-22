@@ -10792,6 +10792,26 @@ class P03FreshPublicV3ProfileRouteTests(unittest.TestCase):
         self.assertFalse(GENERATOR.codex_p03_v3_profile_report_is_valid({}))
         self.assertEqual(GENERATOR.CODEX_P03_V3_REPORT_FIELDS, GENERATOR.CODEX_P03_V2_REPORT_FIELDS)
 
+    def test_report_subject_count_cannot_exceed_the_registered_profile_limit(self):
+        v3 = GENERATOR.CODEX_P03_V3_PROFILE
+        v2 = GENERATOR.CODEX_P03_V2_PROFILE
+        self.assertTrue(GENERATOR.codex_p03_profile_subject_limit_is_valid(
+            v3, {'subjectsReturned': 5},
+        ))
+        self.assertFalse(GENERATOR.codex_p03_profile_subject_limit_is_valid(
+            v3, {'subjectsReturned': 6},
+        ))
+        self.assertTrue(GENERATOR.codex_p03_profile_subject_limit_is_valid(
+            v2, {'subjectsReturned': 500},
+        ))
+        self.assertFalse(GENERATOR.codex_p03_profile_subject_limit_is_valid(
+            v2, {'subjectsReturned': 501},
+        ))
+        self.assertFalse(GENERATOR.codex_p03_profile_subject_limit_is_valid(
+            {'calls': [{'arguments': {'maxSubjects': True}}]},
+            {'subjectsReturned': 0},
+        ))
+
     def test_v3_report_route_adds_only_the_registered_person_profile_matrix_row(self):
         with tempfile.TemporaryDirectory(prefix='p03-v3-matrix-route-') as directory:
             live_probe_dir = Path(directory)

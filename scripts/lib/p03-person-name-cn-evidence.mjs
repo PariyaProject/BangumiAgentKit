@@ -352,6 +352,7 @@ export function validateP03ResultSummary(
 ) {
   const profile = getAgentMcpProfileById(profileId);
   if (!profile || !summary || typeof summary !== 'object' || Array.isArray(summary)) return false;
+  const profileMaxSubjects = profile.calls?.[0]?.arguments?.maxSubjects;
   const fields = [
     'personId',
     'personName',
@@ -368,7 +369,9 @@ export function validateP03ResultSummary(
       canonicalAgentMcpProfileJson([...fields].sort()) ||
     !expectedArguments ||
     canonicalAgentMcpProfileJson(expectedArguments) !==
-      canonicalAgentMcpProfileJson(profile.calls[0].arguments)
+      canonicalAgentMcpProfileJson(profile.calls[0].arguments) ||
+    !Number.isSafeInteger(profileMaxSubjects) ||
+    profileMaxSubjects < 0
   )
     return false;
   const counts = summary.nameCnSourceCounts;
@@ -386,6 +389,7 @@ export function validateP03ResultSummary(
     !['complete', 'partial'].includes(coverage.state) ||
     !nonnegativeInteger(coverage.subjectsObserved) ||
     !nonnegativeInteger(coverage.subjectsReturned) ||
+    coverage.subjectsReturned > profileMaxSubjects ||
     coverage.subjectsObserved < coverage.subjectsReturned ||
     coverage.subjectsReturned !== summary.returnedCreditRowsObserved ||
     summary.returnedCreditRowsObserved !== counts?.present + counts?.empty + counts?.unavailable ||

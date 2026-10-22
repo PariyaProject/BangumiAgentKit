@@ -332,6 +332,7 @@ export function validateP03V2ProfileReport(report, claim, reportBytes = null) {
   if (!profile || !exactKeys(report, REPORT_FIELDS)) {
     return { passed: false, reason: 'P03_V2_REPORT_FIELDS_INVALID' };
   }
+  const profileMaxSubjects = profile.calls?.[0]?.arguments?.maxSubjects;
   const checks = {
     claim: reportClaimMatches(report, claim),
     identity:
@@ -395,12 +396,15 @@ export function validateP03V2ProfileReport(report, claim, reportBytes = null) {
       exactKeys(report.answerChecks, P03_ANSWER_CHECK_FIELDS) &&
       P03_ANSWER_CHECK_FIELDS.every((field) => report.answerChecks[field] === true),
     counters:
+      Number.isSafeInteger(profileMaxSubjects) &&
+      profileMaxSubjects >= 0 &&
       exactKeys(report.resultCounters, COUNTER_FIELDS) &&
       COUNTER_FIELDS.every((field) =>
         field === 'subjectsTruncated'
           ? typeof report.resultCounters[field] === 'boolean'
           : Number.isSafeInteger(report.resultCounters[field]) && report.resultCounters[field] >= 0,
       ) &&
+      report.resultCounters.subjectsReturned <= profileMaxSubjects &&
       report.resultCounters.subjectsObserved >= report.resultCounters.subjectsReturned &&
       report.resultCounters.subjectsTruncated ===
         report.resultCounters.subjectsObserved > report.resultCounters.subjectsReturned &&

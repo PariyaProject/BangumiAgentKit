@@ -256,6 +256,41 @@ test('P03 v3 writes a signed five-row report under its own profile identity', ()
     blockedWebSearchErrorItemCount: 3,
   };
   try {
+    const sixRowResult = structuredClone(fixture.result);
+    sixRowResult.coverage.subjects.returned = 6;
+    sixRowResult.credits.subjects.push({
+      id: 506,
+      name: 'Original bounded 6',
+      nameCnSource: '来源作品6',
+    });
+    const overLimitSummary = summarizeP03PersonProfileToolResult(
+      sixRowResult,
+      v3Profile.calls[0].arguments,
+      v3Profile.id,
+    );
+    const overLimitServerSummary = structuredClone(fixture.serverSummary);
+    overLimitServerSummary.results[0].resultSummary = overLimitSummary;
+    const rejectedOverLimitWrite = writeP03V2PersonNameCnReport(
+      {
+        ...fixture,
+        serverSummary: overLimitServerSummary,
+        completedMcpCalls: [
+          {
+            tool: v3Profile.toolName,
+            arguments: v3Profile.calls[0].arguments,
+            result: { content: [{ type: 'text', text: fixture.compactText }] },
+          },
+        ],
+        codexCliVersion: '1.2.3',
+        eventStreamSha256: 'd'.repeat(64),
+        serverSummarySha256: 'e'.repeat(64),
+      },
+      { privateKey: fixture.keyPair.privateKey },
+    );
+    assert.equal(rejectedOverLimitWrite.passed, false);
+    assert.equal(rejectedOverLimitWrite.reason, 'P03_V2_RUNNER_GATE_INVALID');
+    assert.equal(existsSync(path.join(root, v3Profile.reportPath)), false);
+
     const written = writeP03V2PersonNameCnReport(
       {
         ...fixture,
@@ -299,6 +334,24 @@ test('P03 v3 writes a signed five-row report under its own profile identity', ()
     for (const sensitiveValue of ['精选公开人物', 'Selected public person', '来源作品1']) {
       assert.equal(serialized.includes(sensitiveValue), false, `report contains ${sensitiveValue}`);
     }
+
+    const forgedOverLimit = structuredClone(validation.report);
+    Object.assign(forgedOverLimit.resultCounters, {
+      subjectsReturned: 6,
+      returnedCreditRowsObserved: 6,
+      positiveNameCnRowsObserved: 6,
+    });
+    const payload = buildP03V2RunnerReceiptPayload(forgedOverLimit, {
+      eventStreamSha256: forgedOverLimit.runnerReceipt.payload.eventStreamSha256,
+      serverSummarySha256: forgedOverLimit.runnerReceipt.payload.serverSummarySha256,
+    });
+    forgedOverLimit.runnerReceipt.payload = payload;
+    forgedOverLimit.runnerReceipt.signature = sign(
+      null,
+      Buffer.from(canonicalAgentMcpProfileJson(payload)),
+      fixture.keyPair.privateKey,
+    ).toString('base64');
+    assert.equal(validateP03V2ProfileReport(forgedOverLimit, fixture.claim).passed, false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

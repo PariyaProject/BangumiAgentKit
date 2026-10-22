@@ -338,6 +338,27 @@ test('P03 v3 projection is bound to its distinct five-row public profile', () =>
     validateP03ResultSummary(summary, v2Profile.calls[0].arguments, v2Profile.id),
     false,
   );
+
+  const sixRowResult = structuredClone(result);
+  sixRowResult.coverage.subjects.returned = 6;
+  sixRowResult.credits.subjects.push({
+    id: 506,
+    name: 'Source title 6',
+    nameCnSource: '来源中文名6',
+  });
+  const overLimitSummary = summarizeP03PersonProfileToolResult(
+    sixRowResult,
+    v3Profile.calls[0].arguments,
+    v3Profile.id,
+  );
+  assert.equal(
+    validateP03ResultSummary(overLimitSummary, v3Profile.calls[0].arguments, v3Profile.id),
+    false,
+  );
+  assert.throws(
+    () => createP03McpTextProjection(overLimitSummary, v3Profile.id),
+    /requires a validated profile result summary/u,
+  );
 });
 
 test('P03 summary fails closed when included credit rows are unavailable', () => {
