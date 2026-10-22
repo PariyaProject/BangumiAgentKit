@@ -115,7 +115,7 @@
         "tests/harness/run-g01-query-subjects-offline-agent-mcp.test.mjs",
         "tests/harness/write-g01-query-subjects-offline-agent-mcp-report.test.mjs"
       ],
-      "next_action": "Keep G01 PARTIAL: the July 2026 harem question and Bangumi-wide search completeness are not established. The distinct query_subjects offline v2 profile is selected but has no runtime call, signed report, or matrix credit yet. Continue only through its exact Harness Candidate, seven-check CI, candidate:check, and same-identity Luna Max review gates; then allow at most its single fixed synthetic call; never retry the consumed one-shot, the terminal v1 profile, or any other spent claim, and do not replay the consumed G01 Agent/MCP canary. Keep the public API target at 65/65 and preserve account/OAuth/community/write/QQ/TIM boundaries.",
+      "next_action": "Keep G01 PARTIAL: the July 2026 harem question and Bangumi-wide search completeness are not established. Any synthetic query_subjects offline observation is matrix-only and cannot establish that scenario or search completeness. If the profile is pursued, require a clean exact Harness Candidate, seven-check CI, candidate:check, and same-identity Luna Max review before at most one fixed synthetic call; never retry the consumed one-shot, terminal v1 profile, or any other spent claim, and do not replay the consumed G01 Agent/MCP canary. The frontier ledger is scenario guidance, not a profile-claim status source; consult the active Run #95 Harness for exact claim and terminal eligibility. Keep the public API target at 65/65 and preserve account/OAuth/community/write/QQ/TIM boundaries.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -181,17 +181,6 @@
             "both v1 and v2 implementation markers remain valid on the synchronized Base and current Candidate"
           ],
           "acceptance_boundary": "Deterministic review-gate coverage only; no profile claim, Agent/MCP invocation, scenario acceptance, or matrix credit."
-        },
-        "synthetic_offline_agent_mcp_v2_selection_2026_10_22": {
-          "contract": "docs/research/run95-g01-query-subjects-offline-matrix-v2-contract-2026-10-22.md",
-          "profile_id": "g01-query-subjects-offline-agent-mcp-matrix-v2",
-          "epoch_id": "run95-g01-query-subjects-offline-agent-mcp-matrix-v2-20261022",
-          "base_sha": "d2af8f969de8c13cf187f83340cc4f8304838a17",
-          "state": "SELECTED",
-          "runtime_invocation_count": 0,
-          "report_written": false,
-          "matrix_credit": false,
-          "acceptance_boundary": "Selection and implementation evidence only. One exact invocation remains gated by the clean reviewed Candidate, seven exact-SHA CI checks, candidate:check, and same-identity Luna Max PASS. G01 stays PARTIAL and public API stays 65/65."
         }
       }
     },
