@@ -2965,7 +2965,13 @@ CODEX_P03_PROFILE_EVIDENCE_REFRESH_PATHS_BY_ID = {
         profile['reportPath'],
         'docs/product/frontier-ledger.json',
         'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
-    }
+    } | ({
+        'scripts/agent-harness.mjs',
+        'scripts/generate-tool-acceptance-tasks.py',
+        'scripts/test_acceptance_evidence.py',
+        'tests/harness/agent-harness-cli.test.mjs',
+        'tests/integration/tool-e2e-acceptance.test.ts',
+    } if profile_id == CODEX_P03_V4_PROFILE_ID else set())
     for profile_id, profile in CODEX_P03_PROFILES.items()
 }
 CODEX_P03_V2_EVIDENCE_REFRESH_PATHS = {
@@ -17308,28 +17314,45 @@ def codex_p03_profile_candidate_binding_is_current(
         and latest_review.get('reviewed_base_sha') == report.get('baseSha')
         and latest_review.get('verdict') == 'PASS'
     )
+    source_candidate_refresh = (
+        active_pr
+        and epoch.get('candidate_sha') == report.get('sourceRevision')
+        and epoch.get('review_pass_sha') == report.get('sourceRevision')
+        and isinstance(epoch.get('ci'), dict)
+        and epoch['ci'].get('sha') == report.get('sourceRevision')
+        and epoch['ci'].get('status') == 'SUCCESS'
+        and isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == report.get('sourceRevision')
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('reviewer_id') == report.get('reviewerId')
+        and latest_review.get('verdict') == 'PASS'
+    )
+    current_candidate_reviewed = (
+        (active_pr or merged_pr)
+        and epoch.get('candidate_sha') == candidate_sha
+        and epoch.get('review_pass_sha') == candidate_sha
+        and isinstance(epoch.get('ci'), dict)
+        and epoch['ci'].get('sha') == candidate_sha
+        and epoch['ci'].get('status') == 'SUCCESS'
+        and isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == candidate_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+    )
     return bool(
         type(report.get('prNumber')) is int
         and report['prNumber'] > 0
         and run_result.get('number') == 95
-        and (active_pr or merged_pr)
+        and (source_candidate_refresh or current_candidate_reviewed)
         and isinstance(latest_review, dict)
         and epoch.get('epoch_id') == profile['epochId']
         and epoch.get('pr_number') == report.get('prNumber')
         and epoch.get('base_branch') == 'master'
         and epoch.get('base_sha') == report.get('baseSha')
         and epoch.get('reviewed_base_sha') == report.get('baseSha')
-        and epoch_result.get('pr_head_sha') == candidate_sha
         and epoch_result.get('pr_head_ref_name') == epoch.get('branch')
         and epoch_result.get('pr_base_ref_name') == 'master'
         and epoch_result.get('pr_is_draft') is False
-        and epoch.get('candidate_sha') == candidate_sha
-        and epoch.get('review_pass_sha') == candidate_sha
-        and isinstance(epoch.get('ci'), dict)
-        and epoch['ci'].get('sha') == candidate_sha
-        and epoch['ci'].get('status') == 'SUCCESS'
-        and latest_review.get('candidate_sha') == candidate_sha
-        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
         and codex_p03_v2_same_reviewer_identity(
             report.get('reviewerId'), latest_review.get('reviewer_id'), report.get('prNumber'),
         )

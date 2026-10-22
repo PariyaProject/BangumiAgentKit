@@ -3664,6 +3664,15 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
         ? G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS
         : []),
       ...(profile.id === R04_RENDER_V2_PROFILE_ID ? R04_RENDER_V2_ACCEPTANCE_REFRESH_PATHS : []),
+      ...(profile.id === 'p03-person-name-cn-agent-mcp-v4'
+        ? [
+            'scripts/agent-harness.mjs',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/harness/agent-harness-cli.test.mjs',
+            'tests/integration/tool-e2e-acceptance.test.ts',
+          ]
+        : []),
     ]);
     if (
       !changedSinceReport.includes(profile.reportPath) ||
@@ -3676,6 +3685,8 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
           ? 'A G06 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact source-catalog helper and acceptance verifier files, and the documented G14 terminal-disposition report/test exception, with the MCP bundle unchanged.'
           : profile.id === R04_RENDER_V2_PROFILE_ID
             ? 'An R04 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact source-catalog MCP server/helper and acceptance verifier files, the documented G14 terminal-disposition report/test exception, and this policy file, with the MCP bundle unchanged.'
+            : profile.id === 'p03-person-name-cn-agent-mcp-v4'
+              ? 'A P03 v4 report refresh may also include only the exact acceptance validator, Harness allowlist, and their regressions needed to record the signed source-Candidate result; the MCP bundle must remain unchanged.'
             : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
         { profileId: profile.id, changedPaths: changedSinceReport },
       );

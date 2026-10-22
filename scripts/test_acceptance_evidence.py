@@ -10876,6 +10876,117 @@ class P03FreshPublicV4ProfileRouteTests(unittest.TestCase):
         self.assertFalse(GENERATOR.codex_p03_v4_profile_report_is_valid({}))
         self.assertEqual(GENERATOR.CODEX_P03_V4_REPORT_FIELDS, GENERATOR.CODEX_P03_V2_REPORT_FIELDS)
 
+    def test_report_counts_from_reviewed_source_during_allowlisted_refresh(self):
+        profile = GENERATOR.CODEX_P03_V4_PROFILE
+        source = 'b' * 40
+        candidate = 'e' * 40
+        base = 'a' * 40
+        branch = 'codex/epoch-' + profile['epochId']
+        source_reviewer = 'gpt-6-luna-max-run95-pr261-round2'
+        report = {
+            'profileId': profile['id'],
+            'prNumber': 261,
+            'sourceRevision': source,
+            'baseSha': base,
+            'reviewerId': source_reviewer,
+            'mcpBundleSha256': 'd' * 64,
+        }
+        allowed_paths = {
+            profile['reportPath'],
+            'docs/product/frontier-ledger.json',
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'scripts/agent-harness.mjs',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/harness/agent-harness-cli.test.mjs',
+            'tests/integration/tool-e2e-acceptance.test.ts',
+        }
+        source_review = {
+            'review_number': 2,
+            'reviewer_id': source_reviewer,
+            'candidate_sha': source,
+            'reviewed_base_sha': base,
+            'verdict': 'PASS',
+        }
+        epoch_state = {
+            'epoch_id': profile['epochId'],
+            'state': 'REVIEW_PASSED',
+            'pr_number': 261,
+            'base_branch': 'master',
+            'base_sha': base,
+            'reviewed_base_sha': base,
+            'candidate_sha': source,
+            'review_pass_sha': source,
+            'branch': branch,
+            'ci': {'sha': source, 'status': 'SUCCESS'},
+            'advances_frontier_ids': ['P03'],
+            'scope_closure': {'related_work_remaining': False},
+            'review_history': [source_review],
+        }
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 261},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'pr_head_sha': candidate,
+                'pr_head_ref_name': branch,
+                'pr_base_ref_name': 'master',
+                'pr_is_draft': False,
+                'state': epoch_state,
+            },
+        }
+        with (
+            patch.object(
+                GENERATOR,
+                'codex_p03_profile_report_candidate_paths',
+                return_value=allowed_paths,
+            ),
+            patch.object(
+                GENERATOR,
+                'codex_g26_candidate_bundle_sha256',
+                return_value=report['mcpBundleSha256'],
+            ),
+        ):
+            self.assertTrue(
+                GENERATOR.codex_p03_v4_candidate_binding_is_current(report, epoch_status),
+            )
+
+            current_review = {
+                'review_number': 3,
+                'reviewer_id': 'gpt-6-luna-max-run95-pr261-round3',
+                'candidate_sha': candidate,
+                'reviewed_base_sha': base,
+                'verdict': 'PASS',
+            }
+            current_status = {
+                **epoch_status,
+                'epoch': {
+                    **epoch_status['epoch'],
+                    'state': {
+                        **epoch_state,
+                        'candidate_sha': candidate,
+                        'review_pass_sha': candidate,
+                        'ci': {'sha': candidate, 'status': 'SUCCESS'},
+                        'review_history': [source_review, current_review],
+                    },
+                },
+            }
+            self.assertTrue(
+                GENERATOR.codex_p03_v4_candidate_binding_is_current(report, current_status),
+            )
+
+            unapproved_paths = allowed_paths | {'packages/tools/src/definitions/read-tools.ts'}
+            with patch.object(
+                GENERATOR,
+                'codex_p03_profile_report_candidate_paths',
+                return_value=unapproved_paths,
+            ):
+                self.assertFalse(
+                    GENERATOR.codex_p03_v4_candidate_binding_is_current(report, epoch_status),
+                )
+
     def test_v4_report_route_adds_only_the_registered_person_profile_matrix_row(self):
         with tempfile.TemporaryDirectory(prefix='p03-v4-matrix-route-') as directory:
             live_probe_dir = Path(directory)

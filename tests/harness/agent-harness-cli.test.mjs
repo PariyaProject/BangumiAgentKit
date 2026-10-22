@@ -3316,21 +3316,102 @@ test('P03 v4 uses a distinct bounded one-shot claim', () => {
     assert.equal(claim.expectedArgumentsSha256, agentMcpProfileArgumentsSha256(P03_V4_PROFILE));
     assert.equal(claim.retryAllowed, false);
 
-    const terminal = environment.execute([
-      'epoch:agent-mcp-profile-result',
-      ...args,
-      '--claim-id',
-      claim.claimId,
-      '--state',
-      'INCONCLUSIVE',
-    ]);
-    assert.equal(terminal.status, 0, terminal.stderr);
     const status = environment.execute(['epoch:agent-mcp-profile-status', ...args]);
     assert.equal(status.status, 0, status.stderr);
-    assert.equal(JSON.parse(status.stdout).state, 'INCONCLUSIVE');
+    assert.equal(JSON.parse(status.stdout).state, 'CLAIMED');
     assert.equal(JSON.parse(status.stdout).retry_allowed, false);
+
+    const repeated = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...args,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(repeated.status, 2);
+    assert.match(repeated.stderr, /^AGENT_MCP_PROFILE_CLAIM_GATE_FAILED:/u);
   } finally {
     environment.cleanup();
+  }
+});
+
+test('P03 v4 report Candidate refresh permits only its report and exact acceptance-validator files', () => {
+  const disposition = p03V4ReportWrittenDisposition();
+  const { environment } = p03V4ReportRefreshEnvironment(disposition);
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('e'),
+        candidate_refresh_reason: 'Record the signed P03 v4 report and refresh its bounded acceptance validator.',
+        validation: ['The signed source report and allowlisted acceptance refresh paths were checked.'],
+        adversarial_preflight: {
+          completed: true,
+          summary: 'The source report, exact paths, one-shot latch, and unchanged MCP bundle were checked.',
+          agent_mcp_profile_dispositions: { [P03_V4_PROFILE.id]: disposition },
+        },
+      }),
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_READY');
+    assert.equal(stored.candidate_sha, sha('e'));
+    assert.deepEqual(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[P03_V4_PROFILE.id],
+      disposition,
+    );
+  } finally {
+    environment.cleanup();
+  }
+
+  const unsafePaths = [
+    P03_V4_PROFILE.reportPath,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+    'scripts/agent-harness.mjs',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/test_acceptance_evidence.py',
+    'tests/harness/agent-harness-cli.test.mjs',
+    'packages/tools/src/definitions/read-tools.ts',
+  ];
+  const unsafe = p03V4ReportRefreshEnvironment(disposition, {
+    candidateRefreshPaths: unsafePaths,
+    changedPaths: unsafePaths,
+  });
+  try {
+    const result = unsafe.environment.execute([
+      'candidate:check',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(unsafe.environment, {
+        candidate_sha: sha('e'),
+        candidate_refresh_reason: 'Reject a runtime change in a P03 report refresh.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'The report refresh must not change product runtime behavior.',
+          agent_mcp_profile_dispositions: { [P03_V4_PROFILE.id]: disposition },
+        },
+      }),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+    assert.equal(
+      parseControlBlock(unsafe.environment.readState().prBody, EPOCH_MARKER).candidate_sha,
+      sha('b'),
+    );
+  } finally {
+    unsafe.environment.cleanup();
   }
 });
 
@@ -4389,6 +4470,86 @@ function c03ReportRefreshEnvironment(disposition, overrides = {}, epochOverrides
     featureHeadSha: sha('e'),
     candidateRefreshRange: `${sha('b')}...${sha('e')}`,
     candidateRefreshPaths: refreshPaths,
+    draft: false,
+    ...overrides,
+  });
+  return { environment, run, epoch };
+}
+
+function p03V4ReportWrittenDisposition() {
+  return {
+    claimId: 'profile-run-95-pr-42-bbbbbbbbbbbb-1700000000000',
+    profileId: P03_V4_PROFILE.id,
+    state: 'REPORT_WRITTEN',
+    sourceCandidateSha: sha('b'),
+    bundleSha256: 'c'.repeat(64),
+    reportPath: P03_V4_PROFILE.reportPath,
+    reportSha256: 'd'.repeat(64),
+    reportWritten: true,
+    retryAllowed: false,
+  };
+}
+
+function p03V4ReportRefreshEnvironment(disposition, overrides = {}) {
+  const { run, epoch } = passedCandidateFixture();
+  const branch = 'codex/epoch-' + P03_V4_PROFILE.epochId;
+  const reviewerId = 'gpt-6-luna-max-run95-pr42-round2';
+  run.state = 'EPOCH_ACTIVE';
+  run.profile = 'AUTONOMOUS_EVOLUTION';
+  run.active_epoch_pr = 42;
+  run.pending_epoch = null;
+  epoch.epoch_id = P03_V4_PROFILE.epochId;
+  epoch.branch = branch;
+  epoch.base_branch = 'master';
+  epoch.pr_number = 42;
+  epoch.base_sha = sha('a');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.candidate_sha = sha('b');
+  epoch.review_pass_sha = sha('b');
+  epoch.state = 'REVIEW_PASSED';
+  epoch.advances_frontier_ids = [];
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'The bounded profile, signed report, and acceptance path are complete.',
+    why_not_extend_further: 'Completing the P03 career-wide scenario needs source completeness.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'The source candidate, one-shot latch, and report refresh are bounded.',
+    agent_mcp_profile_dispositions: { [P03_V4_PROFILE.id]: structuredClone(disposition) },
+  };
+  epoch.review_history = [
+    {
+      review_number: 2,
+      reviewer_id: reviewerId,
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  const refreshPaths = [
+    P03_V4_PROFILE.reportPath,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+    'scripts/agent-harness.mjs',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/test_acceptance_evidence.py',
+    'tests/harness/agent-harness-cli.test.mjs',
+    'tests/integration/tool-e2e-acceptance.test.ts',
+  ];
+  const environment = createMockEnvironment({
+    runIssueNumber: 95,
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch,
+    featureBranch: branch,
+    featureHeadSha: sha('e'),
+    baseSha: sha('a'),
+    candidateRefreshRange: sha('b') + '...' + sha('e'),
+    candidateRefreshPaths: refreshPaths,
+    changedPaths: refreshPaths,
     draft: false,
     ...overrides,
   });
