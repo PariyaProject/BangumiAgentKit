@@ -68,7 +68,7 @@ function fixtureInput() {
   };
   const offlineFixture = {
     profile: RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
-    expectedOperation: 'GET /v0/subjects/991902',
+    expectedOperation: 'GET /v0/subjects/991903',
     requestCount: 1,
     expectedRequestCount: 1,
     unexpectedRequestCount: 0,

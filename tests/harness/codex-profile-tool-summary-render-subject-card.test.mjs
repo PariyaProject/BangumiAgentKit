@@ -9,7 +9,7 @@ test('render_subject_card matrix profile summarizes only bounded artifact facts'
       artifact: { id: 'art_private-transient-id', width: 720, height: 804 },
       message: 'Synthetic subject card is ready.',
     },
-    { subjectId: 991902, includeCollection: false },
+    { subjectId: 991903, includeCollection: false },
     RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID,
     {
       returned: true,

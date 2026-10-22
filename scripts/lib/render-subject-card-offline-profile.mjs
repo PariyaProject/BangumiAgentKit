@@ -6,8 +6,14 @@ export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_PROFILE_ID =
   'render-subject-card-compact-typography-agent-mcp-v2';
 export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_NETWORK_MODE =
   'run95-render-subject-card-compact-typography-v2';
-export const RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID = RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_PROFILE_ID;
-export const RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE = RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_NETWORK_MODE;
+export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_PROFILE_ID =
+  'render-subject-card-compact-typography-agent-mcp-v3';
+export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_NETWORK_MODE =
+  'run95-render-subject-card-compact-typography-v3';
+export const RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID =
+  RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_PROFILE_ID;
+export const RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE =
+  RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_NETWORK_MODE;
 export const RENDER_SUBJECT_CARD_OFFLINE_TOOL = 'bangumi.render_subject_card';
 export const RENDER_SUBJECT_CARD_OFFLINE_V1_ARGUMENTS = Object.freeze({
   subjectId: 990901,
@@ -17,7 +23,12 @@ export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_ARGUMENTS = Object.freeze
   subjectId: 991902,
   includeCollection: false,
 });
-export const RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS = RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V2_ARGUMENTS;
+export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_ARGUMENTS = Object.freeze({
+  subjectId: 991903,
+  includeCollection: false,
+});
+export const RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS =
+  RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_ARGUMENTS;
 
 const PROFILE_CONFIGS = new Map([
   [
@@ -66,8 +77,7 @@ const PROFILE_CONFIGS = new Map([
       epochId: 'run95-ux002-compact-typography-default-075-20261022',
       argumentProfile: 'fixed-ux002-subject-card-991902-no-collection-default-scale-075-v2',
       claimLabelName: 'harness-r95-render-card-typography-v2-claimed',
-      reportPath:
-        'docs/live-probes/render-subject-card-compact-typography-v2-agent-mcp-run95.json',
+      reportPath: 'docs/live-probes/render-subject-card-compact-typography-v2-agent-mcp-run95.json',
       selectionEvidencePath:
         'docs/research/run95-ux002-render-subject-card-compact-typography-v2-source-contract-2026-10-22.md',
       evidenceKind: 'codex_cli_render_subject_card_compact_typography_v2_agent_mcp',
@@ -98,6 +108,45 @@ const PROFILE_CONFIGS = new Map([
       }),
     }),
   ],
+  [
+    RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_PROFILE_ID,
+    Object.freeze({
+      id: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_PROFILE_ID,
+      networkMode: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_NETWORK_MODE,
+      epochId: 'run95-ux002-render-card-compact-typography-agent-mcp-v3-20261022',
+      argumentProfile: 'fixed-ux002-subject-card-991903-no-collection-default-scale-075-v3',
+      claimLabelName: 'harness-r95-render-card-typography-v3-claimed',
+      reportPath: 'docs/live-probes/render-subject-card-compact-typography-v3-agent-mcp-run95.json',
+      selectionEvidencePath:
+        'docs/research/run95-ux002-render-subject-card-compact-typography-v3-source-contract-2026-10-22.md',
+      evidenceKind: 'codex_cli_render_subject_card_compact_typography_v3_agent_mcp',
+      answerCheckMethod: 'render-subject-card-compact-typography-v3-artifact',
+      arguments: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_ARGUMENTS,
+      fixture: Object.freeze({
+        id: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_ARGUMENTS.subjectId,
+        type: 2,
+        name: '夜明けの記録 / Daybreak Notes',
+        name_cn: '紧凑字阶复核：晨光与远岸',
+        date: '2026-10-22',
+        platform: 'TV',
+        summary:
+          '固定合成条目用于验证默认紧凑字号和混合中日文字体回退；不含外部图片或真实条目数据。',
+        images: { common: '', large: '', medium: '', small: '' },
+        tags: [
+          { name: '合成演示', count: 2 },
+          { name: '字阶回归', count: 1 },
+        ],
+        rating: {
+          score: 8.1,
+          rank: 96,
+          total: 14,
+          count: { 1: 0, 2: 0, 3: 0, 4: 1, 5: 0, 6: 2, 7: 3, 8: 5, 9: 2, 10: 1 },
+        },
+        collection: { wish: 2, collect: 6, doing: 3, on_hold: 1, dropped: 0 },
+        total_episodes: 13,
+      }),
+    }),
+  ],
 ]);
 
 function profileMatches(profile) {
@@ -122,8 +171,9 @@ function profileMatches(profile) {
     Array.isArray(profile.calls) &&
     profile.calls.length === 1 &&
     profile.calls[0]?.toolName === RENDER_SUBJECT_CARD_OFFLINE_TOOL &&
-    Object.keys(profile.calls[0]?.arguments ?? {}).sort().join(',') ===
-      Object.keys(config.arguments).sort().join(',') &&
+    Object.keys(profile.calls[0]?.arguments ?? {})
+      .sort()
+      .join(',') === Object.keys(config.arguments).sort().join(',') &&
     Object.entries(config.arguments).every(
       ([key, value]) => profile.calls[0]?.arguments?.[key] === value,
     ),

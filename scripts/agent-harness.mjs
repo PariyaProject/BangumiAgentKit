@@ -320,6 +320,7 @@ const R04_RENDER_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
 const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'render-subject-card-offline-agent-mcp-v1',
   'render-subject-card-compact-typography-agent-mcp-v2',
+  'render-subject-card-compact-typography-agent-mcp-v3',
   'a01-aggregate-cohort-offline-agent-mcp-matrix-v3',
   'p06-render-person-profile-offline-agent-mcp-v1',
   'p06-render-person-profile-offline-agent-mcp-v2',
@@ -4548,6 +4549,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateP06SanitizedReportFile(claim, root, reportPath);
     case 'render-subject-card-offline-agent-mcp-v1':
     case 'render-subject-card-compact-typography-agent-mcp-v2':
+    case 'render-subject-card-compact-typography-agent-mcp-v3':
       return validateRenderSubjectCardOfflineSanitizedReportFile(claim, root, reportPath);
     case 'c07-render-comparison-offline-agent-mcp-matrix-v1':
     case 'c07-render-comparison-offline-agent-mcp-matrix-v2':

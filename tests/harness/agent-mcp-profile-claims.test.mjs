@@ -103,7 +103,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 42);
+  assert.equal(listAgentMcpProfiles().length, 43);
   const renderSubjectCardOffline = getAgentMcpProfileById(
     'render-subject-card-offline-agent-mcp-v1',
   );
@@ -129,6 +129,27 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   );
   assert.deepEqual(compactTypographySubjectCard.calls[0].arguments, {
     subjectId: 991902,
+    includeCollection: false,
+  });
+  const compactTypographySubjectCardV3 = getAgentMcpProfileById(
+    'render-subject-card-compact-typography-agent-mcp-v3',
+  );
+  assert.ok(compactTypographySubjectCardV3);
+  assert.equal(
+    compactTypographySubjectCardV3.epochId,
+    'run95-ux002-render-card-compact-typography-agent-mcp-v3-20261022',
+  );
+  assert.equal(
+    compactTypographySubjectCardV3.claimLabelName,
+    'harness-r95-render-card-typography-v3-claimed',
+  );
+  assert.notEqual(compactTypographySubjectCardV3.id, compactTypographySubjectCard.id);
+  assert.notEqual(
+    compactTypographySubjectCardV3.argumentProfile,
+    compactTypographySubjectCard.argumentProfile,
+  );
+  assert.deepEqual(compactTypographySubjectCardV3.calls[0].arguments, {
+    subjectId: 991903,
     includeCollection: false,
   });
   const p06OfflineV2 = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v2');
