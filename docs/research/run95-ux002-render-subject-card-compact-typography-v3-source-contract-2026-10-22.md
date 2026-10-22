@@ -22,7 +22,7 @@ The v3 profile is a new create-once contract after PR #253 merged the shared Cod
 
 ## Claim gates and outcome limits
 
-Before the only v3 claim: exact current Candidate and Base, seven successful exact-SHA CI checks, passing Harness `candidate:check`, same-identity GPT-6 Luna Max review PASS, current bundle attestation, and fresh Harness `UNCLAIMED` status are required. The profile must expose only the one registered tool, reject any extra call, request, authorization header, collection route, or asset resolution, and retain the zero-non-MCP/shell gates. Any v3 inconclusive result is terminal and cannot be retried.
+Before the only v3 claim: exact current Candidate and Base, seven successful exact-SHA CI checks, passing Harness `candidate:check`, same-identity GPT-6 Luna Max review PASS, current bundle attestation, and fresh Harness `UNCLAIMED` status are required. The stable Harness reviewer ID is `gpt-6-luna-max-run95-pr254-round1`; do not substitute the Codex task/thread handle. The profile must expose only the one registered tool, reject any extra call, request, authorization header, collection route, or asset resolution, and retain the zero-non-MCP/shell gates. Any v3 inconclusive result is terminal and cannot be retried.
 
 This profile can add only the `render_subject_card` Agent/MCP matrix row if the sanitized report and Harness disposition pass. It does not add visual QA, scenario-answer completeness, production-font installation, account/OAuth, community, QQ, or TIM evidence. Those remain separately governed.
 

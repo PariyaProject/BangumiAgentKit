@@ -617,6 +617,13 @@ contracts, tests, evidence/coverage, resource bounds, user value, Agent UX, and
 Renderer when applicable. It inspects the repository and evidence, not merely
 the implementation report.
 
+For Run #95 Agent/MCP profile work, use the stable Harness reviewer ID
+`gpt-6-luna-max-run95-pr<PR>-round1` and keep that exact ID for same-reviewer
+rounds. A Codex task or thread handle is only the runtime lookup key; it must
+not replace the Harness `reviewer_id`. When those identifiers differ, record
+their mapping only in the local recovery note. The profile runner validates
+this canonical ID before it creates a one-shot claim.
+
 A launched reviewer has a durable id. Durable control state alone never proves
 that its backing task is still active. The Goal runner must observe the real
 task runtime and record exactly one runtime classification:
