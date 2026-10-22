@@ -5,9 +5,11 @@ import test from 'node:test';
 import {
   buildP03CodexExecArgs,
   p03CodexErrorSummaryIsSafe,
+  p03StructuredReadbackSatisfied,
   validateP03RunnerArgs,
   validateP03ServerSummary,
 } from '../../scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs';
+import { parseCodexJsonl, summarizeCodexEvents } from '../../scripts/acceptance/run-g26-codex-agent-mcp.mjs';
 import {
   agentMcpProfileArgumentsSha256,
   canonicalAgentMcpProfileJson,
@@ -249,4 +251,76 @@ test('P03 v3 MCP summary uses the distinct person and five-row arguments', () =>
   assert.deepEqual(actual, expected);
   assert.equal(actual.personId, 58609);
   assert.equal(actual.returnedCreditRowsObserved, 5);
+});
+
+test('P03 fresh-profile gate permits only a structured duplicate of the bounded text projection', () => {
+  const projection = { person: { id: 58609 }, rows: [], observed: 5 };
+  const event = {
+    type: 'item.completed',
+    item: {
+      id: 'p03-call-1',
+      type: 'mcp_tool_call',
+      server: 'bgk_p03_name_cn',
+      tool: 'bangumi.get_person_profile',
+      arguments: v3Profile.calls[0].arguments,
+      status: 'completed',
+      result: {
+        content: [{ type: 'text', text: JSON.stringify(projection) }],
+        structuredContent: structuredClone(projection),
+      },
+    },
+  };
+  const parsed = parseCodexJsonl(JSON.stringify(event));
+  assert.equal(parsed.parsed, true);
+  const call = summarizeCodexEvents(parsed.events).completedMcpCalls[0];
+  assert.deepEqual(JSON.parse(call.result.content[0].text), projection);
+  assert.equal(Object.hasOwn(call.result, 'structuredContent'), true);
+  assert.equal(
+    p03StructuredReadbackSatisfied(
+      call.result,
+      { passed: true, projection },
+      P03_V3_PROFILE_ID,
+    ),
+    true,
+  );
+  assert.equal(
+    p03StructuredReadbackSatisfied(
+      { ...call.result, structuredContent: null },
+      { passed: true, projection },
+      P03_V3_PROFILE_ID,
+    ),
+    true,
+  );
+  assert.equal(
+    p03StructuredReadbackSatisfied(
+      { content: call.result.content },
+      { passed: true, projection },
+      P03_V3_PROFILE_ID,
+    ),
+    true,
+  );
+  assert.equal(
+    p03StructuredReadbackSatisfied(
+      { ...call.result, structuredContent: { ...projection, extra: 'unbounded' } },
+      { passed: true, projection },
+      P03_V3_PROFILE_ID,
+    ),
+    false,
+  );
+  assert.equal(
+    p03StructuredReadbackSatisfied(
+      call.result,
+      { passed: false, projection },
+      P03_V3_PROFILE_ID,
+    ),
+    false,
+  );
+  assert.equal(
+    p03StructuredReadbackSatisfied(
+      { content: call.result.content },
+      { passed: true, projection },
+      P03_PROFILE_ID,
+    ),
+    false,
+  );
 });
