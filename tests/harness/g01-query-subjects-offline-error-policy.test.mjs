@@ -70,3 +70,42 @@ test('G01 v2 accepts only exact disabled-web-search diagnostics and rejects tran
     unexpectedCodexErrorItemCount: 3,
   });
 });
+
+test('G01 v2 rejects conflicting completed errors with the same ID in either order', () => {
+  const messages = ['The web search request returned HTTP 503', 'The web search tool is disabled.'];
+  const sequences = [messages, [...messages].reverse()];
+
+  for (const sequence of sequences) {
+    const summary = summarizeG01QuerySubjectsV2CodexErrors(
+      sequence.map((message) => ({
+        type: 'item.completed',
+        item: { id: 'conflicting-error', type: 'error', message },
+      })),
+    );
+
+    assert.deepEqual(summary, {
+      errorItemCount: 1,
+      blockedWebSearchErrorItemCount: 0,
+      unexpectedCodexErrorItemCount: 1,
+    });
+  }
+});
+
+test('G01 v2 deduplicates identical completed errors with the same ID', () => {
+  const summary = summarizeG01QuerySubjectsV2CodexErrors(
+    Array.from({ length: 2 }, () => ({
+      type: 'item.completed',
+      item: {
+        id: 'duplicate-disabled-error',
+        type: 'error',
+        message: 'The web search tool is disabled.',
+      },
+    })),
+  );
+
+  assert.deepEqual(summary, {
+    errorItemCount: 1,
+    blockedWebSearchErrorItemCount: 1,
+    unexpectedCodexErrorItemCount: 0,
+  });
+});

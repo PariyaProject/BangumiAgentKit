@@ -11,8 +11,17 @@ function errorItems(events) {
   for (const event of Array.isArray(events) ? events : []) {
     if (event?.type !== 'item.completed' || event.item?.type !== 'error') continue;
     const id = typeof event.item.id === 'string' ? event.item.id : null;
-    if (id) byId.set(id, event.item);
-    else anonymousErrors.push(event.item);
+    if (!id) {
+      anonymousErrors.push({ item: event.item, conflicting: false });
+      continue;
+    }
+
+    const existing = byId.get(id);
+    if (!existing) {
+      byId.set(id, { item: event.item, conflicting: false });
+      continue;
+    }
+    if (existing.item.message !== event.item.message) existing.conflicting = true;
   }
   return [...byId.values(), ...anonymousErrors];
 }
@@ -24,7 +33,8 @@ function errorItems(events) {
 export function summarizeG01QuerySubjectsV2CodexErrors(events) {
   const errors = errorItems(events);
   const blockedWebSearchErrorItemCount = errors.filter(
-    (item) =>
+    ({ item, conflicting }) =>
+      !conflicting &&
       typeof item.message === 'string' &&
       EXPECTED_G01_V2_DISABLED_WEB_SEARCH_MESSAGES.has(item.message),
   ).length;
