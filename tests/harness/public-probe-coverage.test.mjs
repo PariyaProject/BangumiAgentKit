@@ -43,6 +43,15 @@ const acceptedAgentReports = new Map([
     ],
   ],
 ]);
+
+function reportReferencesInMatrixCell(cell) {
+  if (typeof cell !== 'string') return [];
+  const references = cell.matchAll(
+    /(?:^|[\s`<>"'|,;()])([^\s`<>"'|,;()]*docs\/live-probes\/[^\s`<>"'|,;()]+)(?=$|[\s`<>"'|,;()])/gu,
+  );
+  return [...references].map((match) => match[1]);
+}
+
 const expectedTools = [
   'bangumi.get_person_activity',
   'bangumi.get_series_watch_order',
@@ -81,8 +90,14 @@ test('selected public probes do not promote stale evidence to Agent/MCP or clien
     if (cells[9].startsWith('✅')) {
       const acceptedReports = acceptedAgentReports.get(result.tool);
       assert.ok(acceptedReports, `${result.tool} Agent/MCP credit must come from a dedicated report`);
+      const matrixReportPaths = reportReferencesInMatrixCell(cells[9]);
+      assert.equal(
+        matrixReportPaths.length,
+        1,
+        `${result.tool} Agent/MCP credit must reference exactly one report`,
+      );
       const creditedReport = acceptedReports.find(({ path: reportPath }) =>
-        cells[9].includes(reportPath),
+        matrixReportPaths[0] === reportPath,
       );
       assert.ok(creditedReport, `${result.tool} matrix credit must reference an accepted Agent/MCP report`);
       assert.ok(
@@ -146,9 +161,15 @@ test('G19 public probe is current, bounded, summary-only, and leaves the scenari
   const cells = line.split('|').slice(1, -1).map((cell) => cell.trim());
   assert.ok(cells[6].startsWith('◐'));
   if (cells[9].startsWith('✅')) {
+    const matrixReportPaths = reportReferencesInMatrixCell(cells[9]);
+    assert.equal(
+      matrixReportPaths.length,
+      1,
+      'matrix credit must reference exactly one Agent/MCP report',
+    );
     const creditedReport = acceptedAgentReports
       .get('bangumi.get_person_activity')
-      .find(({ path: reportPath }) => cells[9].includes(reportPath));
+      .find(({ path: reportPath }) => matrixReportPaths[0] === reportPath);
     assert.ok(creditedReport, 'public probe alone must not supply Agent/MCP matrix credit');
     assert.ok(existsSync(path.join(root, creditedReport.path)), 'matrix credit requires an accepted Agent/MCP report');
     const agentReport = JSON.parse(readFileSync(path.join(root, creditedReport.path), 'utf8'));

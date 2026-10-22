@@ -79,6 +79,20 @@ const P03_V4_AGENT_MCP_REPORT_FILE = join(ROOT, P03_V4_AGENT_MCP_REPORT_PATH);
 const P03_V4_AGENT_MCP_REPORT = existsSync(P03_V4_AGENT_MCP_REPORT_FILE)
   ? JSON.parse(readFileSync(P03_V4_AGENT_MCP_REPORT_FILE, 'utf8'))
   : null;
+
+function reportReferencesInMatrixCell(cell: unknown): string[] {
+  if (typeof cell !== 'string') return [];
+  const references = cell.matchAll(
+    /(?:^|[\s`<>"'|,;()])([^\s`<>"'|,;()]*docs\/live-probes\/[^\s`<>"'|,;()]+)(?=$|[\s`<>"'|,;()])/gu,
+  );
+  return [...references].map((match) => match[1]);
+}
+
+function hasExactMatrixReportReference(cell: unknown, expectedPath: string): boolean {
+  const paths = reportReferencesInMatrixCell(cell);
+  return paths.length === 1 && paths[0] === expectedPath;
+}
+
 const FULL_OPERATION_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   .filter(
     (name) => name.startsWith('pariya-agent-full-operation-qa-e2e-') && name.endsWith('.json'),
@@ -390,8 +404,8 @@ const CURRENT_P06_AGENT_MCP_MATRIX = (() => {
     existsSync(join(ROOT, P06_AGENT_MCP_REPORT_PATH)) &&
     row?.length === 13 &&
     statusMark(row[9]) === '✅' &&
-    row[9]?.includes(P06_AGENT_MCP_REPORT_PATH) &&
-    !row[6]?.includes(P06_AGENT_MCP_REPORT_PATH) &&
+    hasExactMatrixReportReference(row[9], P06_AGENT_MCP_REPORT_PATH) &&
+    !reportReferencesInMatrixCell(row[6]).includes(P06_AGENT_MCP_REPORT_PATH) &&
     frontierRecord?.status === 'UNASSESSED' &&
     frontierRecord.source_refs?.includes(P06_AGENT_MCP_REPORT_PATH),
   );
@@ -498,7 +512,7 @@ function isCurrentG06CastOfflineV2Report(report: any): boolean {
     typeof report?.runnerReceipt?.signature === 'string' &&
     toolContractMatchesCurrent(report, 'bangumi.get_subject_cast') &&
     statusMark(row?.[9]) === '✅' &&
-    row?.[9]?.includes(G06_CAST_OFFLINE_V2_REPORT_PATH),
+    hasExactMatrixReportReference(row?.[9], G06_CAST_OFFLINE_V2_REPORT_PATH),
   );
 }
 
@@ -570,7 +584,7 @@ function isCurrentR04RenderV2Report(report: any): boolean {
     typeof report?.runnerReceipt?.signature === 'string' &&
     toolContractMatchesCurrent(report, 'bangumi.render_series_watch_order') &&
     statusMark(row?.[9]) === '✅' &&
-    row?.[9]?.includes(R04_RENDER_V2_REPORT_PATH),
+    hasExactMatrixReportReference(row?.[9], R04_RENDER_V2_REPORT_PATH),
   );
 }
 
@@ -627,7 +641,7 @@ function isCurrentP01DirectorAgentMcpReport(report: any): boolean {
     toolContractMatchesCurrent(report, 'bangumi.get_person_activity') &&
     row?.length === 13 &&
     statusMark(row[9]) === '✅' &&
-    row[9]?.includes(P01_DIRECTOR_AGENT_MCP_REPORT_PATH)
+    hasExactMatrixReportReference(row[9], P01_DIRECTOR_AGENT_MCP_REPORT_PATH)
   );
 }
 
@@ -686,7 +700,7 @@ function isCurrentP03V4AgentMcpReport(report: any): boolean {
     toolContractMatchesCurrent(report, 'bangumi.get_person_profile') &&
     row?.length === 13 &&
     statusMark(row[9]) === '✅' &&
-    row[9]?.includes(P03_V4_AGENT_MCP_REPORT_PATH),
+    hasExactMatrixReportReference(row[9], P03_V4_AGENT_MCP_REPORT_PATH),
   );
 }
 
