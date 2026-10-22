@@ -5,7 +5,7 @@
 
 ## 候选与范围
 
-- 渲染源码候选：`31f7c70de25302be6793972430c00a9d4f7d2163`；基线：`d8b17d10bcb9c6b4b1d6031ceffc8fc5c589d6b1`。
+- 渲染源码候选：`512de0b57ef267974a1b39228abd8aa09130ffa9`；基线：`d8b17d10bcb9c6b4b1d6031ceffc8fc5c589d6b1`。
 - 源码输入 SHA-256：`6d4531df1500999dc2d2800e499e9677faf0a21c53cf3aa134ba00754e05181e`；渲染构建 SHA-256：`eb8a318b0e527ed42945d396d1c73d57118edc1b83a2781efc892a67edd9a476`。
 - 仅用离线合成样例，无真实 Bangumi 数据、OAuth、账号或 QQ/TIM 路径。
 - 本次覆盖人物档案时间轴以及三种既有 render 模板；每个模板在三个设计包、明暗两套主题和 320/360/520/640/960 CSS px 下渲染，共 120 张原图。
@@ -34,7 +34,7 @@
 - `person-profile-complete-c5685450e6dc-warm-editorial-bangumi-light-320.png`
 - `person-profile-complete-c5685450e6dc-warm-editorial-bangumi-light-960.png`
 
-比较了候选 `31f7c70d` 与此前已检查候选 `4a403738`、`65235b5a` 的所有 PNG：三轮各有 124 个 PNG（120 张原图和四张总览），相对路径和哈希 **124/124 完全相同**。因此此前视觉检查直接适用于当前候选的同一组像素。
+当前候选 `512de0b5` 重新生成了 120 张原图和四张总览。120 张原图逐张与保留的前一轮 120 条哈希收据一致；四张总览哈希也与已检查并跟踪的图片一致，共 **124/124 像素输出相同**。前一轮收据记录了 `31f7c70d` 与 `4a403738`、`65235b5a` 的 124/124 完全一致。因此当前候选与此前人工检查的像素相同，人工结论适用于当前候选。
 
 ### 参考风格对照
 
@@ -58,8 +58,8 @@
 
 ## 自动化收据
 
-- 矩阵渲染命令：`PARIYA_UX002_REFERENCE_RUN_ID=run95-p06-chronology-v3-candidate-31f7c70d-20261023 node scripts/acceptance/render-ux002-reference-fidelity-matrix.mjs`；内部 `pnpm build` 成功，渲染脚本正常退出。
-- 总览命令：`node scripts/create-render-design-pack-contact-sheets.mjs run95-p06-chronology-v3-candidate-31f7c70d-20261023`；`receiptVerification=PASS`。
+- 矩阵渲染命令：`PARIYA_UX002_REFERENCE_RUN_ID=run95-p06-chronology-v3-candidate-512de0b5-20261023 node scripts/acceptance/render-ux002-reference-fidelity-matrix.mjs`；内部 `pnpm build` 成功，渲染脚本正常退出。
+- 总览命令：`node scripts/create-render-design-pack-contact-sheets.mjs run95-p06-chronology-v3-candidate-512de0b5-20261023`；`receiptVerification=PASS`。
 - 120/120 原图的视口宽度与根容器一致；横向溢出 0，评分面板溢出 0。
 - 570/570 条预期文本断言通过；每张图都带有效 CSS shape 遮罩收据。未支持的 shape 遮罩 0，错误标记面板 0。
 - 人物时间轴在 30/30 组合中均有两条观察记录、两枚节点、一个连接线和可见的限制说明。
