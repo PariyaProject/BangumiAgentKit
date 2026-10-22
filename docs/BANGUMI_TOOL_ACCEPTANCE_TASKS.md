@@ -9,7 +9,7 @@
 - [x] 匿名公开 API 不适用项已单独分类：31/96；这些工具由账号验收或本地状态验收覆盖。
 - [ ] 需要账号的工具完成真实 OAuth/账号验收：33 项目前不能用本地 mock 代替。
 - [x] 无账号认证门禁拒绝路径已验证：22/22 项；门禁通过不代表真实账号功能通过。
-- [ ] 每个工具都有实际 Agent→MCP 模型调用证据：83/96。
+- [ ] 每个工具都有实际 Agent→MCP 模型调用证据：84/96。
 - [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/96。
 - [ ] 每个工具都有 TIM 客户端端到端证据：当前 0/96。
 
@@ -49,7 +49,7 @@
 | `bangumi.get_latest_subject_revision` | `none` | `read` | `docs/tool-catalog.json#/28` | `tests/integration/tool-direct-execute-read.test.ts:93` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-latest-subject-revision-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_my_profile` | `required` | `read` | `docs/tool-catalog.json#/29` | `tests/integration/tool-catalog-completeness.test.ts:298` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-get_my_profile-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-get_my_profile-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_person` | `none` | `read` | `docs/tool-catalog.json#/30` | `tests/integration/tool-catalog-completeness.test.ts:274` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-person-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.get_person_activity` | `none` | `read` | `docs/tool-catalog.json#/31` | `tests/integration/tool-direct-execute-read.test.ts:304` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-10-11-103934803-2116.json` | — | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_person_activity` | `none` | `read` | `docs/tool-catalog.json#/31` | `tests/integration/tool-direct-execute-read.test.ts:304` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-10-11-103934803-2116.json` | — | — | ✅<br>`docs/live-probes/p01-person-activity-director-offline-run95-v1.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_person_collaboration` | `none` | `read` | `docs/tool-catalog.json#/32` | `tests/integration/tool-direct-execute-read.test.ts:309` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-person-collaboration-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_person_collection` | `optional` | `read` | `docs/tool-catalog.json#/33` | `tests/integration/tool-direct-execute-account.test.ts:176` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-person-collection-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_person_profile` | `none` | `read` | `docs/tool-catalog.json#/34` | `tests/integration/tool-direct-execute-read.test.ts:132`<br>`tests/semantic/semantic-tools.test.ts:1016`<br>`tests/semantic/semantic-tools.test.ts:1022`<br>`tests/semantic/semantic-tools.test.ts:1062`<br>`tests/semantic/semantic-tools.test.ts:997` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-10-16-004829462-60733.json` | — | — | ✅<br>`docs/live-probes/p03-person-name-cn-public-v4-agent-mcp-run95.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
