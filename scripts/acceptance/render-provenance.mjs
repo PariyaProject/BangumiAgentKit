@@ -13,6 +13,9 @@ export const sourceIdentityExclusions = [
   'docs/research/run95-p06-render-person-profile-chronology-v3-visual-qa-2026-10-23.md',
   'docs/research/assets/run95-p06-render-person-profile-chronology-v3-image-manifest-2026-10-23.json',
   'docs/research/assets/run95-p06-render-person-profile-chronology-v3-contact-sheet-2026-10-23.png',
+  'docs/research/assets/run95-p06-render-matrix-revision-timeline-contact-sheet-2026-10-23.png',
+  'docs/research/assets/run95-p06-render-matrix-subject-card-contact-sheet-2026-10-23.png',
+  'docs/research/assets/run95-p06-render-matrix-subject-stats-contact-sheet-2026-10-23.png',
 ];
 
 function sha256(value) {
