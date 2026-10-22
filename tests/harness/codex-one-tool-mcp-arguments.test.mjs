@@ -117,6 +117,31 @@ test('G01 query-subjects profile is fixed to one exact synthetic offline read', 
   );
 });
 
+test('G01 v2 query-subjects profile is independently pinned to its exact synthetic read', () => {
+  const profile = getAgentMcpProfileById('g01-query-subjects-offline-agent-mcp-matrix-v2');
+  assert.ok(profile);
+  const config = parseCodexOneToolMcpArguments([
+    '--profile-id',
+    profile.id,
+    '--summary-file',
+    '/tmp/g01-query-subjects-v2-mcp-summary.json',
+    '--candidate-sha',
+    'a'.repeat(40),
+    '--bundle-sha256',
+    'b'.repeat(64),
+  ]);
+  assert.equal(config.profile.id, profile.id);
+  assert.equal(config.toolName, 'bangumi.query_subjects');
+  assert.deepEqual(config.toolNames, ['bangumi.query_subjects']);
+  assert.deepEqual(config.expectedToolSequence, ['bangumi.query_subjects']);
+  assert.deepEqual(config.expectedArgumentSequence, [profile.calls[0].arguments]);
+  assert.equal(config.networkMode, 'run95-g01-query-subjects-synthetic-offline-v2');
+  assert.notEqual(
+    config.expectedArgumentSequence[0].keyword,
+    'run95 synthetic query subjects matrix offline 20261017',
+  );
+});
+
 test('R04 v2 render profile is fixed to the new offline matrix input', () => {
   const profile = getAgentMcpProfileById(
     'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',

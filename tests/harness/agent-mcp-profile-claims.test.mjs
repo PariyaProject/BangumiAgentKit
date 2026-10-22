@@ -103,7 +103,25 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 46);
+  assert.equal(listAgentMcpProfiles().length, 47);
+  const g01QuerySubjectsV2 = getAgentMcpProfileById(
+    'g01-query-subjects-offline-agent-mcp-matrix-v2',
+  );
+  assert.ok(g01QuerySubjectsV2);
+  assert.equal(g01QuerySubjectsV2.frontierId, 'G01');
+  assert.equal(g01QuerySubjectsV2.toolName, 'bangumi.query_subjects');
+  assert.equal(g01QuerySubjectsV2.acceptanceScope, 'agent-mcp-matrix-only');
+  const g01QuerySubjectsV1 = getAgentMcpProfileById(
+    'g01-query-subjects-offline-agent-mcp-matrix-v1',
+  );
+  assert.equal(
+    agentMcpProfileRegistrySha256(g01QuerySubjectsV1.id),
+    'ff593cf283d343dff1d995721e872feb0121b70613d7e43759f451dfe9ffd854',
+  );
+  assert.equal(
+    agentMcpProfileArgumentsSha256(g01QuerySubjectsV1),
+    '81551f7896d634491f7abf8e67e6123893fd61e420c113959341ebfdc92bef1d',
+  );
   const renderSubjectCardOffline = getAgentMcpProfileById(
     'render-subject-card-offline-agent-mcp-v1',
   );

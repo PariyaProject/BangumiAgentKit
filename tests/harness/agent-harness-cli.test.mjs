@@ -120,7 +120,10 @@ import {
   G01_RENDER_QUERY_OFFLINE_EPOCH_ID,
   G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
 } from '../../scripts/lib/g01-render-query-subjects-offline-profile.mjs';
-import { G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID } from '../../scripts/lib/g01-query-subjects-offline-matrix-profile.mjs';
+import {
+  G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,
+  getG01QuerySubjectsOfflineProfileSpec,
+} from '../../scripts/lib/g01-query-subjects-offline-matrix-profile.mjs';
 import {
   C01_SAFE_SCOPE_NOTE,
   projectC01ComparisonResult,
@@ -3351,11 +3354,15 @@ test('P03 v4 report Candidate refresh permits only its report and exact acceptan
       '--evidence',
       candidateEvidence(environment, {
         candidate_sha: sha('e'),
-        candidate_refresh_reason: 'Record the signed P03 v4 report and refresh its bounded acceptance validator.',
-        validation: ['The signed source report and allowlisted acceptance refresh paths were checked.'],
+        candidate_refresh_reason:
+          'Record the signed P03 v4 report and refresh its bounded acceptance validator.',
+        validation: [
+          'The signed source report and allowlisted acceptance refresh paths were checked.',
+        ],
         adversarial_preflight: {
           completed: true,
-          summary: 'The source report, exact paths, one-shot latch, and unchanged MCP bundle were checked.',
+          summary:
+            'The source report, exact paths, one-shot latch, and unchanged MCP bundle were checked.',
           agent_mcp_profile_dispositions: { [P03_V4_PROFILE.id]: disposition },
         },
       }),
@@ -8808,18 +8815,24 @@ test('G01 REPORT_WRITTEN with a null unaccepted digest reaches signed report val
   }
 });
 
-function g01QuerySubjectsOfflineMergeEnvironment() {
+function g01QuerySubjectsOfflineMergeEnvironment(
+  profileId = 'g01-query-subjects-offline-agent-mcp-matrix-v1',
+) {
   const { run, epoch } = controlFixture();
   const prNumber = 231;
   const reviewerId = `gpt-6-luna-max-run95-pr${prNumber}-round1`;
+  const profileSpec = getG01QuerySubjectsOfflineProfileSpec(profileId);
   run.state = 'EPOCH_ACTIVE';
   run.active_epoch_pr = prNumber;
   run.outer_sol.consumed = 1;
   run.outer_sol.product.consumed = 1;
-  epoch.epoch_id = G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID;
+  epoch.epoch_id = profileSpec.epochId;
   epoch.base_sha = sha('a');
   epoch.base_branch = 'master';
-  epoch.branch = 'codex/epoch-run95-g01-query-subjects-offline-agent-mcp-matrix-20261017';
+  epoch.branch =
+    profileId === G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID
+      ? 'codex/epoch-run95-g01-query-subjects-offline-agent-mcp-matrix-v2-20261022'
+      : 'codex/epoch-run95-g01-query-subjects-offline-agent-mcp-matrix-20261017';
   epoch.pr_number = prNumber;
   epoch.state = 'REVIEW_PASSED';
   epoch.candidate_sha = sha('b');
@@ -8869,6 +8882,20 @@ function g01QuerySubjectsOfflineMergeEnvironment() {
 
 test('G01 query-subjects matrix Epoch cannot merge without a durable terminal profile result', () => {
   const environment = g01QuerySubjectsOfflineMergeEnvironment();
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '231']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G01_QUERY_SUBJECTS_OFFLINE_RECONCILIATION_REQUIRED:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('G01 v2 query-subjects matrix Epoch cannot merge without its own terminal result', () => {
+  const environment = g01QuerySubjectsOfflineMergeEnvironment(
+    G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,
+  );
   try {
     const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '231']);
     assert.equal(result.status, 2);

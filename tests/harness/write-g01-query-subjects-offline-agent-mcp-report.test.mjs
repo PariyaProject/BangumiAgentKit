@@ -14,8 +14,11 @@ import {
 import {
   G01_QUERY_SUBJECTS_OFFLINE_ACKNOWLEDGEMENT,
   G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS,
-  G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
   G01_QUERY_SUBJECTS_OFFLINE_SERVER_ID,
+  G01_QUERY_SUBJECTS_OFFLINE_V2_ACKNOWLEDGEMENT,
+  G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,
+  G01_QUERY_SUBJECTS_OFFLINE_V2_SERVER_ID,
+  getG01QuerySubjectsOfflineProfileSpec,
 } from '../../scripts/lib/g01-query-subjects-offline-matrix-profile.mjs';
 import {
   buildG01QuerySubjectsOfflineProfileReport,
@@ -24,6 +27,7 @@ import {
 } from '../../scripts/acceptance/write-g01-query-subjects-offline-agent-mcp-report.mjs';
 
 const PROFILE = getAgentMcpProfileById('g01-query-subjects-offline-agent-mcp-matrix-v1');
+const PROFILE_V2 = getAgentMcpProfileById(G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID);
 const SOURCE_SHA = 'a'.repeat(40);
 const BASE_SHA = 'b'.repeat(40);
 const BUNDLE_SHA = 'c'.repeat(64);
@@ -41,7 +45,7 @@ const REQUIRED_CHECKS = [
 ];
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
-function claimFixture(keyPair) {
+function claimFixture(keyPair, profile = PROFILE) {
   const publicKeyBase64 = keyPair.publicKey
     .export({ type: 'spki', format: 'der' })
     .toString('base64');
@@ -50,16 +54,16 @@ function claimFixture(keyPair) {
     reportWritten: false,
     retryAllowed: false,
     claimId: `profile-run-95-pr-${PR_NUMBER}-${SOURCE_SHA.slice(0, 12)}-1792200000000`,
-    profileId: PROFILE.id,
+    profileId: profile.id,
     frontierId: 'G01',
-    epochId: PROFILE.epochId,
+    epochId: profile.epochId,
     runNumber: 95,
     prNumber: PR_NUMBER,
-    toolName: PROFILE.toolName,
-    argumentProfile: PROFILE.argumentProfile,
-    expectedArguments: PROFILE.calls.map((call) => call.arguments),
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
-    registrySha256: agentMcpProfileRegistrySha256(PROFILE.id),
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
+    expectedArguments: profile.calls.map((call) => call.arguments),
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+    registrySha256: agentMcpProfileRegistrySha256(profile.id),
     sourceCandidateSha: SOURCE_SHA,
     baseSha: BASE_SHA,
     ciSha: SOURCE_SHA,
@@ -77,10 +81,11 @@ function claimFixture(keyPair) {
   };
 }
 
-function serverSummaryFixture() {
+function serverSummaryFixture(profile = PROFILE) {
+  const spec = getG01QuerySubjectsOfflineProfileSpec(profile.id);
   const catalogBytes = readFileSync(new URL('../../docs/tool-catalog.json', import.meta.url));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
-  const tool = catalog.find((item) => item.name === PROFILE.toolName);
+  const tool = catalog.find((item) => item.name === profile.toolName);
   const resultSummary = {
     resultState: 'ok',
     returnedItems: 1,
@@ -93,17 +98,17 @@ function serverSummaryFixture() {
   };
   return {
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
-    profileId: PROFILE.id,
-    argumentProfile: PROFILE.argumentProfile,
-    networkMode: G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
+    profileId: profile.id,
+    argumentProfile: profile.argumentProfile,
+    networkMode: spec.networkMode,
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
     sourceRevision: SOURCE_SHA,
     bundleSha256: BUNDLE_SHA,
     catalogSha256: sha256(catalogBytes),
-    toolName: PROFILE.toolName,
+    toolName: profile.toolName,
     toolDescriptionSha256: sha256(tool.description ?? ''),
     inputSchemaSha256: sha256(canonicalAgentMcpProfileJson(tool.inputSchema)),
-    serverToolNames: [PROFILE.toolName],
+    serverToolNames: [profile.toolName],
     serverToolCount: 1,
     expectedCallCount: 1,
     serverResultStatus: 'SUCCESS',
@@ -111,7 +116,7 @@ function serverSummaryFixture() {
     deniedCallCount: 0,
     results: [{ sequenceIndex: 0, status: 'SUCCESS', resultSummary }],
     offlineFixture: {
-      profile: G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
+      profile: spec.networkMode,
       requestCount: 1,
       searchRequestCount: 1,
       duplicateRequestCount: 0,
@@ -176,6 +181,76 @@ test('G01 query-subjects report is signed, sanitized, and matrix-only', () => {
       resultSummary: { ...report.resultSummary, returnedItems: 2 },
     };
     assert.equal(validateG01QuerySubjectsOfflineProfileReport(invalid, claim).passed, false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('G01 v2 query-subjects report accepts only aggregate blocked-search counters', () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'g01-query-subjects-v2-report-test-'));
+  try {
+    const keyPair = generateKeyPairSync('ed25519');
+    const claim = claimFixture(keyPair, PROFILE_V2);
+    const serverSummary = serverSummaryFixture(PROFILE_V2);
+    assert.equal(
+      validateG01QuerySubjectsOfflineServerSummary(
+        serverSummary,
+        SOURCE_SHA,
+        BUNDLE_SHA,
+        PROFILE_V2.id,
+      ),
+      true,
+    );
+    const events = {
+      processExitCode: 0,
+      eventStreamParsed: true,
+      turnCompleted: true,
+      codexMcpToolEventCount: 1,
+      codexErrorItemCount: 3,
+      blockedWebSearchErrorItemCount: 3,
+      unexpectedCodexErrorItemCount: 0,
+      nonMcpToolEventCount: 0,
+      nonMcpToolTypes: [],
+      shellToolCallCount: 0,
+      mcpServerNames: [G01_QUERY_SUBJECTS_OFFLINE_V2_SERVER_ID],
+      exactCall: true,
+      exactToolEvent: true,
+    };
+    const reportPath = path.join(directory, 'report.json');
+    const input = {
+      claim,
+      serverSummary,
+      events,
+      answer: G01_QUERY_SUBJECTS_OFFLINE_V2_ACKNOWLEDGEMENT,
+      codexCliVersion: '0.163.0',
+      eventStreamSha256: 'd'.repeat(64),
+      serverSummarySha256: 'e'.repeat(64),
+    };
+    const result = buildG01QuerySubjectsOfflineProfileReport(input, {
+      privateKey: keyPair.privateKey,
+      reportPath,
+    });
+    assert.equal(result.passed, true, result.reason);
+    const bytes = readFileSync(reportPath);
+    const report = JSON.parse(bytes.toString('utf8'));
+    assert.equal(validateG01QuerySubjectsOfflineProfileReport(report, claim, bytes).passed, true);
+    assert.equal(report.codexErrorItemCount, 3);
+    assert.equal(report.blockedWebSearchErrorItemCount, 3);
+    assert.equal(report.unexpectedCodexErrorItemCount, 0);
+    assert.equal(report.runnerReceipt.kind, 'g01-query-subjects-offline-matrix-runner-receipt-v2');
+    const serialized = JSON.stringify(report);
+    assert.equal(serialized.includes(PROFILE_V2.calls[0].arguments.keyword), false);
+    assert.equal(serialized.includes('990931'), false);
+    assert.equal(serialized.includes('disabled for this Codex invocation'), false);
+
+    const invalid = {
+      ...input,
+      events: { ...events, unexpectedCodexErrorItemCount: 1 },
+    };
+    assert.equal(
+      buildG01QuerySubjectsOfflineProfileReport(invalid, { privateKey: keyPair.privateKey }).passed,
+      false,
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

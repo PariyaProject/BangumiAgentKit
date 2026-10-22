@@ -2719,7 +2719,16 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'g01-query-subjects-offline-agent-mcp-matrix-v1'
 )
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'g01-query-subjects-offline-agent-mcp-matrix-v2'
+)
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID = CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE['id']
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID = CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE['id']
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_IDS = frozenset({
+    CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
+    CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,
+})
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID = CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE['epochId']
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_TOOL_NAME = CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE['toolName']
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_ARGUMENT_PROFILE = CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE['argumentProfile']
@@ -2741,8 +2750,35 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_G01_QU
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_EVIDENCE_KIND = CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE['evidenceKind']
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_ANSWER_CHECK_METHOD = CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE['answerCheckMethod']
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE = CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE['networkMode']
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_EPOCH_ID = CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE['epochId']
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_TOOL_NAME = CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE['toolName']
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_ARGUMENT_PROFILE = CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE['argumentProfile']
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_EXPECTED_CALLS = CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE['calls']
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_EXPECTED_CALLS],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_REPORT_RELATIVE_PATH = CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE['reportPath']
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE['selectionEvidencePath']
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_EVIDENCE_KIND = CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE['evidenceKind']
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_ANSWER_CHECK_METHOD = CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE['answerCheckMethod']
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_NETWORK_MODE = CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE['networkMode']
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_SERVER_ID = 'bgk_g01_query_subjects_offline_v2'
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_ACKNOWLEDGEMENT = 'G01_QUERY_SUBJECTS_SYNTHETIC_OFFLINE_V2_OK'
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_EVIDENCE_REFRESH_PATHS = {
     CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_RELATIVE_PATH,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+}
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_EVIDENCE_REFRESH_PATHS = {
+    CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_REPORT_RELATIVE_PATH,
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
 }
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_FIELDS = {
@@ -2757,6 +2793,11 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_FIELDS = {
     'nonMcpToolTypes', 'shellToolCallCount', 'allowedCallCount', 'deniedCallCount',
     'answerCheckMethod', 'answerSha256', 'answerUtf8Bytes', 'answerChecks', 'resultSummary',
     'offlineFixture', 'networkBoundary', 'privacy', 'runnerReceipt',
+}
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_REPORT_FIELDS = {
+    *CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_FIELDS,
+    'blockedWebSearchErrorItemCount',
+    'unexpectedCodexErrorItemCount',
 }
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_ANSWER_CHECK_FIELDS = {
     'exactRegisteredProfile', 'oneAllowedMcpTool', 'fixedArguments', 'exactCandidateBundle',
@@ -2795,7 +2836,64 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_RECEIPT_PAYLOAD_FIELDS = {
     'offlineFixtureSha256', 'resultSummarySha256', 'networkBoundarySha256', 'answerSha256',
     'eventStreamSha256', 'serverSummarySha256',
 }
+CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_RECEIPT_PAYLOAD_FIELDS = {
+    *CODEX_G01_QUERY_SUBJECTS_OFFLINE_RECEIPT_PAYLOAD_FIELDS,
+    'blockedWebSearchErrorItemCount',
+    'unexpectedCodexErrorItemCount',
+}
 CODEX_G01_QUERY_SUBJECTS_OFFLINE_REQUIRED_CI_CHECKS = CODEX_P06_REQUIRED_CI_CHECKS
+
+
+def codex_g01_query_subjects_offline_profile_settings(profile_id: object) -> dict[str, object] | None:
+    if profile_id == CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID:
+        profile = CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE
+        return {
+            'profile': profile,
+            'profileId': profile_id,
+            'epochId': CODEX_G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID,
+            'toolName': CODEX_G01_QUERY_SUBJECTS_OFFLINE_TOOL_NAME,
+            'argumentProfile': CODEX_G01_QUERY_SUBJECTS_OFFLINE_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': CODEX_G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS_SHA256,
+            'registrySha256': CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_REGISTRY_SHA256,
+            'reportPath': CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_RELATIVE_PATH,
+            'selectionPath': CODEX_G01_QUERY_SUBJECTS_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH,
+            'evidenceKind': CODEX_G01_QUERY_SUBJECTS_OFFLINE_EVIDENCE_KIND,
+            'answerCheckMethod': CODEX_G01_QUERY_SUBJECTS_OFFLINE_ANSWER_CHECK_METHOD,
+            'networkMode': CODEX_G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
+            'serverId': 'bgk_g01_query_subjects_offline',
+            'acknowledgement': 'G01_QUERY_SUBJECTS_SYNTHETIC_OFFLINE_OK',
+            'reportFields': CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_FIELDS,
+            'receiptPayloadFields': CODEX_G01_QUERY_SUBJECTS_OFFLINE_RECEIPT_PAYLOAD_FIELDS,
+            'refreshPaths': CODEX_G01_QUERY_SUBJECTS_OFFLINE_EVIDENCE_REFRESH_PATHS,
+            'profileName': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'maxCodexErrors': 0,
+        }
+    if profile_id == CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID:
+        profile = CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE
+        return {
+            'profile': profile,
+            'profileId': profile_id,
+            'epochId': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_EPOCH_ID,
+            'toolName': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_TOOL_NAME,
+            'argumentProfile': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_EXPECTED_ARGUMENTS_SHA256,
+            'registrySha256': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_REGISTRY_SHA256,
+            'reportPath': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_REPORT_RELATIVE_PATH,
+            'selectionPath': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_SELECTION_EVIDENCE_RELATIVE_PATH,
+            'evidenceKind': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_EVIDENCE_KIND,
+            'answerCheckMethod': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_ANSWER_CHECK_METHOD,
+            'networkMode': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_NETWORK_MODE,
+            'serverId': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_SERVER_ID,
+            'acknowledgement': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_ACKNOWLEDGEMENT,
+            'reportFields': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_REPORT_FIELDS,
+            'receiptPayloadFields': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_RECEIPT_PAYLOAD_FIELDS,
+            'refreshPaths': CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_EVIDENCE_REFRESH_PATHS,
+            'profileName': 'codex-luna-max-offline-agent-mcp-matrix-v2',
+            'maxCodexErrors': 3,
+        }
+    return None
+
+
 CODEX_P02_PROFILES = {
     profile['id']: profile
     for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
@@ -6414,9 +6512,11 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'export function assertG01QuerySubjectsOfflineProfile(profile)',
         'G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS',
         'G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_SUBJECT_ID = 990930',
+        'G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_SPEC',
+        'G01_QUERY_SUBJECTS_OFFLINE_V2_SYNTHETIC_SUBJECT_ID = 990931',
     ),
     'scripts/lib/g01-query-subjects-offline-matrix-fixture.mjs': (
-        'export function createG01QuerySubjectsOfflineFetch()',
+        'export function createG01QuerySubjectsOfflineFetch(profile = G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID)',
         'export function assertG01QuerySubjectsOfflineFixtureProfile(profile)',
         'SAFE_REQUEST_HEADERS',
         'rejectedHeaderCount',
@@ -6424,16 +6524,18 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'rawFixturePayloadStored: false',
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
-        'profileId === G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID',
+        '[G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID, G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID].includes(',
         'summarizeG01QuerySubjectsOfflineToolResult(result)',
     ),
     'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
         'assertG01QuerySubjectsOfflineProfile(profile)',
+        'assertG01QuerySubjectsOfflineV2Profile(profile)',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
         'assertG01QuerySubjectsOfflineFixtureProfile(config.profile)',
-        'createG01QuerySubjectsOfflineFetch()',
+        'createG01QuerySubjectsOfflineFetch(config.profile)',
         'G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE',
+        'G01_QUERY_SUBJECTS_OFFLINE_V2_NETWORK_MODE',
     ),
     'scripts/acceptance/run-g01-query-subjects-offline-agent-mcp.mjs': (
         'export function validateG01QuerySubjectsOfflineRunnerArgs(',
@@ -6441,6 +6543,7 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'export function buildG01QuerySubjectsOfflineCodexExecArgs(',
         'export function classifyG01QuerySubjectsOfflineFailure(',
         'async function runG01QuerySubjectsOffline(',
+        'events.blockedWebSearchErrorItemCount === events.codexErrorItemCount',
     ),
     'scripts/acceptance/write-g01-query-subjects-offline-agent-mcp-report.mjs': (
         'export function buildG01QuerySubjectsOfflineRunnerReceiptPayload(',
@@ -6456,6 +6559,7 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'validateG01QuerySubjectsOfflineSanitizedReportFile(',
         'assertG01QuerySubjectsOfflineProfileReconciledBeforeMerge(',
         "'g01-query-subjects-offline-agent-mcp-matrix-v1'",
+        'G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID',
     ),
     'docs/research/run95-g01-query-subjects-offline-agent-mcp-contract-2026-10-17.md': (
         'This profile checks exactly one `bangumi.query_subjects` Agent/MCP invocation',
@@ -6465,19 +6569,26 @@ CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_g01_query_subjects_offline_profile_report_is_valid(',
         'CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_RELATIVE_PATH',
+        'CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_REPORT_RELATIVE_PATH',
     ),
     'scripts/check-tool-acceptance-table.py': (
         "report.get('evidenceKind') == 'codex_cli_g01_query_subjects_offline_agent_mcp'",
         'g01_query_subjects_offline_matches',
+        'g01-query-subjects-offline-agent-mcp-matrix-v2',
     ),
     'tests/harness/g01-query-subjects-offline-matrix-fixture.test.mjs': (
         'fixture serves one exact synthetic search and denies every second request',
         'credential and unapproved headers',
         'profile uses a unique query and subject id',
+        'v2 profile uses a separate fixture input and subject id',
     ),
     'tests/harness/run-g01-query-subjects-offline-agent-mcp.test.mjs': (
         'G01 query-subjects runner only accepts Run 95',
         'G01 query-subjects failure classification emits fixed codes',
+        'v2 only accepts bounded explicit disabled-web-search errors',
+    ),
+    'tests/harness/write-g01-query-subjects-offline-agent-mcp-report.test.mjs': (
+        'G01 v2 query-subjects report accepts only aggregate blocked-search counters',
     ),
     'tests/integration/tool-direct-execute-discovery.test.ts': (
         'runs the G01 query-only matrix profile through one local synthetic search fixture',
@@ -10895,14 +11006,41 @@ def codex_g01_render_query_offline_profile_disposition_matches_report(
 
 
 def codex_g01_query_subjects_offline_profile_revision_has_implementation(
-    revision: object,
+    revision: object, profile_id: object = CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
 ) -> bool:
-    if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+    settings = codex_g01_query_subjects_offline_profile_settings(profile_id)
+    if (
+        settings is None
+        or not isinstance(revision, str)
+        or re.fullmatch(r'[0-9a-f]{40}', revision) is None
+    ):
         return False
+    markers = dict(CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROBE_IMPLEMENTATION_MARKERS)
+    if profile_id == CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID:
+        markers['scripts/lib/g01-query-subjects-offline-matrix-profile.mjs'] += (
+            "export const G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_SPEC = Object.freeze({",
+            "G01_QUERY_SUBJECTS_OFFLINE_V2_SYNTHETIC_SUBJECT_ID = 990931",
+        )
+        markers['scripts/acceptance/agent-mcp-profile-registry.json'] += (
+            '"id": "g01-query-subjects-offline-agent-mcp-matrix-v2"',
+            'run95 synthetic query subjects matrix offline 20261022 v2',
+        )
+        markers['scripts/acceptance/run-g01-query-subjects-offline-agent-mcp.mjs'] += (
+            'events.blockedWebSearchErrorItemCount === events.codexErrorItemCount',
+            'G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID',
+        )
+        markers['scripts/agent-harness.mjs'] += (
+            'G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID',
+        )
+        markers['docs/research/run95-g01-query-subjects-offline-matrix-v2-contract-2026-10-22.md'] = (
+            'This source-bound contract records the selected Run #95 Epoch',
+            'The one exact call, acknowledgement, server summary, completed turn, and Candidate/bundle checks',
+            'The old runner read the wrong event fields',
+        )
     return (
         codex_probe_revision_has_implementation(revision)
         and _codex_revision_has_markers(
-            str(ROOT), revision, CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROBE_IMPLEMENTATION_MARKERS,
+            str(ROOT), revision, markers,
         )
     )
 
@@ -10910,22 +11048,33 @@ def codex_g01_query_subjects_offline_profile_revision_has_implementation(
 def codex_g01_query_subjects_offline_profile_report_matches_candidate_revision(
     report_path: Path, revision: object,
 ) -> bool:
-    if not codex_g01_query_subjects_offline_profile_revision_has_implementation(revision):
+    try:
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    settings = codex_g01_query_subjects_offline_profile_settings(
+        report.get('profileId') if isinstance(report, dict) else None,
+    )
+    if settings is None or not codex_g01_query_subjects_offline_profile_revision_has_implementation(
+        revision, settings['profileId'],
+    ):
         return False
     return _codex_relations_report_matches_candidate_revision(
-        report_path, revision, CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_RELATIVE_PATH,
+        report_path, revision, str(settings['reportPath']),
     )
 
 
 def codex_g01_query_subjects_offline_profile_evidence_refresh_paths_are_valid(
-    paths: object,
+    paths: object, profile_id: object = CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
 ) -> bool:
+    settings = codex_g01_query_subjects_offline_profile_settings(profile_id)
     return (
-        isinstance(paths, (list, tuple, set, frozenset))
-        and CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_RELATIVE_PATH in paths
+        settings is not None
+        and isinstance(paths, (list, tuple, set, frozenset))
+        and settings['reportPath'] in paths
         and all(
             isinstance(item, str)
-            and item in CODEX_G01_QUERY_SUBJECTS_OFFLINE_EVIDENCE_REFRESH_PATHS
+            and item in settings['refreshPaths']
             for item in paths
         )
     )
@@ -10948,6 +11097,9 @@ def codex_g01_query_subjects_offline_profile_candidate_binding_is_valid(
     if not isinstance(run_state, dict) or not isinstance(epoch, dict):
         return False
     candidate_sha = epoch.get('candidate_sha')
+    settings = codex_g01_query_subjects_offline_profile_settings(report.get('profileId'))
+    if settings is None:
+        return False
     source_sha = report.get('sourceRevision')
     pr_number = report.get('prNumber')
     branch = epoch.get('branch')
@@ -10972,7 +11124,7 @@ def codex_g01_query_subjects_offline_profile_candidate_binding_is_valid(
         and pr_number > 0
         and run.get('number') == 95
         and (active_pr or merged_pr)
-        and epoch.get('epoch_id') == CODEX_G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID
+        and epoch.get('epoch_id') == settings['epochId']
         and epoch.get('pr_number') == pr_number
         and epoch.get('base_branch') == 'master'
         and isinstance(branch, str)
@@ -10986,7 +11138,9 @@ def codex_g01_query_subjects_offline_profile_candidate_binding_is_valid(
         and epoch_result.get('pr_head_sha') == candidate_sha
         and isinstance(source_sha, str)
         and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
-        and codex_g01_query_subjects_offline_profile_evidence_refresh_paths_are_valid(changed_paths)
+        and codex_g01_query_subjects_offline_profile_evidence_refresh_paths_are_valid(
+            changed_paths, settings['profileId'],
+        )
         and current_bundle_sha256 == report.get('mcpBundleSha256')
     )
 
@@ -11025,16 +11179,19 @@ def codex_g01_query_subjects_offline_profile_epoch_harness_status(
 
 
 def codex_g01_query_subjects_offline_profile_harness_status(
-    pr_number: object,
+    pr_number: object, profile_id: object = CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
 ) -> dict[str, object] | None:
-    if type(pr_number) is not int or pr_number < 1:
+    if (
+        type(pr_number) is not int or pr_number < 1
+        or codex_g01_query_subjects_offline_profile_settings(profile_id) is None
+    ):
         return None
     try:
         result = subprocess.run(
             [
                 'node', str(ROOT / 'scripts/agent-harness.mjs'),
                 'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
-                '--profile-id', CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
+                '--profile-id', str(profile_id),
             ],
             cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
         )
@@ -11053,14 +11210,17 @@ def codex_g01_query_subjects_offline_profile_disposition_matches_report(
         return None
     receipt = report.get('runnerReceipt')
     disposition = harness_status.get('disposition')
+    settings = codex_g01_query_subjects_offline_profile_settings(report.get('profileId'))
+    if settings is None:
+        return None
     if (
         harness_status.get('state') != 'REPORT_WRITTEN'
-        or harness_status.get('profile_id') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID
+        or harness_status.get('profile_id') != settings['profileId']
         or harness_status.get('pr') != report.get('prNumber')
-        or harness_status.get('tool_name') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_TOOL_NAME
-        or harness_status.get('argument_profile') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_ARGUMENT_PROFILE
-        or harness_status.get('expected_arguments_sha256') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS_SHA256
-        or harness_status.get('registry_sha256') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_REGISTRY_SHA256
+        or harness_status.get('tool_name') != settings['toolName']
+        or harness_status.get('argument_profile') != settings['argumentProfile']
+        or harness_status.get('expected_arguments_sha256') != settings['expectedArgumentsSha256']
+        or harness_status.get('registry_sha256') != settings['registrySha256']
         or harness_status.get('claim_label_present') is not True
         or harness_status.get('terminal_label_present') is not True
         or not isinstance(disposition, dict)
@@ -11071,9 +11231,9 @@ def codex_g01_query_subjects_offline_profile_disposition_matches_report(
         return None
     expected = {
         'claimId': report.get('claimId'),
-        'profileId': CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
+        'profileId': settings['profileId'],
         'frontierId': 'G01',
-        'epochId': CODEX_G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID,
+        'epochId': settings['epochId'],
         'runNumber': 95,
         'prNumber': report.get('prNumber'),
         'state': 'REPORT_WRITTEN',
@@ -11085,12 +11245,12 @@ def codex_g01_query_subjects_offline_profile_disposition_matches_report(
         'ciChecks': report.get('ciChecks'),
         'reviewerId': report.get('reviewerId'),
         'bundleSha256': report.get('mcpBundleSha256'),
-        'registrySha256': CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_REGISTRY_SHA256,
-        'toolName': CODEX_G01_QUERY_SUBJECTS_OFFLINE_TOOL_NAME,
-        'argumentProfile': CODEX_G01_QUERY_SUBJECTS_OFFLINE_ARGUMENT_PROFILE,
-        'expectedArgumentsSha256': CODEX_G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS_SHA256,
+        'registrySha256': settings['registrySha256'],
+        'toolName': settings['toolName'],
+        'argumentProfile': settings['argumentProfile'],
+        'expectedArgumentsSha256': settings['expectedArgumentsSha256'],
         'reportWritten': True,
-        'reportPath': CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_RELATIVE_PATH,
+        'reportPath': settings['reportPath'],
         'reportSha256': report_sha256,
         'retryAllowed': False,
         'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
@@ -11106,17 +11266,19 @@ def codex_g01_query_subjects_offline_profile_matrix_targets(
     report: object,
 ) -> tuple[str, ...]:
     """Route this exact synthetic matrix profile to query_subjects only."""
+    settings = codex_g01_query_subjects_offline_profile_settings(
+        report.get('profileId') if isinstance(report, dict) else None,
+    )
     if (
-        not isinstance(report, dict)
-        or report.get('evidenceKind') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_EVIDENCE_KIND
-        or report.get('profileId') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID
+        settings is None
+        or report.get('evidenceKind') != settings['evidenceKind']
         or report.get('runNumber') != 95
         or report.get('frontierId') != 'G01'
         or report.get('scenarioId') is not None
-        or report.get('toolName') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_TOOL_NAME
+        or report.get('toolName') != settings['toolName']
     ):
         return ()
-    return (CODEX_G01_QUERY_SUBJECTS_OFFLINE_TOOL_NAME,)
+    return (str(settings['toolName']),)
 
 
 def codex_c03_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
@@ -14726,16 +14888,17 @@ def codex_g01_query_subjects_offline_profile_report_is_valid(
     epoch_status: object = None,
 ) -> bool:
     """Validate a signed synthetic query-only report without awarding G01 scenario credit."""
-    if not isinstance(report, dict) or set(report) != CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_FIELDS:
-        return False
-    path = report_path or (
-        LIVE_PROBE_DIR / Path(CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_RELATIVE_PATH).name
+    settings = codex_g01_query_subjects_offline_profile_settings(
+        report.get('profileId') if isinstance(report, dict) else None,
     )
+    if settings is None or not isinstance(report, dict) or set(report) != settings['reportFields']:
+        return False
+    path = report_path or (LIVE_PROBE_DIR / Path(str(settings['reportPath'])).name)
     try:
         relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
         report_bytes = path.read_bytes()
         selection_bytes = (
-            ROOT / CODEX_G01_QUERY_SUBJECTS_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH
+            ROOT / str(settings['selectionPath'])
         ).read_bytes()
     except (OSError, ValueError):
         return False
@@ -14745,18 +14908,31 @@ def codex_g01_query_subjects_offline_profile_report_is_valid(
     fixture = report.get('offlineFixture')
     network = report.get('networkBoundary')
     privacy = report.get('privacy')
-    acknowledgement = b'G01_QUERY_SUBJECTS_SYNTHETIC_OFFLINE_OK'
+    acknowledgement = str(settings['acknowledgement']).encode('utf-8')
+    codex_error_count = report.get('codexErrorItemCount')
+    codex_errors_valid = (
+        type(codex_error_count) is int and codex_error_count == 0
+        if settings['maxCodexErrors'] == 0
+        else (
+            type(codex_error_count) is int
+            and 0 <= codex_error_count <= settings['maxCodexErrors']
+            and type(report.get('blockedWebSearchErrorItemCount')) is int
+            and report.get('blockedWebSearchErrorItemCount') == codex_error_count
+            and type(report.get('unexpectedCodexErrorItemCount')) is int
+            and report.get('unexpectedCodexErrorItemCount') == 0
+        )
+    )
     if (
-        relative_path != CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_RELATIVE_PATH
+        relative_path != settings['reportPath']
         or len(report_bytes) > 64 * 1024
         or report.get('schemaVersion') != 1
-        or report.get('evidenceKind') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_EVIDENCE_KIND
+        or report.get('evidenceKind') != settings['evidenceKind']
         or report.get('runNumber') != 95
         or report.get('frontierId') != 'G01'
         or report.get('scenarioId') is not None
-        or report.get('epochId') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID
-        or report.get('profileId') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID
-        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v1'
+        or report.get('epochId') != settings['epochId']
+        or report.get('profileId') != settings['profileId']
+        or report.get('profile') != settings['profileName']
         or report.get('model') != 'gpt-6-luna'
         or report.get('reasoningEffort') != 'max'
         or not isinstance(report.get('reviewerId'), str)
@@ -14765,15 +14941,17 @@ def codex_g01_query_subjects_offline_profile_report_is_valid(
         or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
         or not isinstance(report.get('observedAt'), str)
         or re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', report['observedAt']) is None
-        or report.get('registrySha256') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_REGISTRY_SHA256
+        or report.get('registrySha256') != settings['registrySha256']
         or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
-        or report.get('toolName') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_TOOL_NAME
-        or report.get('argumentProfile') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_ARGUMENT_PROFILE
-        or report.get('expectedArgumentsSha256') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS_SHA256
-        or report.get('networkMode') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE
+        or report.get('toolName') != settings['toolName']
+        or report.get('argumentProfile') != settings['argumentProfile']
+        or report.get('expectedArgumentsSha256') != settings['expectedArgumentsSha256']
+        or report.get('networkMode') != settings['networkMode']
         or not isinstance(source_revision, str)
         or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
-        or not codex_g01_query_subjects_offline_profile_revision_has_implementation(source_revision)
+        or not codex_g01_query_subjects_offline_profile_revision_has_implementation(
+            source_revision, settings['profileId'],
+        )
         or not codex_g01_query_subjects_offline_frontier_is_partial()
         or not isinstance(report.get('baseSha'), str)
         or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
@@ -14795,16 +14973,16 @@ def codex_g01_query_subjects_offline_profile_report_is_valid(
         or report.get('eventStreamParsed') is not True
         or report.get('turnCompleted') is not True
         or report.get('codexMcpToolEventCount') != 1
-        or report.get('codexErrorItemCount') != 0
+        or not codex_errors_valid
         or report.get('nonMcpToolEventCount') != 0
         or report.get('nonMcpToolTypes') != []
         or report.get('shellToolCallCount') != 0
         or report.get('allowedCallCount') != 1
         or report.get('deniedCallCount') != 0
-        or report.get('serverToolNames') != [CODEX_G01_QUERY_SUBJECTS_OFFLINE_TOOL_NAME]
+        or report.get('serverToolNames') != [settings['toolName']]
         or report.get('serverToolCount') != 1
-        or report.get('mcpServerNames') != ['bgk_g01_query_subjects_offline']
-        or report.get('answerCheckMethod') != CODEX_G01_QUERY_SUBJECTS_OFFLINE_ANSWER_CHECK_METHOD
+        or report.get('mcpServerNames') != [settings['serverId']]
+        or report.get('answerCheckMethod') != settings['answerCheckMethod']
         or report.get('answerSha256') != hashlib.sha256(acknowledgement).hexdigest()
         or report.get('answerUtf8Bytes') != len(acknowledgement)
     ):
@@ -14825,7 +15003,7 @@ def codex_g01_query_subjects_offline_profile_report_is_valid(
         or not isinstance(fixture, dict)
         or set(fixture) != CODEX_G01_QUERY_SUBJECTS_OFFLINE_FIXTURE_FIELDS
         or fixture != {
-            'profile': CODEX_G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
+            'profile': settings['networkMode'],
             'requestCount': 1,
             'searchRequestCount': 1,
             'duplicateRequestCount': 0,
@@ -14865,7 +15043,7 @@ def codex_g01_query_subjects_offline_profile_report_is_valid(
         or not isinstance(report.get('runnerReceipt'), dict)
         or set(report['runnerReceipt']) != CODEX_G01_QUERY_SUBJECTS_OFFLINE_RECEIPT_FIELDS
         or not isinstance(report['runnerReceipt'].get('payload'), dict)
-        or set(report['runnerReceipt']['payload']) != CODEX_G01_QUERY_SUBJECTS_OFFLINE_RECEIPT_PAYLOAD_FIELDS
+        or set(report['runnerReceipt']['payload']) != settings['receiptPayloadFields']
         or _contains_forbidden_codex_content(report)
     ):
         return False
@@ -14874,7 +15052,7 @@ def codex_g01_query_subjects_offline_profile_report_is_valid(
         catalog_bytes = CATALOG.read_bytes()
         catalog = json.loads(catalog_bytes)
         catalog_tool = next(
-            (item for item in catalog if isinstance(item, dict) and item.get('name') == CODEX_G01_QUERY_SUBJECTS_OFFLINE_TOOL_NAME),
+            (item for item in catalog if isinstance(item, dict) and item.get('name') == settings['toolName']),
             None,
         )
     except (OSError, ValueError):
@@ -14897,7 +15075,9 @@ def codex_g01_query_subjects_offline_profile_report_is_valid(
         report, current_epoch_status,
     ):
         return False
-    status = harness_status or codex_g01_query_subjects_offline_profile_harness_status(pr_number)
+    status = harness_status or codex_g01_query_subjects_offline_profile_harness_status(
+        pr_number, settings['profileId'],
+    )
     disposition = codex_g01_query_subjects_offline_profile_disposition_matches_report(
         report, status, report_sha256,
     )
@@ -26358,6 +26538,9 @@ def model_mcp_e2e_report_paths() -> list[Path]:
     report_paths.append(
         LIVE_PROBE_DIR / CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_RELATIVE_PATH.split('/')[-1],
     )
+    report_paths.append(
+        LIVE_PROBE_DIR / Path(CODEX_G01_QUERY_SUBJECTS_OFFLINE_V2_REPORT_RELATIVE_PATH).name,
+    )
     report_paths.extend(
         LIVE_PROBE_DIR / Path(str(profile['reportPath'])).name
         for profile in CODEX_P02_PROFILES.values()
@@ -26801,15 +26984,18 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 report_source_ref(path),
             )
             continue
-        if report.get('evidenceKind') == CODEX_G01_QUERY_SUBJECTS_OFFLINE_EVIDENCE_KIND:
+        if report.get('profileId') in CODEX_G01_QUERY_SUBJECTS_OFFLINE_PROFILE_IDS:
+            settings = codex_g01_query_subjects_offline_profile_settings(report.get('profileId'))
+            if settings is None or report.get('evidenceKind') != settings['evidenceKind']:
+                continue
             current_status = codex_g01_query_subjects_offline_profile_harness_status(
-                report.get('prNumber'),
+                report.get('prNumber'), settings['profileId'],
             )
             current_epoch_status = codex_g01_query_subjects_offline_profile_epoch_harness_status(
                 report.get('prNumber'),
             )
             if (
-                path.name != Path(CODEX_G01_QUERY_SUBJECTS_OFFLINE_REPORT_RELATIVE_PATH).name
+                path.name != Path(str(settings['reportPath'])).name
                 or not codex_g01_query_subjects_offline_profile_report_is_valid(
                     report, current_status, path, current_epoch_status,
                 )

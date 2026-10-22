@@ -8,7 +8,10 @@ import { canonicalJson } from './codex-one-tool-evidence.mjs';
 import { assertP06RenderPersonProfileOfflineProfile } from './p06-render-person-profile-offline-fixture.mjs';
 import { assertC07RenderComparisonOfflineProfile } from './c07-render-comparison-offline-profile.mjs';
 import { assertG01RenderQueryOfflineProfile } from './g01-render-query-subjects-offline-profile.mjs';
-import { assertG01QuerySubjectsOfflineProfile } from './g01-query-subjects-offline-matrix-profile.mjs';
+import {
+  assertG01QuerySubjectsOfflineProfile,
+  assertG01QuerySubjectsOfflineV2Profile,
+} from './g01-query-subjects-offline-matrix-profile.mjs';
 import { assertP02PersonProfileOfflineProfile } from './p02-person-profile-offline-fixture.mjs';
 import { assertR04SeriesWatchOrderOfflineProfile } from './r04-series-watch-order-offline-fixture.mjs';
 import { assertR04SeriesWatchOrderOfflineV2Profile } from './r04-series-watch-order-offline-v2-fixture.mjs';
@@ -186,6 +189,7 @@ export function parseCodexOneToolMcpArguments(argv) {
           assertC07RenderComparisonOfflineProfile(profile) ||
           assertG01RenderQueryOfflineProfile(profile) ||
           assertG01QuerySubjectsOfflineProfile(profile) ||
+          assertG01QuerySubjectsOfflineV2Profile(profile) ||
           assertP06RenderPersonProfileOfflineProfile(profile) ||
           assertP02PersonProfileOfflineProfile(profile) ||
           assertR04SeriesWatchOrderOfflineProfile(profile) ||
