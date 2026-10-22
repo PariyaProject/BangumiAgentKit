@@ -10012,7 +10012,8 @@ class P06OfflineProfileReportValidationTests(unittest.TestCase):
 
     def test_v3_implementation_markers_cover_the_exact_current_candidate(self):
         result = subprocess.run(
-            ['git', '-C', str(GENERATOR.ROOT), 'rev-parse', 'HEAD'],
+            ['git', 'rev-parse', 'HEAD'],
+            cwd=self.originals[0],
             capture_output=True,
             text=True,
             check=False,
@@ -10020,11 +10021,12 @@ class P06OfflineProfileReportValidationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         candidate_sha = result.stdout.strip()
         self.assertRegex(candidate_sha, r'^[0-9a-f]{40}$')
-        self.assertTrue(
-            GENERATOR.codex_p06_profile_revision_has_implementation(
-                candidate_sha, GENERATOR.CODEX_P06_V3_PROFILE_ID,
-            ),
-        )
+        with patch.object(GENERATOR, 'ROOT', self.originals[0]):
+            self.assertTrue(
+                GENERATOR.codex_p06_profile_revision_has_implementation(
+                    candidate_sha, GENERATOR.CODEX_P06_V3_PROFILE_ID,
+                ),
+            )
 
     def test_rejects_scenario_credit_network_expansion_and_raw_fields(self):
         scenario_credit = json.loads(json.dumps(self.report))
