@@ -482,7 +482,7 @@ export function writeP03V2PersonNameCnReport(input, { privateKey } = {}) {
       canonicalAgentMcpProfileJson(PROFILE.calls[0].arguments) ||
     call?.result?.structuredContent !== undefined ||
     !validateP03ResultSummary(result, PROFILE.calls[0].arguments, PROFILE.id) ||
-    !validateP03McpTextProjection(text, result).passed
+    !validateP03McpTextProjection(text, result, PROFILE.id).passed
   ) {
     return { passed: false, reason: 'P03_V2_RUNNER_GATE_INVALID' };
   }

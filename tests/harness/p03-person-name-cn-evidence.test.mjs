@@ -4,6 +4,7 @@ import {
   P03_CANONICAL_COVERAGE_NOTE,
   P03_PROFILE_ID,
   P03_V2_PROFILE_ID,
+  createP03McpTextProjection,
   summarizeP03PersonProfileToolResult,
   validateP03McpTextProjection,
   validateP03ResultSummary,
@@ -196,7 +197,7 @@ test('P03 answer check requires exact observed positive rows, coverage and limit
   assert.equal(verifyP03Answer(JSON.stringify(answer), summary).passed, false);
 });
 
-test('P03 answer check rejects empty-only answers and any absence/completeness claim', () => {
+test('P03 answer check rejects absence/completeness claims and allows a truthful empty positive list', () => {
   const summary = summarizeP03PersonProfileToolResult(resultFixture(), profile.calls[0].arguments);
   const answer = JSON.parse(answerFor(summary));
   answer.coverageNote = '没有中文名，列表是完整生涯清单。';
@@ -228,7 +229,48 @@ test('P03 answer check rejects empty-only answers and any absence/completeness c
       },
     }),
   );
-  assert.equal(verifyP03Answer(JSON.stringify(noRowsAnswer), emptySummary).passed, false);
+  const emptyAnswerCheck = verifyP03Answer(JSON.stringify(noRowsAnswer), emptySummary);
+  assert.equal(emptyAnswerCheck.passed, true);
+  assert.deepEqual(emptyAnswerCheck.parsed.sourceNameCnRows, []);
+  assert.deepEqual(emptyAnswerCheck.parsed.nameCnSourceCounts, {
+    present: 0,
+    empty: 1,
+    unavailable: 0,
+  });
+});
+
+test('P03 v2 requires the entire bounded text projection to exactly match its summary', () => {
+  const result = resultFixture();
+  result.person.id = 19306;
+  const summary = summarizeP03PersonProfileToolResult(
+    result,
+    v2Profile.calls[0].arguments,
+    v2Profile.id,
+  );
+  const text = JSON.stringify(createP03McpTextProjection(summary, v2Profile.id));
+  assert.equal(validateP03McpTextProjection(text, summary, v2Profile.id).passed, true);
+
+  for (const mutate of [
+    (projection) => {
+      projection.extra = true;
+    },
+    (projection) => {
+      projection.coverage.extra = true;
+    },
+    (projection) => {
+      projection.coverage.subjects.extra = true;
+    },
+    (projection) => {
+      projection.sourceNameCnRows[0].extra = true;
+    },
+  ]) {
+    const projection = JSON.parse(text);
+    mutate(projection);
+    assert.equal(
+      validateP03McpTextProjection(JSON.stringify(projection), summary, v2Profile.id).passed,
+      false,
+    );
+  }
 });
 
 test('P03 summary fails closed when included credit rows are unavailable', () => {

@@ -21,12 +21,13 @@ untouched.
 
 The registered tool call is fixed to `personId=19306`, `includeCredits=true`,
 `maxSubjects=500`, `maxCharacters=1`, and `includeChronology=false`. The MCP
-server will return the existing bounded text projection only, without
-`structuredContent`; its temporary server-side summary will be checked against
-that exact text and removed with the temporary run directory. The report may
-store only source/review/runtime hashes, bounded counters, boolean checks, and
-the signed runner receipt. It must not store the person name, subject names,
-prompt, answer, raw rows, or event stream.
+server will return a P03-specific bounded text projection derived from its
+validated temporary summary, without `structuredContent`; the whole parsed text
+object, including nested keys, must exactly match that summary. The temporary
+summary is removed with the run directory. The report may store only
+source/review/runtime hashes, bounded counters, boolean checks, and the signed
+runner receipt. It must not store the person name, subject names, prompt,
+answer, raw rows, or event stream.
 
 ## Acceptance boundary
 

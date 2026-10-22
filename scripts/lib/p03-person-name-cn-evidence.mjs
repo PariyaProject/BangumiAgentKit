@@ -10,6 +10,10 @@ export const P03_MAX_TITLE_BYTES = 160;
 export const P03_MAX_LISTED_ROWS = 6;
 export const P03_CANONICAL_COVERAGE_NOTE =
   '官方 name_cn 去除首尾空白后非空才算来源已提供；若 name_cn 与原名相同，这只证明字段有值，不证明发生了翻译；空字符串、纯空白、缺失或无效值不证明没有中文名；上游关系完整性未声明；未列出的作品不代表没有中文名；这不是完整生涯列表；列表中的超长标题可能用省略号截断。';
+export const P03_CANONICAL_TEXT_SOURCE_SEMANTICS =
+  'nameCnSource 去除首尾空白后非空表示官方 name_cn 已提供；空字符串或纯空白字符串归为 empty，缺失或非字符串值归为 unavailable，不能据此断言字段未返回或作品没有中文名。';
+export const P03_CANONICAL_TEXT_SCOPE_NOTE =
+  '仅本次收到的作品关系行；上游关系完整性未声明，文本省略也不代表作品不存在。';
 export const P03_ANSWER_CHECK_FIELDS = Object.freeze([
   'validJsonShape',
   'exactPersonIdentity',
@@ -164,7 +168,6 @@ export function verifyP03Answer(answer, resultSummary) {
   );
   const exactPositiveSourceRows =
     validJsonShape &&
-    expectedRows.length > 0 &&
     canonicalAgentMcpProfileJson(parsed.sourceNameCnRows) ===
       canonicalAgentMcpProfileJson(expectedRows) &&
     parsed.sourceNameCnRows.every(
@@ -228,7 +231,41 @@ export function verifyP03Answer(answer, resultSummary) {
   };
 }
 
-export function validateP03McpTextProjection(text, resultSummary) {
+export function createP03McpTextProjection(resultSummary, profileId = P03_V2_PROFILE_ID) {
+  const profile = getAgentMcpProfileById(profileId);
+  if (
+    !profile ||
+    !validateP03ResultSummary(resultSummary, profile.calls[0]?.arguments, profileId)
+  ) {
+    throw new TypeError('P03 text projection requires a validated profile result summary.');
+  }
+  return {
+    state: resultSummary.state,
+    person: { id: resultSummary.personId, nameCn: resultSummary.personName },
+    coverage: {
+      state: resultSummary.coverage.state,
+      subjects: {
+        observed: resultSummary.coverage.subjectsObserved,
+        returned: resultSummary.coverage.subjectsReturned,
+        truncated: resultSummary.coverage.subjectsTruncated,
+        sourceCompleteness: resultSummary.coverage.sourceCompleteness,
+        nameCnSourceSemantics: P03_CANONICAL_TEXT_SOURCE_SEMANTICS,
+        creditRowsIncluded: true,
+        nameCnSourceCounts: resultSummary.nameCnSourceCounts,
+      },
+    },
+    sourceNameCnRows: resultSummary.sourceNameCnRows.map(({ subjectId, nameCnSource }) => ({
+      id: subjectId,
+      nameCnSource,
+    })),
+    returnedCreditRowsObserved: resultSummary.returnedCreditRowsObserved,
+    returnedCreditRowsWithNameCnSource: resultSummary.positiveNameCnRowsObserved,
+    nameCnRowsOmittedFromText: resultSummary.nameCnRowsOmittedFromText,
+    scopeNote: P03_CANONICAL_TEXT_SCOPE_NOTE,
+  };
+}
+
+export function validateP03McpTextProjection(text, resultSummary, profileId = P03_PROFILE_ID) {
   let projection;
   try {
     projection = JSON.parse(text);
@@ -246,9 +283,22 @@ export function validateP03McpTextProjection(text, resultSummary) {
     (key) =>
       subjectCoverage?.nameCnSourceCounts?.[key] === resultSummary?.nameCnSourceCounts?.[key],
   );
+  let expectedProjection = null;
+  if (profileId === P03_V2_PROFILE_ID) {
+    try {
+      expectedProjection = createP03McpTextProjection(resultSummary, profileId);
+    } catch {
+      expectedProjection = null;
+    }
+  }
   const checks = {
     validJson: projection !== null && typeof projection === 'object' && !Array.isArray(projection),
     withinTextLimit: typeof text === 'string' && Buffer.byteLength(text, 'utf8') <= 3600,
+    exactProjection:
+      profileId !== P03_V2_PROFILE_ID ||
+      (expectedProjection !== null &&
+        canonicalAgentMcpProfileJson(projection) ===
+          canonicalAgentMcpProfileJson(expectedProjection)),
     exactPersonIdentity:
       projection?.person?.id === resultSummary?.personId &&
       (typeof projection?.person?.nameCn === 'string' && projection.person.nameCn.trim().length > 0
@@ -285,7 +335,9 @@ export function validateP03McpTextProjection(text, resultSummary) {
       projection.scopeNote.includes('文本省略也不代表作品不存在'),
   };
   return {
-    passed: Object.values(checks).every(Boolean),
+    passed:
+      Object.values(checks).every(Boolean) &&
+      (profileId !== P03_V2_PROFILE_ID || checks.exactProjection),
     checks,
     projection: checks.validJson ? projection : null,
   };

@@ -771,6 +771,7 @@ export function runP03Profile({ runNumber, profileId = P03_PROFILE_ID }) {
     const textProjection = validateP03McpTextProjection(
       mcpText,
       serverSummary?.results?.[0]?.resultSummary,
+      PROFILE.id,
     );
     const safeEvents = {
       processExitCode: execution.exitCode,
