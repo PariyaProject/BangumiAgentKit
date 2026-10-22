@@ -12,6 +12,7 @@ import {
   hasExactCompletedCodexToolCalls,
 } from './run-g26-codex-agent-mcp.mjs';
 import { summarizeCodexErrorItems } from '../lib/codex-mcp-approval-config.mjs';
+import { summarizeG01QuerySubjectsV2CodexErrors } from '../lib/g01-query-subjects-v2-error-policy.mjs';
 import { deriveP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   agentMcpProfileArgumentsSha256,
@@ -683,7 +684,10 @@ async function runG01QuerySubjectsOffline({ runNumber }) {
     const summaryPath = path.join(temporaryDirectory, 'server-summary.json');
     const execution = invokeCodex({ summaryPath, sourceRevision, bundleSha256 });
     const parsed = parseCodexJsonl(execution.stdout);
-    const errorSummary = summarizeCodexErrorItems(parsed.events);
+    const errorSummary =
+      PROFILE.id === G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID
+        ? summarizeG01QuerySubjectsV2CodexErrors(parsed.events)
+        : summarizeCodexErrorItems(parsed.events);
     const events = {
       ...summarizeCodexEvents(parsed.events),
       codexErrorItemCount: errorSummary.errorItemCount,

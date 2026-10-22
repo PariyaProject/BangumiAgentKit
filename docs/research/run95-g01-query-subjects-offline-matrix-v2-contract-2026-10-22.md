@@ -89,10 +89,11 @@ unchanged. The v2 runner is selectable only with this exact registered profile a
   community, writes, QQ, and TIM inactive.
 - Match the normalized completed Codex event `{name, arguments, state: DONE}` and the
   exact registered tool name and arguments.
-- Permit zero to three Codex error items only when every item is classified by the
-  strict disabled-web-search classifier. Any unknown or network-related error, a
-  fourth item, call/argument/acknowledgement mismatch, missing summary, or stale
-  Candidate is terminal `INCONCLUSIVE` with no report and no retry.
+- Permit zero to three Codex error items only when every item exactly matches the
+  allowlist of known disabled-web-search diagnostics. Paraphrases, aborted or
+  unreachable connections, and all other unknown/network-related errors are
+  unexpected. A fourth item, call/argument/acknowledgement mismatch, missing
+  summary, or stale Candidate is terminal `INCONCLUSIVE` with no report and no retry.
 - Persist aggregate counts for total, explicitly blocked disabled-web-search, and
   unexpected Codex errors only. Never persist error messages, prompt, answer, keyword,
   synthetic subject data, source rows, event stream, credentials, or raw fixture data.
