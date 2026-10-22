@@ -1127,6 +1127,12 @@ test('G06 current-catalog cast probe is public-only, hash-bound, and does not im
   assert.ok(record, 'G06 must remain in the canonical frontier');
   assert.equal(record.status, 'PARTIAL');
 
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-g06-frontier-current-state-reconciliation-2026-10-22.md',
+    ),
+    'G06 must link the current-state reconciliation report',
+  );
   const reportPath = 'docs/live-probes/public-tools-2026-10-15-092632892-50913.json';
   assert.ok(record.source_refs.includes(reportPath));
   assert.match(record.next_action, /Never rerun the G06 profile/u);

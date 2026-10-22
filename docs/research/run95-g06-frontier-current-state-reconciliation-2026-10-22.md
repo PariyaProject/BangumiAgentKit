@@ -18,5 +18,5 @@ No API, profile, OAuth/account, community, QQ, or TIM action was performed.
 ## Validation
 
 - `node --test tests/harness/frontier-ledger-data.test.mjs`: 25/25 PASS.
-- `pnpm harness frontier:check --run 95`: `FRONTIER_LEDGER_VALID`, 122 records / 97 actionable, ledger hash `cbbda004856092a43c50958be017e8111693c41e4af3a96e7a9493415e65c2de`.
+- `pnpm harness frontier:check --run 95`: `FRONTIER_LEDGER_VALID`, 122 records / 97 actionable, ledger hash `e8f7bcacfe2a4c85e1b1777d8237898370d7bc720d0b3f8cd9a4ac977c09373f`.
 - `git diff --check`: PASS.
