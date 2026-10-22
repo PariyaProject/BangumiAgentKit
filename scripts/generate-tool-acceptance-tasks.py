@@ -2882,10 +2882,20 @@ CODEX_P02_EVIDENCE_REFRESH_PATHS = CODEX_P02_EVIDENCE_REFRESH_PATHS_BY_PROFILE[
     CODEX_P02_PROFILE_ID
 ]
 CODEX_P03_V2_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v2'
+CODEX_P03_V3_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v3'
 CODEX_P03_V2_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == CODEX_P03_V2_PROFILE_ID
 )
+CODEX_P03_V3_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == CODEX_P03_V3_PROFILE_ID
+)
+CODEX_P03_PROFILES = {
+    CODEX_P03_V2_PROFILE_ID: CODEX_P03_V2_PROFILE,
+    CODEX_P03_V3_PROFILE_ID: CODEX_P03_V3_PROFILE,
+}
+CODEX_P03_PUBLIC_PROFILE_IDS = frozenset(CODEX_P03_PROFILES)
 CODEX_P03_V2_EPOCH_ID = CODEX_P03_V2_PROFILE['epochId']
 CODEX_P03_V2_TOOL_NAME = CODEX_P03_V2_PROFILE['toolName']
 CODEX_P03_V2_ARGUMENT_PROFILE = CODEX_P03_V2_PROFILE['argumentProfile']
@@ -2906,11 +2916,42 @@ CODEX_P03_V2_REPORT_RELATIVE_PATH = CODEX_P03_V2_PROFILE['reportPath']
 CODEX_P03_V2_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_P03_V2_PROFILE['selectionEvidencePath']
 CODEX_P03_V2_EVIDENCE_KIND = CODEX_P03_V2_PROFILE['evidenceKind']
 CODEX_P03_V2_ANSWER_CHECK_METHOD = CODEX_P03_V2_PROFILE['answerCheckMethod']
+CODEX_P03_V3_EPOCH_ID = CODEX_P03_V3_PROFILE['epochId']
+CODEX_P03_V3_TOOL_NAME = CODEX_P03_V3_PROFILE['toolName']
+CODEX_P03_V3_ARGUMENT_PROFILE = CODEX_P03_V3_PROFILE['argumentProfile']
+CODEX_P03_V3_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_P03_V3_PROFILE['calls']],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_P03_V3_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_P03_V3_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_P03_V3_REPORT_RELATIVE_PATH = CODEX_P03_V3_PROFILE['reportPath']
+CODEX_P03_V3_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_P03_V3_PROFILE['selectionEvidencePath']
+CODEX_P03_V3_EVIDENCE_KIND = CODEX_P03_V3_PROFILE['evidenceKind']
+CODEX_P03_V3_ANSWER_CHECK_METHOD = CODEX_P03_V3_PROFILE['answerCheckMethod']
+CODEX_P03_PROFILE_EVIDENCE_REFRESH_PATHS_BY_ID = {
+    profile_id: {
+        profile['reportPath'],
+        'docs/product/frontier-ledger.json',
+        'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    }
+    for profile_id, profile in CODEX_P03_PROFILES.items()
+}
 CODEX_P03_V2_EVIDENCE_REFRESH_PATHS = {
     CODEX_P03_V2_REPORT_RELATIVE_PATH,
     'docs/product/frontier-ledger.json',
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
 }
+
+
+def codex_p03_profile_spec(profile_id: object = None) -> dict[str, object] | None:
+    return CODEX_P03_PROFILES.get(profile_id) if isinstance(profile_id, str) else None
 
 
 def codex_p02_profile_spec(profile_id: object = None) -> dict[str, object] | None:
@@ -3232,7 +3273,8 @@ CODEX_P03_V2_REPORT_FIELDS = {
     'argumentProfile', 'expectedArgumentsSha256', 'catalogSha256', 'toolDescriptionSha256',
     'inputSchemaSha256', 'serverToolNames', 'serverToolCount', 'mcpServerNames',
     'processExitCode', 'resultStatus', 'eventStreamParsed', 'turnCompleted',
-    'codexMcpToolEventCount', 'codexErrorItemCount', 'nonMcpToolEventCount',
+    'codexMcpToolEventCount', 'codexErrorItemCount', 'blockedWebSearchErrorItemCount',
+    'unexpectedCodexErrorItemCount', 'nonMcpToolEventCount',
     'nonMcpToolTypes', 'shellToolCallCount', 'allowedCallCount', 'deniedCallCount',
     'answerCheckMethod', 'mcpTextProjectionValid', 'structuredContentReadbackAvailable',
     'answerSha256', 'answerUtf8Bytes', 'answerChecks', 'resultCounters',
@@ -3266,10 +3308,17 @@ CODEX_P03_V2_RECEIPT_PAYLOAD_FIELDS = {
     'expectedArgumentsSha256', 'codexCliVersion', 'processExitCode', 'resultStatus',
     'mcpTextProjectionValid', 'structuredContentReadbackAvailable', 'eventStreamParsed',
     'turnCompleted', 'codexMcpToolEventCount', 'codexErrorItemCount',
+    'blockedWebSearchErrorItemCount', 'unexpectedCodexErrorItemCount',
     'nonMcpToolEventCount', 'shellToolCallCount', 'allowedCallCount', 'deniedCallCount',
     'eventStreamSha256', 'serverSummarySha256', 'answerSha256', 'answerChecksSha256',
     'resultCountersSha256',
 }
+CODEX_P03_V3_REPORT_FIELDS = CODEX_P03_V2_REPORT_FIELDS
+CODEX_P03_V3_ANSWER_CHECK_FIELDS = CODEX_P03_V2_ANSWER_CHECK_FIELDS
+CODEX_P03_V3_COUNTER_FIELDS = CODEX_P03_V2_COUNTER_FIELDS
+CODEX_P03_V3_PRIVACY_FIELDS = CODEX_P03_V2_PRIVACY_FIELDS
+CODEX_P03_V3_RECEIPT_FIELDS = CODEX_P03_V2_RECEIPT_FIELDS
+CODEX_P03_V3_RECEIPT_PAYLOAD_FIELDS = CODEX_P03_V2_RECEIPT_PAYLOAD_FIELDS
 CODEX_G06_CAST_OFFLINE_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'g06-cast-offline-agent-mcp-matrix-v1'
@@ -7649,15 +7698,17 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
         'profile.calls[0].arguments',
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
-        'P03_V2_PROFILE_ID,',
+        'P03_FRESH_PUBLIC_PROFILE_IDS,',
         'summarizeP03PersonProfileToolResult(result, expectedArguments, profileId)',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
-        "config.profile?.id === 'p03-person-name-cn-agent-mcp-v2'",
+        'P03_FRESH_PUBLIC_PROFILE_IDS.includes(config.profile?.id)',
         'return { content: [{ type: \'text\', text: toolPresentation.text }] };',
     ),
     'scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs': (
-        'P03_V2_PROFILE_ID',
+        'P03_FRESH_PUBLIC_PROFILE_IDS.includes(PROFILE.id)',
+        'summarizeCodexErrorItems(parsed.events)',
+        'p03CodexErrorSummaryIsSafe(',
         "Object.hasOwn(events.completedMcpCalls[0]?.result ?? {}, 'structuredContent')",
         'structuredReadbackExpected ? structuredReadback : !structuredContentPresent',
         'writeP03V2PersonNameCnReport',
@@ -7669,6 +7720,8 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function writeP03V2PersonNameCnReport(',
         'structuredContentReadbackAvailable: false',
         'nameCnRowsOmittedFromText: result.nameCnRowsOmittedFromText',
+        'blockedWebSearchErrorItemCount',
+        'unexpectedCodexErrorItemCount',
     ),
     'scripts/acceptance/validate-p03-person-name-cn-v2-report.mjs': (
         'validateP03V2ProfileReport(report, claim, reportBytes)',
@@ -7683,9 +7736,9 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
         'may advance only the `bangumi.get_person_profile` Agent/MCP matrix cell.',
     ),
     'docs/product/frontier-ledger.json': (
-        'P03 v2 is a distinct matrix-only profile',
-        'P03 stays PARTIAL',
-        'personId 19306',
+        'Keep P03 PARTIAL and uncredited.',
+        'P03 v1 (personId 4765), P03 v2 (personId 19306)',
+        'personId 58609 with maxSubjects=5',
     ),
     'tests/harness/write-p03-person-name-cn-v2-report.test.mjs': (
         'P03 v2 writes a matrix-only signed report without person or title text',
@@ -7700,13 +7753,86 @@ CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_p03_v2_profile_report_is_valid(',
+        'def codex_p03_profile_error_summary_is_valid(',
+        'blockedWebSearchErrorItemCount',
         'def codex_p03_v2_candidate_binding_is_current(',
         'def codex_p03_v2_same_reviewer_identity(',
         'CODEX_P03_V2_EVIDENCE_REFRESH_PATHS',
         'def codex_p03_v2_profile_report_candidate_paths(',
-        "if report.get('evidenceKind') == CODEX_P03_V2_EVIDENCE_KIND:",
+        'CODEX_P03_V2_EVIDENCE_KIND,',
         'CODEX_P03_V2_REPORT_RELATIVE_PATH',
     ),
+}
+CODEX_P03_V3_PROFILE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        '"id": "p03-person-name-cn-agent-mcp-v3"',
+        '"personId": 58609',
+        '"maxSubjects": 5',
+        '"claimLabelName": "harness-r95-p03-person-name-cn-public-v3-claimed"',
+    ),
+    'scripts/lib/p03-person-name-cn-evidence.mjs': (
+        "export const P03_V3_PROFILE_ID = 'p03-person-name-cn-agent-mcp-v3'",
+        'P03_FRESH_PUBLIC_PROFILE_IDS.includes(profileId)',
+    ),
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        'P03_FRESH_PUBLIC_PROFILE_IDS.includes(profileId)',
+        'summarizeP03PersonProfileToolResult(result, expectedArguments, profileId)',
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        'P03_FRESH_PUBLIC_PROFILE_IDS.includes(config.profile?.id)',
+        'createP03McpTextProjection(resultSummary, config.profile.id)',
+    ),
+    'scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs': (
+        'P03_FRESH_PUBLIC_PROFILE_IDS.includes(profile.id)',
+        'structuredReadbackExpected ? structuredReadback : !structuredContentPresent',
+        'summarizeCodexErrorItems(parsed.events)',
+        'p03CodexErrorSummaryIsSafe(',
+        'writeP03V2PersonNameCnReport',
+        "args[2] === '--profile-id' ? args[3] : P03_PROFILE_ID",
+    ),
+    'scripts/acceptance/write-p03-person-name-cn-v2-report.mjs': (
+        'function profileForId(profileId)',
+        'function reportProfileName(profile)',
+        'profile.selectionEvidencePath',
+        'blockedWebSearchErrorItemCount',
+        'unexpectedCodexErrorItemCount',
+    ),
+    'scripts/agent-harness.mjs': (
+        "case 'p03-person-name-cn-agent-mcp-v3':",
+        'validateP03V2SanitizedReportFile(claim, root, reportPath)',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_p03_v3_profile_report_is_valid(',
+        'def codex_p03_profile_error_summary_is_valid(',
+        'CODEX_P03_V3_EVIDENCE_KIND',
+        'CODEX_P03_V3_REPORT_RELATIVE_PATH',
+        'blockedWebSearchErrorItemCount',
+        '0 <= error_count <= 3',
+    ),
+    'docs/research/run95-p03-person-name-cn-fresh-profile-v3-selection-2026-10-22.md': (
+        'Of the first five rows, all five had a non-empty `name_cn`',
+        'The new registered profile is distinct from P03 v1',
+        'at most three Codex error items only when the local sanitizer classifies',
+        'Any post-claim failure is terminal `INCONCLUSIVE`',
+    ),
+    'docs/product/frontier-ledger.json': (
+        'personId 58609 with maxSubjects=5',
+        'P03 v1 (personId 4765), P03 v2 (personId 19306)',
+        'At most three Codex error items are acceptable only when each is explicitly classified',
+        'Keep P03 PARTIAL and uncredited.',
+    ),
+    'tests/harness/p03-person-name-cn-evidence.test.mjs': (
+        'P03 v3 projection is bound to its distinct five-row public profile',
+        'summary.coverage.subjectsReturned, 5',
+    ),
+    'tests/harness/agent-mcp-profile-claims.test.mjs': (
+        'p03-person-name-cn-agent-mcp-v3',
+        'fixed-p03-person-name-cn-58609-5-subjects-1-character-v3',
+    ),
+}
+CODEX_P03_PROFILE_IMPLEMENTATION_MARKERS_BY_ID = {
+    CODEX_P03_V2_PROFILE_ID: CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS,
+    CODEX_P03_V3_PROFILE_ID: CODEX_P03_V3_PROFILE_IMPLEMENTATION_MARKERS,
 }
 CODEX_P07_PROFILE_IMPLEMENTATION_MARKERS = {
     'docs/research/run95-p07-person-season-distribution-agent-mcp-source-contract-2026-10-16.md': (
@@ -16764,14 +16890,40 @@ def codex_p02_profile_report_is_valid(
     return result.get('passed') is True and result.get('reportSha256') == report_sha256
 
 
+def codex_p03_profile_revision_has_implementation(revision: object, profile_id: object) -> bool:
+    """Bind a P03 public matrix profile to its own registered runtime and source evidence."""
+    markers = CODEX_P03_PROFILE_IMPLEMENTATION_MARKERS_BY_ID.get(profile_id)
+    if (
+        markers is None
+        or codex_p03_profile_spec(profile_id) is None
+        or not isinstance(revision, str)
+        or re.fullmatch(r'[0-9a-f]{40}', revision) is None
+    ):
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(str(ROOT), revision, markers)
+    )
+
+
 def codex_p03_v2_profile_revision_has_implementation(revision: object) -> bool:
-    """Bind P03 v2 matrix evidence to its text-only runner and sanitized report gate."""
+    return codex_p03_profile_revision_has_implementation(revision, CODEX_P03_V2_PROFILE_ID)
+
+
+def codex_p03_v3_profile_revision_has_implementation(revision: object) -> bool:
+    return codex_p03_profile_revision_has_implementation(revision, CODEX_P03_V3_PROFILE_ID)
+
+
+def codex_p03_profile_report_matches_candidate_revision(
+    report_path: Path, revision: object, profile_id: object,
+) -> bool:
+    """Bind a sanitized P03 report to the exact pre-claim Candidate."""
+    profile = codex_p03_profile_spec(profile_id)
     return bool(
-        isinstance(revision, str)
-        and re.fullmatch(r'[0-9a-f]{40}', revision) is not None
-        and codex_probe_revision_has_implementation(revision)
-        and _codex_revision_has_markers(
-            str(ROOT), revision, CODEX_P03_V2_PROFILE_IMPLEMENTATION_MARKERS,
+        profile is not None
+        and codex_p03_profile_revision_has_implementation(revision, profile_id)
+        and _codex_relations_report_matches_candidate_revision(
+            report_path, revision, str(profile['reportPath']),
         )
     )
 
@@ -16779,17 +16931,26 @@ def codex_p03_v2_profile_revision_has_implementation(revision: object) -> bool:
 def codex_p03_v2_profile_report_matches_candidate_revision(
     report_path: Path, revision: object,
 ) -> bool:
-    """Bind the sanitized P03 v2 report to the exact pre-claim Candidate."""
-    return bool(
-        codex_p03_v2_profile_revision_has_implementation(revision)
-        and _codex_relations_report_matches_candidate_revision(
-            report_path, revision, CODEX_P03_V2_REPORT_RELATIVE_PATH,
-        )
+    return codex_p03_profile_report_matches_candidate_revision(
+        report_path, revision, CODEX_P03_V2_PROFILE_ID,
     )
 
 
-def codex_p03_v2_frontier_is_partial(require_report_ref: bool = False) -> bool:
+def codex_p03_v3_profile_report_matches_candidate_revision(
+    report_path: Path, revision: object,
+) -> bool:
+    return codex_p03_profile_report_matches_candidate_revision(
+        report_path, revision, CODEX_P03_V3_PROFILE_ID,
+    )
+
+
+def codex_p03_profile_frontier_is_partial(
+    profile_id: object, require_report_ref: bool = False,
+) -> bool:
     """Keep the career-wide P03 scenario partial when one matrix cell is proven."""
+    profile = codex_p03_profile_spec(profile_id)
+    if profile is None:
+        return False
     try:
         frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -16804,12 +16965,20 @@ def codex_p03_v2_frontier_is_partial(require_report_ref: bool = False) -> bool:
         isinstance(record, dict)
         and record.get('status') == 'PARTIAL'
         and isinstance(source_refs, list)
-        and CODEX_P03_V2_SELECTION_EVIDENCE_RELATIVE_PATH in source_refs
-        and (not require_report_ref or CODEX_P03_V2_REPORT_RELATIVE_PATH in source_refs)
+        and profile['selectionEvidencePath'] in source_refs
+        and (not require_report_ref or profile['reportPath'] in source_refs)
     )
 
 
-def codex_p03_v2_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
+def codex_p03_v2_frontier_is_partial(require_report_ref: bool = False) -> bool:
+    return codex_p03_profile_frontier_is_partial(CODEX_P03_V2_PROFILE_ID, require_report_ref)
+
+
+def codex_p03_v3_frontier_is_partial(require_report_ref: bool = False) -> bool:
+    return codex_p03_profile_frontier_is_partial(CODEX_P03_V3_PROFILE_ID, require_report_ref)
+
+
+def codex_p03_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
     if type(pr_number) is not int or pr_number < 1:
         return None
     try:
@@ -16825,15 +16994,25 @@ def codex_p03_v2_profile_epoch_harness_status(pr_number: object) -> dict[str, ob
     return status if isinstance(status, dict) else None
 
 
-def codex_p03_v2_profile_harness_status(pr_number: object) -> dict[str, object] | None:
-    if type(pr_number) is not int or pr_number < 1:
+def codex_p03_v2_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
+    return codex_p03_profile_epoch_harness_status(pr_number)
+
+
+def codex_p03_v3_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
+    return codex_p03_profile_epoch_harness_status(pr_number)
+
+
+def codex_p03_profile_harness_status(
+    pr_number: object, profile_id: object,
+) -> dict[str, object] | None:
+    if type(pr_number) is not int or pr_number < 1 or codex_p03_profile_spec(profile_id) is None:
         return None
     try:
         result = subprocess.run(
             [
                 'node', str(ROOT / 'scripts/agent-harness.mjs'),
                 'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
-                '--profile-id', CODEX_P03_V2_PROFILE_ID,
+                '--profile-id', str(profile_id),
             ],
             cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
         )
@@ -16845,20 +17024,29 @@ def codex_p03_v2_profile_harness_status(pr_number: object) -> dict[str, object] 
     return status if isinstance(status, dict) else None
 
 
-def codex_p03_v2_profile_disposition_matches_report(
+def codex_p03_v2_profile_harness_status(pr_number: object) -> dict[str, object] | None:
+    return codex_p03_profile_harness_status(pr_number, CODEX_P03_V2_PROFILE_ID)
+
+
+def codex_p03_v3_profile_harness_status(pr_number: object) -> dict[str, object] | None:
+    return codex_p03_profile_harness_status(pr_number, CODEX_P03_V3_PROFILE_ID)
+
+
+def codex_p03_profile_disposition_matches_report(
     report: dict[str, object], harness_status: object, report_sha256: object,
 ) -> dict[str, object] | None:
-    """Require the exact P03 v2 terminal report disposition and permanent labels."""
-    if not isinstance(harness_status, dict):
+    """Require the profile-specific terminal report disposition and permanent labels."""
+    profile = codex_p03_profile_spec(report.get('profileId'))
+    if profile is None or not isinstance(harness_status, dict):
         return None
     receipt = report.get('runnerReceipt')
     disposition = harness_status.get('disposition')
     if (
         harness_status.get('state') != 'REPORT_WRITTEN'
-        or harness_status.get('profile_id') != CODEX_P03_V2_PROFILE_ID
+        or harness_status.get('profile_id') != profile['id']
         or harness_status.get('pr') != report.get('prNumber')
-        or harness_status.get('tool_name') != CODEX_P03_V2_TOOL_NAME
-        or harness_status.get('argument_profile') != CODEX_P03_V2_ARGUMENT_PROFILE
+        or harness_status.get('tool_name') != profile['toolName']
+        or harness_status.get('argument_profile') != profile['argumentProfile']
         or harness_status.get('expected_arguments_sha256') != report.get('expectedArgumentsSha256')
         or harness_status.get('registry_sha256') != report.get('registrySha256')
         or harness_status.get('claim_label_present') is not True
@@ -16871,14 +17059,14 @@ def codex_p03_v2_profile_disposition_matches_report(
         return None
     expected = {
         'claimId': report.get('claimId'),
-        'profileId': CODEX_P03_V2_PROFILE_ID,
+        'profileId': profile['id'],
         'frontierId': 'P03',
-        'epochId': CODEX_P03_V2_EPOCH_ID,
+        'epochId': profile['epochId'],
         'runNumber': 95,
         'prNumber': report.get('prNumber'),
         'state': 'REPORT_WRITTEN',
-        'toolName': CODEX_P03_V2_TOOL_NAME,
-        'argumentProfile': CODEX_P03_V2_ARGUMENT_PROFILE,
+        'toolName': profile['toolName'],
+        'argumentProfile': profile['argumentProfile'],
         'expectedArgumentsSha256': report.get('expectedArgumentsSha256'),
         'sourceCandidateSha': report.get('sourceRevision'),
         'baseSha': report.get('baseSha'),
@@ -16888,7 +17076,7 @@ def codex_p03_v2_profile_disposition_matches_report(
         'bundleSha256': report.get('mcpBundleSha256'),
         'registrySha256': report.get('registrySha256'),
         'reportWritten': True,
-        'reportPath': CODEX_P03_V2_REPORT_RELATIVE_PATH,
+        'reportPath': profile['reportPath'],
         'reportSha256': report_sha256,
         'retryAllowed': False,
         'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
@@ -16896,6 +17084,12 @@ def codex_p03_v2_profile_disposition_matches_report(
         'runnerReceiptSha256': _canonical_json_sha256(receipt),
     }
     return disposition if all(disposition.get(key) == value for key, value in expected.items()) else None
+
+
+def codex_p03_v2_profile_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+) -> dict[str, object] | None:
+    return codex_p03_profile_disposition_matches_report(report, harness_status, report_sha256)
 
 
 def codex_p03_v2_same_reviewer_identity(
@@ -16910,10 +17104,11 @@ def codex_p03_v2_same_reviewer_identity(
     return bool(source_match and current_match and source_match.group(1) == current_match.group(1))
 
 
-def codex_p03_v2_candidate_binding_is_current(
+def codex_p03_profile_candidate_binding_is_current(
     report: dict[str, object], epoch_status: object,
 ) -> bool:
-    if not isinstance(epoch_status, dict):
+    profile = codex_p03_profile_spec(report.get('profileId'))
+    if profile is None or not isinstance(epoch_status, dict):
         return False
     run_result = epoch_status.get('run')
     epoch_result = epoch_status.get('epoch')
@@ -16937,8 +17132,8 @@ def codex_p03_v2_candidate_binding_is_current(
             for review in reviews
         )
     )
-    report_candidate_paths = codex_p03_v2_profile_report_candidate_paths(
-        report.get('sourceRevision'), candidate_sha,
+    report_candidate_paths = codex_p03_profile_report_candidate_paths(
+        report.get('sourceRevision'), candidate_sha, profile['id'],
     )
     try:
         current_bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate_sha)
@@ -16964,7 +17159,7 @@ def codex_p03_v2_candidate_binding_is_current(
         and run_result.get('number') == 95
         and (active_pr or merged_pr)
         and isinstance(latest_review, dict)
-        and epoch.get('epoch_id') == CODEX_P03_V2_EPOCH_ID
+        and epoch.get('epoch_id') == profile['epochId']
         and epoch.get('pr_number') == report.get('prNumber')
         and epoch.get('base_branch') == 'master'
         and epoch.get('base_sha') == report.get('baseSha')
@@ -16988,27 +17183,49 @@ def codex_p03_v2_candidate_binding_is_current(
         and epoch.get('advances_frontier_ids') == ['P03']
         and isinstance(epoch.get('scope_closure'), dict)
         and epoch['scope_closure'].get('related_work_remaining') is False
-        and codex_p03_v2_profile_evidence_refresh_paths_are_valid(report_candidate_paths)
+        and codex_p03_profile_evidence_refresh_paths_are_valid(
+            report_candidate_paths, profile['id'],
+        )
         and current_bundle_sha256 == report.get('mcpBundleSha256')
     )
 
 
+def codex_p03_v2_candidate_binding_is_current(
+    report: dict[str, object], epoch_status: object,
+) -> bool:
+    return codex_p03_profile_candidate_binding_is_current(report, epoch_status)
+
+
+def codex_p03_v3_candidate_binding_is_current(
+    report: dict[str, object], epoch_status: object,
+) -> bool:
+    return codex_p03_profile_candidate_binding_is_current(report, epoch_status)
+
+
 def codex_p03_v2_profile_evidence_refresh_paths_are_valid(paths: object) -> bool:
+    return codex_p03_profile_evidence_refresh_paths_are_valid(paths, CODEX_P03_V2_PROFILE_ID)
+
+
+def codex_p03_profile_evidence_refresh_paths_are_valid(
+    paths: object, profile_id: object,
+) -> bool:
+    profile = codex_p03_profile_spec(profile_id)
+    allowed = CODEX_P03_PROFILE_EVIDENCE_REFRESH_PATHS_BY_ID.get(profile_id)
     return bool(
-        isinstance(paths, (list, tuple, set, frozenset))
-        and CODEX_P03_V2_REPORT_RELATIVE_PATH in paths
-        and all(
-            isinstance(item, str) and item in CODEX_P03_V2_EVIDENCE_REFRESH_PATHS
-            for item in paths
-        )
+        profile is not None
+        and allowed is not None
+        and isinstance(paths, (list, tuple, set, frozenset))
+        and profile['reportPath'] in paths
+        and all(isinstance(item, str) and item in allowed for item in paths)
     )
 
 
-def codex_p03_v2_profile_report_candidate_paths(
-    source_revision: object, candidate_sha: object,
+def codex_p03_profile_report_candidate_paths(
+    source_revision: object, candidate_sha: object, profile_id: object,
 ) -> set[str] | None:
     if (
-        not isinstance(source_revision, str)
+        codex_p03_profile_spec(profile_id) is None
+        or not isinstance(source_revision, str)
         or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
         or not isinstance(candidate_sha, str)
         or re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is None
@@ -17029,53 +17246,102 @@ def codex_p03_v2_profile_report_candidate_paths(
     return paths
 
 
-def codex_p03_v2_profile_report_is_valid(
+def codex_p03_v2_profile_report_candidate_paths(
+    source_revision: object, candidate_sha: object,
+) -> set[str] | None:
+    return codex_p03_profile_report_candidate_paths(
+        source_revision, candidate_sha, CODEX_P03_V2_PROFILE_ID,
+    )
+
+
+def codex_p03_profile_error_summary_is_valid(report: object, profile_id: object) -> bool:
+    """Accept only bounded, explicitly classified disabled-web-search errors."""
+    if not isinstance(report, dict) or profile_id not in CODEX_P03_PUBLIC_PROFILE_IDS:
+        return False
+    error_count = report.get('codexErrorItemCount')
+    blocked_count = report.get('blockedWebSearchErrorItemCount')
+    unexpected_count = report.get('unexpectedCodexErrorItemCount')
+    if any(type(value) is not int for value in (error_count, blocked_count, unexpected_count)):
+        return False
+    return (
+        0 <= error_count <= 3
+        and blocked_count == error_count
+        and unexpected_count == 0
+    )
+
+
+def codex_p03_v3_profile_report_candidate_paths(
+    source_revision: object, candidate_sha: object,
+) -> set[str] | None:
+    return codex_p03_profile_report_candidate_paths(
+        source_revision, candidate_sha, CODEX_P03_V3_PROFILE_ID,
+    )
+
+
+def codex_p03_profile_report_is_valid(
     report: object,
+    profile_id: object = None,
     harness_status: object = None,
     report_path: Path | None = None,
     epoch_status: object = None,
 ) -> bool:
-    """Validate signed, sanitized P03 v2 evidence for only the Agent/MCP matrix cell."""
-    if not isinstance(report, dict) or set(report) != CODEX_P03_V2_REPORT_FIELDS:
+    """Validate signed, sanitized P03 evidence for only the Agent/MCP matrix cell."""
+    if not isinstance(report, dict):
         return False
-    path = report_path or (LIVE_PROBE_DIR / Path(CODEX_P03_V2_REPORT_RELATIVE_PATH).name)
+    selected_id = report.get('profileId') if profile_id is None else profile_id
+    profile = codex_p03_profile_spec(selected_id)
+    if profile is None or report.get('profileId') != profile['id']:
+        return False
+    if set(report) != CODEX_P03_V2_REPORT_FIELDS:
+        return False
+    path = report_path or (LIVE_PROBE_DIR / Path(str(profile['reportPath'])).name)
     try:
         relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
         report_bytes = path.read_bytes()
-        selection_bytes = (ROOT / CODEX_P03_V2_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
+        selection_bytes = (ROOT / str(profile['selectionEvidencePath'])).read_bytes()
     except (OSError, ValueError):
         return False
     source_revision = report.get('sourceRevision')
     pr_number = report.get('prNumber')
     counters = report.get('resultCounters')
     privacy = report.get('privacy')
+    expected_profile_name = (
+        'codex-luna-max-agent-mcp-matrix-v3'
+        if profile['id'] == CODEX_P03_V3_PROFILE_ID
+        else 'codex-luna-max-agent-mcp-matrix-v2'
+    )
     if (
-        relative_path != CODEX_P03_V2_REPORT_RELATIVE_PATH
+        relative_path != profile['reportPath']
         or len(report_bytes) > 64 * 1024
         or type(report.get('schemaVersion')) is not int
         or report.get('schemaVersion') != 1
-        or report.get('evidenceKind') != CODEX_P03_V2_EVIDENCE_KIND
+        or report.get('evidenceKind') != profile['evidenceKind']
         or report.get('runNumber') != 95
         or report.get('frontierId') != 'P03'
         or report.get('scenarioId') is not None
         or report.get('acceptanceScope') != 'agent-mcp-matrix-only'
-        or report.get('epochId') != CODEX_P03_V2_EPOCH_ID
-        or report.get('profileId') != CODEX_P03_V2_PROFILE_ID
-        or report.get('profile') != 'codex-luna-max-agent-mcp-matrix-v2'
-        or report.get('model') != 'gpt-6-luna'
-        or report.get('reasoningEffort') != 'max'
+        or report.get('epochId') != profile['epochId']
+        or report.get('profileId') != profile['id']
+        or report.get('profile') != expected_profile_name
+        or report.get('model') != profile.get('model')
+        or report.get('reasoningEffort') != profile.get('reasoningEffort')
         or not codex_g16_reviewer_id_is_valid(report.get('reviewerId'), pr_number)
         or not isinstance(report.get('codexCliVersion'), str)
         or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
-        or report.get('toolName') != CODEX_P03_V2_TOOL_NAME
-        or report.get('argumentProfile') != CODEX_P03_V2_ARGUMENT_PROFILE
-        or report.get('expectedArgumentsSha256') != CODEX_P03_V2_EXPECTED_ARGUMENTS_SHA256
-        or report.get('registrySha256') != CODEX_P03_V2_PROFILE_REGISTRY_SHA256
+        or report.get('toolName') != profile['toolName']
+        or report.get('argumentProfile') != profile['argumentProfile']
+        or report.get('expectedArgumentsSha256') != hashlib.sha256(json.dumps(
+            [call['arguments'] for call in profile['calls']],
+            sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
+        or report.get('registrySha256') != hashlib.sha256(json.dumps(
+            profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
         or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
         or not isinstance(source_revision, str)
         or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
-        or not codex_p03_v2_profile_revision_has_implementation(source_revision)
-        or not codex_p03_v2_frontier_is_partial(require_report_ref=True)
+        or not codex_p03_profile_revision_has_implementation(source_revision, profile['id'])
+        or not codex_p03_profile_frontier_is_partial(profile['id'], require_report_ref=True)
         or report.get('baseSha') is None
         or not isinstance(report.get('baseSha'), str)
         or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
@@ -17091,23 +17357,23 @@ def codex_p03_v2_profile_report_is_valid(
         or report.get('eventStreamParsed') is not True
         or report.get('turnCompleted') is not True
         or report.get('codexMcpToolEventCount') != 1
-        or report.get('codexErrorItemCount') != 0
+        or not codex_p03_profile_error_summary_is_valid(report, profile['id'])
         or report.get('nonMcpToolEventCount') != 0
         or report.get('nonMcpToolTypes') != []
         or report.get('shellToolCallCount') != 0
         or report.get('allowedCallCount') != 1
         or report.get('deniedCallCount') != 0
-        or report.get('serverToolNames') != [CODEX_P03_V2_TOOL_NAME]
+        or report.get('serverToolNames') != [profile['toolName']]
         or report.get('serverToolCount') != 1
         or report.get('mcpServerNames') != ['bgk_p03_name_cn']
-        or report.get('answerCheckMethod') != CODEX_P03_V2_ANSWER_CHECK_METHOD
+        or report.get('answerCheckMethod') != profile['answerCheckMethod']
         or report.get('mcpTextProjectionValid') is not True
         or report.get('structuredContentReadbackAvailable') is not False
         or not isinstance(report.get('answerSha256'), str)
         or re.fullmatch(r'[0-9a-f]{64}', report['answerSha256']) is None
         or type(report.get('answerUtf8Bytes')) is not int
         or report.get('answerUtf8Bytes') < 1
-        or report.get('answerUtf8Bytes') > CODEX_P03_V2_PROFILE['maxAnswerBytes']
+        or report.get('answerUtf8Bytes') > profile['maxAnswerBytes']
         or report.get('sourceCompletenessDocumented') is not False
         or not isinstance(counters, dict)
         or set(counters) != CODEX_P03_V2_COUNTER_FIELDS
@@ -17141,7 +17407,7 @@ def codex_p03_v2_profile_report_is_valid(
         catalog_bytes = CATALOG.read_bytes()
         catalog = json.loads(catalog_bytes)
         catalog_tool = next(
-            (item for item in catalog if isinstance(item, dict) and item.get('name') == CODEX_P03_V2_TOOL_NAME),
+            (item for item in catalog if isinstance(item, dict) and item.get('name') == profile['toolName']),
             None,
         )
     except (OSError, ValueError):
@@ -17156,11 +17422,11 @@ def codex_p03_v2_profile_report_is_valid(
     ):
         return False
     report_sha256 = hashlib.sha256(report_bytes).hexdigest()
-    current_epoch_status = epoch_status or codex_p03_v2_profile_epoch_harness_status(pr_number)
-    if not codex_p03_v2_candidate_binding_is_current(report, current_epoch_status):
+    current_epoch_status = epoch_status or codex_p03_profile_epoch_harness_status(pr_number)
+    if not codex_p03_profile_candidate_binding_is_current(report, current_epoch_status):
         return False
-    status = harness_status or codex_p03_v2_profile_harness_status(pr_number)
-    disposition = codex_p03_v2_profile_disposition_matches_report(report, status, report_sha256)
+    status = harness_status or codex_p03_profile_harness_status(pr_number, profile['id'])
+    disposition = codex_p03_profile_disposition_matches_report(report, status, report_sha256)
     if disposition is None:
         return False
     try:
@@ -17186,6 +17452,27 @@ def codex_p03_v2_profile_report_is_valid(
         return False
     return result.get('passed') is True and result.get('reportSha256') == report_sha256
 
+
+def codex_p03_v2_profile_report_is_valid(
+    report: object,
+    harness_status: object = None,
+    report_path: Path | None = None,
+    epoch_status: object = None,
+) -> bool:
+    return codex_p03_profile_report_is_valid(
+        report, CODEX_P03_V2_PROFILE_ID, harness_status, report_path, epoch_status,
+    )
+
+
+def codex_p03_v3_profile_report_is_valid(
+    report: object,
+    harness_status: object = None,
+    report_path: Path | None = None,
+    epoch_status: object = None,
+) -> bool:
+    return codex_p03_profile_report_is_valid(
+        report, CODEX_P03_V3_PROFILE_ID, harness_status, report_path, epoch_status,
+    )
 
 def codex_g06_cast_offline_profile_spec(profile_id: object = None) -> dict[str, object] | None:
     selected_id = CODEX_G06_CAST_OFFLINE_PROFILE_ID if profile_id is None else profile_id
@@ -25845,6 +26132,7 @@ def model_mcp_e2e_report_paths() -> list[Path]:
         for profile in CODEX_P02_PROFILES.values()
     )
     report_paths.append(LIVE_PROBE_DIR / Path(CODEX_P03_V2_REPORT_RELATIVE_PATH).name)
+    report_paths.append(LIVE_PROBE_DIR / Path(CODEX_P03_V3_REPORT_RELATIVE_PATH).name)
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_CAST_OFFLINE_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_CAST_OFFLINE_V2_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_M07_REPORT_RELATIVE_PATH.split('/')[-1])
@@ -26322,20 +26610,29 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 continue
             sources.setdefault(str(profile['toolName']), set()).add(report_source_ref(path))
             continue
-        if report.get('evidenceKind') == CODEX_P03_V2_EVIDENCE_KIND:
-            current_status = codex_p03_v2_profile_harness_status(report.get('prNumber'))
-            current_epoch_status = codex_p03_v2_profile_epoch_harness_status(report.get('prNumber'))
+        if report.get('evidenceKind') in {
+            CODEX_P03_V2_EVIDENCE_KIND,
+            CODEX_P03_V3_EVIDENCE_KIND,
+        }:
+            profile = codex_p03_profile_spec(report.get('profileId'))
+            if profile is None or profile.get('evidenceKind') != report.get('evidenceKind'):
+                continue
+            profile_id = str(profile['id'])
+            current_status = codex_p03_profile_harness_status(
+                report.get('prNumber'), profile_id,
+            )
+            current_epoch_status = codex_p03_profile_epoch_harness_status(report.get('prNumber'))
             if (
-                path.name != Path(CODEX_P03_V2_REPORT_RELATIVE_PATH).name
-                or not codex_p03_v2_profile_report_is_valid(
-                    report, current_status, path, current_epoch_status,
+                path.name != Path(str(profile['reportPath'])).name
+                or not codex_p03_profile_report_is_valid(
+                    report, profile_id, current_status, path, current_epoch_status,
                 )
-                or not codex_p03_v2_profile_report_matches_candidate_revision(
-                    path, report.get('sourceRevision'),
+                or not codex_p03_profile_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'), profile_id,
                 )
             ):
                 continue
-            sources.setdefault(CODEX_P03_V2_TOOL_NAME, set()).add(report_source_ref(path))
+            sources.setdefault(str(profile['toolName']), set()).add(report_source_ref(path))
             continue
         if report.get('evidenceKind') in {
             CODEX_G06_CAST_OFFLINE_EVIDENCE_KIND,

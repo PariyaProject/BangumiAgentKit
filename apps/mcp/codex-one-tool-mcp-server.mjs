@@ -19,7 +19,10 @@ import {
   summarizeToolResult,
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
-import { createP03McpTextProjection } from '../../scripts/lib/p03-person-name-cn-evidence.mjs';
+import {
+  createP03McpTextProjection,
+  P03_FRESH_PUBLIC_PROFILE_IDS,
+} from '../../scripts/lib/p03-person-name-cn-evidence.mjs';
 import {
   isAllowedCodexOneToolCatalogEntry,
   codexOneToolMcpServerProfileForNetworkMode,
@@ -1173,7 +1176,7 @@ async function main(argv = process.argv.slice(2)) {
             structuredContent: safeProjection,
           };
         }
-        if (config.profile?.id === 'p03-person-name-cn-agent-mcp-v2') {
+        if (P03_FRESH_PUBLIC_PROFILE_IDS.includes(config.profile?.id)) {
           const resultSummary = summary.results[sequenceIndex]?.resultSummary;
           const projection = createP03McpTextProjection(resultSummary, config.profile.id);
           return { content: [{ type: 'text', text: JSON.stringify(projection) }] };

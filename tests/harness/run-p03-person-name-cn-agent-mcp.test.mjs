@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   buildP03CodexExecArgs,
+  p03CodexErrorSummaryIsSafe,
   validateP03RunnerArgs,
   validateP03ServerSummary,
 } from '../../scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs';
@@ -16,10 +17,12 @@ import {
   summarizeP03PersonProfileToolResult,
   P03_PROFILE_ID,
   P03_V2_PROFILE_ID,
+  P03_V3_PROFILE_ID,
 } from '../../scripts/lib/p03-person-name-cn-evidence.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 
 const profile = getAgentMcpProfileById(P03_PROFILE_ID);
+const v3Profile = getAgentMcpProfileById(P03_V3_PROFILE_ID);
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
 function resultFixture() {
@@ -44,12 +47,63 @@ test('P03 runner accepts only the fixed Run 95 entry point', () => {
   assert.equal(validateP03RunnerArgs(['--help']), 'help');
   assert.equal(validateP03RunnerArgs(['--run', '95']), 'run');
   assert.equal(validateP03RunnerArgs(['--run', '95', '--profile-id', P03_V2_PROFILE_ID]), 'run');
-  assert.throws(() =>
-    validateP03RunnerArgs(['--run', '95', '--profile-id', 'p03-person-name-cn-agent-mcp-v3']),
-  );
+  assert.equal(validateP03RunnerArgs(['--run', '95', '--profile-id', P03_V3_PROFILE_ID]), 'run');
   assert.throws(() => validateP03RunnerArgs([]));
   assert.throws(() => validateP03RunnerArgs(['--run', '94']));
   assert.throws(() => validateP03RunnerArgs(['--run', '95', '--retry']));
+});
+
+test('P03 accepts only the narrow disabled-web-search error class on fresh public profiles', () => {
+  assert.equal(
+    p03CodexErrorSummaryIsSafe(
+      {
+        errorItemCount: 3,
+        blockedWebSearchErrorItemCount: 3,
+        unexpectedCodexErrorItemCount: 0,
+        countsMatch: true,
+      },
+      P03_V3_PROFILE_ID,
+    ),
+    true,
+  );
+  assert.equal(
+    p03CodexErrorSummaryIsSafe(
+      {
+        errorItemCount: 2,
+        blockedWebSearchErrorItemCount: 2,
+        unexpectedCodexErrorItemCount: 0,
+        countsMatch: true,
+      },
+      P03_V2_PROFILE_ID,
+    ),
+    true,
+  );
+  for (const summary of [
+    {
+      errorItemCount: 4,
+      blockedWebSearchErrorItemCount: 4,
+      unexpectedCodexErrorItemCount: 0,
+      countsMatch: true,
+    },
+    {
+      errorItemCount: 3,
+      blockedWebSearchErrorItemCount: 2,
+      unexpectedCodexErrorItemCount: 1,
+      countsMatch: true,
+    },
+    {
+      errorItemCount: 3,
+      blockedWebSearchErrorItemCount: 3,
+      unexpectedCodexErrorItemCount: 0,
+      countsMatch: false,
+    },
+  ]) {
+    assert.equal(p03CodexErrorSummaryIsSafe(summary, P03_V3_PROFILE_ID), false);
+  }
+  assert.equal(
+    p03CodexErrorSummaryIsSafe({ errorItemCount: 1, countsMatch: true }, P03_PROFILE_ID),
+    false,
+  );
 });
 
 test('P03 Codex config exposes one read-only MCP tool and disables other routes', () => {
@@ -150,4 +204,29 @@ test('P03 v2 MCP profile summary uses its own registered arguments', () => {
   );
   assert.deepEqual(actual, expected);
   assert.equal(actual.personId, 19306);
+});
+
+test('P03 v3 MCP summary uses the distinct person and five-row arguments', () => {
+  const result = resultFixture();
+  result.person.id = 58609;
+  result.coverage.subjects = {
+    observed: 35,
+    returned: 5,
+    truncated: true,
+    sourceCompleteness: 'undocumented',
+  };
+  result.credits.subjects = Array.from({ length: 5 }, (_, index) => ({
+    id: 20 + index,
+    name: `Name ${index + 1}`,
+    nameCnSource: `作品${index + 1}`,
+  }));
+  const actual = summarizeProfileToolResult(result, v3Profile.calls[0].arguments, v3Profile.id);
+  const expected = summarizeP03PersonProfileToolResult(
+    result,
+    v3Profile.calls[0].arguments,
+    v3Profile.id,
+  );
+  assert.deepEqual(actual, expected);
+  assert.equal(actual.personId, 58609);
+  assert.equal(actual.returnedCreditRowsObserved, 5);
 });

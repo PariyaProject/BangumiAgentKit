@@ -11,15 +11,14 @@ import {
 } from '../lib/agent-mcp-profile-claims.mjs';
 import {
   P03_ANSWER_CHECK_FIELDS,
-  P03_V2_PROFILE_ID,
+  P03_FRESH_PUBLIC_PROFILE_IDS,
+  P03_V3_PROFILE_ID,
   validateP03McpTextProjection,
   validateP03ResultSummary,
   verifyP03Answer,
 } from '../lib/p03-person-name-cn-evidence.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const PROFILE = getAgentMcpProfileById(P03_V2_PROFILE_ID);
-const REPORT_PATH = PROFILE?.reportPath;
 const DEFAULT_REPORT_FILE_OPERATIONS = Object.freeze({
   closeSync,
   openSync,
@@ -27,7 +26,6 @@ const DEFAULT_REPORT_FILE_OPERATIONS = Object.freeze({
   writeFileSync,
 });
 const SERVER_ID = 'bgk_p03_name_cn';
-const RECEIPT_KIND = 'p03-person-name-cn-agent-mcp-runner-receipt-v2';
 const PRIVACY_FIELDS = [
   'authProfile',
   'oauthAttempted',
@@ -91,6 +89,8 @@ const REPORT_FIELDS = [
   'turnCompleted',
   'codexMcpToolEventCount',
   'codexErrorItemCount',
+  'blockedWebSearchErrorItemCount',
+  'unexpectedCodexErrorItemCount',
   'nonMcpToolEventCount',
   'nonMcpToolTypes',
   'shellToolCallCount',
@@ -144,6 +144,8 @@ const RECEIPT_PAYLOAD_FIELDS = [
   'turnCompleted',
   'codexMcpToolEventCount',
   'codexErrorItemCount',
+  'blockedWebSearchErrorItemCount',
+  'unexpectedCodexErrorItemCount',
   'nonMcpToolEventCount',
   'shellToolCallCount',
   'allowedCallCount',
@@ -156,6 +158,24 @@ const RECEIPT_PAYLOAD_FIELDS = [
 ];
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const canonicalSha256 = (value) => sha256(canonicalAgentMcpProfileJson(value));
+
+function profileForId(profileId) {
+  return P03_FRESH_PUBLIC_PROFILE_IDS.includes(profileId)
+    ? getAgentMcpProfileById(profileId)
+    : null;
+}
+
+function receiptKindFor(profile) {
+  return profile?.id === P03_V3_PROFILE_ID
+    ? 'p03-person-name-cn-agent-mcp-runner-receipt-v3'
+    : 'p03-person-name-cn-agent-mcp-runner-receipt-v2';
+}
+
+function reportProfileName(profile) {
+  return profile?.id === P03_V3_PROFILE_ID
+    ? 'codex-luna-max-agent-mcp-matrix-v3'
+    : 'codex-luna-max-agent-mcp-matrix-v2';
+}
 
 function exactKeys(value, expected) {
   return Boolean(
@@ -173,9 +193,9 @@ function coreReport(report) {
   return core;
 }
 
-function currentSelectionEvidenceSha256() {
+function currentSelectionEvidenceSha256(profile) {
   try {
-    return sha256(readFileSync(path.join(ROOT, PROFILE.selectionEvidencePath)));
+    return sha256(readFileSync(path.join(ROOT, profile.selectionEvidencePath)));
   } catch {
     return null;
   }
@@ -204,7 +224,9 @@ function reportClaimMatches(report, claim) {
 }
 
 export function buildP03V2RunnerReceiptPayload(report, { eventStreamSha256, serverSummarySha256 }) {
+  const profile = profileForId(report?.profileId);
   if (
+    !profile ||
     !exactKeys(
       coreReport(report),
       REPORT_FIELDS.filter((field) => field !== 'runnerReceipt'),
@@ -216,7 +238,7 @@ export function buildP03V2RunnerReceiptPayload(report, { eventStreamSha256, serv
   }
   return {
     schemaVersion: 1,
-    kind: RECEIPT_KIND,
+    kind: receiptKindFor(profile),
     sanitizedReportSha256: canonicalSha256(coreReport(report)),
     claimId: report.claimId,
     profileId: report.profileId,
@@ -243,6 +265,8 @@ export function buildP03V2RunnerReceiptPayload(report, { eventStreamSha256, serv
     turnCompleted: report.turnCompleted,
     codexMcpToolEventCount: report.codexMcpToolEventCount,
     codexErrorItemCount: report.codexErrorItemCount,
+    blockedWebSearchErrorItemCount: report.blockedWebSearchErrorItemCount,
+    unexpectedCodexErrorItemCount: report.unexpectedCodexErrorItemCount,
     nonMcpToolEventCount: report.nonMcpToolEventCount,
     shellToolCallCount: report.shellToolCallCount,
     allowedCallCount: report.allowedCallCount,
@@ -256,6 +280,7 @@ export function buildP03V2RunnerReceiptPayload(report, { eventStreamSha256, serv
 }
 
 function createReceipt(payload, { publicKeyBase64, privateKey }) {
+  const profile = profileForId(payload?.profileId);
   const publicKeyDer = Buffer.from(publicKeyBase64 ?? '', 'base64');
   const publicKey = createPublicKey({ key: publicKeyDer, format: 'der', type: 'spki' });
   if (
@@ -266,7 +291,7 @@ function createReceipt(payload, { publicKeyBase64, privateKey }) {
   }
   return {
     schemaVersion: 1,
-    kind: RECEIPT_KIND,
+    kind: receiptKindFor(profile),
     publicKeyBase64,
     publicKeySha256: sha256(publicKeyDer),
     payload,
@@ -277,23 +302,24 @@ function createReceipt(payload, { publicKeyBase64, privateKey }) {
 }
 
 export function validateP03V2ProfileReport(report, claim, reportBytes = null) {
-  if (!PROFILE || !exactKeys(report, REPORT_FIELDS)) {
+  const profile = profileForId(report?.profileId);
+  if (!profile || !exactKeys(report, REPORT_FIELDS)) {
     return { passed: false, reason: 'P03_V2_REPORT_FIELDS_INVALID' };
   }
   const checks = {
     claim: reportClaimMatches(report, claim),
     identity:
       report.schemaVersion === 1 &&
-      report.evidenceKind === PROFILE.evidenceKind &&
+      report.evidenceKind === profile.evidenceKind &&
       report.runNumber === 95 &&
       report.frontierId === 'P03' &&
       report.scenarioId === null &&
       report.acceptanceScope === 'agent-mcp-matrix-only' &&
-      report.epochId === PROFILE.epochId &&
-      report.profileId === PROFILE.id &&
-      report.profile === 'codex-luna-max-agent-mcp-matrix-v2' &&
-      report.model === PROFILE.model &&
-      report.reasoningEffort === PROFILE.reasoningEffort &&
+      report.epochId === profile.epochId &&
+      report.profileId === profile.id &&
+      report.profile === reportProfileName(profile) &&
+      report.model === profile.model &&
+      report.reasoningEffort === profile.reasoningEffort &&
       /^gpt-6-luna-max-run95-pr\d+-round\d+$/u.test(report.reviewerId ?? '') &&
       /^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/u.test(report.codexCliVersion ?? '') &&
       /^[0-9a-f]{40}$/u.test(report.sourceRevision ?? '') &&
@@ -305,18 +331,18 @@ export function validateP03V2ProfileReport(report, claim, reportBytes = null) {
       /^profile-run-95-pr-\d+-[0-9a-f]{12}-\d+$/u.test(report.claimId ?? ''),
     binding:
       /^[0-9a-f]{64}$/u.test(report.mcpBundleSha256 ?? '') &&
-      report.registrySha256 === agentMcpProfileRegistrySha256(PROFILE.id) &&
-      report.selectionEvidenceSha256 === currentSelectionEvidenceSha256() &&
-      report.toolName === PROFILE.toolName &&
-      report.argumentProfile === PROFILE.argumentProfile &&
-      report.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(PROFILE),
+      report.registrySha256 === agentMcpProfileRegistrySha256(profile.id) &&
+      report.selectionEvidenceSha256 === currentSelectionEvidenceSha256(profile) &&
+      report.toolName === profile.toolName &&
+      report.argumentProfile === profile.argumentProfile &&
+      report.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(profile),
     catalog:
       /^[0-9a-f]{64}$/u.test(report.catalogSha256 ?? '') &&
       /^[0-9a-f]{64}$/u.test(report.toolDescriptionSha256 ?? '') &&
       /^[0-9a-f]{64}$/u.test(report.inputSchemaSha256 ?? ''),
     tool:
       canonicalAgentMcpProfileJson(report.serverToolNames) ===
-        canonicalAgentMcpProfileJson([PROFILE.toolName]) &&
+        canonicalAgentMcpProfileJson([profile.toolName]) &&
       report.serverToolCount === 1 &&
       canonicalAgentMcpProfileJson(report.mcpServerNames) ===
         canonicalAgentMcpProfileJson([SERVER_ID]),
@@ -326,20 +352,24 @@ export function validateP03V2ProfileReport(report, claim, reportBytes = null) {
       report.eventStreamParsed === true &&
       report.turnCompleted === true &&
       report.codexMcpToolEventCount === 1 &&
-      report.codexErrorItemCount === 0 &&
+      Number.isSafeInteger(report.codexErrorItemCount) &&
+      report.codexErrorItemCount >= 0 &&
+      report.codexErrorItemCount <= 3 &&
+      report.blockedWebSearchErrorItemCount === report.codexErrorItemCount &&
+      report.unexpectedCodexErrorItemCount === 0 &&
       report.nonMcpToolEventCount === 0 &&
       canonicalAgentMcpProfileJson(report.nonMcpToolTypes) === '[]' &&
       report.shellToolCallCount === 0 &&
       report.allowedCallCount === 1 &&
       report.deniedCallCount === 0,
     answer:
-      report.answerCheckMethod === PROFILE.answerCheckMethod &&
+      report.answerCheckMethod === profile.answerCheckMethod &&
       report.mcpTextProjectionValid === true &&
       report.structuredContentReadbackAvailable === false &&
       /^[0-9a-f]{64}$/u.test(report.answerSha256 ?? '') &&
       Number.isSafeInteger(report.answerUtf8Bytes) &&
       report.answerUtf8Bytes > 0 &&
-      report.answerUtf8Bytes <= PROFILE.maxAnswerBytes &&
+      report.answerUtf8Bytes <= profile.maxAnswerBytes &&
       exactKeys(report.answerChecks, P03_ANSWER_CHECK_FIELDS) &&
       P03_ANSWER_CHECK_FIELDS.every((field) => report.answerChecks[field] === true),
     counters:
@@ -377,7 +407,7 @@ export function validateP03V2ProfileReport(report, claim, reportBytes = null) {
   if (
     !exactKeys(receipt, RECEIPT_FIELDS) ||
     receipt.schemaVersion !== 1 ||
-    receipt.kind !== RECEIPT_KIND ||
+    receipt.kind !== receiptKindFor(profile) ||
     receipt.publicKeyBase64 !== claim?.runnerReceiptPublicKey ||
     receipt.publicKeySha256 !== claim?.runnerReceiptPublicKeySha256 ||
     !exactKeys(receipt.payload, RECEIPT_PAYLOAD_FIELDS) ||
@@ -414,7 +444,9 @@ export function validateP03V2ProfileReport(report, claim, reportBytes = null) {
 
 export function validateP03V2SanitizedReportFile(claim, root = ROOT, reportPath = null) {
   try {
-    const expectedPath = path.resolve(root, PROFILE.reportPath);
+    const profile = profileForId(claim?.profileId);
+    if (!profile) return { passed: false, reason: 'P03_V2_REPORT_PROFILE_INVALID' };
+    const expectedPath = path.resolve(root, profile.reportPath);
     const absolutePath = path.resolve(reportPath ?? expectedPath);
     if (absolutePath !== expectedPath) {
       return { passed: false, reason: 'P03_V2_REPORT_PATH_INVALID' };
@@ -428,7 +460,7 @@ export function validateP03V2SanitizedReportFile(claim, root = ROOT, reportPath 
     }
     const validation = validateP03V2ProfileReport(report, claim, reportBytes);
     return validation.passed
-      ? { ...validation, report, reportPath: PROFILE.reportPath }
+      ? { ...validation, report, reportPath: profile.reportPath }
       : validation;
   } catch {
     return { passed: false, reason: 'P03_V2_REPORT_UNAVAILABLE' };
@@ -440,15 +472,15 @@ export function writeP03V2PersonNameCnReport(
   { privateKey, fileOperations = DEFAULT_REPORT_FILE_OPERATIONS } = {},
 ) {
   const { claim, serverSummary, completedMcpCalls, answer, codexCliVersion, events } = input ?? {};
+  const profile = profileForId(claim?.profileId);
   const reportRoot = input?.root ?? ROOT;
-  const reportPath = path.join(reportRoot, REPORT_PATH);
+  const reportPath = path.join(reportRoot, profile?.reportPath ?? '');
   const resultSummary = serverSummary?.results?.[0]?.resultSummary;
   const call = completedMcpCalls?.[0];
   const text = call?.result?.content?.find((item) => item?.type === 'text')?.text;
   const result = resultSummary;
   if (
-    !PROFILE ||
-    claim?.profileId !== PROFILE.id ||
+    !profile ||
     claim?.state !== 'CLAIMED' ||
     claim?.retryAllowed !== false ||
     !serverSummary ||
@@ -461,22 +493,27 @@ export function writeP03V2PersonNameCnReport(
     events.mcpTextProjectionValid !== true ||
     events.structuredContentReadbackAvailable !== false ||
     events.codexMcpToolEventCount !== 1 ||
-    events.codexErrorItemCount !== 0 ||
+    events.codexErrorCountsMatch !== true ||
+    !Number.isSafeInteger(events.codexErrorItemCount) ||
+    events.codexErrorItemCount < 0 ||
+    events.codexErrorItemCount > 3 ||
+    events.blockedWebSearchErrorItemCount !== events.codexErrorItemCount ||
+    events.unexpectedCodexErrorItemCount !== 0 ||
     events.nonMcpToolEventCount !== 0 ||
     events.shellToolCallCount !== 0 ||
     events.allowedCallCount !== 1 ||
     events.deniedCallCount !== 0 ||
     canonicalAgentMcpProfileJson(events.mcpServerNames) !==
       canonicalAgentMcpProfileJson([SERVER_ID]) ||
-    serverSummary.profileId !== PROFILE.id ||
+    serverSummary.profileId !== profile.id ||
     serverSummary.serverProfile !== 'closed-profile-sequence-anonymous-public-v1' ||
     serverSummary.sourceRevision !== claim.sourceCandidateSha ||
     serverSummary.bundleSha256 !== claim.bundleSha256 ||
-    serverSummary.argumentProfile !== PROFILE.argumentProfile ||
-    serverSummary.toolName !== PROFILE.toolName ||
+    serverSummary.argumentProfile !== profile.argumentProfile ||
+    serverSummary.toolName !== profile.toolName ||
     serverSummary.expectedArgumentsSha256 !== claim.expectedArgumentsSha256 ||
     canonicalAgentMcpProfileJson(serverSummary.serverToolNames) !==
-      canonicalAgentMcpProfileJson([PROFILE.toolName]) ||
+      canonicalAgentMcpProfileJson([profile.toolName]) ||
     serverSummary.serverToolCount !== 1 ||
     serverSummary.expectedCallCount !== 1 ||
     serverSummary.serverResultStatus !== 'SUCCESS' ||
@@ -486,12 +523,12 @@ export function writeP03V2PersonNameCnReport(
     serverSummary.results.length !== 1 ||
     serverSummary.results[0]?.sequenceIndex !== 0 ||
     serverSummary.results[0]?.status !== 'SUCCESS' ||
-    call?.tool !== PROFILE.toolName ||
+    call?.tool !== profile.toolName ||
     canonicalAgentMcpProfileJson(call?.arguments) !==
-      canonicalAgentMcpProfileJson(PROFILE.calls[0].arguments) ||
+      canonicalAgentMcpProfileJson(profile.calls[0].arguments) ||
     call?.result?.structuredContent !== undefined ||
-    !validateP03ResultSummary(result, PROFILE.calls[0].arguments, PROFILE.id) ||
-    !validateP03McpTextProjection(text, result, PROFILE.id).passed
+    !validateP03ResultSummary(result, profile.calls[0].arguments, profile.id) ||
+    !validateP03McpTextProjection(text, result, profile.id).passed
   ) {
     return { passed: false, reason: 'P03_V2_RUNNER_GATE_INVALID' };
   }
@@ -506,16 +543,16 @@ export function writeP03V2PersonNameCnReport(
   const counts = result.nameCnSourceCounts;
   const report = {
     schemaVersion: 1,
-    evidenceKind: PROFILE.evidenceKind,
+    evidenceKind: profile.evidenceKind,
     runNumber: claim.runNumber,
-    frontierId: PROFILE.frontierId,
+    frontierId: profile.frontierId,
     scenarioId: null,
-    acceptanceScope: PROFILE.acceptanceScope,
-    epochId: PROFILE.epochId,
-    profileId: PROFILE.id,
-    profile: 'codex-luna-max-agent-mcp-matrix-v2',
-    model: PROFILE.model,
-    reasoningEffort: PROFILE.reasoningEffort,
+    acceptanceScope: profile.acceptanceScope,
+    epochId: profile.epochId,
+    profileId: profile.id,
+    profile: reportProfileName(profile),
+    model: profile.model,
+    reasoningEffort: profile.reasoningEffort,
     reviewerId: claim.reviewerId,
     codexCliVersion,
     sourceRevision: claim.sourceCandidateSha,
@@ -526,9 +563,9 @@ export function writeP03V2PersonNameCnReport(
     claimId: claim.claimId,
     mcpBundleSha256: claim.bundleSha256,
     registrySha256: claim.registrySha256,
-    selectionEvidenceSha256: currentSelectionEvidenceSha256(),
-    toolName: PROFILE.toolName,
-    argumentProfile: PROFILE.argumentProfile,
+    selectionEvidenceSha256: currentSelectionEvidenceSha256(profile),
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
     expectedArgumentsSha256: claim.expectedArgumentsSha256,
     catalogSha256: serverSummary.catalogSha256,
     toolDescriptionSha256: serverSummary.toolDescriptionSha256,
@@ -542,12 +579,14 @@ export function writeP03V2PersonNameCnReport(
     turnCompleted: events.turnCompleted,
     codexMcpToolEventCount: events.codexMcpToolEventCount,
     codexErrorItemCount: events.codexErrorItemCount,
+    blockedWebSearchErrorItemCount: events.blockedWebSearchErrorItemCount,
+    unexpectedCodexErrorItemCount: events.unexpectedCodexErrorItemCount,
     nonMcpToolEventCount: events.nonMcpToolEventCount,
     nonMcpToolTypes: events.nonMcpToolTypes,
     shellToolCallCount: events.shellToolCallCount,
     allowedCallCount: serverSummary.allowedCallCount,
     deniedCallCount: serverSummary.deniedCallCount,
-    answerCheckMethod: PROFILE.answerCheckMethod,
+    answerCheckMethod: profile.answerCheckMethod,
     mcpTextProjectionValid: true,
     structuredContentReadbackAvailable: false,
     answerSha256: sha256(answer),
@@ -620,7 +659,7 @@ export function writeP03V2PersonNameCnReport(
   }
   return {
     passed: true,
-    reportPath: REPORT_PATH,
+    reportPath: profile.reportPath,
     absoluteReportPath: reportPath,
     reportSha256: sha256(bytes),
     answerChecks: answerResult.answerChecks,

@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { parseCodexOneToolMcpArguments } from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
-import { P03_V2_PROFILE_ID } from '../../scripts/lib/p03-person-name-cn-evidence.mjs';
+import {
+  P03_V2_PROFILE_ID,
+  P03_V3_PROFILE_ID,
+} from '../../scripts/lib/p03-person-name-cn-evidence.mjs';
 
 const REQUIRED = [
   '--summary-file',
@@ -31,10 +34,23 @@ test('P03 v2 profile binds the registered exact person-profile call', () => {
   });
 });
 
-test('P03 v2 server returns only its exact summary-derived text projection', () => {
-  assert.match(SERVER_SOURCE, /import\s*\{\s*createP03McpTextProjection\s*\}/u);
+test('P03 v3 profile binds a distinct five-row person-profile call', () => {
+  const config = parseCodexOneToolMcpArguments(['--profile-id', P03_V3_PROFILE_ID, ...REQUIRED]);
+  assert.equal(config.profile.id, P03_V3_PROFILE_ID);
+  assert.deepEqual(config.expectedArgumentSequence[0], {
+    personId: 58609,
+    includeCredits: true,
+    maxSubjects: 5,
+    maxCharacters: 1,
+    includeChronology: false,
+  });
+});
+
+test('P03 fresh public profiles return only their exact summary-derived text projection', () => {
+  assert.match(SERVER_SOURCE, /createP03McpTextProjection,/u);
+  assert.match(SERVER_SOURCE, /P03_FRESH_PUBLIC_PROFILE_IDS,/u);
   const projectionBranch = SERVER_SOURCE.match(
-    /if\s*\(config\.profile\?\.id\s*===\s*'p03-person-name-cn-agent-mcp-v2'\)\s*\{([\s\S]*?)\n\s*\}/u,
+    /if\s*\(P03_FRESH_PUBLIC_PROFILE_IDS\.includes\(config\.profile\?\.id\)\)\s*\{([\s\S]*?)\n\s*\}/u,
   );
   assert.ok(projectionBranch);
   assert.match(projectionBranch[1], /summary\.results\[sequenceIndex\]\?\.resultSummary/u);
