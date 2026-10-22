@@ -4291,6 +4291,8 @@
         "docs/research/assets/run95-ux002-default075-exact-matrix-ed45febb-summary.json",
         "docs/research/run95-ux002-render-subject-card-compact-typography-v3-source-contract-2026-10-22.md",
         "docs/research/run95-ux002-render-subject-card-compact-typography-v4-source-contract-2026-10-22.md",
+        "docs/product/g26-mcp-bundle-attestation.json",
+        "docs/research/run95-op008-v4-g26-mcp-bundle-attestation-refresh-2026-10-23.md",
         "scripts/acceptance/agent-mcp-profile-registry.json",
         "scripts/acceptance/run-render-subject-card-offline-agent-mcp.mjs",
         "scripts/acceptance/render-subject-card-compact-typography-v4-visual-qa.mjs",
