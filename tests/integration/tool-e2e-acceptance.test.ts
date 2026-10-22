@@ -67,6 +67,12 @@ const R04_RENDER_V2_REPORT_FILE = join(ROOT, R04_RENDER_V2_REPORT_PATH);
 const R04_RENDER_V2_REPORT = existsSync(R04_RENDER_V2_REPORT_FILE)
   ? JSON.parse(readFileSync(R04_RENDER_V2_REPORT_FILE, 'utf8'))
   : null;
+const P01_DIRECTOR_AGENT_MCP_REPORT_PATH =
+  'docs/live-probes/p01-person-activity-director-offline-run95-v1.json';
+const P01_DIRECTOR_AGENT_MCP_REPORT_FILE = join(ROOT, P01_DIRECTOR_AGENT_MCP_REPORT_PATH);
+const P01_DIRECTOR_AGENT_MCP_REPORT = existsSync(P01_DIRECTOR_AGENT_MCP_REPORT_FILE)
+  ? JSON.parse(readFileSync(P01_DIRECTOR_AGENT_MCP_REPORT_FILE, 'utf8'))
+  : null;
 const P03_V4_AGENT_MCP_REPORT_PATH =
   'docs/live-probes/p03-person-name-cn-public-v4-agent-mcp-run95.json';
 const P03_V4_AGENT_MCP_REPORT_FILE = join(ROOT, P03_V4_AGENT_MCP_REPORT_PATH);
@@ -572,6 +578,65 @@ const CURRENT_R04_RENDER_V2_REPORT = isCurrentR04RenderV2Report(R04_RENDER_V2_RE
   ? R04_RENDER_V2_REPORT
   : null;
 
+function isCurrentP01DirectorAgentMcpReport(report: any): boolean {
+  const row = rowsByTool().get('bangumi.get_person_activity');
+  const record = FRONTIER.records?.find((item: any) => item.id === 'P01');
+  const checks = report?.answerChecks;
+  return Boolean(
+    report?.schemaVersion === 1 &&
+    report?.evidenceKind === 'codex_cli_p01_person_activity_director_offline_agent_mcp_matrix_v1' &&
+    report?.runNumber === 95 &&
+    report?.frontierId === 'P01' &&
+    report?.scenarioId === null &&
+    report?.epochId === 'run95-p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023' &&
+    report?.profileId === 'p01-person-director-offline-matrix-v1-20261023' &&
+    report?.profile === 'codex-luna-max-offline-agent-mcp-matrix-v1' &&
+    report?.model === 'gpt-6-luna' &&
+    report?.reasoningEffort === 'max' &&
+    report?.toolName === 'bangumi.get_person_activity' &&
+    report?.resultStatus === 'SUCCESS' &&
+    report?.processExitCode === 0 &&
+    report?.codexMcpToolEventCount === 1 &&
+    report?.nonMcpToolEventCount === 0 &&
+    report?.shellToolCallCount === 0 &&
+    report?.allowedCallCount === 1 &&
+    report?.deniedCallCount === 0 &&
+    report?.networkBoundary?.liveBangumiApiRequestCount === 0 &&
+    report?.networkBoundary?.unexpectedNetworkRequestCount === 0 &&
+    report?.privacy?.authProfile === 'anonymous' &&
+    report?.privacy?.oauthAttempted === false &&
+    report?.privacy?.accountDataRead === false &&
+    report?.privacy?.writesAttempted === false &&
+    report?.privacy?.communityRead === false &&
+    report?.privacy?.qqPipelineTested === false &&
+    report?.privacy?.timClientTested === false &&
+    report?.privacy?.rawToolResultStored === false &&
+    report?.privacy?.credentialsStored === false &&
+    checks?.exactRegisteredProfile === true &&
+    checks?.oneAllowedMcpTool === true &&
+    checks?.fixedArguments === true &&
+    checks?.exactCandidateBundle === true &&
+    checks?.offlineFixtureOnly === true &&
+    checks?.resultReadbackMatched === true &&
+    checks?.answerEchoedToolResult === true &&
+    checks?.outputSchemaApplied === true &&
+    checks?.noScenarioCredit === true &&
+    checks?.privacyPreserved === true &&
+    typeof report?.runnerReceipt?.signature === 'string' &&
+    record?.status === 'UNASSESSED' &&
+    toolContractMatchesCurrent(report, 'bangumi.get_person_activity') &&
+    row?.length === 13 &&
+    statusMark(row[9]) === '✅' &&
+    row[9]?.includes(P01_DIRECTOR_AGENT_MCP_REPORT_PATH)
+  );
+}
+
+const CURRENT_P01_DIRECTOR_AGENT_MCP_REPORT = isCurrentP01DirectorAgentMcpReport(
+  P01_DIRECTOR_AGENT_MCP_REPORT,
+)
+  ? P01_DIRECTOR_AGENT_MCP_REPORT
+  : null;
+
 function isCurrentP03V4AgentMcpReport(report: any): boolean {
   const row = rowsByTool().get('bangumi.get_person_profile');
   const answerChecks = report?.answerChecks;
@@ -898,6 +963,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
               : [],
         ),
       ),
+      ...(CURRENT_P01_DIRECTOR_AGENT_MCP_REPORT ? ['bangumi.get_person_activity'] : []),
       ...(CURRENT_D05_REPORT ? ['bangumi.query_subjects'] : []),
       ...(CURRENT_CAST_AGENT_MCP_REPORT ? ['bangumi.get_subject_cast'] : []),
       ...(CURRENT_P06_AGENT_MCP_MATRIX ? ['bangumi.render_person_profile'] : []),
@@ -925,7 +991,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         ...(CURRENT_CAST_AGENT_MCP_REPORT ? [] : ['bangumi.get_subject_cast']),
         'bangumi.aggregate_subject_cohort',
         'bangumi.compare_subject_cohorts',
-        'bangumi.get_person_activity',
+        ...(CURRENT_P01_DIRECTOR_AGENT_MCP_REPORT ? [] : ['bangumi.get_person_activity']),
         ...(CURRENT_P03_V4_AGENT_MCP_REPORT ? [] : ['bangumi.get_person_profile']),
         'bangumi.get_series_watch_order',
         'bangumi.render_subject_cohort_aggregation',
@@ -966,6 +1032,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_index',
         'bangumi.get_latest_subject_revision',
         'bangumi.get_person',
+        ...(CURRENT_P01_DIRECTOR_AGENT_MCP_REPORT ? ['bangumi.get_person_activity'] : []),
         ...(CURRENT_P03_V4_AGENT_MCP_REPORT ? ['bangumi.get_person_profile'] : []),
         'bangumi.get_person_collaboration',
         'bangumi.get_person_collection',
