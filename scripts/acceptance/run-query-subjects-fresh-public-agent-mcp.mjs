@@ -6,6 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
+  hasExactCompletedCodexToolCalls,
   parseCodexJsonl,
   safeCodexNonMcpEventSummary,
   summarizeCodexEvents,
@@ -42,6 +43,11 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PROFILE = getAgentMcpProfileById(QUERY_SUBJECTS_FRESH_PUBLIC_PROFILE_ID);
+
+export function isExactQuerySubjectsToolCallSummary(events) {
+  return hasExactCompletedCodexToolCalls(events?.toolCalls, [PROFILE.toolName]);
+}
+
 const RUN_NUMBER = 95;
 const MODEL = 'gpt-6-luna';
 const REASONING_EFFORT = 'max';
@@ -677,11 +683,7 @@ function runQuerySubjectsFreshPublic({ runNumber }) {
           canonicalAgentMcpProfileJson(events.completedMcpCalls[index]?.arguments) ===
             canonicalAgentMcpProfileJson(call.arguments),
       );
-    const exactToolEvents =
-      events.toolCalls.length === 1 &&
-      events.toolCalls.every(
-        (event, index) => event?.tool === PROFILE.toolName && event?.state === 'DONE' && index < 1,
-      );
+    const exactToolEvents = isExactQuerySubjectsToolCallSummary(events);
     const summaryValid = validateQuerySubjectsFreshPublicServerSummary(
       serverSummary,
       sourceRevision,
