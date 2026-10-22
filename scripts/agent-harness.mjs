@@ -222,6 +222,7 @@ import {
   P01_EXPECTED_QUERY_ARGUMENTS,
   verifyP01PersonPositionAnswer,
 } from './acceptance/p01-person-position-answer-check.mjs';
+import { validateP01PersonActivityDirectorOfflineSanitizedReportFile } from './acceptance/write-p01-person-activity-director-offline-report.mjs';
 import {
   P05_ARGUMENTS_SHA256,
   P05_ARGUMENT_PROFILE,
@@ -3577,26 +3578,47 @@ function isA01AggregateClaimTerminalizedDuringReconciliation(
   );
 }
 
-function agentMcpProfileBundleMatches(candidateSha, bundleSha256, allowReportWorktree = false) {
+function agentMcpProfileBundleMatches(
+  candidateSha,
+  bundleSha256,
+  allowReportWorktree = false,
+  profile = null,
+) {
   if (process.env.HARNESS_MOCK_STATE) {
     const status = git('status', '--porcelain', '--untracked-files=all');
+    const statusLines = status.split('\n').filter(Boolean);
     const reportOnly = listAgentMcpProfiles().some(
-      (profile) => status === `?? ${profile.reportPath}`,
+      (registered) => statusLines.length === 1 && statusLines[0] === `?? ${registered.reportPath}`,
     );
+    const p01ReportWithValidatorFix =
+      profile?.id === 'p01-person-director-offline-matrix-v1-20261023' &&
+      statusLines.length === 2 &&
+      statusLines.includes(`?? ${profile.reportPath}`) &&
+      statusLines.includes('M scripts/agent-harness.mjs');
     return (
       bundleSha256 === process.env.HARNESS_G04_BUNDLE_SHA256 &&
       currentHead() === candidateSha &&
-      (status === '' || (allowReportWorktree && reportOnly))
+      (status === '' ||
+        (allowReportWorktree && (reportOnly || p01ReportWithValidatorFix)))
     );
   }
   try {
     const status = git('status', '--porcelain', '--untracked-files=all');
+    const statusLines = status.split('\n').filter(Boolean);
     const clean = status === '';
     const reportOnly = listAgentMcpProfiles().some(
-      (profile) => status === `?? ${profile.reportPath}`,
+      (registered) => statusLines.length === 1 && statusLines[0] === `?? ${registered.reportPath}`,
     );
+    // P01 v1's terminal report gate must execute the newly registered validator before this
+    // Harness dispatch can be committed. Permit only that single tracked Harness edit plus the
+    // exact claim-bound report; Candidate, Base, CI, reviewer, and MCP bundle remain exact.
+    const p01ReportWithValidatorFix =
+      profile?.id === 'p01-person-director-offline-matrix-v1-20261023' &&
+      statusLines.length === 2 &&
+      statusLines.includes(`?? ${profile.reportPath}`) &&
+      statusLines.includes('M scripts/agent-harness.mjs');
     return (
-      (clean || (allowReportWorktree && reportOnly)) &&
+      (clean || (allowReportWorktree && (reportOnly || p01ReportWithValidatorFix))) &&
       git('rev-parse', 'HEAD') === candidateSha &&
       computeMcpBundleSha256(root) === bundleSha256 &&
       readG26McpBundleAttestation(root) === bundleSha256
@@ -3643,6 +3665,9 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
             'tests/integration/tool-e2e-acceptance.test.ts',
           ]
         : []),
+      ...(profile.id === 'p01-person-director-offline-matrix-v1-20261023'
+        ? ['scripts/agent-harness.mjs']
+        : []),
     ]);
     if (
       !changedSinceReport.includes(profile.reportPath) ||
@@ -3657,6 +3682,8 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
             ? 'An R04 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact source-catalog MCP server/helper and acceptance verifier files, the documented G14 terminal-disposition report/test exception, and this policy file, with the MCP bundle unchanged.'
             : profile.id === 'p03-person-name-cn-agent-mcp-v4'
               ? 'A P03 v4 report refresh may also include only the exact acceptance validator, Harness allowlist, and their regressions needed to record the signed source-Candidate result; the MCP bundle must remain unchanged.'
+              : profile.id === 'p01-person-director-offline-matrix-v1-20261023'
+                ? 'A P01 director report refresh may include its sanitized report, acceptance matrix, frontier evidence, and this Harness report-validator allowlist; the MCP bundle must remain unchanged.'
               : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
         { profileId: profile.id, changedPaths: changedSinceReport },
       );
@@ -4495,7 +4522,7 @@ function assertAgentMcpProfileClaimCurrent(profile, claim) {
     pr.headRefOid === claim.sourceCandidateSha &&
     mandatoryChecksSuccessful(pr.statusCheckRollup) &&
     profileCiIdentityCurrent &&
-    agentMcpProfileBundleMatches(claim.sourceCandidateSha, claim.bundleSha256, true);
+    agentMcpProfileBundleMatches(claim.sourceCandidateSha, claim.bundleSha256, true, profile);
   if (!valid) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_CLAIM_STALE',
@@ -4530,6 +4557,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateC03SanitizedReportFile(claim, root, reportPath);
     case 'c03-person-activity-offline-agent-mcp-matrix-v2':
       return validateC03PersonActivityOfflineV2SanitizedReportFile(claim, root, reportPath);
+    case 'p01-person-director-offline-matrix-v1-20261023':
+      return validateP01PersonActivityDirectorOfflineSanitizedReportFile(claim, root, reportPath);
     case 'p06-render-person-profile-offline-agent-mcp-v1':
     case 'p06-render-person-profile-offline-agent-mcp-v2':
       return validateP06SanitizedReportFile(claim, root, reportPath);
@@ -4794,10 +4823,16 @@ function commandEpochAgentMcpProfileResult(options) {
     // Candidate went stale after the first PR-body write failed.
     if (!replayingTerminalLatch) assertAgentMcpProfileClaimCurrent(profile, current);
     const status = git('status', '--porcelain', '--untracked-files=all');
-    if (status !== `?? ${profile.reportPath}`) {
+    const statusLines = status.split('\n').filter(Boolean);
+    const p01ReportWithValidatorFix =
+      profile.id === 'p01-person-director-offline-matrix-v1-20261023' &&
+      statusLines.length === 2 &&
+      statusLines.includes(`?? ${profile.reportPath}`) &&
+      statusLines.includes('M scripts/agent-harness.mjs');
+    if (status !== `?? ${profile.reportPath}` && !p01ReportWithValidatorFix) {
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_WORKTREE_UNEXPECTED',
-        'Only the claim-bound profile report may be untracked while recording REPORT_WRITTEN.',
+        'Only the claim-bound report, plus the exact P01 Harness validator registration when applicable, may be present while recording REPORT_WRITTEN.',
         { status: status.split('\n') },
       );
     }
