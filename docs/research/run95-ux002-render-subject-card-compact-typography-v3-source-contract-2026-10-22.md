@@ -16,7 +16,7 @@ The v3 profile is a new create-once contract after PR #253 merged the shared Cod
 
 - Profile: `render-subject-card-compact-typography-agent-mcp-v3`.
 - One call: `bangumi.render_subject_card` with `{"subjectId":991903,"includeCollection":false}`.
-- Local fixture permits exactly one unauthenticated `GET https://api.bgm.tv/v0/subjects/991903`; the MCP server intercepts it and returns a fixed synthetic Subject. No external API request or image URL is allowed.
+- One allowed request: `GET https://api.bgm.tv/v0/subjects/991903`. The local MCP server intercepts it and returns a fixed synthetic Subject. No external API request or image URL is allowed.
 - Fixture title: `夜明けの記録 / Daybreak Notes`; Chinese title: `紧凑字阶复核：晨光与远岸`. The content is synthetic and contains no real subject or user information.
 - Renderer uses its default `0.75` font-size scale. The output is an ephemeral PNG artifact; the report stores only dimensions, byte length, and SHA-256, never image bytes, prompt, answer, or fixture rows.
 
