@@ -42,6 +42,12 @@ import {
   createC03PersonActivityOfflineV2Fetch,
 } from '../../scripts/lib/c03-person-activity-offline-matrix-v2-profile.mjs';
 import {
+  assertP01PersonActivityDirectorOfflineProfile,
+  P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_NETWORK_MODE,
+  P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE_ID,
+  createP01PersonActivityDirectorOfflineFetch,
+} from '../../scripts/lib/p01-person-activity-director-offline-profile.mjs';
+import {
   computeMcpBundleSha256,
   gitRepositoryText,
   readG26McpBundleAttestation,
@@ -378,6 +384,11 @@ async function main(argv = process.argv.slice(2)) {
       throw new Error('The C03 activity v2 profile does not match its fixed offline contract.');
     }
   }
+  if (config.networkMode === P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_NETWORK_MODE) {
+    if (!assertP01PersonActivityDirectorOfflineProfile(config.profile)) {
+      throw new Error('The P01 director profile does not match its fixed offline contract.');
+    }
+  }
   if (
     [P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE, P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE].includes(
       config.networkMode,
@@ -527,6 +538,8 @@ async function main(argv = process.argv.slice(2)) {
     ? createRenderSubjectCardOfflineFetch(config.profile)
     : config.networkMode === C03_PERSON_ACTIVITY_OFFLINE_V2_NETWORK_MODE
       ? createC03PersonActivityOfflineV2Fetch(config.profile)
+      : config.networkMode === P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_NETWORK_MODE
+        ? createP01PersonActivityDirectorOfflineFetch(config.profile)
       : [
             A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE,
             A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
@@ -1076,6 +1089,31 @@ async function main(argv = process.argv.slice(2)) {
             persistSummary();
             return {
               content: [{ type: 'text', text: 'C03 synthetic activity summary unavailable.' }],
+              isError: true,
+            };
+          }
+          return {
+            content: [{ type: 'text', text: JSON.stringify(safeProjection) }],
+            structuredContent: safeProjection,
+          };
+        }
+        if (config.profile?.id === P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE_ID) {
+          const safeProjection = summary.results[sequenceIndex]?.resultSummary;
+          if (!safeProjection) {
+            summary = {
+              ...summary,
+              serverResultStatus: 'ERROR',
+              results: [
+                {
+                  sequenceIndex,
+                  status: 'ERROR',
+                  errorCode: 'P01_DIRECTOR_SUMMARY_UNAVAILABLE',
+                },
+              ],
+            };
+            persistSummary();
+            return {
+              content: [{ type: 'text', text: 'P01 synthetic director summary unavailable.' }],
               isError: true,
             };
           }

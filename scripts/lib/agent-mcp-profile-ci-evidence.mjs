@@ -31,6 +31,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'g01-query-subjects-offline-agent-mcp-matrix-v2',
   'query-subjects-fresh-public-matrix-v1',
   'query-subjects-fresh-public-matrix-v2',
+  'p01-person-director-offline-matrix-v1-20261023',
 ]);
 
 export const profileRequiresExactCiRunEvidence = (profileId) =>

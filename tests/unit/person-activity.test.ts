@@ -1358,4 +1358,72 @@ describe('PersonActivityService', () => {
       false,
     );
   });
+
+  it('runs the P01 director matrix fixture through the service with bounded filter coverage', async () => {
+    const requests: string[] = [];
+    const fetchFn = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      requests.push(url);
+      if (url.endsWith('/v0/persons/991337')) {
+        return json({
+          id: 991337,
+          name: 'Synthetic Director Filter Fixture',
+          career: ['staff'],
+          infobox: [],
+        });
+      }
+      if (url.endsWith('/v0/persons/991337/subjects')) {
+        return json([
+          { id: 991338, type: 2, name: 'Synthetic Director Match', staff: 'director' },
+          { id: 991339, type: 2, name: 'Synthetic Nonmatching Role', staff: 'script' },
+          { id: 991340, type: 2, name: 'Synthetic Unknown Role', staff: '' },
+        ]);
+      }
+      if (url.endsWith('/v0/subjects/991338')) {
+        return json({
+          id: 991338,
+          type: 2,
+          name: 'Synthetic Director Match',
+          name_cn: '合成导演匹配',
+          date: '2025-05-01',
+          platform: 'TV',
+          rating: { score: 8, rank: 1, total: 1, count: {} },
+          meta_tags: ['原创'],
+        });
+      }
+      return json({ error: 'unexpected synthetic request' }, 404);
+    });
+
+    const result = await new PersonActivityService(new HttpClient({ fetchFn })).getPersonActivity(
+      991337,
+      {
+        kind: 'staff',
+        staffRole: 'director',
+        media: 'anime',
+        windowMonths: 36,
+        maxRelations: 3,
+        maxSubjectDetails: 1,
+        maxRows: 1,
+      },
+    );
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage).toMatchObject({
+      relationRowsObserved: 3,
+      relationRowsSelected: 1,
+      relationRowsDroppedAtLimit: 0,
+      subjectDetailsSucceeded: 1,
+      subjectDetailsFailed: 0,
+      rowsEligible: 1,
+      rowsReturned: 1,
+      staffRoleExcludedRows: 2,
+      staffRoleUnknownRows: 1,
+      outputTruncated: false,
+      truncated: false,
+    });
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({ subjectId: 991338, rawRole: 'director' });
+    expect(requests).toHaveLength(3);
+    expect(requests.some((url) => url.includes('/characters'))).toBe(false);
+  });
 });

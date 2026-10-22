@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "codex_cli_p01_person_activity_director_offline_agent_mcp_matrix_v1",
+  "runNumber": 95,
+  "frontierId": "P01",
+  "scenarioId": null,
+  "epochId": "run95-p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023",
+  "profileId": "p01-person-director-offline-matrix-v1-20261023",
+  "profile": "codex-luna-max-offline-agent-mcp-matrix-v1",
+  "model": "gpt-6-luna",
+  "reasoningEffort": "max",
+  "reviewerId": "gpt-6-luna-max-run95-pr265-round1",
+  "codexCliVersion": "0.163.0-alpha.10.2",
+  "observedAt": "2026-10-22T21:35:18.248Z",
+  "sourceRevision": "1d434baee419c3de69ce4f1aa4b79d44a160c5be",
+  "baseSha": "06384687062f44e21104fead465116e053019278",
+  "ciSha": "1d434baee419c3de69ce4f1aa4b79d44a160c5be",
+  "ciStatus": "SUCCESS",
+  "ciRunId": "39856305173",
+  "ciChecks": [
+    {
+      "name": "harness-control",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "sqlite-default",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "host-integration",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "standalone-release-smoke",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "postgres-compat",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "provider-foundation",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "discovery-foundation",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    }
+  ],
+  "prNumber": 265,
+  "claimId": "profile-run-95-pr-265-1d434baee419-1792704888179",
+  "mcpBundleSha256": "df9629afca03351a66b81aa49b5c87e3c01daa8e43991ce02c7bd9e929fc0ce5",
+  "registrySha256": "e7cb6bd9ccb4e33ace0c8b38b81d235a795deb7c59426dfbf9fb272d3bee6e2a",
+  "selectionEvidenceSha256": "9ca4554306dd56ca12520a40a579a6070efab1aad65f23b9f4d0504e76633c49",
+  "toolName": "bangumi.get_person_activity",
+  "argumentProfile": "fixed-p01-synthetic-person-activity-director-36m-one-person-v1-20261023",
+  "expectedArgumentsSha256": "a3d7067de60972703e882e572f92342c9c7c98a4b8126e2c889cc8f16100cbd5",
+  "catalogSha256": "1f5b17d76a30ebd2c76e8c9a2317ab9f03640be466e02b5e48b1cbefd97728c7",
+  "toolDescriptionSha256": "0e8c6c50b65160a1b97162d6368a3e9ace1d963dee166d9bae39b43beb7aa00a",
+  "inputSchemaSha256": "472268452191c82429451398420a535c40b7dc5037fa22203b95cb7a650bdfe4",
+  "serverToolNames": [
+    "bangumi.get_person_activity"
+  ],
+  "serverToolCount": 1,
+  "networkMode": "run95-p01-person-activity-director-offline-matrix-v1-20261023",
+  "mcpServerNames": [
+    "bgk_p01_person_activity_director_offline_v1"
+  ],
+  "processExitCode": 0,
+  "resultStatus": "SUCCESS",
+  "eventStreamParsed": true,
+  "turnCompleted": true,
+  "codexMcpToolEventCount": 1,
+  "codexErrorItemCount": 0,
+  "nonMcpToolEventCount": 0,
+  "nonMcpToolTypes": [],
+  "shellToolCallCount": 0,
+  "allowedCallCount": 1,
+  "deniedCallCount": 0,
+  "answerCheckMethod": "p01-director-filter-result-schema-v1",
+  "answerSha256": "fc2406aa3786f357b3939760320cab853cc6fee461cb47dd033a677d40263214",
+  "answerUtf8Bytes": 336,
+  "answerChecks": {
+    "exactRegisteredProfile": true,
+    "oneAllowedMcpTool": true,
+    "fixedArguments": true,
+    "exactCandidateBundle": true,
+    "offlineFixtureOnly": true,
+    "resultReadbackMatched": true,
+    "answerEchoedToolResult": true,
+    "outputSchemaApplied": true,
+    "noScenarioCredit": true,
+    "privacyPreserved": true
+  },
+  "resultSummary": {
+    "resultState": "partial",
+    "windowMonths": 36,
+    "matchedDirectorRows": 1,
+    "excludedOtherRoleRows": 1,
+    "unknownRoleRows": 1,
+    "coverage": {
+      "relationRowsObserved": 3,
+      "relationRowsSelected": 1,
+      "relationRowsDroppedAtLimit": 0,
+      "subjectDetailsSucceeded": 1,
+      "subjectDetailsFailed": 0,
+      "rowsEligible": 1,
+      "rowsReturned": 1,
+      "outputTruncated": false,
+      "truncated": false
+    }
+  },
+  "offlineFixture": {
+    "profile": "run95-p01-person-activity-director-offline-matrix-v1-20261023",
+    "requestCount": 3,
+    "personRequestCount": 1,
+    "subjectsRequestCount": 1,
+    "subjectDetailRequestCount": 1,
+    "unexpectedRequestCount": 0,
+    "authorizationHeaderCount": 0,
+    "expectedOperationsComplete": true,
+    "operations": [
+      "person",
+      "subjects",
+      "subject_detail"
+    ]
+  },
+  "networkBoundary": {
+    "liveBangumiApiRequestCount": 0,
+    "unexpectedNetworkRequestCount": 0,
+    "rendererAssetRequestCount": 0,
+    "fullCodexHarnessNetworkSandboxed": false
+  },
+  "privacy": {
+    "authProfile": "anonymous",
+    "oauthAttempted": false,
+    "accountDataRead": false,
+    "writesAttempted": false,
+    "communityRead": false,
+    "qqPipelineTested": false,
+    "timClientTested": false,
+    "promptStored": false,
+    "answerStored": false,
+    "rawFixtureRowsStored": false,
+    "rawToolResultStored": false,
+    "artifactImageBytesStored": false,
+    "credentialsStored": false
+  },
+  "runnerReceipt": {
+    "schemaVersion": 1,
+    "kind": "p01-person-activity-director-offline-matrix-v1-runner-receipt-v1",
+    "publicKeyBase64": "MCowBQYDK2VwAyEAwchBHOOHbo37wHo1Xu9Tg+B4rTgrLt/5uDUGuucxVJk=",
+    "publicKeySha256": "8e114ad2ef826f6eaad8d5bb532ac993be9e281f413cfd77355148142c286408",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "p01-person-activity-director-offline-matrix-v1-runner-receipt-v1",
+      "sanitizedReportSha256": "58d7dd75da7c1b931ae0b89e0b8c6cb3b2514abee19df9b70f2eb147466d1a0b",
+      "claimId": "profile-run-95-pr-265-1d434baee419-1792704888179",
+      "profileId": "p01-person-director-offline-matrix-v1-20261023",
+      "runNumber": 95,
+      "frontierId": "P01",
+      "epochId": "run95-p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023",
+      "prNumber": 265,
+      "sourceRevision": "1d434baee419c3de69ce4f1aa4b79d44a160c5be",
+      "baseSha": "06384687062f44e21104fead465116e053019278",
+      "ciSha": "1d434baee419c3de69ce4f1aa4b79d44a160c5be",
+      "ciStatus": "SUCCESS",
+      "ciRunId": "39856305173",
+      "ciChecks": [
+        {
+          "name": "harness-control",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "sqlite-default",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "host-integration",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "standalone-release-smoke",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "postgres-compat",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "provider-foundation",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "discovery-foundation",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        }
+      ],
+      "reviewerId": "gpt-6-luna-max-run95-pr265-round1",
+      "bundleSha256": "df9629afca03351a66b81aa49b5c87e3c01daa8e43991ce02c7bd9e929fc0ce5",
+      "registrySha256": "e7cb6bd9ccb4e33ace0c8b38b81d235a795deb7c59426dfbf9fb272d3bee6e2a",
+      "selectionEvidenceSha256": "9ca4554306dd56ca12520a40a579a6070efab1aad65f23b9f4d0504e76633c49",
+      "toolName": "bangumi.get_person_activity",
+      "argumentProfile": "fixed-p01-synthetic-person-activity-director-36m-one-person-v1-20261023",
+      "expectedArgumentsSha256": "a3d7067de60972703e882e572f92342c9c7c98a4b8126e2c889cc8f16100cbd5",
+      "codexCliVersion": "0.163.0-alpha.10.2",
+      "processExitCode": 0,
+      "resultStatus": "SUCCESS",
+      "eventStreamParsed": true,
+      "turnCompleted": true,
+      "codexMcpToolEventCount": 1,
+      "codexErrorItemCount": 0,
+      "nonMcpToolEventCount": 0,
+      "shellToolCallCount": 0,
+      "allowedCallCount": 1,
+      "deniedCallCount": 0,
+      "networkMode": "run95-p01-person-activity-director-offline-matrix-v1-20261023",
+      "offlineFixtureSha256": "b9aece8734ae2096fd94611fe84fdaed6bcf5b8573b3073242e42ccfe3a9951c",
+      "resultSummarySha256": "de3bec5a78146babf6346034505c107c5509b9133f83710a90cd883b8ed01650",
+      "networkBoundarySha256": "6ea34cb51d2892bdaaa686ce51f5963118376581e0fb2eabf71c8a3814a8454f",
+      "answerSha256": "fc2406aa3786f357b3939760320cab853cc6fee461cb47dd033a677d40263214",
+      "eventStreamSha256": "1ccfecb72ab72a7e798046bd9e08bd0fec42f8a1707aee14e1a30193bd2088d6",
+      "serverSummarySha256": "7c6ce16eba144be99cf8d2441e08b2f1afa8d43874cfabb96e853d2ddafa3d60"
+    },
+    "signature": "dBlzcCvLWc/Ma7rcBZkjbLpWgcoI92rPRkMmRXBKyCqhjK92dZx2IQV9GBuPMG310HBlQyPkACE/bh1F1N6rAw=="
+  }
+}

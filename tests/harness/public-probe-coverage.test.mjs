@@ -8,22 +8,50 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const probePath = 'docs/live-probes/public-tools-2026-10-08-234356643-30762.json';
 const g19ProbePath = 'docs/live-probes/public-tools-2026-10-11-103934803-2116.json';
 const g19AgentReportPath = 'docs/live-probes/g19-person-origin-agent-mcp-run95.json';
-const g06CastOfflineV2ReportPath = 'docs/live-probes/g06-subject-cast-offline-agent-mcp-run95-v2.json';
+const p01DirectorReportPath = 'docs/live-probes/p01-person-activity-director-offline-run95-v1.json';
+const g06CastOfflineV2ReportPath =
+  'docs/live-probes/g06-subject-cast-offline-agent-mcp-run95-v2.json';
 const r04RenderOfflineV2ReportPath =
   'docs/live-probes/r04-render-series-watch-order-offline-agent-mcp-v2-run95.json';
 const acceptedAgentReports = new Map([
-  ['bangumi.get_person_activity', g19AgentReportPath],
-  ['bangumi.get_subject_cast', g06CastOfflineV2ReportPath],
-  ['bangumi.render_series_watch_order', r04RenderOfflineV2ReportPath],
-]);
-const acceptedAgentReportKinds = new Map([
-  ['bangumi.get_person_activity', 'codex_g19_person_origin_agent_mcp'],
-  ['bangumi.get_subject_cast', 'codex_cli_g06_subject_cast_offline_agent_mcp_v2'],
+  [
+    'bangumi.get_person_activity',
+    [
+      { path: g19AgentReportPath, evidenceKind: 'codex_g19_person_origin_agent_mcp' },
+      {
+        path: p01DirectorReportPath,
+        evidenceKind: 'codex_cli_p01_person_activity_director_offline_agent_mcp_matrix_v1',
+      },
+    ],
+  ],
+  [
+    'bangumi.get_subject_cast',
+    [
+      {
+        path: g06CastOfflineV2ReportPath,
+        evidenceKind: 'codex_cli_g06_subject_cast_offline_agent_mcp_v2',
+      },
+    ],
+  ],
   [
     'bangumi.render_series_watch_order',
-    'codex_cli_r04_render_series_watch_order_offline_agent_mcp_v2',
+    [
+      {
+        path: r04RenderOfflineV2ReportPath,
+        evidenceKind: 'codex_cli_r04_render_series_watch_order_offline_agent_mcp_v2',
+      },
+    ],
   ],
 ]);
+
+function reportReferencesInMatrixCell(cell) {
+  if (typeof cell !== 'string') return [];
+  const references = cell.matchAll(
+    /(?:^|[\s`<>"'|,;()])([^\s`<>"'|,;()]*docs\/live-probes\/[^\s`<>"'|,;()]+)(?=$|[\s`<>"'|,;()])/gu,
+  );
+  return [...references].map((match) => match[1]);
+}
+
 const expectedTools = [
   'bangumi.get_person_activity',
   'bangumi.get_series_watch_order',
@@ -60,11 +88,24 @@ test('selected public probes do not promote stale evidence to Agent/MCP or clien
     // catalogued tool contract has changed since the report was produced.
     assert.ok(cells[6] === '⬜' || cells[6].startsWith('◐'), `${result.tool} public API status`);
     if (cells[9].startsWith('✅')) {
-      const reportPath = acceptedAgentReports.get(result.tool);
-      assert.ok(reportPath, `${result.tool} Agent/MCP credit must come from a dedicated report`);
-      assert.ok(existsSync(path.join(root, reportPath)), 'matrix credit requires an accepted Agent/MCP report');
-      const agentReport = JSON.parse(readFileSync(path.join(root, reportPath), 'utf8'));
-      assert.equal(agentReport.evidenceKind, acceptedAgentReportKinds.get(result.tool));
+      const acceptedReports = acceptedAgentReports.get(result.tool);
+      assert.ok(acceptedReports, `${result.tool} Agent/MCP credit must come from a dedicated report`);
+      const matrixReportPaths = reportReferencesInMatrixCell(cells[9]);
+      assert.equal(
+        matrixReportPaths.length,
+        1,
+        `${result.tool} Agent/MCP credit must reference exactly one report`,
+      );
+      const creditedReport = acceptedReports.find(({ path: reportPath }) =>
+        matrixReportPaths[0] === reportPath,
+      );
+      assert.ok(creditedReport, `${result.tool} matrix credit must reference an accepted Agent/MCP report`);
+      assert.ok(
+        existsSync(path.join(root, creditedReport.path)),
+        'matrix credit requires an accepted Agent/MCP report',
+      );
+      const agentReport = JSON.parse(readFileSync(path.join(root, creditedReport.path), 'utf8'));
+      assert.equal(agentReport.evidenceKind, creditedReport.evidenceKind);
     } else {
       assert.equal(cells[9], '⬜', `${result.tool} Agent/MCP must remain unchecked without a current report`);
     }
@@ -120,13 +161,31 @@ test('G19 public probe is current, bounded, summary-only, and leaves the scenari
   const cells = line.split('|').slice(1, -1).map((cell) => cell.trim());
   assert.ok(cells[6].startsWith('◐'));
   if (cells[9].startsWith('✅')) {
-    assert.ok(existsSync(path.join(root, g19AgentReportPath)), 'matrix credit requires an accepted G19 Agent/MCP report');
-    const agentReport = JSON.parse(readFileSync(path.join(root, g19AgentReportPath), 'utf8'));
-    assert.equal(agentReport.evidenceKind, 'codex_g19_person_origin_agent_mcp');
-    assert.equal(agentReport.resultSummary.personId, 3474);
-    assert.equal(agentReport.answerChecks.adaptationNotInferred, true);
-    assert.ok(!Object.hasOwn(agentReport, 'answer'));
-    assert.ok(!Object.hasOwn(agentReport.resultSummary, 'rows'));
+    const matrixReportPaths = reportReferencesInMatrixCell(cells[9]);
+    assert.equal(
+      matrixReportPaths.length,
+      1,
+      'matrix credit must reference exactly one Agent/MCP report',
+    );
+    const creditedReport = acceptedAgentReports
+      .get('bangumi.get_person_activity')
+      .find(({ path: reportPath }) => matrixReportPaths[0] === reportPath);
+    assert.ok(creditedReport, 'public probe alone must not supply Agent/MCP matrix credit');
+    assert.ok(existsSync(path.join(root, creditedReport.path)), 'matrix credit requires an accepted Agent/MCP report');
+    const agentReport = JSON.parse(readFileSync(path.join(root, creditedReport.path), 'utf8'));
+    assert.equal(agentReport.evidenceKind, creditedReport.evidenceKind);
+    if (creditedReport.path === g19AgentReportPath) {
+      assert.equal(agentReport.resultSummary.personId, 3474);
+      assert.equal(agentReport.answerChecks.adaptationNotInferred, true);
+      assert.ok(!Object.hasOwn(agentReport, 'answer'));
+      assert.ok(!Object.hasOwn(agentReport.resultSummary, 'rows'));
+    } else {
+      assert.equal(creditedReport.path, p01DirectorReportPath);
+      assert.equal(agentReport.profileId, 'p01-person-director-offline-matrix-v1-20261023');
+      assert.equal(agentReport.frontierId, 'P01');
+      assert.equal(agentReport.answerChecks.noScenarioCredit, true);
+      assert.equal(agentReport.networkBoundary.liveBangumiApiRequestCount, 0);
+    }
   } else {
     assert.equal(cells[9], '⬜', 'stale, invalid, or absent reports must remain unchecked after evidence generation');
   }

@@ -67,12 +67,36 @@ const R04_RENDER_V2_REPORT_FILE = join(ROOT, R04_RENDER_V2_REPORT_PATH);
 const R04_RENDER_V2_REPORT = existsSync(R04_RENDER_V2_REPORT_FILE)
   ? JSON.parse(readFileSync(R04_RENDER_V2_REPORT_FILE, 'utf8'))
   : null;
+const P01_DIRECTOR_AGENT_MCP_REPORT_PATH =
+  'docs/live-probes/p01-person-activity-director-offline-run95-v1.json';
+const P01_DIRECTOR_AGENT_MCP_REPORT_FILE = join(ROOT, P01_DIRECTOR_AGENT_MCP_REPORT_PATH);
+const P01_DIRECTOR_AGENT_MCP_REPORT = existsSync(P01_DIRECTOR_AGENT_MCP_REPORT_FILE)
+  ? JSON.parse(readFileSync(P01_DIRECTOR_AGENT_MCP_REPORT_FILE, 'utf8'))
+  : null;
 const P03_V4_AGENT_MCP_REPORT_PATH =
   'docs/live-probes/p03-person-name-cn-public-v4-agent-mcp-run95.json';
 const P03_V4_AGENT_MCP_REPORT_FILE = join(ROOT, P03_V4_AGENT_MCP_REPORT_PATH);
 const P03_V4_AGENT_MCP_REPORT = existsSync(P03_V4_AGENT_MCP_REPORT_FILE)
   ? JSON.parse(readFileSync(P03_V4_AGENT_MCP_REPORT_FILE, 'utf8'))
   : null;
+
+function reportReferencesInMatrixCell(cell: unknown): string[] {
+  if (typeof cell !== 'string') return [];
+  const references = cell.matchAll(
+    /(?:^|[\s`<>"'|,;()])([^\s`<>"'|,;()]*docs\/live-probes\/[^\s`<>"'|,;()]+)(?=$|[\s`<>"'|,;()])/gu,
+  );
+  const paths: string[] = [];
+  for (const match of references) {
+    if (match[1] !== undefined) paths.push(match[1]);
+  }
+  return paths;
+}
+
+function hasExactMatrixReportReference(cell: unknown, expectedPath: string): boolean {
+  const paths = reportReferencesInMatrixCell(cell);
+  return paths.length === 1 && paths[0] === expectedPath;
+}
+
 const FULL_OPERATION_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   .filter(
     (name) => name.startsWith('pariya-agent-full-operation-qa-e2e-') && name.endsWith('.json'),
@@ -384,8 +408,8 @@ const CURRENT_P06_AGENT_MCP_MATRIX = (() => {
     existsSync(join(ROOT, P06_AGENT_MCP_REPORT_PATH)) &&
     row?.length === 13 &&
     statusMark(row[9]) === '✅' &&
-    row[9]?.includes(P06_AGENT_MCP_REPORT_PATH) &&
-    !row[6]?.includes(P06_AGENT_MCP_REPORT_PATH) &&
+    hasExactMatrixReportReference(row[9], P06_AGENT_MCP_REPORT_PATH) &&
+    !reportReferencesInMatrixCell(row[6]).includes(P06_AGENT_MCP_REPORT_PATH) &&
     frontierRecord?.status === 'UNASSESSED' &&
     frontierRecord.source_refs?.includes(P06_AGENT_MCP_REPORT_PATH),
   );
@@ -492,7 +516,7 @@ function isCurrentG06CastOfflineV2Report(report: any): boolean {
     typeof report?.runnerReceipt?.signature === 'string' &&
     toolContractMatchesCurrent(report, 'bangumi.get_subject_cast') &&
     statusMark(row?.[9]) === '✅' &&
-    row?.[9]?.includes(G06_CAST_OFFLINE_V2_REPORT_PATH),
+    hasExactMatrixReportReference(row?.[9], G06_CAST_OFFLINE_V2_REPORT_PATH),
   );
 }
 
@@ -564,12 +588,71 @@ function isCurrentR04RenderV2Report(report: any): boolean {
     typeof report?.runnerReceipt?.signature === 'string' &&
     toolContractMatchesCurrent(report, 'bangumi.render_series_watch_order') &&
     statusMark(row?.[9]) === '✅' &&
-    row?.[9]?.includes(R04_RENDER_V2_REPORT_PATH),
+    hasExactMatrixReportReference(row?.[9], R04_RENDER_V2_REPORT_PATH),
   );
 }
 
 const CURRENT_R04_RENDER_V2_REPORT = isCurrentR04RenderV2Report(R04_RENDER_V2_REPORT)
   ? R04_RENDER_V2_REPORT
+  : null;
+
+function isCurrentP01DirectorAgentMcpReport(report: any): boolean {
+  const row = rowsByTool().get('bangumi.get_person_activity');
+  const record = FRONTIER.records?.find((item: any) => item.id === 'P01');
+  const checks = report?.answerChecks;
+  return Boolean(
+    report?.schemaVersion === 1 &&
+    report?.evidenceKind === 'codex_cli_p01_person_activity_director_offline_agent_mcp_matrix_v1' &&
+    report?.runNumber === 95 &&
+    report?.frontierId === 'P01' &&
+    report?.scenarioId === null &&
+    report?.epochId === 'run95-p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023' &&
+    report?.profileId === 'p01-person-director-offline-matrix-v1-20261023' &&
+    report?.profile === 'codex-luna-max-offline-agent-mcp-matrix-v1' &&
+    report?.model === 'gpt-6-luna' &&
+    report?.reasoningEffort === 'max' &&
+    report?.toolName === 'bangumi.get_person_activity' &&
+    report?.resultStatus === 'SUCCESS' &&
+    report?.processExitCode === 0 &&
+    report?.codexMcpToolEventCount === 1 &&
+    report?.nonMcpToolEventCount === 0 &&
+    report?.shellToolCallCount === 0 &&
+    report?.allowedCallCount === 1 &&
+    report?.deniedCallCount === 0 &&
+    report?.networkBoundary?.liveBangumiApiRequestCount === 0 &&
+    report?.networkBoundary?.unexpectedNetworkRequestCount === 0 &&
+    report?.privacy?.authProfile === 'anonymous' &&
+    report?.privacy?.oauthAttempted === false &&
+    report?.privacy?.accountDataRead === false &&
+    report?.privacy?.writesAttempted === false &&
+    report?.privacy?.communityRead === false &&
+    report?.privacy?.qqPipelineTested === false &&
+    report?.privacy?.timClientTested === false &&
+    report?.privacy?.rawToolResultStored === false &&
+    report?.privacy?.credentialsStored === false &&
+    checks?.exactRegisteredProfile === true &&
+    checks?.oneAllowedMcpTool === true &&
+    checks?.fixedArguments === true &&
+    checks?.exactCandidateBundle === true &&
+    checks?.offlineFixtureOnly === true &&
+    checks?.resultReadbackMatched === true &&
+    checks?.answerEchoedToolResult === true &&
+    checks?.outputSchemaApplied === true &&
+    checks?.noScenarioCredit === true &&
+    checks?.privacyPreserved === true &&
+    typeof report?.runnerReceipt?.signature === 'string' &&
+    record?.status === 'UNASSESSED' &&
+    toolContractMatchesCurrent(report, 'bangumi.get_person_activity') &&
+    row?.length === 13 &&
+    statusMark(row[9]) === '✅' &&
+    hasExactMatrixReportReference(row[9], P01_DIRECTOR_AGENT_MCP_REPORT_PATH)
+  );
+}
+
+const CURRENT_P01_DIRECTOR_AGENT_MCP_REPORT = isCurrentP01DirectorAgentMcpReport(
+  P01_DIRECTOR_AGENT_MCP_REPORT,
+)
+  ? P01_DIRECTOR_AGENT_MCP_REPORT
   : null;
 
 function isCurrentP03V4AgentMcpReport(report: any): boolean {
@@ -621,7 +704,7 @@ function isCurrentP03V4AgentMcpReport(report: any): boolean {
     toolContractMatchesCurrent(report, 'bangumi.get_person_profile') &&
     row?.length === 13 &&
     statusMark(row[9]) === '✅' &&
-    row[9]?.includes(P03_V4_AGENT_MCP_REPORT_PATH),
+    hasExactMatrixReportReference(row[9], P03_V4_AGENT_MCP_REPORT_PATH),
   );
 }
 
@@ -898,6 +981,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
               : [],
         ),
       ),
+      ...(CURRENT_P01_DIRECTOR_AGENT_MCP_REPORT ? ['bangumi.get_person_activity'] : []),
       ...(CURRENT_D05_REPORT ? ['bangumi.query_subjects'] : []),
       ...(CURRENT_CAST_AGENT_MCP_REPORT ? ['bangumi.get_subject_cast'] : []),
       ...(CURRENT_P06_AGENT_MCP_MATRIX ? ['bangumi.render_person_profile'] : []),
@@ -925,7 +1009,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         ...(CURRENT_CAST_AGENT_MCP_REPORT ? [] : ['bangumi.get_subject_cast']),
         'bangumi.aggregate_subject_cohort',
         'bangumi.compare_subject_cohorts',
-        'bangumi.get_person_activity',
+        ...(CURRENT_P01_DIRECTOR_AGENT_MCP_REPORT ? [] : ['bangumi.get_person_activity']),
         ...(CURRENT_P03_V4_AGENT_MCP_REPORT ? [] : ['bangumi.get_person_profile']),
         'bangumi.get_series_watch_order',
         'bangumi.render_subject_cohort_aggregation',
@@ -966,6 +1050,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_index',
         'bangumi.get_latest_subject_revision',
         'bangumi.get_person',
+        ...(CURRENT_P01_DIRECTOR_AGENT_MCP_REPORT ? ['bangumi.get_person_activity'] : []),
         ...(CURRENT_P03_V4_AGENT_MCP_REPORT ? ['bangumi.get_person_profile'] : []),
         'bangumi.get_person_collaboration',
         'bangumi.get_person_collection',
