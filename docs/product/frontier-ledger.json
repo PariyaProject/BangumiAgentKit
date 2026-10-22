@@ -4290,9 +4290,20 @@
         "docs/research/run95-ux002-render-subject-card-compact-typography-v2-source-contract-2026-10-22.md",
         "docs/research/run95-ux002-default-075-render-matrix-visual-qa-2026-10-22.md",
         "docs/research/assets/run95-ux002-default075-exact-matrix-ed45febb-summary.json",
-        "docs/research/run95-ux002-render-subject-card-compact-typography-v3-source-contract-2026-10-22.md"
+        "docs/research/run95-ux002-render-subject-card-compact-typography-v3-source-contract-2026-10-22.md",
+        "docs/research/run95-ux002-render-subject-card-compact-typography-v4-source-contract-2026-10-22.md",
+        "scripts/acceptance/agent-mcp-profile-registry.json",
+        "scripts/acceptance/run-render-subject-card-offline-agent-mcp.mjs",
+        "scripts/acceptance/render-subject-card-compact-typography-v4-visual-qa.mjs",
+        "scripts/acceptance/write-render-subject-card-offline-agent-mcp-report.mjs",
+        "scripts/lib/render-subject-card-offline-profile.mjs",
+        "packages/renderer/src/components/TitleBlock.tsx",
+        "tests/harness/codex-offline-search-config.test.mjs",
+        "tests/harness/render-subject-card-offline-profile.test.mjs",
+        "tests/harness/run-render-subject-card-offline-agent-mcp.test.mjs",
+        "tests/harness/write-render-subject-card-offline-agent-mcp-report.test.mjs"
       ],
-      "next_action": "Keep PARTIAL. The user-approved 0.75 compact typography default with configurable body/display font stacks and the exact 1,770-image/59-sheet synthetic matrix remain visual evidence only; they earn no Agent/MCP, production-font, QQ, or TIM credit. Before selecting a renderer profile, read the active Harness Run/Epoch; the Harness PR/Run is authoritative for claim availability and terminal results. Never retry or recreate a consumed profile or infer profile availability from this product ledger. Any new acceptance must use a distinct profile and input with fresh gates.",
+      "next_action": "Keep PARTIAL. The distinct v4 synthetic profile (subjectId 991904), source contract, and six-variant local visual QA are implementation/design evidence only; the profile has not been invoked and no Agent/MCP credit is earned. Preserve v1-v3 terminal INCONCLUSIVE/no-report/no-retry. Complete exact-Candidate seven-check CI, Harness candidate readiness, and same-identity GPT-6 Luna Max PASS before the single v4 invocation. Keep the result PARTIAL unless a valid signed report, durable Harness REPORT_WRITTEN disposition, and merged Candidate provide direct current-source Agent/MCP evidence. The fixture has no cover image, so production cover cropping remains unverified; no production-font, QQ, or TIM credit is implied.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": ["OP-013"]
     },

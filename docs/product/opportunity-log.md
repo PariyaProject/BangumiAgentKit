@@ -47,6 +47,8 @@ Renderer follow-up — 2026-10-20 (Run #95 theme Epoch): SubjectCard and Subject
 
 Renderer follow-up — 2026-10-20 (Run #95 visual alignment Epoch): after comparing the rendered images with the generated direction board, the renderer added warm ivory surfaces, six contrast-checked semantic icon tones, colored Subject Overview panels, coral/mint/butter Dashboard sections, a multicolor revision rail, and an explicit compact panel-heading layout. Pass4 records all 580 image hashes/dimensions across the 29-template, two-theme, five-width matrix; all 58 fixture-specific contact sheets and eight full-resolution images were inspected in `docs/research/run95-render-editorial-layouts-visual-qa-2026-10-20.json`. The generated board remains art direction only, and this presentation work does not close current-source Agent/MCP or QQ/TIM acceptance.
 
+Renderer follow-up — 2026-10-23 (Run #95 OP-008 v4 offline profile): a fresh synthetic SubjectCard fixture exercises a long Chinese title with Japanese and Latin-script context across light/dark warm-editorial, clean-gallery, and graphic-zine variants at 720px. The first graphic-zine preview clipped the title; the title scale and balanced three-line wrap were adjusted, then all six final images were inspected. The fixture has no cover art, so this evidence does not validate production cover cropping. The offline v4 profile has not yet been invoked and earns no Agent/MCP credit until its gated signed report and Harness disposition are complete.
+
 Status:
 MERGED_BY_HUMAN_AUTHORIZATION / HISTORICAL_REVIEW_PARKED
 
