@@ -87,6 +87,7 @@ import {
   normalizeAgentMcpProfileDiagnostics,
 } from './lib/agent-mcp-profile-claims.mjs';
 import { deriveP06CiRunEvidence, isValidP06CiRunEvidence } from './lib/p06-ci-run-evidence.mjs';
+import { profileRequiresExactCiRunEvidence } from './lib/agent-mcp-profile-ci-evidence.mjs';
 import {
   acquireG04OneShotGitHubLatch,
   claimG04OneShotAtomically,
@@ -318,40 +319,6 @@ const R04_RENDER_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
   'tests/harness/query-subjects-fresh-public-matrix-v2-profile.test.mjs',
   'tests/integration/tool-e2e-acceptance.test.ts',
 ]);
-const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
-  'render-subject-card-offline-agent-mcp-v1',
-  'render-subject-card-compact-typography-agent-mcp-v2',
-  'render-subject-card-compact-typography-agent-mcp-v3',
-  'a01-aggregate-cohort-offline-agent-mcp-matrix-v3',
-  'p06-render-person-profile-offline-agent-mcp-v1',
-  'p06-render-person-profile-offline-agent-mcp-v2',
-  'c07-render-comparison-offline-agent-mcp-matrix-v1',
-  'c07-render-comparison-offline-agent-mcp-matrix-v2',
-  'c07-render-comparison-offline-agent-mcp-matrix-v3',
-  'p02-person-profile-offline-agent-mcp-v1',
-  'p02-person-profile-offline-agent-mcp-v2',
-  'r04-series-watch-order-offline-agent-mcp-v1',
-  'r04-series-watch-order-offline-agent-mcp-v2',
-  'r04-render-series-watch-order-offline-agent-mcp-v1',
-  'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
-  'r01-subject-relations-offline-agent-mcp-v1',
-  'r03-two-hop-relations-offline-agent-mcp-v1',
-  'r03-direct-relations-offline-agent-mcp-matrix-v2',
-  'r02-positive-direct-relations-agent-mcp-v1',
-  'c04-cohort-comparison-agent-mcp-matrix-v1',
-  'c03-person-activity-offline-agent-mcp-matrix-v2',
-  'query-render-title-agent-mcp-v1',
-  'a01-rating-dispersion-1998-spring-v1',
-  'g06-cast-offline-agent-mcp-matrix-v1',
-  G06_CAST_OFFLINE_V2_PROFILE_ID,
-  'g01-render-query-subjects-offline-agent-mcp-v1',
-  G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID,
-  'g01-query-subjects-offline-agent-mcp-matrix-v1',
-  G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,
-  'query-subjects-fresh-public-matrix-v1',
-  'query-subjects-fresh-public-matrix-v2',
-]);
-const profileRequiresExactCiRunEvidence = (profileId) => PROFILE_CI_RUN_EVIDENCE_IDS.has(profileId);
 const P01_MODEL = 'gpt-6-luna';
 const P01_REASONING_EFFORT = 'max';
 const P01_TOOL_NAME = 'bangumi.get_person_activity';
