@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -47,7 +57,7 @@ function makeFixture(root) {
   );
   const compactText = JSON.stringify({
     state: resultSummary.state,
-    person: { id: resultSummary.personId, nameCn: resultSummary.personName },
+    person: { id: resultSummary.personId, name: resultSummary.personName },
     coverage: {
       state: resultSummary.coverage.state,
       subjects: {
@@ -241,6 +251,53 @@ test('P03 v2 rejects unexpected structuredContent instead of relying on it', () 
     );
     assert.equal(result.passed, false);
     assert.equal(result.reason, 'P03_V2_RUNNER_GATE_INVALID');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('P03 v2 removes only a partial report file created by a failed write', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'p03-v2-write-failure-test-'));
+  mkdirSync(path.join(root, 'docs/live-probes'), { recursive: true });
+  const fixture = makeFixture(root);
+  const reportPath = path.join(root, profile.reportPath);
+  const fileOperations = {
+    openSync,
+    writeFileSync() {
+      throw new Error('injected report write failure');
+    },
+    closeSync,
+    unlinkSync,
+  };
+  const input = {
+    ...fixture,
+    completedMcpCalls: [
+      {
+        tool: profile.toolName,
+        arguments: profile.calls[0].arguments,
+        result: { content: [{ type: 'text', text: fixture.compactText }] },
+      },
+    ],
+    codexCliVersion: '1.2.3',
+    eventStreamSha256: 'd'.repeat(64),
+    serverSummarySha256: 'e'.repeat(64),
+  };
+  try {
+    const failedWrite = writeP03V2PersonNameCnReport(input, {
+      privateKey: fixture.keyPair.privateKey,
+      fileOperations,
+    });
+    assert.equal(failedWrite.passed, false);
+    assert.equal(failedWrite.reason, 'P03_V2_REPORT_ALREADY_EXISTS_OR_UNWRITABLE');
+    assert.equal(existsSync(reportPath), false);
+
+    writeFileSync(reportPath, 'pre-existing report sentinel');
+    const createOnlyRefusal = writeP03V2PersonNameCnReport(input, {
+      privateKey: fixture.keyPair.privateKey,
+    });
+    assert.equal(createOnlyRefusal.passed, false);
+    assert.equal(existsSync(reportPath), true);
+    assert.equal(readFileSync(reportPath, 'utf8'), 'pre-existing report sentinel');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

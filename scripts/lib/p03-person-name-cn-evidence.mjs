@@ -241,7 +241,7 @@ export function createP03McpTextProjection(resultSummary, profileId = P03_V2_PRO
   }
   return {
     state: resultSummary.state,
-    person: { id: resultSummary.personId, nameCn: resultSummary.personName },
+    person: { id: resultSummary.personId, name: resultSummary.personName },
     coverage: {
       state: resultSummary.coverage.state,
       subjects: {

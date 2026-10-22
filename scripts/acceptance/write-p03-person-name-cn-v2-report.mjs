@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { createHash, createPublicKey, sign, verify } from 'node:crypto';
-import { closeSync, openSync, readFileSync, writeFileSync } from 'node:fs';
+import { closeSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -20,6 +20,12 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PROFILE = getAgentMcpProfileById(P03_V2_PROFILE_ID);
 const REPORT_PATH = PROFILE?.reportPath;
+const DEFAULT_REPORT_FILE_OPERATIONS = Object.freeze({
+  closeSync,
+  openSync,
+  unlinkSync,
+  writeFileSync,
+});
 const SERVER_ID = 'bgk_p03_name_cn';
 const RECEIPT_KIND = 'p03-person-name-cn-agent-mcp-runner-receipt-v2';
 const PRIVACY_FIELDS = [
@@ -429,7 +435,10 @@ export function validateP03V2SanitizedReportFile(claim, root = ROOT, reportPath 
   }
 }
 
-export function writeP03V2PersonNameCnReport(input, { privateKey } = {}) {
+export function writeP03V2PersonNameCnReport(
+  input,
+  { privateKey, fileOperations = DEFAULT_REPORT_FILE_OPERATIONS } = {},
+) {
   const { claim, serverSummary, completedMcpCalls, answer, codexCliVersion, events } = input ?? {};
   const reportRoot = input?.root ?? ROOT;
   const reportPath = path.join(reportRoot, REPORT_PATH);
@@ -585,16 +594,26 @@ export function writeP03V2PersonNameCnReport(input, { privateKey } = {}) {
   const bytes = Buffer.from(`${JSON.stringify(report, null, 2)}\n`, 'utf8');
   if (bytes.length > 64 * 1024) return { passed: false, reason: 'P03_V2_REPORT_TOO_LARGE' };
   let descriptor;
+  let createdReportPath = false;
   try {
-    descriptor = openSync(reportPath, 'wx', 0o600);
-    writeFileSync(descriptor, bytes);
-    closeSync(descriptor);
+    descriptor = fileOperations.openSync(reportPath, 'wx', 0o600);
+    createdReportPath = true;
+    fileOperations.writeFileSync(descriptor, bytes);
+    fileOperations.closeSync(descriptor);
+    descriptor = undefined;
   } catch {
     if (descriptor !== undefined) {
       try {
-        closeSync(descriptor);
+        fileOperations.closeSync(descriptor);
       } catch {
         /* Preserve create-only refusal. */
+      }
+    }
+    if (createdReportPath) {
+      try {
+        fileOperations.unlinkSync(reportPath);
+      } catch {
+        /* Do not remove a pre-existing report after create-only refusal. */
       }
     }
     return { passed: false, reason: 'P03_V2_REPORT_ALREADY_EXISTS_OR_UNWRITABLE' };

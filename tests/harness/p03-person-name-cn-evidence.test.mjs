@@ -273,6 +273,27 @@ test('P03 v2 requires the entire bounded text projection to exactly match its su
   }
 });
 
+test('P03 v2 labels a fallback person name neutrally when nameCn is unavailable', () => {
+  const result = resultFixture();
+  result.person = { id: 19306, name: 'Original-language person name', nameCn: '  ' };
+  const summary = summarizeP03PersonProfileToolResult(
+    result,
+    v2Profile.calls[0].arguments,
+    v2Profile.id,
+  );
+  const projection = createP03McpTextProjection(summary, v2Profile.id);
+
+  assert.deepEqual(projection.person, {
+    id: 19306,
+    name: 'Original-language person name',
+  });
+  assert.equal(Object.hasOwn(projection.person, 'nameCn'), false);
+  assert.equal(
+    validateP03McpTextProjection(JSON.stringify(projection), summary, v2Profile.id).passed,
+    true,
+  );
+});
+
 test('P03 summary fails closed when included credit rows are unavailable', () => {
   assert.throws(
     () =>
