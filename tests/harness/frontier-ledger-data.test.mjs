@@ -707,11 +707,26 @@ test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retr
   assert.match(record.next_action, /PARTIAL and uncredited/u);
   assert.match(record.next_action, /INCONCLUSIVE/u);
   assert.match(record.next_action, /retryAllowed=false/u);
-  assert.match(record.next_action, /Do not repeat either P03 v1\/v2 claim/u);
+  assert.match(record.next_action, /Never retry or recreate them/u);
+  assert.match(record.next_action, /P03 v2 retains its strict zero-error gate/u);
   assert.deepEqual(Object.keys(record.evidence).sort(), [
     'p03_agent_mcp_profile_preflight',
     'p03_agent_mcp_profile_result',
+    'p03_profile_terminal_recheck_2026_10_22',
   ]);
+
+  const terminalRecheck = record.evidence?.p03_profile_terminal_recheck_2026_10_22;
+  assert.ok(terminalRecheck, 'the current v1-v3 terminal status must be recorded');
+  assert.equal(terminalRecheck.profiles.length, 3);
+  for (const profile of terminalRecheck.profiles) {
+    assert.equal(profile.calls, 1);
+    assert.equal(profile.report_written, false);
+    assert.equal(profile.retry_allowed, false);
+  }
+  assert.equal(terminalRecheck.v3_diagnostics.raw_event_retained, false);
+  assert.equal(terminalRecheck.v3_diagnostics.structured_content_value_known, false);
+  assert.equal(terminalRecheck.v3_diagnostics.runtime_cause, 'not established');
+  assert.match(terminalRecheck.credit, /none/u);
 
   const preflight = record.evidence?.p03_agent_mcp_profile_preflight;
   assert.ok(preflight, 'the historical preflight snapshot must remain available');

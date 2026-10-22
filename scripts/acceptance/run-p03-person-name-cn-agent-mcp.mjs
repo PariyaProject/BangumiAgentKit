@@ -90,6 +90,25 @@ export function p03CodexErrorSummaryIsSafe(summary, profileId) {
   );
 }
 
+export function p03StructuredReadbackSatisfied(result, textProjection, profileId) {
+  const structuredContentPresent =
+    Boolean(result) &&
+    typeof result === 'object' &&
+    !Array.isArray(result) &&
+    Object.hasOwn(result, 'structuredContent');
+  const structuredReadback = structuredContentPresent && Boolean(result.structuredContent);
+  const structuredReadbackExpected = !P03_FRESH_PUBLIC_PROFILE_IDS.includes(profileId);
+  if (structuredReadbackExpected) return structuredReadback;
+  // Fresh profiles use the bounded text projection as their data boundary.
+  // A null placeholder adds no data; a structured object must be an exact duplicate.
+  if (!structuredContentPresent || result.structuredContent === null) return true;
+  return (
+    textProjection?.passed === true &&
+    canonicalAgentMcpProfileJson(result.structuredContent) ===
+      canonicalAgentMcpProfileJson(textProjection.projection)
+  );
+}
+
 function buildPrompt(profile) {
   const matrixOnlyGuidance = P03_FRESH_PUBLIC_PROFILE_IDS.includes(profile.id)
     ? 'This is a matrix-only check. Use only the bounded text projection; structuredContent is deliberately not exposed. Do not store or repeat person/title names outside this answer.'
@@ -805,15 +824,17 @@ export function runP03Profile({ runNumber, profileId = P03_PROFILE_ID }) {
     const structuredContentPresent =
       events.completedMcpCalls.length === 1 &&
       Object.hasOwn(events.completedMcpCalls[0]?.result ?? {}, 'structuredContent');
-    const structuredReadback =
-      structuredContentPresent && Boolean(events.completedMcpCalls[0]?.result?.structuredContent);
-    const structuredReadbackExpected = !P03_FRESH_PUBLIC_PROFILE_IDS.includes(PROFILE.id);
     const mcpText = events.completedMcpCalls[0]?.result?.content?.find(
       (item) => item?.type === 'text',
     )?.text;
     const textProjection = validateP03McpTextProjection(
       mcpText,
       serverSummary?.results?.[0]?.resultSummary,
+      PROFILE.id,
+    );
+    const structuredContentCompatible = p03StructuredReadbackSatisfied(
+      events.completedMcpCalls[0]?.result,
+      textProjection,
       PROFILE.id,
     );
     const safeEvents = {
@@ -864,7 +885,7 @@ export function runP03Profile({ runNumber, profileId = P03_PROFILE_ID }) {
         canonicalAgentMcpProfileJson([SERVER_ID]) &&
       exactCalls &&
       exactToolEvents &&
-      (structuredReadbackExpected ? structuredReadback : !structuredContentPresent) &&
+      structuredContentCompatible &&
       safeEvents.mcpTextProjectionValid &&
       serverSummaryValid &&
       answerCheck.passed &&
