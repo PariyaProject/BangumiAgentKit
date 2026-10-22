@@ -11,19 +11,36 @@ import {
 } from '../lib/agent-mcp-profile-claims.mjs';
 import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
+  G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
+  G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,
   assertG01QuerySubjectsOfflineProfile,
-  G01_QUERY_SUBJECTS_OFFLINE_ACKNOWLEDGEMENT,
-  G01_QUERY_SUBJECTS_OFFLINE_ANSWER_CHECK_METHOD,
-  G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
-  G01_QUERY_SUBJECTS_OFFLINE_SERVER_ID,
+  assertG01QuerySubjectsOfflineV2Profile,
+  getG01QuerySubjectsOfflineProfileSpec,
 } from '../lib/g01-query-subjects-offline-matrix-profile.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const PROFILE = getAgentMcpProfileById('g01-query-subjects-offline-agent-mcp-matrix-v1');
-const REPORT_RELATIVE_PATH = PROFILE?.reportPath;
-const RECEIPT_KIND = 'g01-query-subjects-offline-matrix-runner-receipt-v1';
+const RECEIPT_KIND_V1 = 'g01-query-subjects-offline-matrix-runner-receipt-v1';
+const RECEIPT_KIND_V2 = 'g01-query-subjects-offline-matrix-runner-receipt-v2';
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const canonicalSha256 = (value) => sha256(canonicalAgentMcpProfileJson(value));
+
+function profileContext(profileId) {
+  const profile = getAgentMcpProfileById(profileId);
+  const spec = getG01QuerySubjectsOfflineProfileSpec(profileId);
+  const valid =
+    profileId === G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID
+      ? assertG01QuerySubjectsOfflineProfile(profile)
+      : profileId === G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID
+        ? assertG01QuerySubjectsOfflineV2Profile(profile)
+        : false;
+  return valid
+    ? { profile, spec, isV2: profileId === G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID }
+    : null;
+}
+
+function receiptKindForProfile(profileId) {
+  return profileId === G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID ? RECEIPT_KIND_V2 : RECEIPT_KIND_V1;
+}
 
 const REPORT_FIELDS = new Set([
   'schemaVersion',
@@ -81,6 +98,11 @@ const REPORT_FIELDS = new Set([
   'privacy',
   'runnerReceipt',
 ]);
+const REPORT_FIELDS_V2 = new Set([
+  ...REPORT_FIELDS,
+  'blockedWebSearchErrorItemCount',
+  'unexpectedCodexErrorItemCount',
+]);
 const RECEIPT_FIELDS = new Set([
   'schemaVersion',
   'kind',
@@ -130,6 +152,11 @@ const RECEIPT_PAYLOAD_FIELDS = new Set([
   'answerSha256',
   'eventStreamSha256',
   'serverSummarySha256',
+]);
+const RECEIPT_PAYLOAD_FIELDS_V2 = new Set([
+  ...RECEIPT_PAYLOAD_FIELDS,
+  'blockedWebSearchErrorItemCount',
+  'unexpectedCodexErrorItemCount',
 ]);
 const ANSWER_CHECK_FIELDS = new Set([
   'exactRegisteredProfile',
@@ -193,9 +220,11 @@ function exactKeys(value, fields) {
   );
 }
 
-function expectedFixture() {
+function expectedFixture(
+  spec = getG01QuerySubjectsOfflineProfileSpec(G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID),
+) {
   return {
-    profile: G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
+    profile: spec.networkMode,
     requestCount: 1,
     searchRequestCount: 1,
     duplicateRequestCount: 0,
@@ -265,11 +294,15 @@ function resultSummaryIsValid(summary) {
   );
 }
 
-function catalogEvidenceMatches(report, root = ROOT) {
+function catalogEvidenceMatches(
+  report,
+  root = ROOT,
+  profile = getAgentMcpProfileById(report?.profileId),
+) {
   try {
     const bytes = readFileSync(path.join(root, 'docs/tool-catalog.json'));
     const catalog = JSON.parse(bytes.toString('utf8'));
-    const item = catalog.find((row) => row?.name === PROFILE?.toolName);
+    const item = catalog.find((row) => row?.name === profile?.toolName);
     return (
       item?.auth === 'none' &&
       item?.risk === 'read' &&
@@ -310,20 +343,24 @@ export function validateG01QuerySubjectsOfflineServerSummary(
   summary,
   sourceRevision,
   bundleSha256,
+  profileId = summary?.profileId,
 ) {
+  const context = profileContext(profileId);
+  if (!context) return false;
+  const { profile, spec } = context;
   return Boolean(
     summary &&
     summary.serverProfile === 'closed-profile-sequence-anonymous-offline-v1' &&
-    summary.profileId === PROFILE?.id &&
-    summary.argumentProfile === PROFILE?.argumentProfile &&
-    summary.networkMode === G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE &&
-    summary.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(PROFILE) &&
+    summary.profileId === profile.id &&
+    summary.argumentProfile === profile.argumentProfile &&
+    summary.networkMode === spec.networkMode &&
+    summary.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(profile) &&
     summary.sourceRevision === sourceRevision &&
     summary.bundleSha256 === bundleSha256 &&
-    summary.toolName === PROFILE?.toolName &&
+    summary.toolName === profile.toolName &&
     summary.serverToolCount === 1 &&
     canonicalAgentMcpProfileJson(summary.serverToolNames) ===
-      canonicalAgentMcpProfileJson([PROFILE?.toolName]) &&
+      canonicalAgentMcpProfileJson([profile.toolName]) &&
     summary.expectedCallCount === 1 &&
     summary.serverResultStatus === 'SUCCESS' &&
     summary.allowedCallCount === 1 &&
@@ -335,7 +372,7 @@ export function validateG01QuerySubjectsOfflineServerSummary(
     resultSummaryIsValid(summary.results[0]?.resultSummary) &&
     exactKeys(summary.offlineFixture, OFFLINE_FIXTURE_FIELDS) &&
     canonicalAgentMcpProfileJson(summary.offlineFixture) ===
-      canonicalAgentMcpProfileJson(expectedFixture()),
+      canonicalAgentMcpProfileJson(expectedFixture(spec)),
   );
 }
 
@@ -343,17 +380,19 @@ export function buildG01QuerySubjectsOfflineRunnerReceiptPayload(
   report,
   { eventStreamSha256, serverSummarySha256 },
 ) {
+  const context = profileContext(report?.profileId);
   if (
     !report ||
     typeof report !== 'object' ||
+    !context ||
     !/^[0-9a-f]{64}$/u.test(eventStreamSha256 ?? '') ||
     !/^[0-9a-f]{64}$/u.test(serverSummarySha256 ?? '')
   ) {
     throw new TypeError('G01 query-subjects runner receipt requires exact sanitized run inputs.');
   }
-  return {
+  const payload = {
     schemaVersion: 1,
-    kind: RECEIPT_KIND,
+    kind: receiptKindForProfile(report.profileId),
     sanitizedReportSha256: sha256(canonicalAgentMcpProfileJson({ ...report, runnerReceipt: null })),
     claimId: report.claimId,
     profileId: report.profileId,
@@ -393,9 +432,15 @@ export function buildG01QuerySubjectsOfflineRunnerReceiptPayload(
     eventStreamSha256,
     serverSummarySha256,
   };
+  if (context.isV2) {
+    payload.blockedWebSearchErrorItemCount = report.blockedWebSearchErrorItemCount;
+    payload.unexpectedCodexErrorItemCount = report.unexpectedCodexErrorItemCount;
+  }
+  return payload;
 }
 
 function createRunnerReceipt(payload, { publicKeyBase64, privateKey }) {
+  const kind = receiptKindForProfile(payload.profileId);
   const publicKeyDer = Buffer.from(publicKeyBase64 ?? '', 'base64');
   const publicKey = createPublicKey({ key: publicKeyDer, format: 'der', type: 'spki' });
   if (
@@ -407,7 +452,7 @@ function createRunnerReceipt(payload, { publicKeyBase64, privateKey }) {
   const signature = sign(null, Buffer.from(canonicalAgentMcpProfileJson(payload)), privateKey);
   return {
     schemaVersion: 1,
-    kind: RECEIPT_KIND,
+    kind,
     publicKeyBase64,
     publicKeySha256: sha256(publicKeyDer),
     payload,
@@ -421,6 +466,12 @@ export function validateG01QuerySubjectsOfflineProfileReport(
   reportBytes = null,
   root = ROOT,
 ) {
+  const context = profileContext(report?.profileId);
+  if (!context) return { passed: false, reason: 'G01_QUERY_SUBJECTS_PROFILE_INVALID' };
+  const { profile, spec, isV2 } = context;
+  const reportFields = isV2 ? REPORT_FIELDS_V2 : REPORT_FIELDS;
+  const receiptPayloadFields = isV2 ? RECEIPT_PAYLOAD_FIELDS_V2 : RECEIPT_PAYLOAD_FIELDS;
+  const receiptKind = receiptKindForProfile(profile.id);
   const claimStateValid =
     (claim?.state === 'CLAIMED' && claim.reportWritten === false) ||
     (claim?.state === 'REPORT_WRITTEN' &&
@@ -428,11 +479,9 @@ export function validateG01QuerySubjectsOfflineProfileReport(
       Buffer.isBuffer(reportBytes) &&
       claim.reportSha256 === sha256(reportBytes));
   if (
-    !PROFILE ||
-    !assertG01QuerySubjectsOfflineProfile(PROFILE) ||
-    !exactKeys(report, REPORT_FIELDS) ||
+    !exactKeys(report, reportFields) ||
     !claim ||
-    claim.profileId !== PROFILE.id ||
+    claim.profileId !== profile.id ||
     !claimStateValid ||
     claim.retryAllowed !== false ||
     !isValidP06CiRunEvidence({ ciRunId: report?.ciRunId, ciChecks: report?.ciChecks }) ||
@@ -442,30 +491,32 @@ export function validateG01QuerySubjectsOfflineProfileReport(
   }
   let selectionBytes;
   try {
-    selectionBytes = readFileSync(path.join(root, PROFILE.selectionEvidencePath));
+    selectionBytes = readFileSync(path.join(root, spec.selectionEvidencePath));
   } catch {
     return { passed: false, reason: 'G01_QUERY_SUBJECTS_SELECTION_EVIDENCE_MISSING' };
   }
   const expected = {
     schemaVersion: 1,
-    evidenceKind: PROFILE.evidenceKind,
+    evidenceKind: profile.evidenceKind,
     runNumber: 95,
     frontierId: 'G01',
     scenarioId: null,
-    epochId: PROFILE.epochId,
-    profileId: PROFILE.id,
-    profile: 'codex-luna-max-offline-agent-mcp-matrix-v1',
-    model: PROFILE.model,
-    reasoningEffort: PROFILE.reasoningEffort,
-    registrySha256: agentMcpProfileRegistrySha256(PROFILE.id),
+    epochId: profile.epochId,
+    profileId: profile.id,
+    profile: isV2
+      ? 'codex-luna-max-offline-agent-mcp-matrix-v2'
+      : 'codex-luna-max-offline-agent-mcp-matrix-v1',
+    model: profile.model,
+    reasoningEffort: profile.reasoningEffort,
+    registrySha256: agentMcpProfileRegistrySha256(profile.id),
     selectionEvidenceSha256: sha256(selectionBytes),
-    toolName: PROFILE.toolName,
-    argumentProfile: PROFILE.argumentProfile,
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
-    networkMode: G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
-    serverToolNames: [PROFILE.toolName],
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+    networkMode: spec.networkMode,
+    serverToolNames: [profile.toolName],
     serverToolCount: 1,
-    mcpServerNames: [G01_QUERY_SUBJECTS_OFFLINE_SERVER_ID],
+    mcpServerNames: [spec.serverId],
     processExitCode: 0,
     resultStatus: 'SUCCESS',
     eventStreamParsed: true,
@@ -477,10 +528,14 @@ export function validateG01QuerySubjectsOfflineProfileReport(
     shellToolCallCount: 0,
     allowedCallCount: 1,
     deniedCallCount: 0,
-    answerCheckMethod: G01_QUERY_SUBJECTS_OFFLINE_ANSWER_CHECK_METHOD,
-    answerSha256: sha256(G01_QUERY_SUBJECTS_OFFLINE_ACKNOWLEDGEMENT),
-    answerUtf8Bytes: Buffer.byteLength(G01_QUERY_SUBJECTS_OFFLINE_ACKNOWLEDGEMENT, 'utf8'),
+    answerCheckMethod: spec.answerCheckMethod,
+    answerSha256: sha256(spec.acknowledgement),
+    answerUtf8Bytes: Buffer.byteLength(spec.acknowledgement, 'utf8'),
   };
+  if (isV2) {
+    expected.blockedWebSearchErrorItemCount = report.blockedWebSearchErrorItemCount;
+    expected.unexpectedCodexErrorItemCount = 0;
+  }
   const valid =
     report.evidenceKind === expected.evidenceKind &&
     report.runNumber === expected.runNumber &&
@@ -521,7 +576,13 @@ export function validateG01QuerySubjectsOfflineProfileReport(
     report.eventStreamParsed === expected.eventStreamParsed &&
     report.turnCompleted === expected.turnCompleted &&
     report.codexMcpToolEventCount === expected.codexMcpToolEventCount &&
-    report.codexErrorItemCount === expected.codexErrorItemCount &&
+    (isV2
+      ? Number.isSafeInteger(report.codexErrorItemCount) &&
+        report.codexErrorItemCount >= 0 &&
+        report.codexErrorItemCount <= 3 &&
+        report.blockedWebSearchErrorItemCount === report.codexErrorItemCount &&
+        report.unexpectedCodexErrorItemCount === 0
+      : report.codexErrorItemCount === expected.codexErrorItemCount) &&
     report.nonMcpToolEventCount === expected.nonMcpToolEventCount &&
     canonicalAgentMcpProfileJson(report.nonMcpToolTypes) ===
       canonicalAgentMcpProfileJson(expected.nonMcpToolTypes) &&
@@ -531,11 +592,11 @@ export function validateG01QuerySubjectsOfflineProfileReport(
     report.answerCheckMethod === expected.answerCheckMethod &&
     report.answerSha256 === expected.answerSha256 &&
     report.answerUtf8Bytes === expected.answerUtf8Bytes &&
-    catalogEvidenceMatches(report, root) &&
+    catalogEvidenceMatches(report, root, profile) &&
     resultSummaryIsValid(report.resultSummary) &&
     exactKeys(report.offlineFixture, OFFLINE_FIXTURE_FIELDS) &&
     canonicalAgentMcpProfileJson(report.offlineFixture) ===
-      canonicalAgentMcpProfileJson(expectedFixture()) &&
+      canonicalAgentMcpProfileJson(expectedFixture(spec)) &&
     exactKeys(report.networkBoundary, NETWORK_BOUNDARY_FIELDS) &&
     canonicalAgentMcpProfileJson(report.networkBoundary) ===
       canonicalAgentMcpProfileJson(expectedNetworkBoundary()) &&
@@ -546,7 +607,7 @@ export function validateG01QuerySubjectsOfflineProfileReport(
     canonicalAgentMcpProfileJson(report.privacy) ===
       canonicalAgentMcpProfileJson(expectedPrivacy()) &&
     exactKeys(report.runnerReceipt, RECEIPT_FIELDS) &&
-    exactKeys(report.runnerReceipt.payload, RECEIPT_PAYLOAD_FIELDS);
+    exactKeys(report.runnerReceipt.payload, receiptPayloadFields);
   if (!valid) return { passed: false, reason: 'G01_QUERY_SUBJECTS_REPORT_FIELDS_INVALID' };
 
   let receiptValid = false;
@@ -559,9 +620,9 @@ export function validateG01QuerySubjectsOfflineProfileReport(
       serverSummarySha256: receipt.payload.serverSummarySha256,
     });
     receiptValid =
-      receipt.kind === RECEIPT_KIND &&
+      receipt.kind === receiptKind &&
       receipt.schemaVersion === 1 &&
-      receipt.payload.kind === RECEIPT_KIND &&
+      receipt.payload.kind === receiptKind &&
       receipt.payload.schemaVersion === 1 &&
       receipt.publicKeyBase64 === claim.runnerReceiptPublicKey &&
       receipt.publicKeySha256 === claim.runnerReceiptPublicKeySha256 &&
@@ -582,17 +643,24 @@ export function validateG01QuerySubjectsOfflineProfileReport(
   if (reportBytes && reportBytes.length > 64 * 1024) {
     return { passed: false, reason: 'G01_QUERY_SUBJECTS_REPORT_TOO_LARGE' };
   }
-  return { passed: true, reportPath: REPORT_RELATIVE_PATH };
+  return { passed: true, reportPath: spec.reportPath };
 }
 
 export function buildG01QuerySubjectsOfflineProfileReport(
   { claim, serverSummary, events, answer, codexCliVersion, eventStreamSha256, serverSummarySha256 },
   { privateKey, root = ROOT, reportPath = null } = {},
 ) {
+  const context = profileContext(claim?.profileId);
+  if (!context) return { passed: false, reason: 'G01_QUERY_SUBJECTS_PROFILE_INVALID' };
+  const { profile, spec, isV2 } = context;
+  const blockedErrorSummaryValid = isV2
+    ? Number.isSafeInteger(events?.codexErrorItemCount) &&
+      events.codexErrorItemCount >= 0 &&
+      events.codexErrorItemCount <= 3 &&
+      events.blockedWebSearchErrorItemCount === events.codexErrorItemCount &&
+      events.unexpectedCodexErrorItemCount === 0
+    : events?.codexErrorItemCount === 0;
   if (
-    !PROFILE ||
-    !assertG01QuerySubjectsOfflineProfile(PROFILE) ||
-    claim?.profileId !== PROFILE.id ||
     claim.state !== 'CLAIMED' ||
     claim.retryAllowed !== false ||
     !isValidP06CiRunEvidence({ ciRunId: claim.ciRunId, ciChecks: claim.ciChecks }) ||
@@ -600,40 +668,43 @@ export function buildG01QuerySubjectsOfflineProfileReport(
       serverSummary,
       claim.sourceCandidateSha,
       claim.bundleSha256,
+      profile.id,
     ) ||
-    answer !== G01_QUERY_SUBJECTS_OFFLINE_ACKNOWLEDGEMENT ||
+    answer !== spec.acknowledgement ||
     events?.processExitCode !== 0 ||
     events?.eventStreamParsed !== true ||
     events?.turnCompleted !== true ||
     events?.codexMcpToolEventCount !== 1 ||
-    events?.codexErrorItemCount !== 0 ||
+    !blockedErrorSummaryValid ||
     events?.nonMcpToolEventCount !== 0 ||
     events?.shellToolCallCount !== 0 ||
     events?.exactCall !== true ||
     events?.exactToolEvent !== true ||
     canonicalAgentMcpProfileJson(events?.mcpServerNames) !==
-      canonicalAgentMcpProfileJson([G01_QUERY_SUBJECTS_OFFLINE_SERVER_ID])
+      canonicalAgentMcpProfileJson([spec.serverId])
   ) {
     return { passed: false, reason: 'G01_QUERY_SUBJECTS_RUNNER_GATE_INVALID' };
   }
 
   let selectionBytes;
   try {
-    selectionBytes = readFileSync(path.join(root, PROFILE.selectionEvidencePath));
+    selectionBytes = readFileSync(path.join(root, spec.selectionEvidencePath));
   } catch {
     return { passed: false, reason: 'G01_QUERY_SUBJECTS_SELECTION_EVIDENCE_MISSING' };
   }
   const report = {
     schemaVersion: 1,
-    evidenceKind: PROFILE.evidenceKind,
+    evidenceKind: profile.evidenceKind,
     runNumber: 95,
     frontierId: 'G01',
     scenarioId: null,
-    epochId: PROFILE.epochId,
-    profileId: PROFILE.id,
-    profile: 'codex-luna-max-offline-agent-mcp-matrix-v1',
-    model: PROFILE.model,
-    reasoningEffort: PROFILE.reasoningEffort,
+    epochId: profile.epochId,
+    profileId: profile.id,
+    profile: isV2
+      ? 'codex-luna-max-offline-agent-mcp-matrix-v2'
+      : 'codex-luna-max-offline-agent-mcp-matrix-v1',
+    model: profile.model,
+    reasoningEffort: profile.reasoningEffort,
     reviewerId: claim.reviewerId,
     codexCliVersion,
     observedAt: new Date().toISOString(),
@@ -648,15 +719,15 @@ export function buildG01QuerySubjectsOfflineProfileReport(
     mcpBundleSha256: claim.bundleSha256,
     registrySha256: claim.registrySha256,
     selectionEvidenceSha256: sha256(selectionBytes),
-    toolName: PROFILE.toolName,
-    argumentProfile: PROFILE.argumentProfile,
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
     catalogSha256: serverSummary.catalogSha256,
     toolDescriptionSha256: serverSummary.toolDescriptionSha256,
     inputSchemaSha256: serverSummary.inputSchemaSha256,
     serverToolNames: serverSummary.serverToolNames,
     serverToolCount: serverSummary.serverToolCount,
-    networkMode: G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
+    networkMode: spec.networkMode,
     mcpServerNames: events.mcpServerNames,
     processExitCode: events.processExitCode,
     resultStatus: 'SUCCESS',
@@ -669,9 +740,9 @@ export function buildG01QuerySubjectsOfflineProfileReport(
     shellToolCallCount: events.shellToolCallCount,
     allowedCallCount: serverSummary.allowedCallCount,
     deniedCallCount: serverSummary.deniedCallCount,
-    answerCheckMethod: G01_QUERY_SUBJECTS_OFFLINE_ANSWER_CHECK_METHOD,
-    answerSha256: sha256(G01_QUERY_SUBJECTS_OFFLINE_ACKNOWLEDGEMENT),
-    answerUtf8Bytes: Buffer.byteLength(G01_QUERY_SUBJECTS_OFFLINE_ACKNOWLEDGEMENT, 'utf8'),
+    answerCheckMethod: spec.answerCheckMethod,
+    answerSha256: sha256(spec.acknowledgement),
+    answerUtf8Bytes: Buffer.byteLength(spec.acknowledgement, 'utf8'),
     answerChecks: expectedAnswerChecks(),
     resultSummary: serverSummary.results[0].resultSummary,
     offlineFixture: serverSummary.offlineFixture,
@@ -679,6 +750,10 @@ export function buildG01QuerySubjectsOfflineProfileReport(
     privacy: expectedPrivacy(),
     runnerReceipt: null,
   };
+  if (isV2) {
+    report.blockedWebSearchErrorItemCount = events.blockedWebSearchErrorItemCount;
+    report.unexpectedCodexErrorItemCount = events.unexpectedCodexErrorItemCount;
+  }
   report.runnerReceipt = createRunnerReceipt(
     buildG01QuerySubjectsOfflineRunnerReceiptPayload(report, {
       eventStreamSha256,
@@ -688,7 +763,7 @@ export function buildG01QuerySubjectsOfflineProfileReport(
   );
   const validation = validateG01QuerySubjectsOfflineProfileReport(report, claim, null, root);
   if (!validation.passed) return validation;
-  const target = reportPath ?? path.join(root, REPORT_RELATIVE_PATH);
+  const target = reportPath ?? path.join(root, spec.reportPath);
   try {
     const fd = openSync(target, 'wx', 0o600);
     try {
@@ -704,7 +779,7 @@ export function buildG01QuerySubjectsOfflineProfileReport(
       root,
     );
     if (!finalValidation.passed) return finalValidation;
-    return { passed: true, reportSha256: sha256(reportBytes), reportPath: REPORT_RELATIVE_PATH };
+    return { passed: true, reportSha256: sha256(reportBytes), reportPath: spec.reportPath };
   } catch {
     return { passed: false, reason: 'G01_QUERY_SUBJECTS_REPORT_WRITE_FAILED' };
   }
@@ -715,19 +790,24 @@ export function validateG01QuerySubjectsOfflineSanitizedReportFile(
   root = ROOT,
   reportPath = null,
 ) {
-  if (!PROFILE || !assertG01QuerySubjectsOfflineProfile(PROFILE)) {
+  const context = profileContext(claim?.profileId);
+  if (!context) {
     return { passed: false, reason: 'G01_QUERY_SUBJECTS_PROFILE_INVALID' };
   }
-  const target = reportPath ?? path.join(root, REPORT_RELATIVE_PATH);
+  const { profile, spec } = context;
+  const target = reportPath ?? path.join(root, spec.reportPath);
   try {
-    if (path.resolve(target) !== path.resolve(root, REPORT_RELATIVE_PATH)) {
+    if (path.resolve(target) !== path.resolve(root, spec.reportPath)) {
       return { passed: false, reason: 'G01_QUERY_SUBJECTS_REPORT_PATH_INVALID' };
     }
     const bytes = readFileSync(target);
     const report = JSON.parse(bytes.toString('utf8'));
     const validation = validateG01QuerySubjectsOfflineProfileReport(report, claim, bytes, root);
     if (!validation.passed) return validation;
-    return { passed: true, reportPath: REPORT_RELATIVE_PATH, reportSha256: sha256(bytes), report };
+    if (report.profileId !== profile.id) {
+      return { passed: false, reason: 'G01_QUERY_SUBJECTS_REPORT_PROFILE_INVALID' };
+    }
+    return { passed: true, reportPath: spec.reportPath, reportSha256: sha256(bytes), report };
   } catch {
     return { passed: false, reason: 'G01_QUERY_SUBJECTS_REPORT_UNAVAILABLE' };
   }

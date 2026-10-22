@@ -9,6 +9,10 @@ import {
   G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS,
   G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
   G01_QUERY_SUBJECTS_OFFLINE_SERVER_ID,
+  G01_QUERY_SUBJECTS_OFFLINE_V2_ACKNOWLEDGEMENT,
+  G01_QUERY_SUBJECTS_OFFLINE_V2_EXPECTED_ARGUMENTS,
+  G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,
+  G01_QUERY_SUBJECTS_OFFLINE_V2_SERVER_ID,
 } from '../../scripts/lib/g01-query-subjects-offline-matrix-profile.mjs';
 import {
   assertG01QuerySubjectsOfflineCandidateReviewGate,
@@ -20,6 +24,7 @@ import {
 import { validateG01QuerySubjectsOfflineServerSummary } from '../../scripts/acceptance/write-g01-query-subjects-offline-agent-mcp-report.mjs';
 
 const PROFILE = getAgentMcpProfileById('g01-query-subjects-offline-agent-mcp-matrix-v1');
+const PROFILE_V2 = getAgentMcpProfileById(G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID);
 const SOURCE_SHA = 'a'.repeat(40);
 const BASE_SHA = 'b'.repeat(40);
 const BUNDLE_SHA = 'c'.repeat(64);
@@ -155,7 +160,35 @@ function serverSummaryFixture() {
 test('G01 query-subjects runner only accepts Run 95', () => {
   assert.equal(validateG01QuerySubjectsOfflineRunnerArgs(['--help']), 'help');
   assert.equal(validateG01QuerySubjectsOfflineRunnerArgs(['--run', '95']), 'run');
+  assert.equal(
+    validateG01QuerySubjectsOfflineRunnerArgs([
+      '--run',
+      '95',
+      '--profile-id',
+      G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,
+    ]),
+    'run',
+  );
   assert.throws(() => validateG01QuerySubjectsOfflineRunnerArgs(['--run', '94']));
+  assert.throws(() =>
+    validateG01QuerySubjectsOfflineRunnerArgs(['--run', '95', '--profile-id', 'unknown']),
+  );
+});
+
+test('v2 Codex invocation is pinned to its unique server and exact registered tool', () => {
+  const args = buildG01QuerySubjectsOfflineCodexExecArgs({
+    nodePath: '/usr/bin/node',
+    summaryPath: '/tmp/g01-v2-summary.json',
+    sourceRevision: SOURCE_SHA,
+    bundleSha256: BUNDLE_SHA,
+    profileId: G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,
+  });
+  assert.ok(args.some((value) => value.includes(G01_QUERY_SUBJECTS_OFFLINE_V2_SERVER_ID)));
+  assert.ok(args.some((value) => value.includes(G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID)));
+  assert.ok(args.some((value) => value.includes('enabled_tools=["bangumi.query_subjects"]')));
+  assert.ok(
+    args.some((value) => value.includes(G01_QUERY_SUBJECTS_OFFLINE_V2_EXPECTED_ARGUMENTS.keyword)),
+  );
 });
 
 test('G01 query-subjects Candidate gate binds exact Base, CI, and Luna Max PASS', () => {
@@ -289,6 +322,57 @@ test('G01 query-subjects failure classification emits fixed safe codes', () => {
   assert.equal(
     JSON.stringify(classifyG01QuerySubjectsOfflineFailure(base)).includes('PRIVATE OUTPUT'),
     false,
+  );
+});
+
+test('v2 only accepts bounded explicit disabled-web-search errors', () => {
+  const validEvents = {
+    eventStreamComplete: true,
+    turnCompleted: true,
+    codexErrorItemCount: 3,
+    blockedWebSearchErrorItemCount: 3,
+    unexpectedCodexErrorItemCount: 0,
+    nonMcpToolEventCount: 0,
+    shellToolCallCount: 0,
+    mcpServerNames: [G01_QUERY_SUBJECTS_OFFLINE_V2_SERVER_ID],
+    codexMcpToolEventCount: 1,
+    completedMcpCalls: [
+      { tool: PROFILE_V2.toolName, arguments: G01_QUERY_SUBJECTS_OFFLINE_V2_EXPECTED_ARGUMENTS },
+    ],
+    answer: G01_QUERY_SUBJECTS_OFFLINE_V2_ACKNOWLEDGEMENT,
+  };
+  const base = {
+    execution: { failed: false, spawnErrorCode: null },
+    parsed: { parsed: true },
+    events: validEvents,
+    exactCall: true,
+    exactToolEvent: true,
+    serverSummary: {},
+    serverSummaryValid: true,
+    candidateBundleCurrent: true,
+    profileId: G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,
+  };
+  assert.equal(classifyG01QuerySubjectsOfflineFailure(base), 'AGENT_MCP_ASSERTION_FAILED');
+  assert.equal(
+    classifyG01QuerySubjectsOfflineFailure({
+      ...base,
+      events: { ...validEvents, codexErrorItemCount: 4, blockedWebSearchErrorItemCount: 4 },
+    }),
+    'CODEX_ERROR_EVENT',
+  );
+  assert.equal(
+    classifyG01QuerySubjectsOfflineFailure({
+      ...base,
+      events: { ...validEvents, unexpectedCodexErrorItemCount: 1 },
+    }),
+    'CODEX_ERROR_EVENT',
+  );
+  assert.equal(
+    classifyG01QuerySubjectsOfflineFailure({
+      ...base,
+      events: { ...validEvents, blockedWebSearchErrorItemCount: 2 },
+    }),
+    'CODEX_ERROR_EVENT',
   );
 });
 

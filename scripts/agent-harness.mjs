@@ -161,9 +161,9 @@ import { validateC07RenderComparisonOfflineSanitizedReportFile } from './accepta
 import { validateG01RenderQueryOfflineSanitizedReportFile } from './acceptance/write-g01-render-query-subjects-offline-agent-mcp-report.mjs';
 import { validateG01QuerySubjectsOfflineSanitizedReportFile } from './acceptance/write-g01-query-subjects-offline-agent-mcp-report.mjs';
 import {
-  G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID,
   G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
-  G01_QUERY_SUBJECTS_OFFLINE_REPORT_PATH,
+  G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,
+  getG01QuerySubjectsOfflineProfileSpec,
 } from './lib/g01-query-subjects-offline-matrix-profile.mjs';
 import { validateP02SanitizedReportFile } from './acceptance/write-p02-person-profile-agent-mcp-report.mjs';
 import { validateG06SubjectCastOfflineSanitizedReportFile } from './acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs';
@@ -347,6 +347,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'g01-render-query-subjects-offline-agent-mcp-v1',
   G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID,
   'g01-query-subjects-offline-agent-mcp-matrix-v1',
+  G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,
   'query-subjects-fresh-public-matrix-v1',
   'query-subjects-fresh-public-matrix-v2',
 ]);
@@ -3689,7 +3690,7 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
             ? 'An R04 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact source-catalog MCP server/helper and acceptance verifier files, the documented G14 terminal-disposition report/test exception, and this policy file, with the MCP bundle unchanged.'
             : profile.id === 'p03-person-name-cn-agent-mcp-v4'
               ? 'A P03 v4 report refresh may also include only the exact acceptance validator, Harness allowlist, and their regressions needed to record the signed source-Candidate result; the MCP bundle must remain unchanged.'
-            : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
+              : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
         { profileId: profile.id, changedPaths: changedSinceReport },
       );
     }
@@ -4577,6 +4578,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'g01-render-query-subjects-offline-agent-mcp-v2':
       return validateG01RenderQueryOfflineSanitizedReportFile(claim, root, reportPath);
     case 'g01-query-subjects-offline-agent-mcp-matrix-v1':
+    case 'g01-query-subjects-offline-agent-mcp-matrix-v2':
       return validateG01QuerySubjectsOfflineSanitizedReportFile(claim, root, reportPath);
     case 'query-subjects-fresh-public-matrix-v1':
       return validateQuerySubjectsFreshPublicSanitizedReportFile(claim, root, reportPath);
@@ -8665,9 +8667,15 @@ function assertG01RenderQueryOfflineProfileReconciledBeforeMerge(
   }
 }
 
-function assertG01QuerySubjectsOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber) {
-  const profile = getAgentMcpProfileById(G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID);
-  const disposition = agentMcpProfileClaims(epoch)[G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID];
+function assertG01QuerySubjectsOfflineProfileReconciledBeforeMerge(
+  epoch,
+  runNumber,
+  prNumber,
+  profileId = G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
+) {
+  const profile = getAgentMcpProfileById(profileId);
+  const spec = getG01QuerySubjectsOfflineProfileSpec(profileId);
+  const disposition = agentMcpProfileClaims(epoch)[profileId];
   const latestReview = epoch.review_history?.at(-1);
   const terminalState = disposition?.state;
   const reportWritten = terminalState === 'REPORT_WRITTEN';
@@ -8681,13 +8689,14 @@ function assertG01QuerySubjectsOfflineProfileReconciledBeforeMerge(epoch, runNum
       review?.verdict === 'PASS',
   );
   if (
-    epoch.epoch_id !== G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID ||
+    !spec ||
+    epoch.epoch_id !== spec.epochId ||
     epoch.state !== 'REVIEW_PASSED' ||
     epoch.pr_number !== Number(prNumber) ||
     !profile ||
-    disposition?.profileId !== G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID ||
+    disposition?.profileId !== profileId ||
     disposition.frontierId !== 'G01' ||
-    disposition.epochId !== G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID ||
+    disposition.epochId !== spec.epochId ||
     disposition.runNumber !== Number(runNumber) ||
     disposition.prNumber !== Number(prNumber) ||
     disposition.toolName !== 'bangumi.query_subjects' ||
@@ -8752,12 +8761,9 @@ function assertG01QuerySubjectsOfflineProfileReconciledBeforeMerge(epoch, runNum
     );
   }
 
-  const reportPath = path.join(root, G01_QUERY_SUBJECTS_OFFLINE_REPORT_PATH);
+  const reportPath = path.join(root, spec.reportPath);
   const changed = new Set(changedPaths(disposition.sourceCandidateSha));
-  const allowedRefreshPaths = new Set([
-    G01_QUERY_SUBJECTS_OFFLINE_REPORT_PATH,
-    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
-  ]);
+  const allowedRefreshPaths = new Set([spec.reportPath, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md']);
   if ([...changed].some((item) => !allowedRefreshPaths.has(item))) {
     throw new HarnessInvariantError(
       'G01_QUERY_SUBJECTS_OFFLINE_REFRESH_SCOPE_INVALID',
@@ -8768,11 +8774,11 @@ function assertG01QuerySubjectsOfflineProfileReconciledBeforeMerge(epoch, runNum
 
   if (reportWritten) {
     if (
-      disposition.reportPath !== G01_QUERY_SUBJECTS_OFFLINE_REPORT_PATH ||
+      disposition.reportPath !== spec.reportPath ||
       !/^[0-9a-f]{64}$/u.test(disposition.reportSha256 ?? '') ||
       (disposition.unacceptedReportSha256 !== null &&
         disposition.unacceptedReportSha256 !== undefined) ||
-      !changed.has(G01_QUERY_SUBJECTS_OFFLINE_REPORT_PATH) ||
+      !changed.has(spec.reportPath) ||
       !changed.has('docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md')
     ) {
       throw new HarnessInvariantError(
@@ -8879,8 +8885,23 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
     );
     assertG01RenderQueryOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber, profileId);
     ensureCleanWorkingTree();
-  } else if (epoch.epoch_id === G01_QUERY_SUBJECTS_OFFLINE_EPOCH_ID) {
-    assertG01QuerySubjectsOfflineProfileReconciledBeforeMerge(epoch, runNumber, prNumber);
+  } else if (
+    [G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID, G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID].some(
+      (profileId) => getG01QuerySubjectsOfflineProfileSpec(profileId)?.epochId === epoch.epoch_id,
+    )
+  ) {
+    const profileId = [
+      G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
+      G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,
+    ].find(
+      (candidate) => getG01QuerySubjectsOfflineProfileSpec(candidate)?.epochId === epoch.epoch_id,
+    );
+    assertG01QuerySubjectsOfflineProfileReconciledBeforeMerge(
+      epoch,
+      runNumber,
+      prNumber,
+      profileId,
+    );
     ensureCleanWorkingTree();
   } else ensureCleanWorkingTree();
   if (

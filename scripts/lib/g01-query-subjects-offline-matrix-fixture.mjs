@@ -1,10 +1,12 @@
-import { canonicalAgentMcpProfileJson } from './agent-mcp-profile-claims.mjs';
 import {
-  G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS,
-  G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
-  G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_KEYWORD,
-  G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_SUBJECT_ID,
+  canonicalAgentMcpProfileJson,
+  getAgentMcpProfileById,
+} from './agent-mcp-profile-claims.mjs';
+import {
+  G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
   assertG01QuerySubjectsOfflineProfile,
+  assertG01QuerySubjectsOfflineV2Profile,
+  getG01QuerySubjectsOfflineProfileSpec,
 } from './g01-query-subjects-offline-matrix-profile.mjs';
 
 const API_ORIGIN = 'https://api.bgm.tv';
@@ -55,12 +57,12 @@ function parseBody(init) {
   }
 }
 
-function syntheticSubject() {
+function syntheticSubject(subjectId) {
   return {
-    id: G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_SUBJECT_ID,
+    id: subjectId,
     type: 2,
-    name: 'Run95 Synthetic Query Subject 990930',
-    name_cn: 'Run95 合成查询条目 990930',
+    name: `Run95 Synthetic Query Subject ${subjectId}`,
+    name_cn: `Run95 合成查询条目 ${subjectId}`,
     date: '2025-10-01',
     platform: 'TV',
     summary: 'Synthetic local fixture only; not a Bangumi record.',
@@ -73,7 +75,7 @@ function syntheticSubject() {
     total_episodes: 1,
     rating: {
       score: 8,
-      rank: G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_SUBJECT_ID,
+      rank: subjectId,
       total: 1,
       count: Object.fromEntries(
         Array.from({ length: 10 }, (_, index) => [String(index + 1), index === 7 ? 1 : 0]),
@@ -83,10 +85,19 @@ function syntheticSubject() {
   };
 }
 
-export function createG01QuerySubjectsOfflineFetch() {
+export function createG01QuerySubjectsOfflineFetch(
+  profile = G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID,
+) {
+  const registeredProfile = typeof profile === 'string' ? getAgentMcpProfileById(profile) : profile;
+  const profileId = registeredProfile?.id;
+  const spec = getG01QuerySubjectsOfflineProfileSpec(profileId);
+  if (!spec || !registeredProfile) {
+    throw new Error('G01 query-subjects fixture requires a registered profile.');
+  }
+  assertG01QuerySubjectsOfflineFixtureProfile(registeredProfile);
   const observedSearches = new Set();
   const counters = {
-    profile: G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
+    profile: spec.networkMode,
     requestCount: 0,
     searchRequestCount: 0,
     duplicateRequestCount: 0,
@@ -127,22 +138,22 @@ export function createG01QuerySubjectsOfflineFetch() {
       (credentials === undefined || credentials === 'omit') &&
       canonicalAgentMcpProfileJson(body) ===
         canonicalAgentMcpProfileJson({
-          keyword: G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_KEYWORD,
+          keyword: spec.syntheticKeyword,
           sort: 'match',
           filter: { type: [2], nsfw: false },
         });
     if (validSearch) {
-      if (observedSearches.has(G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_KEYWORD)) {
+      if (observedSearches.has(spec.syntheticKeyword)) {
         counters.duplicateRequestCount += 1;
         counters.unexpectedRequestCount += 1;
         return new Response('G01 query-subjects fixture denied a duplicate search.', {
           status: 599,
         });
       }
-      observedSearches.add(G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_KEYWORD);
+      observedSearches.add(spec.syntheticKeyword);
       counters.searchRequestCount += 1;
       return response({
-        data: [syntheticSubject()],
+        data: [syntheticSubject(spec.syntheticSubjectId)],
         total: 1,
         limit: 20,
         offset: 0,
@@ -174,12 +185,19 @@ export function createG01QuerySubjectsOfflineFetch() {
 }
 
 export function assertG01QuerySubjectsOfflineFixtureProfile(profile) {
-  if (!assertG01QuerySubjectsOfflineProfile(profile)) {
+  const spec = getG01QuerySubjectsOfflineProfileSpec(profile?.id);
+  const registered =
+    spec?.profileId === G01_QUERY_SUBJECTS_OFFLINE_PROFILE_ID
+      ? assertG01QuerySubjectsOfflineProfile(profile)
+      : spec
+        ? assertG01QuerySubjectsOfflineV2Profile(profile)
+        : false;
+  if (!registered) {
     throw new Error('G01 query-subjects fixture requires its exact registered profile.');
   }
   if (
     canonicalAgentMcpProfileJson(profile.calls[0]?.arguments) !==
-    canonicalAgentMcpProfileJson(G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS)
+    canonicalAgentMcpProfileJson(spec.expectedArguments)
   ) {
     throw new Error('G01 query-subjects fixture arguments do not match its exact profile.');
   }

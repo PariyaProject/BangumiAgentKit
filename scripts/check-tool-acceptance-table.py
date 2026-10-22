@@ -1340,11 +1340,58 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
             g01_query_subjects_network = report.get('networkBoundary') if isinstance(report, dict) else None
             g01_query_subjects_checks = report.get('answerChecks') if isinstance(report, dict) else None
             g01_query_subjects_privacy = report.get('privacy') if isinstance(report, dict) else None
+            g01_query_subjects_profile = None
+            if (
+                isinstance(report, dict)
+                and report.get('profileId') == 'g01-query-subjects-offline-agent-mcp-matrix-v1'
+                and report.get('evidenceKind') == 'codex_cli_g01_query_subjects_offline_agent_mcp'
+            ):
+                g01_query_subjects_profile = {
+                    'profileId': 'g01-query-subjects-offline-agent-mcp-matrix-v1',
+                    'evidenceKind': 'codex_cli_g01_query_subjects_offline_agent_mcp',
+                    'reportPath': 'docs/live-probes/g01-query-subjects-offline-agent-mcp-run95.json',
+                    'serverId': 'bgk_g01_query_subjects_offline',
+                    'networkMode': 'run95-g01-query-subjects-synthetic-offline-v1',
+                    'maxErrors': 0,
+                }
+            elif (
+                isinstance(report, dict)
+                and report.get('profileId') == 'g01-query-subjects-offline-agent-mcp-matrix-v2'
+                and report.get('evidenceKind') == 'codex_cli_g01_query_subjects_offline_agent_mcp_v2'
+            ):
+                g01_query_subjects_profile = {
+                    'profileId': 'g01-query-subjects-offline-agent-mcp-matrix-v2',
+                    'evidenceKind': 'codex_cli_g01_query_subjects_offline_agent_mcp_v2',
+                    'reportPath': 'docs/live-probes/g01-query-subjects-offline-agent-mcp-v2-run95.json',
+                    'serverId': 'bgk_g01_query_subjects_offline_v2',
+                    'networkMode': 'run95-g01-query-subjects-synthetic-offline-v2',
+                    'maxErrors': 3,
+                }
+            g01_query_subjects_error_count = (
+                report.get('codexErrorItemCount') if isinstance(report, dict) else None
+            )
+            g01_query_subjects_errors_valid = bool(
+                g01_query_subjects_profile is not None
+                and (
+                    type(g01_query_subjects_error_count) is int
+                    and g01_query_subjects_error_count == 0
+                    if g01_query_subjects_profile['maxErrors'] == 0
+                    else (
+                        type(g01_query_subjects_error_count) is int
+                        and 0 <= g01_query_subjects_error_count <= 3
+                        and type(report.get('blockedWebSearchErrorItemCount')) is int
+                        and report.get('blockedWebSearchErrorItemCount') == g01_query_subjects_error_count
+                        and type(report.get('unexpectedCodexErrorItemCount')) is int
+                        and report.get('unexpectedCodexErrorItemCount') == 0
+                    )
+                )
+            )
             g01_query_subjects_offline_matches = (
                 isinstance(report, dict)
-                and relative_path == 'docs/live-probes/g01-query-subjects-offline-agent-mcp-run95.json'
-                and report.get('evidenceKind') == 'codex_cli_g01_query_subjects_offline_agent_mcp'
-                and report.get('profileId') == 'g01-query-subjects-offline-agent-mcp-matrix-v1'
+                and g01_query_subjects_profile is not None
+                and relative_path == g01_query_subjects_profile['reportPath']
+                and report.get('evidenceKind') == g01_query_subjects_profile['evidenceKind']
+                and report.get('profileId') == g01_query_subjects_profile['profileId']
                 and report.get('runNumber') == 95
                 and report.get('frontierId') == 'G01'
                 and report.get('scenarioId') is None
@@ -1355,12 +1402,13 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                 and report.get('nonMcpToolEventCount') == 0
                 and report.get('nonMcpToolTypes') == []
                 and report.get('shellToolCallCount') == 0
+                and g01_query_subjects_errors_valid
                 and report.get('toolName') == 'bangumi.query_subjects'
                 and report.get('serverToolNames') == ['bangumi.query_subjects']
-                and report.get('mcpServerNames') == ['bgk_g01_query_subjects_offline']
-                and report.get('networkMode') == 'run95-g01-query-subjects-synthetic-offline-v1'
+                and report.get('mcpServerNames') == [g01_query_subjects_profile['serverId']]
+                and report.get('networkMode') == g01_query_subjects_profile['networkMode']
                 and g01_query_subjects_fixture == {
-                    'profile': 'run95-g01-query-subjects-synthetic-offline-v1',
+                    'profile': g01_query_subjects_profile['networkMode'],
                     'requestCount': 1,
                     'searchRequestCount': 1,
                     'duplicateRequestCount': 0,

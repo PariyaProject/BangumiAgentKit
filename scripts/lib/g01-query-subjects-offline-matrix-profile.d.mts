@@ -11,6 +11,19 @@ export const G01_QUERY_SUBJECTS_OFFLINE_ACKNOWLEDGEMENT: string;
 export const G01_QUERY_SUBJECTS_OFFLINE_SERVER_ID: string;
 export const G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_KEYWORD: string;
 export const G01_QUERY_SUBJECTS_OFFLINE_SYNTHETIC_SUBJECT_ID: number;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_EPOCH_ID: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_ARGUMENT_PROFILE: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_NETWORK_MODE: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_REPORT_PATH: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_SELECTION_EVIDENCE_PATH: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_CLAIM_LABEL_NAME: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_EVIDENCE_KIND: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_ANSWER_CHECK_METHOD: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_ACKNOWLEDGEMENT: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_SERVER_ID: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_SYNTHETIC_KEYWORD: string;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_SYNTHETIC_SUBJECT_ID: number;
 export const G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS: Readonly<{
   keyword: string;
   media: 'anime';
@@ -20,4 +33,18 @@ export const G01_QUERY_SUBJECTS_OFFLINE_EXPECTED_ARGUMENTS: Readonly<{
   explain: 'none';
   nsfw: false;
 }>;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_EXPECTED_ARGUMENTS: Readonly<{
+  keyword: string;
+  media: 'anime';
+  resultMode: 'top';
+  limit: 1;
+  sort: 'relevance';
+  explain: 'none';
+  nsfw: false;
+}>;
+export const G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_SPEC: Readonly<Record<string, unknown>>;
+export function getG01QuerySubjectsOfflineProfileSpec(
+  profileId: string,
+): Readonly<Record<string, unknown>> | null;
 export function assertG01QuerySubjectsOfflineProfile(profile: unknown): boolean;
+export function assertG01QuerySubjectsOfflineV2Profile(profile: unknown): boolean;

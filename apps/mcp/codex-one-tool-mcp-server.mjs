@@ -96,7 +96,10 @@ import {
   getG01RenderQueryOfflineProfileSpec,
   isG01RenderQueryOfflineProfileId,
 } from '../../scripts/lib/g01-render-query-subjects-offline-profile.mjs';
-import { G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE } from '../../scripts/lib/g01-query-subjects-offline-matrix-profile.mjs';
+import {
+  G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
+  G01_QUERY_SUBJECTS_OFFLINE_V2_NETWORK_MODE,
+} from '../../scripts/lib/g01-query-subjects-offline-matrix-profile.mjs';
 import {
   assertP02PersonProfileOfflineProfile,
   createP02PersonProfileOfflineFetch,
@@ -363,9 +366,10 @@ async function main(argv = process.argv.slice(2)) {
     assertA01RenderCohortAggregationOfflineProfile(config.profile);
   }
   if (
-    [A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE, A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE].includes(
-      config.networkMode,
-    )
+    [
+      A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE,
+      A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+    ].includes(config.networkMode)
   ) {
     assertA01AggregateCohortOfflineProfile(config.profile);
   }
@@ -387,7 +391,11 @@ async function main(argv = process.argv.slice(2)) {
   if (getG01RenderQueryOfflineProfileSpec(config.profile)) {
     assertG01RenderQueryOfflineFixtureProfile(config.profile);
   }
-  if (config.networkMode === G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE) {
+  if (
+    [G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE, G01_QUERY_SUBJECTS_OFFLINE_V2_NETWORK_MODE].includes(
+      config.networkMode,
+    )
+  ) {
     assertG01QuerySubjectsOfflineFixtureProfile(config.profile);
   }
   if (
@@ -459,8 +467,7 @@ async function main(argv = process.argv.slice(2)) {
       : null;
   const catalogBytes =
     catalogSnapshot?.bytes ?? fs.readFileSync(path.join(PRODUCT_ROOT, 'docs/tool-catalog.json'));
-  const catalog =
-    catalogSnapshot?.catalog ?? JSON.parse(catalogBytes.toString('utf8'));
+  const catalog = catalogSnapshot?.catalog ?? JSON.parse(catalogBytes.toString('utf8'));
   const catalogTools = config.toolNames.map((toolName) =>
     catalog.find((item) => item?.name === toolName),
   );
@@ -520,47 +527,51 @@ async function main(argv = process.argv.slice(2)) {
     ? createRenderSubjectCardOfflineFetch(config.profile)
     : config.networkMode === C03_PERSON_ACTIVITY_OFFLINE_V2_NETWORK_MODE
       ? createC03PersonActivityOfflineV2Fetch(config.profile)
-      : [A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE, A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE].includes(
-      config.networkMode,
-    )
-      ? createA01AggregateCohortOfflineFetch(config.profile)
-      : config.networkMode === A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE
-        ? createA01RenderCohortAggregationOfflineFetch()
-        : config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
-          ? createC07CohortRenderOfflineFixtureFetch()
-          : [
-                P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
-                P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
-              ].includes(config.networkMode)
-            ? createP06RenderPersonProfileOfflineFetch(config.profile?.id)
-            : isC07RenderComparisonOfflineNetworkMode(config.networkMode)
-              ? createC07RenderComparisonOfflineFetch(config.profile)
-              : getG01RenderQueryOfflineProfileSpec(config.profile)
-                ? createG01RenderQueryOfflineFetch(config.profile)
-                : config.networkMode === G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE
-                  ? createG01QuerySubjectsOfflineFetch()
+      : [
+            A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE,
+            A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+          ].includes(config.networkMode)
+        ? createA01AggregateCohortOfflineFetch(config.profile)
+        : config.networkMode === A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE
+          ? createA01RenderCohortAggregationOfflineFetch()
+          : config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
+            ? createC07CohortRenderOfflineFixtureFetch()
+            : [
+                  P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+                  P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+                ].includes(config.networkMode)
+              ? createP06RenderPersonProfileOfflineFetch(config.profile?.id)
+              : isC07RenderComparisonOfflineNetworkMode(config.networkMode)
+                ? createC07RenderComparisonOfflineFetch(config.profile)
+                : getG01RenderQueryOfflineProfileSpec(config.profile)
+                  ? createG01RenderQueryOfflineFetch(config.profile)
                   : [
-                        P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
-                        P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+                        G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
+                        G01_QUERY_SUBJECTS_OFFLINE_V2_NETWORK_MODE,
                       ].includes(config.networkMode)
-                    ? createP02PersonProfileOfflineFetch(config.profile.id)
-                    : [G06_CAST_OFFLINE_NETWORK_MODE, G06_CAST_OFFLINE_V2_NETWORK_MODE].includes(
-                          config.networkMode,
-                        )
-                      ? createG06SubjectCastOfflineFetch(config.profile)
-                      : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
-                        ? createR04SeriesWatchOrderOfflineFetch()
-                        : config.networkMode === R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE
-                          ? createR04SeriesWatchOrderOfflineV2Fetch()
-                          : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
-                            ? createR04RenderSeriesWatchOrderOfflineFetch()
-                            : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE
-                              ? createR04RenderV2SeriesWatchOrderOfflineV2Fetch()
-                              : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
-                                ? createR01RelationsOfflineFetch()
-                                : config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE
-                                  ? createR03RelationsOfflineFetch()
-                                  : null;
+                    ? createG01QuerySubjectsOfflineFetch(config.profile)
+                    : [
+                          P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+                          P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+                        ].includes(config.networkMode)
+                      ? createP02PersonProfileOfflineFetch(config.profile.id)
+                      : [G06_CAST_OFFLINE_NETWORK_MODE, G06_CAST_OFFLINE_V2_NETWORK_MODE].includes(
+                            config.networkMode,
+                          )
+                        ? createG06SubjectCastOfflineFetch(config.profile)
+                        : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
+                          ? createR04SeriesWatchOrderOfflineFetch()
+                          : config.networkMode === R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE
+                            ? createR04SeriesWatchOrderOfflineV2Fetch()
+                            : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
+                              ? createR04RenderSeriesWatchOrderOfflineFetch()
+                              : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE
+                                ? createR04RenderV2SeriesWatchOrderOfflineV2Fetch()
+                                : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
+                                  ? createR01RelationsOfflineFetch()
+                                  : config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE
+                                    ? createR03RelationsOfflineFetch()
+                                    : null;
   const r04RenderAssetFence =
     config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
       ? createR04RenderSeriesWatchOrderAssetFence()
@@ -722,9 +733,7 @@ async function main(argv = process.argv.slice(2)) {
     ...(a01RatingDispersionPublicFetch
       ? { publicRequestScope: a01RatingDispersionPublicFetch.snapshot() }
       : {}),
-    ...(s01AnnualTvPublicFetch
-      ? { publicRequestScope: s01AnnualTvPublicFetch.snapshot() }
-      : {}),
+    ...(s01AnnualTvPublicFetch ? { publicRequestScope: s01AnnualTvPublicFetch.snapshot() } : {}),
     ...(r02PublicFetch ? { publicRequestScope: r02PublicFetch.snapshot() } : {}),
     ...(titleQueryRenderPublicFetch
       ? { publicRequestScope: titleQueryRenderPublicFetch.snapshot() }

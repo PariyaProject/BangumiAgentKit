@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-22T12:17:48Z",
+  "updated_at": "2026-10-22T16:04:35Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -105,9 +105,17 @@
         "tests/integration/tool-direct-execute-discovery.test.ts",
         "scripts/acceptance/run-g01-render-query-subjects-offline-agent-mcp.mjs",
         "tests/harness/run-g01-render-query-subjects-offline-agent-mcp.test.mjs",
-        "scripts/test_acceptance_evidence.py"
+        "scripts/test_acceptance_evidence.py",
+        "docs/research/run95-g01-query-subjects-offline-matrix-v2-contract-2026-10-22.md",
+        "scripts/acceptance/run-g01-query-subjects-offline-agent-mcp.mjs",
+        "scripts/acceptance/write-g01-query-subjects-offline-agent-mcp-report.mjs",
+        "scripts/agent-harness.mjs",
+        "scripts/check-tool-acceptance-table.py",
+        "tests/harness/g01-query-subjects-offline-matrix-fixture.test.mjs",
+        "tests/harness/run-g01-query-subjects-offline-agent-mcp.test.mjs",
+        "tests/harness/write-g01-query-subjects-offline-agent-mcp-report.test.mjs"
       ],
-      "next_action": "Keep G01 PARTIAL: the July 2026 harem question and Bangumi-wide search completeness are not established. Direct public observations support only their own public API rows; preserve the 65/65 public target. The v2 implementation and separate Invocation Epoch gate regression are deterministic readiness evidence only; they do not establish an Agent/MCP call, a G01 scenario answer, or complete search coverage. The frontier ledger is scenario guidance, not a profile-claim status source. Before any new Agent/MCP matrix work, consult the active Run #95 Harness for exact claim and terminal eligibility; never retry the consumed one-shot or any other spent profile, never retry a consumed claim, and do not replay the consumed G01 Agent/MCP canary (the original July 2026 input). Continue on another safe, genuinely unspent frontier.",
+      "next_action": "Keep G01 PARTIAL: the July 2026 harem question and Bangumi-wide search completeness are not established. Any synthetic query_subjects offline observation is matrix-only and cannot establish that scenario or search completeness. If the profile is pursued, require a clean exact Harness Candidate, seven-check CI, candidate:check, and same-identity Luna Max review before at most one fixed synthetic call; never retry the consumed one-shot, terminal v1 profile, or any other spent claim, and do not replay the consumed G01 Agent/MCP canary. The frontier ledger is scenario guidance, not a profile-claim status source; consult the active Run #95 Harness for exact claim and terminal eligibility. Keep the public API target at 65/65 and preserve account/OAuth/community/write/QQ/TIM boundaries.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
