@@ -10010,6 +10010,22 @@ class P06OfflineProfileReportValidationTests(unittest.TestCase):
         del missing_chronology_check['answerChecks']['expectedChronologyResponses']
         self.assertFalse(self.validate_report(missing_chronology_check, report_path))
 
+    def test_v3_implementation_markers_cover_the_exact_current_candidate(self):
+        result = subprocess.run(
+            ['git', '-C', str(GENERATOR.ROOT), 'rev-parse', 'HEAD'],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        candidate_sha = result.stdout.strip()
+        self.assertRegex(candidate_sha, r'^[0-9a-f]{40}$')
+        self.assertTrue(
+            GENERATOR.codex_p06_profile_revision_has_implementation(
+                candidate_sha, GENERATOR.CODEX_P06_V3_PROFILE_ID,
+            ),
+        )
+
     def test_rejects_scenario_credit_network_expansion_and_raw_fields(self):
         scenario_credit = json.loads(json.dumps(self.report))
         scenario_credit['scenarioId'] = 'P06'

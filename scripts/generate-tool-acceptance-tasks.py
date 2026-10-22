@@ -6284,9 +6284,13 @@ CODEX_P06_V3_PROBE_IMPLEMENTATION_MARKERS = {
         'maxChronologySubjects: 3',
     ),
     'scripts/acceptance/run-p06-render-person-profile-agent-mcp.mjs': (
-        *CODEX_P06_PROBE_IMPLEMENTATION_MARKERS[
-            'scripts/acceptance/run-p06-render-person-profile-agent-mcp.mjs'
-        ],
+        'export function validateP06RunnerArgs(',
+        'P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,',
+        'P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID,',
+        'export function assertCandidateReviewGate(',
+        'export function buildP06CodexExecArgs(',
+        'export function validateServerSummary(',
+        'function runP06(',
         'P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID',
         'chronologyRequestCount',
     ),
