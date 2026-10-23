@@ -103,7 +103,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 53);
+  assert.equal(listAgentMcpProfiles().length, 54);
   const r01TextProjection = getAgentMcpProfileById(
     'r01-subject-relations-text-projection-agent-mcp-v2',
   );
@@ -252,6 +252,25 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   );
   assert.equal(c07RenderComparisonV3.calls[0].arguments.maxSubjects, 1);
   assert.notDeepEqual(c07RenderComparisonV3.calls, c07RenderComparisonV2.calls);
+  const c07RenderComparisonV4 = getAgentMcpProfileById(
+    'c07-render-comparison-offline-agent-mcp-matrix-v4',
+  );
+  assert.ok(c07RenderComparisonV4);
+  assert.equal(c07RenderComparisonV4.frontierId, 'C07');
+  assert.equal(c07RenderComparisonV4.epochId, 'run95-renderer-v19-c07-two-cohort-v4-20261023');
+  assert.equal(c07RenderComparisonV4.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(c07RenderComparisonV4.calls[0].arguments.cohorts.length, 2);
+  assert.deepEqual(
+    c07RenderComparisonV4.calls[0].arguments.cohorts.map((cohort) => cohort.query.keyword),
+    [
+      'run95 c07 synthetic cohort f offline matrix 20261023',
+      'run95 c07 synthetic cohort g offline matrix 20261023',
+    ],
+  );
+  assert.equal(c07RenderComparisonV4.calls[0].arguments.maxSubjects, 1);
+  assert.notDeepEqual(c07RenderComparisonV4.calls, c07RenderComparisonV3.calls);
+  assert.notEqual(c07RenderComparisonV4.reportPath, c07RenderComparisonV3.reportPath);
+  assert.notEqual(c07RenderComparisonV4.claimLabelName, c07RenderComparisonV3.claimLabelName);
   const g01RenderQuery = getAgentMcpProfileById('g01-render-query-subjects-offline-agent-mcp-v1');
   assert.ok(g01RenderQuery);
   assert.equal(g01RenderQuery.frontierId, 'G01');

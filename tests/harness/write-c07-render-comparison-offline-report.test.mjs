@@ -11,6 +11,7 @@ import {
 import {
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 import {
@@ -22,6 +23,7 @@ import {
 const PROFILE = getAgentMcpProfileById('c07-render-comparison-offline-agent-mcp-matrix-v1');
 const PROFILE_V2 = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID);
 const PROFILE_V3 = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID);
+const PROFILE_V4 = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
 const CI_RUN_ID = '38806371672';
 const CI_CHECKS = [
   'harness-control',
@@ -71,9 +73,9 @@ function fixtureInput(profile = PROFILE) {
   };
   const offlineFixture = {
     profile: config.networkMode,
-    requestCount: 2,
-    searchRequestCount: 1,
-    subjectDetailRequestCount: 1,
+    requestCount: config.cohorts.length * 2,
+    searchRequestCount: config.cohorts.length,
+    subjectDetailRequestCount: config.cohorts.length,
     duplicateRequestCount: 0,
     unexpectedRequestCount: 0,
     authorizationHeaderCount: 0,
@@ -371,6 +373,45 @@ test('C07 v3 report signs only bounded disabled-web-search error counts', () => 
       buildC07RenderComparisonOfflineProfileReport(overLimit, {
         privateKey: keyPair.privateKey,
       }).passed,
+      false,
+    );
+  } finally {
+    configureC07RenderComparisonOfflineReportProfile(PROFILE.id);
+  }
+});
+
+test('C07 v4 report binds exactly two search/detail pairs and keeps fixture identities private', () => {
+  try {
+    const { input, keyPair } = fixtureInput(PROFILE_V4);
+    const built = buildC07RenderComparisonOfflineProfileReport(input, {
+      privateKey: keyPair.privateKey,
+    });
+    assert.equal(built.passed, true, JSON.stringify(built));
+    assert.equal(built.report.profileId, PROFILE_V4.id);
+    assert.deepEqual(built.report.offlineFixture, {
+      profile: getC07RenderComparisonOfflineConfig(PROFILE_V4.id).networkMode,
+      requestCount: 4,
+      searchRequestCount: 2,
+      subjectDetailRequestCount: 2,
+      duplicateRequestCount: 0,
+      unexpectedRequestCount: 0,
+      authorizationHeaderCount: 0,
+      expectedOperationsComplete: true,
+      rawFixturePayloadStored: false,
+    });
+    const serialized = JSON.stringify(built.report);
+    assert.equal(serialized.includes('992401'), false);
+    assert.equal(serialized.includes('992402'), false);
+    assert.equal(serialized.includes('cohort f offline matrix'), false);
+    assert.equal(
+      validateC07RenderComparisonOfflineProfileReport(built.report, input.claim).passed,
+      true,
+    );
+
+    const wrongRequestCount = structuredClone(built.report);
+    wrongRequestCount.offlineFixture.requestCount = 2;
+    assert.equal(
+      validateC07RenderComparisonOfflineProfileReport(wrongRequestCount, input.claim).passed,
       false,
     );
   } finally {

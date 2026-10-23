@@ -38,12 +38,23 @@ function parseBody(init) {
   }
 }
 
-function syntheticSubject(config) {
+function hasRequestBody(input, init) {
+  const requestBody = typeof Request !== 'undefined' && input instanceof Request && input.body !== null;
+  return requestBody || (init?.body !== undefined && init.body !== null);
+}
+
+function syntheticSubject(config, cohort = config.cohorts[0]) {
+  const subjectId = cohort.subjectId;
+  const score = cohort.score ?? 7;
+  const lowerScore = Math.max(1, Math.min(10, Math.floor(score)));
+  const upperScore = Math.max(1, Math.min(10, Math.ceil(score)));
+  const upperScoreCount = Math.round((score - Math.floor(score)) * 10);
+  const lowerScoreCount = 10 - upperScoreCount;
   return {
-    id: config.subjectId,
+    id: subjectId,
     type: 2,
-    name: config.subjectName,
-    name_cn: config.subjectNameCn,
+    name: cohort.subjectName ?? `Synthetic Cohort ${cohort.cohortLabel.at(-1)} Work ${subjectId}`,
+    name_cn: cohort.subjectNameCn ?? `${cohort.cohortLabel} 作品 ${subjectId}`,
     date: '2024-04-01',
     platform: 'TV',
     summary: 'Synthetic offline fixture only; not a Bangumi record.',
@@ -53,16 +64,25 @@ function syntheticSubject(config) {
     tags: [],
     meta_tags: [],
     rating: {
-      score: 7,
-      rank: config.subjectId,
+      score,
+      rank: cohort.rank ?? subjectId,
       total: 10,
-      count: Object.fromEntries(
-        Array.from({ length: 10 }, (_, index) => [String(index + 1), index === 6 ? 10 : 0]),
-      ),
+      count: Object.fromEntries(Array.from({ length: 10 }, (_, index) => {
+        const rating = index + 1;
+        const count =
+          lowerScore === upperScore
+            ? rating === lowerScore ? 10 : 0
+            : rating === lowerScore
+              ? lowerScoreCount
+              : rating === upperScore
+                ? upperScoreCount
+                : 0;
+        return [String(rating), count];
+      })),
     },
-    collection: { wish: 1, collect: 2, doing: 0, on_hold: 0, dropped: 0 },
-    eps: 1,
-    total_episodes: 1,
+    collection: cohort.collection ?? { wish: 1, collect: 2, doing: 0, on_hold: 0, dropped: 0 },
+    eps: cohort.eps ?? 1,
+    total_episodes: cohort.totalEpisodes ?? 1,
   };
 }
 
@@ -72,7 +92,9 @@ export function createC07RenderComparisonOfflineFetch(
   const profileId = typeof profile === 'string' ? profile : profile?.id;
   const config = getC07RenderComparisonOfflineConfig(profileId);
   if (!config) throw new Error('C07 render-comparison fixture received an unknown profile.');
-  const detailPath = `/v0/subjects/${config.subjectId}`;
+  const cohorts = config.cohorts;
+  const cohortByKeyword = new Map(cohorts.map((cohort) => [cohort.keyword, cohort]));
+  const cohortBySubjectId = new Map(cohorts.map((cohort) => [cohort.subjectId, cohort]));
   const observedSearches = new Set();
   const observedDetails = new Set();
   const counters = {
@@ -108,6 +130,7 @@ export function createC07RenderComparisonOfflineFetch(
 
     if (method === 'POST' && url.pathname === SEARCH_PATH) {
       const body = parseBody(init);
+      const cohort = cohortByKeyword.get(body?.keyword);
       const valid =
         url.href === `${ORIGIN}${SEARCH_PATH}?limit=20&offset=0` &&
         !headers.has('authorization') &&
@@ -117,10 +140,10 @@ export function createC07RenderComparisonOfflineFetch(
         Object.keys(body?.filter ?? {})
           .sort()
           .join(',') === 'type' &&
-        body?.keyword === config.keyword &&
+        cohort !== undefined &&
         body.sort === 'match' &&
         JSON.stringify(body.filter.type) === JSON.stringify([2]);
-      const duplicate = valid && observedSearches.has(config.keyword);
+      const duplicate = valid && observedSearches.has(cohort.keyword);
       if (!valid || duplicate) {
         if (duplicate) counters.duplicateRequestCount += 1;
         counters.unexpectedRequestCount += 1;
@@ -128,33 +151,43 @@ export function createC07RenderComparisonOfflineFetch(
           status: 599,
         });
       }
-      observedSearches.add(config.keyword);
+      observedSearches.add(cohort.keyword);
       counters.searchRequestCount += 1;
       return response({
-        data: [syntheticSubject(config)],
+        data: [syntheticSubject(config, cohort)],
         total: 1,
         limit: 20,
         offset: 0,
       });
     }
 
-    if (method === 'GET' && url.pathname === detailPath && url.href === `${ORIGIN}${detailPath}`) {
-      if (headers.has('authorization') || init?.body !== undefined) {
+    const subjectIdMatch = /^\/v0\/subjects\/(\d+)$/u.exec(url.pathname);
+    const subjectId = subjectIdMatch ? Number(subjectIdMatch[1]) : null;
+    const cohort = subjectId === null ? undefined : cohortBySubjectId.get(subjectId);
+    const detailPath = cohort ? `/v0/subjects/${cohort.subjectId}` : null;
+    if (
+      method === 'GET' &&
+      cohort &&
+      detailPath &&
+      url.pathname === detailPath &&
+      url.href === `${ORIGIN}${detailPath}`
+    ) {
+      if (headers.has('authorization') || hasRequestBody(input, init)) {
         counters.unexpectedRequestCount += 1;
         return new Response('C07 render-comparison fixture denied a detail request variant.', {
           status: 599,
         });
       }
-      if (observedDetails.has(config.subjectId)) {
+      if (!observedSearches.has(cohort.keyword) || observedDetails.has(cohort.subjectId)) {
         counters.duplicateRequestCount += 1;
         counters.unexpectedRequestCount += 1;
         return new Response('C07 render-comparison fixture denied a duplicate detail request.', {
           status: 599,
         });
       }
-      observedDetails.add(config.subjectId);
+      observedDetails.add(cohort.subjectId);
       counters.subjectDetailRequestCount += 1;
-      return response(syntheticSubject(config));
+      return response(syntheticSubject(config, cohort));
     }
 
     counters.unexpectedRequestCount += 1;
@@ -167,7 +200,11 @@ export function createC07RenderComparisonOfflineFetch(
     fetchFn,
     snapshot() {
       counters.expectedOperationsComplete =
-        observedSearches.size === 1 && observedDetails.size === 1;
+        observedSearches.size === cohorts.length &&
+        observedDetails.size === cohorts.length &&
+        counters.duplicateRequestCount === 0 &&
+        counters.unexpectedRequestCount === 0 &&
+        counters.authorizationHeaderCount === 0;
       return { ...counters };
     },
   };

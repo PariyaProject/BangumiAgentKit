@@ -12,6 +12,7 @@ import {
   C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
   assertC07RenderComparisonOfflineProfile,
+  getC07RenderComparisonOfflineConfig,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 import { summarizeProfileToolResult } from '../../scripts/lib/codex-profile-tool-summary.mjs';
 
@@ -69,6 +70,85 @@ test('C07 fixture serves exactly one synthetic search and one subject detail res
     rawFixturePayloadStored: false,
   });
   assert.equal(JSON.stringify(snapshot).includes('Synthetic Cohort C'), false);
+});
+
+test('C07 v4 fixture serves exactly two bounded searches and two distinct subject details', async () => {
+  const profileId = 'c07-render-comparison-offline-agent-mcp-matrix-v4';
+  const profile = getAgentMcpProfileById(profileId);
+  const config = getC07RenderComparisonOfflineConfig(profileId);
+  const fixture = createC07RenderComparisonOfflineFetch(profileId);
+  const [cohortF, cohortG] = config.expectedArguments.cohorts;
+  const search = (keyword) =>
+    fixture.fetchFn(SEARCH_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ keyword, sort: 'match', filter: { type: [2] } }),
+    });
+  const searchF = await search(cohortF.query.keyword);
+  const searchG = await search(cohortG.query.keyword);
+  const detailF = await fixture.fetchFn(`https://api.bgm.tv/v0/subjects/${config.cohorts[0].subjectId}`);
+  const detailG = await fixture.fetchFn(`https://api.bgm.tv/v0/subjects/${config.cohorts[1].subjectId}`);
+
+  assert.ok(profile);
+  assert.equal(searchF.status, 200);
+  assert.equal(searchG.status, 200);
+  const subjectF = (await searchF.json()).data[0];
+  const subjectG = (await searchG.json()).data[0];
+  assert.equal(subjectF.id, 992401);
+  assert.equal(subjectG.id, 992402);
+  for (const subject of [subjectF, subjectG]) {
+    const histogramMean =
+      Object.entries(subject.rating.count).reduce(
+        (sum, [rating, count]) => sum + Number(rating) * count,
+        0,
+      ) / subject.rating.total;
+    assert.equal(histogramMean, subject.rating.score);
+  }
+  assert.equal(detailF.status, 200);
+  assert.equal(detailG.status, 200);
+  assert.equal((await detailF.json()).rating.score, 6.4);
+  assert.equal((await detailG.json()).rating.score, 8.1);
+  assert.deepEqual(fixture.snapshot(), {
+    profile: config.networkMode,
+    requestCount: 4,
+    searchRequestCount: 2,
+    subjectDetailRequestCount: 2,
+    duplicateRequestCount: 0,
+    unexpectedRequestCount: 0,
+    authorizationHeaderCount: 0,
+    expectedOperationsComplete: true,
+    rawFixturePayloadStored: false,
+  });
+
+  const duplicate = await search(cohortF.query.keyword);
+  assert.equal(duplicate.status, 599);
+  assert.equal(fixture.snapshot().expectedOperationsComplete, false);
+  assert.equal(fixture.snapshot().duplicateRequestCount, 1);
+});
+
+test('C07 v4 fixture rejects extra search-body fields and unregistered subject paths', async () => {
+  const profileId = 'c07-render-comparison-offline-agent-mcp-matrix-v4';
+  const config = getC07RenderComparisonOfflineConfig(profileId);
+  const bodyVariantFixture = createC07RenderComparisonOfflineFetch(profileId);
+  const bodyVariant = await bodyVariantFixture.fetchFn(SEARCH_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      keyword: config.cohorts[0].keyword,
+      sort: 'match',
+      filter: { type: [2] },
+      unexpected: true,
+    }),
+  });
+  assert.equal(bodyVariant.status, 599);
+  assert.equal(bodyVariantFixture.snapshot().searchRequestCount, 0);
+  assert.equal(bodyVariantFixture.snapshot().unexpectedRequestCount, 1);
+
+  const pathVariantFixture = createC07RenderComparisonOfflineFetch(profileId);
+  const pathVariant = await pathVariantFixture.fetchFn('https://api.bgm.tv/v0/subjects/992403');
+  assert.equal(pathVariant.status, 599);
+  assert.equal(pathVariantFixture.snapshot().subjectDetailRequestCount, 0);
+  assert.equal(pathVariantFixture.snapshot().unexpectedRequestCount, 1);
 });
 
 test('C07 fixture rejects duplicate, query-drift, method, auth, and wrong-origin requests', async () => {

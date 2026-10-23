@@ -62,7 +62,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   const titleBlock = (
     <TitleBlock
       title={displayTitle}
-      subtitle={originalTitle}
+      subtitle={zine ? undefined : originalTitle}
       theme={theme}
       icon="subject"
       eyebrow={zine ? '条目档案' : undefined}
@@ -416,6 +416,22 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
             padding: gallery ? `${theme.spacing.xs} ${theme.spacing.sm}` : '0',
           }}
         >
+          {zine && originalTitle ? (
+            <div
+              data-layout="zine-subject-original-title"
+              style={{
+                color: theme.textMuted,
+                fontFamily: theme.design.bodyFontFamily,
+                fontSize: '13px',
+                lineHeight: 1.4,
+                minWidth: 0,
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+              }}
+            >
+              {originalTitle}
+            </div>
+          ) : null}
           {!zine &&
             (gallery ? (
               <div

@@ -421,11 +421,12 @@ export function validateC07RenderComparisonOfflineProfileReport(report, claim, r
     artifactImageBytesStored: false,
     credentialsStored: false,
   };
+  const expectedCohortCount = CONFIG.cohorts.length;
   const expectedFixture = {
     profile: CONFIG.networkMode,
-    requestCount: 2,
-    searchRequestCount: 1,
-    subjectDetailRequestCount: 1,
+    requestCount: expectedCohortCount * 2,
+    searchRequestCount: expectedCohortCount,
+    subjectDetailRequestCount: expectedCohortCount,
     duplicateRequestCount: 0,
     unexpectedRequestCount: 0,
     authorizationHeaderCount: 0,

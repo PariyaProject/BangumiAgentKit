@@ -14,6 +14,7 @@ import { RendererError } from './errors.js';
 import { RendererLruCache } from './lru-cache.js';
 import {
   DEFAULT_RENDER_FONT_SIZE_SCALE,
+  getDefaultRenderTypographyOptions,
   type RenderTypographyOptions,
   resolveRenderTypography,
 } from './typography.js';
@@ -356,7 +357,9 @@ export class RenderService {
       );
     }
 
-    const typography = await resolveRenderTypography(options.typography);
+    const typography = await resolveRenderTypography(
+      getDefaultRenderTypographyOptions(designPack, options.typography),
+    );
 
     const controller = new AbortController();
     let timeoutTimer: NodeJS.Timeout | null = setTimeout(() => {

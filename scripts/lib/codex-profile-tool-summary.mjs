@@ -67,6 +67,7 @@ import {
 import {
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
 } from './c07-render-comparison-offline-profile.mjs';
 import {
   isG01RenderQueryOfflineProfileId,
@@ -516,6 +517,7 @@ export function summarizeProfileToolResult(
     profileId === 'c07-render-comparison-offline-agent-mcp-matrix-v1' ||
     profileId === C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID ||
     profileId === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID ||
+    profileId === C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID ||
     profileId === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID ||
     profileId === R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID ||
     profileId === R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID
