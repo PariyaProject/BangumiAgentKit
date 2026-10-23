@@ -9,6 +9,7 @@ import {
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
+import { isG16LunaMaxReviewerId } from '../lib/g16-reviewer-id.mjs';
 import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import { R04_SERIES_WATCH_ORDER_V2_PROFILE_ID } from '../lib/r04-series-watch-order-offline-v2-fixture.mjs';
 import { R04_SERIES_WATCH_ORDER_V3_PROFILE_ID } from '../lib/r04-series-watch-order-offline-v3-fixture.mjs';
@@ -370,9 +371,7 @@ export function validateR04ProfileReport(report, claim, reportBytes = null) {
     report.profile === CONFIG.reportProfile &&
     report.model === PROFILE.model &&
     report.reasoningEffort === PROFILE.reasoningEffort &&
-    new RegExp(`^gpt-6-luna-max-run95-pr${report.prNumber}-round[1-9]\\d*$`, 'u').test(
-      report.reviewerId ?? '',
-    ) &&
+    isG16LunaMaxReviewerId(report.reviewerId, report.prNumber) &&
     /^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/u.test(report.codexCliVersion ?? '') &&
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(report.observedAt ?? '') &&
     /^[0-9a-f]{40}$/u.test(report.sourceRevision ?? '') &&

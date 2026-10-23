@@ -208,8 +208,9 @@ test('R04 report builder refuses a non-exact tool call', () => {
   assert.equal(result.reason, 'R04_RUNNER_GATE_INVALID');
 });
 
-test('R04 v3 report builder signs only the exact multi-node matrix result and rejects altered order', () => {
+test('R04 v3 report builder accepts the Harness local reviewer identity and rejects altered order', () => {
   const value = input(R04_SERIES_WATCH_ORDER_V3_PROFILE_ID);
+  value.claim.reviewerId = '/root/run95_pr267_review';
   const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'r04-v3-report-test-'));
   const reportPath = path.join(tempRoot, value.profile.reportPath);
   mkdirSync(path.dirname(reportPath), { recursive: true });
