@@ -484,13 +484,15 @@ const mandatoryCiChecks = [
 const MAX_CONTROL_BODY_BYTES = 65_536;
 
 function run(command, args, options = {}) {
-  return execFileSync(command, args, {
+  const preserveLeadingWhitespace = options.preserveLeadingWhitespace === true;
+  const output = execFileSync(command, args, {
     cwd: root,
     encoding: 'utf8',
     stdio: options.capture === false ? 'inherit' : ['pipe', 'pipe', 'pipe'],
     input: options.input,
     env: { ...process.env, ...options.env },
-  }).trim();
+  });
+  return preserveLeadingWhitespace ? output.replace(/\r?\n$/u, '') : output.trim();
 }
 
 function git(...args) {
@@ -501,6 +503,10 @@ function gh(...args) {
   const last = args.at(-1);
   const options = last && typeof last === 'object' ? args.pop() : {};
   return run('gh', args, options);
+}
+
+function gitPorcelain(...args) {
+  return run('git', args, { preserveLeadingWhitespace: true });
 }
 
 function parseArgs(argv) {
@@ -3579,6 +3585,14 @@ function isA01AggregateClaimTerminalizedDuringReconciliation(
   );
 }
 
+function porcelainModificationMatches(statusLines, expectedPath) {
+  return statusLines.some(
+    (line) =>
+      [' M', 'M '].includes(line.slice(0, 2)) &&
+      line.slice(3) === expectedPath,
+  );
+}
+
 function agentMcpProfileBundleMatches(
   candidateSha,
   bundleSha256,
@@ -3586,7 +3600,7 @@ function agentMcpProfileBundleMatches(
   profile = null,
 ) {
   if (process.env.HARNESS_MOCK_STATE) {
-    const status = git('status', '--porcelain', '--untracked-files=all');
+    const status = gitPorcelain('status', '--porcelain', '--untracked-files=all');
     const statusLines = status.split('\n').filter(Boolean);
     const reportOnly = listAgentMcpProfiles().some(
       (registered) => statusLines.length === 1 && statusLines[0] === `?? ${registered.reportPath}`,
@@ -3595,12 +3609,12 @@ function agentMcpProfileBundleMatches(
       profile?.id === 'p01-person-director-offline-matrix-v1-20261023' &&
       statusLines.length === 2 &&
       statusLines.includes(`?? ${profile.reportPath}`) &&
-      statusLines.includes('M scripts/agent-harness.mjs');
+      porcelainModificationMatches(statusLines, 'scripts/agent-harness.mjs');
     const renderSubjectCardV5ReportWithValidatorFix =
       profile?.id === 'render-subject-card-compact-typography-agent-mcp-v5' &&
       statusLines.length === 2 &&
       statusLines.includes(`?? ${profile.reportPath}`) &&
-      statusLines.includes('M scripts/agent-harness.mjs');
+      porcelainModificationMatches(statusLines, 'scripts/agent-harness.mjs');
     return (
       bundleSha256 === process.env.HARNESS_G04_BUNDLE_SHA256 &&
       currentHead() === candidateSha &&
@@ -3610,7 +3624,7 @@ function agentMcpProfileBundleMatches(
     );
   }
   try {
-    const status = git('status', '--porcelain', '--untracked-files=all');
+    const status = gitPorcelain('status', '--porcelain', '--untracked-files=all');
     const statusLines = status.split('\n').filter(Boolean);
     const clean = status === '';
     const reportOnly = listAgentMcpProfiles().some(
@@ -3623,7 +3637,7 @@ function agentMcpProfileBundleMatches(
       profile?.id === 'p01-person-director-offline-matrix-v1-20261023' &&
       statusLines.length === 2 &&
       statusLines.includes(`?? ${profile.reportPath}`) &&
-      statusLines.includes('M scripts/agent-harness.mjs');
+      porcelainModificationMatches(statusLines, 'scripts/agent-harness.mjs');
     // The v5 report must be validated by the newly registered dispatcher before this Harness
     // repair can be committed. Permit only the exact report plus this file; the Candidate, Base,
     // CI, reviewer, and MCP bundle stay bound to the original reviewed source.
@@ -3631,7 +3645,7 @@ function agentMcpProfileBundleMatches(
       profile?.id === 'render-subject-card-compact-typography-agent-mcp-v5' &&
       statusLines.length === 2 &&
       statusLines.includes(`?? ${profile.reportPath}`) &&
-      statusLines.includes('M scripts/agent-harness.mjs');
+      porcelainModificationMatches(statusLines, 'scripts/agent-harness.mjs');
     return (
       (clean ||
         (allowReportWorktree &&
@@ -4869,18 +4883,18 @@ function commandEpochAgentMcpProfileResult(options) {
     // The exact terminal label is the write-ahead record. Replay it even if the
     // Candidate went stale after the first PR-body write failed.
     if (!replayingTerminalLatch) assertAgentMcpProfileClaimCurrent(profile, current);
-    const status = git('status', '--porcelain', '--untracked-files=all');
+    const status = gitPorcelain('status', '--porcelain', '--untracked-files=all');
     const statusLines = status.split('\n').filter(Boolean);
     const p01ReportWithValidatorFix =
       profile.id === 'p01-person-director-offline-matrix-v1-20261023' &&
       statusLines.length === 2 &&
       statusLines.includes(`?? ${profile.reportPath}`) &&
-      statusLines.includes('M scripts/agent-harness.mjs');
+      porcelainModificationMatches(statusLines, 'scripts/agent-harness.mjs');
     const renderSubjectCardV5ReportWithValidatorFix =
       profile.id === 'render-subject-card-compact-typography-agent-mcp-v5' &&
       statusLines.length === 2 &&
       statusLines.includes(`?? ${profile.reportPath}`) &&
-      statusLines.includes('M scripts/agent-harness.mjs');
+      porcelainModificationMatches(statusLines, 'scripts/agent-harness.mjs');
     if (
       status !== `?? ${profile.reportPath}` &&
       !p01ReportWithValidatorFix &&

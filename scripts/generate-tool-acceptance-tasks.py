@@ -14420,20 +14420,48 @@ def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
         and latest_review.get('verdict') == 'PASS'
         and latest_review.get('reviewer_id') == report.get('reviewerId')
     )
+    source_pass_is_preserved = (
+        isinstance(reviews, list)
+        and any(
+            isinstance(review, dict)
+            and review.get('candidate_sha') == source_sha
+            and review.get('reviewed_base_sha') == report.get('baseSha')
+            and review.get('verdict') == 'PASS'
+            and review.get('reviewer_id') == report.get('reviewerId')
+            for review in reviews[:-1]
+        )
+    )
+    latest_corrective_review_matches_head = (
+        isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == branch_head_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'CORRECTIVE_REQUIRED'
+        and latest_review.get('reviewer_id') == report.get('reviewerId')
+    )
+    pass_review_refresh_pending = (
+        epoch.get('state') == 'REVIEW_PASSED'
+        and candidate_sha == source_sha
+        and epoch.get('review_pass_sha') == source_sha
+        and latest_review_matches_source
+    )
+    corrective_review_refresh_pending = (
+        epoch.get('state') == 'CORRECTIVE_REQUIRED'
+        and candidate_sha is None
+        and epoch.get('review_pass_sha') is None
+        and latest_corrective_review_matches_head
+        and source_pass_is_preserved
+    )
     report_refresh_pending = (
         profile['id'] == CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_PROFILE['id']
         and active_pr
-        and epoch.get('state') == 'REVIEW_PASSED'
-        and candidate_sha == source_sha
-        and epoch.get('review_pass_sha') == source_sha
-        and branch_head_sha != candidate_sha
+        and (pass_review_refresh_pending or corrective_review_refresh_pending)
+        and branch_head_sha != source_sha
         and isinstance(source_sha, str)
         and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
         and isinstance(report.get('baseSha'), str)
         and re.fullmatch(r'[0-9a-f]{40}', report.get('baseSha')) is not None
         and isinstance(branch_head_sha, str)
         and re.fullmatch(r'[0-9a-f]{40}', branch_head_sha) is not None
-        and latest_review_matches_source
         and _run_repository_git(
             ROOT, 'merge-base', '--is-ancestor', source_sha, branch_head_sha,
         ).returncode == 0
@@ -14463,8 +14491,13 @@ def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
         and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
         and epoch_result.get('pr_head_ref_name') == branch
         and epoch_result.get('pr_is_draft') is False
-        and isinstance(candidate_sha, str)
-        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
+        and (
+            (
+                isinstance(candidate_sha, str)
+                and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
+            )
+            or corrective_review_refresh_pending
+        )
         and isinstance(branch_head_sha, str)
         and re.fullmatch(r'[0-9a-f]{40}', branch_head_sha) is not None
         and epoch_result.get('pr_head_sha') == branch_head_sha

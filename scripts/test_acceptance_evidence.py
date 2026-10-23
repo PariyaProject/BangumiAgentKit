@@ -604,6 +604,110 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
                 ),
             )
 
+    def test_v5_post_corrective_candidate_refresh_requires_preserved_pass_and_exact_finding(self):
+        profile = TABLE_CHECKER.RENDER_SUBJECT_CARD_OFFLINE_PROFILES[
+            'render-subject-card-compact-typography-agent-mcp-v5'
+        ]
+        report = json.loads(json.dumps(self.report))
+        report.update({
+            'profileId': profile['id'],
+            'epochId': profile['epochId'],
+            'sourceRevision': self.source,
+        })
+        branch = f"codex/epoch-{profile['epochId']}"
+        refreshed_head = 'e' * 40
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': self.pr},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'candidate_sha': None,
+                    'review_pass_sha': None,
+                    'state': 'CORRECTIVE_REQUIRED',
+                    'epoch_id': profile['epochId'],
+                    'pr_number': self.pr,
+                    'base_branch': 'master',
+                    'base_sha': self.base,
+                    'branch': branch,
+                    'review_history': [
+                        {
+                            'reviewer_id': report['reviewerId'],
+                            'candidate_sha': self.source,
+                            'reviewed_base_sha': self.base,
+                            'verdict': 'PASS',
+                        },
+                        {
+                            'reviewer_id': report['reviewerId'],
+                            'candidate_sha': refreshed_head,
+                            'reviewed_base_sha': self.base,
+                            'verdict': 'CORRECTIVE_REQUIRED',
+                        },
+                    ],
+                },
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': self.base,
+                'pr_head_ref_name': branch,
+                'pr_head_sha': refreshed_head,
+                'pr_is_draft': False,
+            },
+        }
+        refresh_paths = [
+            profile['reportPath'],
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+            'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/integration/tool-e2e-acceptance.test.ts',
+            'tests/harness/agent-harness-cli.test.mjs',
+        ]
+        successful_ancestry = subprocess.CompletedProcess(
+            ['git', 'merge-base', '--is-ancestor'], 0, '', '',
+        )
+        with patch.object(GENERATOR, '_run_repository_git', return_value=successful_ancestry):
+            self.assertTrue(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, epoch_status, refresh_paths, report['mcpBundleSha256'],
+                ),
+            )
+
+            missing_source_pass = json.loads(json.dumps(epoch_status))
+            missing_source_pass['epoch']['state']['review_history'].pop(0)
+            self.assertFalse(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, missing_source_pass, refresh_paths, report['mcpBundleSha256'],
+                ),
+            )
+
+            wrong_latest_sha = json.loads(json.dumps(epoch_status))
+            wrong_latest_sha['epoch']['state']['review_history'][-1]['candidate_sha'] = 'f' * 40
+            self.assertFalse(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, wrong_latest_sha, refresh_paths, report['mcpBundleSha256'],
+                ),
+            )
+
+            unrelated_path = [*refresh_paths, 'packages/renderer/src/templates/SubjectCard.tsx']
+            self.assertFalse(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, epoch_status, unrelated_path, report['mcpBundleSha256'],
+                ),
+            )
+
+        failed_ancestry = subprocess.CompletedProcess(
+            ['git', 'merge-base', '--is-ancestor'], 1, '', '',
+        )
+        with patch.object(GENERATOR, '_run_repository_git', return_value=failed_ancestry):
+            self.assertFalse(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, epoch_status, refresh_paths, report['mcpBundleSha256'],
+                ),
+            )
+
 
 class C03PersonActivityOfflineV2MatrixTests(unittest.TestCase):
     def setUp(self):

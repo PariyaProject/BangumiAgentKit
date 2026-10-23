@@ -9790,7 +9790,7 @@ test('v5 subject-card result routes its report through the registered validator 
     fs.writeFileSync(reportPath, reportBytes);
     const state = environment.readState();
     state.dirty =
-      `M scripts/agent-harness.mjs\n?? ${RENDER_SUBJECT_CARD_V5_PROFILE.reportPath}`;
+      ` M scripts/agent-harness.mjs\n?? ${RENDER_SUBJECT_CARD_V5_PROFILE.reportPath}`;
     fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
 
     const result = environment.execute([
