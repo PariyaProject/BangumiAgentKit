@@ -15,6 +15,7 @@ import {
 import {
   RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID,
   RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_PROFILE_ID,
+  RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_PROFILE_ID,
 } from '../../scripts/lib/render-subject-card-offline-profile.mjs';
 
 const PROFILE = getAgentMcpProfileById(RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID);
@@ -205,6 +206,25 @@ test('v4 report binds its own profile label, source contract, and synthetic subj
   assert.equal(built.report.profileId, profile.id);
   assert.equal(built.report.profile, 'codex-luna-max-offline-agent-mcp-matrix-v4');
   assert.equal(built.report.offlineFixture.expectedOperation, 'GET /v0/subjects/991904');
+  assert.equal(
+    validateRenderSubjectCardOfflineProfileReport(built.report, input.claim).passed,
+    true,
+  );
+});
+
+test('v5 report binds its own profile, exact CI, and mixed-script synthetic subject input', () => {
+  const profile = getAgentMcpProfileById(RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_PROFILE_ID);
+  const { input, keyPair } = fixtureInput(profile);
+  const built = buildRenderSubjectCardOfflineProfileReport(input, {
+    privateKey: keyPair.privateKey,
+  });
+
+  assert.equal(built.passed, true, JSON.stringify(built));
+  assert.equal(built.report.profileId, profile.id);
+  assert.equal(built.report.profile, 'codex-luna-max-offline-agent-mcp-matrix-v5');
+  assert.equal(built.report.offlineFixture.expectedOperation, 'GET /v0/subjects/991905');
+  assert.equal(built.report.ciRunId, '39577770000');
+  assert.equal(built.report.ciChecks.length, 7);
   assert.equal(
     validateRenderSubjectCardOfflineProfileReport(built.report, input.claim).passed,
     true,

@@ -12,6 +12,12 @@ const TABLE = readFileSync(join(ROOT, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 
 const FRONTIER = JSON.parse(readFileSync(join(ROOT, 'docs/product/frontier-ledger.json'), 'utf8'));
 const P06_AGENT_MCP_REPORT_PATH =
   'docs/live-probes/p06-render-person-profile-agent-mcp-v3-run95.json';
+const RENDER_SUBJECT_CARD_V5_REPORT_PATH =
+  'docs/live-probes/render-subject-card-compact-typography-v5-agent-mcp-run95.json';
+const RENDER_SUBJECT_CARD_V5_REPORT_FILE = join(ROOT, RENDER_SUBJECT_CARD_V5_REPORT_PATH);
+const RENDER_SUBJECT_CARD_V5_REPORT = existsSync(RENDER_SUBJECT_CARD_V5_REPORT_FILE)
+  ? JSON.parse(readFileSync(RENDER_SUBJECT_CARD_V5_REPORT_FILE, 'utf8'))
+  : null;
 const COMPACT_EVIDENCE = JSON.parse(
   readFileSync(join(ROOT, 'docs/live-probes/pariya-agent-compact-e2e-2026-09-23.json'), 'utf8'),
 );
@@ -528,6 +534,76 @@ const CURRENT_G06_CAST_OFFLINE_V2_REPORT = isCurrentG06CastOfflineV2Report(
   : null;
 const CURRENT_CAST_AGENT_MCP_REPORT = CURRENT_G06_CAST_OFFLINE_V2_REPORT ?? CURRENT_S04_REPORT;
 
+function isCurrentRenderSubjectCardV5Report(report: any): boolean {
+  const row = rowsByTool().get('bangumi.render_subject_card');
+  const checks = report?.ciChecks;
+  const answerChecks = report?.answerChecks;
+  return Boolean(
+    report?.schemaVersion === 1 &&
+    report?.evidenceKind === 'codex_cli_render_subject_card_compact_typography_v5_agent_mcp' &&
+    report?.runNumber === 95 &&
+    report?.frontierId === 'OP-008' &&
+    report?.scenarioId === null &&
+    report?.profileId === 'render-subject-card-compact-typography-agent-mcp-v5' &&
+    report?.epochId === 'run95-op008-render-card-compact-typography-v5-20261023' &&
+    report?.profile === 'codex-luna-max-offline-agent-mcp-matrix-v5' &&
+    report?.model === 'gpt-6-luna' &&
+    report?.reasoningEffort === 'max' &&
+    report?.prNumber === 269 &&
+    /^[0-9a-f]{40}$/u.test(report?.sourceRevision ?? '') &&
+    report?.ciSha === report?.sourceRevision &&
+    report?.ciStatus === 'SUCCESS' &&
+    /^\d+$/u.test(report?.ciRunId ?? '') &&
+    Array.isArray(checks) &&
+    checks.length === 7 &&
+    checks.every((check: any) => check.status === 'COMPLETED' && check.conclusion === 'SUCCESS') &&
+    report?.toolName === 'bangumi.render_subject_card' &&
+    report?.processExitCode === 0 &&
+    report?.resultStatus === 'SUCCESS' &&
+    report?.eventStreamParsed === true &&
+    report?.turnCompleted === true &&
+    report?.codexMcpToolEventCount === 1 &&
+    report?.codexErrorItemCount === 0 &&
+    report?.nonMcpToolEventCount === 0 &&
+    report?.shellToolCallCount === 0 &&
+    report?.allowedCallCount === 1 &&
+    report?.deniedCallCount === 0 &&
+    answerChecks &&
+    Object.values(answerChecks).length === 10 &&
+    Object.values(answerChecks).every((value) => value === true) &&
+    report?.offlineFixture?.profile === 'run95-render-subject-card-compact-typography-v5' &&
+    report?.offlineFixture?.expectedOperation === 'GET /v0/subjects/991905' &&
+    report?.offlineFixture?.requestCount === 1 &&
+    report?.offlineFixture?.unexpectedRequestCount === 0 &&
+    report?.offlineFixture?.authorizationHeaderCount === 0 &&
+    report?.offlineFixture?.collectionRequestCount === 0 &&
+    report?.offlineAssetBoundary?.assetResolutionCallCount === 0 &&
+    report?.offlineAssetBoundary?.nonEmptyAssetUrlCount === 0 &&
+    report?.networkBoundary?.liveBangumiApiRequestCount === 0 &&
+    report?.networkBoundary?.rendererAssetRequestCount === 0 &&
+    report?.networkBoundary?.fullCodexHarnessNetworkSandboxed === false &&
+    report?.privacy?.authProfile === 'anonymous' &&
+    report?.privacy?.oauthAttempted === false &&
+    report?.privacy?.accountDataRead === false &&
+    report?.privacy?.writesAttempted === false &&
+    report?.privacy?.communityRead === false &&
+    report?.privacy?.qqPipelineTested === false &&
+    report?.privacy?.timClientTested === false &&
+    report?.privacy?.artifactImageBytesStored === false &&
+    typeof report?.runnerReceipt?.signature === 'string' &&
+    report.runnerReceipt.signature.length > 0 &&
+    toolContractMatchesCurrent(report, 'bangumi.render_subject_card') &&
+    statusMark(row?.[9]) === '✅' &&
+    hasExactMatrixReportReference(row?.[9], RENDER_SUBJECT_CARD_V5_REPORT_PATH),
+  );
+}
+
+const CURRENT_RENDER_SUBJECT_CARD_V5_REPORT = isCurrentRenderSubjectCardV5Report(
+  RENDER_SUBJECT_CARD_V5_REPORT,
+)
+  ? RENDER_SUBJECT_CARD_V5_REPORT
+  : null;
+
 function isCurrentR04RenderV2Report(report: any): boolean {
   const row = rowsByTool().get('bangumi.render_series_watch_order');
   const artifact = report?.resultSummary?.artifact;
@@ -988,6 +1064,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       ...(CURRENT_P06_AGENT_MCP_MATRIX ? ['bangumi.render_person_profile'] : []),
       ...(CURRENT_R04_RENDER_V2_REPORT ? ['bangumi.render_series_watch_order'] : []),
       ...(CURRENT_P03_V4_AGENT_MCP_REPORT ? ['bangumi.get_person_profile'] : []),
+      ...(CURRENT_RENDER_SUBJECT_CARD_V5_REPORT ? ['bangumi.render_subject_card'] : []),
     ];
 
     expect(rows.size).toBe(96);
@@ -1003,7 +1080,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       currentG20Report.scenarios?.[0]?.passed === true &&
       toolContractMatchesCurrent(currentG20Report, 'bangumi.get_subject_relations'),
     );
-    // Subject-card renderer evidence is bound to the previous static-policy catalog and is not current.
+    // Historical subject-card evidence stays catalog-bound; the signed v5 offline profile is checked separately.
     expect(uncoveredNames).toEqual(
       [
         ...(CURRENT_D05_REPORT ? [] : ['bangumi.query_subjects']),
@@ -1020,7 +1097,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         ...(CURRENT_R04_RENDER_V2_REPORT ? [] : ['bangumi.render_series_watch_order']),
         'bangumi.auth_start',
         'bangumi.manage_index',
-        'bangumi.render_subject_card',
+        ...(CURRENT_RENDER_SUBJECT_CARD_V5_REPORT ? [] : ['bangumi.render_subject_card']),
         ...(currentG20Evidence ? [] : ['bangumi.get_subject_relations']),
       ].sort(),
     );
@@ -1103,6 +1180,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_person_collaboration',
         'bangumi.render_revision_timeline',
         'bangumi.render_search',
+        ...(CURRENT_RENDER_SUBJECT_CARD_V5_REPORT ? ['bangumi.render_subject_card'] : []),
         'bangumi.render_subject_comparison',
         ...(CURRENT_C07_RENDERER_REPORT ? ['bangumi.render_subject_cohort_comparison'] : []),
         'bangumi.render_subject_identity',

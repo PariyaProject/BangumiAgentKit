@@ -40,11 +40,18 @@ P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE = next(
     if isinstance(profile, dict)
     and profile.get('id') == 'p01-person-director-offline-matrix-v1-20261023'
 )
-RENDER_SUBJECT_CARD_OFFLINE_PROFILE = next(
-    profile for profile in PROFILE_REGISTRY.get('profiles', [])
+RENDER_SUBJECT_CARD_OFFLINE_PROFILES = {
+    profile['id']: profile
+    for profile in PROFILE_REGISTRY.get('profiles', [])
     if isinstance(profile, dict)
-    and profile.get('id') == 'render-subject-card-compact-typography-agent-mcp-v3'
-)
+    and profile.get('id') in {
+        'render-subject-card-compact-typography-agent-mcp-v3',
+        'render-subject-card-compact-typography-agent-mcp-v5',
+    }
+}
+RENDER_SUBJECT_CARD_OFFLINE_PROFILE = RENDER_SUBJECT_CARD_OFFLINE_PROFILES[
+    'render-subject-card-compact-typography-agent-mcp-v3'
+]
 P03_V4_AGENT_MCP_PROFILE = next(
     profile for profile in PROFILE_REGISTRY.get('profiles', [])
     if isinstance(profile, dict)
@@ -162,7 +169,9 @@ def render_subject_card_offline_agent_mcp_matches(
     """Map only the fixed synthetic render_subject_card call to its Agent/MCP cell."""
     if not isinstance(report, dict):
         return False
-    profile = RENDER_SUBJECT_CARD_OFFLINE_PROFILE
+    profile = RENDER_SUBJECT_CARD_OFFLINE_PROFILES.get(report.get('profileId'))
+    if profile is None:
+        return False
     calls = profile.get('calls')
     expected_arguments = calls[0].get('arguments') if isinstance(calls, list) and len(calls) == 1 else None
     if not isinstance(expected_arguments, dict):
@@ -170,6 +179,10 @@ def render_subject_card_offline_agent_mcp_matches(
     registry_sha256 = hashlib.sha256(json.dumps(
         profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
     ).encode('utf-8')).hexdigest()
+    profile_label = (
+        'codex-luna-max-offline-agent-mcp-matrix-'
+        + str(profile.get('id', '')).rsplit('-', 1)[-1]
+    )
     arguments_sha256 = hashlib.sha256(json.dumps(
         [call.get('arguments') for call in calls] if isinstance(calls, list) else None,
         sort_keys=True, separators=(',', ':'), ensure_ascii=False,
@@ -221,11 +234,13 @@ def render_subject_card_offline_agent_mcp_matches(
         and report.get('epochId') == profile.get('epochId')
         and type(report.get('runNumber')) is int and report.get('runNumber') == 95
         and report.get('frontierId') == 'OP-008' and report.get('scenarioId') is None
-        and report.get('profile') == 'codex-luna-max-offline-agent-mcp-matrix-v3'
+        and report.get('profile') == profile_label
         and report.get('model') == 'gpt-6-luna' and report.get('reasoningEffort') == 'max'
         and report.get('toolName') == profile.get('toolName')
         and report.get('argumentProfile') == profile.get('argumentProfile')
-        and expected_arguments == {'subjectId': 991903, 'includeCollection': False}
+        and expected_arguments.get('includeCollection') is False
+        and type(expected_arguments.get('subjectId')) is int
+        and expected_arguments.get('subjectId') > 0
         and report.get('expectedArgumentsSha256') == arguments_sha256
         and report.get('registrySha256') == registry_sha256
         and report.get('networkMode') == profile.get('networkMode')

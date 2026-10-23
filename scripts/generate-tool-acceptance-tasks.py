@@ -2604,6 +2604,17 @@ CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'render-subject-card-compact-typography-agent-mcp-v3'
 )
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'render-subject-card-compact-typography-agent-mcp-v5'
+)
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILES = {
+    profile['id']: profile
+    for profile in (
+        CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE,
+        CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_PROFILE,
+    )
+}
 CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['id']
 CODEX_RENDER_SUBJECT_CARD_OFFLINE_EPOCH_ID = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['epochId']
 CODEX_RENDER_SUBJECT_CARD_OFFLINE_TOOL_NAME = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE['toolName']
@@ -2646,6 +2657,17 @@ CODEX_RENDER_SUBJECT_CARD_OFFLINE_EVIDENCE_REFRESH_PATHS = {
     CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH,
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
     'docs/product/frontier-ledger.json',
+}
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_EVIDENCE_REFRESH_PATHS = {
+    CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_PROFILE['reportPath'],
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+    'scripts/agent-harness.mjs',
+    'scripts/check-tool-acceptance-table.py',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/test_acceptance_evidence.py',
+    'tests/integration/tool-e2e-acceptance.test.ts',
+    'tests/harness/agent-harness-cli.test.mjs',
 }
 CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
@@ -6413,6 +6435,40 @@ CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'def codex_render_subject_card_offline_profile_report_is_valid(',
         'CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH',
     ),
+}
+CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS_BY_ID = {
+    CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID:
+        CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS,
+    CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_PROFILE['id']: {
+        **{
+            path: markers
+            for path, markers in CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS.items()
+            if path not in {
+                'scripts/agent-harness.mjs',
+                'docs/research/run95-ux002-render-subject-card-compact-typography-v3-source-contract-2026-10-22.md',
+                'tests/harness/render-subject-card-offline-profile.test.mjs',
+                'tests/harness/write-render-subject-card-offline-agent-mcp-report.test.mjs',
+                'scripts/generate-tool-acceptance-tasks.py',
+            }
+        },
+        'scripts/acceptance/agent-mcp-profile-registry.json': (
+            '"id": "render-subject-card-compact-typography-agent-mcp-v5"',
+            '"networkMode": "run95-render-subject-card-compact-typography-v5"',
+            '"subjectId": 991905',
+        ),
+        'scripts/lib/render-subject-card-offline-profile.mjs': (
+            'RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_PROFILE_ID',
+            'RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_ARGUMENTS',
+            'subjectId: 991905',
+        ),
+        'docs/research/run95-ux002-render-subject-card-compact-typography-v5-source-contract-2026-10-23.md': (
+            'subjectId":991905',
+            'run95-op008-render-card-compact-typography-v5-20261023',
+        ),
+        'tests/harness/write-render-subject-card-offline-agent-mcp-report.test.mjs': (
+            'v5 report binds its own profile, exact CI, and mixed-script synthetic subject input',
+        ),
+    },
 }
 CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/agent-mcp-profile-registry.json': (
@@ -14242,11 +14298,20 @@ def codex_p06_profile_report_is_valid(
 
 
 def codex_render_subject_card_offline_profile_spec(profile: object) -> dict[str, object] | None:
-    profile_id = profile.get('profileId') if isinstance(profile, dict) and 'profileId' in profile else profile
-    return CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE if profile_id == CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID else None
+    profile_id = (
+        profile.get('profileId') or profile.get('id')
+        if isinstance(profile, dict)
+        else profile
+    )
+    return CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILES.get(profile_id)
 
 
-def codex_render_subject_card_offline_profile_frontier_is_partial() -> bool:
+def codex_render_subject_card_offline_profile_frontier_is_partial(
+    profile: object = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE,
+) -> bool:
+    profile = codex_render_subject_card_offline_profile_spec(profile)
+    if profile is None:
+        return False
     try:
         frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -14261,37 +14326,56 @@ def codex_render_subject_card_offline_profile_frontier_is_partial() -> bool:
         isinstance(record, dict)
         and record.get('status') == 'PARTIAL'
         and isinstance(refs, list)
-        and CODEX_RENDER_SUBJECT_CARD_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH in refs
+        and profile['selectionEvidencePath'] in refs
     )
 
 
-def codex_render_subject_card_offline_profile_revision_has_implementation(revision: object) -> bool:
+def codex_render_subject_card_offline_profile_revision_has_implementation(
+    revision: object, profile: object = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE,
+) -> bool:
+    profile = codex_render_subject_card_offline_profile_spec(profile)
     if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+        return False
+    if profile is None:
+        return False
+    markers = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS_BY_ID.get(profile['id'])
+    if markers is None:
         return False
     return (
         codex_probe_revision_has_implementation(revision)
-        and _codex_revision_has_markers(
-            str(ROOT), revision, CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS,
-        )
+        and _codex_revision_has_markers(str(ROOT), revision, markers)
     )
 
 
 def codex_render_subject_card_offline_profile_report_matches_candidate_revision(
-    report_path: Path, revision: object,
+    report_path: Path, revision: object, profile_id: object = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID,
 ) -> bool:
-    if not codex_render_subject_card_offline_profile_revision_has_implementation(revision):
+    profile = codex_render_subject_card_offline_profile_spec(profile_id)
+    if profile is None or not codex_render_subject_card_offline_profile_revision_has_implementation(
+        revision, profile,
+    ):
         return False
     return _codex_relations_report_matches_candidate_revision(
-        report_path, revision, CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH,
+        report_path, revision, str(profile['reportPath']),
     )
 
 
-def codex_render_subject_card_offline_profile_evidence_refresh_paths_are_valid(paths: object) -> bool:
+def codex_render_subject_card_offline_profile_evidence_refresh_paths_are_valid(
+    paths: object, profile: object = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE,
+) -> bool:
+    profile = codex_render_subject_card_offline_profile_spec(profile)
+    if profile is None:
+        return False
+    allowed_paths = (
+        CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_EVIDENCE_REFRESH_PATHS
+        if profile['id'] == CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_PROFILE['id']
+        else CODEX_RENDER_SUBJECT_CARD_OFFLINE_EVIDENCE_REFRESH_PATHS
+    )
     return (
         isinstance(paths, (list, tuple, set, frozenset))
-        and CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH in paths
+        and profile['reportPath'] in paths
         and all(
-            isinstance(item, str) and item in CODEX_RENDER_SUBJECT_CARD_OFFLINE_EVIDENCE_REFRESH_PATHS
+            isinstance(item, str) and item in allowed_paths
             for item in paths
         )
     )
@@ -14305,6 +14389,9 @@ def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
 ) -> bool:
     if not isinstance(report, dict) or not isinstance(epoch_status, dict):
         return False
+    profile = codex_render_subject_card_offline_profile_spec(report)
+    if profile is None:
+        return False
     run = epoch_status.get('run')
     epoch_result = epoch_status.get('epoch')
     if not isinstance(run, dict) or not isinstance(epoch_result, dict):
@@ -14314,6 +14401,7 @@ def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
     if not isinstance(run_state, dict) or not isinstance(epoch, dict):
         return False
     candidate_sha = epoch.get('candidate_sha')
+    branch_head_sha = epoch_result.get('pr_head_sha')
     source_sha = report.get('sourceRevision')
     pr_number = report.get('prNumber')
     branch = epoch.get('branch')
@@ -14324,6 +14412,73 @@ def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
         and run_state.get('active_epoch_pr') == pr_number
         and epoch_result.get('github_state') == 'OPEN'
         and epoch.get('state') != 'MERGED'
+    )
+    latest_review_matches_source = (
+        isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == source_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+        and latest_review.get('reviewer_id') == report.get('reviewerId')
+    )
+    source_pass_is_preserved = (
+        isinstance(reviews, list)
+        and any(
+            isinstance(review, dict)
+            and review.get('candidate_sha') == source_sha
+            and review.get('reviewed_base_sha') == report.get('baseSha')
+            and review.get('verdict') == 'PASS'
+            and review.get('reviewer_id') == report.get('reviewerId')
+            for review in reviews[:-1]
+        )
+    )
+    latest_corrective_review_matches_report = (
+        isinstance(latest_review, dict)
+        and isinstance(latest_review.get('candidate_sha'), str)
+        and re.fullmatch(r'[0-9a-f]{40}', latest_review.get('candidate_sha')) is not None
+        and latest_review.get('candidate_sha') != branch_head_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'CORRECTIVE_REQUIRED'
+        and latest_review.get('reviewer_id') == report.get('reviewerId')
+    )
+    latest_corrective_review_is_ancestor = (
+        latest_corrective_review_matches_report
+        and isinstance(branch_head_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', branch_head_sha) is not None
+        and _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor',
+            latest_review.get('candidate_sha'), branch_head_sha,
+        ).returncode == 0
+    )
+    pass_review_refresh_pending = (
+        epoch.get('state') == 'REVIEW_PASSED'
+        and candidate_sha == source_sha
+        and epoch.get('review_pass_sha') == source_sha
+        and latest_review_matches_source
+    )
+    corrective_review_refresh_pending = (
+        epoch.get('state') == 'CORRECTIVE_REQUIRED'
+        and candidate_sha is None
+        and epoch.get('review_pass_sha') is None
+        and latest_corrective_review_is_ancestor
+        and source_pass_is_preserved
+    )
+    report_refresh_pending = (
+        profile['id'] == CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_PROFILE['id']
+        and active_pr
+        and (pass_review_refresh_pending or corrective_review_refresh_pending)
+        and branch_head_sha != source_sha
+        and isinstance(source_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
+        and isinstance(report.get('baseSha'), str)
+        and re.fullmatch(r'[0-9a-f]{40}', report.get('baseSha')) is not None
+        and isinstance(branch_head_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', branch_head_sha) is not None
+        and _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', source_sha, branch_head_sha,
+        ).returncode == 0
+        and codex_render_subject_card_offline_profile_evidence_refresh_paths_are_valid(
+            changed_paths, profile,
+        )
     )
     merged_pr = (
         epoch.get('state') == 'MERGED'
@@ -14338,7 +14493,7 @@ def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
         and pr_number > 0
         and run.get('number') == 95
         and (active_pr or merged_pr)
-        and epoch.get('epoch_id') == CODEX_RENDER_SUBJECT_CARD_OFFLINE_EPOCH_ID
+        and epoch.get('epoch_id') == profile['epochId']
         and epoch.get('pr_number') == pr_number
         and epoch.get('base_branch') == 'master'
         and isinstance(branch, str)
@@ -14347,12 +14502,22 @@ def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
         and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
         and epoch_result.get('pr_head_ref_name') == branch
         and epoch_result.get('pr_is_draft') is False
-        and isinstance(candidate_sha, str)
-        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
-        and epoch_result.get('pr_head_sha') == candidate_sha
+        and (
+            (
+                isinstance(candidate_sha, str)
+                and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
+            )
+            or corrective_review_refresh_pending
+        )
+        and isinstance(branch_head_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', branch_head_sha) is not None
+        and epoch_result.get('pr_head_sha') == branch_head_sha
+        and (candidate_sha == branch_head_sha or report_refresh_pending or merged_pr)
         and isinstance(source_sha, str)
         and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
-        and codex_render_subject_card_offline_profile_evidence_refresh_paths_are_valid(changed_paths)
+        and codex_render_subject_card_offline_profile_evidence_refresh_paths_are_valid(
+            changed_paths, profile,
+        )
         and current_bundle_sha256 == report.get('mcpBundleSha256')
     )
 
@@ -14360,12 +14525,41 @@ def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
 def codex_render_subject_card_offline_profile_report_candidate_binding_is_current(
     report: dict[str, object], epoch_status: object,
 ) -> bool:
+    profile = codex_render_subject_card_offline_profile_spec(report)
+    if profile is None:
+        return False
     candidate = None
     if isinstance(epoch_status, dict):
         epoch_result = epoch_status.get('epoch')
         epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
         candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
-    paths = _codex_p06_profile_report_candidate_paths(report.get('sourceRevision'), candidate)
+        if profile['id'] == CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_PROFILE['id']:
+            candidate = epoch_result.get('pr_head_sha') if isinstance(epoch_result, dict) else None
+    committed_paths = _codex_p06_profile_report_candidate_paths(
+        report.get('sourceRevision'), candidate,
+    )
+    if committed_paths is None:
+        return False
+    paths = set(committed_paths)
+    if (
+        profile['id'] == CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_PROFILE['id']
+        and candidate == report.get('sourceRevision')
+    ):
+        # The v5 report is created after PASS. Permit its exact report and the
+        # bounded validator/matrix repair to generate the refresh document before
+        # the whole evidence-only Candidate is committed. The report must still
+        # pass the durable Harness disposition and signature checks below.
+        result = subprocess.run(
+            ['git', 'status', '--porcelain', '--untracked-files=all'],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return False
+        paths.update(
+            line[3:]
+            for line in result.stdout.splitlines()
+            if len(line) >= 4 and line[3:]
+        )
     bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
     return codex_render_subject_card_offline_profile_candidate_binding_is_valid(
         report, epoch_status, paths, bundle_sha256,
@@ -14390,15 +14584,20 @@ def codex_render_subject_card_offline_profile_epoch_harness_status(
     return status if isinstance(status, dict) else None
 
 
-def codex_render_subject_card_offline_profile_harness_status(pr_number: object) -> dict[str, object] | None:
+def codex_render_subject_card_offline_profile_harness_status(
+    pr_number: object, profile_id: object = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID,
+) -> dict[str, object] | None:
     if type(pr_number) is not int or pr_number < 1:
+        return None
+    profile = codex_render_subject_card_offline_profile_spec(profile_id)
+    if profile is None:
         return None
     try:
         result = subprocess.run(
             [
                 'node', str(ROOT / 'scripts/agent-harness.mjs'), 'epoch:agent-mcp-profile-status',
                 '--run', '95', '--pr', str(pr_number), '--profile-id',
-                CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID,
+                str(profile['id']),
             ],
             cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
         )
@@ -14415,7 +14614,16 @@ def codex_render_subject_card_offline_profile_disposition_matches_report(
 ) -> dict[str, object] | None:
     if not isinstance(harness_status, dict):
         return None
-    profile = CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE
+    profile = codex_render_subject_card_offline_profile_spec(report)
+    if profile is None:
+        return None
+    arguments_sha256 = hashlib.sha256(json.dumps(
+        [call['arguments'] for call in profile['calls']],
+        sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+    registry_sha256 = hashlib.sha256(json.dumps(
+        profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
     receipt = report.get('runnerReceipt')
     disposition = harness_status.get('disposition')
     if (
@@ -14424,8 +14632,8 @@ def codex_render_subject_card_offline_profile_disposition_matches_report(
         or harness_status.get('pr') != report.get('prNumber')
         or harness_status.get('tool_name') != profile['toolName']
         or harness_status.get('argument_profile') != profile['argumentProfile']
-        or harness_status.get('expected_arguments_sha256') != CODEX_RENDER_SUBJECT_CARD_OFFLINE_EXPECTED_ARGUMENTS_SHA256
-        or harness_status.get('registry_sha256') != CODEX_RENDER_SUBJECT_CARD_OFFLINE_REGISTRY_SHA256
+        or harness_status.get('expected_arguments_sha256') != arguments_sha256
+        or harness_status.get('registry_sha256') != registry_sha256
         or harness_status.get('claim_label_present') is not True
         or harness_status.get('terminal_label_present') is not True
         or not isinstance(disposition, dict)
@@ -14450,10 +14658,10 @@ def codex_render_subject_card_offline_profile_disposition_matches_report(
         'ciChecks': report.get('ciChecks'),
         'reviewerId': report.get('reviewerId'),
         'bundleSha256': report.get('mcpBundleSha256'),
-        'registrySha256': CODEX_RENDER_SUBJECT_CARD_OFFLINE_REGISTRY_SHA256,
+        'registrySha256': registry_sha256,
         'toolName': profile['toolName'],
         'argumentProfile': profile['argumentProfile'],
-        'expectedArgumentsSha256': CODEX_RENDER_SUBJECT_CARD_OFFLINE_EXPECTED_ARGUMENTS_SHA256,
+        'expectedArgumentsSha256': arguments_sha256,
         'reportWritten': True,
         'reportPath': profile['reportPath'],
         'reportSha256': report_sha256,
@@ -14477,6 +14685,17 @@ def codex_render_subject_card_offline_profile_report_is_valid(
     profile = codex_render_subject_card_offline_profile_spec(report)
     if not isinstance(report, dict) or profile is None or set(report) != CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_FIELDS:
         return False
+    profile_label = (
+        'codex-luna-max-offline-agent-mcp-matrix-'
+        + str(profile.get('id', '')).rsplit('-', 1)[-1]
+    )
+    expected_arguments_sha256 = hashlib.sha256(json.dumps(
+        [call['arguments'] for call in profile['calls']],
+        sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+    registry_sha256 = hashlib.sha256(json.dumps(
+        profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
     path = report_path or (LIVE_PROBE_DIR / Path(str(profile['reportPath'])).name)
     try:
         relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
@@ -14499,7 +14718,7 @@ def codex_render_subject_card_offline_profile_report_is_valid(
         or type(report.get('runNumber')) is not int or report.get('runNumber') != 95
         or report.get('frontierId') != 'OP-008' or report.get('scenarioId') is not None
         or report.get('epochId') != profile['epochId'] or report.get('profileId') != profile['id']
-        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v3'
+        or report.get('profile') != profile_label
         or report.get('model') != 'gpt-6-luna' or report.get('reasoningEffort') != 'max'
         or not isinstance(report.get('reviewerId'), str)
         or re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', report['reviewerId']) is None
@@ -14507,8 +14726,8 @@ def codex_render_subject_card_offline_profile_report_is_valid(
         or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
         or not isinstance(report.get('observedAt'), str)
         or re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', report['observedAt']) is None
-        or report.get('registrySha256') != CODEX_RENDER_SUBJECT_CARD_OFFLINE_REGISTRY_SHA256
-        or report.get('expectedArgumentsSha256') != CODEX_RENDER_SUBJECT_CARD_OFFLINE_EXPECTED_ARGUMENTS_SHA256
+        or report.get('registrySha256') != registry_sha256
+        or report.get('expectedArgumentsSha256') != expected_arguments_sha256
         or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
         or report.get('toolName') != profile['toolName']
         or report.get('argumentProfile') != profile['argumentProfile']
@@ -14516,8 +14735,10 @@ def codex_render_subject_card_offline_profile_report_is_valid(
         or report.get('serverToolNames') != [profile['toolName']] or report.get('serverToolCount') != 1
         or report.get('mcpServerNames') != ['bgk_render_subject_card_offline']
         or not isinstance(source_revision, str) or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
-        or not codex_render_subject_card_offline_profile_revision_has_implementation(source_revision)
-        or not codex_render_subject_card_offline_profile_frontier_is_partial()
+        or not codex_render_subject_card_offline_profile_revision_has_implementation(
+            source_revision, profile,
+        )
+        or not codex_render_subject_card_offline_profile_frontier_is_partial(profile)
         or not isinstance(report.get('baseSha'), str) or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
         or report.get('ciSha') != source_revision or report.get('ciStatus') != 'SUCCESS'
         or not isinstance(report.get('ciRunId'), str) or re.fullmatch(r'[1-9]\d{3,}', report['ciRunId']) is None
@@ -14546,7 +14767,7 @@ def codex_render_subject_card_offline_profile_report_is_valid(
         or not isinstance(fixture, dict)
         or set(fixture) != CODEX_RENDER_SUBJECT_CARD_OFFLINE_FIXTURE_FIELDS
         or fixture != {
-            'profile': CODEX_RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE,
+            'profile': profile['networkMode'],
             'expectedOperation': f"GET /v0/subjects/{profile['calls'][0]['arguments']['subjectId']}",
             'requestCount': 1,
             'expectedRequestCount': 1,
@@ -14611,7 +14832,9 @@ def codex_render_subject_card_offline_profile_report_is_valid(
     current_epoch_status = epoch_status or codex_render_subject_card_offline_profile_epoch_harness_status(pr_number)
     if not codex_render_subject_card_offline_profile_report_candidate_binding_is_current(report, current_epoch_status):
         return False
-    status = harness_status or codex_render_subject_card_offline_profile_harness_status(pr_number)
+    status = harness_status or codex_render_subject_card_offline_profile_harness_status(
+        pr_number, profile['id'],
+    )
     disposition = codex_render_subject_card_offline_profile_disposition_matches_report(report, status, report_sha256)
     if disposition is None:
         return False
@@ -26730,8 +26953,9 @@ def model_mcp_e2e_report_paths() -> list[Path]:
         LIVE_PROBE_DIR / Path(str(profile['reportPath'])).name
         for profile in CODEX_P06_PROFILES.values()
     )
-    report_paths.append(
-        LIVE_PROBE_DIR / Path(CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH).name,
+    report_paths.extend(
+        LIVE_PROBE_DIR / Path(str(profile['reportPath'])).name
+        for profile in CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILES.values()
     )
     for c07_profile in CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILES.values():
         report_paths.append(LIVE_PROBE_DIR / Path(str(c07_profile['reportPath'])).name)
@@ -27123,22 +27347,29 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 continue
             sources.setdefault(str(p06_profile['toolName']), set()).add(report_source_ref(path))
             continue
-        if report.get('evidenceKind') == CODEX_RENDER_SUBJECT_CARD_OFFLINE_EVIDENCE_KIND:
-            current_status = codex_render_subject_card_offline_profile_harness_status(report.get('prNumber'))
+        render_subject_card_profile = codex_render_subject_card_offline_profile_spec(report)
+        if (
+            render_subject_card_profile is not None
+            and report.get('evidenceKind') == render_subject_card_profile['evidenceKind']
+        ):
+            profile_id = str(render_subject_card_profile['id'])
+            current_status = codex_render_subject_card_offline_profile_harness_status(
+                report.get('prNumber'), profile_id,
+            )
             current_epoch_status = codex_render_subject_card_offline_profile_epoch_harness_status(
                 report.get('prNumber'),
             )
             if (
-                path.name != Path(CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH).name
+                path.name != Path(str(render_subject_card_profile['reportPath'])).name
                 or not codex_render_subject_card_offline_profile_report_is_valid(
                     report, current_status, path, current_epoch_status,
                 )
                 or not codex_render_subject_card_offline_profile_report_matches_candidate_revision(
-                    path, report.get('sourceRevision'),
+                    path, report.get('sourceRevision'), profile_id,
                 )
             ):
                 continue
-            sources.setdefault(CODEX_RENDER_SUBJECT_CARD_OFFLINE_TOOL_NAME, set()).add(
+            sources.setdefault(str(render_subject_card_profile['toolName']), set()).add(
                 report_source_ref(path),
             )
             continue

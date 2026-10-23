@@ -1592,6 +1592,32 @@
       ]
     },
     {
+      "id": "render-subject-card-compact-typography-agent-mcp-v5",
+      "frontierId": "OP-008",
+      "epochId": "run95-op008-render-card-compact-typography-v5-20261023",
+      "toolName": "bangumi.render_subject_card",
+      "argumentProfile": "fixed-ux002-subject-card-991905-no-collection-default-scale-075-v5",
+      "claimLabelName": "harness-r95-render-card-typography-v5-claimed",
+      "reportPath": "docs/live-probes/render-subject-card-compact-typography-v5-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-ux002-render-subject-card-compact-typography-v5-source-contract-2026-10-23.md",
+      "evidenceKind": "codex_cli_render_subject_card_compact_typography_v5_agent_mcp",
+      "answerCheckMethod": "render-subject-card-compact-typography-v5-artifact",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-render-subject-card-compact-typography-v5",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 128,
+      "calls": [
+        {
+          "toolName": "bangumi.render_subject_card",
+          "arguments": {
+            "subjectId": 991905,
+            "includeCollection": false
+          }
+        }
+      ]
+    },
+    {
       "id": "p01-person-director-offline-matrix-v1-20261023",
       "frontierId": "P01",
       "epochId": "run95-p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023",

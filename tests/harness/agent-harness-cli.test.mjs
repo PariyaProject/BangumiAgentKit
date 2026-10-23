@@ -169,6 +169,9 @@ const R04_RENDER_V2_PROFILE = getAgentMcpProfileById(
 );
 const C04_PROFILE = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
 const TITLE_QUERY_RENDER_PROFILE = getAgentMcpProfileById('query-render-title-agent-mcp-v1');
+const RENDER_SUBJECT_CARD_V5_PROFILE = getAgentMcpProfileById(
+  'render-subject-card-compact-typography-agent-mcp-v5',
+);
 const mandatoryChecks = [
   'harness-control',
   'sqlite-default',
@@ -1880,6 +1883,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
     A01_PROFILE.id,
     G06_V2_PROFILE.id,
     R04_RENDER_V2_PROFILE.id,
+    RENDER_SUBJECT_CARD_V5_PROFILE.id,
   ];
   const checks = exactCiProfileIds.includes(profile.id)
     ? mandatoryChecks.map((name, index) => ({
@@ -4827,6 +4831,102 @@ function p06V3ReportRefreshEnvironment(disposition, overrides = {}) {
   return { environment, run, epoch };
 }
 
+function renderSubjectCardV5ReportWrittenDisposition() {
+  return {
+    claimId: `profile-run-95-pr-42-${sha('b').slice(0, 12)}-1700000000000`,
+    profileId: RENDER_SUBJECT_CARD_V5_PROFILE.id,
+    state: 'REPORT_WRITTEN',
+    sourceCandidateSha: sha('b'),
+    bundleSha256: 'c'.repeat(64),
+    reportPath: RENDER_SUBJECT_CARD_V5_PROFILE.reportPath,
+    reportSha256: 'd'.repeat(64),
+    reportWritten: true,
+    retryAllowed: false,
+  };
+}
+
+function renderSubjectCardV5ReportRefreshEnvironment(disposition, overrides = {}) {
+  const { run, epoch } = passedCandidateFixture();
+  const prNumber = 42;
+  const branch = `codex/epoch-${RENDER_SUBJECT_CARD_V5_PROFILE.epochId}`;
+  const ciRunId = '39915023185';
+  const ciRunUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
+  run.state = 'EPOCH_ACTIVE';
+  run.profile = 'AUTONOMOUS_EVOLUTION';
+  run.active_epoch_pr = prNumber;
+  run.pending_epoch = null;
+  run.next_action = `RESUME_PR_${prNumber}`;
+  epoch.epoch_id = RENDER_SUBJECT_CARD_V5_PROFILE.epochId;
+  epoch.branch = branch;
+  epoch.base_branch = 'master';
+  epoch.pr_number = prNumber;
+  epoch.base_sha = sha('a');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.candidate_sha = sha('b');
+  epoch.review_pass_sha = sha('b');
+  epoch.state = 'REVIEW_PASSED';
+  epoch.advances_frontier_ids = [];
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: ciRunUrl };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'The signed v5 report and its matrix route are ready for refresh.',
+    why_not_extend_further: 'Image-bearing visual fidelity remains separate acceptance work.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'Preserve the terminal v5 report and exact renderer matrix boundary.',
+    agent_mcp_profile_dispositions: {
+      [RENDER_SUBJECT_CARD_V5_PROFILE.id]: structuredClone(disposition),
+    },
+  };
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: `gpt-6-luna-max-run95-pr${prNumber}-round1`,
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  const refreshPaths = [
+    RENDER_SUBJECT_CARD_V5_PROFILE.reportPath,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+    'scripts/agent-harness.mjs',
+    'scripts/check-tool-acceptance-table.py',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/test_acceptance_evidence.py',
+    'tests/integration/tool-e2e-acceptance.test.ts',
+    'tests/harness/agent-harness-cli.test.mjs',
+  ];
+  const environment = createMockEnvironment({
+    runIssueNumber: 95,
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch,
+    featureBranch: branch,
+    featureHeadSha: sha('e'),
+    baseSha: sha('a'),
+    candidateRefreshRange: `${sha('b')}...${sha('e')}`,
+    candidateRefreshPaths: refreshPaths,
+    changedPaths: [
+      'packages/renderer/src/templates/SubjectCard.tsx',
+      'tests/render/subject-card-compact-typography.test.ts',
+      ...refreshPaths,
+    ],
+    checks: mandatoryChecks.map((name, index) => ({
+      name,
+      status: 'COMPLETED',
+      conclusion: 'SUCCESS',
+      detailsUrl: `${ciRunUrl}/job/${120286538651 + index}`,
+    })),
+    draft: false,
+    ...overrides,
+  });
+  return { environment, epoch, refreshPaths };
+}
+
 test('C03 report Candidate refresh accepts only the report and bounded acceptance evidence', () => {
   const disposition = c03ReportWrittenDisposition();
   const { environment } = c03ReportRefreshEnvironment(disposition);
@@ -5208,6 +5308,88 @@ test('P06 v3 report Candidate refresh rejects runtime and unrelated paths or bun
     );
   } finally {
     environment.cleanup();
+  }
+});
+
+test('v5 subject-card Candidate refresh allows its exact matrix integration regression', () => {
+  const disposition = renderSubjectCardV5ReportWrittenDisposition();
+  const { environment, epoch } = renderSubjectCardV5ReportRefreshEnvironment(disposition);
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('e'),
+        ci: {
+          url: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/39915023185',
+        },
+        candidate_refresh_reason:
+          'Register the signed v5 renderer result in the exact model-to-MCP integration matrix.',
+        scope_closure: epoch.scope_closure,
+        corrective_closure: epoch.corrective_closure,
+        adversarial_preflight: epoch.adversarial_preflight,
+      }),
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_READY');
+    assert.equal(stored.candidate_sha, sha('e'));
+    assert.deepEqual(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[RENDER_SUBJECT_CARD_V5_PROFILE.id],
+      disposition,
+    );
+  } finally {
+    environment.cleanup();
+  }
+
+  const dispositionWithRuntimePath = renderSubjectCardV5ReportWrittenDisposition();
+  const refreshPaths = [
+    RENDER_SUBJECT_CARD_V5_PROFILE.reportPath,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+    'scripts/agent-harness.mjs',
+    'scripts/check-tool-acceptance-table.py',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/test_acceptance_evidence.py',
+    'tests/integration/tool-e2e-acceptance.test.ts',
+    'tests/harness/agent-harness-cli.test.mjs',
+    'packages/renderer/src/templates/SubjectCard.tsx',
+  ];
+  const unsafe = renderSubjectCardV5ReportRefreshEnvironment(
+    dispositionWithRuntimePath,
+    { candidateRefreshPaths: refreshPaths, changedPaths: refreshPaths },
+  );
+  try {
+    const result = unsafe.environment.execute([
+      'candidate:check',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(unsafe.environment, {
+        candidate_sha: sha('e'),
+        ci: {
+          url: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/39915023185',
+        },
+        candidate_refresh_reason: 'Reject any renderer runtime change after the v5 report.',
+        scope_closure: unsafe.epoch.scope_closure,
+        corrective_closure: unsafe.epoch.corrective_closure,
+        adversarial_preflight: unsafe.epoch.adversarial_preflight,
+      }),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+    assert.equal(
+      parseControlBlock(unsafe.environment.readState().prBody, EPOCH_MARKER).candidate_sha,
+      sha('b'),
+    );
+  } finally {
+    unsafe.environment.cleanup();
   }
 });
 
@@ -9570,5 +9752,73 @@ test('CLI post-merge ancestry failure records the merged PR and truthful blocker
     assert.equal(parseControlBlock(state.runBody, RUN_MARKER).state, 'INTEGRATION_BLOCKED');
   } finally {
     environment.cleanup();
+  }
+});
+
+test('v5 subject-card result routes its report through the registered validator during repair', () => {
+  const harnessRoot = createIsolatedHarnessRoot([RENDER_SUBJECT_CARD_V5_PROFILE.reportPath]);
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(
+    RENDER_SUBJECT_CARD_V5_PROFILE,
+    { harnessRoot },
+  );
+  const runnerKeyPair = generateKeyPairSync('ed25519');
+  const runnerPublicKey = runnerKeyPair.publicKey
+    .export({ type: 'spki', format: 'der' })
+    .toString('base64');
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--profile-id',
+      RENDER_SUBJECT_CARD_V5_PROFILE.id,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      runnerPublicKey,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claim = JSON.parse(claimed.stdout);
+
+    const reportPath = path.join(harnessRoot, RENDER_SUBJECT_CARD_V5_PROFILE.reportPath);
+    fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+    const reportBytes = Buffer.from('{"invalid":true}\n', 'utf8');
+    fs.writeFileSync(reportPath, reportBytes);
+    const state = environment.readState();
+    state.dirty =
+      ` M scripts/agent-harness.mjs\n?? ${RENDER_SUBJECT_CARD_V5_PROFILE.reportPath}`;
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const result = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--profile-id',
+      RENDER_SUBJECT_CARD_V5_PROFILE.id,
+      '--claim-id',
+      claim.claimId,
+      '--state',
+      'REPORT_WRITTEN',
+      '--report-sha256',
+      createHash('sha256').update(reportBytes).digest('hex'),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REPORT_INVALID:/u);
+    assert.doesNotMatch(result.stderr, /AGENT_MCP_PROFILE_REPORT_VALIDATOR_MISSING/u);
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+        .adversarial_preflight.agent_mcp_profile_dispositions[RENDER_SUBJECT_CARD_V5_PROFILE.id]
+        .state,
+      'CLAIMED',
+    );
+  } finally {
+    environment.cleanup();
+    fs.rmSync(harnessRoot, { recursive: true, force: true });
   }
 });
