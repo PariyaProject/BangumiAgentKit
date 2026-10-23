@@ -7,6 +7,7 @@ import {
   createRenderSubjectCardOfflineFetch,
   RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID,
   RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_PROFILE_ID,
+  RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_PROFILE_ID,
 } from '../../scripts/lib/render-subject-card-offline-profile.mjs';
 
 function profile(profileId = RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID) {
@@ -107,6 +108,30 @@ test('render_subject_card v4 fixture has a distinct mixed-script subject and one
   });
 });
 
+test('render_subject_card v5 fixture has a unique long mixed-script subject and one exact read', async () => {
+  const fixture = createRenderSubjectCardOfflineFetch(
+    profile(RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_PROFILE_ID),
+  );
+  const response = await fixture.fetchFn('https://api.bgm.tv/v0/subjects/991905');
+
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.id, 991905);
+  assert.equal(result.name, '潮騒の書架と星の航路 / The Atlas of Quiet Tides');
+  assert.equal(result.name_cn, '潮汐图书馆：在旧书、远海与星降る夜之间寻找归途');
+  assert.deepEqual(fixture.snapshot(), {
+    profile: 'run95-render-subject-card-compact-typography-v5',
+    expectedOperation: 'GET /v0/subjects/991905',
+    requestCount: 1,
+    expectedRequestCount: 1,
+    unexpectedRequestCount: 0,
+    authorizationHeaderCount: 0,
+    collectionRequestCount: 0,
+    expectedOperationComplete: true,
+    rawFixturePayloadStored: false,
+  });
+});
+
 test('render_subject_card offline fixture rejects every route beyond the fixed subject read', async () => {
   const fixture = createRenderSubjectCardOfflineFetch(profile());
 
@@ -148,6 +173,29 @@ test('render_subject_card offline fixture rejects Authorization and non-GET requ
   assert.equal(snapshot.requestCount, 0);
   assert.equal(snapshot.authorizationHeaderCount, 1);
   assert.equal(snapshot.unexpectedRequestCount, 2);
+});
+
+test('render_subject_card offline fixture rejects a body on an otherwise allowed GET', async () => {
+  const fixture = createRenderSubjectCardOfflineFetch(
+    profile(RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_PROFILE_ID),
+  );
+  const requestFixture = createRenderSubjectCardOfflineFetch(
+    profile(RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_PROFILE_ID),
+  );
+
+  await assert.rejects(
+    fixture.fetchFn('https://api.bgm.tv/v0/subjects/991905', { body: '{}' }),
+    /RENDER_SUBJECT_CARD_OFFLINE_UNEXPECTED_REQUEST/u,
+  );
+  await assert.rejects(
+    requestFixture.fetchFn(new Request('https://api.bgm.tv/v0/subjects/991905'), { body: '{}' }),
+    /RENDER_SUBJECT_CARD_OFFLINE_UNEXPECTED_REQUEST/u,
+  );
+
+  assert.equal(fixture.snapshot().requestCount, 0);
+  assert.equal(fixture.snapshot().unexpectedRequestCount, 1);
+  assert.equal(requestFixture.snapshot().requestCount, 0);
+  assert.equal(requestFixture.snapshot().unexpectedRequestCount, 1);
 });
 
 test('render_subject_card offline fixture rejects a duplicate allowed read', async () => {

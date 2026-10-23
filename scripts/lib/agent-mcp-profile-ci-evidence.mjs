@@ -3,6 +3,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'render-subject-card-compact-typography-agent-mcp-v2',
   'render-subject-card-compact-typography-agent-mcp-v3',
   'render-subject-card-compact-typography-agent-mcp-v4',
+  'render-subject-card-compact-typography-agent-mcp-v5',
   'a01-aggregate-cohort-offline-agent-mcp-matrix-v3',
   'p06-render-person-profile-offline-agent-mcp-v1',
   'p06-render-person-profile-offline-agent-mcp-v2',

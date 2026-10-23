@@ -103,7 +103,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 51);
+  assert.equal(listAgentMcpProfiles().length, 52);
   const r01TextProjection = getAgentMcpProfileById(
     'r01-subject-relations-text-projection-agent-mcp-v2',
   );
@@ -116,6 +116,21 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.ok(renderSubjectCardV4);
   assert.equal(renderSubjectCardV4.frontierId, 'OP-008');
   assert.equal(renderSubjectCardV4.calls[0].arguments.subjectId, 991904);
+  const renderSubjectCardV5 = getAgentMcpProfileById(
+    'render-subject-card-compact-typography-agent-mcp-v5',
+  );
+  assert.ok(renderSubjectCardV5);
+  assert.equal(renderSubjectCardV5.frontierId, 'OP-008');
+  assert.equal(
+    renderSubjectCardV5.epochId,
+    'run95-op008-render-card-compact-typography-v5-20261023',
+  );
+  assert.equal(renderSubjectCardV5.calls[0].arguments.subjectId, 991905);
+  assert.notEqual(renderSubjectCardV5.id, renderSubjectCardV4.id);
+  assert.notEqual(renderSubjectCardV5.argumentProfile, renderSubjectCardV4.argumentProfile);
+  assert.notEqual(renderSubjectCardV5.claimLabelName, renderSubjectCardV4.claimLabelName);
+  assert.notEqual(renderSubjectCardV5.reportPath, renderSubjectCardV4.reportPath);
+  assert.notEqual(renderSubjectCardV5.epochId, renderSubjectCardV4.epochId);
   const g01QuerySubjectsV2 = getAgentMcpProfileById(
     'g01-query-subjects-offline-agent-mcp-matrix-v2',
   );

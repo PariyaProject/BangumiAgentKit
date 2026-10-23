@@ -13,6 +13,13 @@ test('subject-card compact typography v4 claims require exact CI evidence', () =
   );
 });
 
+test('subject-card compact typography v5 claims require exact CI evidence', () => {
+  assert.equal(
+    profileRequiresExactCiRunEvidence('render-subject-card-compact-typography-agent-mcp-v5'),
+    true,
+  );
+});
+
 test('subject-card v1-v3 keep their exact CI evidence contract', () => {
   for (const profileId of [
     'render-subject-card-offline-agent-mcp-v1',

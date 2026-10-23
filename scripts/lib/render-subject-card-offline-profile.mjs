@@ -14,6 +14,10 @@ export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_PROFILE_ID =
   'render-subject-card-compact-typography-agent-mcp-v4';
 export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_NETWORK_MODE =
   'run95-render-subject-card-compact-typography-v4';
+export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_PROFILE_ID =
+  'render-subject-card-compact-typography-agent-mcp-v5';
+export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_NETWORK_MODE =
+  'run95-render-subject-card-compact-typography-v5';
 export const RENDER_SUBJECT_CARD_OFFLINE_PROFILE_ID =
   RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_PROFILE_ID;
 export const RENDER_SUBJECT_CARD_OFFLINE_NETWORK_MODE =
@@ -33,6 +37,10 @@ export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V3_ARGUMENTS = Object.freeze
 });
 export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V4_ARGUMENTS = Object.freeze({
   subjectId: 991904,
+  includeCollection: false,
+});
+export const RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_ARGUMENTS = Object.freeze({
+  subjectId: 991905,
   includeCollection: false,
 });
 export const RENDER_SUBJECT_CARD_OFFLINE_ARGUMENTS =
@@ -199,6 +207,48 @@ const PROFILE_CONFIGS = new Map([
       }),
     }),
   ],
+  [
+    RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_PROFILE_ID,
+    Object.freeze({
+      id: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_PROFILE_ID,
+      networkMode: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_NETWORK_MODE,
+      epochId: 'run95-op008-render-card-compact-typography-v5-20261023',
+      argumentProfile: 'fixed-ux002-subject-card-991905-no-collection-default-scale-075-v5',
+      claimLabelName: 'harness-r95-render-card-typography-v5-claimed',
+      reportPath: 'docs/live-probes/render-subject-card-compact-typography-v5-agent-mcp-run95.json',
+      selectionEvidencePath:
+        'docs/research/run95-ux002-render-subject-card-compact-typography-v5-source-contract-2026-10-23.md',
+      evidenceKind: 'codex_cli_render_subject_card_compact_typography_v5_agent_mcp',
+      answerCheckMethod: 'render-subject-card-compact-typography-v5-artifact',
+      reportProfile: 'codex-luna-max-offline-agent-mcp-matrix-v5',
+      arguments: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_ARGUMENTS,
+      fixture: Object.freeze({
+        id: RENDER_SUBJECT_CARD_COMPACT_TYPOGRAPHY_V5_ARGUMENTS.subjectId,
+        type: 2,
+        name: '潮騒の書架と星の航路 / The Atlas of Quiet Tides',
+        name_cn: '潮汐图书馆：在旧书、远海与星降る夜之间寻找归途',
+        date: '2026-10-23',
+        platform: 'TV',
+        summary:
+          '合成条目用于检查紧凑字阶下的多语标题换行、窄幅信息层级与留白；故事穿过潮汐书库、微光灯塔和一段尚未寄出的航海日志。',
+        images: { common: '', large: '', medium: '', small: '' },
+        tags: [
+          { name: '潮汐観測ノート', count: 4 },
+          { name: '长标题混排 / Mixed Script', count: 3 },
+          { name: '合成预览', count: 2 },
+          { name: '字体回退', count: 1 },
+        ],
+        rating: {
+          score: 8.4,
+          rank: 61,
+          total: 21,
+          count: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 6: 1, 7: 5, 8: 8, 9: 5, 10: 1 },
+        },
+        collection: { wish: 5, collect: 9, doing: 3, on_hold: 2, dropped: 1 },
+        total_episodes: 12,
+      }),
+    }),
+  ],
 ]);
 
 function profileMatches(profile) {
@@ -281,6 +331,9 @@ export function createRenderSubjectCardOfflineFetch(profile) {
       const method = String(
         init.method ?? (input instanceof Request ? input.method : 'GET'),
       ).toUpperCase();
+      const hasBody =
+        (input instanceof Request && input.body !== null) ||
+        (init.body !== undefined && init.body !== null);
       const headers = new Headers(input instanceof Request ? input.headers : undefined);
       new Headers(init.headers).forEach((value, key) => headers.set(key, value));
 
@@ -290,6 +343,7 @@ export function createRenderSubjectCardOfflineFetch(profile) {
       const allowed =
         url === expectedUrl &&
         method === 'GET' &&
+        !hasBody &&
         !headers.has('authorization') &&
         requestCount === 0;
       if (!allowed) {
