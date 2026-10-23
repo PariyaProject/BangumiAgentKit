@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createP06RenderPersonProfileOfflineRuntime } from '../../apps/mcp/codex-one-tool-mcp-server.mjs';
 import { parseCodexOneToolMcpArguments } from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
 import {
   P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS,
@@ -61,6 +62,51 @@ test('registered P06 v3 profile selects only chronology-v3 offline mode and argu
   assert.deepEqual(config.expectedArgumentSequence, [
     P06_RENDER_PERSON_PROFILE_V3_EXPECTED_ARGUMENTS,
   ]);
+});
+
+test('P06 server runtime binds v3 to its offline fixture and asset guard', async () => {
+  const config = parseCodexOneToolMcpArguments([
+    '--profile-id',
+    P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID,
+    ...REQUIRED,
+  ]);
+  const runtime = createP06RenderPersonProfileOfflineRuntime(config);
+
+  assert.ok(runtime);
+  assert.equal(
+    runtime.offlineFixture.snapshot().profile,
+    P06_RENDER_PERSON_PROFILE_V3_NETWORK_MODE,
+  );
+  const personResponse = await runtime.offlineFixture.fetchFn(
+    'https://api.bgm.tv/v0/persons/990606',
+  );
+  assert.equal(personResponse.status, 200);
+  assert.equal((await personResponse.json()).id, 990606);
+
+  const unselectedDetail = await runtime.offlineFixture.fetchFn(
+    'https://api.bgm.tv/v0/subjects/990609',
+  );
+  assert.equal(unselectedDetail.status, 599);
+  assert.equal(runtime.offlineFixture.snapshot().unexpectedRequestCount, 1);
+
+  await assert.rejects(
+    runtime.assetGuard.assetResolver.resolveAsset('https://images.example.invalid/a.png'),
+    /P06 offline profile rejects all renderer asset resolution/u,
+  );
+  assert.deepEqual(runtime.assetGuard.snapshot(), {
+    assetResolutionCallCount: 1,
+    nonEmptyAssetUrlCount: 1,
+    blockedAssetRequestCount: 1,
+  });
+
+  assert.throws(
+    () =>
+      createP06RenderPersonProfileOfflineRuntime({
+        ...config,
+        networkMode: 'unregistered-p06-network-mode',
+      }),
+    /exact registered network mode/u,
+  );
 });
 
 test('P06 v3 profile summary retains only bounded artifact metadata', () => {
