@@ -133,6 +133,11 @@ import {
   R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE,
 } from '../../scripts/lib/r04-series-watch-order-offline-v2-fixture.mjs';
 import {
+  assertR04SeriesWatchOrderOfflineV3Profile,
+  createR04SeriesWatchOrderOfflineV3Fetch,
+  R04_SERIES_WATCH_ORDER_V3_NETWORK_MODE,
+} from '../../scripts/lib/r04-series-watch-order-offline-v3-fixture.mjs';
+import {
   assertR04RenderSeriesWatchOrderOfflineProfile,
   createR04RenderSeriesWatchOrderAssetFence,
   createR04RenderSeriesWatchOrderOfflineFetch,
@@ -416,6 +421,9 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE) {
     assertR04SeriesWatchOrderOfflineV2Profile(config.profile);
   }
+  if (config.networkMode === R04_SERIES_WATCH_ORDER_V3_NETWORK_MODE) {
+    assertR04SeriesWatchOrderOfflineV3Profile(config.profile);
+  }
   if (config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE) {
     assertR04RenderSeriesWatchOrderOfflineProfile(config.profile);
   }
@@ -570,7 +578,9 @@ async function main(argv = process.argv.slice(2)) {
                           ? createR04SeriesWatchOrderOfflineFetch()
                           : config.networkMode === R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE
                             ? createR04SeriesWatchOrderOfflineV2Fetch()
-                            : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
+                            : config.networkMode === R04_SERIES_WATCH_ORDER_V3_NETWORK_MODE
+                              ? createR04SeriesWatchOrderOfflineV3Fetch()
+                              : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
                               ? createR04RenderSeriesWatchOrderOfflineFetch()
                               : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE
                                 ? createR04RenderV2SeriesWatchOrderOfflineV2Fetch()

@@ -29,6 +29,7 @@ import {
 } from './g06-subject-cast-offline-profile.mjs';
 import { R04_SERIES_WATCH_ORDER_OFFLINE_PROFILE_ID } from './r04-series-watch-order-offline-fixture.mjs';
 import { R04_SERIES_WATCH_ORDER_V2_PROFILE_ID } from './r04-series-watch-order-offline-v2-fixture.mjs';
+import { R04_SERIES_WATCH_ORDER_V3_PROFILE_ID } from './r04-series-watch-order-offline-v3-fixture.mjs';
 import { C04_COHORT_COMPARISON_PROFILE_ID } from './c04-cohort-comparison-public-profile.mjs';
 import {
   R01_RELATIONS_OFFLINE_PROFILE_ID,
@@ -576,10 +577,12 @@ export function summarizeProfileToolResult(
         : null,
     };
   }
-  if (profileId === R04_SERIES_WATCH_ORDER_V2_PROFILE_ID) {
+  if (
+    [R04_SERIES_WATCH_ORDER_V2_PROFILE_ID, R04_SERIES_WATCH_ORDER_V3_PROFILE_ID].includes(profileId)
+  ) {
     const coverage = result?.coverage;
-    const watchOrder = Array.isArray(result?.watchOrder) ? result.watchOrder.slice(0, 2) : [];
-    const related = Array.isArray(result?.related) ? result.related.slice(0, 1) : [];
+    const watchOrder = Array.isArray(result?.watchOrder) ? result.watchOrder.slice(0, 3) : [];
+    const related = Array.isArray(result?.related) ? result.related.slice(0, 2) : [];
     const placement = (value) =>
       ['root', 'before_root', 'after_root'].includes(value) ? value : 'unknown';
     return {

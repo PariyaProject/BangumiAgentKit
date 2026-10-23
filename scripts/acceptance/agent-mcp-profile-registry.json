@@ -409,6 +409,34 @@
       ]
     },
     {
+      "id": "r04-series-watch-order-offline-agent-mcp-v3",
+      "frontierId": "R04",
+      "epochId": "run95-r04-series-watch-order-offline-matrix-v3-20261023",
+      "toolName": "bangumi.get_series_watch_order",
+      "argumentProfile": "fixed-r04-synthetic-watch-order-991404-two-direct-nodes-depth1-max2-anime-v3",
+      "claimLabelName": "harness-r95-r04-watch-order-offline-v3-claimed",
+      "reportPath": "docs/live-probes/r04-series-watch-order-offline-agent-mcp-v3-run95.json",
+      "selectionEvidencePath": "docs/research/run95-r04-series-watch-order-offline-matrix-v3-contract-2026-10-23.md",
+      "evidenceKind": "codex_cli_r04_series_watch_order_offline_agent_mcp_v3",
+      "answerCheckMethod": "r04-exact-synthetic-watch-order-two-direct-nodes-v3",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-r04-series-watch-order-offline-multi-node-v3",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 2048,
+      "calls": [
+        {
+          "toolName": "bangumi.get_series_watch_order",
+          "arguments": {
+            "subjectId": 991404,
+            "depth": 1,
+            "maxNodes": 2,
+            "media": "anime"
+          }
+        }
+      ]
+    },
+    {
       "id": "p07-person-season-distribution-agent-mcp-v1",
       "frontierId": "P07",
       "epochId": "run95-p07-observed-season-distribution-20261016",

@@ -10,14 +10,13 @@ import {
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
-import {
-  R04_SERIES_WATCH_ORDER_V2_PROFILE_ID,
-  R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE,
-  R04_SERIES_WATCH_ORDER_V2_ROOT_ID,
-} from '../../scripts/lib/r04-series-watch-order-offline-v2-fixture.mjs';
+import { R04_SERIES_WATCH_ORDER_V2_PROFILE_ID } from '../../scripts/lib/r04-series-watch-order-offline-v2-fixture.mjs';
+import { R04_SERIES_WATCH_ORDER_V3_PROFILE_ID } from '../../scripts/lib/r04-series-watch-order-offline-v3-fixture.mjs';
+import { getR04SeriesWatchOrderOfflineProfileConfig } from '../../scripts/lib/r04-series-watch-order-offline-profile-config.mjs';
 import {
   buildR04ProfileReport,
   validateR04ProfileReport,
+  validateR04SeriesWatchOrderOfflineV3SanitizedReportFile,
   validateR04SeriesWatchOrderOfflineV2SanitizedReportFile,
 } from '../../scripts/acceptance/write-r04-series-watch-order-offline-agent-mcp-v2-report.mjs';
 
@@ -37,27 +36,29 @@ const CI_CHECKS = [
   'discovery-foundation',
 ].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
 
-function input() {
+function input(profileId = R04_SERIES_WATCH_ORDER_V2_PROFILE_ID) {
+  const profile = getAgentMcpProfileById(profileId);
+  const config = getR04SeriesWatchOrderOfflineProfileConfig(profileId);
   const keys = generateKeyPairSync('ed25519');
   const publicKeyDer = keys.publicKey.export({ type: 'spki', format: 'der' });
   const publicKeyBase64 = publicKeyDer.toString('base64');
   const catalogBytes = readFileSync(path.resolve('docs/tool-catalog.json'));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
-  const catalogTool = catalog.find((row) => row.name === PROFILE.toolName);
+  const catalogTool = catalog.find((row) => row.name === profile.toolName);
   const claim = {
     schemaVersion: 1,
     claimId: `profile-run-95-pr-186-${SOURCE_SHA.slice(0, 12)}-1792100000000`,
     state: 'CLAIMED',
-    profileId: PROFILE.id,
+    profileId: profile.id,
     frontierId: 'R04',
-    epochId: PROFILE.epochId,
+    epochId: profile.epochId,
     runNumber: 95,
     prNumber: 186,
-    toolName: PROFILE.toolName,
-    argumentProfile: PROFILE.argumentProfile,
-    expectedArguments: PROFILE.calls.map((call) => call.arguments),
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
-    registrySha256: agentMcpProfileRegistrySha256(PROFILE.id),
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
+    expectedArguments: profile.calls.map((call) => call.arguments),
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+    registrySha256: agentMcpProfileRegistrySha256(profile.id),
     sourceCandidateSha: SOURCE_SHA,
     baseSha: BASE_SHA,
     ciSha: SOURCE_SHA,
@@ -73,17 +74,17 @@ function input() {
   };
   const serverSummary = {
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
-    profileId: PROFILE.id,
-    argumentProfile: PROFILE.argumentProfile,
-    networkMode: R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE,
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
+    profileId: profile.id,
+    argumentProfile: profile.argumentProfile,
+    networkMode: config.networkMode,
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
     sourceRevision: SOURCE_SHA,
     bundleSha256: BUNDLE_SHA,
     catalogSha256: sha256(catalogBytes),
-    toolName: PROFILE.toolName,
+    toolName: profile.toolName,
     toolDescriptionSha256: sha256(catalogTool.description ?? ''),
     inputSchemaSha256: sha256(canonicalAgentMcpProfileJson(catalogTool.inputSchema)),
-    serverToolNames: [PROFILE.toolName],
+    serverToolNames: [profile.toolName],
     serverToolCount: 1,
     expectedCallCount: 1,
     serverResultStatus: 'SUCCESS',
@@ -93,32 +94,10 @@ function input() {
       {
         sequenceIndex: 0,
         status: 'SUCCESS',
-        resultSummary: {
-          state: 'complete',
-          subjectId: R04_SERIES_WATCH_ORDER_V2_ROOT_ID,
-          watchOrderCount: 2,
-          watchOrder: [
-            { id: 990818, isRoot: false, placement: 'before_root' },
-            { id: 990817, isRoot: true, placement: 'root' },
-          ],
-          relatedCount: 1,
-          relatedIds: [990818],
-          relationRequests: 2,
-          relationRowsObserved: 1,
-          detailsAttempted: 1,
-        },
+        resultSummary: config.expectedResultSummary,
       },
     ],
-    offlineFixture: {
-      profile: R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE,
-      requestCount: 4,
-      subjectRequestCount: 2,
-      relationsRequestCount: 2,
-      duplicateRequestCount: 0,
-      unexpectedRequestCount: 0,
-      authorizationHeaderCount: 0,
-      expectedOperationsComplete: true,
-    },
+    offlineFixture: config.expectedFixture,
   };
   const events = {
     processExitCode: 0,
@@ -129,13 +108,13 @@ function input() {
     nonMcpToolEventCount: 0,
     nonMcpToolTypes: [],
     shellToolCallCount: 0,
-    mcpServerNames: ['bgk_r04_watch_order_v2'],
+    mcpServerNames: [config.serverId],
     exactCall: true,
     exactToolEvent: true,
     allowedCallCount: 1,
     deniedCallCount: 0,
   };
-  return { claim, serverSummary, events, keys };
+  return { claim, serverSummary, events, keys, config, profile };
 }
 
 test('R04 report builder signs only sanitized matrix evidence without scenario credit', () => {
@@ -227,4 +206,46 @@ test('R04 report builder refuses a non-exact tool call', () => {
   );
   assert.equal(result.passed, false);
   assert.equal(result.reason, 'R04_RUNNER_GATE_INVALID');
+});
+
+test('R04 v3 report builder signs only the exact multi-node matrix result and rejects altered order', () => {
+  const value = input(R04_SERIES_WATCH_ORDER_V3_PROFILE_ID);
+  const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'r04-v3-report-test-'));
+  const reportPath = path.join(tempRoot, value.profile.reportPath);
+  mkdirSync(path.dirname(reportPath), { recursive: true });
+  try {
+    const result = buildR04ProfileReport(
+      {
+        claim: value.claim,
+        serverSummary: value.serverSummary,
+        events: value.events,
+        answer: value.config.acknowledgement,
+        codexCliVersion: '0.1.0',
+        eventStreamSha256: '1'.repeat(64),
+        serverSummarySha256: '2'.repeat(64),
+      },
+      { privateKey: value.keys.privateKey, root: tempRoot, reportPath },
+    );
+    assert.equal(result.passed, true, result.reason);
+    const validated = validateR04SeriesWatchOrderOfflineV3SanitizedReportFile(
+      value.claim,
+      tempRoot,
+      reportPath,
+    );
+    assert.equal(validated.passed, true, validated.reason);
+    assert.equal(validated.reportSha256, result.reportSha256);
+    assert.equal(validated.report.scenarioId, null);
+    assert.equal(validated.report.offlineFixture.requestCount, 6);
+
+    const altered = { ...validated.report, resultSummary: { ...validated.report.resultSummary } };
+    altered.resultSummary.watchOrder = [...altered.resultSummary.watchOrder].reverse();
+    writeFileSync(reportPath, JSON.stringify(altered));
+    assert.equal(
+      validateR04SeriesWatchOrderOfflineV3SanitizedReportFile(value.claim, tempRoot, reportPath)
+        .passed,
+      false,
+    );
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
 });
