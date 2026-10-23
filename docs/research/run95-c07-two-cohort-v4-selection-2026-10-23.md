@@ -156,6 +156,31 @@ Final v12 images were individually opened across complete/partial, three packs, 
 
 C07 remains UNASSESSED; v4 remains unclaimed. No one-shot claim, Bangumi call, account/OAuth/community/write operation, QQ action, or TIM action occurred.
 
+## Visual fidelity correction and final v16 receipt — 2026-10-24
+
+The user again pointed out that the new render no longer felt like the earlier accepted v19 direction. This time the cause was not missing data: the comparison view had reused one repeated metric-card stack across all packs, used overly large narrow-screen support labels, and let the Graphic Zine font/layout squeeze metric titles. Passing no-overflow checks was not enough to establish visual fidelity.
+
+- `SubjectCohortComparisonCard` now gives each pack a different metric composition: Warm Editorial has a featured score with quiet folio rows; Clean Gallery uses an open A/B/delta matrix; Graphic Zine uses a two-by-two die-cut metric collage with the delta tag on its own line. Zine values use the configured body number face instead of the brush display face. The aggregate heading no longer repeats a badge tile. Narrow metadata is sized with the renderer's 0.75 typography scale in mind.
+- v14 exposed the squeezed Zine labels; v15 separated their delta tags. Individual image inspection then found that the final explanatory line in the partial Warm Editorial cohort card touched the lower mask at 320/360px. v16 adds a mask-safe bottom inset to cohort panels. All 24 changed 320/360px outputs were opened and reviewed individually; the other 36 520/640/960px outputs have the same PNG hashes as the already-inspected v15 matrix and were also individually reviewed.
+- All 60 final v16 images were individually inspected across complete/partial × three packs × light/dark × 320/360/520/640/960px. Complete A/B values, bars, and deltas align; partial values remain `未知` with dashed tracks and no numeric `B−A`; all mask-contained copy is visible with no clipping, overlap, or horizontal overflow. The output reflects local synthetic fixtures only and is not user aesthetic acceptance or QQ/TIM client proof.
+- Final ignored images: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v16/`.
+- Tracked receipt: [`run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json`](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json), SHA-256 `fa6d8ce50f9befcf41659b7dbaaa2eac88eaf0be67526917e9d207b5d5f2e2b3`. Bundle SHA-256 `23e499e6489bcfbf0c06a5ffe1c48bc1219a4c1a299cf5fb3713cc0ca2c8e0f7`; generation-source SHA-256 `110ec70e7b68acccd69bec35426fa17b6bda6e4cb92f93b51972a75ae77543be`. The strict `validateC07V4VisualQaEvidence()` returned `true` against the exact bundle, source, manifest, and 60 PNG hashes.
+- Local targeted verification after this change: `pnpm build`, `pnpm typecheck:tests`, and `pnpm exec vitest run tests/render/subject-cohort-comparison.test.ts` PASS (13/13). Full renderer/Harness/acceptance checks and a fresh exact-Candidate review are still required before the one-shot claim.
+
+C07 remains UNASSESSED and v4 UNCLAIMED. No Bangumi request, OAuth/account/community/write operation, QQ action, or TIM action occurred.
+
+## Gallery title fidelity follow-up and final v17 receipt — 2026-10-24
+
+The v16 image review found one remaining reference mismatch in Clean Gallery: its title still used the generic blue side stripe. The shared `TitleBlock` now has a C07-scoped `cohort-gallery-open` treatment with the Gallery's thin horizontal rule; Warm Editorial and Graphic Zine retain their pack-specific title treatments.
+
+- v17 regenerated the complete matrix against bundle SHA-256 `5db582654ad9574be2106761315e638856b1a73527a6684780203b6e2d2d9616` and source SHA-256 `8749dc9c19edbfef724ad3090e899a4bd443184ff367daeed8b8b1e3b069d281`.
+- Exactly 20 pixels changed from v16, all Clean Gallery outputs across complete/partial, light/dark, and five widths. All 20 changed images were individually reviewed; the other 40 images are byte-identical to v16 and retain their individual review.
+- Final ignored images: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v17/`.
+- The tracked manifest SHA-256 is `9863f6b165417f5efd7d7113ba8fbc1f63ee235a713c8f697c3aef89af1ace09`. `validateC07V4VisualQaEvidence()` returned `true` for the exact manifest, bundle attestation, generation source, and all 60 PNG hashes.
+- The final v17 review remains synthetic local visual QA. It is not user aesthetic acceptance, production-font proof, QQ/TIM display acceptance, or C07 scenario credit.
+
+C07 remains UNASSESSED and v4 UNCLAIMED; no one-shot call, Bangumi request, account/OAuth/community/write operation, QQ action, or TIM action occurred.
+
 ## Visual regression correction, v19 parity, and final v13 receipt — 2026-10-23T17:42Z
 
 The v12 matrix had no clipping, but the user correctly rejected its visual quality. Review found the comparison still read like a tall spreadsheet. A first v13 attempt also regressed: two-column metrics squeezed labels at 320px and the flex container placed all four metric cards in one clipped row. Those attempts were discarded and their generated images removed. The final v13 layout keeps the sample identities paired at narrow widths, stacks the four metric cards below 520px, and uses a two-by-two metric board at 520px and wider. Metric labels and sources share a compact line, A/B values share a baseline, and B−A has a distinct row. Explanatory notes are grouped; pack-specific surfaces and masks remain intact. Mobile sample titles get up to three lines, missing-detail copy is shortened only for the two-cohort compact card, and clipped-panel padding keeps delta labels inside the mask.

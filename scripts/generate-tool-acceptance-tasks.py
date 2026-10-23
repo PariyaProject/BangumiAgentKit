@@ -6567,11 +6567,11 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/generate-c07-render-comparison-offline-v4-visuals.ts': (
         'C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID',
         'delta: undefined',
-        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v13',
+        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v17',
     ),
     'scripts/lib/c07-render-comparison-v4-visual-qa.mjs': (
         'C07_V4_VISUAL_QA_MANIFEST_PATH',
-        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v13',
+        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v17',
         'export function validateC07V4VisualQaEvidence(',
     ),
     'scripts/agent-harness.mjs': (
@@ -6617,11 +6617,11 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'never renders a numeric delta for a partial metric with a stale value',
     ),
     'packages/renderer/src/components/TitleBlock.tsx': (
-        "titleStyle?: 'standard' | 'cohort-report'",
+        "titleStyle?: 'standard' | 'cohort-report' | 'cohort-gallery-open'",
         "titleStyle === 'cohort-report'",
     ),
     'packages/renderer/src/templates/SubjectCohortComparisonCard.tsx': (
-        'titleStyle="cohort-report"',
+        "titleStyle={isGallery ? 'cohort-gallery-open' : 'cohort-report'}",
         'data-layout="cohort-metric-bar"',
     ),
     'tests/harness/c07-render-comparison-v4-visual-qa.test.mjs': (

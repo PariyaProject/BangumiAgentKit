@@ -49,20 +49,28 @@ describe('subject cohort comparison renderer', () => {
     expect(html).not.toContain('searchSubjects');
   });
 
-  it('uses pack-specific title and cohort treatments for the comparison card', () => {
+  it('uses pack-specific metric structure and cohort treatments for the comparison card', () => {
     const viewModel = buildSubjectCohortComparisonViewModel(result, { maxSubjectsPerCohort: 1 });
+    const warmHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'warm-editorial');
     const galleryHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'clean-gallery');
     const zineHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'graphic-zine');
 
+    expect(warmHtml).toContain('data-layout-variant="warm-folio-lead"');
+    expect(warmHtml).toContain('data-layout-variant="warm-folio-row"');
     expect(galleryHtml).toContain('data-title-pack="clean-gallery"');
-    expect(galleryHtml).toContain('border-left:3px solid');
+    expect(galleryHtml).not.toContain('border-left:3px solid');
+    expect(galleryHtml).toContain('border-bottom:1px solid');
     expect(zineHtml).toContain('data-title-pack="graphic-zine"');
     expect(zineHtml).not.toContain('border-left:6px solid');
     expect(galleryHtml).toContain('data-render-mask="panel"');
     expect(zineHtml).toContain('data-render-mask="panel-alt"');
     expect(galleryHtml).toContain('grid-template-columns:repeat(2, minmax(0, 1fr))');
+    expect(galleryHtml).toContain('data-layout="gallery-comparison-matrix"');
+    expect(galleryHtml).toContain('data-layout-variant="gallery-open-row"');
     expect(zineHtml).toContain('drop-shadow(1px 2px 0');
-    expect(zineHtml).toContain('padding:8px 9px 16px');
+    expect(zineHtml).toContain('data-layout="zine-sticker-board"');
+    expect(zineHtml).toContain('data-layout-variant="zine-sticker"');
+    expect(zineHtml).toContain('data-layout="zine-delta-sticker"');
   });
 
   it('prioritizes A, B, and delta values at narrow widths without repeating sample metrics', () => {
@@ -71,6 +79,7 @@ describe('subject cohort comparison renderer', () => {
 
     expect(mobileHtml).toContain('data-layout="cohort-overview"');
     expect(mobileHtml).toContain('data-layout="cohort-meta-compact"');
+    expect(mobileHtml).toContain('padding:9px 10px 14px');
     expect(mobileHtml).toContain('grid-template-columns:repeat(2, minmax(0, 1fr))');
     expect(mobileHtml).toContain('flex-direction:column');
     expect(mobileHtml.match(/data-layout="cohort-metric-board"/gu)).toHaveLength(1);
@@ -175,7 +184,7 @@ describe('subject cohort comparison renderer', () => {
       320,
       'clean-gallery',
     );
-    expect(narrowGalleryHtml).toContain('white-space:nowrap');
+    expect(narrowGalleryHtml).toContain('data-layout-variant="gallery-open-row"');
     expect(narrowGalleryHtml).toContain('不可计算');
     expect(narrowGalleryHtml).toContain('0/1 缺失');
   });

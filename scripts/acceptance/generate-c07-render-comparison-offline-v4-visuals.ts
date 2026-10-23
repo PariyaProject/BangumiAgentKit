@@ -21,7 +21,7 @@ import { computeC07V4VisualQaGenerationSourceSha256 } from '../lib/c07-render-co
 
 const PROFILE_ID = C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID;
 const OUTPUT_DIR = path.resolve(
-  '.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v13',
+  '.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v17',
 );
 const WIDTHS = [320, 360, 520, 640, 960];
 const DESIGN_PACKS = ['warm-editorial', 'clean-gallery', 'graphic-zine'] as const;

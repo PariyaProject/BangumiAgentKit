@@ -17,7 +17,7 @@ export interface TitleBlockProps {
   eyebrowColor?: string;
   showIconEyebrow?: boolean;
   iconSize?: number;
-  titleStyle?: 'standard' | 'cohort-report';
+  titleStyle?: 'standard' | 'cohort-report' | 'cohort-gallery-open';
 }
 
 export const TitleBlock: React.FC<TitleBlockProps> = ({
@@ -42,33 +42,35 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({
     ? `${titleSize * theme.design.titleScale}px`
     : titleFontSize;
   const packTitleStyle =
-    titleStyle === 'cohort-report'
-      ? theme.designPack === 'graphic-zine'
-        ? {
-            padding: '4px 10px 6px',
-            clipPath: theme.design.masks.title,
-            backgroundColor: theme.surfaceAlt,
-          }
-        : theme.designPack === 'clean-gallery'
-          ? { borderLeft: `3px solid ${theme.accent}`, paddingLeft: '10px' }
-          : {
-              borderBottom: `1px solid ${theme.border}`,
-              paddingBottom: '5px',
-            }
-      : theme.designPack === 'clean-gallery'
-        ? { borderLeft: `3px solid ${theme.accent}`, paddingLeft: '10px' }
-        : theme.designPack === 'graphic-zine'
+    titleStyle === 'cohort-gallery-open'
+      ? { borderBottom: `1px solid ${theme.border}`, paddingBottom: '5px' }
+      : titleStyle === 'cohort-report'
+        ? theme.designPack === 'graphic-zine'
           ? {
-              borderLeft: `6px solid ${theme.accent}`,
-              paddingLeft: '8px',
-              paddingRight: '14px',
+              padding: '4px 10px 6px',
               clipPath: theme.design.masks.title,
               backgroundColor: theme.surfaceAlt,
             }
-          : {
-              borderBottom: `1px solid ${theme.border}`,
-              paddingBottom: '5px',
-            };
+          : theme.designPack === 'clean-gallery'
+            ? { borderLeft: `3px solid ${theme.accent}`, paddingLeft: '10px' }
+            : {
+                borderBottom: `1px solid ${theme.border}`,
+                paddingBottom: '5px',
+              }
+        : theme.designPack === 'clean-gallery'
+          ? { borderLeft: `3px solid ${theme.accent}`, paddingLeft: '10px' }
+          : theme.designPack === 'graphic-zine'
+            ? {
+                borderLeft: `6px solid ${theme.accent}`,
+                paddingLeft: '8px',
+                paddingRight: '14px',
+                clipPath: theme.design.masks.title,
+                backgroundColor: theme.surfaceAlt,
+              }
+            : {
+                borderBottom: `1px solid ${theme.border}`,
+                paddingBottom: '5px',
+              };
 
   return (
     <div

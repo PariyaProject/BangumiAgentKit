@@ -87,7 +87,7 @@ function compactMetricSourceLabel(
 ): string {
   if (key === 'heat') return '收藏总数';
   if (key === 'episodesReported') return '报告话数';
-  if (key === 'ratingStandardDeviation') return '评分分布 · 标准差 v1';
+  if (key === 'ratingStandardDeviation') return '评分分布标准差 v1';
   return 'Bangumi 评分';
 }
 
@@ -195,6 +195,7 @@ function metricCoverageCompactLabel(
 }
 
 type CohortMetric = SubjectCohortComparisonViewModel['metrics'][number];
+type CohortMember = SubjectCohortComparisonViewModel['cohorts'][number];
 
 function observedAverage(metric: CohortMetric, index: number): number | undefined {
   return metric.averages[index] ?? metric.partialAverages?.[index];
@@ -272,6 +273,468 @@ const CohortMetricBar: React.FC<{
   );
 };
 
+const CohortMetricCaption: React.FC<{
+  metric: CohortMetric;
+  theme: ThemeTokens;
+  width: number;
+  titleSize?: string;
+}> = ({ metric, theme, width, titleSize = '13px' }) => (
+  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', minWidth: 0 }}>
+    <RendererIcon name={metricIconName(metric.key)} theme={theme} size={13} />
+    <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+      <div
+        style={{
+          color: theme.text,
+          fontFamily: theme.design.bodyFontFamily,
+          fontSize: titleSize,
+          fontWeight: 700,
+          lineHeight: 1.25,
+        }}
+      >
+        {width <= 520 ? compactMetricLabel(metric.key) : metric.label}
+      </div>
+      <div
+        style={{
+          color: theme.textMuted,
+          fontSize: width <= 400 ? '11px' : '12px',
+          lineHeight: 1.3,
+        }}
+      >
+        {width <= 520 ? compactMetricSourceLabel(metric.key) : metricSourceLabel(metric.key)}
+      </div>
+      {metric.formula && width > 520 ? (
+        <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.3 }}>
+          计算口径：评分分布标准差（v{metric.formula.version}）
+        </div>
+      ) : null}
+    </div>
+  </div>
+);
+
+const CohortMetricValueBlock: React.FC<{
+  metric: CohortMetric;
+  cohort: CohortMember;
+  index: number;
+  theme: ThemeTokens;
+  valueFontSize: string;
+  valueFontFamily: string;
+  coverageFontSize?: string;
+  showGroupLabel?: boolean;
+  align?: 'left' | 'right';
+}> = ({
+  metric,
+  cohort,
+  index,
+  theme,
+  valueFontSize,
+  valueFontFamily,
+  coverageFontSize = '11px',
+  showGroupLabel = true,
+  align = 'left',
+}) => (
+  <div
+    data-layout="cohort-metric-value"
+    data-cohort-index={index}
+    style={{ minWidth: 0, color: cohortMetricColor(theme, index), textAlign: align }}
+  >
+    {showGroupLabel ? (
+      <div
+        style={{
+          color: theme.textMuted,
+          fontSize: '11px',
+          fontWeight: 700,
+          letterSpacing: '0.04em',
+          lineHeight: 1.2,
+        }}
+      >
+        {`分组 ${index === 0 ? 'A' : 'B'}`}
+      </div>
+    ) : null}
+    <div
+      data-layout="cohort-metric-number"
+      style={{
+        color: cohortMetricColor(theme, index),
+        fontFamily: valueFontFamily,
+        fontSize: valueFontSize,
+        fontWeight: theme.designPack === 'graphic-zine' ? 700 : theme.design.titleWeight,
+        lineHeight: 1.15,
+        overflowWrap: 'anywhere',
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {averageLabel(metric, index)}
+    </div>
+    <CohortMetricBar metric={metric} index={index} theme={theme} />
+    <div
+      style={{
+        color: theme.textMuted,
+        fontSize: coverageFontSize,
+        lineHeight: 1.2,
+        overflowWrap: 'anywhere',
+      }}
+    >
+      {metricCoverageCompactLabel(cohort, metric.key)}
+    </div>
+  </div>
+);
+
+const CohortMetricDeltaBlock: React.FC<{
+  metric: CohortMetric;
+  theme: ThemeTokens;
+  fontFamily: string;
+  valueFontSize: string;
+  showLabel?: boolean;
+  showState?: boolean;
+  align?: 'left' | 'right';
+}> = ({
+  metric,
+  theme,
+  fontFamily,
+  valueFontSize,
+  showLabel = true,
+  showState = true,
+  align = 'left',
+}) => (
+  <div
+    data-layout="cohort-metric-value"
+    data-cohort-index="delta"
+    style={{ minWidth: 0, color: metricDeltaColor(metric, theme), textAlign: align }}
+  >
+    {showLabel ? (
+      <div style={{ color: theme.textMuted, fontSize: '11px', fontWeight: 700, lineHeight: 1.2 }}>
+        B − A
+      </div>
+    ) : null}
+    <div
+      data-layout="cohort-metric-delta"
+      style={{
+        fontFamily,
+        fontSize: valueFontSize,
+        fontWeight: theme.design.titleWeight,
+        lineHeight: 1.15,
+        overflowWrap: 'anywhere',
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {deltaLabel(metric)}
+    </div>
+    {showState ? (
+      <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.2 }}>
+        {stateLabel(metric.state)}
+      </div>
+    ) : null}
+  </div>
+);
+
+interface CohortMetricBoardProps {
+  metrics: CohortMetric[];
+  cohorts: CohortMember[];
+  theme: ThemeTokens;
+  width: number;
+}
+
+const WarmEditorialMetricBoard: React.FC<CohortMetricBoardProps> = ({
+  metrics,
+  cohorts,
+  theme,
+  width,
+}) => {
+  const leadIndex = Math.max(
+    0,
+    metrics.findIndex((metric) => metric.key === 'score'),
+  );
+  const lead = metrics[leadIndex];
+  const secondary = metrics.filter((_, index) => index !== leadIndex);
+  const valueFontFamily = theme.design.displayFontFamily;
+
+  return (
+    <div data-layout="warm-folio-board" style={{ display: 'grid', gap: '3px', minWidth: 0 }}>
+      {lead ? (
+        <section
+          data-layout="cohort-metric-card"
+          data-render-mask="panel"
+          data-layout-variant="warm-folio-lead"
+          style={{
+            backgroundColor: theme.surfaceAlt,
+            clipPath: theme.design.masks.panel,
+            padding: width <= 400 ? '10px 12px 17px' : '12px 16px 18px',
+            minWidth: 0,
+          }}
+        >
+          <div
+            data-layout="cohort-metric-comparison"
+            style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '8px' }}
+          >
+            <CohortMetricCaption metric={lead} theme={theme} width={width} titleSize="15px" />
+            <CohortMetricDeltaBlock
+              metric={lead}
+              theme={theme}
+              fontFamily={valueFontFamily}
+              valueFontSize={width <= 400 ? '15px' : '18px'}
+              align="right"
+              showState={false}
+            />
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) 1px minmax(0, 1fr)',
+              alignItems: 'center',
+              gap: width <= 400 ? '9px' : '14px',
+              marginTop: '8px',
+            }}
+          >
+            <CohortMetricValueBlock
+              metric={lead}
+              cohort={cohorts[0]!}
+              index={0}
+              theme={theme}
+              valueFontSize={width <= 400 ? '22px' : '30px'}
+              valueFontFamily={valueFontFamily}
+              coverageFontSize="11px"
+            />
+            <div aria-hidden="true" style={{ height: '100%', backgroundColor: theme.border }} />
+            <CohortMetricValueBlock
+              metric={lead}
+              cohort={cohorts[1]!}
+              index={1}
+              theme={theme}
+              valueFontSize={width <= 400 ? '22px' : '30px'}
+              valueFontFamily={valueFontFamily}
+              coverageFontSize="11px"
+            />
+          </div>
+        </section>
+      ) : null}
+      <div style={{ display: 'grid', minWidth: 0 }}>
+        {secondary.map((metric) => (
+          <section
+            key={metric.key}
+            data-layout="cohort-metric-card"
+            data-layout-variant="warm-folio-row"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) auto',
+              columnGap: '8px',
+              rowGap: '5px',
+              borderBottom: `1px solid ${theme.border}`,
+              padding: width <= 400 ? '7px 2px 8px' : '9px 3px 10px',
+              minWidth: 0,
+            }}
+          >
+            <CohortMetricCaption metric={metric} theme={theme} width={width} />
+            <CohortMetricDeltaBlock
+              metric={metric}
+              theme={theme}
+              fontFamily={valueFontFamily}
+              valueFontSize="13px"
+              align="right"
+              showState={false}
+            />
+            <div
+              data-layout="cohort-metric-comparison"
+              data-layout-variant="warm-folio-values"
+              style={{
+                gridColumn: '1 / -1',
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '10px',
+              }}
+            >
+              {cohorts.map((cohort, index) => (
+                <CohortMetricValueBlock
+                  key={`${metric.key}-${index}`}
+                  metric={metric}
+                  cohort={cohort}
+                  index={index}
+                  theme={theme}
+                  valueFontSize="15px"
+                  valueFontFamily={valueFontFamily}
+                  coverageFontSize="11px"
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const CleanGalleryMetricBoard: React.FC<CohortMetricBoardProps> = ({
+  metrics,
+  cohorts,
+  theme,
+  width,
+}) => {
+  const columns =
+    width <= 400
+      ? 'minmax(76px, 1.25fr) repeat(2, minmax(0, 1fr)) minmax(48px, 0.78fr)'
+      : 'minmax(150px, 1.65fr) repeat(2, minmax(0, 1fr)) minmax(84px, 0.8fr)';
+  const valueFontFamily = theme.design.bodyFontFamily;
+
+  return (
+    <div
+      data-layout="gallery-comparison-matrix"
+      style={{ borderTop: `1px solid ${theme.border}`, minWidth: 0 }}
+    >
+      <div
+        data-layout="gallery-matrix-header"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: columns,
+          gap: width <= 400 ? '4px' : '8px',
+          padding: '5px 2px 7px',
+          color: theme.accent,
+          borderBottom: `1px solid ${theme.border}`,
+          fontSize: width <= 400 ? '11px' : '13px',
+          fontWeight: 800,
+          letterSpacing: '0.04em',
+        }}
+      >
+        <div>指标</div>
+        <div>分组 A</div>
+        <div>分组 B</div>
+        <div style={{ textAlign: 'right' }}>B − A</div>
+      </div>
+      {metrics.map((metric) => (
+        <div
+          key={metric.key}
+          data-layout="cohort-metric-card"
+          data-layout-variant="gallery-open-row"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: columns,
+            alignItems: 'center',
+            gap: width <= 400 ? '4px' : '8px',
+            padding: width <= 400 ? '7px 2px' : '10px 2px',
+            borderBottom: `1px solid ${theme.border}`,
+            minWidth: 0,
+          }}
+        >
+          <CohortMetricCaption metric={metric} theme={theme} width={width} titleSize="12px" />
+          {cohorts.map((cohort, index) => (
+            <CohortMetricValueBlock
+              key={`${metric.key}-${index}`}
+              metric={metric}
+              cohort={cohort}
+              index={index}
+              theme={theme}
+              valueFontSize={width <= 400 ? '15px' : '17px'}
+              valueFontFamily={valueFontFamily}
+              coverageFontSize={width <= 400 ? '10px' : '12px'}
+              showGroupLabel={false}
+            />
+          ))}
+          <CohortMetricDeltaBlock
+            metric={metric}
+            theme={theme}
+            fontFamily={valueFontFamily}
+            valueFontSize={width <= 400 ? '13px' : '15px'}
+            showLabel={false}
+            align="right"
+          />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
+  metrics,
+  cohorts,
+  theme,
+  width,
+}) => {
+  const valueFontFamily = theme.design.bodyFontFamily;
+
+  return (
+    <div
+      data-layout="zine-sticker-board"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+        gap: width <= 400 ? '8px' : '12px',
+        padding: '2px 2px 4px',
+        minWidth: 0,
+      }}
+    >
+      {metrics.map((metric, metricIndex) => (
+        <section
+          key={metric.key}
+          data-layout="cohort-metric-card"
+          data-layout-variant="zine-sticker"
+          data-render-mask={metricIndex % 2 === 0 ? 'panel' : 'panel-alt'}
+          style={{
+            backgroundColor:
+              metricIndex % 2 === 0 ? theme.tones.butter.surface : theme.tones.coral.surface,
+            clipPath:
+              metricIndex % 2 === 0 ? theme.design.masks.panel : theme.design.masks.panelAlt,
+            filter: `drop-shadow(1px 2px 0 ${theme.text})`,
+            padding: width <= 400 ? '10px 11px 15px' : '13px 16px 18px',
+            minWidth: 0,
+          }}
+        >
+          <div style={{ display: 'grid', gap: '5px', minWidth: 0 }}>
+            <CohortMetricCaption metric={metric} theme={theme} width={width} titleSize="12px" />
+            <div
+              data-layout="zine-delta-sticker"
+              style={{
+                justifySelf: 'end',
+                backgroundColor: theme.text,
+                clipPath: theme.design.masks.tag,
+                color: theme.background,
+                padding: '4px 7px',
+                fontSize: width <= 400 ? '11px' : '12px',
+                fontWeight: 900,
+                lineHeight: 1.2,
+                textAlign: 'center',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {`B−A ${deltaLabel(metric)}`}
+            </div>
+          </div>
+          <div
+            data-layout="zine-metric-pair"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+              gap: width <= 400 ? '7px' : '12px',
+              marginTop: '8px',
+              minWidth: 0,
+            }}
+          >
+            {cohorts.map((cohort, index) => (
+              <CohortMetricValueBlock
+                key={`${metric.key}-${index}`}
+                metric={metric}
+                cohort={cohort}
+                index={index}
+                theme={theme}
+                valueFontSize={width <= 400 ? '16px' : '19px'}
+                valueFontFamily={valueFontFamily}
+                coverageFontSize={width <= 400 ? '10px' : '12px'}
+              />
+            ))}
+          </div>
+          <div
+            style={{
+              marginTop: '5px',
+              color: metricDeltaColor(metric, theme),
+              fontSize: '11px',
+              fontWeight: 700,
+              lineHeight: 1.2,
+            }}
+          >
+            {stateLabel(metric.state)}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+};
+
 export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardProps> = ({
   viewModel,
   theme,
@@ -287,8 +750,8 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
   const isZine = theme.designPack === 'graphic-zine';
   const isGallery = theme.designPack === 'clean-gallery';
   const isWarm = theme.designPack === 'warm-editorial';
-  const supportingTypeSize = viewportWidth <= 400 ? '15px' : viewportWidth <= 520 ? '14px' : '15px';
-  const microTypeSize = viewportWidth <= 400 ? '14px' : '12px';
+  const supportingTypeSize = viewportWidth <= 400 ? '14px' : viewportWidth <= 520 ? '14px' : '15px';
+  const microTypeSize = viewportWidth <= 400 ? '12px' : viewportWidth <= 520 ? '12px' : '13px';
   const visibleSubjectsPerCohort =
     viewportWidth <= 400 ? 1 : viewportWidth < 520 ? 3 : viewportWidth < 760 ? 6 : 8;
   const warningLimit = 3;
@@ -373,7 +836,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
         titleFontSize="27px"
         subtitleFontSize="16px"
         eyebrowFontSize="13px"
-        titleStyle="cohort-report"
+        titleStyle={isGallery ? 'cohort-gallery-open' : 'cohort-report'}
       />
 
       <div
@@ -409,11 +872,11 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
               style={{
                 backgroundColor: cohortSurface,
                 border: 'none',
-                borderLeft: isGallery ? `2px solid ${theme.accent}` : undefined,
+                borderTop: isGallery ? `1px solid ${theme.border}` : undefined,
                 borderRadius: isWarm ? '18px 5px 18px 5px' : undefined,
                 boxShadow: isZine ? `2px 3px 0 ${theme.text}` : undefined,
                 clipPath: cohortMask,
-                padding: viewportWidth <= 400 ? '9px 10px' : theme.spacing.md,
+                padding: viewportWidth <= 400 ? '9px 10px 14px' : theme.spacing.md,
                 margin: isZine ? '0 2px 3px 0' : undefined,
                 minWidth: 0,
               }}
@@ -712,7 +1175,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
 
       <section>
         <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
-          <RendererIcon name="stats" theme={theme} size={20} badge />
+          <RendererIcon name="stats" theme={theme} size={18} />
           <div style={{ minWidth: 0 }}>
             <div
               style={{
@@ -804,292 +1267,127 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
               )}
             </div>
           ) : null}
-          <div
-            style={{
-              display: showComparison && viewportWidth >= 520 ? 'grid' : 'flex',
-              gridTemplateColumns:
-                showComparison && viewportWidth >= 520 ? 'repeat(2, minmax(0, 1fr))' : undefined,
-              gap:
-                showComparison && viewportWidth >= 520
-                  ? viewportWidth <= 640
-                    ? '8px'
-                    : theme.spacing.sm
-                  : undefined,
-              flexDirection: showComparison && viewportWidth >= 520 ? undefined : 'column',
-              minWidth: 0,
-            }}
-          >
-            {viewModel.metrics.map((metric, metricIndex) => (
-              <div
-                key={metric.key}
-                data-layout="cohort-metric-card"
-                data-render-mask={
-                  isWarm || isZine ? (metricIndex % 2 === 0 ? 'panel' : 'panel-alt') : undefined
-                }
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: showComparison
-                    ? 'minmax(0, 1fr)'
-                    : width !== undefined && width >= 760
-                      ? '1.7fr 1fr 1fr'
-                      : '1fr',
-                  gap: theme.spacing.xs,
-                  backgroundColor: isWarm
-                    ? theme.surfaceAlt
-                    : isZine
-                      ? metricIndex % 2 === 0
-                        ? theme.tones.butter.surface
-                        : theme.tones.coral.surface
-                      : theme.surface,
-                  border: isGallery ? `1px solid ${theme.border}` : undefined,
-                  borderLeft: isGallery ? `2px solid ${theme.accent}` : undefined,
-                  borderRadius: isWarm ? '14px 4px 14px 4px' : undefined,
-                  clipPath:
-                    isWarm || isZine
-                      ? metricIndex % 2 === 0
-                        ? theme.design.masks.panel
-                        : theme.design.masks.panelAlt
-                      : undefined,
-                  filter: isZine ? `drop-shadow(1px 2px 0 ${theme.text})` : undefined,
-                  margin: isGallery ? '0' : undefined,
-                  padding:
-                    viewportWidth <= 400
-                      ? isWarm || isZine
-                        ? '8px 9px 16px'
-                        : '8px 8px'
-                      : isWarm || isZine
-                        ? '11px 14px 18px'
-                        : '11px 12px',
-                  minWidth: 0,
-                }}
-              >
-                <div data-layout="cohort-metric-label" style={{ minWidth: 0 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: viewportWidth <= 400 ? 'baseline' : 'flex-start',
-                      gap: theme.spacing.xs,
-                    }}
-                  >
-                    <RendererIcon
-                      name={metricIconName(metric.key)}
+          {showComparison ? (
+            isWarm ? (
+              <WarmEditorialMetricBoard
+                metrics={viewModel.metrics}
+                cohorts={viewModel.cohorts}
+                theme={theme}
+                width={viewportWidth}
+              />
+            ) : isGallery ? (
+              <CleanGalleryMetricBoard
+                metrics={viewModel.metrics}
+                cohorts={viewModel.cohorts}
+                theme={theme}
+                width={viewportWidth}
+              />
+            ) : (
+              <GraphicZineMetricBoard
+                metrics={viewModel.metrics}
+                cohorts={viewModel.cohorts}
+                theme={theme}
+                width={viewportWidth}
+              />
+            )
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+              {viewModel.metrics.map((metric, metricIndex) => (
+                <div
+                  key={metric.key}
+                  data-layout="cohort-metric-card"
+                  data-render-mask={
+                    isWarm || isZine ? (metricIndex % 2 === 0 ? 'panel' : 'panel-alt') : undefined
+                  }
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns:
+                      width !== undefined && width >= 760 ? '1.7fr 1fr 1fr' : '1fr',
+                    gap: theme.spacing.xs,
+                    backgroundColor: isWarm
+                      ? theme.surfaceAlt
+                      : isZine
+                        ? metricIndex % 2 === 0
+                          ? theme.tones.butter.surface
+                          : theme.tones.coral.surface
+                        : theme.surface,
+                    border: isGallery ? `1px solid ${theme.border}` : undefined,
+                    borderRadius: isWarm ? '14px 4px 14px 4px' : undefined,
+                    clipPath:
+                      isWarm || isZine
+                        ? metricIndex % 2 === 0
+                          ? theme.design.masks.panel
+                          : theme.design.masks.panelAlt
+                        : undefined,
+                    filter: isZine ? `drop-shadow(1px 2px 0 ${theme.text})` : undefined,
+                    padding:
+                      viewportWidth <= 400
+                        ? isWarm || isZine
+                          ? '8px 9px 16px'
+                          : '8px 8px'
+                        : isWarm || isZine
+                          ? '11px 14px 18px'
+                          : '11px 12px',
+                    minWidth: 0,
+                  }}
+                >
+                  <div data-layout="cohort-metric-label" style={{ minWidth: 0 }}>
+                    <CohortMetricCaption
+                      metric={metric}
                       theme={theme}
-                      size={15}
-                      badge={isZine}
+                      width={viewportWidth}
+                      titleSize={viewportWidth <= 400 ? '13px' : '14px'}
                     />
-                    <div
-                      style={{
-                        display: viewportWidth <= 400 ? 'flex' : 'block',
-                        alignItems: 'baseline',
-                        flexWrap: 'wrap',
-                        gap: viewportWidth <= 400 ? '4px' : undefined,
-                        minWidth: 0,
-                      }}
-                    >
-                      <div
-                        style={{
-                          color: theme.text,
-                          fontFamily: theme.design.bodyFontFamily,
-                          fontWeight: 700,
-                          fontSize: viewportWidth <= 400 ? '15px' : '14px',
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        {isGallery && twoColumnComparison
-                          ? compactMetricLabel(metric.key)
-                          : metric.label}
-                      </div>
+                    {metric.formula && viewportWidth > 520 ? (
                       <div
                         style={{
                           color: theme.textMuted,
                           fontSize: microTypeSize,
                           lineHeight: 1.35,
+                          marginTop: '3px',
                         }}
                       >
-                        {showComparison && viewportWidth <= 520
-                          ? compactMetricSourceLabel(metric.key)
-                          : metricSourceLabel(metric.key)}
-                      </div>
-                      {metric.formula && !(showComparison && viewportWidth <= 520) ? (
-                        <div
-                          style={{
-                            color: theme.textMuted,
-                            fontSize: microTypeSize,
-                            lineHeight: 1.35,
-                          }}
-                        >
-                          计算口径：评分分布标准差（v{metric.formula.version}）
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-                {showComparison ? (
-                  <div
-                    data-layout="cohort-metric-comparison"
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                      gap: viewportWidth <= 400 ? '6px' : theme.spacing.sm,
-                      minWidth: 0,
-                    }}
-                  >
-                    {viewModel.cohorts.map((cohort, index) => (
-                      <div
-                        key={`${metric.key}-${index}`}
-                        data-layout="cohort-metric-value"
-                        style={{
-                          minWidth: 0,
-                          color: cohortMetricColor(theme, index),
-                          borderRight: index === 0 ? `1px solid ${theme.border}` : undefined,
-                          paddingRight: index === 0 ? '4px' : undefined,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'baseline',
-                            justifyContent: 'space-between',
-                            gap: '4px',
-                          }}
-                        >
-                          <div
-                            style={{
-                              color: theme.textMuted,
-                              fontSize: microTypeSize,
-                              fontWeight: 700,
-                              letterSpacing: '0.04em',
-                            }}
-                          >
-                            {`分组 ${index === 0 ? 'A' : 'B'}`}
-                          </div>
-                          <div
-                            style={{
-                              color: cohortMetricColor(theme, index),
-                              fontFamily: theme.design.displayFontFamily,
-                              fontSize: viewportWidth <= 400 ? '17px' : '19px',
-                              fontWeight: theme.design.titleWeight,
-                              lineHeight: 1.2,
-                              overflowWrap: 'anywhere',
-                              fontVariantNumeric: 'tabular-nums',
-                            }}
-                          >
-                            {averageLabel(metric, index)}
-                          </div>
-                        </div>
-                        <CohortMetricBar metric={metric} index={index} theme={theme} />
-                        <div
-                          style={{
-                            fontSize: microTypeSize,
-                            lineHeight: 1.35,
-                          }}
-                        >
-                          {metricCoverageCompactLabel(cohort, metric.key)}
-                        </div>
-                      </div>
-                    ))}
-                    {showComparison ? (
-                      <div
-                        data-layout="cohort-metric-value"
-                        style={{
-                          minWidth: 0,
-                          color: metricDeltaColor(metric, theme),
-                          gridColumn: '1 / -1',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'baseline',
-                          gap: '4px',
-                          borderTop: `1px solid ${theme.border}`,
-                          paddingTop: '4px',
-                          backgroundColor: isZine ? theme.tones.butter.surface : undefined,
-                          clipPath: isZine ? theme.design.masks.tag : undefined,
-                          padding: isZine ? '4px 6px' : undefined,
-                          marginTop: isZine ? '2px' : undefined,
-                        }}
-                      >
-                        <div
-                          style={{
-                            color: theme.accent,
-                            fontSize: microTypeSize,
-                            fontWeight: 800,
-                            letterSpacing: '0.04em',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {`B − A · ${stateLabel(metric.state)}`}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: viewportWidth <= 400 ? '14px' : '16px',
-                            fontFamily: theme.design.displayFontFamily,
-                            fontWeight: theme.design.titleWeight,
-                            lineHeight: 1.2,
-                            overflowWrap: 'anywhere',
-                            textAlign: 'right',
-                            whiteSpace: 'nowrap',
-                            fontVariantNumeric: 'tabular-nums',
-                          }}
-                        >
-                          {deltaLabel(metric)}
-                        </div>
+                        计算口径：评分分布标准差（v{metric.formula.version}）
                       </div>
                     ) : null}
                   </div>
-                ) : (
-                  <>
-                    {viewModel.cohorts.map((cohort, index) => {
-                      const wide = width !== undefined && width >= 760;
-                      return (
-                        <div
-                          key={`${metric.key}-${index}`}
-                          data-layout="cohort-metric-value"
-                          style={{ color: cohortMetricColor(theme, index), minWidth: 0 }}
+                  {viewModel.cohorts.map((cohort, index) => {
+                    const wide = width !== undefined && width >= 760;
+                    return (
+                      <div
+                        key={`${metric.key}-${index}`}
+                        data-layout="cohort-metric-value"
+                        style={{ color: cohortMetricColor(theme, index), minWidth: 0 }}
+                      >
+                        {wide ? null : '样本 · '}
+                        <strong
+                          style={{
+                            color: cohortMetricColor(theme, index),
+                            fontFamily: theme.design.bodyFontFamily,
+                            fontSize: wide ? '17px' : undefined,
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
                         >
-                          {wide
-                            ? null
-                            : showComparison
-                              ? `分组 ${index === 0 ? 'A' : 'B'} · `
-                              : '样本 · '}
-                          <strong
-                            style={{
-                              color: cohortMetricColor(theme, index),
-                              fontFamily: theme.design.bodyFontFamily,
-                              fontSize: wide ? '17px' : undefined,
-                              fontVariantNumeric: 'tabular-nums',
-                            }}
-                          >
-                            {averageLabel(metric, index)}
-                          </strong>
-                          {wide && showComparison ? (
-                            <CohortMetricBar metric={metric} index={index} theme={theme} />
-                          ) : null}
-                          <div>{metricCoverageLabel(cohort, metric.key)}</div>
-                        </div>
-                      );
-                    })}
-                    {showComparison ? (
-                      <div
-                        style={{
-                          color: metricDeltaColor(metric, theme),
-                        }}
-                      >
-                        B − A · {deltaLabel(metric)}
-                        <div style={{ color: theme.textMuted }}>{stateLabel(metric.state)}</div>
+                          {averageLabel(metric, index)}
+                        </strong>
+                        {wide ? (
+                          <CohortMetricBar metric={metric} index={index} theme={theme} />
+                        ) : null}
+                        <div>{metricCoverageLabel(cohort, metric.key)}</div>
                       </div>
-                    ) : (
-                      <div
-                        style={{
-                          color: metric.state === 'complete' ? theme.textMuted : theme.warning,
-                        }}
-                      >
-                        状态 · {stateLabel(metric.state)}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
+                    );
+                  })}
+                  <div
+                    style={{
+                      color: metric.state === 'complete' ? theme.textMuted : theme.warning,
+                    }}
+                  >
+                    状态 · {stateLabel(metric.state)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
