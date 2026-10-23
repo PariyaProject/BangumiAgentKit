@@ -103,7 +103,7 @@ function warningText(code: string, message: string): string {
 }
 
 function deltaLabel(metric: SubjectCohortComparisonViewModel['metrics'][number]): string {
-  if (metric.delta === undefined) return '不可计算';
+  if (metric.state !== 'complete' || metric.delta === undefined) return '不可计算';
   const value = numberLabel(metric.delta, metricDigits(metric.key));
   return metric.delta > 0 ? `+${value}` : value;
 }
@@ -153,6 +153,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
   const viewportWidth = width ?? 960;
   const showComparison = dimensions.length === 2;
   const compactComparison = showComparison && viewportWidth <= 640;
+  const twoColumnComparison = compactComparison && viewportWidth <= 400;
   const visibleSubjectsPerCohort =
     viewportWidth <= 360 ? 3 : viewportWidth < 520 ? 5 : viewportWidth < 760 ? 6 : 8;
   const warningLimit = 3;
@@ -504,9 +505,11 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                   data-layout="cohort-metric-comparison"
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: showComparison
-                      ? 'repeat(3, minmax(0, 1fr))'
-                      : 'repeat(2, minmax(0, 1fr))',
+                    gridTemplateColumns: twoColumnComparison
+                      ? 'repeat(2, minmax(0, 1fr))'
+                      : showComparison
+                        ? 'repeat(3, minmax(0, 1fr))'
+                        : 'repeat(2, minmax(0, 1fr))',
                     gap: theme.spacing.xs,
                     minWidth: 0,
                   }}
@@ -515,7 +518,16 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                     <div
                       key={`${metric.key}-${index}`}
                       data-layout="cohort-metric-value"
-                      style={{ minWidth: 0, color: theme.textMuted }}
+                      style={{
+                        minWidth: 0,
+                        color: theme.textMuted,
+                        borderRight:
+                          twoColumnComparison && index === 0
+                            ? `1px solid ${theme.border}`
+                            : undefined,
+                        paddingRight:
+                          twoColumnComparison && index === 0 ? theme.spacing.xs : undefined,
+                      }}
                     >
                       <div
                         style={{
@@ -548,7 +560,17 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                       data-layout="cohort-metric-value"
                       style={{
                         minWidth: 0,
-                        color: metric.delta === undefined ? theme.warning : theme.text,
+                        color:
+                          metric.state !== 'complete' || metric.delta === undefined
+                            ? theme.warning
+                            : theme.text,
+                        gridColumn: twoColumnComparison ? '1 / -1' : undefined,
+                        display: twoColumnComparison ? 'grid' : undefined,
+                        gridTemplateColumns: twoColumnComparison ? 'auto 1fr auto' : undefined,
+                        alignItems: twoColumnComparison ? 'baseline' : undefined,
+                        gap: twoColumnComparison ? theme.spacing.sm : undefined,
+                        borderTop: twoColumnComparison ? `1px solid ${theme.border}` : undefined,
+                        paddingTop: twoColumnComparison ? theme.spacing.xs : undefined,
                       }}
                     >
                       <div
@@ -567,11 +589,18 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                           fontWeight: 700,
                           lineHeight: 1.25,
                           overflowWrap: 'anywhere',
+                          textAlign: twoColumnComparison ? 'center' : undefined,
                         }}
                       >
                         {deltaLabel(metric)}
                       </div>
-                      <div style={{ color: theme.textMuted, fontSize: '10px' }}>
+                      <div
+                        style={{
+                          color: theme.textMuted,
+                          fontSize: '10px',
+                          textAlign: twoColumnComparison ? 'right' : undefined,
+                        }}
+                      >
                         {stateLabel(metric.state)}
                       </div>
                     </div>
@@ -587,7 +616,14 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                     </div>
                   ))}
                   {showComparison ? (
-                    <div style={{ color: metric.delta === undefined ? theme.warning : theme.text }}>
+                    <div
+                      style={{
+                        color:
+                          metric.state !== 'complete' || metric.delta === undefined
+                            ? theme.warning
+                            : theme.text,
+                      }}
+                    >
                       B − A · {deltaLabel(metric)}
                       <div style={{ color: theme.textMuted }}>{stateLabel(metric.state)}</div>
                     </div>

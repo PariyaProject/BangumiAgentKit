@@ -17,3 +17,18 @@ This refresh grants no matrix credit and starts no profile. The profile remains 
 At 2026-10-23T14:29Z, the image-bearing SubjectCard refinement changed the compiled renderer bundle. Two measurements returned `d0b81eaf0f9f01fc3c088b563c095f1d0f79714db31827a915c234a136854be2`; the G26 attestation matched. At that point C07 v4's 60 outputs were byte-identical to the previously inspected matrix. This was the current attestation then, not the final renderer state for this Epoch.
 
 At 2026-10-23T14:47Z, the C07 comparison-card layout changed to remove repeated subject metrics and make A/B/delta values easier to scan at 320–640px. The earlier directory remains preserved; the current matrix was regenerated under `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261023-v2/`. Bundle SHA-256 `8fb10dbfd60a7645e86185647476f67198a460160e8f903c09604aebd2c726ac`; generation-source SHA-256 `e37a2b66e56bc36adbb9f33866684684981acbd23d8d81f6249d386a49f7fe22`; tracked manifest SHA-256 `ce1ed4e7ad3e12c9993c9a719843db3d22c56fd80d35c5fe70f171d6b55cf225`. All 60 images were individually reviewed; the strict validator returns true. C07 v4 remains unclaimed and uncredited.
+
+
+## Corrective narrow comparison pass — 2026-10-23T15:30Z
+
+The assigned GPT-6 Luna Max review found that the partial visual generator retained complete-state deltas. It also identified three Harness integration omissions. The corrections changed the compiled Renderer bundle and supersede the v2 visual receipt.
+
+- Rebuilt with `pnpm build`. Two `computeMcpBundleSha256(process.cwd())` measurements returned `ae58ae99a26e407368ed4bb045d83bd1c57c5a346c32df1c0ff1f96d44a0c00a`; the tracked G26 attestation now records this digest.
+- The narrow metric layout now uses two A/B columns at 320/360px and a separate full-width B−A row. Partial metrics are guarded by state in the Renderer and have `delta: undefined` in the fixture generator.
+- Generated 60 images under `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261023-v3/`. All 42 changed files were individually opened and inspected; 18 unchanged complete-state images match the inspected v2 PNGs byte-for-byte. The updated manifest hash is `e33b93e610cc05827c788511fd0cc84448edc03b77b97e00b1f6161d2057a22b`, source digest `b142f0e7c63ceaec76b7bb893909a2c124e8d1178df3a8f2fb8662f3b888a00a`; strict validation returned `true`.
+- The matrix has no clipping or overlap. Partial outputs show B as unknown and B−A as `不可计算`, with no stale numeric deltas. C07 stays UNASSESSED; the v4 claim remains unclaimed and receives no matrix credit in this local pass.
+
+
+## Full local verification — 2026-10-23T15:40Z
+
+`pnpm lint`, `pnpm harness:test` (885/885), `pnpm test:render` (32 files; 168 passed, 2 skipped), `pnpm acceptance:check` (311 tests), `pnpm harness frontier:check` (122 records / 97 actionable), `pnpm harness guard:legacy-paths --base origin/master --product-epoch`, and `git diff --check` all pass. The local profile remains UNCLAIMED; this does not replace exact-Candidate GitHub CI, Harness candidate readiness, or the assigned Luna Max review.

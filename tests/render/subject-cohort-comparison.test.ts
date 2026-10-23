@@ -69,6 +69,24 @@ describe('subject cohort comparison renderer', () => {
     expect(desktopHtml).toContain('评分分布离散度');
   });
 
+  it('never renders a numeric delta for a partial metric with a stale value', () => {
+    const partialWithStaleDeltas = buildSubjectCohortComparisonViewModel({
+      ...result,
+      state: 'partial',
+      metrics: result.metrics.map((metric) => ({
+        ...metric,
+        averages: [undefined, undefined],
+        partialAverages: [metric.partialAverages?.[0] ?? metric.averages?.[0], undefined],
+        state: 'partial',
+        // Deliberately keep the complete-state delta to guard against stale fixture data.
+        delta: metric.delta,
+      })),
+    });
+    const html = renderHtmlTemplate(partialWithStaleDeltas, 'bangumi-light', {}, 320);
+
+    expect(html.match(/不可计算/gu)).toHaveLength(result.metrics.length);
+  });
+
   it('decodes the offline C07 comparison card and verifies its nonblank pixel signal', async () => {
     const viewModel = buildSubjectCohortComparisonViewModel(result, { maxSubjectsPerCohort: 1 });
     const service = new RenderService();

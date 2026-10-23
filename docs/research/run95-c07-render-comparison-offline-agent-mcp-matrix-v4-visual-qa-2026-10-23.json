@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "profileId": "c07-render-comparison-offline-agent-mcp-matrix-v4",
-  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261023-v2",
+  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261023-v3",
   "cssWidths": [
     320,
     360,
@@ -19,14 +19,14 @@
     "bangumi-dark"
   ],
   "deviceScaleFactor": 1,
-  "buildBundleSha256": "8fb10dbfd60a7645e86185647476f67198a460160e8f903c09604aebd2c726ac",
-  "generationSourceSha256": "e37a2b66e56bc36adbb9f33866684684981acbd23d8d81f6249d386a49f7fe22",
+  "buildBundleSha256": "ae58ae99a26e407368ed4bb045d83bd1c57c5a346c32df1c0ff1f96d44a0c00a",
+  "generationSourceSha256": "b142f0e7c63ceaec76b7bb893909a2c124e8d1178df3a8f2fb8662f3b888a00a",
   "reviewAcknowledgement": {
     "decision": "PASS",
     "allImagesIndividuallyInspected": true,
     "reviewedBy": "Codex",
-    "reviewedAt": "2026-10-23T14:47:45.000Z",
-    "summary": "60/60 images individually inspected across two result states, three design packs, both palettes, and five widths. Narrow layouts keep A/B/delta prominent, omit repeated sample values, preserve missing values as unknown, and show no clipping or overlap."
+    "reviewedAt": "2026-10-23T15:30:42.000Z",
+    "summary": "60 张图已逐项复核：42 张因修复而更新并检查，另 18 张与上一轮已检查图逐字节一致。320/360px 使用 A/B 双列与独立差值行；部分态的 B 保持未知、差值标为不可计算；三种设计包的面板遮罩及两套配色都无裁切或重叠。"
   },
   "images": [
     {
@@ -36,12 +36,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1283,
-      "byteLength": 110269,
-      "sha256": "92b7b3fdebfb45c2bba78ddeedc2a0a56fba7b6462aeb8af6df52efcc89c326a",
+      "pixelHeight": 1376,
+      "byteLength": 107801,
+      "sha256": "174e2ed89111314e693b9266819afe39e1d2bb2650429a798e2403179f7aa839",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
       }
     },
     {
@@ -51,12 +51,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1223,
-      "byteLength": 111918,
-      "sha256": "1a35d7606d06b0aadaca9ed962df49e55729a2fa6dd1e7b294b1f84d2e03bb54",
+      "pixelHeight": 1315,
+      "byteLength": 108300,
+      "sha256": "0e836c658f093a947e36b43a6c1494a7918104fb76e377bd9c75e1059e0922ab",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
       }
     },
     {
@@ -71,7 +71,7 @@
       "sha256": "159eac9f73f042e9010456851593f9c15b780ea822c24d1912a14a932fad94a2",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -86,7 +86,7 @@
       "sha256": "3c5cae202cfe638588ef3a8ee4d25fc0abdb54af37c429fe19f558172191c393",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -101,7 +101,7 @@
       "sha256": "3fb77c0e4c54e0b0240b6b8f22a9cc297afd205c54339ec6f02739e6201e04a9",
       "visualReview": {
         "decision": "PASS",
-        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠."
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠. 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -111,12 +111,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1283,
-      "byteLength": 108804,
-      "sha256": "dd57eec7b0fc9bb4adec157f6a696afb8d821c3805b88250b09142c5ed7487ec",
+      "pixelHeight": 1376,
+      "byteLength": 106680,
+      "sha256": "e7bd0737e2e8656d5da628864ffaa3edbe569459c90c4231f0de7a82770b4d30",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
       }
     },
     {
@@ -126,12 +126,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1223,
-      "byteLength": 110227,
-      "sha256": "833248edf6dab6fb0896191a585726a35b30914d73cd86ef671c87d6c2012e9d",
+      "pixelHeight": 1315,
+      "byteLength": 106810,
+      "sha256": "faa9f02d841ac922b395772066fbaa73995d739c3c1e4d7aa39539889b8ba0c3",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
       }
     },
     {
@@ -146,7 +146,7 @@
       "sha256": "307a4d341de99dc8f844b46affe308adddd902f7a063c6f45ebb3ab542cc8c23",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -161,7 +161,7 @@
       "sha256": "b95dff74d555dd834dbe5a5b862529196822b8616ddd8242d645730388443a7b",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -176,7 +176,7 @@
       "sha256": "1aecf3943596f2c470af8220a4003526c706b2b3b2a748f3d778bf18e1a2b2cb",
       "visualReview": {
         "decision": "PASS",
-        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠."
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠. 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -186,12 +186,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1284,
-      "byteLength": 105403,
-      "sha256": "4818658321d4dff4a0e7f5142e31ea710d4c23cc74e210fa62f1f7a68bcf3279",
+      "pixelHeight": 1388,
+      "byteLength": 108413,
+      "sha256": "5873d98a247b6129c6cfae708f858c2bab495a1a1a5140cf72c4e760c7cbe6d6",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
       }
     },
     {
@@ -201,12 +201,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1211,
-      "byteLength": 103047,
-      "sha256": "16b4685891010fc71ffa677aeee19f2e68ded3678de55a0044a10b976f4cae0d",
+      "pixelHeight": 1315,
+      "byteLength": 109064,
+      "sha256": "770bda19fdbdfa77fed8f5541c1154db4474ad850c32461d99f40b6c660710a6",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
       }
     },
     {
@@ -221,7 +221,7 @@
       "sha256": "8585186d8e192964c81e1da161a5d2e31912e61c325fc1ea69b302d29bf185ed",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -236,7 +236,7 @@
       "sha256": "62fe03141cd57f43e4730db08380c4b4e20357baa2f2633d77616e0cb4c85ae4",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -251,7 +251,7 @@
       "sha256": "b4130a1b53062559b426f8f2653e5938bf442fdaf22fff53f128225ef0a56043",
       "visualReview": {
         "decision": "PASS",
-        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠."
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠. 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -261,12 +261,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1284,
-      "byteLength": 107989,
-      "sha256": "5f2aa107c67fec6a33dd3ac248a1f8cb62c56d2ea596698b31dc0bf05ce81f97",
+      "pixelHeight": 1388,
+      "byteLength": 110943,
+      "sha256": "91536ee890c3a79a70492ef12d1bf374066c1f3d56a57fea6fb8b88e5503bf1c",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
       }
     },
     {
@@ -276,12 +276,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1211,
-      "byteLength": 105155,
-      "sha256": "308ccf1d89dcbf69d3ccd17cd30057ee8583781ee2ae66aefb597f741c47aa91",
+      "pixelHeight": 1315,
+      "byteLength": 111384,
+      "sha256": "941f514d95bf64b1a9c76bd64549694bd4e4d5dd43d1585d35c4d229477ae620",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
       }
     },
     {
@@ -296,7 +296,7 @@
       "sha256": "a2f46bec81f62b0c74f4ccb382478e05c6031a9a83574f2da5de6b05a24c2f93",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -311,7 +311,7 @@
       "sha256": "30757066980821da86aff3033466ea28946f3254259b40e7f2417545424d8a67",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -326,7 +326,7 @@
       "sha256": "df68f2152ff9f6ffe4795c335388a6d773c175052fc0fb3b83845540affa12dc",
       "visualReview": {
         "decision": "PASS",
-        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠."
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠. 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -336,12 +336,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1106,
-      "byteLength": 111263,
-      "sha256": "f76b5c48ae57c3bf752c151b0d2f569bce0c835595b7229fcad7db93060afbeb",
+      "pixelHeight": 1202,
+      "byteLength": 109592,
+      "sha256": "b7d5defe831feee8b669f45ec9372bf0cb845bd2509db8ad00cf6c3a16f5b630",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
       }
     },
     {
@@ -351,12 +351,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1073,
-      "byteLength": 108632,
-      "sha256": "c7db29c0f333290efa2c824ce28be50a20a718ac470b0330de61dc4e490d9bdc",
+      "pixelHeight": 1169,
+      "byteLength": 109987,
+      "sha256": "c5bea60d6e26f29b7e9fc72ac567a90e10a331814c4d09aca4f706bad5bef6cc",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
       }
     },
     {
@@ -371,7 +371,7 @@
       "sha256": "332fef2474cac9b51739b6d887740a8fb5664c18e570ec285b83d72c0cf64f83",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -386,7 +386,7 @@
       "sha256": "d0ee386b1ac91b3ba38b907b4e1f5ca08ab15f55fbe6ead690baf713b0f2dd0b",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -401,7 +401,7 @@
       "sha256": "75dfa50e5de930237816b60e8612f7b7354e563a34263ae78980c366c686f1fd",
       "visualReview": {
         "decision": "PASS",
-        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠."
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠. 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -411,12 +411,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1106,
-      "byteLength": 111509,
-      "sha256": "5cec3442a7c270cd6e8f46a8a3f0713b92b75d386896048655863d81ac18324c",
+      "pixelHeight": 1202,
+      "byteLength": 110107,
+      "sha256": "9674ab329124f787de1a41c7ccd4cda0fce7daee6fcec05c36c7546d2171ac51",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
       }
     },
     {
@@ -426,12 +426,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1073,
-      "byteLength": 109180,
-      "sha256": "c194e210df7fbd1bff5bf20b6bb855fee8fb757dc267dc4b3915ab82b926bb82",
+      "pixelHeight": 1169,
+      "byteLength": 110577,
+      "sha256": "610c2c58125d6dfa32689dd20b0ff1434a59583a7fc317df54a648d4e406affc",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
       }
     },
     {
@@ -446,7 +446,7 @@
       "sha256": "0bd1456b975bd8d53837ab958c8f37038228eee0f86d69ecbe4a51c0cc83afeb",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -461,7 +461,7 @@
       "sha256": "c7b3969ada542d4386aff8b79075f261ced3286a7fb0e1ebaba3d797c71c02c4",
       "visualReview": {
         "decision": "PASS",
-        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -476,7 +476,7 @@
       "sha256": "dfdb33da220c952c74d8e73b33884809f29adb9f3005e750868bcee378c93872",
       "visualReview": {
         "decision": "PASS",
-        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠."
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠. 与上一轮审阅 PNG 字节一致。"
       }
     },
     {
@@ -486,12 +486,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1257,
-      "byteLength": 114139,
-      "sha256": "53a45f75f0695312f186e4878def44d3d3caa398ee358588e1d55d71192becbc",
+      "pixelHeight": 1350,
+      "byteLength": 116054,
+      "sha256": "52b4915f9a224fe813a150921b8182db327df02062c2069f2d8aeee894c67bd8",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
       }
     },
     {
@@ -501,12 +501,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1197,
-      "byteLength": 114874,
-      "sha256": "6ec1b3765cc9a79a437c01d5613376edaca7d092b1c1ccf4491cb4d23e80feeb",
+      "pixelHeight": 1289,
+      "byteLength": 116040,
+      "sha256": "88cdfc9539559dda4932f5dc2b750b69ec226860df67ff8e0151dd32e408bda8",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
       }
     },
     {
@@ -517,11 +517,11 @@
       "cssWidth": 520,
       "pixelWidth": 520,
       "pixelHeight": 1130,
-      "byteLength": 116032,
-      "sha256": "416cc0b69a9bb3b075148820de829102c106ac7cc68bb462a01a5d509aba1379",
+      "byteLength": 118108,
+      "sha256": "7b26b42fa4007385ffda8e12ca5f881a50016b7ae10c743c9bde20159ef219fd",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -532,11 +532,11 @@
       "cssWidth": 640,
       "pixelWidth": 640,
       "pixelHeight": 1126,
-      "byteLength": 117003,
-      "sha256": "aa9a7d1e7ab334b3d333b3fd7eab8d8f8f1fbc7259c3a5d0acb1b27713ef3a37",
+      "byteLength": 119060,
+      "sha256": "1feeb54075e03c98190cda13899fb174b5b7e55e6c2aa07d86bfe0a672170d96",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -547,11 +547,11 @@
       "cssWidth": 960,
       "pixelWidth": 960,
       "pixelHeight": 816,
-      "byteLength": 113209,
-      "sha256": "8a84425f4af8a277aa581109fc32211e1e5e20a5905566c9e22552c91949dd84",
+      "byteLength": 114420,
+      "sha256": "9d2d6a410e638e923d694c498c89d1a259c438b0269f05127c56e0edd5d405b3",
       "visualReview": {
         "decision": "PASS",
-        "finding": "宽版分组与指标布局稳定；缺失组保持未知并明确部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -561,12 +561,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1257,
-      "byteLength": 111894,
-      "sha256": "655f6423acd4ebc9229727e42dad3a9b6cce25a4bc2a2a79a5d237dad8a1c826",
+      "pixelHeight": 1350,
+      "byteLength": 113619,
+      "sha256": "475bbc715522fc02050e00c6f5f21e496be397fae30ce63b0fd9afe39f36e3d7",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
       }
     },
     {
@@ -576,12 +576,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1197,
-      "byteLength": 112768,
-      "sha256": "45794afaccdccb3c19099f2a6750bc4c9da0497d476913f5dce42b9fe5ab1415",
+      "pixelHeight": 1289,
+      "byteLength": 113695,
+      "sha256": "18fcef2b3d336f65f1ac558f8e771e1bd6ea579f53bb1ba1a59c0238bf282f2c",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
       }
     },
     {
@@ -592,11 +592,11 @@
       "cssWidth": 520,
       "pixelWidth": 520,
       "pixelHeight": 1130,
-      "byteLength": 113818,
-      "sha256": "d832a78267ac42e1a37809331d80507e400a46449cd4044edf5c19d0d430c617",
+      "byteLength": 115787,
+      "sha256": "6bfd8ea48678d7a9ecc89e86b061ef04c30d76231c5860a56e60dfb4cff9b4fd",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -607,11 +607,11 @@
       "cssWidth": 640,
       "pixelWidth": 640,
       "pixelHeight": 1126,
-      "byteLength": 114680,
-      "sha256": "bb58d0e24957f9a2837ea8a0a47d88551a44f84b37dd0d0b614eee94f4c840de",
+      "byteLength": 116607,
+      "sha256": "4b27cc35c1df77948fd91470863b0dfbe8bedf2b722324a2d2885ebe8c546f34",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -622,11 +622,11 @@
       "cssWidth": 960,
       "pixelWidth": 960,
       "pixelHeight": 816,
-      "byteLength": 111023,
-      "sha256": "f6f2777a735e21039e950d5ef7a9f0ed51ecc940c0a606c3a0ed0fd919bd6e74",
+      "byteLength": 112208,
+      "sha256": "f30c7eb4f06439614de4ea12d2d178d4235e356e72494b687adc4fa264bcbc6c",
       "visualReview": {
         "decision": "PASS",
-        "finding": "宽版分组与指标布局稳定；缺失组保持未知并明确部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -636,12 +636,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1312,
-      "byteLength": 109953,
-      "sha256": "f4214da42731ff3268d3058f6332adf2c1b522e794de217462132db914a1e509",
+      "pixelHeight": 1376,
+      "byteLength": 113986,
+      "sha256": "8b695a4f5745ff10a71d30c4120fda2de9536ce6a2daa43db34dbadfa4c7ab7e",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
       }
     },
     {
@@ -651,12 +651,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1188,
-      "byteLength": 109446,
-      "sha256": "0a28b98bb8443bee4ed37b1206e80ef8f73b3254e40144f24c7d89de8c5731ef",
+      "pixelHeight": 1292,
+      "byteLength": 114357,
+      "sha256": "781c87afadecf75bdc136174c4433b8272bd98b2eceafe782b252b9cb4aebd68",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
       }
     },
     {
@@ -667,11 +667,11 @@
       "cssWidth": 520,
       "pixelWidth": 520,
       "pixelHeight": 1124,
-      "byteLength": 114275,
-      "sha256": "4df8fc2581a3b09ce15bb04458ec296c0f5a842809754c0bd3a774bd451c928c",
+      "byteLength": 116205,
+      "sha256": "c3cd94c942d0f6ea4fc22ae7af08a4ebaf2fae4ce0c645cd08c12fbe7de7b539",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -682,11 +682,11 @@
       "cssWidth": 640,
       "pixelWidth": 640,
       "pixelHeight": 1120,
-      "byteLength": 115348,
-      "sha256": "54d48f3157983f4e7f0ec3f9c0efb818a3469e15bc20aa335011b4b3f302d6e1",
+      "byteLength": 117253,
+      "sha256": "27f143244d36945e7cd726a7c5ef350d5a08ba59773425ea7e8a1b193feebfa6",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -697,11 +697,11 @@
       "cssWidth": 960,
       "pixelWidth": 960,
       "pixelHeight": 815,
-      "byteLength": 107958,
-      "sha256": "e9b0fdad7ef9e8e6e76196ed5291edbc6596e08bc7d5352083bdb710b85787fe",
+      "byteLength": 109196,
+      "sha256": "d1aef1d796b74653a531c79fded86b33a0f9ab48f69a8bfffe0fca121d6e5d3f",
       "visualReview": {
         "decision": "PASS",
-        "finding": "宽版分组与指标布局稳定；缺失组保持未知并明确部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -711,12 +711,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1312,
-      "byteLength": 112072,
-      "sha256": "3f5b03979091441123249d4cb37fe5c8db929fe2c0132e16173ad90c7a801ff7",
+      "pixelHeight": 1376,
+      "byteLength": 116153,
+      "sha256": "ec497adc0c0dcf9ce45f4872f711e0d920dce40a268cff3f66820793a352847e",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
       }
     },
     {
@@ -726,12 +726,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1188,
-      "byteLength": 111370,
-      "sha256": "4c7cba98cb4b8d5a312cf17a5b1efbe41c22def7e9d81874684f4854e465b524",
+      "pixelHeight": 1292,
+      "byteLength": 116376,
+      "sha256": "c5a6ca1c7f3283b7f47ed6a1ca93a85358a76152e6b5dbc8547ba0d6e584459c",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
       }
     },
     {
@@ -742,11 +742,11 @@
       "cssWidth": 520,
       "pixelWidth": 520,
       "pixelHeight": 1124,
-      "byteLength": 116132,
-      "sha256": "0763d74be89ca42ce6517d24e65574ca9447578d3e74396bbb42c1bf1bd77523",
+      "byteLength": 118073,
+      "sha256": "452c88cb85e8cf2b6a77b622d7c818c7d178441a71275b3efabde1b2e45e735a",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -757,11 +757,11 @@
       "cssWidth": 640,
       "pixelWidth": 640,
       "pixelHeight": 1120,
-      "byteLength": 117314,
-      "sha256": "71deb8873e10b95ac93eff06ab113072ec9c8c3f57a3f0c9e9ed3ea7025f8071",
+      "byteLength": 119238,
+      "sha256": "733e28a92f3f876e600f9e75342faedb033d24b6be78876ab8af94c815417852",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -772,11 +772,11 @@
       "cssWidth": 960,
       "pixelWidth": 960,
       "pixelHeight": 815,
-      "byteLength": 110011,
-      "sha256": "e0af20b8f33ed23b9242aa171d193c3abad88db6a2de2a82d9a2d27bec44f404",
+      "byteLength": 111238,
+      "sha256": "8813a42aba07743e2a7a8a8edabce185b8d19858b88df9cee8dee4bb605de7c5",
       "visualReview": {
         "decision": "PASS",
-        "finding": "宽版分组与指标布局稳定；缺失组保持未知并明确部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -786,12 +786,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1084,
-      "byteLength": 115350,
-      "sha256": "ca7ec62de3908a2a6b7a12b6ae50b7b48a51e35038f58ec8b97b84d527a54039",
+      "pixelHeight": 1180,
+      "byteLength": 117848,
+      "sha256": "253842bf3df2a59faf8c335eb7294b368c6b3d5e7afdda7c37c66777638d7636",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
       }
     },
     {
@@ -801,12 +801,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1051,
-      "byteLength": 115036,
-      "sha256": "88be7eec1772d994a82432ef4acf015dc95b0c0cc9a74c8f56ca7d2968ed4cf4",
+      "pixelHeight": 1147,
+      "byteLength": 118200,
+      "sha256": "c33025d23d3ce494638dd560d8464cf024077454c03df701961fae99d58f5598",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
       }
     },
     {
@@ -817,11 +817,11 @@
       "cssWidth": 520,
       "pixelWidth": 520,
       "pixelHeight": 999,
-      "byteLength": 120209,
-      "sha256": "b4db66bb36f5fef5d0d03b765b761abe94b3918e1433ced5e61aeb5a1720c8a0",
+      "byteLength": 122051,
+      "sha256": "3901f0d064a12f93c21ee1ee63a1b789baefd7d19a3572d8fc38518c3935139c",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -832,11 +832,11 @@
       "cssWidth": 640,
       "pixelWidth": 640,
       "pixelHeight": 995,
-      "byteLength": 121142,
-      "sha256": "36d9ffe0a1cda7026cc1c561ad057564676c8953a4e42e98a450e2d0a25c67ee",
+      "byteLength": 123012,
+      "sha256": "bc219b5af6e578d800fec3d87d46384cb97854bb8017c230d6a174339b442f77",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -847,11 +847,11 @@
       "cssWidth": 960,
       "pixelWidth": 960,
       "pixelHeight": 718,
-      "byteLength": 115117,
-      "sha256": "025802185f7fdf6b7f6cb6f305ddbb8db8e0da23492aa3f7829c6c4abe791544",
+      "byteLength": 116143,
+      "sha256": "1fdcd13ca7ff8b2c2da73b5ce1d2ec0130998f3f526e314bbc80853af1756dc7",
       "visualReview": {
         "decision": "PASS",
-        "finding": "宽版分组与指标布局稳定；缺失组保持未知并明确部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -861,12 +861,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1084,
-      "byteLength": 115520,
-      "sha256": "710d658ffda917edc0b3f86f7ae36498a603d3714e0a78c4507da73a2a823e57",
+      "pixelHeight": 1180,
+      "byteLength": 118170,
+      "sha256": "d496ede3c9d3647a7e5d9f855f4b3d4f507b5e9164b287d3a63a91b5cd32f8b4",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
       }
     },
     {
@@ -876,12 +876,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1051,
-      "byteLength": 115182,
-      "sha256": "005f5670b57ec290b88ecc9b26d81930181754376c2cbffeb4f30b43d8a9762c",
+      "pixelHeight": 1147,
+      "byteLength": 118406,
+      "sha256": "fe7c98fc844ff9b8002b11b1f53f14707f38a7391b45d0fc8f5bc418ce793bc9",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
       }
     },
     {
@@ -892,11 +892,11 @@
       "cssWidth": 520,
       "pixelWidth": 520,
       "pixelHeight": 999,
-      "byteLength": 120208,
-      "sha256": "2f001e56f93c3664b66942b3560a9050a18f88998d4438a08f41c6b9fa191e1b",
+      "byteLength": 122066,
+      "sha256": "e4e32262af2460cbd8079740489ca8315f3f28ea6cd127d1499fa800df164a38",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -907,11 +907,11 @@
       "cssWidth": 640,
       "pixelWidth": 640,
       "pixelHeight": 995,
-      "byteLength": 121211,
-      "sha256": "d8317ded4ee5b9b29d49e799d27c54a78557c3a1156893754934ecf040a929b4",
+      "byteLength": 123058,
+      "sha256": "4a8cda3f80d6e47d0ebb61729b8d1fb97401facabbd75692549acfb1a835c8a7",
       "visualReview": {
         "decision": "PASS",
-        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     },
     {
@@ -922,11 +922,11 @@
       "cssWidth": 960,
       "pixelWidth": 960,
       "pixelHeight": 718,
-      "byteLength": 115357,
-      "sha256": "80ecd50cf4dcbc7e70826f0b6cb91c8f5e4496fa4c2e1d695957bc999811c4cf",
+      "byteLength": 116431,
+      "sha256": "08a7560c70840abdd4d284a32e1847f346d3423e51868d5745b875c97b518bde",
       "visualReview": {
         "decision": "PASS",
-        "finding": "宽版分组与指标布局稳定；缺失组保持未知并明确部分覆盖，无裁切或重叠。"
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
       }
     }
   ]

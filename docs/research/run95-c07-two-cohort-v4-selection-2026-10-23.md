@@ -107,3 +107,30 @@ The first 320px comparison output repeated every subject metric inside each coho
 - Current MCP bundle attestation: `8fb10dbfd60a7645e86185647476f67198a460160e8f903c09604aebd2c726ac`. Generation-source SHA-256: `e37a2b66e56bc36adbb9f33866684684981acbd23d8d81f6249d386a49f7fe22`.
 - Current tracked matrix is [`run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-23.json`](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-23.json), SHA-256 `ce1ed4e7ad3e12c9993c9a719843db3d22c56fd80d35c5fe70f171d6b55cf225`; `validateC07V4VisualQaEvidence()` returned true against the exact bundle and 60 local PNG receipts.
 - The earlier v1 visual directory and prior-bundle manifest are retained as historical evidence; the v2 matrix is the current C07 gate. C07 v4 remains UNCLAIMED, no acceptance credit is added, and no live API, OAuth/account, community, write, QQ, or TIM action occurred.
+
+
+## Luna Max corrective review and second visual pass — 2026-10-23T15:30Z
+
+The exact Candidate `faec3e1e6a4c3fc9cd9e07ba474c815ee88ea8a1` on Base `0e2db352dc7823d9f0b07b06ebd77eda89859f40` received `CORRECTIVE_REQUIRED` with four P1 findings. Harness recorded them on PR #271. No C07 v4 claim was made.
+
+- The review found an Epoch/frontier mismatch (`OP-008` only while the v4 profile names C07), missing exact-CI/report validation, missing merge reconciliation/source reference, and stale partial-state deltas. A new guarded Harness `epoch:frontier-amend` command records a matrix-only C07 binding after corrective review without changing C07's `UNASSESSED` scenario status or consuming a claim.
+- Added a renderer regression that first failed on the old partial renderer because no metric showed `不可计算` while stale deltas were present; the corrected renderer passes 11/11 focused tests. It now renders A/B in two columns at 320/360px and puts B−A on a separate full-width row. It only renders numeric deltas for complete metrics; the partial visual generator also clears them.
+- C07 v4 is now listed in exact-CI evidence, sanitized report validation, and pre-merge reconciliation. Focused Harness regressions for v4 claim CI, report validator dispatch, terminal merge gating, report validation, and frontier amendment pass 5/5; the exact-CI registry suite passes 9/9.
+- The new directory `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261023-v3/` contains 60 images. All 42 changed images were opened and individually reviewed; the other 18 complete-state images are byte-identical to the prior inspected v2 matrix. The partial images show B as unknown and B−A as `不可计算`; no clipping or overlap appeared across all packs/palettes.
+- Build bundle SHA-256 is `ae58ae99a26e407368ed4bb045d83bd1c57c5a346c32df1c0ff1f96d44a0c00a`; generation-source SHA-256 is `b142f0e7c63ceaec76b7bb893909a2c124e8d1178df3a8f2fb8662f3b888a00a`; tracked v3 manifest SHA-256 is `e33b93e610cc05827c788511fd0cc84448edc03b77b97e00b1f6161d2057a22b`. The strict 60-image validator returned `true`; `pnpm harness frontier:check` reports 122 records / 97 actionable.
+- Image generation succeeds with `pnpm exec ts-node --transpile-only -P tsconfig.base.json scripts/acceptance/generate-c07-render-comparison-offline-v4-visuals.ts`. The default ts-node type-checking mode reports existing source/dist declaration mismatches in this script; transpile-only generation completed and produced all 60 PNGs.
+
+The v3 visual receipt is local synthetic evidence only. C07 remains UNASSESSED and v4 UNCLAIMED; no Bangumi request, OAuth/account/community/write action, QQ, or TIM action occurred.
+
+
+## Full local verification — 2026-10-23T15:40Z
+
+- `pnpm lint`: PASS.
+- `pnpm harness:test`: PASS, 885/885.
+- `pnpm test:render`: PASS, 32 files / 168 passed / 2 skipped.
+- `pnpm acceptance:check`: PASS, 311 tests; catalog/direct execute 96/96, public API 65/65, Agent/MCP 86/96, QQ/TIM 0/96.
+- `pnpm harness frontier:check`: PASS, 122 records / 97 actionable.
+- `pnpm harness guard:legacy-paths --base origin/master --product-epoch`: PASS.
+- `git diff --check`: PASS.
+
+These are local Candidate checks. The corrective source has not yet been committed or pushed, and no v4 profile claim has been attempted. Exact seven-check GitHub CI, Harness Candidate readiness, and same-identity review are still required.

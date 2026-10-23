@@ -198,6 +198,7 @@ import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
 } from './lib/c07-render-comparison-offline-profile.mjs';
 import {
@@ -832,6 +833,7 @@ Usage: pnpm harness <command> [options]
   review:budget-extend --run <issue> --pr <number> --add <count> --reason <text>
   epoch:start --run <issue> --spec <json>
   epoch:open-pr --run <issue> --title <title>
+  epoch:frontier-amend --run <issue> --pr <number> --frontier-id <id> --reason <text>
   guard:legacy-paths [--base origin/master] [--product-epoch]
   candidate:check --pr <number> [--run <issue>] --evidence <json>
   review:reserve --run <issue> --pr <number> [--runtime-recovery]
@@ -1338,6 +1340,142 @@ function commandEpochOpenPr(options) {
   nextRun.next_action = `RESUME_PR_${pr.number}`;
   updateIssue(runNumber, nextRun);
   print({ state: 'EPOCH_PR_OPEN', pr: pr.number, url });
+}
+
+function commandEpochFrontierAmend(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = required(options, 'run');
+  const prNumber = Number(required(options, 'pr'));
+  const frontierId = required(options, 'frontier-id');
+  const reason = required(options, 'reason').trim();
+  if (!/^[A-Z][A-Z0-9-]{1,15}$/u.test(frontierId)) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_INVALID',
+      'frontier-id must name one canonical frontier record.',
+    );
+  }
+  if (reason.length < 12 || reason.length > 500) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_REASON_REQUIRED',
+      'reason must contain 12 to 500 non-whitespace characters.',
+    );
+  }
+
+  const runResult = issueState(runNumber);
+  const epochResult = epochState(prNumber);
+  const run = structuredClone(runResult.state);
+  const epoch = structuredClone(epochResult.state);
+  if (
+    Number(runNumber) !== 95 ||
+    run.state !== 'EPOCH_ACTIVE' ||
+    run.active_epoch_pr !== prNumber ||
+    epoch.state !== 'CORRECTIVE_REQUIRED' ||
+    epochResult.view.state !== 'OPEN'
+  ) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_REQUIRES_CORRECTIVE_REVIEW',
+      'A frontier binding may be amended only on the active open Run #95 Epoch after a recorded corrective review.',
+    );
+  }
+  const latestReview = epoch.review_history?.at(-1);
+  if (
+    latestReview?.verdict !== 'CORRECTIVE_REQUIRED' ||
+    latestReview.reviewed_base_sha !== epoch.base_sha ||
+    !/^[0-9a-f]{40}$/u.test(latestReview.candidate_sha ?? '') ||
+    currentBranch() !== epoch.branch
+  ) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_REVIEW_MISMATCH',
+      'The active corrective review must bind the same Epoch Base and branch.',
+    );
+  }
+  if (Object.keys(agentMcpProfileClaims(epoch)).length > 0) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_AFTER_PROFILE_CLAIM',
+      'Frontier bindings are immutable after any profile claim is recorded.',
+    );
+  }
+
+  const profiles = listAgentMcpProfiles().filter(
+    (profile) =>
+      profile.epochId === epoch.epoch_id &&
+      profile.frontierId === frontierId &&
+      profile.acceptanceScope === 'agent-mcp-matrix-only',
+  );
+  if (profiles.length === 0) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_PROFILE_REQUIRED',
+      'The target frontier must match a registered matrix-only Agent/MCP profile in this Epoch.',
+      { epochId: epoch.epoch_id, frontierId },
+    );
+  }
+  const priorFrontiers = [...(epoch.advances_frontier_ids ?? [])];
+  if (priorFrontiers.includes(frontierId)) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_DUPLICATE',
+      'The requested frontier is already bound to this Epoch.',
+      { frontierId },
+    );
+  }
+  const frontier = requireValidFrontier();
+  const frontierRecord = frontier.ledger.records.find((record) => record.id === frontierId);
+  if (
+    !frontierRecord ||
+    !frontier.actionable_ids.includes(frontierId) ||
+    frontierRecord.status !== 'UNASSESSED'
+  ) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_TARGET_INVALID',
+      'A matrix-only binding must target an actionable UNASSESSED scenario record.',
+      { frontierId, status: frontierRecord?.status ?? null },
+    );
+  }
+  for (const profile of profiles) {
+    if (!fs.existsSync(path.join(root, profile.selectionEvidencePath))) {
+      throw new HarnessInvariantError(
+        'EPOCH_FRONTIER_AMENDMENT_EVIDENCE_MISSING',
+        'Every matching profile must have its tracked selection evidence in the checkout.',
+        { profileId: profile.id, selectionEvidencePath: profile.selectionEvidencePath },
+      );
+    }
+  }
+
+  epoch.advances_frontier_ids = [...priorFrontiers, frontierId];
+  epoch.next_action = `REFRESH_CANDIDATE_AFTER_${frontierId}_FRONTIER_BINDING`;
+  run.selection_amendment_history = Array.isArray(run.selection_amendment_history)
+    ? run.selection_amendment_history
+    : [];
+  run.selection_amendment_history.push({
+    at: new Date().toISOString(),
+    from_epoch_id: epoch.epoch_id,
+    to_epoch_id: epoch.epoch_id,
+    from_target_tool: priorFrontiers.join(', '),
+    to_target_tool: profiles.map((profile) => profile.toolName).join(', '),
+    reason,
+    prior_frontiers: priorFrontiers,
+    new_frontiers: epoch.advances_frontier_ids,
+    scope_amendment: {
+      added_frontier_id: frontierId,
+      profile_ids: profiles.map((profile) => profile.id),
+      matrix_only: true,
+      scenario_status_preserved: frontierRecord.status,
+      scenario_credit: false,
+    },
+  });
+  run.next_action = `REFRESH_CANDIDATE_PR_${prNumber}`;
+  updatePr(prNumber, epoch);
+  updateIssue(runNumber, run);
+  print({
+    state: 'EPOCH_FRONTIER_BINDING_AMENDED',
+    run: Number(runNumber),
+    pr: prNumber,
+    epoch_id: epoch.epoch_id,
+    advances_frontier_ids: epoch.advances_frontier_ids,
+    profile_ids: profiles.map((profile) => profile.id),
+    frontier_status: frontierRecord.status,
+    scenario_credit: false,
+  });
 }
 
 function commandGuard(options) {
@@ -4628,6 +4766,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'c07-render-comparison-offline-agent-mcp-matrix-v1':
     case 'c07-render-comparison-offline-agent-mcp-matrix-v2':
     case 'c07-render-comparison-offline-agent-mcp-matrix-v3':
+    case 'c07-render-comparison-offline-agent-mcp-matrix-v4':
       return validateC07RenderComparisonOfflineSanitizedReportFile(claim, root, reportPath);
     case 'g01-render-query-subjects-offline-agent-mcp-v1':
     case 'g01-render-query-subjects-offline-agent-mcp-v2':
@@ -8933,6 +9072,7 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
       C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
       C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
       C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+      C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
     ].some(
       (profileId) => getC07RenderComparisonOfflineConfig(profileId)?.epochId === epoch.epoch_id,
     )
@@ -8941,6 +9081,7 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
       C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
       C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
       C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+      C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
     ].find(
       (candidate) => getC07RenderComparisonOfflineConfig(candidate)?.epochId === epoch.epoch_id,
     );
@@ -9289,6 +9430,7 @@ const commands = {
   'run:budget-extend': commandRunBudgetExtend,
   'epoch:start': commandEpochStart,
   'epoch:open-pr': commandEpochOpenPr,
+  'epoch:frontier-amend': commandEpochFrontierAmend,
   'guard:legacy-paths': commandGuard,
   'candidate:check': commandCandidateCheck,
   'review:reserve': commandReviewReserve,
