@@ -21128,6 +21128,7 @@ def codex_r03_offline_profile_report_is_valid(
         cwd=ROOT,
         input=json.dumps({
             'claim': disposition,
+            'profileId': CODEX_R03_OFFLINE_PROFILE_ID,
             'reportBytesBase64': base64.b64encode(report_bytes).decode('ascii'),
         }),
         capture_output=True,

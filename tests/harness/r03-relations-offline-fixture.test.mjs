@@ -326,6 +326,32 @@ test('R03 two-hop result summary binds the top score and exact two-hop path', ()
     ),
     null,
   );
+  assert.equal(
+    summarizeR03RelationsOfflineToolResult(
+      {
+        ...result,
+        ratingAnalysis: {
+          ...result.ratingAnalysis,
+          topCandidates: [{
+            ...result.ratingAnalysis.topCandidates[0],
+            paths: [
+              ...result.ratingAnalysis.topCandidates[0].paths,
+              {
+                sourceId: 993811,
+                targetId: 993813,
+                subjectIds: [993811, 993814, 993813],
+                depth: 2,
+                relationLabels: ['续集', '续集'],
+              },
+            ],
+          }],
+        },
+      },
+      R03_TWO_HOP_RATING_OFFLINE_EXPECTED_CALLS[0].arguments,
+      R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID,
+    ),
+    null,
+  );
 });
 
 test('R03 summaries omit synthetic IDs, names, and raw relation rows', () => {

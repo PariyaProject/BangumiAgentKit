@@ -252,6 +252,8 @@ export function summarizeR03RelationsOfflineToolResult(
       result?.ratingAnalysis?.scoredCandidateCount !== expected.scoredCandidateCount ||
       result?.ratingAnalysis?.tiePolicy !== expected.tiePolicy ||
       result?.ratingAnalysis?.topCandidates?.length !== expected.topCandidates.length ||
+      !Array.isArray(candidate?.paths) ||
+      candidate.paths.length !== expected.topCandidates[0].paths.length ||
       candidate?.id !== expected.topCandidates[0].id ||
       candidate?.score !== expected.topCandidates[0].score ||
       candidate?.ratingTotal !== expected.topCandidates[0].ratingTotal ||

@@ -13498,6 +13498,7 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
 
         def validate_embedded_report(args, **kwargs):
             payload = json.loads(kwargs['input'])
+            self.assertEqual(payload.get('profileId'), GENERATOR.CODEX_R03_OFFLINE_PROFILE_ID)
             embedded = base64.b64decode(payload['reportBytesBase64'])
             return subprocess.CompletedProcess(
                 args, 0,
