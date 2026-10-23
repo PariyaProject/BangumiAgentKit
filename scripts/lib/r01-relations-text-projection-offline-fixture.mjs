@@ -31,6 +31,15 @@ function requestHeaders(input, init) {
   return new Headers(init?.headers ?? input?.headers ?? {});
 }
 
+function hasRequestBody(input, init) {
+  const inputBody = input !== null && typeof input === 'object' ? input.body : undefined;
+  const initBody = init !== null && typeof init === 'object' ? init.body : undefined;
+  return (
+    (inputBody !== undefined && inputBody !== null) ||
+    (initBody !== undefined && initBody !== null)
+  );
+}
+
 export function createR01RelationsTextProjectionOfflineFetch() {
   const observed = new Set();
   const counters = {
@@ -67,7 +76,7 @@ export function createR01RelationsTextProjectionOfflineFetch() {
       url.href === `${ORIGIN}${PATH}` &&
       url.search === '' &&
       url.hash === '' &&
-      init?.body === undefined &&
+      !hasRequestBody(input, init) &&
       !headers.has('authorization');
     if (!valid) {
       counters.unexpectedRequestCount += 1;

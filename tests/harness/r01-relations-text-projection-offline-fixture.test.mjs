@@ -85,6 +85,7 @@ test('R01 v2 fixture rejects every route except its exact anonymous relation req
     [URL, { headers: { authorization: 'Bearer synthetic' } }],
     ['https://example.test/v0/subjects/991408/subjects', undefined],
     ['https://api.bgm.tv/v0/subjects/991409/subjects', undefined],
+    [{ url: URL, method: 'GET', body: '{}' }, undefined],
   ];
   for (const [url, init] of invalidCalls) {
     const fixture = createR01RelationsTextProjectionOfflineFetch();
@@ -97,6 +98,10 @@ test('R01 v2 fixture rejects every route except its exact anonymous relation req
   assert.equal(duplicate.snapshot().duplicateRequestCount, 1);
   const body = createR01RelationsTextProjectionOfflineFetch();
   assert.equal((await body.fetchFn(URL, { body: '{}' })).status, 599);
+  assert.equal(body.snapshot().unexpectedRequestCount, 1);
+
+  const requestWithoutBody = createR01RelationsTextProjectionOfflineFetch();
+  assert.equal((await requestWithoutBody.fetchFn(new Request(URL, { method: 'GET' }))).status, 200);
 });
 
 test('R01 v2 source summary accepts only the exact complete synthetic fixture', () => {
