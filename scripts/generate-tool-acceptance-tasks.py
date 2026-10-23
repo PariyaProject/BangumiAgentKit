@@ -6478,10 +6478,14 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         '"networkMode": "run95-c07-render-comparison-synthetic-offline-matrix-v2"',
         '"id": "c07-render-comparison-offline-agent-mcp-matrix-v3"',
         '"networkMode": "run95-c07-render-comparison-synthetic-offline-matrix-v3"',
+        '"id": "c07-render-comparison-offline-agent-mcp-matrix-v4"',
+        '"networkMode": "run95-c07-render-comparison-synthetic-offline-matrix-v4"',
         '"toolName": "bangumi.render_subject_cohort_comparison"',
         'run95 c07 synthetic cohort c offline 20261017',
         'run95 c07 synthetic cohort d offline matrix 20261018',
         'run95 c07 synthetic cohort e offline matrix 20261018',
+        'run95 c07 synthetic cohort f offline matrix 20261023',
+        'run95 c07 synthetic cohort g offline matrix 20261023',
     ),
     'scripts/lib/c07-render-comparison-offline-profile.mjs': (
         'export function assertC07RenderComparisonOfflineProfile(',
@@ -6490,6 +6494,8 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'C07_RENDER_COMPARISON_OFFLINE_V2_NETWORK_MODE',
         'C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID',
         'C07_RENDER_COMPARISON_OFFLINE_V3_NETWORK_MODE',
+        'C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID',
+        'C07_RENDER_COMPARISON_OFFLINE_V4_NETWORK_MODE',
     ),
     'scripts/lib/c07-render-comparison-offline-fixture.mjs': (
         'export function createC07RenderComparisonOfflineFetch(',
@@ -6502,11 +6508,13 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'persistC07OfflineVisualArtifactForInspection(',
         'C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID',
         'C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID',
+        'C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID',
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
         "profileId === 'c07-render-comparison-offline-agent-mcp-matrix-v1'",
         'C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID',
         'C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID',
+        'C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID',
         'artifactSummary',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
@@ -6514,6 +6522,7 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'createC07RenderComparisonOfflineAssetGuard()',
         'isC07RenderComparisonOfflineProfileId(config.profile?.id)',
         'C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID',
+        'C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID',
     ),
     'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
         'assertC07RenderComparisonOfflineProfile(profile)',
@@ -6532,12 +6541,17 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'summarizeCodexErrorItems(parsed.events)',
         'safeWebSearchErrorClassification',
         'blockedDisabledWebSearchErrorItemCount',
+        'C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID',
+        'C07_V4_VISUAL_QA_MANIFEST_SHA256',
+        'validateC07V4VisualQaEvidence',
         'function runC07RenderComparisonOffline(',
     ),
     'scripts/acceptance/write-c07-render-comparison-offline-agent-mcp-report.mjs': (
         'export function buildC07RenderComparisonOfflineRunnerReceiptPayload(',
         'export function validateC07RenderComparisonOfflineProfileReport(',
         'codexErrorSummaryIsValid(PROFILE.id, events)',
+        'ciRunId',
+        'ciChecks',
         'export function validateC07RenderComparisonOfflineSanitizedReportFile(',
         "openSync(REPORT_PATH, 'wx', 0o600)",
     ),
@@ -6550,15 +6564,30 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         '991226',
         'extractImageUrls(viewModel)',
     ),
+    'scripts/acceptance/generate-c07-render-comparison-offline-v4-visuals.ts': (
+        'C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID',
+        'delta: undefined',
+        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v13',
+    ),
+    'scripts/lib/c07-render-comparison-v4-visual-qa.mjs': (
+        'C07_V4_VISUAL_QA_MANIFEST_PATH',
+        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v13',
+        'export function validateC07V4VisualQaEvidence(',
+    ),
     'scripts/agent-harness.mjs': (
         "case 'c07-render-comparison-offline-agent-mcp-matrix-v1'",
         "case 'c07-render-comparison-offline-agent-mcp-matrix-v2'",
         "case 'c07-render-comparison-offline-agent-mcp-matrix-v3'",
+        "case 'c07-render-comparison-offline-agent-mcp-matrix-v4'",
+        'C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID',
+        'epoch:frontier-amend',
         'assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(',
     ),
     'docs/product/frontier-ledger.json': (
-        'A fresh cohort E v3 profile (`c07-render-comparison-offline-agent-mcp-matrix-v3`)',
-        'Keep C07 UNASSESSED; do not claim compare_subject_cohorts',
+        'C07 profiles v1-v3 remain terminal INCONCLUSIVE/no-report/retryAllowed=false',
+        'distinct v4 profile targets only the render_subject_cohort_comparison Agent/MCP matrix row',
+        'docs/research/run95-c07-two-cohort-v4-selection-2026-10-23.md',
+        'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json',
     ),
     'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-contract-2026-10-17.md': (
         'The new closed fetch fixture will allow exactly one POST search and one GET subject detail response',
@@ -6572,12 +6601,36 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'Only the exact disabled/unavailable Web Search error category is eligible',
         'C07 remains `UNASSESSED`',
     ),
+    'docs/research/run95-c07-two-cohort-v4-selection-2026-10-23.md': (
+        'The exact Candidate `faec3e1e6a4c3fc9cd9e07ba474c815ee88ea8a1`',
+        'C07 remains UNASSESSED and v4 UNCLAIMED',
+        'run95-renderer-v19-c07-two-cohort-v4-20261023',
+    ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_c07_render_comparison_offline_profile_report_is_valid(',
         'CODEX_C07_RENDER_COMPARISON_OFFLINE_REPORT_RELATIVE_PATH',
     ),
     'scripts/test_acceptance_evidence.py': (
         'def test_v3_report_accepts_only_bounded_safe_web_search_error_counts(',
+    ),
+    'tests/render/subject-cohort-comparison.test.ts': (
+        'never renders a numeric delta for a partial metric with a stale value',
+    ),
+    'packages/renderer/src/components/TitleBlock.tsx': (
+        "titleStyle?: 'standard' | 'cohort-report'",
+        "titleStyle === 'cohort-report'",
+    ),
+    'packages/renderer/src/templates/SubjectCohortComparisonCard.tsx': (
+        'titleStyle="cohort-report"',
+        'data-layout="cohort-metric-bar"',
+    ),
+    'tests/harness/c07-render-comparison-v4-visual-qa.test.mjs': (
+        'C07 v4 visual QA requires exact 60-image receipts, current sources and full review',
+    ),
+    'tests/harness/agent-harness-cli.test.mjs': (
+        'C07 v4 profile result reaches the sanitized report validator',
+        'C07 v4 frontier binding is amended through Harness without granting scenario credit',
+        'C07 renderer matrix v4 Epoch cannot merge without its exact terminal profile result',
     ),
 }
 CODEX_G01_RENDER_QUERY_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {

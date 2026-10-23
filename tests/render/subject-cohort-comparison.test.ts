@@ -49,10 +49,34 @@ describe('subject cohort comparison renderer', () => {
     expect(html).not.toContain('searchSubjects');
   });
 
+  it('uses pack-specific title and cohort treatments for the comparison card', () => {
+    const viewModel = buildSubjectCohortComparisonViewModel(result, { maxSubjectsPerCohort: 1 });
+    const galleryHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'clean-gallery');
+    const zineHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'graphic-zine');
+
+    expect(galleryHtml).toContain('data-title-pack="clean-gallery"');
+    expect(galleryHtml).toContain('border-left:3px solid');
+    expect(zineHtml).toContain('data-title-pack="graphic-zine"');
+    expect(zineHtml).not.toContain('border-left:6px solid');
+    expect(galleryHtml).toContain('data-render-mask="panel"');
+    expect(zineHtml).toContain('data-render-mask="panel-alt"');
+    expect(galleryHtml).toContain('grid-template-columns:repeat(2, minmax(0, 1fr))');
+    expect(zineHtml).toContain('drop-shadow(1px 2px 0');
+    expect(zineHtml).toContain('padding:8px 9px 16px');
+  });
+
   it('prioritizes A, B, and delta values at narrow widths without repeating sample metrics', () => {
     const viewModel = buildSubjectCohortComparisonViewModel(result, { maxSubjectsPerCohort: 1 });
     const mobileHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320);
 
+    expect(mobileHtml).toContain('data-layout="cohort-overview"');
+    expect(mobileHtml).toContain('data-layout="cohort-meta-compact"');
+    expect(mobileHtml).toContain('grid-template-columns:repeat(2, minmax(0, 1fr))');
+    expect(mobileHtml).toContain('flex-direction:column');
+    expect(mobileHtml.match(/data-layout="cohort-metric-board"/gu)).toHaveLength(1);
+    expect(mobileHtml.match(/data-layout="cohort-metric-header"/gu)).toBeNull();
+    expect(mobileHtml.match(/data-layout="cohort-metric-bar"/gu)).toHaveLength(8);
+    expect(mobileHtml).toContain('data-render-mask="panel"');
     expect(mobileHtml.match(/data-layout="cohort-metric-card"/gu)).toHaveLength(4);
     expect(mobileHtml.match(/data-layout="cohort-metric-comparison"/gu)).toHaveLength(4);
     expect(mobileHtml.match(/data-layout="cohort-metric-value"/gu)).toHaveLength(12);
@@ -62,11 +86,11 @@ describe('subject cohort comparison renderer', () => {
     expect(mobileHtml).toContain('8.00');
     expect(mobileHtml).toContain('7.00');
     expect(mobileHtml).toContain('-1.00');
-    expect(mobileHtml).toContain('1 条完整样本');
+    expect(mobileHtml).toContain('1/1 完整');
 
     const desktopHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 960);
-    expect(desktopHtml).not.toContain('data-layout="cohort-metric-comparison"');
-    expect(desktopHtml).toContain('评分分布离散度');
+    expect(desktopHtml.match(/data-layout="cohort-metric-comparison"/gu)).toHaveLength(4);
+    expect(desktopHtml).toContain('计算口径：评分分布标准差');
   });
 
   it('never renders a numeric delta for a partial metric with a stale value', () => {
@@ -85,6 +109,8 @@ describe('subject cohort comparison renderer', () => {
     const html = renderHtmlTemplate(partialWithStaleDeltas, 'bangumi-light', {}, 320);
 
     expect(html.match(/不可计算/gu)).toHaveLength(result.metrics.length);
+    expect(html.match(/data-state="missing"/gu)).toHaveLength(result.metrics.length);
+    expect(html.match(/data-state="unscaled"/gu)).toHaveLength(result.metrics.length);
   });
 
   it('decodes the offline C07 comparison card and verifies its nonblank pixel signal', async () => {
@@ -110,6 +136,25 @@ describe('subject cohort comparison renderer', () => {
     const partial = buildSubjectCohortComparisonViewModel({
       ...result,
       state: 'partial',
+      cohorts: result.cohorts.map((cohort, index) =>
+        index === 1
+          ? {
+              ...cohort,
+              coverage: {
+                ...cohort.coverage,
+                metrics: {
+                  ...cohort.coverage.metrics,
+                  score: {
+                    ...cohort.coverage.metrics.score,
+                    valid: 0,
+                    missing: 1,
+                    state: 'partial',
+                  },
+                },
+              },
+            }
+          : cohort,
+      ),
       metrics: [
         {
           ...result.metrics[0]!,
@@ -123,6 +168,16 @@ describe('subject cohort comparison renderer', () => {
     });
     const html = renderHtmlTemplate(partial, 'bangumi-dark', {}, 720);
     expect(html).toContain('部分样本');
+    const narrowGalleryHtml = renderHtmlTemplate(
+      partial,
+      'bangumi-light',
+      {},
+      320,
+      'clean-gallery',
+    );
+    expect(narrowGalleryHtml).toContain('white-space:nowrap');
+    expect(narrowGalleryHtml).toContain('不可计算');
+    expect(narrowGalleryHtml).toContain('0/1 缺失');
   });
 
   it('shows warning guidance without exposing internal warning codes', () => {
@@ -158,6 +213,23 @@ describe('subject cohort comparison renderer', () => {
     expect(html).not.toContain('SYNTHETIC_PARTIAL_FIXTURE');
     expect(html).not.toContain('EXPERIMENTAL_SOURCE');
     expect(html).not.toContain('FUTURE_PROVIDER_WARNING');
+  });
+
+  it('deduplicates repeated provider warnings in the visual summary', () => {
+    const viewModel = buildSubjectCohortComparisonViewModel(result);
+    const duplicate = {
+      code: 'EXPERIMENTAL_SOURCE',
+      state: 'partial' as const,
+      message: 'Official v0 subject search is marked experimental upstream.',
+    };
+    const html = renderHtmlTemplate(
+      { ...viewModel, warnings: [duplicate, duplicate] },
+      'bangumi-light',
+      {},
+      320,
+    );
+
+    expect(html.match(/官方作品搜索接口仍处于实验阶段。（共 2 条）/gu)).toHaveLength(1);
   });
 
   it('explains when search returned a row but no subject detail can be displayed', () => {
@@ -259,11 +331,11 @@ describe('subject cohort comparison renderer', () => {
     const mobileHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320);
     expect(mobileHtml.match(/data-layout="cohort-label"/gu)).toHaveLength(2);
     expect(mobileHtml).toContain('-webkit-line-clamp:2');
-    expect(mobileHtml.match(/data-layout="cohort-subject-item"/gu)).toHaveLength(6);
+    expect(mobileHtml.match(/data-layout="cohort-subject-item"/gu)).toHaveLength(2);
     expect(mobileHtml.match(/data-layout="cohort-subject-metrics"/gu) ?? []).toHaveLength(0);
     expect(mobileHtml.match(/data-layout="cohort-subject-summary"/gu)).toHaveLength(2);
-    expect(mobileHtml.match(/图片展示 3\/60 条已返回样本/gu)).toHaveLength(2);
-    expect(mobileHtml).toContain('卡片另有 9 条告警未展开。');
+    expect(mobileHtml.match(/图片展示 1\/60 条已返回样本/gu)).toHaveLength(2);
+    expect(mobileHtml).toContain('（共 12 条）');
     expect(mobileHtml).toContain('另有 6 条限制未展开。');
     expect(mobileHtml).toContain('聚合指标仍按已取得的有效样本计算。');
 

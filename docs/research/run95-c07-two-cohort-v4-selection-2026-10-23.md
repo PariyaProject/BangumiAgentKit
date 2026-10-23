@@ -134,3 +134,37 @@ The v3 visual receipt is local synthetic evidence only. C07 remains UNASSESSED a
 - `git diff --check`: PASS.
 
 These are local Candidate checks. The corrective source has not yet been committed or pushed, and no v4 profile claim has been attempted. Exact seven-check GitHub CI, Harness Candidate readiness, and same-identity review are still required.
+
+## User-rejected visual direction and v4 design correction — 2026-10-23T16:23Z
+
+The user correctly called out that this preview had regressed from the v19 visual baseline that had previously looked good. The 2026-10-23 v3 manifest's PASS documented individual image inspection for clipping, wrapping, and state correctness; it did not establish that the design matched the earlier reference or that the user accepted the result. Do not cite that manifest as aesthetic acceptance.
+
+The v19 renderer uses pack-matched artwork, configured type profiles, compact metadata, and a chart-led statistics layout. C07's SubjectCohortSubject data type has no image/cover field, so this comparison must not invent or attach unrelated covers. The v12 proposal below records the initial reference adaptation and is superseded by the v13 responsive layout documented afterward:
+
+- At 320/360px the A/B cohort summaries stack as full-width folio, gallery, or cut-paper panels, each showing one representative subject and explicit coverage. At 520/640/960px the cohorts sit side by side. The <=640 metadata uses two wrap-safe lines, avoiding orphan separators.
+- At 320/360px each metric gives A and B distinct value columns and keeps B−A on its own line; at 520/640px it uses A/B/B−A columns; desktop uses a metric/A/B/delta grid. Warm Editorial uses soft folio metric panels, Clean Gallery uses a clipped open comparison grid, and Graphic Zine uses alternating cut-paper value panels with a separate delta sticker. The packs now differ in layout and typography as well as color.
+- Metric icons use the existing semantic SVG registry. Display type is used for titles, cohort names, and numeric emphasis; the configured body stack carries labels and explanatory text. C07 has no cover field, so this comparison remains data-led and does not add unrelated artwork.
+- Complete paired metrics use bars normalized within that metric's two observed means. Missing values remain `未知` with dashed tracks; a numeric B−A appears only for complete metrics. Duplicate provider warnings are collapsed with their occurrence count.
+
+Final v12 images were individually opened across complete/partial, three packs, light/dark, and 320/360/520/640/960px. No clipping, overflow, or overlap was found. This is Codex's local synthetic visual QA, not user acceptance, production-client proof, or acceptance credit.
+
+- Final ignored images: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v12/`.
+- Tracked 60-image receipt: [run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json), SHA-256 `d7f6688d49a4aba5136460eb1c702adeabc8c4baea5f2430fed0e4b8044b2836`.
+- Exact bundle SHA-256: `5c83e17c9f002f3f727b0d6ce364f1dceebb1ded877e508e8a19009afa1f1187`; generation-source SHA-256: `6d4a03387e5fc1d4589d37a017633642331cf583b9b2421dcc205d8852a4e08c`. `validateC07V4VisualQaEvidence()` returned `true` against the tracked manifest, matching bundle attestation, and all 60 local PNG receipts.
+- Current local checks: `pnpm build` PASS; `pnpm exec vitest run tests/render/subject-cohort-comparison.test.ts` PASS (13/13). Full lint, renderer suite, Harness suite, acceptance, frontier, legacy guard, Candidate, and exact CI remain pending after final evidence binding.
+- Exact CI run 39980861949 for the preceding remote Candidate failed because `harness-control` still expected v3 frontier wording; `sqlite-default` also timed out after 5 seconds in `tests/render/render-pool-cache.test.ts`. The v4 guard markers are corrected; both require a fresh exact-SHA result before any claim.
+
+C07 remains UNASSESSED; v4 remains unclaimed. No one-shot claim, Bangumi call, account/OAuth/community/write operation, QQ action, or TIM action occurred.
+
+## Visual regression correction, v19 parity, and final v13 receipt — 2026-10-23T17:42Z
+
+The v12 matrix had no clipping, but the user correctly rejected its visual quality. Review found the comparison still read like a tall spreadsheet. A first v13 attempt also regressed: two-column metrics squeezed labels at 320px and the flex container placed all four metric cards in one clipped row. Those attempts were discarded and their generated images removed. The final v13 layout keeps the sample identities paired at narrow widths, stacks the four metric cards below 520px, and uses a two-by-two metric board at 520px and wider. Metric labels and sources share a compact line, A/B values share a baseline, and B−A has a distinct row. Explanatory notes are grouped; pack-specific surfaces and masks remain intact. Mobile sample titles get up to three lines, missing-detail copy is shortened only for the two-cohort compact card, and clipped-panel padding keeps delta labels inside the mask.
+
+- Opened all 60 final v13 PNGs individually: complete/partial × three design packs × light/dark × 320/360/520/640/960px. No clipping, overlap, or horizontal overflow appeared. Complete A/B bars and signed deltas align; partial B values remain `未知` with dashed tracks and `B−A` remains `不可计算`. Warm Editorial, Clean Gallery, and Graphic Zine retain different typography and surface treatments. This is local synthetic visual QA, not user acceptance or production-client proof.
+- Final ignored images: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v13/`.
+- Tracked 60-image receipt: [run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json), SHA-256 `3efad1e8f22c1687e4a2f43eac66c9fa44e5086c6686a6ebd6ca051270dcea2a`. `validateC07V4VisualQaEvidence()` returned `true` for this exact manifest, bundle attestation, generation-source hash, and 60 PNG receipts.
+- Re-rendered the already-approved v19 image-bearing baseline twice. All 48 output PNG SHA-256 values matched the v5 baseline exactly; both parity runs had zero renderer warnings. The shared `TitleBlock` change therefore leaves the prior v19 visuals byte-identical. Temporary parity outputs were removed after comparison; the approved v5 baseline remains.
+- Two consecutive `pnpm build` runs produced the same G26 bundle digest, `40ac1bbd111327b04cdee5b7db007fdbffaf9900b25389b4d187d0c47298357e`. `docs/product/g26-mcp-bundle-attestation.json` records that digest. This is build provenance only and gives no C07 claim or matrix credit.
+- Local verification passes: `pnpm build`; `pnpm lint`; `pnpm typecheck:tests`; the focused renderer suite (13/13); `pnpm test:render` (32 files / 170 passed / 2 skipped); `pnpm harness:test` (885/885); `pnpm harness frontier:check` (122 records / 97 actionable); and `pnpm harness guard:legacy-paths --base origin/master --product-epoch`. The HEAD-bound acceptance check, Candidate gate, and exact-SHA CI still need fresh verification before PR #271 can advance. The old failed CI run remains evidence only for its old SHA.
+
+C07 remains UNASSESSED; v4 remains unclaimed. No one-shot claim, Bangumi call, account/OAuth/community/write operation, QQ action, or TIM action occurred.

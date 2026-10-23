@@ -12,9 +12,12 @@ export interface TitleBlockProps {
   subtitleFontSize?: string;
   titleMaxLines?: number;
   subtitleMaxLines?: number;
+  eyebrowFontSize?: string;
   eyebrowSurface?: string;
   eyebrowColor?: string;
   showIconEyebrow?: boolean;
+  iconSize?: number;
+  titleStyle?: 'standard' | 'cohort-report';
 }
 
 export const TitleBlock: React.FC<TitleBlockProps> = ({
@@ -27,29 +30,45 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({
   subtitleFontSize = '15px',
   titleMaxLines = 2,
   subtitleMaxLines,
+  eyebrowFontSize = '10px',
   eyebrowSurface,
   eyebrowColor,
   showIconEyebrow = true,
+  iconSize = 16,
+  titleStyle = 'standard',
 }) => {
   const titleSize = Number.parseFloat(titleFontSize);
   const designedTitleSize = Number.isFinite(titleSize)
     ? `${titleSize * theme.design.titleScale}px`
     : titleFontSize;
   const packTitleStyle =
-    theme.designPack === 'clean-gallery'
-      ? { borderLeft: `3px solid ${theme.accent}`, paddingLeft: '10px' }
-      : theme.designPack === 'graphic-zine'
+    titleStyle === 'cohort-report'
+      ? theme.designPack === 'graphic-zine'
         ? {
-            borderLeft: `6px solid ${theme.accent}`,
-            paddingLeft: '8px',
-            paddingRight: '14px',
+            padding: '4px 10px 6px',
             clipPath: theme.design.masks.title,
             backgroundColor: theme.surfaceAlt,
           }
-        : {
-            borderBottom: `1px solid ${theme.border}`,
-            paddingBottom: '5px',
-          };
+        : theme.designPack === 'clean-gallery'
+          ? { borderLeft: `3px solid ${theme.accent}`, paddingLeft: '10px' }
+          : {
+              borderBottom: `1px solid ${theme.border}`,
+              paddingBottom: '5px',
+            }
+      : theme.designPack === 'clean-gallery'
+        ? { borderLeft: `3px solid ${theme.accent}`, paddingLeft: '10px' }
+        : theme.designPack === 'graphic-zine'
+          ? {
+              borderLeft: `6px solid ${theme.accent}`,
+              paddingLeft: '8px',
+              paddingRight: '14px',
+              clipPath: theme.design.masks.title,
+              backgroundColor: theme.surfaceAlt,
+            }
+          : {
+              borderBottom: `1px solid ${theme.border}`,
+              paddingBottom: '5px',
+            };
 
   return (
     <div
@@ -66,12 +85,12 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({
             minWidth: 0,
           }}
         >
-          <RendererIcon name={icon} theme={theme} size={16} badge />
+          <RendererIcon name={icon} theme={theme} size={iconSize} badge />
           <div
             data-title-eyebrow-backplate={eyebrowSurface ? 'true' : undefined}
             style={{
               color: eyebrowColor ?? theme.accent,
-              fontSize: '10px',
+              fontSize: eyebrowFontSize,
               fontWeight: 800,
               letterSpacing: '0.09em',
               lineHeight: 1.2,

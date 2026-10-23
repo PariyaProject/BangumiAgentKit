@@ -55,7 +55,7 @@ const BUILD_TIMEOUT_MS = 5 * 60 * 1000;
 const C07_V3_VISUAL_QA_MANIFEST_SHA256 =
   'ce15f94b457a62a795a2ff26748e721be4e1ee9bd36bece1671f8d8246240c42';
 const C07_V4_VISUAL_QA_MANIFEST_SHA256 =
-  'ce1ed4e7ad3e12c9993c9a719843db3d22c56fd80d35c5fe70f171d6b55cf225';
+  '3efad1e8f22c1687e4a2f43eac66c9fa44e5086c6686a6ebd6ca051270dcea2a';
 let CONFIG = getC07RenderComparisonOfflineConfig(C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID);
 let PROFILE = getAgentMcpProfileById(CONFIG.id);
 let ACKNOWLEDGEMENT = CONFIG.acknowledgement;
@@ -688,7 +688,7 @@ function runC07RenderComparisonOffline({
     })
   ) {
     throw new Error(
-      'C07 v3 visual QA is missing, unreviewed, or stale; refusing the permanent one-shot claim.',
+      'C07 v4 visual QA is missing, unreviewed, or stale; refusing the permanent one-shot claim.',
     );
   }
   if (

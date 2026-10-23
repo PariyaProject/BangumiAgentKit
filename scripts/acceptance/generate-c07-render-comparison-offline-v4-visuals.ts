@@ -21,7 +21,7 @@ import { computeC07V4VisualQaGenerationSourceSha256 } from '../lib/c07-render-co
 
 const PROFILE_ID = C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID;
 const OUTPUT_DIR = path.resolve(
-  '.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261023-v3',
+  '.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v13',
 );
 const WIDTHS = [320, 360, 520, 640, 960];
 const DESIGN_PACKS = ['warm-editorial', 'clean-gallery', 'graphic-zine'] as const;
@@ -189,6 +189,10 @@ function assertNoExternalImageUrls(viewModel: SubjectCohortComparisonViewModel) 
 }
 
 async function main() {
+  const buildBundleSha256 = computeMcpBundleSha256(process.cwd());
+  if (readG26McpBundleAttestation(process.cwd()) !== buildBundleSha256) {
+    throw new Error('C07 v4 visual QA requires a current exact renderer bundle attestation.');
+  }
   await mkdir(path.dirname(OUTPUT_DIR), { recursive: true });
   await mkdir(OUTPUT_DIR, { recursive: false });
   const complete = await createExactCompleteViewModel();
@@ -245,10 +249,6 @@ async function main() {
     await renderer.close();
   }
 
-  const buildBundleSha256 = computeMcpBundleSha256(process.cwd());
-  if (readG26McpBundleAttestation(process.cwd()) !== buildBundleSha256) {
-    throw new Error('C07 v4 visual QA requires a current exact renderer bundle attestation.');
-  }
   const generationSourceSha256 = computeC07V4VisualQaGenerationSourceSha256(process.cwd());
   const manifest = {
     schemaVersion: 1,
@@ -269,9 +269,13 @@ async function main() {
     },
     images,
   };
-  await writeFile(path.join(OUTPUT_DIR, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, {
-    flag: 'wx',
-  });
+  await writeFile(
+    path.join(OUTPUT_DIR, 'manifest.json'),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+    {
+      flag: 'wx',
+    },
+  );
   process.stdout.write(`${JSON.stringify({ outputDir: OUTPUT_DIR, files: images.length })}\n`);
 }
 
