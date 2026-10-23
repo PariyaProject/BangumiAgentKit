@@ -1,0 +1,920 @@
+{
+  "schemaVersion": 1,
+  "profileId": "c07-render-comparison-offline-agent-mcp-matrix-v4",
+  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v27",
+  "cssWidths": [320, 360, 520, 640, 960],
+  "designPacks": ["warm-editorial", "clean-gallery", "graphic-zine"],
+  "themes": ["bangumi-light", "bangumi-dark"],
+  "deviceScaleFactor": 2,
+  "buildBundleSha256": "b04264ac012856f614b6f5e1d6f25901fcad3550bde3abff7a8df86b1804f1f1",
+  "generationSourceSha256": "9ba8f325782688d8624abaa3fbe48f30cde90802c5ee6e3d44cf38d96a22ef84",
+  "reviewAcknowledgement": {
+    "decision": "PASS",
+    "allImagesIndividuallyInspected": true,
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-10-23T21:32:30.000Z",
+    "summary": "All 60 synthetic images were opened and reviewed individually across complete/partial states, three design packs, light/dark themes, and 320/360/520/640/960 CSS px. The compact subtitle avoids orphan words; score hierarchy and type remain legible; partial values stay unknown with non-computable deltas. No visible clipping, overlap, or horizontal overflow. This is renderer QA only, not user aesthetic acceptance or C07 scenario evidence."
+  },
+  "images": [
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2238,
+      "byteLength": 237138,
+      "sha256": "09cec2dbce9a6fd43a212668df970cb3e6e8530affc19f6895273e7b9065305a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320px warm-editorial bangumi-light: warm score lead and supporting rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2180,
+      "byteLength": 242348,
+      "sha256": "84bdb01166d1f87e661c493cb9cd211fb39c8b2b899395d5bb57c9b598110bae",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "360px warm-editorial bangumi-light: warm score lead and supporting rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2348,
+      "byteLength": 363739,
+      "sha256": "f73ce4b7c3a06717f9b4639e863649844e446246b6a5912bd48375c2063249a8",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "520px warm-editorial bangumi-light: warm score lead and supporting rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2212,
+      "byteLength": 363618,
+      "sha256": "0931ba348ba5494b976c8862458b7a0e927327cd2b14134e90678f146a51dcba",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "640px warm-editorial bangumi-light: warm score lead and supporting rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2216,
+      "byteLength": 400059,
+      "sha256": "ed42d59be4bb7163190f2bf978a84eb5ad4c8e201dc05f16a12c87c4ce4b3820",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "960px warm-editorial bangumi-light: warm score lead and supporting rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2238,
+      "byteLength": 236838,
+      "sha256": "5ac7a551d65012a19b68c17e9c187a81da2f29b0503c5b0edd36d287d2a00c2c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320px warm-editorial bangumi-dark: warm score lead and supporting rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2180,
+      "byteLength": 242092,
+      "sha256": "972cc7a7556f86d62d4a996a2416e2d54adc5d16a422fee7b580c844c9bbfdea",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "360px warm-editorial bangumi-dark: warm score lead and supporting rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2348,
+      "byteLength": 362408,
+      "sha256": "8825cfbb2c986d6e0cc2ebe09aabf2287a67c94325e3b99fd93d7258981715bc",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "520px warm-editorial bangumi-dark: warm score lead and supporting rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2212,
+      "byteLength": 362653,
+      "sha256": "a0889022742ce3dace2fe6df0facbda213ead2f6f010dc751442f86124b91554",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "640px warm-editorial bangumi-dark: warm score lead and supporting rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2216,
+      "byteLength": 397278,
+      "sha256": "186bd6927636db16243a267f863f4400adf3929d5c7b63a722051db3d4639e6e",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "960px warm-editorial bangumi-dark: warm score lead and supporting rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1646,
+      "byteLength": 175452,
+      "sha256": "5f76b43de0cc86e2fe977a37a25c3db1d8bb35197cbc2286f21781ae6f502045",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320px clean-gallery bangumi-light: connected A/B score bridge and open rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1648,
+      "byteLength": 180934,
+      "sha256": "e4ec9813ef802113a0bcc59c6472ddeffd1f95ef78866835ee14b53324358755",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "360px clean-gallery bangumi-light: connected A/B score bridge and open rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1986,
+      "byteLength": 287760,
+      "sha256": "27d43bc0fe9c85226883053b9b3247e5fcf78d94b44657226754d712cdaf966d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "520px clean-gallery bangumi-light: connected A/B score bridge and open rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2020,
+      "byteLength": 342704,
+      "sha256": "5abcc6bc26937d9b5c7e6e15ae9f32edf5ea7441a454e32c942754419f135ade",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "640px clean-gallery bangumi-light: connected A/B score bridge and open rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2060,
+      "byteLength": 378241,
+      "sha256": "d12ceaff3ba32db7ba1ddb9bd7a2aad081d5f7415f96a8843994337b88c0805d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "960px clean-gallery bangumi-light: connected A/B score bridge and open rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1646,
+      "byteLength": 181335,
+      "sha256": "0e2d078cf622d730cd332b5bd32fd771fc1fc0a1c2366ac720a833198fc2be7a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320px clean-gallery bangumi-dark: connected A/B score bridge and open rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1648,
+      "byteLength": 187104,
+      "sha256": "9076081013c5f54d5d762b9d9a7961a0924109069fa711bea47076c81fb5a3c6",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "360px clean-gallery bangumi-dark: connected A/B score bridge and open rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1986,
+      "byteLength": 297662,
+      "sha256": "367a8390196183c20ffd2d0250830972094da94fcf0f6af1fdbc0b6de227e715",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "520px clean-gallery bangumi-dark: connected A/B score bridge and open rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2020,
+      "byteLength": 355516,
+      "sha256": "420dfb4c328b6bd4d9212fdaabe799638a818fb5929aed0a6a29fc5341c91531",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "640px clean-gallery bangumi-dark: connected A/B score bridge and open rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2060,
+      "byteLength": 389865,
+      "sha256": "33c1163baba1514951bc60e6b7331beeaa4c2251c183d2d2619fef94bee65780",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "960px clean-gallery bangumi-dark: connected A/B score bridge and open rows; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1666,
+      "byteLength": 178700,
+      "sha256": "0c2062cd023934fa47cff3803e58fc9a0a5cd40a83a8e462f28ef0d152895d86",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320px graphic-zine bangumi-light: serif score papers, central delta paper, and cream metric strips; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1646,
+      "byteLength": 180489,
+      "sha256": "737baa8ccddc3a6efaaa81591e159106a03befc6d7eee5ba8a64b7ee829381f5",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "360px graphic-zine bangumi-light: serif score papers, central delta paper, and cream metric strips; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1854,
+      "byteLength": 289534,
+      "sha256": "c720aee3e6a14e2d200de8239a6fe833d12e97c4c348958956848850957d3e0c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "520px graphic-zine bangumi-light: serif score papers, central delta paper, and cream metric strips; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1926,
+      "byteLength": 346230,
+      "sha256": "f196671915fab0e21fa3fc8b278feb4629e000dfba7497baca0c09f44577be81",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "640px graphic-zine bangumi-light: serif score papers, central delta paper, and cream metric strips; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1928,
+      "byteLength": 383074,
+      "sha256": "e34e70616341ff7837f0d2b773cd7d24ff0fac6de8ef9d1b073a9aaad83a5c7c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "960px graphic-zine bangumi-light: serif score papers, central delta paper, and cream metric strips; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1666,
+      "byteLength": 179960,
+      "sha256": "55e7a400b991cac3cc8e81907e690cd660af79c7699c3ad35aa75606104b4b27",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320px graphic-zine bangumi-dark: serif score papers, central delta paper, and cream metric strips; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1646,
+      "byteLength": 181966,
+      "sha256": "bbdc0a1ddea44be314398a4983a91b30254df771c80d7bea5cf523d2bf550465",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "360px graphic-zine bangumi-dark: serif score papers, central delta paper, and cream metric strips; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1854,
+      "byteLength": 291864,
+      "sha256": "5c66a07dd18c3186637c34f17b25914acc12897fb3fe58aa4607464300de9ab4",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "520px graphic-zine bangumi-dark: serif score papers, central delta paper, and cream metric strips; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1926,
+      "byteLength": 350402,
+      "sha256": "2e577e57a1552ee4ffc2d142b868186592677110d7a6a43ef2bda9229c80e661",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "640px graphic-zine bangumi-dark: serif score papers, central delta paper, and cream metric strips; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1928,
+      "byteLength": 386503,
+      "sha256": "df88e8032945c24e4275d4bbaa5cdb68453ef817fd411f6d3e9e84a92a161ba3",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "960px graphic-zine bangumi-dark: serif score papers, central delta paper, and cream metric strips; complete A/B values and signed B−A remain legible; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2282,
+      "byteLength": 244369,
+      "sha256": "7881c01d69751152c5c330e4aecf8012613aff14524008c87618c3cabfabcaac",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320px warm-editorial bangumi-light: warm score lead and supporting rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2222,
+      "byteLength": 245616,
+      "sha256": "572c0fa627900b875782ef7ac0600801ddccdb9e2bec66639386c077bddc13b2",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "360px warm-editorial bangumi-light: warm score lead and supporting rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2160,
+      "byteLength": 288765,
+      "sha256": "14e5d22ad20cb7a5e5d5eed2314c94c72314a23bfbe16894fd4f17ad6a0bda2c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "520px warm-editorial bangumi-light: warm score lead and supporting rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2126,
+      "byteLength": 301033,
+      "sha256": "7f337c58b1c958ff667226bb61612d7f6554747376c253b98efc64b1833021e2",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "640px warm-editorial bangumi-light: warm score lead and supporting rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2130,
+      "byteLength": 331415,
+      "sha256": "e22693518ce87bf8df0690a15a830f82629718fc78a9b47f74cf711e3760d9ad",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "960px warm-editorial bangumi-light: warm score lead and supporting rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2282,
+      "byteLength": 243029,
+      "sha256": "c79cc0045dd3d20c8462b991483238fe3e9d853c9499d8df824f6e7f828eaa1b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320px warm-editorial bangumi-dark: warm score lead and supporting rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2222,
+      "byteLength": 244154,
+      "sha256": "02b32005753abeec7142a4dd510f18b7588aa67930a295e9c4d7bf79c703a61d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "360px warm-editorial bangumi-dark: warm score lead and supporting rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2160,
+      "byteLength": 286404,
+      "sha256": "53e6ab4591d328b0f6859e8a258d6e44062760b1b31fef4d432a40a4da8f5ecc",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "520px warm-editorial bangumi-dark: warm score lead and supporting rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2126,
+      "byteLength": 298850,
+      "sha256": "51cf71910464d88ae64c1d7849ef53daf6c7462841bf6bcbc03a6fc5db52a1a5",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "640px warm-editorial bangumi-dark: warm score lead and supporting rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2130,
+      "byteLength": 327722,
+      "sha256": "56e068e33e7541cdb068bbdb2622e32881752c698d41cb814b0bda3df018d4c3",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "960px warm-editorial bangumi-dark: warm score lead and supporting rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1688,
+      "byteLength": 178941,
+      "sha256": "9bf9abc1faedb0eba2a3992b14df6ddea5c07789cb6e44e0681e0676cd07fede",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320px clean-gallery bangumi-light: connected A/B score bridge and open rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1624,
+      "byteLength": 180990,
+      "sha256": "062dde35bc90152f2488b48df8e7f037246a9724dbc812e730fb3e46c22c9f18",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "360px clean-gallery bangumi-light: connected A/B score bridge and open rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1884,
+      "byteLength": 240044,
+      "sha256": "f4781f32a1139ce7a44562941872f1e87567db286b0c6b6a57fd4aae0ccd6424",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "520px clean-gallery bangumi-light: connected A/B score bridge and open rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1966,
+      "byteLength": 278940,
+      "sha256": "8312b8e7461f37aa8a54bd66860e7adab04dfc415fd32b40d845c17663900a2c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "640px clean-gallery bangumi-light: connected A/B score bridge and open rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1974,
+      "byteLength": 310473,
+      "sha256": "577d197b92edc29dd83f307054c83af4a3f037ed93e54741a3c3e467a7344a06",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "960px clean-gallery bangumi-light: connected A/B score bridge and open rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1688,
+      "byteLength": 184117,
+      "sha256": "8764bc3cf8f3ed225049e99d218dad6926de907dd04ee47f2ab5ec9a2a0fb871",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320px clean-gallery bangumi-dark: connected A/B score bridge and open rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1624,
+      "byteLength": 186245,
+      "sha256": "151fbb81eb8e21d5e4778e63feae7ea344dd4c11d10939108562231bb37c1054",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "360px clean-gallery bangumi-dark: connected A/B score bridge and open rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1884,
+      "byteLength": 245353,
+      "sha256": "aefc5a801d86a073387122bd274385d39a70455c7ffbbeecb9e5b724bf639229",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "520px clean-gallery bangumi-dark: connected A/B score bridge and open rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1966,
+      "byteLength": 285387,
+      "sha256": "e9e4717ab7b20dc18a8f419555f64faa4102695eff07c86f827cd58c87a6c7e1",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "640px clean-gallery bangumi-dark: connected A/B score bridge and open rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1974,
+      "byteLength": 316059,
+      "sha256": "3d471d97cdc5b34b38c203a679dbf821ccccf1f6801019a658b621eb0d4a27e6",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "960px clean-gallery bangumi-dark: connected A/B score bridge and open rows; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1652,
+      "byteLength": 181670,
+      "sha256": "7aa26e5202edd696920c155ed1ba1b0b8934cb83510839ad50b5fe13171be894",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320px graphic-zine bangumi-light: serif score papers, central delta paper, and cream metric strips; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1608,
+      "byteLength": 182889,
+      "sha256": "a1dde8683ad7d4a128e65fb25f1a772d5ff46e3fc699c239adc3a743e37d08de",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "360px graphic-zine bangumi-light: serif score papers, central delta paper, and cream metric strips; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1754,
+      "byteLength": 242352,
+      "sha256": "bb239d11f22ca751fe7bfe0852d0048b2da338e3b91f2b43b4fbdf98bf325095",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "520px graphic-zine bangumi-light: serif score papers, central delta paper, and cream metric strips; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1838,
+      "byteLength": 283028,
+      "sha256": "7311bd5dc48847b0ef5deb4e7099b18b6320a93fd4ce9c802594789df9549423",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "640px graphic-zine bangumi-light: serif score papers, central delta paper, and cream metric strips; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1844,
+      "byteLength": 312035,
+      "sha256": "a66d8131e700ff7b56bfeda2e51a35d827d73e373945dabaa254fe58bf410235",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "960px graphic-zine bangumi-light: serif score papers, central delta paper, and cream metric strips; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1652,
+      "byteLength": 182426,
+      "sha256": "7035e2bc1e0dbf388591c518ddd72d0c732b697a3d5a0b952058f1b9418b9c07",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320px graphic-zine bangumi-dark: serif score papers, central delta paper, and cream metric strips; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1608,
+      "byteLength": 183903,
+      "sha256": "ed71c7f701835b0f9b33c4f9fbb0b88a450db674e2e83551b407c53d7581542f",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "360px graphic-zine bangumi-dark: serif score papers, central delta paper, and cream metric strips; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1754,
+      "byteLength": 243686,
+      "sha256": "d2c359ee8405bed8d3b3e32806593e3072b6a8bf436e25fb5451dc8331576546",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "520px graphic-zine bangumi-dark: serif score papers, central delta paper, and cream metric strips; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1838,
+      "byteLength": 285892,
+      "sha256": "d2c181dfb4513017516b5187be6817168f85e94d2d472a04d66d7de789fc0b42",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "640px graphic-zine bangumi-dark: serif score papers, central delta paper, and cream metric strips; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1844,
+      "byteLength": 314410,
+      "sha256": "5f7dad234eb6c9108a00bfa96989687f883fb1a1b2174545d06873efe8792a80",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "960px graphic-zine bangumi-dark: serif score papers, central delta paper, and cream metric strips; unknown values and non-computable B−A stay explicit; no visible clipping, overlap, or horizontal overflow."
+      }
+    }
+  ]
+}

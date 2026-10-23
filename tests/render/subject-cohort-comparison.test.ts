@@ -62,21 +62,38 @@ describe('subject cohort comparison renderer', () => {
     expect(galleryHtml).toContain('border-bottom:1px solid');
     expect(zineHtml).toContain('data-title-pack="graphic-zine"');
     expect(zineHtml).not.toContain('border-left:6px solid');
-    expect(galleryHtml).toContain('data-render-mask="panel"');
-    expect(zineHtml).toContain('data-render-mask="panel-alt"');
+    expect(zineHtml).not.toContain('data-render-mask="panel"');
+    expect(zineHtml).not.toContain('data-render-mask="panel-alt"');
     expect(galleryHtml).toContain('data-layout-variant="cohort-paired"');
     expect(galleryHtml).toContain('data-layout-variant="gallery-score-lead"');
-    expect(galleryHtml).toContain('data-layout="gallery-score-orbit"');
     expect(galleryHtml).toContain('data-layout="gallery-score-bridge"');
-    expect(galleryHtml).toContain('data-layout="gallery-reading-rule"');
+    expect(galleryHtml).not.toContain('data-layout="gallery-score-orbit"');
     expect(galleryHtml).toContain('data-layout="gallery-comparison-matrix"');
     expect(galleryHtml).toContain('data-layout-variant="gallery-open-row"');
     expect(galleryHtml).toContain('data-layout-variant="gallery-open-method-notes"');
     expect(galleryHtml).not.toContain('data-layout="cohort-metric-bar"');
-    expect(zineHtml).toContain('drop-shadow(1px 2px 0');
-    expect(zineHtml).toContain('data-layout="zine-sticker-board"');
-    expect(zineHtml).toContain('data-layout-variant="zine-sticker"');
-    expect(zineHtml).toContain('data-layout="zine-delta-sticker"');
+    expect(zineHtml).not.toContain('drop-shadow(2px 3px 0');
+    expect(zineHtml).toContain('data-layout="zine-poster-board"');
+    expect(zineHtml).toContain('data-layout-variant="cohort-zine-headline-pair"');
+    expect(zineHtml).toContain('data-layout="cohort-query-summary"');
+    expect(zineHtml).toContain('媒介=anime');
+    expect(zineHtml).toContain('data-layout="zine-waterfront-illustration"');
+    expect(zineHtml).toContain('data-layout-variant="zine-score-lead"');
+    expect(zineHtml).toContain('data-layout="zine-score-pair"');
+    expect(zineHtml).toContain('data-layout="zine-score-bridge"');
+    expect(zineHtml).toContain('data-layout-variant="zine-waterline-row"');
+    expect(zineHtml).toContain('data-layout="zine-metric-header"');
+    expect(zineHtml).toContain('data-layout-variant="zine-colophon-notes"');
+    expect(zineHtml).toContain('data-layout="zine-colophon"');
+    expect(zineHtml).toContain('2026 春季');
+    expect(zineHtml).toContain('Spring One');
+    expect(zineHtml).not.toContain('Ma Shan Zheng');
+    expect(zineHtml).not.toContain('聚合指标');
+    expect(zineHtml).not.toContain('data-layout-variant="zine-score-paper"');
+    expect(zineHtml).not.toContain('data-layout-variant="zine-delta-paper"');
+    expect(zineHtml).not.toContain('data-layout-variant="zine-paper-row"');
+    expect(zineHtml).not.toContain('data-layout-variant="zine-sticker"');
+    expect(zineHtml).not.toContain('data-layout="zine-delta-sticker"');
   });
 
   it('prioritizes A, B, and delta values at narrow widths without repeating sample metrics', () => {
@@ -86,6 +103,7 @@ describe('subject cohort comparison renderer', () => {
     expect(mobileHtml).toContain('data-layout="cohort-overview"');
     expect(mobileHtml).toContain('data-layout-variant="cohort-paired"');
     expect(mobileHtml).toContain('data-layout="cohort-meta-compact"');
+    expect(mobileHtml).toContain('Bangumi · 完整 · B−A · 仅作对照');
     expect(mobileHtml).toContain('padding:12px 14px 16px');
     expect(mobileHtml).toContain('flex-direction:column');
     expect(mobileHtml.match(/data-layout="cohort-metric-board"/gu)).toHaveLength(1);
@@ -126,8 +144,16 @@ describe('subject cohort comparison renderer', () => {
       })),
     });
     const html = renderHtmlTemplate(partialWithStaleDeltas, 'bangumi-light', {}, 320);
+    const partialZineHtml = renderHtmlTemplate(
+      partialWithStaleDeltas,
+      'bangumi-light',
+      {},
+      320,
+      'graphic-zine',
+    );
 
     expect(html.match(/不可计算/gu)).toHaveLength(result.metrics.length);
+    expect(partialZineHtml).toContain('Bangumi · 部分覆盖 · B−A · 仅作对照');
     expect(html.match(/data-state="missing"/gu)).toHaveLength(result.metrics.length);
     expect(html.match(/data-state="unscaled"/gu)).toHaveLength(result.metrics.length);
   });

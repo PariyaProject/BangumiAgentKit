@@ -5,9 +5,19 @@ export interface CardFrameProps {
   theme: ThemeTokens;
   children: React.ReactNode;
   width?: number;
+  showMarker?: boolean;
+  rootStyle?: React.CSSProperties;
+  frameStyle?: React.CSSProperties;
 }
 
-export const CardFrame: React.FC<CardFrameProps> = ({ theme, children, width = 960 }) => {
+export const CardFrame: React.FC<CardFrameProps> = ({
+  theme,
+  children,
+  width = 960,
+  showMarker = true,
+  rootStyle,
+  frameStyle,
+}) => {
   const design = theme.design;
   const marker =
     design.markerStyle === 'zine' ? (
@@ -66,6 +76,7 @@ export const CardFrame: React.FC<CardFrameProps> = ({ theme, children, width = 9
         padding: design.outerPadding,
         display: 'flex',
         flexDirection: 'column',
+        ...rootStyle,
       }}
     >
       <div
@@ -83,9 +94,10 @@ export const CardFrame: React.FC<CardFrameProps> = ({ theme, children, width = 9
           display: 'flex',
           flexDirection: 'column',
           gap: theme.spacing.md,
+          ...frameStyle,
         }}
       >
-        {marker}
+        {showMarker ? marker : null}
         {children}
       </div>
     </div>

@@ -6568,12 +6568,12 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID',
         'delta: undefined',
         'deviceScaleFactor: 2',
-        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v21',
+        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v28',
     ),
     'scripts/lib/c07-render-comparison-v4-visual-qa.mjs': (
         'C07_V4_VISUAL_QA_MANIFEST_PATH',
         'manifest.deviceScaleFactor !== 2',
-        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v21',
+        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v28',
         'export function validateC07V4VisualQaEvidence(',
     ),
     'scripts/agent-harness.mjs': (

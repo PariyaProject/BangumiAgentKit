@@ -1,4 +1,10 @@
+/* Hallmark · component: C07 cohort comparison poster · genre: editorial · theme: Bangumi Graphic Zine
+ * pre-emit critique: P4 H5 E4 S5 R4 V5 · contrast: pass (40–41)
+ */
 import React from 'react';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { CardFrame } from '../components/CardFrame.js';
 import { Footer } from '../components/Footer.js';
 import { MetaRow } from '../components/MetaRow.js';
@@ -11,6 +17,13 @@ const OFFICIAL_OPERATION_LABELS: Record<string, string> = {
   searchSubjects: '检索条目',
   getSubjectById: '读取条目详情',
 };
+
+const COHORT_WATERFRONT_DATA_URI = `data:image/png;base64,${readFileSync(
+  path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '../../assets/illustrations/run95-c07-waterfront-watercolor-2026-10-24.png',
+  ),
+).toString('base64')}`;
 
 export interface SubjectCohortComparisonCardProps {
   viewModel: SubjectCohortComparisonViewModel;
@@ -67,9 +80,10 @@ function metricSourceLabel(key: string): string {
 function metricIconName(
   key: SubjectCohortComparisonViewModel['metrics'][number]['key'],
 ): RendererIconName {
+  if (key === 'score') return 'rating';
   if (key === 'heat') return 'collection';
-  if (key === 'episodesReported') return 'episode';
-  if (key === 'ratingStandardDeviation') return 'overview';
+  if (key === 'episodesReported') return 'subject';
+  if (key === 'ratingStandardDeviation') return 'stats';
   return 'stats';
 }
 
@@ -215,7 +229,7 @@ function metricBarWidth(metric: CohortMetric, index: number): number | undefined
 function cohortMetricColor(theme: ThemeTokens, index: number): string {
   if (theme.designPack === 'warm-editorial') return index === 0 ? theme.accent : theme.score;
   if (theme.designPack === 'clean-gallery') return index === 0 ? theme.accent : theme.success;
-  return index === 0 ? theme.accent : theme.warning;
+  return index === 0 ? theme.tones.blue.foreground : theme.tones.mint.foreground;
 }
 
 function metricDeltaColor(metric: CohortMetric, theme: ThemeTokens): string {
@@ -278,13 +292,15 @@ const CohortMetricCaption: React.FC<{
   theme: ThemeTokens;
   width: number;
   titleSize?: string;
-}> = ({ metric, theme, width, titleSize = '13px' }) => (
+  titleColor?: string;
+  sourceColor?: string;
+}> = ({ metric, theme, width, titleSize = '13px', titleColor, sourceColor }) => (
   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', minWidth: 0 }}>
     <RendererIcon name={metricIconName(metric.key)} theme={theme} size={13} />
     <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
       <div
         style={{
-          color: theme.text,
+          color: titleColor ?? theme.text,
           fontFamily: theme.design.bodyFontFamily,
           fontSize: titleSize,
           fontWeight: 700,
@@ -295,7 +311,8 @@ const CohortMetricCaption: React.FC<{
       </div>
       <div
         style={{
-          color: theme.textMuted,
+          color: sourceColor ?? theme.textMuted,
+          opacity: sourceColor ? 0.88 : undefined,
           fontSize: width <= 400 ? '11px' : '12px',
           lineHeight: 1.3,
         }}
@@ -571,16 +588,15 @@ const CleanGalleryMetricBoard: React.FC<CohortMetricBoardProps> = ({
   const secondary = metrics.filter((metric) => metric !== lead);
   const columns =
     width <= 400
-      ? 'minmax(82px, 1.15fr) repeat(2, minmax(0, 0.7fr)) minmax(43px, 0.6fr)'
-      : 'minmax(150px, 1.55fr) repeat(2, minmax(0, 0.85fr)) minmax(72px, 0.7fr)';
-  const valueFontFamily = theme.design.bodyFontFamily;
-  const deltaForeground = theme.tones.indigo.foreground;
-  const deltaSurface = theme.tones.indigo.surface;
+      ? 'minmax(90px, 1.35fr) repeat(2, minmax(0, 0.7fr)) minmax(48px, 0.62fr)'
+      : 'minmax(160px, 1.55fr) repeat(2, minmax(0, 0.82fr)) minmax(74px, 0.72fr)';
+  const valueFontFamily = theme.design.displayFontFamily;
+  const deltaColor = lead?.state === 'complete' ? theme.accent : theme.textMuted;
 
   return (
     <div
       data-layout="gallery-score-composition"
-      style={{ display: 'grid', gap: width <= 400 ? '8px' : '12px', minWidth: 0 }}
+      style={{ display: 'grid', gap: width <= 400 ? '5px' : '9px', minWidth: 0 }}
     >
       {lead ? (
         <section
@@ -588,85 +604,85 @@ const CleanGalleryMetricBoard: React.FC<CohortMetricBoardProps> = ({
           data-layout-variant="gallery-score-lead"
           style={{
             borderBottom: `1px solid ${theme.border}`,
-            padding: width <= 400 ? '7px 2px 11px' : '10px 4px 14px',
+            padding: width <= 400 ? '4px 0 7px' : '8px 2px 10px',
             minWidth: 0,
           }}
         >
           <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '8px',
-            }}
+            style={{ display: 'flex', alignItems: 'baseline', gap: width <= 400 ? '6px' : '10px' }}
           >
-            <CohortMetricCaption metric={lead} theme={theme} width={width} titleSize="15px" />
-            <span style={{ color: theme.textMuted, fontSize: width <= 400 ? '10px' : '12px' }}>
-              B − A
-            </span>
+            <CohortMetricCaption
+              metric={lead}
+              theme={theme}
+              width={width}
+              titleSize={width <= 400 ? '13px' : '15px'}
+            />
           </div>
           <div
             data-layout="gallery-score-pair"
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) 1px minmax(0, 1fr)',
-              alignItems: 'center',
-              gap: width <= 400 ? '7px' : '14px',
-              marginTop: width <= 400 ? '5px' : '8px',
+              position: 'relative',
+              minHeight: width <= 400 ? '76px' : '94px',
+              marginTop: width <= 400 ? '7px' : '11px',
             }}
           >
-            {cohorts.map((cohort, index) => (
-              <React.Fragment key={String(index) + '-' + lead.key}>
-                {index === 1 ? (
-                  <div
-                    aria-hidden="true"
-                    style={{
-                      height: width <= 400 ? '63px' : '82px',
-                      backgroundColor: theme.border,
-                    }}
-                  />
-                ) : null}
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 320 94"
+              preserveAspectRatio="none"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+            >
+              <path
+                d="M0 23C34 4 67 3 98 18c27 14 42 27 62 28v34c-25-2-41 8-69 1C56 73 28 87 0 65Z"
+                fill={theme.tones.blue.surface}
+                opacity="0.74"
+              />
+              <path
+                d="M160 46c21-1 36-14 62-28 32-16 65-14 98 5v42c-28 22-56 8-91 16-28 7-44-3-69-1Z"
+                fill={theme.tones.mint.surface}
+                opacity="0.74"
+              />
+            </svg>
+            <div
+              style={{
+                position: 'relative',
+                zIndex: 1,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                gap: width <= 400 ? '14px' : '28px',
+                padding: width <= 400 ? '7px 8px 0' : '10px 12px 0',
+              }}
+            >
+              {cohorts.map((cohort, index) => (
                 <div
+                  key={`${cohort.label}-${lead.key}`}
                   data-layout="cohort-featured-value"
                   data-cohort-index={index}
-                  style={{ display: 'grid', justifyItems: 'center', gap: '3px', minWidth: 0 }}
+                  style={{ minWidth: 0, textAlign: index === 0 ? 'left' : 'right' }}
                 >
                   <div
                     style={{
                       color: cohortMetricColor(theme, index),
                       fontSize: width <= 400 ? '10px' : '11px',
-                      fontWeight: 800,
-                      letterSpacing: '0.08em',
+                      fontWeight: 700,
+                      letterSpacing: '0.06em',
+                      lineHeight: 1.25,
                     }}
                   >
                     {index === 0 ? '分组 A' : '分组 B'}
                   </div>
                   <div
-                    data-layout="gallery-score-orbit"
+                    data-layout="cohort-metric-number"
                     style={{
-                      width: width <= 400 ? '104px' : '132px',
-                      height: width <= 400 ? '70px' : '88px',
-                      display: 'grid',
-                      placeItems: 'center',
-                      backgroundColor:
-                        index === 0 ? theme.tones.blue.surface : theme.tones.mint.surface,
-                      clipPath:
-                        index === 0 ? 'ellipse(49% 48% at 52% 50%)' : 'ellipse(48% 49% at 48% 50%)',
+                      color: cohortMetricColor(theme, index),
+                      fontFamily: valueFontFamily,
+                      fontSize: width <= 400 ? '31px' : '40px',
+                      fontWeight: theme.design.titleWeight,
+                      lineHeight: 1.05,
+                      fontVariantNumeric: 'tabular-nums',
                     }}
                   >
-                    <div
-                      data-layout="cohort-metric-number"
-                      style={{
-                        color: cohortMetricColor(theme, index),
-                        fontFamily: valueFontFamily,
-                        fontSize: width <= 400 ? '27px' : '34px',
-                        fontWeight: theme.design.titleWeight,
-                        lineHeight: 1.05,
-                        fontVariantNumeric: 'tabular-nums',
-                      }}
-                    >
-                      {averageLabel(lead, index)}
-                    </div>
+                    {averageLabel(lead, index)}
                   </div>
                   <div
                     style={{
@@ -678,74 +694,51 @@ const CleanGalleryMetricBoard: React.FC<CohortMetricBoardProps> = ({
                     {metricCoverageCompactLabel(cohort, lead.key)}
                   </div>
                 </div>
-              </React.Fragment>
-            ))}
-          </div>
-          <div
-            data-layout="gallery-score-bridge"
-            style={{
-              position: 'relative',
-              height: width <= 400 ? '22px' : '26px',
-              marginTop: '1px',
-            }}
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 320 20"
-              preserveAspectRatio="none"
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-            >
-              <path
-                d="M8 1V6Q8 15 19 15H112M208 15H301Q312 15 312 6V1"
-                fill="none"
-                stroke={theme.border}
-                strokeWidth="1.5"
-              />
-            </svg>
-            <span
-              data-layout="cohort-metric-delta"
+              ))}
+            </div>
+            <div
+              data-layout="gallery-score-bridge"
               style={{
                 position: 'absolute',
                 left: '50%',
-                top: 0,
+                top: width <= 400 ? '34px' : '43px',
                 transform: 'translateX(-50%)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: width <= 400 ? '3px 9px' : '4px 12px',
-                borderRadius: '999px',
-                backgroundColor: deltaSurface,
-                color: lead.state === 'complete' ? deltaForeground : theme.textMuted,
-                fontFamily: valueFontFamily,
-                fontSize: width <= 400 ? '12px' : '15px',
-                fontWeight: 800,
-                lineHeight: 1.2,
-                fontVariantNumeric: 'tabular-nums',
-                whiteSpace: 'nowrap',
+                zIndex: 2,
               }}
             >
-              <span style={{ fontFamily: theme.design.bodyFontFamily, fontSize: '9px' }}>Δ</span>
-              {deltaLabel(lead)}
-            </span>
-          </div>
-          <div
-            data-layout="gallery-reading-rule"
-            style={{
-              color: theme.textMuted,
-              fontSize: width <= 400 ? '11px' : '12px',
-              lineHeight: 1.35,
-              textAlign: 'center',
-              marginTop: '2px',
-            }}
-          >
-            有效样本均值 · 缺失不按 0 计算 · 双方完整时显示差值
+              <div
+                data-layout="cohort-metric-delta"
+                style={{
+                  display: 'grid',
+                  justifyItems: 'center',
+                  gap: '1px',
+                  color: deltaColor,
+                  fontFamily: valueFontFamily,
+                  fontSize: width <= 400 ? '13px' : '15px',
+                  fontWeight: theme.design.titleWeight,
+                  lineHeight: 1.1,
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span
+                  style={{
+                    color: theme.textMuted,
+                    fontFamily: theme.design.bodyFontFamily,
+                    fontSize: width <= 400 ? '8px' : '9px',
+                    letterSpacing: '0.04em',
+                    lineHeight: 1.1,
+                  }}
+                >
+                  B − A
+                </span>
+                {deltaLabel(lead)}
+              </div>
+            </div>
           </div>
         </section>
       ) : null}
-      <div
-        data-layout="gallery-comparison-matrix"
-        style={{ borderTop: `1px solid ${theme.border}`, minWidth: 0 }}
-      >
+      <div data-layout="gallery-comparison-matrix" style={{ minWidth: 0 }}>
         <div
           data-layout="gallery-matrix-header"
           style={{
@@ -798,7 +791,7 @@ const CleanGalleryMetricBoard: React.FC<CohortMetricBoardProps> = ({
                   style={{
                     color: cohortMetricColor(theme, index),
                     fontFamily: valueFontFamily,
-                    fontSize: width <= 400 ? '13px' : '17px',
+                    fontSize: width <= 400 ? '14px' : '17px',
                     fontWeight: theme.design.titleWeight,
                     lineHeight: 1.2,
                     overflowWrap: 'anywhere',
@@ -820,14 +813,10 @@ const CleanGalleryMetricBoard: React.FC<CohortMetricBoardProps> = ({
               <div
                 data-layout="cohort-metric-delta"
                 style={{
-                  display: 'inline-block',
-                  padding: width <= 400 ? '3px 4px' : '4px 8px',
-                  borderRadius: '999px',
-                  backgroundColor: deltaSurface,
-                  color: metric.state === 'complete' ? deltaForeground : theme.textMuted,
+                  color: metric.state === 'complete' ? theme.accent : theme.textMuted,
                   fontFamily: valueFontFamily,
-                  fontSize: width <= 400 ? '10px' : '14px',
-                  fontWeight: 800,
+                  fontSize: width <= 400 ? '11px' : '14px',
+                  fontWeight: theme.design.titleWeight,
                   lineHeight: 1.2,
                   fontVariantNumeric: 'tabular-nums',
                   whiteSpace: 'nowrap',
@@ -848,95 +837,507 @@ const CleanGalleryMetricBoard: React.FC<CohortMetricBoardProps> = ({
   );
 };
 
+const CohortZineMasthead: React.FC<{
+  cohorts: CohortMember[];
+  theme: ThemeTokens;
+  width: number;
+}> = ({ cohorts, theme, width }) => (
+  <div
+    data-layout="cohort-overview"
+    data-layout-variant="cohort-zine-headline-pair"
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      gap: width <= 400 ? '16px' : '32px',
+      borderBottom: '1px solid ' + theme.border,
+      paddingBottom: width <= 400 ? '8px' : '12px',
+      minWidth: 0,
+    }}
+  >
+    {cohorts.slice(0, 2).map((cohort, index) => {
+      const subject = cohort.subjects[0];
+      const queryCoverage = cohort.coverage.query.coverage;
+      const title = subject?.displayName || subject?.name || '暂无可展示作品';
+      const querySummary = cohort.querySummary.startsWith(cohort.label)
+        ? cohort.querySummary.slice(cohort.label.length).replace(/^[\s·•:：]+/u, '') ||
+          cohort.querySummary
+        : cohort.querySummary;
+      const alternateName =
+        subject?.displayName && subject.name && subject.displayName !== subject.name
+          ? subject.name
+          : undefined;
+
+      return (
+        <section
+          key={cohort.label + '-' + index}
+          data-layout="cohort-column"
+          style={{
+            minWidth: 0,
+            borderBottom:
+              '2px solid ' +
+              (index === 0 ? theme.tones.blue.foreground : theme.tones.coral.foreground),
+            paddingBottom: '4px',
+            textAlign: index === 0 ? 'left' : 'right',
+          }}
+        >
+          <div
+            data-layout="cohort-kicker"
+            style={{
+              display: 'flex',
+              justifyContent: index === 0 ? 'flex-start' : 'flex-end',
+              alignItems: 'baseline',
+              gap: '8px',
+              color: index === 0 ? theme.tones.blue.foreground : theme.tones.coral.foreground,
+              fontSize: width <= 400 ? '9px' : '11px',
+              fontWeight: 700,
+              letterSpacing: '0.06em',
+              lineHeight: 1.2,
+            }}
+          >
+            <span>{index === 0 ? 'A' : 'B'}</span>
+            <span>{cohort.label}</span>
+          </div>
+          <div
+            data-layout="cohort-label"
+            style={{
+              color: theme.text,
+              fontFamily: theme.design.displayFontFamily,
+              fontSize: width <= 400 ? '15px' : '21px',
+              fontWeight: 600,
+              lineHeight: 1.18,
+              marginTop: '4px',
+              overflowWrap: 'anywhere',
+              display: '-webkit-box',
+              WebkitBoxOrient: 'vertical',
+              WebkitLineClamp: 2,
+              overflow: 'hidden',
+            }}
+          >
+            {title}
+          </div>
+          <div
+            data-layout="cohort-query-summary"
+            title={cohort.querySummary}
+            style={{
+              color: theme.textMuted,
+              fontSize: width <= 400 ? '9px' : '10px',
+              lineHeight: 1.25,
+              marginTop: '4px',
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {querySummary}
+          </div>
+          {alternateName ? (
+            <div
+              style={{
+                color: theme.textMuted,
+                fontSize: width <= 400 ? '10px' : '12px',
+                lineHeight: 1.25,
+                marginTop: '4px',
+                overflowWrap: 'anywhere',
+                display: '-webkit-box',
+                WebkitBoxOrient: 'vertical',
+                WebkitLineClamp: 1,
+                overflow: 'hidden',
+              }}
+            >
+              {alternateName}
+            </div>
+          ) : null}
+          <div
+            data-layout="cohort-meta-compact"
+            style={{
+              color: theme.textMuted,
+              fontSize: width <= 400 ? '9px' : '10px',
+              lineHeight: 1.25,
+              marginTop: '4px',
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {subject ? '作品 #' + subject.id + ' · ' : ''}
+            {queryCoverage.returned}/{queryCoverage.scanned} 条 ·{' '}
+            {totalKindLabel(queryCoverage.totalKind)}
+            {' · '}详情 {cohort.coverage.detailHydrationsSucceeded}/
+            {cohort.coverage.detailHydrationsAttempted}
+          </div>
+        </section>
+      );
+    })}
+  </div>
+);
+
+const CohortWaterfrontScene: React.FC<{
+  theme: ThemeTokens;
+  width: number;
+}> = ({ theme, width }) => (
+  <div
+    data-layout="zine-waterfront-illustration"
+    style={{
+      position: 'relative',
+      width: '100%',
+      height: width <= 400 ? '132px' : width <= 640 ? '180px' : '260px',
+      marginTop: width <= 400 ? '-8px' : '-12px',
+      overflow: 'hidden',
+      backgroundColor: 'transparent',
+    }}
+  >
+    <img
+      src={COHORT_WATERFRONT_DATA_URI}
+      alt=""
+      aria-hidden="true"
+      draggable={false}
+      style={{
+        position: 'absolute',
+        left: 0,
+        bottom: 0,
+        width: '100%',
+        height: '140%',
+        objectFit: 'fill',
+        objectPosition: 'center bottom',
+        opacity: theme.name === 'bangumi-dark' ? 0.78 : 1,
+        filter: theme.name === 'bangumi-dark' ? 'brightness(0.72) saturate(0.76)' : undefined,
+      }}
+    />
+  </div>
+);
+
 const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
   metrics,
   cohorts,
   theme,
   width,
 }) => {
-  const valueFontFamily = theme.design.bodyFontFamily;
+  const lead = metrics.find((metric) => metric.key === 'score') ?? metrics[0];
+  const secondary = metrics.filter((metric) => metric !== lead);
+  const valueFontFamily = theme.design.displayFontFamily;
+  const columns =
+    width <= 400
+      ? 'minmax(96px, 0.92fr) repeat(3, minmax(0, 1fr))'
+      : 'minmax(220px, 1.25fr) repeat(3, minmax(90px, 1fr))';
 
   return (
     <div
-      data-layout="zine-sticker-board"
+      data-layout="zine-poster-board"
       style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-        gap: width <= 400 ? '8px' : '12px',
-        padding: '2px 2px 4px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: width <= 400 ? '4px' : '8px',
         minWidth: 0,
       }}
     >
-      {metrics.map((metric, metricIndex) => (
+      <CohortWaterfrontScene theme={theme} width={width} />
+      {lead ? (
         <section
-          key={metric.key}
           data-layout="cohort-metric-card"
-          data-layout-variant="zine-sticker"
-          data-render-mask={metricIndex % 2 === 0 ? 'panel' : 'panel-alt'}
+          data-layout-variant="zine-score-lead"
           style={{
-            backgroundColor:
-              metricIndex % 2 === 0 ? theme.tones.butter.surface : theme.tones.coral.surface,
-            clipPath:
-              metricIndex % 2 === 0 ? theme.design.masks.panel : theme.design.masks.panelAlt,
-            filter: `drop-shadow(1px 2px 0 ${theme.text})`,
-            padding: width <= 400 ? '10px 11px 15px' : '13px 16px 18px',
+            position: 'relative',
+            marginTop: width <= 400 ? '-16px' : '-28px',
+            paddingBottom: width <= 400 ? '8px' : '12px',
+            borderBottom: '1px solid ' + theme.border,
             minWidth: 0,
           }}
         >
-          <div style={{ display: 'grid', gap: '5px', minWidth: 0 }}>
-            <CohortMetricCaption metric={metric} theme={theme} width={width} titleSize="12px" />
-            <div
-              data-layout="zine-delta-sticker"
-              style={{
-                justifySelf: 'end',
-                backgroundColor: theme.text,
-                clipPath: theme.design.masks.tag,
-                color: theme.background,
-                padding: '4px 7px',
-                fontSize: width <= 400 ? '11px' : '12px',
-                fontWeight: 900,
-                lineHeight: 1.2,
-                textAlign: 'center',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {`B−A ${deltaLabel(metric)}`}
-            </div>
-          </div>
+          <CohortMetricCaption
+            metric={lead}
+            theme={theme}
+            width={width}
+            titleSize={width <= 400 ? '11px' : '14px'}
+          />
           <div
-            data-layout="zine-metric-pair"
+            data-layout="zine-score-pair"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
-              gap: width <= 400 ? '7px' : '12px',
-              marginTop: '8px',
+              gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+              alignItems: 'end',
+              gap: width <= 400 ? '8px' : '24px',
+              marginTop: width <= 400 ? '4px' : '8px',
               minWidth: 0,
             }}
           >
-            {cohorts.map((cohort, index) => (
-              <CohortMetricValueBlock
-                key={`${metric.key}-${index}`}
-                metric={metric}
-                cohort={cohort}
-                index={index}
-                theme={theme}
-                valueFontSize={width <= 400 ? '16px' : '19px'}
-                valueFontFamily={valueFontFamily}
-                coverageFontSize={width <= 400 ? '10px' : '12px'}
-              />
-            ))}
+            {cohorts[0] ? (
+              <div
+                data-layout="cohort-metric-value"
+                data-cohort-index="0"
+                style={{ minWidth: 0, color: cohortMetricColor(theme, 0) }}
+              >
+                <div style={{ fontSize: width <= 400 ? '9px' : '11px', lineHeight: 1.2 }}>
+                  分组 A
+                </div>
+                <div
+                  data-layout="cohort-metric-number"
+                  style={{
+                    fontFamily: valueFontFamily,
+                    fontSize:
+                      averageLabel(lead, 0).length > 6 ? '18px' : width <= 400 ? '34px' : '56px',
+                    fontWeight: 600,
+                    lineHeight: 1,
+                    letterSpacing: '-0.035em',
+                    fontVariantNumeric: 'tabular-nums',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {averageLabel(lead, 0)}
+                </div>
+                <div
+                  style={{
+                    color: theme.textMuted,
+                    fontSize: width <= 400 ? '9px' : '11px',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {metricCoverageCompactLabel(cohorts[0], lead.key)}
+                </div>
+              </div>
+            ) : null}
+            <div
+              data-layout="zine-score-bridge"
+              style={{
+                minWidth: width <= 400 ? '54px' : '82px',
+                textAlign: 'center',
+                paddingBottom: width <= 400 ? '4px' : '8px',
+                color: theme.tones.coral.foreground,
+              }}
+            >
+              <div
+                style={{
+                  color: theme.textMuted,
+                  fontSize: width <= 400 ? '8px' : '10px',
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                }}
+              >
+                B − A
+              </div>
+              <div
+                data-layout="cohort-metric-delta"
+                data-state={lead.state}
+                style={{
+                  fontFamily: valueFontFamily,
+                  fontSize: width <= 400 ? '14px' : '20px',
+                  fontWeight: 700,
+                  lineHeight: 1.1,
+                  fontVariantNumeric: 'tabular-nums',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {deltaLabel(lead)}
+              </div>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 120 18"
+                style={{ display: 'block', width: '100%', height: '12px' }}
+              >
+                <path
+                  d="M3 13C32 0 76 20 116 5"
+                  fill="none"
+                  stroke={theme.tones.coral.foreground}
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="m109 5 7 0-4 6"
+                  fill="none"
+                  stroke={theme.tones.coral.foreground}
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            {cohorts[1] ? (
+              <div
+                data-layout="cohort-metric-value"
+                data-cohort-index="1"
+                style={{ minWidth: 0, color: cohortMetricColor(theme, 1), textAlign: 'right' }}
+              >
+                <div style={{ fontSize: width <= 400 ? '9px' : '11px', lineHeight: 1.2 }}>
+                  分组 B
+                </div>
+                <div
+                  data-layout="cohort-metric-number"
+                  style={{
+                    fontFamily: valueFontFamily,
+                    fontSize:
+                      averageLabel(lead, 1).length > 6 ? '18px' : width <= 400 ? '34px' : '56px',
+                    fontWeight: 600,
+                    lineHeight: 1,
+                    letterSpacing: '-0.035em',
+                    fontVariantNumeric: 'tabular-nums',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {averageLabel(lead, 1)}
+                </div>
+                <div
+                  style={{
+                    color: theme.textMuted,
+                    fontSize: width <= 400 ? '9px' : '11px',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {metricCoverageCompactLabel(cohorts[1], lead.key)}
+                </div>
+              </div>
+            ) : null}
           </div>
+        </section>
+      ) : null}
+      <div
+        data-layout="zine-metric-header"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: columns,
+          gap: width <= 400 ? '4px' : '8px',
+          color: theme.textMuted,
+          fontSize: width <= 400 ? '9px' : '11px',
+          fontWeight: 700,
+          letterSpacing: '0.04em',
+          padding: width <= 400 ? '4px 4px' : '8px 4px 4px',
+        }}
+      >
+        <div>指标</div>
+        <div style={{ textAlign: 'center' }}>A</div>
+        <div style={{ textAlign: 'center' }}>B</div>
+        <div style={{ textAlign: 'right' }}>B − A</div>
+      </div>
+      {secondary.map((metric, metricIndex) => (
+        <section
+          key={metric.key}
+          data-layout="cohort-metric-card"
+          data-layout-variant="zine-waterline-row"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: columns,
+            alignItems: 'center',
+            gap: width <= 400 ? '4px' : '8px',
+            borderTop: '1px solid ' + theme.border,
+            padding: width <= 400 ? '8px 4px' : '12px 4px',
+            minWidth: 0,
+            position: 'relative',
+          }}
+        >
           <div
+            data-layout="cohort-metric-label"
             style={{
-              marginTop: '5px',
-              color: metricDeltaColor(metric, theme),
-              fontSize: '11px',
-              fontWeight: 700,
-              lineHeight: 1.2,
+              minWidth: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: width <= 400 ? '4px' : '8px',
             }}
           >
-            {stateLabel(metric.state)}
+            <RendererIcon
+              name={metricIconName(metric.key)}
+              theme={theme}
+              size={width <= 400 ? 14 : 18}
+            />
+            <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+              <div
+                style={{
+                  color: theme.text,
+                  fontSize: width <= 400 ? '10px' : '14px',
+                  fontWeight: 600,
+                  lineHeight: 1.2,
+                }}
+              >
+                {compactMetricLabel(metric.key)}
+              </div>
+              <div
+                style={{
+                  color: theme.textMuted,
+                  fontSize: width <= 400 ? '8px' : '10px',
+                  lineHeight: 1.2,
+                }}
+              >
+                {compactMetricSourceLabel(metric.key)}
+              </div>
+            </div>
           </div>
+          {cohorts.slice(0, 2).map((cohort, index) => (
+            <div
+              key={metric.key + '-' + index}
+              data-layout="cohort-metric-value"
+              data-cohort-index={index}
+              style={{
+                color: cohortMetricColor(theme, index),
+                textAlign: 'center',
+                minWidth: 0,
+              }}
+            >
+              <div
+                data-layout="cohort-metric-number"
+                style={{
+                  fontFamily: valueFontFamily,
+                  fontSize: width <= 400 ? '12px' : '17px',
+                  fontWeight: 600,
+                  lineHeight: 1.15,
+                  fontVariantNumeric: 'tabular-nums',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {averageLabel(metric, index)}
+              </div>
+              <div
+                style={{
+                  color: theme.textMuted,
+                  fontSize: width <= 400 ? '8px' : '10px',
+                  lineHeight: 1.2,
+                }}
+              >
+                {metricCoverageCompactLabel(cohort, metric.key)}
+              </div>
+            </div>
+          ))}
+          <div
+            data-layout="cohort-metric-value"
+            data-cohort-index="delta"
+            style={{
+              color: theme.tones.coral.foreground,
+              textAlign: 'right',
+              minWidth: 0,
+            }}
+          >
+            <div
+              data-layout="cohort-metric-delta"
+              data-state={metric.state}
+              style={{
+                fontFamily: valueFontFamily,
+                fontSize: width <= 400 ? '11px' : '15px',
+                fontWeight: 700,
+                lineHeight: 1.15,
+                fontVariantNumeric: 'tabular-nums',
+                overflowWrap: 'anywhere',
+              }}
+            >
+              {deltaLabel(metric)}
+            </div>
+            {metric.state !== 'complete' ? (
+              <div
+                style={{
+                  color: theme.warning,
+                  fontSize: width <= 400 ? '8px' : '10px',
+                  lineHeight: 1.2,
+                }}
+              >
+                {stateLabel(metric.state)}
+              </div>
+            ) : null}
+          </div>
+          <span
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              left: 0,
+              bottom: 0,
+              width: metricIndex % 2 === 0 ? '22px' : '12px',
+              height: '2px',
+              backgroundColor:
+                metricIndex % 2 === 0 ? theme.tones.coral.foreground : theme.tones.blue.foreground,
+              transform: metricIndex % 2 === 0 ? 'rotate(-1deg)' : 'rotate(1deg)',
+              transformOrigin: 'left center',
+            }}
+          />
         </section>
       ))}
     </div>
@@ -959,10 +1360,23 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
   const isGallery = theme.designPack === 'clean-gallery';
   const isWarm = theme.designPack === 'warm-editorial';
   const sharedGalleryOverview = isGallery && twoColumnComparison;
+  const sharedZineOverview = isZine && showComparison;
+  const isZineComparison = isZine && showComparison;
   const supportingTypeSize =
-    viewportWidth <= 400 ? (isGallery ? '12px' : '14px') : viewportWidth <= 520 ? '14px' : '15px';
-  const microTypeSize = viewportWidth <= 520 ? (isGallery ? '11px' : '14px') : '13px';
-  const footnoteTypeSize = isGallery && viewportWidth <= 400 ? '11px' : microTypeSize;
+    viewportWidth <= 400
+      ? isGallery || isZine
+        ? '12px'
+        : '14px'
+      : viewportWidth <= 520
+        ? isZine
+          ? '13px'
+          : '14px'
+        : '15px';
+  const microTypeSize = viewportWidth <= 520 ? (isGallery || isZine ? '11px' : '14px') : '13px';
+  const footnoteTypeSize =
+    (isGallery && viewportWidth <= 400) || (isZine && viewportWidth <= 400)
+      ? '11px'
+      : microTypeSize;
   const visibleSubjectsPerCohort =
     viewportWidth <= 400 ? 1 : viewportWidth < 520 ? 3 : viewportWidth < 760 ? 6 : 8;
   const warningLimit = 3;
@@ -1037,374 +1451,432 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
   const hasWarnings = warningMessages.length > 0;
 
   return (
-    <CardFrame theme={theme} width={width}>
+    <CardFrame
+      theme={theme}
+      width={width}
+      showMarker={!isZineComparison}
+      rootStyle={
+        isZineComparison
+          ? { padding: viewportWidth <= 400 ? '16px 12px 12px' : '24px 36px 20px' }
+          : undefined
+      }
+      frameStyle={
+        isZineComparison
+          ? {
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: 0,
+              clipPath: 'none',
+              padding: 0,
+              boxShadow: 'none',
+              gap: viewportWidth <= 400 ? '12px' : '20px',
+            }
+          : undefined
+      }
+    >
       <TitleBlock
         title={showComparison ? '条目群体比较' : '条目群体聚合'}
-        subtitle={`Bangumi 公共数据 · ${stateLabel(viewModel.state)} · ${showComparison ? '差值按 B − A 展示' : '仅展示单组样本'}，不生成推荐结论`}
+        subtitle={
+          showComparison && viewportWidth <= 360
+            ? `Bangumi · ${stateLabel(viewModel.state)} · B−A · 仅作对照`
+            : `Bangumi 公共数据 · ${stateLabel(viewModel.state)} · ${showComparison ? '差值按 B − A 展示' : '仅展示单组样本'}，不生成推荐结论`
+        }
         theme={theme}
         icon="comparison"
-        iconSize={22}
-        titleFontSize={viewportWidth <= 400 ? '23px' : '25px'}
-        subtitleFontSize={viewportWidth <= 400 ? '12px' : '14px'}
+        iconSize={18}
+        titleFontSize={viewportWidth <= 400 ? '20px' : '23px'}
+        subtitleFontSize={viewportWidth <= 320 ? '11px' : viewportWidth <= 400 ? '12px' : '14px'}
         eyebrowFontSize="12px"
-        titleStyle={isGallery ? 'cohort-gallery-open' : 'cohort-report'}
+        titleStyle={
+          isGallery ? 'cohort-gallery-open' : isZine ? 'cohort-zine-poster' : 'cohort-report'
+        }
+        showIconEyebrow={!isZine}
       />
 
-      <div
-        data-layout="cohort-overview"
-        data-layout-variant={`cohort-${cohortOverviewLayout}`}
-        data-render-mask={sharedGalleryOverview ? 'panel' : undefined}
-        style={{
-          display: 'grid',
-          gridTemplateColumns: cohortGridColumns,
-          gap: sharedGalleryOverview
-            ? 0
-            : viewportWidth <= 400
-              ? theme.spacing.sm
-              : theme.spacing.md,
-          backgroundColor: sharedGalleryOverview ? theme.surfaceAlt : undefined,
-          borderTop: sharedGalleryOverview ? `1px solid ${theme.border}` : undefined,
-          borderBottom: sharedGalleryOverview ? `1px solid ${theme.border}` : undefined,
-          clipPath: sharedGalleryOverview ? theme.design.masks.panel : undefined,
-        }}
-      >
-        {dimensions.map((cohort, index) => {
-          const queryCoverage = cohort.coverage.query.coverage;
-          const omittedSubjects = viewModel.coverage.omittedSubjectsPerCohort[index] ?? 0;
-          const visibleSubjects = cohort.subjects.slice(0, visibleSubjectsPerCohort);
-          const omittedForPresentation = cohort.subjects.length - visibleSubjects.length;
-          const returnedSubjects = cohort.subjects.length + omittedSubjects;
-          const cohortMask = index === 0 ? theme.design.masks.panel : theme.design.masks.panelAlt;
-          const compactQuerySummary =
-            viewportWidth <= 400 && cohort.querySummary.startsWith(cohort.label)
-              ? cohort.querySummary.slice(cohort.label.length).replace(/^[\s·•:：]+/u, '') ||
-                cohort.querySummary
-              : cohort.querySummary;
-          const cohortSurface = isZine
-            ? index === 0
-              ? theme.tones.butter.surface
-              : theme.tones.coral.surface
-            : theme.surfaceAlt;
-          return (
-            <section
-              key={`${cohort.label}-${index}`}
-              data-layout="cohort-column"
-              data-render-mask={
-                sharedGalleryOverview ? undefined : index === 0 ? 'panel' : 'panel-alt'
-              }
-              style={{
-                backgroundColor: sharedGalleryOverview ? 'transparent' : cohortSurface,
-                border: 'none',
-                borderTop:
-                  isGallery && !sharedGalleryOverview ? `1px solid ${theme.border}` : undefined,
-                borderLeft:
-                  sharedGalleryOverview && index === 1 ? `1px solid ${theme.border}` : undefined,
-                borderRadius: isWarm ? '18px 5px 18px 5px' : undefined,
-                boxShadow: isZine ? `2px 3px 0 ${theme.text}` : undefined,
-                clipPath: sharedGalleryOverview ? undefined : cohortMask,
-                padding: sharedGalleryOverview
-                  ? '8px 10px 9px'
-                  : viewportWidth <= 400
-                    ? '12px 14px 16px'
-                    : theme.spacing.md,
-                margin: isZine ? '0 2px 3px 0' : undefined,
-                minWidth: 0,
-              }}
-            >
-              <div
-                data-layout="cohort-kicker"
+      {isZineComparison ? (
+        <CohortZineMasthead cohorts={dimensions} theme={theme} width={viewportWidth} />
+      ) : (
+        <div
+          data-layout="cohort-overview"
+          data-layout-variant={`cohort-${cohortOverviewLayout}`}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: cohortGridColumns,
+            gap:
+              sharedGalleryOverview || sharedZineOverview
+                ? 0
+                : viewportWidth <= 400
+                  ? theme.spacing.sm
+                  : theme.spacing.md,
+            borderBottom:
+              sharedGalleryOverview || sharedZineOverview ? `1px solid ${theme.border}` : undefined,
+            paddingBottom: sharedZineOverview ? '8px' : undefined,
+          }}
+        >
+          {dimensions.map((cohort, index) => {
+            const queryCoverage = cohort.coverage.query.coverage;
+            const omittedSubjects = viewModel.coverage.omittedSubjectsPerCohort[index] ?? 0;
+            const visibleSubjects = cohort.subjects.slice(0, visibleSubjectsPerCohort);
+            const omittedForPresentation = cohort.subjects.length - visibleSubjects.length;
+            const returnedSubjects = cohort.subjects.length + omittedSubjects;
+            const cohortMask = index === 0 ? theme.design.masks.panel : theme.design.masks.panelAlt;
+            const compactQuerySummary =
+              viewportWidth <= 400 && cohort.querySummary.startsWith(cohort.label)
+                ? cohort.querySummary.slice(cohort.label.length).replace(/^[\s·•:：]+/u, '') ||
+                  cohort.querySummary
+                : cohort.querySummary;
+            const cohortSurface = isZine
+              ? index === 0
+                ? theme.tones.butter.surface
+                : theme.tones.coral.surface
+              : theme.surfaceAlt;
+            return (
+              <section
+                key={`${cohort.label}-${index}`}
+                data-layout="cohort-column"
+                data-render-mask={
+                  sharedGalleryOverview || sharedZineOverview
+                    ? undefined
+                    : index === 0
+                      ? 'panel'
+                      : 'panel-alt'
+                }
                 style={{
-                  color: isZine ? theme.background : theme.accent,
-                  backgroundColor: isZine ? theme.accent : undefined,
-                  clipPath: isZine ? theme.design.masks.tag : undefined,
-                  borderRadius:
-                    theme.designPack === 'warm-editorial' ? '999px 5px 999px 5px' : '2px',
-                  display: 'inline-block',
-                  padding: '3px 7px',
-                  fontSize: microTypeSize,
-                  fontWeight: 800,
-                  letterSpacing: '0.08em',
+                  backgroundColor:
+                    sharedGalleryOverview || sharedZineOverview ? 'transparent' : cohortSurface,
+                  border: 'none',
+                  borderTop:
+                    isGallery && !sharedGalleryOverview ? `1px solid ${theme.border}` : undefined,
+                  borderLeft:
+                    sharedGalleryOverview && index === 1
+                      ? `1px solid ${theme.border}`
+                      : sharedZineOverview
+                        ? `3px solid ${index === 0 ? theme.tones.butter.foreground : theme.tones.coral.foreground}`
+                        : undefined,
+                  borderRadius: isWarm ? '18px 5px 18px 5px' : undefined,
+                  boxShadow: isZine && !sharedZineOverview ? `2px 3px 0 ${theme.text}` : undefined,
+                  clipPath: sharedGalleryOverview || sharedZineOverview ? undefined : cohortMask,
+                  padding: sharedZineOverview
+                    ? '6px 10px 7px'
+                    : sharedGalleryOverview
+                      ? '6px 10px 9px'
+                      : viewportWidth <= 400
+                        ? '12px 14px 16px'
+                        : theme.spacing.md,
+                  margin: isZine && !sharedZineOverview ? '0 2px 3px 0' : undefined,
+                  minWidth: 0,
                 }}
               >
-                {showComparison ? `分组 ${index === 0 ? 'A' : 'B'}` : '样本分组'}
-              </div>
-              <div
-                data-layout="cohort-label"
-                style={{
-                  color: theme.text,
-                  fontFamily: theme.design.displayFontFamily,
-                  fontSize: viewportWidth <= 400 ? (isGallery ? '14px' : '16px') : '17px',
-                  fontWeight: 700,
-                  marginTop: sharedGalleryOverview ? '4px' : theme.spacing.xs,
-                  overflowWrap: 'anywhere',
-                  ...cohortLabelClamp,
-                }}
-              >
-                {cohort.label}
-              </div>
-              <div
-                style={{
-                  color: theme.textMuted,
-                  fontSize: supportingTypeSize,
-                  lineHeight: sharedGalleryOverview ? 1.3 : 1.5,
-                  marginTop: sharedGalleryOverview ? '3px' : theme.spacing.xs,
-                  overflowWrap: 'anywhere',
-                  ...querySummaryClamp,
-                }}
-              >
-                {compactQuerySummary}
-              </div>
-              {viewportWidth <= 640 ? (
                 <div
-                  data-layout="cohort-meta-compact"
+                  data-layout="cohort-kicker"
                   style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    columnGap: viewportWidth <= 400 ? '5px' : theme.spacing.sm,
-                    rowGap: viewportWidth <= 400 ? '2px' : theme.spacing.xs,
+                    color: sharedZineOverview
+                      ? index === 0
+                        ? theme.tones.blue.foreground
+                        : theme.tones.coral.foreground
+                      : isZine
+                        ? theme.background
+                        : theme.accent,
+                    backgroundColor: isZine && !sharedZineOverview ? theme.accent : undefined,
+                    clipPath: isZine && !sharedZineOverview ? theme.design.masks.tag : undefined,
+                    borderBottom: sharedZineOverview ? `1px solid ${theme.border}` : undefined,
+                    borderRadius:
+                      sharedGalleryOverview || sharedZineOverview
+                        ? 0
+                        : theme.designPack === 'warm-editorial'
+                          ? '999px 5px 999px 5px'
+                          : '2px',
+                    display: 'inline-block',
+                    padding: sharedGalleryOverview ? 0 : sharedZineOverview ? '0 0 2px' : '3px 7px',
+                    fontSize: sharedZineOverview ? '9px' : microTypeSize,
+                    fontWeight: sharedZineOverview ? 700 : 800,
+                    letterSpacing:
+                      sharedGalleryOverview || sharedZineOverview ? '0.04em' : '0.08em',
+                  }}
+                >
+                  {showComparison ? `分组 ${index === 0 ? 'A' : 'B'}` : '样本分组'}
+                </div>
+                <div
+                  data-layout="cohort-label"
+                  style={{
+                    color: theme.text,
+                    fontFamily: theme.design.displayFontFamily,
+                    fontSize:
+                      viewportWidth <= 400 ? (isGallery || isZine ? '14px' : '16px') : '17px',
+                    fontWeight: isZine ? 650 : 700,
+                    marginTop:
+                      sharedGalleryOverview || sharedZineOverview ? '4px' : theme.spacing.xs,
+                    overflowWrap: 'anywhere',
+                    ...cohortLabelClamp,
+                  }}
+                >
+                  {cohort.label}
+                </div>
+                <div
+                  style={{
                     color: theme.textMuted,
-                    fontSize: microTypeSize,
-                    lineHeight: 1.35,
+                    fontSize: supportingTypeSize,
+                    lineHeight: sharedGalleryOverview || sharedZineOverview ? 1.3 : 1.5,
+                    marginTop:
+                      sharedGalleryOverview || sharedZineOverview ? '3px' : theme.spacing.xs,
+                    overflowWrap: 'anywhere',
+                    ...querySummaryClamp,
                   }}
                 >
-                  <span>{stateLabel(cohort.coverage.query.state)}</span>
-                  <span>
-                    {viewportWidth <= 400
-                      ? `${queryCoverage.returned}/${queryCoverage.scanned} · ${queryCoverage.totalKind === 'estimated' ? '估算' : totalKindLabel(queryCoverage.totalKind)}`
-                      : `返回 ${queryCoverage.returned} · 观察 ${queryCoverage.scanned} · ${totalKindLabel(queryCoverage.totalKind)}`}
-                  </span>
+                  {compactQuerySummary}
                 </div>
-              ) : (
-                <MetaRow
-                  theme={theme}
-                  items={[
-                    `状态 ${stateLabel(cohort.coverage.query.state)}`,
-                    `返回 ${queryCoverage.returned}`,
-                    `观察 ${queryCoverage.scanned}`,
-                    totalKindLabel(queryCoverage.totalKind),
-                  ]}
-                />
-              )}
-              <div
-                style={{
-                  color: theme.textMuted,
-                  fontSize: microTypeSize,
-                  lineHeight: 1.4,
-                  marginTop: '2px',
-                }}
-              >
-                {viewportWidth <= 400
-                  ? `页 ${queryCoverage.pagesScanned}/${queryCoverage.pagesRequested} · 详情 ${cohort.coverage.detailHydrationsSucceeded}/${cohort.coverage.detailHydrationsAttempted}`
-                  : queryCoverage.pagesScanned < queryCoverage.pagesRequested
-                    ? `来源已读取 ${queryCoverage.pagesScanned}/${queryCoverage.pagesRequested} 页`
-                    : '本次检索页数已读完'}
-                {viewportWidth <= 400
-                  ? null
-                  : ` · 详情 ${cohort.coverage.detailHydrationsSucceeded}/${cohort.coverage.detailHydrationsAttempted}`}
-                {!queryCoverage.upstreamExhausted ? ' · 来源未读完' : ''}
-                {queryCoverage.budgetExceeded ? ' · 已达查询上限' : ''}
-              </div>
-
-              {cohort.subjects.length === 0 || viewportWidth > 400 ? (
+                {viewportWidth <= 640 ? (
+                  <div
+                    data-layout="cohort-meta-compact"
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      columnGap: viewportWidth <= 400 ? '5px' : theme.spacing.sm,
+                      rowGap: viewportWidth <= 400 ? '2px' : theme.spacing.xs,
+                      color: theme.textMuted,
+                      fontSize: sharedZineOverview && viewportWidth <= 400 ? '10px' : microTypeSize,
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    <span>{stateLabel(cohort.coverage.query.state)}</span>
+                    <span>
+                      {viewportWidth <= 400
+                        ? `${queryCoverage.returned}/${queryCoverage.scanned} · ${queryCoverage.totalKind === 'estimated' ? '估算' : totalKindLabel(queryCoverage.totalKind)}`
+                        : `返回 ${queryCoverage.returned} · 观察 ${queryCoverage.scanned} · ${totalKindLabel(queryCoverage.totalKind)}`}
+                    </span>
+                  </div>
+                ) : (
+                  <MetaRow
+                    theme={theme}
+                    items={[
+                      `状态 ${stateLabel(cohort.coverage.query.state)}`,
+                      `返回 ${queryCoverage.returned}`,
+                      `观察 ${queryCoverage.scanned}`,
+                      totalKindLabel(queryCoverage.totalKind),
+                    ]}
+                  />
+                )}
                 <div
                   style={{
-                    color: theme.accent,
-                    fontWeight: 700,
-                    fontSize: microTypeSize,
-                    marginTop: theme.spacing.sm,
+                    color: theme.textMuted,
+                    fontSize: sharedZineOverview && viewportWidth <= 400 ? '10px' : microTypeSize,
+                    lineHeight: 1.4,
+                    marginTop: '2px',
                   }}
                 >
-                  {cohort.subjects.length === 0 ? '样本显示情况' : '返回样本'}
+                  {viewportWidth <= 400
+                    ? `页 ${queryCoverage.pagesScanned}/${queryCoverage.pagesRequested} · 详情 ${cohort.coverage.detailHydrationsSucceeded}/${cohort.coverage.detailHydrationsAttempted}`
+                    : queryCoverage.pagesScanned < queryCoverage.pagesRequested
+                      ? `来源已读取 ${queryCoverage.pagesScanned}/${queryCoverage.pagesRequested} 页`
+                      : '本次检索页数已读完'}
+                  {viewportWidth <= 400
+                    ? null
+                    : ` · 详情 ${cohort.coverage.detailHydrationsSucceeded}/${cohort.coverage.detailHydrationsAttempted}`}
+                  {!queryCoverage.upstreamExhausted ? ' · 来源未读完' : ''}
+                  {queryCoverage.budgetExceeded ? ' · 已达查询上限' : ''}
                 </div>
-              ) : null}
-              {cohort.subjects.length === 0 ? (
-                <div
-                  style={{ color: theme.warning, fontSize: supportingTypeSize, lineHeight: 1.5 }}
-                >
-                  {queryCoverage.returned > 0
-                    ? showComparison && viewportWidth <= 400
-                      ? `返回 ${queryCoverage.returned} 条 · 详情不可用；不代表无匹配项。`
-                      : `检索返回 ${queryCoverage.returned} 条结果，但作品详情暂不可用；本图不显示作品行。详情缺失不代表没有匹配项。`
-                    : viewportWidth <= 400
-                      ? '暂无可展示条目；不代表无匹配项。'
-                      : '本次检索没有可展示的条目；空结果不证明目录中不存在匹配项。'}
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
-                  {visibleSubjects.map((subject) => (
-                    <div
-                      key={subject.id}
-                      data-layout="cohort-subject-item"
-                      style={{
-                        borderTop: `1px solid ${theme.border}`,
-                        paddingTop: theme.spacing.xs,
-                        minWidth: 0,
-                      }}
-                    >
+
+                {cohort.subjects.length === 0 || viewportWidth > 400 ? (
+                  <div
+                    style={{
+                      color: theme.accent,
+                      fontWeight: 700,
+                      fontSize: microTypeSize,
+                      marginTop: theme.spacing.sm,
+                    }}
+                  >
+                    {cohort.subjects.length === 0 ? '样本显示情况' : '返回样本'}
+                  </div>
+                ) : null}
+                {cohort.subjects.length === 0 ? (
+                  <div
+                    style={{ color: theme.warning, fontSize: supportingTypeSize, lineHeight: 1.5 }}
+                  >
+                    {queryCoverage.returned > 0
+                      ? showComparison && viewportWidth <= 400
+                        ? `返回 ${queryCoverage.returned} 条 · 详情不可用；不代表无匹配项。`
+                        : `检索返回 ${queryCoverage.returned} 条结果，但作品详情暂不可用；本图不显示作品行。详情缺失不代表没有匹配项。`
+                      : viewportWidth <= 400
+                        ? '暂无可展示条目；不代表无匹配项。'
+                        : '本次检索没有可展示的条目；空结果不证明目录中不存在匹配项。'}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
+                    {visibleSubjects.map((subject) => (
                       <div
+                        key={subject.id}
+                        data-layout="cohort-subject-item"
                         style={{
-                          display: viewportWidth <= 400 ? 'grid' : 'flex',
-                          gridTemplateColumns:
-                            viewportWidth <= 400 ? '15px minmax(0, 1fr)' : undefined,
-                          alignItems: 'flex-start',
-                          gap: viewportWidth <= 400 ? '3px 5px' : theme.spacing.xs,
+                          borderTop: `1px solid ${theme.border}`,
+                          paddingTop: theme.spacing.xs,
                           minWidth: 0,
                         }}
                       >
-                        <RendererIcon name="subject" theme={theme} size={15} />
-                        <span
+                        <div
                           style={{
-                            color: theme.text,
-                            fontSize: sharedGalleryOverview ? '12px' : supportingTypeSize,
+                            display: viewportWidth <= 400 ? 'grid' : 'flex',
+                            gridTemplateColumns:
+                              viewportWidth <= 400 ? '15px minmax(0, 1fr)' : undefined,
+                            alignItems: 'flex-start',
+                            gap: viewportWidth <= 400 ? '3px 5px' : theme.spacing.xs,
                             minWidth: 0,
-                            overflowWrap: 'break-word',
-                            ...(viewportWidth <= 520
-                              ? {
-                                  display: '-webkit-box',
-                                  WebkitBoxOrient: 'vertical',
-                                  WebkitLineClamp: viewportWidth <= 400 ? 3 : 4,
-                                  overflow: 'hidden',
-                                }
-                              : {}),
                           }}
                         >
-                          {subject.displayName}
-                        </span>
-                        <span
-                          style={{
-                            color: theme.textMuted,
-                            flex: viewportWidth <= 400 ? undefined : '0 0 auto',
-                            gridColumn: viewportWidth <= 400 ? '2' : undefined,
-                            justifySelf: viewportWidth <= 400 ? 'end' : undefined,
-                            lineHeight: 1,
-                            fontSize: microTypeSize,
-                          }}
-                        >
-                          #{subject.id}
-                        </span>
+                          <RendererIcon name="subject" theme={theme} size={15} />
+                          <span
+                            style={{
+                              color: theme.text,
+                              fontSize: sharedGalleryOverview ? '12px' : supportingTypeSize,
+                              minWidth: 0,
+                              overflowWrap: 'break-word',
+                              ...(viewportWidth <= 520
+                                ? {
+                                    display: '-webkit-box',
+                                    WebkitBoxOrient: 'vertical',
+                                    WebkitLineClamp: viewportWidth <= 400 ? 3 : 4,
+                                    overflow: 'hidden',
+                                  }
+                                : {}),
+                            }}
+                          >
+                            {subject.displayName}
+                          </span>
+                          <span
+                            style={{
+                              color: theme.textMuted,
+                              flex: viewportWidth <= 400 ? undefined : '0 0 auto',
+                              gridColumn: viewportWidth <= 400 ? '2' : undefined,
+                              justifySelf: viewportWidth <= 400 ? 'end' : undefined,
+                              lineHeight: 1,
+                              fontSize: microTypeSize,
+                            }}
+                          >
+                            #{subject.id}
+                          </span>
+                        </div>
+                        {compactComparison ? null : viewportWidth < 520 ? (
+                          <div
+                            data-layout="cohort-subject-metrics"
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                              gap: '3px 5px',
+                              marginTop: '3px',
+                              color: theme.textMuted,
+                              fontSize: microTypeSize,
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            {[
+                              ['评分', numberLabel(subject.score, 2)],
+                              [
+                                '评分人数',
+                                subject.ratingCountState === 'invalid'
+                                  ? '无效'
+                                  : numberLabel(subject.ratingCount, 0),
+                              ],
+                              ['收藏', numberLabel(subject.collectionTotal, 0)],
+                              ['报告话数', numberLabel(subject.episodesReported, 0)],
+                              [
+                                '离散度',
+                                `${numberLabel(subject.ratingStandardDeviation, 2)} · 样本 ${numberLabel(subject.ratingHistogramPopulation, 0)}`,
+                              ],
+                            ].map(([label, value]) => (
+                              <div
+                                key={`${subject.id}-${label}`}
+                                style={{
+                                  backgroundColor: theme.surfaceAlt,
+                                  borderRadius: theme.radius.sm,
+                                  padding: '3px 4px',
+                                  minWidth: 0,
+                                  overflowWrap: 'break-word',
+                                }}
+                              >
+                                {label} <strong style={{ color: theme.text }}>{value}</strong>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              color: theme.textMuted,
+                              fontSize: microTypeSize,
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            评分 {numberLabel(subject.score, 2)} · 评分人数{' '}
+                            {subject.ratingCountState === 'invalid'
+                              ? '无效'
+                              : numberLabel(subject.ratingCount, 0)}{' '}
+                            · 收藏人数 {numberLabel(subject.collectionTotal, 0)}
+                            {' · '}报告话数 {numberLabel(subject.episodesReported, 0)} ·
+                            评分分布离散度 {numberLabel(subject.ratingStandardDeviation, 2)}（样本数{' '}
+                            {numberLabel(subject.ratingHistogramPopulation, 0)}）
+                          </div>
+                        )}
+                        {(subject.ratingStandardDeviationConflicts || []).map((conflict, index) => (
+                          <div
+                            key={`${subject.id}-rating-conflict-${index}`}
+                            style={{
+                              color: theme.warning,
+                              fontSize: microTypeSize,
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            评分标准差冲突：
+                            {conflict.kind === 'score_vs_histogram_mean'
+                              ? `官方评分 ${numberLabel(conflict.officialScore, 2)} vs 直方图均值 ${numberLabel(conflict.histogramMean, 2)}`
+                              : `搜索人数 ${numberLabel(conflict.discoveryRatingCount, 0)} 与详情总数 ${numberLabel(conflict.detailRatingTotal, 0)} 不一致`}
+                          </div>
+                        ))}
+                        {subject.ratingHistogramTotalValidation &&
+                        subject.ratingHistogramTotalValidation.state !== 'match' ? (
+                          <div
+                            style={{
+                              color: theme.warning,
+                              fontSize: microTypeSize,
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            详情评分总数
+                            {subject.ratingHistogramTotalValidation.state === 'invalid'
+                              ? '无效'
+                              : ` ${numberLabel(subject.ratingHistogramTotalValidation.detailRatingTotal, 0)}`}{' '}
+                            与直方图样本{' '}
+                            {numberLabel(
+                              subject.ratingHistogramTotalValidation.histogramPopulation,
+                              0,
+                            )}{' '}
+                            不匹配。
+                          </div>
+                        ) : null}
                       </div>
-                      {compactComparison ? null : viewportWidth < 520 ? (
-                        <div
-                          data-layout="cohort-subject-metrics"
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                            gap: '3px 5px',
-                            marginTop: '3px',
-                            color: theme.textMuted,
-                            fontSize: microTypeSize,
-                            lineHeight: 1.35,
-                          }}
-                        >
-                          {[
-                            ['评分', numberLabel(subject.score, 2)],
-                            [
-                              '评分人数',
-                              subject.ratingCountState === 'invalid'
-                                ? '无效'
-                                : numberLabel(subject.ratingCount, 0),
-                            ],
-                            ['收藏', numberLabel(subject.collectionTotal, 0)],
-                            ['报告话数', numberLabel(subject.episodesReported, 0)],
-                            [
-                              '离散度',
-                              `${numberLabel(subject.ratingStandardDeviation, 2)} · 样本 ${numberLabel(subject.ratingHistogramPopulation, 0)}`,
-                            ],
-                          ].map(([label, value]) => (
-                            <div
-                              key={`${subject.id}-${label}`}
-                              style={{
-                                backgroundColor: theme.surfaceAlt,
-                                borderRadius: theme.radius.sm,
-                                padding: '3px 4px',
-                                minWidth: 0,
-                                overflowWrap: 'break-word',
-                              }}
-                            >
-                              {label} <strong style={{ color: theme.text }}>{value}</strong>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div
-                          style={{
-                            color: theme.textMuted,
-                            fontSize: microTypeSize,
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          评分 {numberLabel(subject.score, 2)} · 评分人数{' '}
-                          {subject.ratingCountState === 'invalid'
-                            ? '无效'
-                            : numberLabel(subject.ratingCount, 0)}{' '}
-                          · 收藏人数 {numberLabel(subject.collectionTotal, 0)}
-                          {' · '}报告话数 {numberLabel(subject.episodesReported, 0)} ·
-                          评分分布离散度 {numberLabel(subject.ratingStandardDeviation, 2)}（样本数{' '}
-                          {numberLabel(subject.ratingHistogramPopulation, 0)}）
-                        </div>
-                      )}
-                      {(subject.ratingStandardDeviationConflicts || []).map((conflict, index) => (
-                        <div
-                          key={`${subject.id}-rating-conflict-${index}`}
-                          style={{
-                            color: theme.warning,
-                            fontSize: microTypeSize,
-                            lineHeight: 1.35,
-                          }}
-                        >
-                          评分标准差冲突：
-                          {conflict.kind === 'score_vs_histogram_mean'
-                            ? `官方评分 ${numberLabel(conflict.officialScore, 2)} vs 直方图均值 ${numberLabel(conflict.histogramMean, 2)}`
-                            : `搜索人数 ${numberLabel(conflict.discoveryRatingCount, 0)} 与详情总数 ${numberLabel(conflict.detailRatingTotal, 0)} 不一致`}
-                        </div>
-                      ))}
-                      {subject.ratingHistogramTotalValidation &&
-                      subject.ratingHistogramTotalValidation.state !== 'match' ? (
-                        <div
-                          style={{
-                            color: theme.warning,
-                            fontSize: microTypeSize,
-                            lineHeight: 1.35,
-                          }}
-                        >
-                          详情评分总数
-                          {subject.ratingHistogramTotalValidation.state === 'invalid'
-                            ? '无效'
-                            : ` ${numberLabel(subject.ratingHistogramTotalValidation.detailRatingTotal, 0)}`}{' '}
-                          与直方图样本{' '}
-                          {numberLabel(
-                            subject.ratingHistogramTotalValidation.histogramPopulation,
-                            0,
-                          )}{' '}
-                          不匹配。
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {omittedSubjects + omittedForPresentation > 0 ? (
-                <div
-                  data-layout="cohort-subject-summary"
-                  style={{
-                    color: theme.textMuted,
-                    fontSize: microTypeSize,
-                    lineHeight: 1.45,
-                    marginTop: theme.spacing.xs,
-                  }}
-                >
-                  图片展示 {visibleSubjects.length}/{returnedSubjects} 条已返回样本；另有{' '}
-                  {omittedSubjects + omittedForPresentation}{' '}
-                  条未展开，聚合指标仍按已取得的有效样本计算。
-                </div>
-              ) : null}
-            </section>
-          );
-        })}
-      </div>
+                    ))}
+                  </div>
+                )}
+                {omittedSubjects + omittedForPresentation > 0 ? (
+                  <div
+                    data-layout="cohort-subject-summary"
+                    style={{
+                      color: theme.textMuted,
+                      fontSize: microTypeSize,
+                      lineHeight: 1.45,
+                      marginTop: theme.spacing.xs,
+                    }}
+                  >
+                    图片展示 {visibleSubjects.length}/{returnedSubjects} 条已返回样本；另有{' '}
+                    {omittedSubjects + omittedForPresentation}{' '}
+                    条未展开，聚合指标仍按已取得的有效样本计算。
+                  </div>
+                ) : null}
+              </section>
+            );
+          })}
+        </div>
+      )}
 
       <section data-layout="cohort-metric-section">
-        {isGallery && showComparison ? null : (
+        {(isGallery || isZine) && showComparison ? null : (
           <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
             <RendererIcon name="stats" theme={theme} size={18} />
             <div style={{ minWidth: 0 }}>
@@ -1626,16 +2098,27 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
       <section
         data-layout="cohort-method-notes"
         data-layout-variant={
-          isGallery && viewportWidth <= 400 ? 'gallery-open-method-notes' : undefined
+          isGallery && viewportWidth <= 400
+            ? 'gallery-open-method-notes'
+            : isZineComparison
+              ? 'zine-colophon-notes'
+              : undefined
         }
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: isGallery && viewportWidth <= 400 ? '4px' : viewportWidth <= 400 ? '6px' : '8px',
+          gap:
+            isGallery && viewportWidth <= 400
+              ? '4px'
+              : isZineComparison
+                ? '8px'
+                : viewportWidth <= 400
+                  ? '6px'
+                  : '8px',
           borderTop: `1px solid ${theme.border}`,
-          paddingTop: isGallery && viewportWidth <= 400 ? '7px' : '8px',
+          paddingTop: '8px',
           color: theme.textMuted,
-          fontSize: footnoteTypeSize,
+          fontSize: isZineComparison ? (viewportWidth <= 400 ? '10px' : '12px') : footnoteTypeSize,
           lineHeight: isGallery && viewportWidth <= 400 ? 1.35 : 1.45,
         }}
       >
@@ -1705,7 +2188,35 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
           </>
         )}
       </section>
-      <Footer label="Bangumi 条目样本统计" theme={theme} />
+      {isZineComparison ? (
+        <footer
+          data-layout="zine-colophon"
+          style={{
+            color: theme.textMuted,
+            fontSize: viewportWidth <= 400 ? '10px' : '12px',
+            lineHeight: 1.3,
+          }}
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 960 18"
+            preserveAspectRatio="none"
+            style={{ display: 'block', width: '100%', height: '8px', marginBottom: '5px' }}
+          >
+            <path
+              d="M0 9c90-5 142 5 230 0s143-5 230 0 143 5 230 0 143-5 270 0"
+              fill="none"
+              stroke={theme.tones.blue.foreground}
+              strokeWidth="2"
+              strokeDasharray="5 8"
+              opacity="0.68"
+            />
+          </svg>
+          Bangumi 条目样本统计 <span aria-hidden="true">·</span> Powered by Bangumi Agent Kit
+        </footer>
+      ) : (
+        <Footer label="Bangumi 条目样本统计" theme={theme} />
+      )}
     </CardFrame>
   );
 };

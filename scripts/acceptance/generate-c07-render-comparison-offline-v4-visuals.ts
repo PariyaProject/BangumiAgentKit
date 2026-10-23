@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { GeneratedBangumiOpenApiClient } from '../../packages/bangumi-openapi/dist/index.js';
-import { HttpClient } from '../../packages/bangumi-transport/dist/index.js';
 import { compareSubjectCohorts } from '../../packages/discovery/dist/index.js';
 import { OfficialV0Provider, ProviderRegistry } from '../../packages/provider-core/dist/index.js';
 import {
@@ -21,28 +20,31 @@ import { computeC07V4VisualQaGenerationSourceSha256 } from '../lib/c07-render-co
 
 const PROFILE_ID = C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID;
 const OUTPUT_DIR = path.resolve(
-  '.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v22',
+  '.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v28',
 );
 const WIDTHS = [320, 360, 520, 640, 960];
 const DESIGN_PACKS = ['warm-editorial', 'clean-gallery', 'graphic-zine'] as const;
 const THEMES = ['bangumi-light', 'bangumi-dark'] as const;
 const SYNTHETIC_RETRIEVED_AT = '2026-10-23T12:00:00.000Z';
 
-const PROFILE = getC07RenderComparisonOfflineConfig(PROFILE_ID);
-if (!PROFILE || PROFILE.cohorts.length !== 2 || PROFILE.expectedArguments.cohorts.length !== 2) {
-  throw new Error('C07 v4 visual fixture requires exactly two registered cohorts.');
-}
+const PROFILE = (() => {
+  const profile = getC07RenderComparisonOfflineConfig(PROFILE_ID);
+  if (!profile || profile.cohorts.length !== 2 || profile.expectedArguments.cohorts.length !== 2) {
+    throw new Error('C07 v4 visual fixture requires exactly two registered cohorts.');
+  }
+  return profile;
+})();
 
 const sha256 = (value: Buffer) => createHash('sha256').update(value).digest('hex');
 
 async function createExactCompleteViewModel(): Promise<SubjectCohortComparisonViewModel> {
   const fixture = createC07RenderComparisonOfflineFetch(PROFILE_ID);
-  const publicHttpClient = new HttpClient({
+  const publicHttpClient = new GeneratedBangumiOpenApiClient({
     baseUrl: 'https://api.bgm.tv',
     fetchFn: fixture.fetchFn,
   });
   const providerRegistry = new ProviderRegistry({
-    v0: new OfficialV0Provider(new GeneratedBangumiOpenApiClient(publicHttpClient)),
+    v0: new OfficialV0Provider(publicHttpClient),
   });
   const result = await compareSubjectCohorts(
     PROFILE.expectedArguments.cohorts,
@@ -72,8 +74,10 @@ async function createExactCompleteViewModel(): Promise<SubjectCohortComparisonVi
     const cohort = viewModel.cohorts[index];
     const subject = cohort?.subjects[0];
     if (
-      cohort?.label !== expected.cohortLabel ||
-      subject?.id !== expected.subjectId ||
+      !cohort ||
+      !subject ||
+      cohort.label !== expected.cohortLabel ||
+      subject.id !== expected.subjectId ||
       subject.name !== expected.subjectName ||
       subject.displayName !== expected.subjectNameCn ||
       subject.score !== expected.score
@@ -88,7 +92,7 @@ async function createExactCompleteViewModel(): Promise<SubjectCohortComparisonVi
         cohortCount: viewModel.cohorts.length,
         cohorts: viewModel.cohorts.map((cohort) => ({
           label: cohort.label,
-          state: cohort.state,
+          queryState: cohort.coverage.query.state,
           subjectCount: cohort.subjects.length,
           detailHydrationsSucceeded: cohort.coverage.detailHydrationsSucceeded,
           detailHydrationsFailed: cohort.coverage.detailHydrationsFailed,
@@ -118,7 +122,7 @@ function buildPartialViewModel(complete: SubjectCohortComparisonViewModel) {
     notComputable: 0,
     state: 'partial' as const,
   };
-  const secondCohortLabel = PROFILE.cohorts[1].cohortLabel;
+  const secondCohortLabel = PROFILE.cohorts[1]!.cohortLabel;
   return {
     ...complete,
     state: 'partial' as const,
@@ -201,7 +205,7 @@ async function main() {
     { id: 'partial-two-cohort', viewModel: buildPartialViewModel(complete) },
   ];
   const renderer = new RenderService();
-  const images: Array<Record<string, string | number>> = [];
+  const images: Array<Record<string, unknown>> = [];
 
   try {
     for (const visualCase of cases) {

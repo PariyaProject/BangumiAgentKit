@@ -60,18 +60,20 @@ export function getDefaultRenderTypographyOptions(
           bodyFontFamily: 'PingFang SC, Hiragino Sans GB, sans-serif',
           displayFontFamily: 'Songti SC, Noto Serif CJK SC, serif',
         }
-      : {
-          fontSizeScale: DEFAULT_RENDER_FONT_SIZE_SCALE,
-          bodyFontFamily: 'GenSen Rounded',
-          bodyFontFile: 'GenSenRounded2TW-R.woff2',
-          fontDirectory: BUNDLED_FONT_DIRECTORY,
-          ...(designPack === 'graphic-zine'
-            ? {
-                displayFontFamily: 'Ma Shan Zheng',
-                displayFontFile: 'MaShanZheng-Regular.woff2',
-              }
-            : { displayFontFamily: 'GenSen Rounded' }),
-        };
+      : designPack === 'graphic-zine'
+        ? {
+            fontSizeScale: DEFAULT_RENDER_FONT_SIZE_SCALE,
+            bodyFontFamily: 'PingFang SC, Hiragino Sans GB, "Noto Sans CJK SC", sans-serif',
+            displayFontFamily:
+              'Georgia, "Songti SC", "Noto Serif CJK SC", "Noto Serif CJK JP", serif',
+          }
+        : {
+            fontSizeScale: DEFAULT_RENDER_FONT_SIZE_SCALE,
+            bodyFontFamily: 'GenSen Rounded',
+            bodyFontFile: 'GenSenRounded2TW-R.woff2',
+            fontDirectory: BUNDLED_FONT_DIRECTORY,
+            displayFontFamily: 'GenSen Rounded',
+          };
   const customFiles = Boolean(overrides.bodyFontFile || overrides.displayFontFile);
   if (customFiles) {
     return {

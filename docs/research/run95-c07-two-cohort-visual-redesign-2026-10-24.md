@@ -1,7 +1,7 @@
 # Run #95 C07 two-cohort renderer visual redesign
 
 Date: 2026-10-24 (JST)
-Status: implementation and candidate visual QA in progress; user aesthetic acceptance not recorded.
+Status: v28 synthetic visual QA recorded; exact candidate delivery gates pending; user aesthetic acceptance not recorded.
 
 ## Why this iteration exists
 
@@ -29,7 +29,7 @@ Generated a C07-specific three-pack triptych from the exact comparison content. 
 
 - C07 baseline: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v19/complete-two-cohort-clean-gallery-bangumi-light-360.png`.
 - User-rejected Candidate: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v21/complete-two-cohort-clean-gallery-bangumi-light-360.png`.
-- New Candidate output is reserved for v22; v19 and v21 remain historical.
+- New Candidate output is reserved for v28; v19, v21, v22, and v27 remain historical.
 
 ## Candidate evidence and limits
 
@@ -43,3 +43,21 @@ Generated a C07-specific three-pack triptych from the exact comparison content. 
 - Local checks: `pnpm build`, `pnpm lint`, `pnpm typecheck:tests`, `pnpm test:render` (172 passed / 2 skipped), focused C07 renderer test (13/13), exact visual-manifest Harness test (3/3), `pnpm acceptance:check` (311/311), `pnpm harness:test` (886/886), frontier validation (122 records / 97 actionable, hash `281bd03a9a2fb44924208133cb8774778bd06cf7a90fb92347b36957c77317eb`), and the legacy-path guard all passed.
 - At the time this v22 report was prepared, the source edit was not committed or pushed. PR #271's existing review covers only 283c44cb and does not apply to v22. Do not run the one-shot profile or merge until the new exact Candidate has current CI, Candidate readiness, and same-identity review; C07 remains UNASSESSED.
 - The user has rejected v21. v22 is synthetic QA and a new design attempt; no user aesthetic acceptance is claimed. No API, OAuth/account, community, write, QQ, or TIM action occurred.
+
+### v27 visual recovery — 2026-10-24 JST
+
+- The v26 Graphic Zine render still used the theme's `Impact`/`Arial Black` display stack and embedded Ma Shan Zheng face. The earlier serif override had only reached the warm-editorial branch, so the score values retained the brush font. This mismatch explains the type and visual hierarchy regression reported by the user.
+- The renderer now uses a restrained system-serif display stack for Graphic Zine, smaller title scale/weight, two centered paper score fields with a separate central B − A strip, and open cream metric rows over the cobalt poster. The redundant “聚合指标” heading is omitted for two-cohort Gallery/Zine layouts. Narrow comparison subtitles are shortened at 320/360px to prevent orphaned final words.
+- Output: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v27/`. All 60 exact images were opened and inspected individually: complete/partial, three packs, light/dark, and 320/360/520/640/960 CSS px. No visible clipping, overlap, or horizontal overflow. Complete A/B values and signed deltas remain legible; partial values remain unknown and deltas non-computable.
+- Receipt: [`run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v27.json`](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v27.json), SHA-256 `74b1380c71cb451d79bebc1d7f06a300a1e5544a4d7c0536af812a028aa9db74`. Bundle SHA-256 `b04264ac012856f614b6f5e1d6f25901fcad3550bde3abff7a8df86b1804f1f1`; generation-source SHA-256 `9ba8f325782688d8624abaa3fbe48f30cde90802c5ee6e3d44cf38d96a22ef84`.
+- `pnpm build` passed; focused renderer and typography suites passed 19/19; strict v27 visual-evidence validation passed against all 60 PNG receipts, the manifest, source, and bundle hashes. The visual review records local renderer QA only. It is not user aesthetic acceptance, production-font evidence, real Bangumi scenario proof, or QQ/TIM delivery; C07 remains UNASSESSED and profile v4 remains unclaimed.
+
+### v28 watercolor poster recovery — 2026-10-24 JST
+
+- The user rejected v27 as visually unacceptable. Its geometric “paper on blue slab” treatment still did not match the reference board, so its layout was not treated as an aesthetic success.
+- Graphic Zine now uses an open cream canvas with a watercolor harbor panorama, two editorial cohort headings, a centered B−A wave, A/B score values, and open metric rows. The large rectangular frame and stacked query-metadata blocks are removed from this two-cohort presentation; bounded query coverage, warnings, limitations, calculation method, and retrieval date remain in the footnotes.
+- The harbor artwork was generated with built-in ImageGen from the C07 Zine reference board as a style guide, with no embedded text. The transparent 1983×793 PNG is stored at `packages/renderer/assets/illustrations/run95-c07-waterfront-watercolor-2026-10-24.png` (about 1.2 MB) and embedded into renderer HTML, so the output needs no network request or extra runtime package.
+- The comparison now uses the renderer’s own icon system: star, bookmark, document, and bar chart. A/B colors and coral deltas come from Graphic Zine theme tokens. Relevant text and semantic color pairs exceed WCAG 4.5:1 against the paper and dark surfaces; the minimum checked ratio was 7.09:1 in light mode and 7.44:1 in dark mode.
+- Output: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v28/`. The 60 images cover complete/partial data, three design packs, light/dark palettes, and 320/360/520/640/960 CSS px. I inspected all 60 in twelve five-width sheets; no clipping, overlap, horizontal overflow, or missing-value/delta ambiguity appeared.
+- Receipt: [`run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v28.json`](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v28.json), SHA-256 `cc26e6ac9fbd8e84edcb4de03efc051fd1db59d79ea829d9594218a2781ab41f`. Bundle SHA-256 `eae7b5eba1498e0cfce25fff67e4e5811a9813bb4dc3f80a42e536a53d17745a`; generation-source SHA-256 `3d0159e3d1dbd248dd559a340c7a8542df7ab9fa15ea0bdbccaf3157bbc93dce`. Strict validation passes for the exact 60 receipts, manifest bytes, source, and bundle.
+- `pnpm build` passed after the v28 renderer changes. Full renderer/Harness checks and PR #271 exact-head gates remain pending. This is synthetic renderer QA only, not user aesthetic acceptance, real Bangumi scenario proof, or QQ/TIM delivery. C07 remains UNASSESSED and the v4 profile remains UNCLAIMED.

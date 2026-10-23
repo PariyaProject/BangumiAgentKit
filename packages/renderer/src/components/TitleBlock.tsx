@@ -17,7 +17,7 @@ export interface TitleBlockProps {
   eyebrowColor?: string;
   showIconEyebrow?: boolean;
   iconSize?: number;
-  titleStyle?: 'standard' | 'cohort-report' | 'cohort-gallery-open';
+  titleStyle?: 'standard' | 'cohort-report' | 'cohort-gallery-open' | 'cohort-zine-poster';
 }
 
 export const TitleBlock: React.FC<TitleBlockProps> = ({
@@ -37,12 +37,20 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({
   iconSize = 16,
   titleStyle = 'standard',
 }) => {
+  const isZinePosterTitle = titleStyle === 'cohort-zine-poster';
   const titleSize = Number.parseFloat(titleFontSize);
   const designedTitleSize = Number.isFinite(titleSize)
     ? `${titleSize * theme.design.titleScale}px`
     : titleFontSize;
-  const packTitleStyle =
-    titleStyle === 'cohort-gallery-open'
+  const packTitleStyle = isZinePosterTitle
+    ? {
+        backgroundImage: `linear-gradient(${theme.tones.coral.foreground}, ${theme.tones.coral.foreground})`,
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'left bottom',
+        backgroundSize: '72px 2px',
+        paddingBottom: '5px',
+      }
+    : titleStyle === 'cohort-gallery-open'
       ? { borderBottom: `1px solid ${theme.border}`, paddingBottom: '5px' }
       : titleStyle === 'cohort-report'
         ? theme.designPack === 'graphic-zine'

@@ -67,6 +67,7 @@ function createFixture() {
     'packages/bangumi-transport/src',
     'packages/discovery/src',
     'packages/provider-core/src',
+    'packages/renderer/assets/illustrations',
     'packages/renderer/assets/fonts',
     'packages/renderer/src',
     'packages/tools/src',
@@ -142,9 +143,7 @@ test('C07 v4 runner pin matches the tracked visual QA manifest', () => {
     path.join(ROOT, 'scripts/acceptance/run-c07-render-comparison-offline-agent-mcp.mjs'),
     'utf8',
   );
-  const pin = runnerSource.match(
-    /const C07_V4_VISUAL_QA_MANIFEST_SHA256\s*=\s*'([0-9a-f]{64})'/u,
-  );
+  const pin = runnerSource.match(/const C07_V4_VISUAL_QA_MANIFEST_SHA256\s*=\s*'([0-9a-f]{64})'/u);
 
   assert.ok(pin, 'C07 v4 runner must pin the expected visual QA manifest');
   assert.equal(pin[1], sha256(manifestBytes));
