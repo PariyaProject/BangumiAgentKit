@@ -3705,6 +3705,7 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
             'scripts/check-tool-acceptance-table.py',
             'scripts/generate-tool-acceptance-tasks.py',
             'scripts/test_acceptance_evidence.py',
+            'tests/integration/tool-e2e-acceptance.test.ts',
             'tests/harness/agent-harness-cli.test.mjs',
           ]
         : []),

@@ -2666,6 +2666,7 @@ CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_EVIDENCE_REFRESH_PATHS = {
     'scripts/check-tool-acceptance-table.py',
     'scripts/generate-tool-acceptance-tasks.py',
     'scripts/test_acceptance_evidence.py',
+    'tests/integration/tool-e2e-acceptance.test.ts',
     'tests/harness/agent-harness-cli.test.mjs',
 }
 CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE = next(
@@ -14400,6 +14401,7 @@ def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
     if not isinstance(run_state, dict) or not isinstance(epoch, dict):
         return False
     candidate_sha = epoch.get('candidate_sha')
+    branch_head_sha = epoch_result.get('pr_head_sha')
     source_sha = report.get('sourceRevision')
     pr_number = report.get('prNumber')
     branch = epoch.get('branch')
@@ -14410,6 +14412,34 @@ def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
         and run_state.get('active_epoch_pr') == pr_number
         and epoch_result.get('github_state') == 'OPEN'
         and epoch.get('state') != 'MERGED'
+    )
+    latest_review_matches_source = (
+        isinstance(latest_review, dict)
+        and latest_review.get('candidate_sha') == source_sha
+        and latest_review.get('reviewed_base_sha') == report.get('baseSha')
+        and latest_review.get('verdict') == 'PASS'
+        and latest_review.get('reviewer_id') == report.get('reviewerId')
+    )
+    report_refresh_pending = (
+        profile['id'] == CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_PROFILE['id']
+        and active_pr
+        and epoch.get('state') == 'REVIEW_PASSED'
+        and candidate_sha == source_sha
+        and epoch.get('review_pass_sha') == source_sha
+        and branch_head_sha != candidate_sha
+        and isinstance(source_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
+        and isinstance(report.get('baseSha'), str)
+        and re.fullmatch(r'[0-9a-f]{40}', report.get('baseSha')) is not None
+        and isinstance(branch_head_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', branch_head_sha) is not None
+        and latest_review_matches_source
+        and _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', source_sha, branch_head_sha,
+        ).returncode == 0
+        and codex_render_subject_card_offline_profile_evidence_refresh_paths_are_valid(
+            changed_paths, profile,
+        )
     )
     merged_pr = (
         epoch.get('state') == 'MERGED'
@@ -14435,7 +14465,10 @@ def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
         and epoch_result.get('pr_is_draft') is False
         and isinstance(candidate_sha, str)
         and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
-        and epoch_result.get('pr_head_sha') == candidate_sha
+        and isinstance(branch_head_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', branch_head_sha) is not None
+        and epoch_result.get('pr_head_sha') == branch_head_sha
+        and (candidate_sha == branch_head_sha or report_refresh_pending or merged_pr)
         and isinstance(source_sha, str)
         and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
         and codex_render_subject_card_offline_profile_evidence_refresh_paths_are_valid(
@@ -14456,7 +14489,14 @@ def codex_render_subject_card_offline_profile_report_candidate_binding_is_curren
         epoch_result = epoch_status.get('epoch')
         epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
         candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
-    paths = set(_codex_p06_profile_report_candidate_paths(report.get('sourceRevision'), candidate))
+        if profile['id'] == CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_PROFILE['id']:
+            candidate = epoch_result.get('pr_head_sha') if isinstance(epoch_result, dict) else None
+    committed_paths = _codex_p06_profile_report_candidate_paths(
+        report.get('sourceRevision'), candidate,
+    )
+    if committed_paths is None:
+        return False
+    paths = set(committed_paths)
     if (
         profile['id'] == CODEX_RENDER_SUBJECT_CARD_OFFLINE_V5_PROFILE['id']
         and candidate == report.get('sourceRevision')
