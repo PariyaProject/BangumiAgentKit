@@ -7239,8 +7239,7 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
         'profileId === R04_SERIES_WATCH_ORDER_OFFLINE_PROFILE_ID',
-        'profileId === R04_SERIES_WATCH_ORDER_V2_PROFILE_ID',
-        'profileId === R04_SERIES_WATCH_ORDER_V3_PROFILE_ID',
+        '[R04_SERIES_WATCH_ORDER_V2_PROFILE_ID, R04_SERIES_WATCH_ORDER_V3_PROFILE_ID].includes(profileId)',
         'watchOrderCount:',
         'relationRowsObserved:',
     ),
@@ -7311,7 +7310,7 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function validateR04ProfileReport(',
         'export function validateR04SeriesWatchOrderOfflineV2SanitizedReportFile(',
         'export function validateR04SeriesWatchOrderOfflineV3SanitizedReportFile(',
-        'sixExpectedLocalOperations',
+        'CONFIG.expectedAnswerChecks',
         "openSync(target, 'wx', 0o600)",
     ),
     'scripts/acceptance/validate-r04-series-watch-order-offline-agent-mcp-report.mjs': (
@@ -7375,8 +7374,8 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
         'R04 v2 fixture rejects requests outside its exact four routes',
     ),
     'tests/harness/r04-series-watch-order-offline-v3-fixture.test.mjs': (
-        'R04 v3 profile binds the bounded two-node synthetic matrix call',
-        'R04 v3 fixture serves exactly six closed local GET operations',
+        'R04 v3 binds a fresh immutable two-node offline watch-order profile',
+        'R04 v3 fixture serves two ordered neighbors through exactly six local GETs',
     ),
     'tests/harness/run-r04-series-watch-order-offline-agent-mcp-v3.test.mjs': (
         'R04 v3 runner binds the exact profile arguments and six-operation summary',
