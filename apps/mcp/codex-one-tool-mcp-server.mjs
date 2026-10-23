@@ -71,10 +71,7 @@ import {
   createA01AggregateCohortOfflineFetch,
 } from '../../scripts/lib/a01-aggregate-cohort-offline-matrix-profile.mjs';
 import {
-  assertP06RenderPersonProfileOfflineProfile,
-  getP06RenderPersonProfileOfflineConfig,
-  createP06RenderPersonProfileAssetGuard,
-  createP06RenderPersonProfileOfflineFetch,
+  createP06RenderPersonProfileOfflineRuntime,
 } from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 import {
   assertC07RenderComparisonOfflineFixtureProfile,
@@ -337,22 +334,6 @@ export function createCodexOneToolMcpToolList(registryTools, config) {
     ...toMcpTool(tool),
     annotations: publicReadOnlyToolAnnotations(tool),
   }));
-}
-
-export function createP06RenderPersonProfileOfflineRuntime(config) {
-  const profileId = config?.profile?.id;
-  const profileConfig = getP06RenderPersonProfileOfflineConfig(profileId);
-  if (!profileConfig) return null;
-  if (
-    profileConfig.networkMode !== config.networkMode ||
-    !assertP06RenderPersonProfileOfflineProfile(config.profile)
-  ) {
-    throw new Error('P06 offline profile requires its exact registered network mode.');
-  }
-  return {
-    offlineFixture: createP06RenderPersonProfileOfflineFetch(profileId),
-    assetGuard: createP06RenderPersonProfileAssetGuard(),
-  };
 }
 
 function runtimeCandidateMatches(sourceRevision, bundleSha256) {

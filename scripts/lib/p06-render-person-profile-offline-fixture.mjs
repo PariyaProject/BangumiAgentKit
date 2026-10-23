@@ -407,3 +407,19 @@ export function createP06RenderPersonProfileAssetGuard() {
     },
   };
 }
+
+export function createP06RenderPersonProfileOfflineRuntime(config) {
+  const profileId = config?.profile?.id;
+  const profileConfig = getP06RenderPersonProfileOfflineConfig(profileId);
+  if (!profileConfig) return null;
+  if (
+    profileConfig.networkMode !== config.networkMode ||
+    !assertP06RenderPersonProfileOfflineProfile(config.profile)
+  ) {
+    throw new Error('P06 offline profile requires its exact registered network mode.');
+  }
+  return {
+    offlineFixture: createP06RenderPersonProfileOfflineFetch(profileId),
+    assetGuard: createP06RenderPersonProfileAssetGuard(),
+  };
+}

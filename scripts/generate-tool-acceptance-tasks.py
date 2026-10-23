@@ -6279,9 +6279,19 @@ CODEX_P06_V3_PROBE_IMPLEMENTATION_MARKERS = {
         *CODEX_P06_PROBE_IMPLEMENTATION_MARKERS[
             'scripts/lib/p06-render-person-profile-offline-fixture.mjs'
         ],
+        'export function createP06RenderPersonProfileOfflineRuntime(config)',
+        'profileConfig.networkMode !== config.networkMode',
+        'offlineFixture: createP06RenderPersonProfileOfflineFetch(profileId)',
+        'assetGuard: createP06RenderPersonProfileAssetGuard()',
         'P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID',
         'if (config.version === 3)',
         'maxChronologySubjects: 3',
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        'parseCodexOneToolMcpArguments(argv)',
+        'createP06RenderPersonProfileOfflineRuntime(config)',
+        'p06OfflineRuntime.offlineFixture',
+        'p06OfflineRuntime?.assetGuard',
     ),
     'scripts/acceptance/run-p06-render-person-profile-agent-mcp.mjs': (
         'export function validateP06RunnerArgs(',
@@ -6310,6 +6320,7 @@ CODEX_P06_V3_PROBE_IMPLEMENTATION_MARKERS = {
     ),
     'tests/harness/codex-one-tool-mcp-server-p06-profile.test.mjs': (
         'P06 v3 profile summary retains only bounded artifact metadata',
+        'P06 server runtime binds v3 to its offline fixture and asset guard',
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         *CODEX_P06_PROBE_IMPLEMENTATION_MARKERS[

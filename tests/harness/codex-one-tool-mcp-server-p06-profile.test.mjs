@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createP06RenderPersonProfileOfflineRuntime } from '../../apps/mcp/codex-one-tool-mcp-server.mjs';
 import { parseCodexOneToolMcpArguments } from '../../scripts/lib/codex-one-tool-mcp-arguments.mjs';
 import {
+  createP06RenderPersonProfileOfflineRuntime,
   P06_RENDER_PERSON_PROFILE_EXPECTED_ARGUMENTS,
   P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
   P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID,
