@@ -66,8 +66,13 @@ describe('subject cohort comparison renderer', () => {
     expect(zineHtml).toContain('data-render-mask="panel-alt"');
     expect(galleryHtml).toContain('data-layout-variant="cohort-paired"');
     expect(galleryHtml).toContain('data-layout-variant="gallery-score-lead"');
+    expect(galleryHtml).toContain('data-layout="gallery-score-orbit"');
+    expect(galleryHtml).toContain('data-layout="gallery-score-bridge"');
+    expect(galleryHtml).toContain('data-layout="gallery-reading-rule"');
     expect(galleryHtml).toContain('data-layout="gallery-comparison-matrix"');
     expect(galleryHtml).toContain('data-layout-variant="gallery-open-row"');
+    expect(galleryHtml).toContain('data-layout-variant="gallery-open-method-notes"');
+    expect(galleryHtml).not.toContain('data-layout="cohort-metric-bar"');
     expect(zineHtml).toContain('drop-shadow(1px 2px 0');
     expect(zineHtml).toContain('data-layout="zine-sticker-board"');
     expect(zineHtml).toContain('data-layout-variant="zine-sticker"');

@@ -571,82 +571,174 @@ const CleanGalleryMetricBoard: React.FC<CohortMetricBoardProps> = ({
   const secondary = metrics.filter((metric) => metric !== lead);
   const columns =
     width <= 400
-      ? 'minmax(76px, 1.25fr) repeat(2, minmax(0, 1fr)) minmax(48px, 0.78fr)'
-      : 'minmax(150px, 1.65fr) repeat(2, minmax(0, 1fr)) minmax(84px, 0.8fr)';
+      ? 'minmax(82px, 1.15fr) repeat(2, minmax(0, 0.7fr)) minmax(43px, 0.6fr)'
+      : 'minmax(150px, 1.55fr) repeat(2, minmax(0, 0.85fr)) minmax(72px, 0.7fr)';
   const valueFontFamily = theme.design.bodyFontFamily;
+  const deltaForeground = theme.tones.indigo.foreground;
+  const deltaSurface = theme.tones.indigo.surface;
 
   return (
     <div
       data-layout="gallery-score-composition"
-      style={{ display: 'grid', gap: '8px', minWidth: 0 }}
+      style={{ display: 'grid', gap: width <= 400 ? '8px' : '12px', minWidth: 0 }}
     >
       {lead ? (
         <section
           data-layout="cohort-metric-card"
           data-layout-variant="gallery-score-lead"
           style={{
-            borderTop: `2px solid ${theme.accent}`,
             borderBottom: `1px solid ${theme.border}`,
-            padding: width <= 400 ? '8px 2px 9px' : '12px 4px 13px',
+            padding: width <= 400 ? '7px 2px 11px' : '10px 4px 14px',
             minWidth: 0,
           }}
         >
           <div
-            data-layout="cohort-metric-comparison"
-            style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '8px' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+            }}
           >
             <CohortMetricCaption metric={lead} theme={theme} width={width} titleSize="15px" />
-            <CohortMetricDeltaBlock
-              metric={lead}
-              theme={theme}
-              fontFamily={valueFontFamily}
-              valueFontSize={width <= 400 ? '14px' : '16px'}
-              align="right"
-              showState={false}
-            />
+            <span style={{ color: theme.textMuted, fontSize: width <= 400 ? '10px' : '12px' }}>
+              B − A
+            </span>
           </div>
           <div
+            data-layout="gallery-score-pair"
             style={{
               display: 'grid',
               gridTemplateColumns: 'minmax(0, 1fr) 1px minmax(0, 1fr)',
               alignItems: 'center',
-              gap: width <= 400 ? '9px' : '16px',
-              marginTop: width <= 400 ? '7px' : '10px',
+              gap: width <= 400 ? '7px' : '14px',
+              marginTop: width <= 400 ? '5px' : '8px',
             }}
           >
             {cohorts.map((cohort, index) => (
-              <React.Fragment key={`${lead.key}-${index}`}>
+              <React.Fragment key={String(index) + '-' + lead.key}>
                 {index === 1 ? (
                   <div
                     aria-hidden="true"
-                    style={{ height: '100%', backgroundColor: theme.border }}
+                    style={{
+                      height: width <= 400 ? '63px' : '82px',
+                      backgroundColor: theme.border,
+                    }}
                   />
                 ) : null}
-                <div data-layout="cohort-featured-value" style={{ minWidth: 0 }}>
+                <div
+                  data-layout="cohort-featured-value"
+                  data-cohort-index={index}
+                  style={{ display: 'grid', justifyItems: 'center', gap: '3px', minWidth: 0 }}
+                >
                   <div
                     style={{
                       color: cohortMetricColor(theme, index),
-                      fontSize: width <= 400 ? '11px' : '12px',
+                      fontSize: width <= 400 ? '10px' : '11px',
                       fontWeight: 800,
                       letterSpacing: '0.08em',
-                      marginBottom: '2px',
                     }}
                   >
-                    {`分组 ${index === 0 ? 'A' : 'B'}`}
+                    {index === 0 ? '分组 A' : '分组 B'}
                   </div>
-                  <CohortMetricValueBlock
-                    metric={lead}
-                    cohort={cohort}
-                    index={index}
-                    theme={theme}
-                    valueFontSize={width <= 400 ? '27px' : '36px'}
-                    valueFontFamily={valueFontFamily}
-                    coverageFontSize={width <= 400 ? '10px' : '12px'}
-                    showGroupLabel={false}
-                  />
+                  <div
+                    data-layout="gallery-score-orbit"
+                    style={{
+                      width: width <= 400 ? '104px' : '132px',
+                      height: width <= 400 ? '70px' : '88px',
+                      display: 'grid',
+                      placeItems: 'center',
+                      backgroundColor:
+                        index === 0 ? theme.tones.blue.surface : theme.tones.mint.surface,
+                      clipPath:
+                        index === 0 ? 'ellipse(49% 48% at 52% 50%)' : 'ellipse(48% 49% at 48% 50%)',
+                    }}
+                  >
+                    <div
+                      data-layout="cohort-metric-number"
+                      style={{
+                        color: cohortMetricColor(theme, index),
+                        fontFamily: valueFontFamily,
+                        fontSize: width <= 400 ? '27px' : '34px',
+                        fontWeight: theme.design.titleWeight,
+                        lineHeight: 1.05,
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {averageLabel(lead, index)}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      color: theme.textMuted,
+                      fontSize: width <= 400 ? '9px' : '10px',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {metricCoverageCompactLabel(cohort, lead.key)}
+                  </div>
                 </div>
               </React.Fragment>
             ))}
+          </div>
+          <div
+            data-layout="gallery-score-bridge"
+            style={{
+              position: 'relative',
+              height: width <= 400 ? '22px' : '26px',
+              marginTop: '1px',
+            }}
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 320 20"
+              preserveAspectRatio="none"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+            >
+              <path
+                d="M8 1V6Q8 15 19 15H112M208 15H301Q312 15 312 6V1"
+                fill="none"
+                stroke={theme.border}
+                strokeWidth="1.5"
+              />
+            </svg>
+            <span
+              data-layout="cohort-metric-delta"
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: 0,
+                transform: 'translateX(-50%)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: width <= 400 ? '3px 9px' : '4px 12px',
+                borderRadius: '999px',
+                backgroundColor: deltaSurface,
+                color: lead.state === 'complete' ? deltaForeground : theme.textMuted,
+                fontFamily: valueFontFamily,
+                fontSize: width <= 400 ? '12px' : '15px',
+                fontWeight: 800,
+                lineHeight: 1.2,
+                fontVariantNumeric: 'tabular-nums',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span style={{ fontFamily: theme.design.bodyFontFamily, fontSize: '9px' }}>Δ</span>
+              {deltaLabel(lead)}
+            </span>
+          </div>
+          <div
+            data-layout="gallery-reading-rule"
+            style={{
+              color: theme.textMuted,
+              fontSize: width <= 400 ? '11px' : '12px',
+              lineHeight: 1.35,
+              textAlign: 'center',
+              marginTop: '2px',
+            }}
+          >
+            有效样本均值 · 缺失不按 0 计算 · 双方完整时显示差值
           </div>
         </section>
       ) : null}
@@ -660,17 +752,17 @@ const CleanGalleryMetricBoard: React.FC<CohortMetricBoardProps> = ({
             display: 'grid',
             gridTemplateColumns: columns,
             gap: width <= 400 ? '4px' : '8px',
-            padding: '5px 2px 7px',
+            padding: '7px 2px 6px',
             color: theme.accent,
             borderBottom: `1px solid ${theme.border}`,
-            fontSize: width <= 400 ? '11px' : '13px',
+            fontSize: width <= 400 ? '10px' : '12px',
             fontWeight: 800,
             letterSpacing: '0.04em',
           }}
         >
           <div>指标</div>
-          <div>分组 A</div>
-          <div>分组 B</div>
+          <div>A</div>
+          <div>B</div>
           <div style={{ textAlign: 'right' }}>B − A</div>
         </div>
         {secondary.map((metric) => (
@@ -683,33 +775,72 @@ const CleanGalleryMetricBoard: React.FC<CohortMetricBoardProps> = ({
               gridTemplateColumns: columns,
               alignItems: 'center',
               gap: width <= 400 ? '4px' : '8px',
-              padding: width <= 400 ? '7px 2px' : '10px 2px',
+              padding: width <= 400 ? '8px 2px' : '10px 2px',
               borderBottom: `1px solid ${theme.border}`,
               minWidth: 0,
             }}
           >
-            <CohortMetricCaption metric={metric} theme={theme} width={width} titleSize="12px" />
-            {cohorts.map((cohort, index) => (
-              <CohortMetricValueBlock
-                key={`${metric.key}-${index}`}
-                metric={metric}
-                cohort={cohort}
-                index={index}
-                theme={theme}
-                valueFontSize={width <= 400 ? '15px' : '17px'}
-                valueFontFamily={valueFontFamily}
-                coverageFontSize={width <= 400 ? '10px' : '12px'}
-                showGroupLabel={false}
-              />
-            ))}
-            <CohortMetricDeltaBlock
+            <CohortMetricCaption
               metric={metric}
               theme={theme}
-              fontFamily={valueFontFamily}
-              valueFontSize={width <= 400 ? '13px' : '15px'}
-              showLabel={false}
-              align="right"
+              width={width}
+              titleSize={width <= 400 ? '11px' : '13px'}
             />
+            {cohorts.map((cohort, index) => (
+              <div
+                key={metric.key + '-' + index}
+                data-layout="cohort-metric-value"
+                data-cohort-index={index}
+                style={{ minWidth: 0, color: cohortMetricColor(theme, index) }}
+              >
+                <div
+                  data-layout="cohort-metric-number"
+                  style={{
+                    color: cohortMetricColor(theme, index),
+                    fontFamily: valueFontFamily,
+                    fontSize: width <= 400 ? '13px' : '17px',
+                    fontWeight: theme.design.titleWeight,
+                    lineHeight: 1.2,
+                    overflowWrap: 'anywhere',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {averageLabel(metric, index)}
+                </div>
+                <div style={{ color: theme.textMuted, fontSize: '9px', lineHeight: 1.2 }}>
+                  {metricCoverageCompactLabel(cohort, metric.key)}
+                </div>
+              </div>
+            ))}
+            <div
+              data-layout="cohort-metric-value"
+              data-cohort-index="delta"
+              style={{ minWidth: 0, textAlign: 'right' }}
+            >
+              <div
+                data-layout="cohort-metric-delta"
+                style={{
+                  display: 'inline-block',
+                  padding: width <= 400 ? '3px 4px' : '4px 8px',
+                  borderRadius: '999px',
+                  backgroundColor: deltaSurface,
+                  color: metric.state === 'complete' ? deltaForeground : theme.textMuted,
+                  fontFamily: valueFontFamily,
+                  fontSize: width <= 400 ? '10px' : '14px',
+                  fontWeight: 800,
+                  lineHeight: 1.2,
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {deltaLabel(metric)}
+              </div>
+              {metric.state !== 'complete' ? (
+                <div style={{ color: theme.warning, fontSize: '9px', lineHeight: 1.2 }}>
+                  {stateLabel(metric.state)}
+                </div>
+              ) : null}
+            </div>
           </div>
         ))}
       </div>
@@ -828,8 +959,10 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
   const isGallery = theme.designPack === 'clean-gallery';
   const isWarm = theme.designPack === 'warm-editorial';
   const sharedGalleryOverview = isGallery && twoColumnComparison;
-  const supportingTypeSize = viewportWidth <= 400 ? '14px' : viewportWidth <= 520 ? '14px' : '15px';
-  const microTypeSize = viewportWidth <= 520 ? '14px' : '13px';
+  const supportingTypeSize =
+    viewportWidth <= 400 ? (isGallery ? '12px' : '14px') : viewportWidth <= 520 ? '14px' : '15px';
+  const microTypeSize = viewportWidth <= 520 ? (isGallery ? '11px' : '14px') : '13px';
+  const footnoteTypeSize = isGallery && viewportWidth <= 400 ? '11px' : microTypeSize;
   const visibleSubjectsPerCohort =
     viewportWidth <= 400 ? 1 : viewportWidth < 520 ? 3 : viewportWidth < 760 ? 6 : 8;
   const warningLimit = 3;
@@ -911,9 +1044,9 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
         theme={theme}
         icon="comparison"
         iconSize={22}
-        titleFontSize="27px"
-        subtitleFontSize="16px"
-        eyebrowFontSize="13px"
+        titleFontSize={viewportWidth <= 400 ? '23px' : '25px'}
+        subtitleFontSize={viewportWidth <= 400 ? '12px' : '14px'}
+        eyebrowFontSize="12px"
         titleStyle={isGallery ? 'cohort-gallery-open' : 'cohort-report'}
       />
 
@@ -970,7 +1103,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                 boxShadow: isZine ? `2px 3px 0 ${theme.text}` : undefined,
                 clipPath: sharedGalleryOverview ? undefined : cohortMask,
                 padding: sharedGalleryOverview
-                  ? '8px 8px 11px'
+                  ? '8px 10px 9px'
                   : viewportWidth <= 400
                     ? '12px 14px 16px'
                     : theme.spacing.md,
@@ -1000,9 +1133,9 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                 style={{
                   color: theme.text,
                   fontFamily: theme.design.displayFontFamily,
-                  fontSize: viewportWidth <= 400 ? '16px' : '17px',
+                  fontSize: viewportWidth <= 400 ? (isGallery ? '14px' : '16px') : '17px',
                   fontWeight: 700,
-                  marginTop: theme.spacing.xs,
+                  marginTop: sharedGalleryOverview ? '4px' : theme.spacing.xs,
                   overflowWrap: 'anywhere',
                   ...cohortLabelClamp,
                 }}
@@ -1013,8 +1146,8 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                 style={{
                   color: theme.textMuted,
                   fontSize: supportingTypeSize,
-                  lineHeight: 1.5,
-                  marginTop: theme.spacing.xs,
+                  lineHeight: sharedGalleryOverview ? 1.3 : 1.5,
+                  marginTop: sharedGalleryOverview ? '3px' : theme.spacing.xs,
                   overflowWrap: 'anywhere',
                   ...querySummaryClamp,
                 }}
@@ -1122,7 +1255,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                         <span
                           style={{
                             color: theme.text,
-                            fontSize: supportingTypeSize,
+                            fontSize: sharedGalleryOverview ? '12px' : supportingTypeSize,
                             minWidth: 0,
                             overflowWrap: 'break-word',
                             ...(viewportWidth <= 520
@@ -1270,31 +1403,33 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
         })}
       </div>
 
-      <section>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
-          <RendererIcon name="stats" theme={theme} size={18} />
-          <div style={{ minWidth: 0 }}>
-            <div
-              style={{
-                color: theme.accent,
-                fontFamily: theme.design.displayFontFamily,
-                fontWeight: theme.design.titleWeight,
-                fontSize: viewportWidth <= 400 ? '16px' : '18px',
-                lineHeight: 1.2,
-              }}
-            >
-              聚合指标
-            </div>
-            <div style={{ color: theme.textMuted, fontSize: microTypeSize, lineHeight: 1.4 }}>
-              均值按已取得的有效样本计算；缺失值不按 0 补齐，双方完整时才显示差值。
+      <section data-layout="cohort-metric-section">
+        {isGallery && showComparison ? null : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+            <RendererIcon name="stats" theme={theme} size={18} />
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  color: theme.accent,
+                  fontFamily: theme.design.displayFontFamily,
+                  fontWeight: theme.design.titleWeight,
+                  fontSize: viewportWidth <= 400 ? '16px' : '18px',
+                  lineHeight: 1.2,
+                }}
+              >
+                聚合指标
+              </div>
+              <div style={{ color: theme.textMuted, fontSize: microTypeSize, lineHeight: 1.4 }}>
+                均值按已取得的有效样本计算；缺失值不按 0 补齐，双方完整时才显示差值。
+              </div>
             </div>
           </div>
-        </div>
+        )}
         <div
           data-layout="cohort-metric-board"
           style={{
             backgroundColor: 'transparent',
-            padding: '4px 0 0',
+            padding: isGallery && showComparison ? '0' : '4px 0 0',
             minWidth: 0,
           }}
         >
@@ -1490,19 +1625,23 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
 
       <section
         data-layout="cohort-method-notes"
+        data-layout-variant={
+          isGallery && viewportWidth <= 400 ? 'gallery-open-method-notes' : undefined
+        }
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: viewportWidth <= 400 ? '6px' : '8px',
+          gap: isGallery && viewportWidth <= 400 ? '4px' : viewportWidth <= 400 ? '6px' : '8px',
           borderTop: `1px solid ${theme.border}`,
-          paddingTop: '8px',
+          paddingTop: isGallery && viewportWidth <= 400 ? '7px' : '8px',
           color: theme.textMuted,
-          fontSize: microTypeSize,
-          lineHeight: 1.45,
+          fontSize: footnoteTypeSize,
+          lineHeight: isGallery && viewportWidth <= 400 ? 1.35 : 1.45,
         }}
       >
-        <div>
-          数据范围：每组最多 {viewModel.coverage.maxSubjectsPerCohort} 条 · 本次返回{' '}
+        <div data-layout="cohort-scope-summary">
+          {isGallery && viewportWidth <= 400 ? '范围 · ' : '数据范围：'}
+          每组最多 {viewModel.coverage.maxSubjectsPerCohort} 条 · 本次返回{' '}
           {viewModel.coverage.totalSubjectsReturned} · 详情读取{' '}
           {viewModel.coverage.detailHydrationsSucceeded}/
           {viewModel.coverage.detailHydrationsAttempted} 成功
@@ -1517,8 +1656,10 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
         </div>
 
         {hasWarnings ? (
-          <div style={{ color: theme.warning }}>
-            <strong>数据说明</strong>
+          <div data-layout="cohort-warning-summary" style={{ color: theme.warning }}>
+            <strong style={{ marginRight: '4px', color: theme.text }}>
+              {isGallery && viewportWidth <= 400 ? '来源 ·' : '数据说明'}
+            </strong>
             {warningMessages.slice(0, warningLimit).map((message, index) => (
               <div key={`warning-${index}`} style={compactTextClamp}>
                 {message}
@@ -1534,8 +1675,10 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
         ) : null}
 
         {viewModel.limitations.length > 0 ? (
-          <div>
-            <strong style={{ color: theme.accent }}>限制</strong>
+          <div data-layout="cohort-limitations-summary">
+            <strong style={{ color: theme.accent }}>
+              {isGallery && viewportWidth <= 400 ? '阅读边界' : '限制'}
+            </strong>
             {viewModel.limitations.slice(0, limitationLimit).map((limitation, index) => (
               <div key={index} style={compactTextClamp}>
                 · {limitation}
@@ -1547,11 +1690,20 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
           </div>
         ) : null}
 
-        <div>{cohortCalculationMethodLabel(viewModel.formulaVersion)}</div>
-        <div>
-          来源：Bangumi 公共条目 · {officialOperations} ·{' '}
-          {retrievalDateLabel(viewModel.retrievedAt)}
-        </div>
+        {isGallery && viewportWidth <= 400 ? (
+          <div data-layout="cohort-citation-summary">
+            {cohortCalculationMethodLabel(viewModel.formulaVersion)} · Bangumi 公共条目 ·{' '}
+            {officialOperations} · {retrievalDateLabel(viewModel.retrievedAt)}
+          </div>
+        ) : (
+          <>
+            <div>{cohortCalculationMethodLabel(viewModel.formulaVersion)}</div>
+            <div>
+              来源：Bangumi 公共条目 · {officialOperations} ·{' '}
+              {retrievalDateLabel(viewModel.retrievedAt)}
+            </div>
+          </>
+        )}
       </section>
       <Footer label="Bangumi 条目样本统计" theme={theme} />
     </CardFrame>
