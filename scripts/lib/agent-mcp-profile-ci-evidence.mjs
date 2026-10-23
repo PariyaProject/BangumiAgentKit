@@ -17,6 +17,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'r04-render-series-watch-order-offline-agent-mcp-v1',
   'r04-render-series-watch-order-offline-agent-mcp-matrix-v2',
   'r01-subject-relations-offline-agent-mcp-v1',
+  'r01-subject-relations-text-projection-agent-mcp-v2',
   'r03-two-hop-relations-offline-agent-mcp-v1',
   'r03-direct-relations-offline-agent-mcp-matrix-v2',
   'r02-positive-direct-relations-agent-mcp-v1',

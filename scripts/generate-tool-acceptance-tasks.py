@@ -4111,7 +4111,7 @@ CODEX_R04_RECEIPT_PAYLOAD_FIELDS = {
 }
 CODEX_R01_OFFLINE_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
-    if profile.get('id') == 'r01-subject-relations-offline-agent-mcp-v1'
+    if profile.get('id') == 'r01-subject-relations-text-projection-agent-mcp-v2'
 )
 CODEX_R01_OFFLINE_PROFILE_ID = CODEX_R01_OFFLINE_PROFILE['id']
 CODEX_R01_OFFLINE_EPOCH_ID = CODEX_R01_OFFLINE_PROFILE['epochId']
@@ -4135,6 +4135,7 @@ CODEX_R01_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_R01_OFFLINE_PROFILE['
 CODEX_R01_OFFLINE_EVIDENCE_KIND = CODEX_R01_OFFLINE_PROFILE['evidenceKind']
 CODEX_R01_OFFLINE_ANSWER_CHECK_METHOD = CODEX_R01_OFFLINE_PROFILE['answerCheckMethod']
 CODEX_R01_OFFLINE_NETWORK_MODE = CODEX_R01_OFFLINE_PROFILE['networkMode']
+CODEX_R01_OFFLINE_MAX_ANSWER_BYTES = CODEX_R01_OFFLINE_PROFILE['maxAnswerBytes']
 CODEX_R01_OFFLINE_REQUIRED_CI_CHECKS = CODEX_P06_REQUIRED_CI_CHECKS
 CODEX_R01_OFFLINE_EVIDENCE_REFRESH_PATHS = {
     CODEX_R01_OFFLINE_REPORT_RELATIVE_PATH,
@@ -4156,9 +4157,13 @@ CODEX_R01_OFFLINE_REPORT_FIELDS = {
     'resultSummary', 'offlineFixture', 'networkBoundary', 'privacy', 'runnerReceipt',
 }
 CODEX_R01_OFFLINE_ANSWER_CHECK_FIELDS = {
-    'exactRegisteredProfile', 'oneAllowedMcpTool', 'fixedArguments', 'exactCandidateBundle',
-    'offlineFixtureOnly', 'oneExpectedLocalResponse', 'noAssetRequests',
-    'exactAcknowledgement', 'privacyPreserved',
+    'exactArguments', 'exactlyOneCompletedToolCall', 'exactSyntheticSourceResult',
+    'textProjectionConsistent', 'textBudgetVerified', 'exactAnswerShape', 'answerMatchesSource',
+}
+CODEX_R01_OFFLINE_RESULT_SUMMARY_FIELDS = {
+    'sourceRowsObserved', 'sourceRowsReturned', 'sourceSchemaDriftRows', 'sourceTruncated',
+    'textRowsIncluded', 'textRowsOmitted', 'textUtf8Bytes', 'structuredContentAvailable',
+    'textProjectionConsistent', 'firstDisplayedRelationMatched',
 }
 CODEX_R01_OFFLINE_PRIVACY_FIELDS = {
     'authProfile', 'oauthAttempted', 'accountDataRead', 'writesAttempted', 'communityRead',
@@ -7528,20 +7533,29 @@ CODEX_R01_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
     'scripts/lib/codex-profile-tool-summary.mjs': (
         'profileId === R01_RELATIONS_OFFLINE_PROFILE_ID',
         'summarizeR01RelationsOfflineToolResult(result, expectedArguments)',
+        'profileId === R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID',
+        'summarizeR01RelationsTextProjectionToolResult(result, expectedArguments)',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
         'createR01RelationsOfflineFetch()',
         'R01_RELATIONS_OFFLINE_NETWORK_MODE',
         'assertR01RelationsOfflineFixture(config.profile)',
+        'R01_RELATIONS_TEXT_PROJECTION_OFFLINE_NETWORK_MODE',
+        'assertR01RelationsTextProjectionOfflineFixture(config.profile)',
+        'presentMcpToolResult(expectedToolName, result)',
     ),
     'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
         'assertR01RelationsOfflineProfile(profile)',
         'A registered profile cannot be combined with arbitrary tool, arguments, or network mode.',
+        'assertR01RelationsTextProjectionOfflineProfile(profile)',
     ),
     'scripts/acceptance/agent-mcp-profile-registry.json': (
         '"id": "r01-subject-relations-offline-agent-mcp-v1"',
         '"networkMode": "run95-r01-relations-offline-v1"',
         '"subjectId": 990902',
+        '"id": "r01-subject-relations-text-projection-agent-mcp-v2"',
+        '"networkMode": "run95-r01-relations-text-projection-offline-v2"',
+        '"subjectId": 991408',
     ),
     'scripts/acceptance/run-r01-relations-offline-agent-mcp.mjs': (
         'export function validateR01RunnerArgs(',
@@ -7550,12 +7564,38 @@ CODEX_R01_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function classifyR01AssertionFailure(',
         'function runR01(',
         'codexMcpExactToolAccessConfig(SERVER_ID, [PROFILE.toolName])',
+        'R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID',
+        'buildR01TextProjectionProfileReport(',
     ),
     'scripts/acceptance/write-r01-relations-offline-agent-mcp-report.mjs': (
         'export function buildR01RunnerReceiptPayload(',
         'export function validateR01ProfileReport(',
         'export function validateR01SanitizedReportFile(',
         "openSync(target, 'wx', 0o600)",
+    ),
+    'scripts/lib/r01-relations-text-projection-offline-profile.mjs': (
+        "'r01-subject-relations-text-projection-agent-mcp-v2'",
+        'R01_RELATIONS_TEXT_PROJECTION_OFFLINE_SUBJECT_ID = 991408',
+        'R01_RELATIONS_TEXT_PROJECTION_OFFLINE_ROW_COUNT = 30',
+        'assertR01RelationsTextProjectionOfflineProfile(profile)',
+    ),
+    'scripts/lib/r01-relations-text-projection-offline-fixture.mjs': (
+        'export function createR01RelationsTextProjectionOfflineFetch()',
+        'authorizationHeaderCount',
+        'duplicateRequestCount',
+    ),
+    'scripts/acceptance/r01-relations-text-projection-answer-check.mjs': (
+        'export function verifyR01TextProjectionAnswer(',
+        'textProjectionConsistent',
+        'structuredContentAvailable',
+    ),
+    'scripts/acceptance/write-r01-relations-text-projection-offline-agent-mcp-v2-report.mjs': (
+        'export function buildR01TextProjectionProfileReport(',
+        'export function validateR01TextProjectionProfileReport(',
+        "openSync(target, 'wx', 0o600)",
+    ),
+    'scripts/acceptance/validate-r01-relations-text-projection-offline-agent-mcp-v2-report.mjs': (
+        'validateR01TextProjectionProfileReport(',
     ),
     'scripts/acceptance/validate-r01-relations-offline-agent-mcp-report.mjs': (
         'validateR01ProfileReport(report, value.claim, reportBytes)',
@@ -7564,11 +7604,18 @@ CODEX_R01_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
         "case 'r01-subject-relations-offline-agent-mcp-v1'",
         'validateR01RelationsOfflineSanitizedReportFile(',
         'CANDIDATE_EXACT_CI_RUN_EVIDENCE_REQUIRED',
+        "case 'r01-subject-relations-text-projection-agent-mcp-v2'",
+        'validateR01RelationsTextProjectionOfflineSanitizedReportFile(',
     ),
     'docs/research/run95-r01-subject-relations-offline-agent-mcp-matrix-2026-10-16.md': (
         'R01 scenario remains `PARTIAL`',
         'matrix-only profile',
         'no OAuth',
+    ),
+    'docs/research/run95-r01-relations-text-projection-offline-matrix-v2-contract-2026-10-23.md': (
+        'R01 remains `PARTIAL`',
+        '3,600 UTF-8 bytes',
+        'No live API request',
     ),
     'docs/product/frontier-ledger.json': (
         'The original R01 one-shot remains terminal',
@@ -7585,6 +7632,15 @@ CODEX_R01_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
     'tests/harness/write-r01-relations-offline-agent-mcp-report.test.mjs': (
         'R01 report builder signs only sanitized matrix evidence without scenario credit',
         'R01 report validator rejects modified signatures and local request counters',
+    ),
+    'tests/harness/r01-relations-text-projection-answer-check.test.mjs': (
+        'R01 v2 answer check binds source rows, MCP text omissions, and full structured content',
+    ),
+    'tests/harness/r01-relations-text-projection-offline-fixture.test.mjs': (
+        'R01 v2 fixture returns exactly 30 deterministic synthetic direct relations',
+    ),
+    'tests/harness/write-r01-relations-text-projection-offline-agent-mcp-v2-report.test.mjs': (
+        'R01 text-projection report binds the runner receipt, exact claim, and sanitized result',
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_r01_offline_profile_report_is_valid(',
@@ -20115,6 +20171,34 @@ def codex_r01_offline_profile_report_is_valid(
     source_revision = report.get('sourceRevision')
     pr_number = report.get('prNumber')
     observed_at = report.get('observedAt')
+    reviewer_id = report.get('reviewerId')
+    reviewer_is_valid = isinstance(reviewer_id, str) and (
+        re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', reviewer_id) is not None
+        or re.fullmatch(r'run95-g16-review[1-9]\d*-gpt-6-luna-max-[0-9a-f]{7,40}', reviewer_id) is not None
+        or re.fullmatch(r'/root/[a-z0-9_]+', reviewer_id) is not None
+    )
+    answer_checks = report.get('answerChecks')
+    result_summary = report.get('resultSummary')
+    result_summary_valid = (
+        isinstance(result_summary, dict)
+        and set(result_summary) == CODEX_R01_OFFLINE_RESULT_SUMMARY_FIELDS
+        and type(result_summary.get('sourceRowsObserved')) is int
+        and result_summary.get('sourceRowsObserved') == 30
+        and type(result_summary.get('sourceRowsReturned')) is int
+        and result_summary.get('sourceRowsReturned') == 30
+        and type(result_summary.get('sourceSchemaDriftRows')) is int
+        and result_summary.get('sourceSchemaDriftRows') == 0
+        and result_summary.get('sourceTruncated') is False
+        and type(result_summary.get('textRowsIncluded')) is int
+        and 1 <= result_summary['textRowsIncluded'] < 30
+        and type(result_summary.get('textRowsOmitted')) is int
+        and result_summary['textRowsOmitted'] == 30 - result_summary['textRowsIncluded']
+        and type(result_summary.get('textUtf8Bytes')) is int
+        and 0 < result_summary['textUtf8Bytes'] <= 3600
+        and result_summary.get('structuredContentAvailable') is True
+        and result_summary.get('textProjectionConsistent') is True
+        and result_summary.get('firstDisplayedRelationMatched') is True
+    )
     if (
         relative_path != CODEX_R01_OFFLINE_REPORT_RELATIVE_PATH
         or len(report_bytes) > 64 * 1024
@@ -20128,13 +20212,12 @@ def codex_r01_offline_profile_report_is_valid(
         or report.get('acceptanceScope') != 'agent-mcp-matrix-only'
         or report.get('epochId') != CODEX_R01_OFFLINE_EPOCH_ID
         or report.get('profileId') != CODEX_R01_OFFLINE_PROFILE_ID
-        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v1'
+        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v2'
         or report.get('model') != 'gpt-6-luna'
         or report.get('reasoningEffort') != 'max'
         or not isinstance(pr_number, int)
         or isinstance(pr_number, bool)
-        or not isinstance(report.get('reviewerId'), str)
-        or re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', report['reviewerId']) is None
+        or not reviewer_is_valid
         or not isinstance(report.get('codexCliVersion'), str)
         or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
         or not isinstance(observed_at, str)
@@ -20161,7 +20244,6 @@ def codex_r01_offline_profile_report_is_valid(
     ):
         return False
 
-    answer = b'R01_SYNTHETIC_SUBJECT_RELATIONS_READ'
     fixture = report.get('offlineFixture')
     network_boundary = report.get('networkBoundary')
     privacy = report.get('privacy')
@@ -20201,23 +20283,14 @@ def codex_r01_offline_profile_report_is_valid(
         or report.get('serverToolCount') != 1
         or report.get('mcpServerNames') != ['bgk_r01_relations']
         or report.get('answerCheckMethod') != CODEX_R01_OFFLINE_ANSWER_CHECK_METHOD
-        or report.get('answerSha256') != hashlib.sha256(answer).hexdigest()
-        or report.get('answerUtf8Bytes') != len(answer)
-        or not isinstance(report.get('answerChecks'), dict)
-        or set(report['answerChecks']) != CODEX_R01_OFFLINE_ANSWER_CHECK_FIELDS
-        or any(value is not True for value in report['answerChecks'].values())
-        or result_summary != {
-            'state': 'observed',
-            'sourceDirection': 'source_subject_to_returned_target',
-            'responseRowsObserved': 1,
-            'rowsReturned': 1,
-            'schemaDriftRows': 0,
-            'truncated': False,
-            'paginationAvailable': False,
-            'totalCountAvailable': False,
-            'completeness': 'not_provided_by_source',
-            'relationLabels': ['改编'],
-        }
+        or not isinstance(report.get('answerSha256'), str)
+        or re.fullmatch(r'[0-9a-f]{64}', report['answerSha256']) is None
+        or type(report.get('answerUtf8Bytes')) is not int
+        or not 0 < report['answerUtf8Bytes'] <= CODEX_R01_OFFLINE_MAX_ANSWER_BYTES
+        or not isinstance(answer_checks, dict)
+        or set(answer_checks) != CODEX_R01_OFFLINE_ANSWER_CHECK_FIELDS
+        or any(value is not True for value in answer_checks.values())
+        or not result_summary_valid
         or not isinstance(fixture, dict)
         or set(fixture) != CODEX_R01_OFFLINE_FIXTURE_FIELDS
         or fixture != {
@@ -20282,7 +20355,7 @@ def codex_r01_offline_profile_report_is_valid(
     )
     if disposition is None:
         return False
-    validator = ROOT / 'scripts/acceptance/validate-r01-relations-offline-agent-mcp-report.mjs'
+    validator = ROOT / 'scripts/acceptance/validate-r01-relations-text-projection-offline-agent-mcp-v2-report.mjs'
     validation = subprocess.run(
         ['node', str(validator)],
         cwd=ROOT,
