@@ -155,9 +155,7 @@ const P03_V3_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v3')
 const P03_V4_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v4');
 const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const P06_PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
-const P06_V3_PROFILE = getAgentMcpProfileById(
-  'p06-render-person-profile-offline-agent-mcp-v3',
-);
+const P06_V3_PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v3');
 const G06_V2_PROFILE = getAgentMcpProfileById(G06_CAST_OFFLINE_V2_PROFILE_ID);
 const P02_PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
 const P02_V2_PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v2');
@@ -4799,6 +4797,7 @@ function p06V3ReportRefreshEnvironment(disposition, overrides = {}) {
     'scripts/check-tool-acceptance-table.py',
     'scripts/generate-tool-acceptance-tasks.py',
     'scripts/test_acceptance_evidence.py',
+    'tests/integration/tool-e2e-acceptance.test.ts',
     'tests/harness/agent-harness-cli.test.mjs',
   ];
   const environment = createMockEnvironment({
@@ -5119,7 +5118,8 @@ test('P06 v3 report Candidate refresh accepts only its exact evidence verifier p
         ci: {
           url: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/39883070842',
         },
-        candidate_refresh_reason: 'Add the P06 v3 matrix checker while preserving the signed report and bundle.',
+        candidate_refresh_reason:
+          'Add the P06 v3 matrix checker while preserving the signed report and bundle.',
         scope_closure: epoch.scope_closure,
         corrective_closure: epoch.corrective_closure,
         adversarial_preflight: epoch.adversarial_preflight,
@@ -5149,23 +5149,30 @@ test('P06 v3 report Candidate refresh rejects runtime and unrelated paths or bun
       'scripts/check-tool-acceptance-table.py',
       'scripts/generate-tool-acceptance-tasks.py',
       'scripts/test_acceptance_evidence.py',
+      'tests/integration/tool-e2e-acceptance.test.ts',
       'tests/harness/agent-harness-cli.test.mjs',
       'apps/mcp/codex-one-tool-mcp-server.mjs',
     ],
   });
-  const buildEvidence = (environment, epoch) => candidateEvidence(environment, {
-    candidate_sha: sha('e'),
-    ci: {
-      url: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/39883070842',
-    },
-    candidate_refresh_reason: 'Reject unapproved changes after the P06 v3 report.',
-    scope_closure: epoch.scope_closure,
-    corrective_closure: epoch.corrective_closure,
-    adversarial_preflight: epoch.adversarial_preflight,
-  });
+  const buildEvidence = (environment, epoch) =>
+    candidateEvidence(environment, {
+      candidate_sha: sha('e'),
+      ci: {
+        url: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/39883070842',
+      },
+      candidate_refresh_reason: 'Reject unapproved changes after the P06 v3 report.',
+      scope_closure: epoch.scope_closure,
+      corrective_closure: epoch.corrective_closure,
+      adversarial_preflight: epoch.adversarial_preflight,
+    });
   try {
     const result = environmentWithRuntimePath.environment.execute([
-      'candidate:check', '--run', '95', '--pr', '42', '--evidence',
+      'candidate:check',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--evidence',
       buildEvidence(environmentWithRuntimePath.environment, environmentWithRuntimePath.epoch),
     ]);
     assert.equal(result.status, 2);
@@ -5183,14 +5190,22 @@ test('P06 v3 report Candidate refresh rejects runtime and unrelated paths or bun
   try {
     const result = environment.execute(
       [
-        'candidate:check', '--run', '95', '--pr', '42', '--evidence',
+        'candidate:check',
+        '--run',
+        '95',
+        '--pr',
+        '42',
+        '--evidence',
         buildEvidence(environment, epoch),
       ],
       { HARNESS_G04_BUNDLE_SHA256: 'f'.repeat(64) },
     );
     assert.equal(result.status, 2);
     assert.match(result.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
-    assert.equal(parseControlBlock(environment.readState().prBody, EPOCH_MARKER).candidate_sha, sha('b'));
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).candidate_sha,
+      sha('b'),
+    );
   } finally {
     environment.cleanup();
   }

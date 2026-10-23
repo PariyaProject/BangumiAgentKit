@@ -10073,6 +10073,7 @@ class P06OfflineProfileReportValidationTests(unittest.TestCase):
             'scripts/check-tool-acceptance-table.py',
             'scripts/generate-tool-acceptance-tasks.py',
             'scripts/test_acceptance_evidence.py',
+            'tests/integration/tool-e2e-acceptance.test.ts',
             'tests/harness/agent-harness-cli.test.mjs',
         }
         self.assertTrue(
@@ -10134,6 +10135,7 @@ class P06OfflineProfileReportValidationTests(unittest.TestCase):
             'scripts/check-tool-acceptance-table.py',
             'scripts/generate-tool-acceptance-tasks.py',
             'scripts/test_acceptance_evidence.py',
+            'tests/integration/tool-e2e-acceptance.test.ts',
             'tests/harness/agent-harness-cli.test.mjs',
         }
         def successful_ancestry(*args):
