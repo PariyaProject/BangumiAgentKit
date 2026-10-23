@@ -5,7 +5,7 @@ import path from 'node:path';
 export const C07_V4_VISUAL_QA_MANIFEST_PATH =
   'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json';
 export const C07_V4_VISUAL_QA_ARTIFACT_DIRECTORY =
-  '.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v17';
+  '.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v19';
 
 const PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v4';
 const WIDTHS = [320, 360, 520, 640, 960];
@@ -133,7 +133,7 @@ function validateManifestShape(manifest) {
     JSON.stringify(manifest.cssWidths) !== JSON.stringify(WIDTHS) ||
     JSON.stringify(manifest.designPacks) !== JSON.stringify(DESIGN_PACKS) ||
     JSON.stringify(manifest.themes) !== JSON.stringify(THEMES) ||
-    manifest.deviceScaleFactor !== 1 ||
+    manifest.deviceScaleFactor !== 2 ||
     typeof manifest.buildBundleSha256 !== 'string' ||
     !/^[0-9a-f]{64}$/u.test(manifest.buildBundleSha256) ||
     typeof manifest.generationSourceSha256 !== 'string' ||
@@ -181,7 +181,7 @@ function validateManifestShape(manifest) {
       image.designPack !== identity.designPack ||
       image.theme !== identity.theme ||
       image.cssWidth !== identity.cssWidth ||
-      image.pixelWidth !== identity.cssWidth ||
+      image.pixelWidth !== identity.cssWidth * 2 ||
       !Number.isSafeInteger(image.pixelHeight) ||
       image.pixelHeight < 1 ||
       image.pixelHeight > MAX_IMAGE_HEIGHT ||

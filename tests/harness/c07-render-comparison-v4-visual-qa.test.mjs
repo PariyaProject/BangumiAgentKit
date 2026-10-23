@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
   C07_V4_VISUAL_QA_ARTIFACT_DIRECTORY,
@@ -17,6 +18,7 @@ const THEMES = ['bangumi-light', 'bangumi-dark'];
 const CASES = ['complete-two-cohort', 'partial-two-cohort'];
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 function pngHeader(width, height) {
   const bytes = Buffer.alloc(24);
@@ -80,7 +82,7 @@ function createFixture() {
       for (const theme of THEMES) {
         for (const cssWidth of WIDTHS) {
           const file = `${visualCase}-${designPack}-${theme}-${cssWidth}.png`;
-          const bytes = pngHeader(cssWidth, 1200);
+          const bytes = pngHeader(cssWidth * 2, 1200);
           writeFileSync(path.join(artifactDirectory, file), bytes);
           images.push({
             case: visualCase,
@@ -88,7 +90,7 @@ function createFixture() {
             theme,
             file,
             cssWidth,
-            pixelWidth: cssWidth,
+            pixelWidth: cssWidth * 2,
             pixelHeight: 1200,
             byteLength: bytes.length,
             sha256: sha256(bytes),
@@ -109,7 +111,7 @@ function createFixture() {
     cssWidths: WIDTHS,
     designPacks: DESIGN_PACKS,
     themes: THEMES,
-    deviceScaleFactor: 1,
+    deviceScaleFactor: 2,
     buildBundleSha256: 'c'.repeat(64),
     generationSourceSha256: computeC07V4VisualQaGenerationSourceSha256(root),
     reviewAcknowledgement: {
@@ -133,6 +135,20 @@ function verify(fixture, expectedManifestSha256 = sha256(fixture.manifestBytes))
     expectedBundleSha256: fixture.manifest.buildBundleSha256,
   });
 }
+
+test('C07 v4 runner pin matches the tracked visual QA manifest', () => {
+  const manifestBytes = readFileSync(path.join(ROOT, C07_V4_VISUAL_QA_MANIFEST_PATH));
+  const runnerSource = readFileSync(
+    path.join(ROOT, 'scripts/acceptance/run-c07-render-comparison-offline-agent-mcp.mjs'),
+    'utf8',
+  );
+  const pin = runnerSource.match(
+    /const C07_V4_VISUAL_QA_MANIFEST_SHA256\s*=\s*'([0-9a-f]{64})'/u,
+  );
+
+  assert.ok(pin, 'C07 v4 runner must pin the expected visual QA manifest');
+  assert.equal(pin[1], sha256(manifestBytes));
+});
 
 test('C07 v4 visual QA requires exact 60-image receipts, current sources and full review', () => {
   const fixture = createFixture();

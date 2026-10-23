@@ -745,13 +745,18 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
   const showComparison = dimensions.length === 2;
   const compactComparison = showComparison && viewportWidth <= 640;
   const twoColumnComparison = compactComparison && viewportWidth <= 400;
+  const cohortOverviewLayout = !showComparison
+    ? 'single'
+    : viewportWidth < 520
+      ? 'stacked'
+      : 'paired';
   const cohortGridColumns =
-    showComparison && viewportWidth >= 320 ? 'repeat(2, minmax(0, 1fr))' : '1fr';
+    cohortOverviewLayout === 'paired' ? 'repeat(2, minmax(0, 1fr))' : '1fr';
   const isZine = theme.designPack === 'graphic-zine';
   const isGallery = theme.designPack === 'clean-gallery';
   const isWarm = theme.designPack === 'warm-editorial';
   const supportingTypeSize = viewportWidth <= 400 ? '14px' : viewportWidth <= 520 ? '14px' : '15px';
-  const microTypeSize = viewportWidth <= 400 ? '12px' : viewportWidth <= 520 ? '12px' : '13px';
+  const microTypeSize = viewportWidth <= 520 ? '14px' : '13px';
   const visibleSubjectsPerCohort =
     viewportWidth <= 400 ? 1 : viewportWidth < 520 ? 3 : viewportWidth < 760 ? 6 : 8;
   const warningLimit = 3;
@@ -841,6 +846,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
 
       <div
         data-layout="cohort-overview"
+        data-layout-variant={`cohort-${cohortOverviewLayout}`}
         style={{
           display: 'grid',
           gridTemplateColumns: cohortGridColumns,
@@ -876,7 +882,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                 borderRadius: isWarm ? '18px 5px 18px 5px' : undefined,
                 boxShadow: isZine ? `2px 3px 0 ${theme.text}` : undefined,
                 clipPath: cohortMask,
-                padding: viewportWidth <= 400 ? '9px 10px 14px' : theme.spacing.md,
+                padding: viewportWidth <= 400 ? '12px 14px 16px' : theme.spacing.md,
                 margin: isZine ? '0 2px 3px 0' : undefined,
                 minWidth: 0,
               }}
@@ -903,7 +909,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                 style={{
                   color: theme.text,
                   fontFamily: theme.design.displayFontFamily,
-                  fontSize: viewportWidth <= 400 ? '13px' : '17px',
+                  fontSize: viewportWidth <= 400 ? '16px' : '17px',
                   fontWeight: 700,
                   marginTop: theme.spacing.xs,
                   overflowWrap: 'anywhere',

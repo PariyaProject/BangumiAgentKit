@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "profileId": "c07-render-comparison-offline-agent-mcp-matrix-v4",
-  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v17",
+  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v19",
   "cssWidths": [
     320,
     360,
@@ -18,15 +18,15 @@
     "bangumi-light",
     "bangumi-dark"
   ],
-  "deviceScaleFactor": 1,
-  "buildBundleSha256": "5db582654ad9574be2106761315e638856b1a73527a6684780203b6e2d2d9616",
-  "generationSourceSha256": "8749dc9c19edbfef724ad3090e899a4bd443184ff367daeed8b8b1e3b069d281",
+  "deviceScaleFactor": 2,
+  "buildBundleSha256": "d79cfbde310f8f180baa14a3da461d3ceb321b969268fffd5b38b0584fe3daa3",
+  "generationSourceSha256": "ed4152fd5c1e100ae84087a54a17f1d93cc06d4505009c123ebce3c733c07147",
   "reviewAcknowledgement": {
     "decision": "PASS",
     "allImagesIndividuallyInspected": true,
     "reviewedBy": "Codex",
-    "reviewedAt": "2026-10-23T18:51:24.161Z",
-    "summary": "60/60 PNG逐张检查：complete/partial × 三主题 × 浅/深 × 320/360/520/640/960px。三个设计包各自采用不同结构；Gallery标题使用横向细线。完整态A/B和差值正确，部分态缺失为未知、虚线覆盖且差值不可计算。窄图遮罩内文字完整，无裁切、重叠或横向溢出。此为本地合成QA，不代表用户审美或QQ/TIM客户端验收。"
+    "reviewedAt": "2026-10-23T19:25:23.000Z",
+    "summary": "Opened all 60 exact-source DPR2 images individually across complete/partial, three packs, two palettes, and 320/360/520/640/960 CSS px. Includes the actual 360px chat size; no visible clipping, overlap, or overflow. Partial values stay unknown/dashed/non-computable."
   },
   "images": [
     {
@@ -35,13 +35,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-warm-editorial-bangumi-light-320.png",
       "cssWidth": 320,
-      "pixelWidth": 320,
-      "pixelHeight": 1087,
-      "byteLength": 95176,
-      "sha256": "2d11b75c74261c8c7be6f4913c52287bcf1a61dbb2bd74ab19c036cd6538ee18",
+      "pixelWidth": 640,
+      "pixelHeight": 2566,
+      "byteLength": 262816,
+      "sha256": "1214069ac4a7ae549c0caa5c7bb7eb49d676d5dc7e6f0cb6aacc3160ab464933",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；320px 浅色 完整状态A/B数值、比例条与B−A差值对应，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-light, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -50,13 +50,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-warm-editorial-bangumi-light-360.png",
       "cssWidth": 360,
-      "pixelWidth": 360,
-      "pixelHeight": 1072,
-      "byteLength": 95526,
-      "sha256": "914c54f861bad61a9b62c5d2a4b61fd21a9194d29b3c40d999eaba0f8a8e9df5",
+      "pixelWidth": 720,
+      "pixelHeight": 2536,
+      "byteLength": 268297,
+      "sha256": "f3bc5f3de1c2dff27e840129b1ae15acffd9ea514ce28334d96682a6bac663dc",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；360px 浅色 完整状态A/B数值、比例条与B−A差值对应，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-light, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -65,13 +65,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-warm-editorial-bangumi-light-520.png",
       "cssWidth": 520,
-      "pixelWidth": 520,
-      "pixelHeight": 1124,
-      "byteLength": 133984,
-      "sha256": "9118a60c1d69f993774c8794831f7bffd670dbb93ff40262ac3f44a0d6143a0e",
+      "pixelWidth": 1040,
+      "pixelHeight": 2362,
+      "byteLength": 364060,
+      "sha256": "4651aa2410faa6718a77ef4143b0ffa1d7dd39b644ba1de7fd74a769771c7407",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；520px 浅色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-light, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -80,13 +80,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-warm-editorial-bangumi-light-640.png",
       "cssWidth": 640,
-      "pixelWidth": 640,
-      "pixelHeight": 1112,
-      "byteLength": 147097,
-      "sha256": "121e0821a9dcb3d71ceb658aa30b6c864c59edfd524d285fd1b203ab434299b1",
+      "pixelWidth": 1280,
+      "pixelHeight": 2224,
+      "byteLength": 363988,
+      "sha256": "3ac196daf898f9d0d789f5660e5acd631e160c80c7fad280d9391b939bcd6012",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；640px 浅色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-light, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -95,13 +95,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-warm-editorial-bangumi-light-960.png",
       "cssWidth": 960,
-      "pixelWidth": 960,
-      "pixelHeight": 1114,
-      "byteLength": 163712,
-      "sha256": "b27cf72bcd6c783cd603c61d4f145e3dd0efb9f6840a73debfda8acea6e2f1d1",
+      "pixelWidth": 1920,
+      "pixelHeight": 2228,
+      "byteLength": 400354,
+      "sha256": "ec9d4c9db71c426b5d10ccd39a015016984473ce0869008b133645ecedd8d16b",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；960px 浅色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-light, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -110,13 +110,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-320.png",
       "cssWidth": 320,
-      "pixelWidth": 320,
-      "pixelHeight": 1087,
-      "byteLength": 94010,
-      "sha256": "0c9d3d8a5d4451091ea513bfc4d292078865b84ce70b05b9b253da735cd91415",
+      "pixelWidth": 640,
+      "pixelHeight": 2566,
+      "byteLength": 262205,
+      "sha256": "73805056374ebd1e039436e6535578a495383e70ed922e7428de02e3e8a74ea4",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；320px 深色 完整状态A/B数值、比例条与B−A差值对应，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-dark, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -125,13 +125,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-360.png",
       "cssWidth": 360,
-      "pixelWidth": 360,
-      "pixelHeight": 1072,
-      "byteLength": 94221,
-      "sha256": "3be41e9e716b42f91a1afb1dd78e21fd8ed189ac9f916086d8fda6a40a9cb3ac",
+      "pixelWidth": 720,
+      "pixelHeight": 2536,
+      "byteLength": 267523,
+      "sha256": "3228f394c829350a767cd0ee95fcf60a721668e531f9d2545db33826bccdbde4",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；360px 深色 完整状态A/B数值、比例条与B−A差值对应，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-dark, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -140,13 +140,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-520.png",
       "cssWidth": 520,
-      "pixelWidth": 520,
-      "pixelHeight": 1124,
-      "byteLength": 132174,
-      "sha256": "3d862135c0da75ba22de6faef8ea30c9593464f6335854314177c96407deb79a",
+      "pixelWidth": 1040,
+      "pixelHeight": 2362,
+      "byteLength": 362722,
+      "sha256": "8d10db06953f96414bf8da4270e769f99f17266b1ccbe35b6c9057d722e7b1e8",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；520px 深色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-dark, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -155,13 +155,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-640.png",
       "cssWidth": 640,
-      "pixelWidth": 640,
-      "pixelHeight": 1112,
-      "byteLength": 145420,
-      "sha256": "6579dfd7123b7f905372f2f3668896cd700fc61361ed4bfb947f3b3d73a83cf4",
+      "pixelWidth": 1280,
+      "pixelHeight": 2224,
+      "byteLength": 363056,
+      "sha256": "b0688ee3334da334d97e090562e31750d6b18728cabdf3b43c2a5f9f75ac1d7a",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；640px 深色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-dark, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -170,13 +170,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-960.png",
       "cssWidth": 960,
-      "pixelWidth": 960,
-      "pixelHeight": 1114,
-      "byteLength": 161684,
-      "sha256": "f88e28bc14336483343a63f57fddfb7416c8f5cf011e0223d8d262c9b779fe46",
+      "pixelWidth": 1920,
+      "pixelHeight": 2228,
+      "byteLength": 397523,
+      "sha256": "f8cfb75e71204f153d91f364227f45ee1fd6e61adcf8951210b64731f5ee6fc2",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；960px 深色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-dark, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -185,13 +185,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-clean-gallery-bangumi-light-320.png",
       "cssWidth": 320,
-      "pixelWidth": 320,
-      "pixelHeight": 936,
-      "byteLength": 85285,
-      "sha256": "a6c0302562398c08f0bbbcb383e046e256fce5857a7cab327090fe519c080851",
+      "pixelWidth": 640,
+      "pixelHeight": 2254,
+      "byteLength": 245496,
+      "sha256": "926c1c4a4b574f84d115989ab0b16174739b6999538fc7c399c89080fc2e1f2a",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；320px 浅色 完整状态A/B数值、比例条与B−A差值对应，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-light, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -200,13 +200,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-clean-gallery-bangumi-light-360.png",
       "cssWidth": 360,
-      "pixelWidth": 360,
-      "pixelHeight": 913,
-      "byteLength": 86854,
-      "sha256": "9b32617e1753934a4afc7f3283fa76aa742ab6a3e7701c23719c5ff78d311289",
+      "pixelWidth": 720,
+      "pixelHeight": 2254,
+      "byteLength": 253468,
+      "sha256": "16d29d973908b5b0488ad4a2ac5cd68c591ec031c8884f754dd160267b65bc01",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；360px 浅色 完整状态A/B数值、比例条与B−A差值对应，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-light, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -215,13 +215,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-clean-gallery-bangumi-light-520.png",
       "cssWidth": 520,
-      "pixelWidth": 520,
-      "pixelHeight": 980,
-      "byteLength": 123126,
-      "sha256": "5f1030c3be85be5b33ef328644ed01e1bc8986097baf6243d89fce6158c7c2f1",
+      "pixelWidth": 1040,
+      "pixelHeight": 2100,
+      "byteLength": 350852,
+      "sha256": "84598292f69eda566f0ffdff51c3b65dcb822f003430387692bb41b804bf8852",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；520px 浅色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-light, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -230,13 +230,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-clean-gallery-bangumi-light-640.png",
       "cssWidth": 640,
-      "pixelWidth": 640,
-      "pixelHeight": 968,
-      "byteLength": 143232,
-      "sha256": "7e71a189a2d6d81930c4b9d47deaeb6b38a64a313a34299085768be621cf0326",
+      "pixelWidth": 1280,
+      "pixelHeight": 1936,
+      "byteLength": 357415,
+      "sha256": "cacf54aa81045d7823ed860909e71eeb1e255ad1065956a5c607d4e67989faea",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；640px 浅色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-light, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -245,13 +245,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-clean-gallery-bangumi-light-960.png",
       "cssWidth": 960,
-      "pixelWidth": 960,
-      "pixelHeight": 988,
-      "byteLength": 155193,
-      "sha256": "d7e4b8e99629701334412fd108f871be1953e364c43557e780e8e8279261a2c5",
+      "pixelWidth": 1920,
+      "pixelHeight": 1976,
+      "byteLength": 385901,
+      "sha256": "532b022151ef48bc3c3612c46863b2bfd4c4066ebfc50ef13b854461a370300e",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；960px 浅色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-light, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -260,13 +260,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-320.png",
       "cssWidth": 320,
-      "pixelWidth": 320,
-      "pixelHeight": 936,
-      "byteLength": 88644,
-      "sha256": "e0fa71073037d80b54465a1b37621eb8d12fcb0a7ee92d429d5fe1484ac8cac7",
+      "pixelWidth": 640,
+      "pixelHeight": 2254,
+      "byteLength": 252870,
+      "sha256": "030af14d737b2cb92e0b66340e17b156a32650d33b0425e614e1a9890d4da894",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；320px 深色 完整状态A/B数值、比例条与B−A差值对应，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-dark, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -275,13 +275,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-360.png",
       "cssWidth": 360,
-      "pixelWidth": 360,
-      "pixelHeight": 913,
-      "byteLength": 90038,
-      "sha256": "03ee81c44bc977260ff9f1c915a0bb8da21943bc4a4e85d45e8fe2babe231a04",
+      "pixelWidth": 720,
+      "pixelHeight": 2254,
+      "byteLength": 261286,
+      "sha256": "7edb6ad70ceeb9643bd4390864b35368f4fc83e8a9660d84f7297fb38ebb583a",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；360px 深色 完整状态A/B数值、比例条与B−A差值对应，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-dark, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -290,13 +290,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-520.png",
       "cssWidth": 520,
-      "pixelWidth": 520,
-      "pixelHeight": 980,
-      "byteLength": 128366,
-      "sha256": "e23efa0ed3c1da085f34237639a9429f9a4f83fa42826d2d0e5f0fcc829cfcbf",
+      "pixelWidth": 1040,
+      "pixelHeight": 2100,
+      "byteLength": 364353,
+      "sha256": "377d2be44c48a3a33ca6352cc0be1b5c09b221ff23373c0c74329e174f58b1dc",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；520px 深色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-dark, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -305,13 +305,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-640.png",
       "cssWidth": 640,
-      "pixelWidth": 640,
-      "pixelHeight": 968,
-      "byteLength": 149132,
-      "sha256": "6560bdcd818170ebfcf12b5a73ae6492ece3751852500b7fa31d7fa0480bbe97",
+      "pixelWidth": 1280,
+      "pixelHeight": 1936,
+      "byteLength": 370658,
+      "sha256": "c2be058c57c3cd6f1873c7cb9b49457580b3db512950e63edb6066ef6aba6e1a",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；640px 深色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-dark, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -320,13 +320,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-960.png",
       "cssWidth": 960,
-      "pixelWidth": 960,
-      "pixelHeight": 988,
-      "byteLength": 160495,
-      "sha256": "38ae507394e4d708245cc24bdcac942e4544e160d26ceb8ad3f40040116c090e",
+      "pixelWidth": 1920,
+      "pixelHeight": 1976,
+      "byteLength": 397738,
+      "sha256": "becc5f3147a49534c0640869ec61d4c0e0419a0bc3b064c5085041b7cf56585f",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；960px 深色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-dark, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -335,13 +335,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-graphic-zine-bangumi-light-320.png",
       "cssWidth": 320,
-      "pixelWidth": 320,
-      "pixelHeight": 963,
-      "byteLength": 105059,
-      "sha256": "18908ec5fcba3ec60c710f81c1f5bdcb25ae31b0df1f1fcd0a8716254bf2678a",
+      "pixelWidth": 640,
+      "pixelHeight": 2328,
+      "byteLength": 273773,
+      "sha256": "414f0217839dc35db9147b7a5376f672aaf70901fbaababd50df78508ffbb8d7",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；320px 浅色 完整状态A/B数值、比例条与B−A差值对应，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-light, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -350,13 +350,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-graphic-zine-bangumi-light-360.png",
       "cssWidth": 360,
-      "pixelWidth": 360,
-      "pixelHeight": 953,
-      "byteLength": 105465,
-      "sha256": "6653624c75a4a4ac14b6a1cee1ecb346c9856b499378a5b16f388279c6a4f247",
+      "pixelWidth": 720,
+      "pixelHeight": 2296,
+      "byteLength": 279244,
+      "sha256": "9a0c565848e63fff7bd3a3bf485680f57d1c1b0a91ebf019348c8e4252f29992",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；360px 浅色 完整状态A/B数值、比例条与B−A差值对应，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-light, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -365,13 +365,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-graphic-zine-bangumi-light-520.png",
       "cssWidth": 520,
-      "pixelWidth": 520,
-      "pixelHeight": 1001,
-      "byteLength": 144708,
-      "sha256": "5fa0f435bea3a23dea0da499a8184a5a9f0c0197b3f0bfe5ff425f8c223a7143",
+      "pixelWidth": 1040,
+      "pixelHeight": 2112,
+      "byteLength": 405492,
+      "sha256": "836d3ac0cd54eced3dd92bbefbc7e3a06066404d18892d0aa8a548d56c4d0d97",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；520px 浅色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-light, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -380,13 +380,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-graphic-zine-bangumi-light-640.png",
       "cssWidth": 640,
-      "pixelWidth": 640,
-      "pixelHeight": 1000,
-      "byteLength": 162868,
-      "sha256": "43f3179c32a0252d3e5f224c41e7575443c5dc50ef96732f6a3d0675ab8ca2ed",
+      "pixelWidth": 1280,
+      "pixelHeight": 2000,
+      "byteLength": 406166,
+      "sha256": "cf7e3ff07147156d184d5cfd6613b747f7a1a27f75c9cff8d249e31009cd2fc6",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；640px 浅色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-light, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -395,13 +395,13 @@
       "theme": "bangumi-light",
       "file": "complete-two-cohort-graphic-zine-bangumi-light-960.png",
       "cssWidth": 960,
-      "pixelWidth": 960,
-      "pixelHeight": 999,
-      "byteLength": 184905,
-      "sha256": "d1cf203964313cf406864a902e3e8555f3bdd4bae9a18167e4c27ffe720e24cc",
+      "pixelWidth": 1920,
+      "pixelHeight": 1998,
+      "byteLength": 456908,
+      "sha256": "d577c4e7f3b4d08443d80c7decfdecaad31cfe08dc00271b14b3b1316602d49d",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；960px 浅色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-light, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -410,13 +410,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-320.png",
       "cssWidth": 320,
-      "pixelWidth": 320,
-      "pixelHeight": 963,
-      "byteLength": 106422,
-      "sha256": "b43047ba42568075a565ec0392a461a1a5866edbe97b95833d08b7a3e4adf2dd",
+      "pixelWidth": 640,
+      "pixelHeight": 2328,
+      "byteLength": 275582,
+      "sha256": "2ad521acef474ecb90dc4bfbe78913bf413c3766eb65ca1d4d3071b73ccac14e",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；320px 深色 完整状态A/B数值、比例条与B−A差值对应，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-dark, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -425,13 +425,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-360.png",
       "cssWidth": 360,
-      "pixelWidth": 360,
-      "pixelHeight": 953,
-      "byteLength": 106908,
-      "sha256": "0ad89b8f938f2c3154153d4c74b1878a8cb9bb66075de8ff1eb57c0828fc999d",
+      "pixelWidth": 720,
+      "pixelHeight": 2296,
+      "byteLength": 281262,
+      "sha256": "78f53190a94eb2c262630505986a9fc244430cfc7dd2eddb7e4f55b6c2a783ec",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；360px 深色 完整状态A/B数值、比例条与B−A差值对应，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-dark, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -440,13 +440,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-520.png",
       "cssWidth": 520,
-      "pixelWidth": 520,
-      "pixelHeight": 1001,
-      "byteLength": 145929,
-      "sha256": "bdcdec616c643ab05740abe407d4c71b8299f2ae2771880afba823ab7fa8b166",
+      "pixelWidth": 1040,
+      "pixelHeight": 2112,
+      "byteLength": 408669,
+      "sha256": "6c0a7337f44f2b7f9fca3f0bc7c762885092881559f299f0bb381f9a25969440",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；520px 深色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-dark, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -455,13 +455,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-640.png",
       "cssWidth": 640,
-      "pixelWidth": 640,
-      "pixelHeight": 1000,
-      "byteLength": 164336,
-      "sha256": "2f7223c085a9f7a1cad491361bbf6c19c3833cb600ea9fe2405c046c00b8404a",
+      "pixelWidth": 1280,
+      "pixelHeight": 2000,
+      "byteLength": 409262,
+      "sha256": "4fdef1035f9071f1b6c27e97932688983e07de114116fd7ad959ec8b72d9eeda",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；640px 深色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-dark, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -470,13 +470,13 @@
       "theme": "bangumi-dark",
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-960.png",
       "cssWidth": 960,
-      "pixelWidth": 960,
-      "pixelHeight": 999,
-      "byteLength": 186296,
-      "sha256": "c1a6055969fcee20440cfcea903ea297faadf1d1d0a56212eedd3d4d5eb2136b",
+      "pixelWidth": 1920,
+      "pixelHeight": 1998,
+      "byteLength": 460008,
+      "sha256": "798372d7a4e7615993d6dfa7088a8df179a10518431c1f57c094753f012db0ca",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；960px 深色 完整状态A/B数值、比例条与B−A差值对应，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-dark, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -485,13 +485,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-warm-editorial-bangumi-light-320.png",
       "cssWidth": 320,
-      "pixelWidth": 320,
-      "pixelHeight": 1107,
-      "byteLength": 100238,
-      "sha256": "05f15c28a2f40418b5e3bdb20c14c571d6c9d6c90029b05a89586fb99ab23597",
+      "pixelWidth": 640,
+      "pixelHeight": 2608,
+      "byteLength": 268265,
+      "sha256": "553dfd2199a2482a1b3f9cf13ba087865b894c3360681c2af26cdf4ceaaf9439",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；320px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-light, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -500,13 +500,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-warm-editorial-bangumi-light-360.png",
       "cssWidth": 360,
-      "pixelWidth": 360,
-      "pixelHeight": 1065,
-      "byteLength": 100944,
-      "sha256": "d45b360509816e3b1bae43a96f5c84554bd7415f72fd946b7d7b7cff9faee58b",
+      "pixelWidth": 720,
+      "pixelHeight": 2578,
+      "byteLength": 270097,
+      "sha256": "95495626b72cebd0cdbf6cbe1f400acb5d8611ec31756fd01e85c7dec5cd7baa",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；360px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-light, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -515,13 +515,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-warm-editorial-bangumi-light-520.png",
       "cssWidth": 520,
-      "pixelWidth": 520,
-      "pixelHeight": 1058,
-      "byteLength": 114029,
-      "sha256": "f1a4e522da32fb2b194e301490afde9abb95396251c3a8a33554acd0f13386c3",
+      "pixelWidth": 1040,
+      "pixelHeight": 2172,
+      "byteLength": 291290,
+      "sha256": "1b18f827108690c56a234400807ec0380a09f6fb734a8c2e68adcc0c1f1df8ef",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；520px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-light, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -530,13 +530,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-warm-editorial-bangumi-light-640.png",
       "cssWidth": 640,
-      "pixelWidth": 640,
-      "pixelHeight": 1069,
-      "byteLength": 126680,
-      "sha256": "86b6e4697412e65f9b13af4d44a8189ae22bf7d6346e2faf0b898f071fc0f191",
+      "pixelWidth": 1280,
+      "pixelHeight": 2138,
+      "byteLength": 303918,
+      "sha256": "8a15256c592f307f3ce535ae63a7222d47bba8fe686e4f2001e681c8da64139a",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；640px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-light, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -545,13 +545,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-warm-editorial-bangumi-light-960.png",
       "cssWidth": 960,
-      "pixelWidth": 960,
-      "pixelHeight": 1071,
-      "byteLength": 139506,
-      "sha256": "6e59653ca12a668028a8ea93867b32e10b6a3368f036a30a5ac1a73b39893ba0",
+      "pixelWidth": 1920,
+      "pixelHeight": 2142,
+      "byteLength": 334383,
+      "sha256": "da35ee1338546711e034d1b61a4cbb2324409f3e84045cbf1d7f0668d817c79d",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；960px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-light, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -560,13 +560,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-320.png",
       "cssWidth": 320,
-      "pixelWidth": 320,
-      "pixelHeight": 1107,
-      "byteLength": 99083,
-      "sha256": "35971ec8b7b4c2e8d76db954b5f6b88a362538dda9c080baedef79ebe63d164b",
+      "pixelWidth": 640,
+      "pixelHeight": 2608,
+      "byteLength": 266730,
+      "sha256": "249882c13ae2a9da958b440d4b31d41145b3d132b5093cf4354f6101226072cf",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；320px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-dark, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -575,13 +575,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-360.png",
       "cssWidth": 360,
-      "pixelWidth": 360,
-      "pixelHeight": 1065,
-      "byteLength": 99660,
-      "sha256": "aa2af56312d5d50dd1dc22a90bf80ccc30a3f0343b80116214a09ddb41ef7cdb",
+      "pixelWidth": 720,
+      "pixelHeight": 2578,
+      "byteLength": 268364,
+      "sha256": "680d0f8bb523edcf45ec5551b2335e5f2f57ab3fbc4e0d1d213d316e5d7de83d",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；360px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-dark, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -590,13 +590,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-520.png",
       "cssWidth": 520,
-      "pixelWidth": 520,
-      "pixelHeight": 1058,
-      "byteLength": 112462,
-      "sha256": "3c44ef47350a96346d6144372484ab4020e8ecc4dc0f1aaa10657578e4dcd2eb",
+      "pixelWidth": 1040,
+      "pixelHeight": 2172,
+      "byteLength": 288912,
+      "sha256": "5be50c795f23e0bee93fadffe9468e9a412b14997af33ff63234491578ddca8e",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；520px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-dark, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -605,13 +605,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-640.png",
       "cssWidth": 640,
-      "pixelWidth": 640,
-      "pixelHeight": 1069,
-      "byteLength": 125276,
-      "sha256": "b62be68a2cd503438b7b307dc4958c1736a1ac92604ab84b9c89a53bab20931d",
+      "pixelWidth": 1280,
+      "pixelHeight": 2138,
+      "byteLength": 301450,
+      "sha256": "68b823d728dde64315c26c71d9acb9d7f520ca21cdbdf723e6c1b7e9e91f9d1a",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；640px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-dark, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -620,13 +620,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-960.png",
       "cssWidth": 960,
-      "pixelWidth": 960,
-      "pixelHeight": 1071,
-      "byteLength": 137550,
-      "sha256": "04b06157a5a535aac5c58a68157c0ec4cf5bb8f14eda0c2500de57beca31cd25",
+      "pixelWidth": 1920,
+      "pixelHeight": 2142,
+      "byteLength": 330761,
+      "sha256": "7c910114c4b074db423a6a0e54c0bed70b372c171803ab1761cd2cf9e2f21fae",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Warm Editorial：主评分领衔与页纸细线行；960px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-dark, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -635,13 +635,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-clean-gallery-bangumi-light-320.png",
       "cssWidth": 320,
-      "pixelWidth": 320,
-      "pixelHeight": 968,
-      "byteLength": 90262,
-      "sha256": "f9aab4556cf4b3c21b10cbf41a7d2eee6a561f0381edecc3e3ca68223fe9be39",
+      "pixelWidth": 640,
+      "pixelHeight": 2286,
+      "byteLength": 252184,
+      "sha256": "c11563a981705cb2e4297aed337799fed8a59652ac763bc55fa95148d3e01e31",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；320px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-light, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -650,13 +650,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-clean-gallery-bangumi-light-360.png",
       "cssWidth": 360,
-      "pixelWidth": 360,
-      "pixelHeight": 926,
-      "byteLength": 90715,
-      "sha256": "cd590d46c3a9987d87e69d8b9454bc8f8cb97f918665f771b9013a99d62bcbf1",
+      "pixelWidth": 720,
+      "pixelHeight": 2286,
+      "byteLength": 251720,
+      "sha256": "7c6916c879982955bc3f535b4fb82831def3823eeb6b14ca4237c37bea48892e",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；360px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-light, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -665,13 +665,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-clean-gallery-bangumi-light-520.png",
       "cssWidth": 520,
-      "pixelWidth": 520,
-      "pixelHeight": 923,
-      "byteLength": 105884,
-      "sha256": "d0c1f58ab15adfa44571f838379377b4efc1a8d560a4c18f7e717bfa7caa0743",
+      "pixelWidth": 1040,
+      "pixelHeight": 1900,
+      "byteLength": 278648,
+      "sha256": "c339c01447deccacd85cbf174f981b8f3822390bfa7ce34ae88a6a5ec5ba382b",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；520px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-light, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -680,13 +680,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-clean-gallery-bangumi-light-640.png",
       "cssWidth": 640,
-      "pixelWidth": 640,
-      "pixelHeight": 941,
-      "byteLength": 121461,
-      "sha256": "7e7e5de7cd3a2eaf3f527fe93200b71c03d40f8c29268e3ac04ee7995cfbed7b",
+      "pixelWidth": 1280,
+      "pixelHeight": 1882,
+      "byteLength": 295099,
+      "sha256": "ec643f2b8a6548f9fb888a3112eec0f028e8c24a03a68e3956657b63a5ff39f6",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；640px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-light, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -695,13 +695,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-clean-gallery-bangumi-light-960.png",
       "cssWidth": 960,
-      "pixelWidth": 960,
-      "pixelHeight": 946,
-      "byteLength": 133747,
-      "sha256": "2aa92a4a63d8a8385dda3bfeb27438555c89d91da3c2b120d69d6aae0db81d48",
+      "pixelWidth": 1920,
+      "pixelHeight": 1892,
+      "byteLength": 324838,
+      "sha256": "2409f8a5a14f6fd9c612bbe4f8659fc72ac989dce08909087bc316d7e7148ed6",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；960px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-light, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -710,13 +710,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-320.png",
       "cssWidth": 320,
-      "pixelWidth": 320,
-      "pixelHeight": 968,
-      "byteLength": 93052,
-      "sha256": "ea52be4bb52399af1a9ed97244fb0eaa87c370740e25d87c434fe48b2a63b208",
+      "pixelWidth": 640,
+      "pixelHeight": 2286,
+      "byteLength": 259038,
+      "sha256": "1f2e2fb309677b7c4be10a4fef03e984b5ba1b06c4e5ce39211f5d016674ce50",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；320px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-dark, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -725,13 +725,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-360.png",
       "cssWidth": 360,
-      "pixelWidth": 360,
-      "pixelHeight": 926,
-      "byteLength": 93475,
-      "sha256": "e27e36f0eac1bb2adfc9b66ea97473ed0e984942e82b0a79cbf2d74beb8efa10",
+      "pixelWidth": 720,
+      "pixelHeight": 2286,
+      "byteLength": 258603,
+      "sha256": "ddbfe0c2e0d01d72f0cfcc0402972fef058affb95527ee5eb23e2ca6d29a2df4",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；360px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-dark, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -740,13 +740,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-520.png",
       "cssWidth": 520,
-      "pixelWidth": 520,
-      "pixelHeight": 923,
-      "byteLength": 109022,
-      "sha256": "8935a5f60db91c8d2991c88eed58199bac6a61df8f2cbe8a6c3a60608dbb8bc4",
+      "pixelWidth": 1040,
+      "pixelHeight": 1900,
+      "byteLength": 285806,
+      "sha256": "d4cd9026c712def4ff378f73483426e21eea542f7ccb61a6043552297a8dcbbc",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；520px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-dark, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -755,13 +755,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-640.png",
       "cssWidth": 640,
-      "pixelWidth": 640,
-      "pixelHeight": 941,
-      "byteLength": 124514,
-      "sha256": "c1a73531a49564ca417fc44870b09761fc198ebfdb0a37014b467bf5ab9445a3",
+      "pixelWidth": 1280,
+      "pixelHeight": 1882,
+      "byteLength": 302658,
+      "sha256": "0f11c975df5ef62b9fc8e076abc983a4ea00f876b76bb69ff5096bbae7025aff",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；640px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-dark, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -770,13 +770,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-960.png",
       "cssWidth": 960,
-      "pixelWidth": 960,
-      "pixelHeight": 946,
-      "byteLength": 136206,
-      "sha256": "1e85c76cc717acf5b1fb29be9920dae09530a7a39d3fb59b9affef4784c52417",
+      "pixelWidth": 1920,
+      "pixelHeight": 1892,
+      "byteLength": 330874,
+      "sha256": "1d22ec37edc9238ed64ec5877394c2b08db1622dbb8ffde9b080bc93ffdfdf4e",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Clean Gallery：开放 A/B/差值矩阵与横向细线标题；960px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-dark, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -785,13 +785,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-graphic-zine-bangumi-light-320.png",
       "cssWidth": 320,
-      "pixelWidth": 320,
-      "pixelHeight": 994,
-      "byteLength": 104716,
-      "sha256": "a24ea6c1300573702bc1cba1c2d02ddf20188b48bea0ed0fdddf22a03230d614",
+      "pixelWidth": 640,
+      "pixelHeight": 2358,
+      "byteLength": 271402,
+      "sha256": "5869fa94d37d57a1960c4c4968bd46710c21bdadf392a0ecdfb622cb58da7d1d",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；320px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-light, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -800,13 +800,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-graphic-zine-bangumi-light-360.png",
       "cssWidth": 360,
-      "pixelWidth": 360,
-      "pixelHeight": 939,
-      "byteLength": 104853,
-      "sha256": "3ec96aae1112bfabc008766dc563f6f4808a54b9194b134c88de775efe2a300a",
+      "pixelWidth": 720,
+      "pixelHeight": 2328,
+      "byteLength": 272287,
+      "sha256": "b99ee60478f2149aafea4f056f4e49771c6b5f0fb806b86ac04b8498aa3aafa1",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；360px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-light, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -815,13 +815,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-graphic-zine-bangumi-light-520.png",
       "cssWidth": 520,
-      "pixelWidth": 520,
-      "pixelHeight": 945,
-      "byteLength": 122789,
-      "sha256": "da5a0d75e6da110ecf1c7962d1c07cb3f6d36eb3abf7f492234798530d09014f",
+      "pixelWidth": 1040,
+      "pixelHeight": 1944,
+      "byteLength": 320886,
+      "sha256": "b77d2b4668b1b3f5bf8e701134757aa11ee57335e67b46bb4dc0a47b9f1358b3",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；520px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-light, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -830,13 +830,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-graphic-zine-bangumi-light-640.png",
       "cssWidth": 640,
-      "pixelWidth": 640,
-      "pixelHeight": 958,
-      "byteLength": 137802,
-      "sha256": "e8b0f930e58a6347df41869d703b0b19bf75bfa5c3e300b1827767b7225a2748",
+      "pixelWidth": 1280,
+      "pixelHeight": 1916,
+      "byteLength": 337829,
+      "sha256": "08d46a278a46e87b4e6fb5306292594d1c4cc268744f6729ea168206bb6b9a63",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；640px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-light, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -845,13 +845,13 @@
       "theme": "bangumi-light",
       "file": "partial-two-cohort-graphic-zine-bangumi-light-960.png",
       "cssWidth": 960,
-      "pixelWidth": 960,
-      "pixelHeight": 956,
-      "byteLength": 151987,
-      "sha256": "3d692fc1d17740c547c6e99bafe2c50c329e0bd8f05237325a34fc543b8432c2",
+      "pixelWidth": 1920,
+      "pixelHeight": 1912,
+      "byteLength": 370091,
+      "sha256": "36281afa8ab326a7c1590e7226ebc7149dbb572fa75bfba94d98bb2cb1e33d3b",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；960px 浅色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-light, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -860,13 +860,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-320.png",
       "cssWidth": 320,
-      "pixelWidth": 320,
-      "pixelHeight": 994,
-      "byteLength": 105674,
-      "sha256": "463a1e48052752e398b60de6f016f534cb65abc275dc70bef1b81c15873f5626",
+      "pixelWidth": 640,
+      "pixelHeight": 2358,
+      "byteLength": 272767,
+      "sha256": "9ad350ba284f15cd4a9d86b122f19b574de72cb3a7ac09f44d09312250049b6d",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；320px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-dark, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -875,13 +875,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-360.png",
       "cssWidth": 360,
-      "pixelWidth": 360,
-      "pixelHeight": 939,
-      "byteLength": 105974,
-      "sha256": "f6a03835742b5bc942ef790e33b6900b48d1a2b0d8835428e5181b8d3f134953",
+      "pixelWidth": 720,
+      "pixelHeight": 2328,
+      "byteLength": 273844,
+      "sha256": "1546f9d80462a82383eb3d35bb496d02317867a10f1f40341dc8009c0ec94280",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；360px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，窄图遮罩内说明完整，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-dark, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -890,13 +890,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-520.png",
       "cssWidth": 520,
-      "pixelWidth": 520,
-      "pixelHeight": 945,
-      "byteLength": 124734,
-      "sha256": "b4afd9cd44b572525bf1a32ae5602f5522870ca559a6292ca61a11e9d3eb2d33",
+      "pixelWidth": 1040,
+      "pixelHeight": 1944,
+      "byteLength": 322994,
+      "sha256": "9626a3fcd5b551c02db96d30b9053d51fa624bfd9326446ea09dbba89ff27b14",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；520px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-dark, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -905,13 +905,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-640.png",
       "cssWidth": 640,
-      "pixelWidth": 640,
-      "pixelHeight": 958,
-      "byteLength": 138843,
-      "sha256": "5313471c5fed279ef2541d335574a66f135135d4031e9163aa7f93523c36a721",
+      "pixelWidth": 1280,
+      "pixelHeight": 1916,
+      "byteLength": 339849,
+      "sha256": "3daf27890432decd827dec5ffbbde8f3f9e9a07105ff9e0732975fd90e4f5aac",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；640px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-dark, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     },
     {
@@ -920,13 +920,13 @@
       "theme": "bangumi-dark",
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-960.png",
       "cssWidth": 960,
-      "pixelWidth": 960,
-      "pixelHeight": 956,
-      "byteLength": 153278,
-      "sha256": "4170a98668ff9ccecc9a7078b84bb7d59728743d22e3599e351ac073e3e9cd19",
+      "pixelWidth": 1920,
+      "pixelHeight": 1912,
+      "byteLength": 372395,
+      "sha256": "baa938c54c8ee364e2a733d909419f4107537b64fd3ff21a1f3d8fa8eaa04062",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Graphic Zine：不对称2×2剪纸拼版与独立差值贴纸；960px 深色 部分状态保留未知值与虚线覆盖，差值显示不可计算，中宽/桌面版列距与标题层级清楚，无裁切、重叠或横向溢出。"
+        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-dark, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
       }
     }
   ]

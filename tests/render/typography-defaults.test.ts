@@ -67,4 +67,29 @@ describe('design-pack default render typography', () => {
       'BANGUMI_RENDER_FONT_DIR is required when a custom font file is configured.',
     );
   });
+
+  it('uses a family-only Clean Gallery body override without registering bundled bytes', async () => {
+    const options = getDefaultRenderTypographyOptions('clean-gallery', {
+      bodyFontFamily: 'Arial, sans-serif',
+    });
+    expect(options.bodyFontFile).toBeUndefined();
+
+    const resolved = await resolveRenderTypography(options);
+    expect(resolved.bodyFontFamily).toBe('"Arial", sans-serif');
+    expect(resolved.fontFaces).toEqual([]);
+  });
+
+  it('keeps the unrelated bundled body face when Graphic Zine display family is overridden', async () => {
+    const options = getDefaultRenderTypographyOptions('graphic-zine', {
+      displayFontFamily: 'Georgia, serif',
+    });
+    expect(options.bodyFontFile).toBe('GenSenRounded2TW-R.woff2');
+    expect(options.displayFontFile).toBeUndefined();
+
+    const resolved = await resolveRenderTypography(options);
+    expect(resolved.displayFontFamily).toBe('"Georgia", serif');
+    expect(resolved.fontFaces.map(({ role, sha256 }) => ({ role, sha256 }))).toEqual([
+      { role: 'body', sha256: await fontHash('GenSenRounded2TW-R.woff2') },
+    ]);
+  });
 });

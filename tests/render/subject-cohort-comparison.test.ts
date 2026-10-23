@@ -64,7 +64,7 @@ describe('subject cohort comparison renderer', () => {
     expect(zineHtml).not.toContain('border-left:6px solid');
     expect(galleryHtml).toContain('data-render-mask="panel"');
     expect(zineHtml).toContain('data-render-mask="panel-alt"');
-    expect(galleryHtml).toContain('grid-template-columns:repeat(2, minmax(0, 1fr))');
+    expect(galleryHtml).toContain('data-layout-variant="cohort-stacked"');
     expect(galleryHtml).toContain('data-layout="gallery-comparison-matrix"');
     expect(galleryHtml).toContain('data-layout-variant="gallery-open-row"');
     expect(zineHtml).toContain('drop-shadow(1px 2px 0');
@@ -78,9 +78,9 @@ describe('subject cohort comparison renderer', () => {
     const mobileHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320);
 
     expect(mobileHtml).toContain('data-layout="cohort-overview"');
+    expect(mobileHtml).toContain('data-layout-variant="cohort-stacked"');
     expect(mobileHtml).toContain('data-layout="cohort-meta-compact"');
-    expect(mobileHtml).toContain('padding:9px 10px 14px');
-    expect(mobileHtml).toContain('grid-template-columns:repeat(2, minmax(0, 1fr))');
+    expect(mobileHtml).toContain('padding:12px 14px 16px');
     expect(mobileHtml).toContain('flex-direction:column');
     expect(mobileHtml.match(/data-layout="cohort-metric-board"/gu)).toHaveLength(1);
     expect(mobileHtml.match(/data-layout="cohort-metric-header"/gu)).toBeNull();
@@ -100,6 +100,10 @@ describe('subject cohort comparison renderer', () => {
     const desktopHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 960);
     expect(desktopHtml.match(/data-layout="cohort-metric-comparison"/gu)).toHaveLength(4);
     expect(desktopHtml).toContain('计算口径：评分分布标准差');
+
+    const pairedHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 520, 'clean-gallery');
+    expect(pairedHtml).toContain('data-layout-variant="cohort-paired"');
+    expect(pairedHtml).toContain('data-layout="gallery-comparison-matrix"');
   });
 
   it('never renders a numeric delta for a partial metric with a stale value', () => {

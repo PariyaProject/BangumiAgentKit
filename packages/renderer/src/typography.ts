@@ -83,7 +83,15 @@ export function getDefaultRenderTypographyOptions(
     };
   }
 
-  return { ...defaults, ...overrides, fontDirectory: defaults.fontDirectory };
+  return {
+    ...defaults,
+    ...overrides,
+    // A family-only override names a system stack, not the bundled face bytes.
+    // Keep the default face for the other role when only one role is changed.
+    bodyFontFile: overrides.bodyFontFamily ? undefined : defaults.bodyFontFile,
+    displayFontFile: overrides.displayFontFamily ? undefined : defaults.displayFontFile,
+    fontDirectory: defaults.fontDirectory,
+  };
 }
 
 export interface ResolvedRenderFontFace {

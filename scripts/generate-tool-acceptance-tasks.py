@@ -6567,11 +6567,13 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/generate-c07-render-comparison-offline-v4-visuals.ts': (
         'C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID',
         'delta: undefined',
-        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v17',
+        'deviceScaleFactor: 2',
+        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v19',
     ),
     'scripts/lib/c07-render-comparison-v4-visual-qa.mjs': (
         'C07_V4_VISUAL_QA_MANIFEST_PATH',
-        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v17',
+        'manifest.deviceScaleFactor !== 2',
+        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v19',
         'export function validateC07V4VisualQaEvidence(',
     ),
     'scripts/agent-harness.mjs': (
