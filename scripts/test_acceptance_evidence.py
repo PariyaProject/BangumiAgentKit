@@ -404,6 +404,116 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
             self.report, epoch_status, paths, self.report['mcpBundleSha256'],
         ))
 
+    def test_v5_profile_is_registered_with_its_exact_report_path_and_refresh_scope(self):
+        profile_id = 'render-subject-card-compact-typography-agent-mcp-v5'
+        profile = TABLE_CHECKER.RENDER_SUBJECT_CARD_OFFLINE_PROFILES[profile_id]
+        arguments = [call['arguments'] for call in profile['calls']]
+        arguments_sha = hashlib.sha256(json.dumps(
+            arguments, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
+        registry_sha = hashlib.sha256(json.dumps(
+            profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
+        report = json.loads(json.dumps(self.report))
+        report.update({
+            'epochId': profile['epochId'],
+            'profileId': profile_id,
+            'evidenceKind': profile['evidenceKind'],
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v5',
+            'toolName': profile['toolName'],
+            'argumentProfile': profile['argumentProfile'],
+            'answerCheckMethod': profile['answerCheckMethod'],
+            'expectedArgumentsSha256': arguments_sha,
+            'registrySha256': registry_sha,
+            'networkMode': profile['networkMode'],
+        })
+        report['offlineFixture'].update({
+            'profile': profile['networkMode'],
+            'expectedOperation': f"GET /v0/subjects/{arguments[0]['subjectId']}",
+        })
+
+        self.assertTrue(TABLE_CHECKER.render_subject_card_offline_agent_mcp_matches(
+            profile['toolName'], profile['reportPath'], report,
+        ))
+        self.assertFalse(TABLE_CHECKER.render_subject_card_offline_agent_mcp_matches(
+            profile['toolName'], self.profile['reportPath'], report,
+        ))
+        self.assertEqual(
+            GENERATOR.codex_render_subject_card_offline_profile_spec(profile_id),
+            profile,
+        )
+        self.assertTrue(
+            GENERATOR.codex_render_subject_card_offline_profile_revision_has_implementation(
+                '3d13ce869ab473fc65bc556e1cf75db4cc73e100', profile,
+            ),
+        )
+        self.assertIn(
+            GENERATOR.LIVE_PROBE_DIR / Path(profile['reportPath']).name,
+            GENERATOR.model_mcp_e2e_report_paths(),
+        )
+        refresh_paths = [
+            profile['reportPath'],
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+            'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/harness/agent-harness-cli.test.mjs',
+        ]
+        self.assertTrue(
+            GENERATOR.codex_render_subject_card_offline_profile_evidence_refresh_paths_are_valid(
+                refresh_paths, profile,
+            ),
+        )
+        refresh_paths.append('scripts/unrelated.py')
+        self.assertFalse(
+            GENERATOR.codex_render_subject_card_offline_profile_evidence_refresh_paths_are_valid(
+                refresh_paths, profile,
+            ),
+        )
+
+        candidate = 'e' * 40
+        branch = f"codex/epoch-{profile['epochId']}"
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': self.pr},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'candidate_sha': candidate,
+                    'epoch_id': profile['epochId'],
+                    'pr_number': self.pr,
+                    'base_branch': 'master',
+                    'base_sha': self.base,
+                    'branch': branch,
+                    'review_history': [],
+                },
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': self.base,
+                'pr_head_ref_name': branch,
+                'pr_is_draft': False,
+                'pr_head_sha': candidate,
+            },
+        }
+        refresh_paths = [
+            profile['reportPath'],
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+            'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/harness/agent-harness-cli.test.mjs',
+        ]
+        self.assertTrue(
+            GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                report, epoch_status, refresh_paths, report['mcpBundleSha256'],
+            ),
+        )
+
 
 class C03PersonActivityOfflineV2MatrixTests(unittest.TestCase):
     def setUp(self):

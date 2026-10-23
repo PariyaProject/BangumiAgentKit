@@ -169,6 +169,9 @@ const R04_RENDER_V2_PROFILE = getAgentMcpProfileById(
 );
 const C04_PROFILE = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
 const TITLE_QUERY_RENDER_PROFILE = getAgentMcpProfileById('query-render-title-agent-mcp-v1');
+const RENDER_SUBJECT_CARD_V5_PROFILE = getAgentMcpProfileById(
+  'render-subject-card-compact-typography-agent-mcp-v5',
+);
 const mandatoryChecks = [
   'harness-control',
   'sqlite-default',
@@ -1880,6 +1883,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
     A01_PROFILE.id,
     G06_V2_PROFILE.id,
     R04_RENDER_V2_PROFILE.id,
+    RENDER_SUBJECT_CARD_V5_PROFILE.id,
   ];
   const checks = exactCiProfileIds.includes(profile.id)
     ? mandatoryChecks.map((name, index) => ({
@@ -9570,5 +9574,73 @@ test('CLI post-merge ancestry failure records the merged PR and truthful blocker
     assert.equal(parseControlBlock(state.runBody, RUN_MARKER).state, 'INTEGRATION_BLOCKED');
   } finally {
     environment.cleanup();
+  }
+});
+
+test('v5 subject-card result routes its report through the registered validator during repair', () => {
+  const harnessRoot = createIsolatedHarnessRoot([RENDER_SUBJECT_CARD_V5_PROFILE.reportPath]);
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(
+    RENDER_SUBJECT_CARD_V5_PROFILE,
+    { harnessRoot },
+  );
+  const runnerKeyPair = generateKeyPairSync('ed25519');
+  const runnerPublicKey = runnerKeyPair.publicKey
+    .export({ type: 'spki', format: 'der' })
+    .toString('base64');
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--profile-id',
+      RENDER_SUBJECT_CARD_V5_PROFILE.id,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      runnerPublicKey,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claim = JSON.parse(claimed.stdout);
+
+    const reportPath = path.join(harnessRoot, RENDER_SUBJECT_CARD_V5_PROFILE.reportPath);
+    fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+    const reportBytes = Buffer.from('{"invalid":true}\n', 'utf8');
+    fs.writeFileSync(reportPath, reportBytes);
+    const state = environment.readState();
+    state.dirty =
+      `M scripts/agent-harness.mjs\n?? ${RENDER_SUBJECT_CARD_V5_PROFILE.reportPath}`;
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const result = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--profile-id',
+      RENDER_SUBJECT_CARD_V5_PROFILE.id,
+      '--claim-id',
+      claim.claimId,
+      '--state',
+      'REPORT_WRITTEN',
+      '--report-sha256',
+      createHash('sha256').update(reportBytes).digest('hex'),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REPORT_INVALID:/u);
+    assert.doesNotMatch(result.stderr, /AGENT_MCP_PROFILE_REPORT_VALIDATOR_MISSING/u);
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+        .adversarial_preflight.agent_mcp_profile_dispositions[RENDER_SUBJECT_CARD_V5_PROFILE.id]
+        .state,
+      'CLAIMED',
+    );
+  } finally {
+    environment.cleanup();
+    fs.rmSync(harnessRoot, { recursive: true, force: true });
   }
 });

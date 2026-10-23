@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "codex_cli_render_subject_card_compact_typography_v5_agent_mcp",
+  "runNumber": 95,
+  "frontierId": "OP-008",
+  "scenarioId": null,
+  "epochId": "run95-op008-render-card-compact-typography-v5-20261023",
+  "profileId": "render-subject-card-compact-typography-agent-mcp-v5",
+  "profile": "codex-luna-max-offline-agent-mcp-matrix-v5",
+  "model": "gpt-6-luna",
+  "reasoningEffort": "max",
+  "reviewerId": "gpt-6-luna-max-run95-pr269-round1",
+  "codexCliVersion": "0.163.0",
+  "observedAt": "2026-10-23T06:37:04.301Z",
+  "sourceRevision": "3d13ce869ab473fc65bc556e1cf75db4cc73e100",
+  "baseSha": "a76b39685cd52cc33b5c779b0d9123d4d1093945",
+  "ciSha": "3d13ce869ab473fc65bc556e1cf75db4cc73e100",
+  "ciStatus": "SUCCESS",
+  "ciRunId": "39910880930",
+  "ciChecks": [
+    {
+      "name": "harness-control",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "sqlite-default",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "host-integration",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "standalone-release-smoke",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "postgres-compat",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "provider-foundation",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "discovery-foundation",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    }
+  ],
+  "prNumber": 269,
+  "claimId": "profile-run-95-pr-269-3d13ce869ab4-1792737393988",
+  "mcpBundleSha256": "bf5a656a96ab61e20d88cec1f7adfec62e6ea76b948438919a833a1be75ddcce",
+  "registrySha256": "daa2681d0aff69098a2183fcb7b1e33508c2b3ecba5fed90da95c462b3a37fb3",
+  "toolName": "bangumi.render_subject_card",
+  "argumentProfile": "fixed-ux002-subject-card-991905-no-collection-default-scale-075-v5",
+  "expectedArgumentsSha256": "23113c150148b26489cf403c91e6706f7d5fe81a16bc6ab99f8547ea8c072122",
+  "selectionEvidenceSha256": "7221489013fd1e37b1ba96d1c1da074e9a1c1b00fdbccd726ee541135c79a649",
+  "catalogSha256": "1f5b17d76a30ebd2c76e8c9a2317ab9f03640be466e02b5e48b1cbefd97728c7",
+  "toolDescriptionSha256": "59db420a6d9cfb282523bb4de168dc14d1ecb71c0e35449635777aba0d3e4907",
+  "inputSchemaSha256": "9feeae76ec1548e97219496e4575f182bb6c3df47453f36a0d365ff44d78d8a5",
+  "serverToolNames": [
+    "bangumi.render_subject_card"
+  ],
+  "serverToolCount": 1,
+  "networkMode": "run95-render-subject-card-compact-typography-v5",
+  "mcpServerNames": [
+    "bgk_render_subject_card_offline"
+  ],
+  "processExitCode": 0,
+  "resultStatus": "SUCCESS",
+  "eventStreamParsed": true,
+  "turnCompleted": true,
+  "codexMcpToolEventCount": 1,
+  "codexErrorItemCount": 0,
+  "nonMcpToolEventCount": 0,
+  "nonMcpToolTypes": [],
+  "shellToolCallCount": 0,
+  "allowedCallCount": 1,
+  "deniedCallCount": 0,
+  "answerCheckMethod": "render-subject-card-compact-typography-v5-artifact",
+  "answerSha256": "80c49faf366df5c810a496dcdd51e39ded0906bc9b80d414784869444941ed0e",
+  "answerUtf8Bytes": 44,
+  "answerChecks": {
+    "exactRegisteredProfile": true,
+    "oneAllowedMcpTool": true,
+    "fixedArguments": true,
+    "exactCandidateBundle": true,
+    "offlineFixtureOnly": true,
+    "noAuthorizationOrCollection": true,
+    "noAssetResolution": true,
+    "artifactReturned": true,
+    "exactAcknowledgement": true,
+    "privacyPreserved": true
+  },
+  "offlineFixture": {
+    "profile": "run95-render-subject-card-compact-typography-v5",
+    "expectedOperation": "GET /v0/subjects/991905",
+    "requestCount": 1,
+    "expectedRequestCount": 1,
+    "unexpectedRequestCount": 0,
+    "authorizationHeaderCount": 0,
+    "collectionRequestCount": 0,
+    "expectedOperationComplete": true,
+    "rawFixturePayloadStored": false
+  },
+  "offlineAssetBoundary": {
+    "assetResolutionCallCount": 0,
+    "nonEmptyAssetUrlCount": 0,
+    "blockedAssetRequestCount": 0,
+    "localFallbackUsed": true
+  },
+  "networkBoundary": {
+    "liveBangumiApiRequestCount": 0,
+    "rendererAssetRequestCount": 0,
+    "fullCodexHarnessNetworkSandboxed": false
+  },
+  "artifact": {
+    "returned": true,
+    "persisted": false,
+    "mimeType": "image/png",
+    "width": 720,
+    "height": 1490,
+    "byteLength": 271280,
+    "sha256": "e10979e243121f13abfd687c6db221ba7c7070a24bb484c3ab4208c492c6d553",
+    "pngSignatureValid": true
+  },
+  "privacy": {
+    "authProfile": "anonymous",
+    "oauthAttempted": false,
+    "accountDataRead": false,
+    "writesAttempted": false,
+    "communityRead": false,
+    "qqPipelineTested": false,
+    "timClientTested": false,
+    "promptStored": false,
+    "answerStored": false,
+    "rawFixtureRowsStored": false,
+    "rawToolResultStored": false,
+    "artifactImageBytesStored": false,
+    "credentialsStored": false
+  },
+  "runnerReceipt": {
+    "schemaVersion": 1,
+    "kind": "render-subject-card-offline-agent-mcp-runner-receipt-v1",
+    "publicKeyBase64": "MCowBQYDK2VwAyEAF4kInKP3NzkemlGmNCs765IjTrLM2HEtQboKGi0rqzw=",
+    "publicKeySha256": "a0e7def84aec67021e194d8f4311165d26129c82e0287530ff80ad321baec26c",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "render-subject-card-offline-agent-mcp-runner-receipt-v1",
+      "sanitizedReportSha256": "d55f2180eeb553afe96a0671de262bdae2fae098928a79dee0f6de47a6fe2aca",
+      "claimId": "profile-run-95-pr-269-3d13ce869ab4-1792737393988",
+      "profileId": "render-subject-card-compact-typography-agent-mcp-v5",
+      "runNumber": 95,
+      "frontierId": "OP-008",
+      "epochId": "run95-op008-render-card-compact-typography-v5-20261023",
+      "prNumber": 269,
+      "sourceRevision": "3d13ce869ab473fc65bc556e1cf75db4cc73e100",
+      "baseSha": "a76b39685cd52cc33b5c779b0d9123d4d1093945",
+      "ciSha": "3d13ce869ab473fc65bc556e1cf75db4cc73e100",
+      "ciStatus": "SUCCESS",
+      "ciRunId": "39910880930",
+      "ciChecks": [
+        {
+          "name": "harness-control",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "sqlite-default",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "host-integration",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "standalone-release-smoke",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "postgres-compat",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "provider-foundation",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "discovery-foundation",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        }
+      ],
+      "reviewerId": "gpt-6-luna-max-run95-pr269-round1",
+      "bundleSha256": "bf5a656a96ab61e20d88cec1f7adfec62e6ea76b948438919a833a1be75ddcce",
+      "registrySha256": "daa2681d0aff69098a2183fcb7b1e33508c2b3ecba5fed90da95c462b3a37fb3",
+      "toolName": "bangumi.render_subject_card",
+      "argumentProfile": "fixed-ux002-subject-card-991905-no-collection-default-scale-075-v5",
+      "expectedArgumentsSha256": "23113c150148b26489cf403c91e6706f7d5fe81a16bc6ab99f8547ea8c072122",
+      "selectionEvidenceSha256": "7221489013fd1e37b1ba96d1c1da074e9a1c1b00fdbccd726ee541135c79a649",
+      "codexCliVersion": "0.163.0",
+      "processExitCode": 0,
+      "resultStatus": "SUCCESS",
+      "eventStreamParsed": true,
+      "turnCompleted": true,
+      "codexMcpToolEventCount": 1,
+      "codexErrorItemCount": 0,
+      "nonMcpToolEventCount": 0,
+      "shellToolCallCount": 0,
+      "allowedCallCount": 1,
+      "deniedCallCount": 0,
+      "networkMode": "run95-render-subject-card-compact-typography-v5",
+      "offlineFixtureSha256": "fd709dd3ec9040e612bd2b0007a85128fc3da409942b298f5c95b67abce346a7",
+      "offlineAssetBoundarySha256": "14c987e3ffff99e4daf7911ecf6e18c1e41a7282c58e87c09b6bb989c00ec8c7",
+      "artifactSha256": "7ad405c43906175745d724d47defbc137cf9de106bdb3ee7052789a33c89d0aa",
+      "answerSha256": "80c49faf366df5c810a496dcdd51e39ded0906bc9b80d414784869444941ed0e",
+      "eventStreamSha256": "3b5419255cf4e11b7d1fead0618050458d128427fa38b8bce5348e67f2091ddb",
+      "serverSummarySha256": "0fcc78ff389b1a7b7a7ae25cd9176b844e18682e75d6e700594ebc206e0d5655"
+    },
+    "signature": "A8icGczwDIRXYCYdB/dv/8FaO0s5XBskoi9/N3ethGbDpz5yOvQgluUvNtIoWKWBgxK7O/Epc5vpDMC5eQtLAA=="
+  }
+}

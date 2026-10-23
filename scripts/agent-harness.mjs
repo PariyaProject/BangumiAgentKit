@@ -3596,10 +3596,17 @@ function agentMcpProfileBundleMatches(
       statusLines.length === 2 &&
       statusLines.includes(`?? ${profile.reportPath}`) &&
       statusLines.includes('M scripts/agent-harness.mjs');
+    const renderSubjectCardV5ReportWithValidatorFix =
+      profile?.id === 'render-subject-card-compact-typography-agent-mcp-v5' &&
+      statusLines.length === 2 &&
+      statusLines.includes(`?? ${profile.reportPath}`) &&
+      statusLines.includes('M scripts/agent-harness.mjs');
     return (
       bundleSha256 === process.env.HARNESS_G04_BUNDLE_SHA256 &&
       currentHead() === candidateSha &&
-      (status === '' || (allowReportWorktree && (reportOnly || p01ReportWithValidatorFix)))
+      (status === '' ||
+        (allowReportWorktree &&
+          (reportOnly || p01ReportWithValidatorFix || renderSubjectCardV5ReportWithValidatorFix)))
     );
   }
   try {
@@ -3617,8 +3624,18 @@ function agentMcpProfileBundleMatches(
       statusLines.length === 2 &&
       statusLines.includes(`?? ${profile.reportPath}`) &&
       statusLines.includes('M scripts/agent-harness.mjs');
+    // The v5 report must be validated by the newly registered dispatcher before this Harness
+    // repair can be committed. Permit only the exact report plus this file; the Candidate, Base,
+    // CI, reviewer, and MCP bundle stay bound to the original reviewed source.
+    const renderSubjectCardV5ReportWithValidatorFix =
+      profile?.id === 'render-subject-card-compact-typography-agent-mcp-v5' &&
+      statusLines.length === 2 &&
+      statusLines.includes(`?? ${profile.reportPath}`) &&
+      statusLines.includes('M scripts/agent-harness.mjs');
     return (
-      (clean || (allowReportWorktree && (reportOnly || p01ReportWithValidatorFix))) &&
+      (clean ||
+        (allowReportWorktree &&
+          (reportOnly || p01ReportWithValidatorFix || renderSubjectCardV5ReportWithValidatorFix))) &&
       git('rev-parse', 'HEAD') === candidateSha &&
       computeMcpBundleSha256(root) === bundleSha256 &&
       readG26McpBundleAttestation(root) === bundleSha256
@@ -3682,6 +3699,15 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
             'tests/integration/tool-e2e-acceptance.test.ts',
           ]
         : []),
+      ...(profile.id === 'render-subject-card-compact-typography-agent-mcp-v5'
+        ? [
+            'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/harness/agent-harness-cli.test.mjs',
+          ]
+        : []),
     ]);
     if (
       !changedSinceReport.includes(profile.reportPath) ||
@@ -3698,7 +3724,9 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
               ? 'A P03 v4 report refresh may also include only the exact acceptance validator, Harness allowlist, and their regressions needed to record the signed source-Candidate result; the MCP bundle must remain unchanged.'
               : profile.id === 'p01-person-director-offline-matrix-v1-20261023'
                 ? 'A P01 director report refresh may include its sanitized report, acceptance matrix, frontier evidence, Harness report-validator allowlist, and its exact public-probe and per-tool acceptance regressions; the MCP bundle must remain unchanged.'
-                : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
+                : profile.id === 'render-subject-card-compact-typography-agent-mcp-v5'
+                  ? 'A v5 report refresh may include only its signed report, Harness validator routing, acceptance-table mapping, exact regressions, task table, and frontier references; the MCP bundle must remain unchanged.'
+                  : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
         { profileId: profile.id, changedPaths: changedSinceReport },
       );
     }
@@ -4580,6 +4608,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'render-subject-card-offline-agent-mcp-v1':
     case 'render-subject-card-compact-typography-agent-mcp-v2':
     case 'render-subject-card-compact-typography-agent-mcp-v3':
+    case 'render-subject-card-compact-typography-agent-mcp-v5':
       return validateRenderSubjectCardOfflineSanitizedReportFile(claim, root, reportPath);
     case 'c07-render-comparison-offline-agent-mcp-matrix-v1':
     case 'c07-render-comparison-offline-agent-mcp-matrix-v2':
@@ -4846,7 +4875,16 @@ function commandEpochAgentMcpProfileResult(options) {
       statusLines.length === 2 &&
       statusLines.includes(`?? ${profile.reportPath}`) &&
       statusLines.includes('M scripts/agent-harness.mjs');
-    if (status !== `?? ${profile.reportPath}` && !p01ReportWithValidatorFix) {
+    const renderSubjectCardV5ReportWithValidatorFix =
+      profile.id === 'render-subject-card-compact-typography-agent-mcp-v5' &&
+      statusLines.length === 2 &&
+      statusLines.includes(`?? ${profile.reportPath}`) &&
+      statusLines.includes('M scripts/agent-harness.mjs');
+    if (
+      status !== `?? ${profile.reportPath}` &&
+      !p01ReportWithValidatorFix &&
+      !renderSubjectCardV5ReportWithValidatorFix
+    ) {
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_WORKTREE_UNEXPECTED',
         'Only the claim-bound report, plus the exact P01 Harness validator registration when applicable, may be present while recording REPORT_WRITTEN.',
