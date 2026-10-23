@@ -892,7 +892,7 @@ async function main(argv = process.argv.slice(2)) {
         if (config.profile) {
           const artifactSummary =
             isRenderSubjectCardOfflineProfile(config.profile) ||
-            getP06RenderPersonProfileOfflineConfig(config.profile.id) ||
+            p06OfflineRuntime ||
             isC07RenderComparisonOfflineProfileId(config.profile.id) ||
             isG01RenderQueryOfflineProfileId(config.profile.id)
               ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })
