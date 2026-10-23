@@ -8828,6 +8828,41 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
             'bangumi.get_subject', '✅<br>`docs/live-probes/agent-mcp-fixture.json`', 'agent_mcp'
         ))
 
+    def test_p06_v3_report_maps_only_to_its_registered_renderer_agent_mcp_cell(self):
+        profile = TABLE_CHECKER.P06_V3_PROFILE
+        relative_path = profile['reportPath']
+        report_path = self.root / relative_path
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report = {'profileId': profile['id'], 'toolName': profile['toolName']}
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        cell = f'✅<br>`{relative_path}`'
+
+        def validate(candidate, report_path=None):
+            return candidate == report and report_path == (self.root / relative_path).resolve()
+
+        with patch.dict(TABLE_CHECKER.P06_ACCEPTANCE_GENERATOR, {
+            'codex_p06_profile_report_is_valid': validate,
+        }):
+            self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+                profile['toolName'], cell, 'agent_mcp',
+            ))
+            wrong_tool_error = TABLE_CHECKER.evidence_reference_error(
+                'bangumi.render_subject_card', cell, 'agent_mcp',
+            )
+            self.assertIn(
+                'does not contain evidence for bangumi.render_subject_card',
+                wrong_tool_error,
+            )
+
+            report_path.write_text(json.dumps({'profileId': 'unregistered'}), encoding='utf-8')
+            wrong_profile_error = TABLE_CHECKER.evidence_reference_error(
+                profile['toolName'], cell, 'agent_mcp',
+            )
+            self.assertIn(
+                f'does not contain evidence for {profile["toolName"]}',
+                wrong_profile_error,
+            )
+
     def test_p03_v4_report_reference_maps_only_the_person_profile_agent_mcp_cell(self):
         profile = TABLE_CHECKER.P03_V4_AGENT_MCP_PROFILE
         calls = profile['calls']
@@ -10027,6 +10062,126 @@ class P06OfflineProfileReportValidationTests(unittest.TestCase):
                     candidate_sha, GENERATOR.CODEX_P06_V3_PROFILE_ID,
                 ),
             )
+
+    def test_v3_evidence_refresh_allowlist_is_limited_to_its_exact_validators(self):
+        profile = GENERATOR.codex_p06_profile_spec(GENERATOR.CODEX_P06_V3_PROFILE_ID)
+        paths = {
+            profile['reportPath'],
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+            'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/harness/agent-harness-cli.test.mjs',
+        }
+        self.assertTrue(
+            GENERATOR.codex_p06_profile_evidence_refresh_paths_are_valid(paths, profile['id']),
+        )
+        self.assertFalse(
+            GENERATOR.codex_p06_profile_evidence_refresh_paths_are_valid(
+                paths | {'apps/mcp/codex-one-tool-mcp-server.mjs'}, profile['id'],
+            ),
+        )
+        self.assertFalse(
+            GENERATOR.codex_p06_profile_evidence_refresh_paths_are_valid(
+                paths - {profile['reportPath']}, profile['id'],
+            ),
+        )
+
+    def test_v3_report_binding_accepts_only_a_bounded_descendant_of_the_refreshed_candidate(self):
+        profile = GENERATOR.codex_p06_profile_spec(GENERATOR.CODEX_P06_V3_PROFILE_ID)
+        report = self.build_report(profile['id'])
+        source_sha = 'a' * 40
+        base_sha = 'b' * 40
+        recorded_candidate_sha = 'c' * 40
+        pr_head_sha = 'd' * 40
+        branch = f"codex/epoch-{profile['epochId']}"
+        report.update({
+            'sourceRevision': source_sha,
+            'baseSha': base_sha,
+            'prNumber': 222,
+        })
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': 222},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'state': 'REVIEW_READY',
+                    'candidate_sha': recorded_candidate_sha,
+                    'epoch_id': profile['epochId'],
+                    'pr_number': 222,
+                    'base_branch': 'master',
+                    'base_sha': base_sha,
+                    'branch': branch,
+                    'review_history': [],
+                },
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': base_sha,
+                'pr_head_ref_name': branch,
+                'pr_is_draft': False,
+                'pr_head_sha': pr_head_sha,
+            },
+        }
+        paths = {
+            profile['reportPath'],
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+            'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/harness/agent-harness-cli.test.mjs',
+        }
+        def successful_ancestry(*args):
+            return subprocess.CompletedProcess(args, 0)
+
+        with patch.object(GENERATOR, '_run_repository_git', side_effect=successful_ancestry):
+            self.assertTrue(GENERATOR.codex_p06_profile_candidate_binding_is_valid(
+                report, epoch_status, paths, report['mcpBundleSha256'],
+            ))
+            self.assertFalse(GENERATOR.codex_p06_profile_candidate_binding_is_valid(
+                report,
+                epoch_status,
+                paths | {'apps/mcp/codex-one-tool-mcp-server.mjs'},
+                report['mcpBundleSha256'],
+            ))
+            self.assertFalse(GENERATOR.codex_p06_profile_candidate_binding_is_valid(
+                report, epoch_status, paths, 'f' * 64,
+            ))
+
+        with patch.object(
+            GENERATOR,
+            '_run_repository_git',
+            side_effect=[subprocess.CompletedProcess([], 0), subprocess.CompletedProcess([], 1)],
+        ):
+            self.assertFalse(GENERATOR.codex_p06_profile_candidate_binding_is_valid(
+                report, epoch_status, paths, report['mcpBundleSha256'],
+            ))
+
+    def test_v3_current_report_binding_uses_the_live_pr_head(self):
+        profile = GENERATOR.codex_p06_profile_spec(GENERATOR.CODEX_P06_V3_PROFILE_ID)
+        report = self.build_report(profile['id'])
+        head_sha = 'd' * 40
+        epoch_status = {
+            'epoch': {
+                'state': {'candidate_sha': 'c' * 40},
+                'pr_head_sha': head_sha,
+            },
+        }
+        with (
+            patch.object(GENERATOR, '_codex_p06_profile_report_candidate_paths', return_value=set()),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value='c' * 64) as bundle,
+            patch.object(GENERATOR, 'codex_p06_profile_candidate_binding_is_valid', return_value=True) as binding,
+        ):
+            self.assertTrue(
+                GENERATOR.codex_p06_profile_report_candidate_binding_is_current(report, epoch_status),
+            )
+        bundle.assert_called_once_with(head_sha)
+        binding.assert_called_once_with(report, epoch_status, set(), 'c' * 64)
 
     def test_rejects_scenario_credit_network_expansion_and_raw_fields(self):
         scenario_credit = json.loads(json.dumps(self.report))

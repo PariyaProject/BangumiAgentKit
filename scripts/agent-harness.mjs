@@ -3653,6 +3653,15 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
         ? G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS
         : []),
       ...(profile.id === R04_RENDER_V2_PROFILE_ID ? R04_RENDER_V2_ACCEPTANCE_REFRESH_PATHS : []),
+      ...(profile.id === 'p06-render-person-profile-offline-agent-mcp-v3'
+        ? [
+            'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/harness/agent-harness-cli.test.mjs',
+          ]
+        : []),
       ...(profile.id === 'p03-person-name-cn-agent-mcp-v4'
         ? [
             'scripts/agent-harness.mjs',

@@ -155,6 +155,9 @@ const P03_V3_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v3')
 const P03_V4_PROFILE = getAgentMcpProfileById('p03-person-name-cn-agent-mcp-v4');
 const R05_PROFILE = getAgentMcpProfileById('r05-k-on-season-shared-person-v1');
 const P06_PROFILE = getAgentMcpProfileById('p06-render-person-profile-offline-agent-mcp-v1');
+const P06_V3_PROFILE = getAgentMcpProfileById(
+  'p06-render-person-profile-offline-agent-mcp-v3',
+);
 const G06_V2_PROFILE = getAgentMcpProfileById(G06_CAST_OFFLINE_V2_PROFILE_ID);
 const P02_PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v1');
 const P02_V2_PROFILE = getAgentMcpProfileById('p02-person-profile-offline-agent-mcp-v2');
@@ -4730,6 +4733,101 @@ function r04RenderV2ReportRefreshEnvironment(disposition, overrides = {}, epochO
   return { environment, run, epoch };
 }
 
+function p06V3ReportWrittenDisposition() {
+  return {
+    claimId: `profile-run-95-pr-42-${sha('b').slice(0, 12)}-1700000000000`,
+    profileId: P06_V3_PROFILE.id,
+    state: 'REPORT_WRITTEN',
+    sourceCandidateSha: sha('b'),
+    bundleSha256: 'c'.repeat(64),
+    reportPath: P06_V3_PROFILE.reportPath,
+    reportSha256: 'd'.repeat(64),
+    reportWritten: true,
+    retryAllowed: false,
+  };
+}
+
+function p06V3ReportRefreshEnvironment(disposition, overrides = {}) {
+  const { run, epoch } = passedCandidateFixture();
+  const prNumber = 42;
+  const branch = `codex/epoch-${P06_V3_PROFILE.epochId}`;
+  const ciRunId = '39883070842';
+  const ciRunUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
+  run.state = 'EPOCH_ACTIVE';
+  run.profile = 'AUTONOMOUS_EVOLUTION';
+  run.active_epoch_pr = prNumber;
+  run.pending_epoch = null;
+  run.next_action = `RESUME_PR_${prNumber}`;
+  epoch.epoch_id = P06_V3_PROFILE.epochId;
+  epoch.branch = branch;
+  epoch.base_branch = 'master';
+  epoch.pr_number = prNumber;
+  epoch.base_sha = sha('a');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.candidate_sha = sha('b');
+  epoch.review_pass_sha = sha('b');
+  epoch.state = 'REVIEW_PASSED';
+  epoch.advances_frontier_ids = [];
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: ciRunUrl };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'The signed P06 report and its exact matrix route are now available.',
+    why_not_extend_further: 'The synthetic renderer call does not establish P06 scenario coverage.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'Preserve the terminal P06 v3 report and exact renderer matrix boundary.',
+    agent_mcp_profile_dispositions: {
+      [P06_V3_PROFILE.id]: structuredClone(disposition),
+    },
+  };
+  epoch.review_history = [
+    {
+      review_number: 4,
+      reviewer_id: `gpt-6-luna-max-run95-pr${prNumber}-round1`,
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  const refreshPaths = [
+    P06_V3_PROFILE.reportPath,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+    'scripts/agent-harness.mjs',
+    'scripts/check-tool-acceptance-table.py',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/test_acceptance_evidence.py',
+    'tests/harness/agent-harness-cli.test.mjs',
+  ];
+  const environment = createMockEnvironment({
+    runIssueNumber: 95,
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch,
+    featureBranch: branch,
+    featureHeadSha: sha('e'),
+    baseSha: sha('a'),
+    candidateRefreshRange: `${sha('b')}...${sha('e')}`,
+    candidateRefreshPaths: refreshPaths,
+    changedPaths: [
+      'packages/renderer/src/templates/PersonProfileCard.tsx',
+      'tests/render/person-profile.test.ts',
+      ...refreshPaths,
+    ],
+    checks: mandatoryChecks.map((name, index) => ({
+      name,
+      status: 'COMPLETED',
+      conclusion: 'SUCCESS',
+      detailsUrl: `${ciRunUrl}/job/${120184760000 + index}`,
+    })),
+    draft: false,
+    ...overrides,
+  });
+  return { environment, run, epoch };
+}
+
 test('C03 report Candidate refresh accepts only the report and bounded acceptance evidence', () => {
   const disposition = c03ReportWrittenDisposition();
   const { environment } = c03ReportRefreshEnvironment(disposition);
@@ -5000,6 +5098,99 @@ test('R04 v2 report Candidate refresh rejects runtime and unrelated validation p
       parseControlBlock(environment.readState().prBody, EPOCH_MARKER).candidate_sha,
       sha('d'),
     );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('P06 v3 report Candidate refresh accepts only its exact evidence verifier paths', () => {
+  const disposition = p06V3ReportWrittenDisposition();
+  const { environment, epoch } = p06V3ReportRefreshEnvironment(disposition);
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('e'),
+        ci: {
+          url: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/39883070842',
+        },
+        candidate_refresh_reason: 'Add the P06 v3 matrix checker while preserving the signed report and bundle.',
+        scope_closure: epoch.scope_closure,
+        corrective_closure: epoch.corrective_closure,
+        adversarial_preflight: epoch.adversarial_preflight,
+      }),
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_READY');
+    assert.equal(stored.candidate_sha, sha('e'));
+    assert.deepEqual(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[P06_V3_PROFILE.id],
+      disposition,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('P06 v3 report Candidate refresh rejects runtime and unrelated paths or bundle changes', () => {
+  const disposition = p06V3ReportWrittenDisposition();
+  const environmentWithRuntimePath = p06V3ReportRefreshEnvironment(disposition, {
+    candidateRefreshPaths: [
+      P06_V3_PROFILE.reportPath,
+      'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+      'docs/product/frontier-ledger.json',
+      'scripts/agent-harness.mjs',
+      'scripts/check-tool-acceptance-table.py',
+      'scripts/generate-tool-acceptance-tasks.py',
+      'scripts/test_acceptance_evidence.py',
+      'tests/harness/agent-harness-cli.test.mjs',
+      'apps/mcp/codex-one-tool-mcp-server.mjs',
+    ],
+  });
+  const buildEvidence = (environment, epoch) => candidateEvidence(environment, {
+    candidate_sha: sha('e'),
+    ci: {
+      url: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/39883070842',
+    },
+    candidate_refresh_reason: 'Reject unapproved changes after the P06 v3 report.',
+    scope_closure: epoch.scope_closure,
+    corrective_closure: epoch.corrective_closure,
+    adversarial_preflight: epoch.adversarial_preflight,
+  });
+  try {
+    const result = environmentWithRuntimePath.environment.execute([
+      'candidate:check', '--run', '95', '--pr', '42', '--evidence',
+      buildEvidence(environmentWithRuntimePath.environment, environmentWithRuntimePath.epoch),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+    assert.equal(
+      parseControlBlock(environmentWithRuntimePath.environment.readState().prBody, EPOCH_MARKER)
+        .candidate_sha,
+      sha('b'),
+    );
+  } finally {
+    environmentWithRuntimePath.environment.cleanup();
+  }
+
+  const { environment, epoch } = p06V3ReportRefreshEnvironment(disposition);
+  try {
+    const result = environment.execute(
+      [
+        'candidate:check', '--run', '95', '--pr', '42', '--evidence',
+        buildEvidence(environment, epoch),
+      ],
+      { HARNESS_G04_BUNDLE_SHA256: 'f'.repeat(64) },
+    );
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+    assert.equal(parseControlBlock(environment.readState().prBody, EPOCH_MARKER).candidate_sha, sha('b'));
   } finally {
     environment.cleanup();
   }

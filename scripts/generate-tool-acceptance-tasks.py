@@ -2456,6 +2456,11 @@ CODEX_P06_V3_EVIDENCE_REFRESH_PATHS = {
     CODEX_P06_V3_REPORT_RELATIVE_PATH,
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
     'docs/product/frontier-ledger.json',
+    'scripts/agent-harness.mjs',
+    'scripts/check-tool-acceptance-table.py',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/test_acceptance_evidence.py',
+    'tests/harness/agent-harness-cli.test.mjs',
 }
 CODEX_P06_EVIDENCE_REFRESH_PATHS_BY_ID = {
     CODEX_P06_PROFILE_ID: CODEX_P06_EVIDENCE_REFRESH_PATHS,
@@ -10551,6 +10556,7 @@ def codex_p06_profile_candidate_binding_is_valid(
     if profile is None:
         return False
     candidate_sha = epoch.get('candidate_sha')
+    pr_head_sha = epoch_result.get('pr_head_sha')
     source_sha = report.get('sourceRevision')
     pr_number = report.get('prNumber')
     branch = epoch.get('branch')
@@ -10570,6 +10576,20 @@ def codex_p06_profile_candidate_binding_is_valid(
         and latest_review.get('reviewed_base_sha') == report.get('baseSha')
         and latest_review.get('verdict') == 'PASS'
     )
+    candidate_chain_valid = (
+        isinstance(source_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
+        and isinstance(candidate_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
+        and isinstance(pr_head_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', pr_head_sha) is not None
+        and _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', source_sha, candidate_sha,
+        ).returncode == 0
+        and _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', candidate_sha, pr_head_sha,
+        ).returncode == 0
+    )
     return (
         type(pr_number) is int
         and pr_number > 0
@@ -10584,11 +10604,7 @@ def codex_p06_profile_candidate_binding_is_valid(
         and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
         and epoch_result.get('pr_head_ref_name') == branch
         and epoch_result.get('pr_is_draft') is False
-        and isinstance(candidate_sha, str)
-        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
-        and epoch_result.get('pr_head_sha') == candidate_sha
-        and isinstance(source_sha, str)
-        and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
+        and candidate_chain_valid
         and codex_p06_profile_evidence_refresh_paths_are_valid(changed_paths, profile['id'])
         and current_bundle_sha256 == report.get('mcpBundleSha256')
     )
@@ -10616,8 +10632,7 @@ def codex_p06_profile_report_candidate_binding_is_current(
     candidate = None
     if isinstance(epoch_status, dict):
         epoch_result = epoch_status.get('epoch')
-        epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
-        candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
+        candidate = epoch_result.get('pr_head_sha') if isinstance(epoch_result, dict) else None
     paths = _codex_p06_profile_report_candidate_paths(report.get('sourceRevision'), candidate)
     bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
     return codex_p06_profile_candidate_binding_is_valid(
