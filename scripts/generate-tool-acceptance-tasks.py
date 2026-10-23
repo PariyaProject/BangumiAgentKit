@@ -6619,11 +6619,13 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'never renders a numeric delta for a partial metric with a stale value',
     ),
     'packages/renderer/src/components/TitleBlock.tsx': (
-        "titleStyle?: 'standard' | 'cohort-report' | 'cohort-gallery-open'",
+        "titleStyle?: 'standard' | 'cohort-report' | 'cohort-gallery-open' | 'cohort-zine-poster'",
         "titleStyle === 'cohort-report'",
     ),
     'packages/renderer/src/templates/SubjectCohortComparisonCard.tsx': (
-        "titleStyle={isGallery ? 'cohort-gallery-open' : 'cohort-report'}",
+        "isZine ? 'cohort-zine-poster' : 'cohort-report'",
+        'data-layout="cohort-query-summary"',
+        'data-layout="zine-waterfront-illustration"',
         'data-layout="cohort-metric-bar"',
     ),
     'tests/harness/c07-render-comparison-v4-visual-qa.test.mjs': (
