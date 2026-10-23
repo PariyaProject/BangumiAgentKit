@@ -11,6 +11,9 @@ import {
   P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
   P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,
   P06_RENDER_PERSON_PROFILE_V2_EXPECTED_ARGUMENTS,
+  P06_RENDER_PERSON_PROFILE_V3_NETWORK_MODE,
+  P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID,
+  P06_RENDER_PERSON_PROFILE_V3_EXPECTED_ARGUMENTS,
 } from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 
 const PROFILE = getAgentMcpProfileById(P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID);
@@ -127,6 +130,44 @@ test('P06 v2 fixture uses a distinct synthetic identity and exact offline reads'
     unexpectedRequestCount: 0,
     authorizationHeaderCount: 0,
     expectedOperationsComplete: true,
+  });
+});
+
+test('P06 v3 chronology fixture allows only the exact sampled synthetic subject details', async () => {
+  const profile = getAgentMcpProfileById(P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID);
+  assert.equal(assertP06RenderPersonProfileOfflineProfile(profile), true);
+  assert.deepEqual(profile.calls[0].arguments, P06_RENDER_PERSON_PROFILE_V3_EXPECTED_ARGUMENTS);
+
+  const fixture = createP06RenderPersonProfileOfflineFetch(P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID);
+  const person = await fixture.fetchFn('https://api.bgm.tv/v0/persons/990606');
+  const subjects = await fixture.fetchFn('https://api.bgm.tv/v0/persons/990606/subjects');
+  const characters = await fixture.fetchFn('https://api.bgm.tv/v0/persons/990606/characters');
+  const earliest = await fixture.fetchFn('https://api.bgm.tv/v0/subjects/990607');
+  const middle = await fixture.fetchFn('https://api.bgm.tv/v0/subjects/990608');
+  const latest = await fixture.fetchFn('https://api.bgm.tv/v0/subjects/990610');
+  const unselected = await fixture.fetchFn('https://api.bgm.tv/v0/subjects/990609');
+
+  assert.equal((await person.json()).id, 990606);
+  assert.deepEqual(
+    (await subjects.json()).map((item) => item.id),
+    [990607, 990608, 990609, 990610],
+  );
+  assert.equal((await characters.json())[0].subject_id, 990607);
+  assert.equal((await earliest.json()).date, '2018-04-01');
+  assert.equal((await middle.json()).date, '2019-07-14');
+  assert.equal((await latest.json()).date, '2020-06-01');
+  assert.equal(unselected.status, 599);
+  assert.deepEqual(fixture.snapshot(), {
+    profile: P06_RENDER_PERSON_PROFILE_V3_NETWORK_MODE,
+    requestCount: 7,
+    personRequestCount: 1,
+    subjectsRequestCount: 1,
+    charactersRequestCount: 1,
+    duplicateRequestCount: 0,
+    unexpectedRequestCount: 1,
+    authorizationHeaderCount: 0,
+    expectedOperationsComplete: true,
+    chronologyRequestCount: 3,
   });
 });
 

@@ -6,6 +6,7 @@ const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
   'a01-aggregate-cohort-offline-agent-mcp-matrix-v3',
   'p06-render-person-profile-offline-agent-mcp-v1',
   'p06-render-person-profile-offline-agent-mcp-v2',
+  'p06-render-person-profile-offline-agent-mcp-v3',
   'c07-render-comparison-offline-agent-mcp-matrix-v1',
   'c07-render-comparison-offline-agent-mcp-matrix-v2',
   'c07-render-comparison-offline-agent-mcp-matrix-v3',

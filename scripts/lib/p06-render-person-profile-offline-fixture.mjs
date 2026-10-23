@@ -32,6 +32,29 @@ export const P06_RENDER_PERSON_PROFILE_V2_EXPECTED_ARGUMENTS = Object.freeze({
   includeChronology: false,
 });
 
+export const P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID =
+  'p06-render-person-profile-offline-agent-mcp-v3';
+export const P06_RENDER_PERSON_PROFILE_V3_EPOCH_ID =
+  'run95-p06-render-person-profile-chronology-v3-20261023';
+export const P06_RENDER_PERSON_PROFILE_V3_NETWORK_MODE =
+  'run95-p06-render-person-profile-offline-v3';
+export const P06_RENDER_PERSON_PROFILE_V3_ARGUMENT_PROFILE =
+  'fixed-p06-synthetic-person-990606-four-subjects-chronology-three-20261023-v3';
+export const P06_RENDER_PERSON_PROFILE_V3_SYNTHETIC_ID = 990606;
+export const P06_RENDER_PERSON_PROFILE_V3_EXPECTED_ARGUMENTS = Object.freeze({
+  personId: P06_RENDER_PERSON_PROFILE_V3_SYNTHETIC_ID,
+  maxSubjects: 4,
+  maxCharacters: 1,
+  maxCredits: 2,
+  includeChronology: true,
+  maxChronologySubjects: 3,
+});
+const P06_RENDER_PERSON_PROFILE_V3_CHRONOLOGY_DETAILS = Object.freeze([
+  Object.freeze({ id: 990607, date: '2018-04-01' }),
+  Object.freeze({ id: 990608, date: '2019-07-14' }),
+  Object.freeze({ id: 990610, date: '2020-06-01' }),
+]);
+
 const P06_OFFLINE_PROFILE_CONFIGS = new Map([
   [
     P06_RENDER_PERSON_PROFILE_OFFLINE_PROFILE_ID,
@@ -69,6 +92,26 @@ const P06_OFFLINE_PROFILE_CONFIGS = new Map([
       characterId: 990605,
       expectedArguments: P06_RENDER_PERSON_PROFILE_V2_EXPECTED_ARGUMENTS,
       version: 2,
+    }),
+  ],
+  [
+    P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID,
+    Object.freeze({
+      id: P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID,
+      epochId: P06_RENDER_PERSON_PROFILE_V3_EPOCH_ID,
+      networkMode: P06_RENDER_PERSON_PROFILE_V3_NETWORK_MODE,
+      argumentProfile: P06_RENDER_PERSON_PROFILE_V3_ARGUMENT_PROFILE,
+      reportPath: 'docs/live-probes/p06-render-person-profile-agent-mcp-v3-run95.json',
+      selectionEvidencePath:
+        'docs/research/run95-p06-render-person-profile-chronology-v3-source-contract-2026-10-23.md',
+      evidenceKind: 'codex_cli_p06_render_person_profile_offline_agent_mcp_v3',
+      answerCheckMethod: 'p06-exact-synthetic-chronology-renderer-execution-only-v3',
+      syntheticPersonId: P06_RENDER_PERSON_PROFILE_V3_SYNTHETIC_ID,
+      subjectId: 990607,
+      characterId: 990611,
+      expectedArguments: P06_RENDER_PERSON_PROFILE_V3_EXPECTED_ARGUMENTS,
+      chronologySubjectDetails: P06_RENDER_PERSON_PROFILE_V3_CHRONOLOGY_DETAILS,
+      version: 3,
     }),
   ],
 ]);
@@ -137,6 +180,19 @@ function requestHeaders(input, init) {
 }
 
 function syntheticPerson(config) {
+  if (config.version === 3) {
+    return {
+      id: config.syntheticPersonId,
+      name: '星港旅人 / 星港の案内人',
+      type: 1,
+      career: ['artist'],
+      gender: 'unknown',
+      blood_type: null,
+      short_summary: '仅供离线版式验收的合成资料；日期只描述固定样本作品，不代表人物实际参与时间。',
+      images: { large: '', medium: '', small: '', grid: '' },
+      infobox: [{ key: '简体中文名', value: '星港旅人' }],
+    };
+  }
   if (config.version === 2) {
     return {
       id: config.syntheticPersonId,
@@ -163,6 +219,46 @@ function syntheticPerson(config) {
 }
 
 function syntheticSubjects(config) {
+  if (config.version === 3) {
+    return [
+      {
+        id: 990607,
+        type: 2,
+        name: '春灯航路 / 春灯航路',
+        name_cn: '春灯航路：一段跨越星海的长篇合成作品标题',
+        staff: 'artist',
+        eps: '12',
+        image: '',
+      },
+      {
+        id: 990608,
+        type: 2,
+        name: '玻璃潮汐 / Glass Tide',
+        name_cn: '玻璃潮汐：合成的夏日故事',
+        staff: 'artist',
+        eps: '10',
+        image: '',
+      },
+      {
+        id: 990609,
+        type: 2,
+        name: '海雾信笺 / 海霧の手紙',
+        name_cn: '海雾信笺：固定样本中的未采样条目',
+        staff: 'artist',
+        eps: '8',
+        image: '',
+      },
+      {
+        id: 990610,
+        type: 2,
+        name: '夜行列车 / 夜行列車',
+        name_cn: '夜行列车：归航篇',
+        staff: 'artist',
+        eps: '13',
+        image: '',
+      },
+    ];
+  }
   return [
     {
       id: config.subjectId,
@@ -184,15 +280,27 @@ function syntheticCharacters(config) {
     {
       id: config.characterId,
       type: 1,
-      name: config.version === 2 ? '合成角色の長い日本語名' : 'Synthetic Character 990603',
+      name:
+        config.version === 3
+          ? '星港の乗組員・ミナ'
+          : config.version === 2
+            ? '合成角色の長い日本語名'
+            : 'Synthetic Character 990603',
       images: { large: '', medium: '', small: '', grid: '' },
       subject_id: config.subjectId,
       subject_type: 2,
-      subject_name: config.version === 2 ? '合成作品の日本語原名 990604' : 'Synthetic Work 990602',
+      subject_name:
+        config.version === 3
+          ? '春灯航路 / 春灯航路'
+          : config.version === 2
+            ? '合成作品の日本語原名 990604'
+            : 'Synthetic Work 990602',
       subject_name_cn:
-        config.version === 2
-          ? '合成作品：一个很长的中文条目标题用于移动端换行检查'
-          : '合成作品 990602',
+        config.version === 3
+          ? '春灯航路：一段跨越星海的长篇合成作品标题'
+          : config.version === 2
+            ? '合成作品：一个很长的中文条目标题用于移动端换行检查'
+            : '合成作品 990602',
       staff: config.version === 2 ? 'main' : '合成角色',
     },
   ];
@@ -207,6 +315,10 @@ export function createP06RenderPersonProfileOfflineFetch(
     [`/v0/persons/${config.syntheticPersonId}`, () => syntheticPerson(config)],
     [`/v0/persons/${config.syntheticPersonId}/subjects`, () => syntheticSubjects(config)],
     [`/v0/persons/${config.syntheticPersonId}/characters`, () => syntheticCharacters(config)],
+    ...(config.chronologySubjectDetails ?? []).map(({ id, date }) => [
+      `/v0/subjects/${id}`,
+      () => ({ id, date }),
+    ]),
   ]);
   const observed = new Set();
   const counters = {
@@ -219,6 +331,7 @@ export function createP06RenderPersonProfileOfflineFetch(
     unexpectedRequestCount: 0,
     authorizationHeaderCount: 0,
     expectedOperationsComplete: false,
+    ...(config.chronologySubjectDetails ? { chronologyRequestCount: 0 } : {}),
   };
 
   const fetchFn = async (input, init = {}) => {
@@ -259,6 +372,7 @@ export function createP06RenderPersonProfileOfflineFetch(
     observed.add(url.pathname);
     if (url.pathname.endsWith('/subjects')) counters.subjectsRequestCount += 1;
     else if (url.pathname.endsWith('/characters')) counters.charactersRequestCount += 1;
+    else if (url.pathname.startsWith('/v0/subjects/')) counters.chronologyRequestCount += 1;
     else counters.personRequestCount += 1;
     return response(operation());
   };
@@ -291,5 +405,21 @@ export function createP06RenderPersonProfileAssetGuard() {
     snapshot() {
       return { ...counters };
     },
+  };
+}
+
+export function createP06RenderPersonProfileOfflineRuntime(config) {
+  const profileId = config?.profile?.id;
+  const profileConfig = getP06RenderPersonProfileOfflineConfig(profileId);
+  if (!profileConfig) return null;
+  if (
+    profileConfig.networkMode !== config.networkMode ||
+    !assertP06RenderPersonProfileOfflineProfile(config.profile)
+  ) {
+    throw new Error('P06 offline profile requires its exact registered network mode.');
+  }
+  return {
+    offlineFixture: createP06RenderPersonProfileOfflineFetch(profileId),
+    assetGuard: createP06RenderPersonProfileAssetGuard(),
   };
 }

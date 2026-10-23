@@ -71,11 +71,7 @@ import {
   createA01AggregateCohortOfflineFetch,
 } from '../../scripts/lib/a01-aggregate-cohort-offline-matrix-profile.mjs';
 import {
-  getP06RenderPersonProfileOfflineConfig,
-  createP06RenderPersonProfileAssetGuard,
-  createP06RenderPersonProfileOfflineFetch,
-  P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
-  P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+  createP06RenderPersonProfileOfflineRuntime,
 } from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 import {
   assertC07RenderComparisonOfflineFixtureProfile,
@@ -534,6 +530,7 @@ async function main(argv = process.argv.slice(2)) {
       : null;
   const s01AnnualTvPublicFetch =
     config.networkMode === S01_NETWORK_MODE ? createS01AnnualTvPublicFetch() : null;
+  const p06OfflineRuntime = createP06RenderPersonProfileOfflineRuntime(config);
   const offlineFixture = renderSubjectCardOfflineProfile
     ? createRenderSubjectCardOfflineFetch(config.profile)
     : config.networkMode === C03_PERSON_ACTIVITY_OFFLINE_V2_NETWORK_MODE
@@ -549,11 +546,8 @@ async function main(argv = process.argv.slice(2)) {
           ? createA01RenderCohortAggregationOfflineFetch()
           : config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
             ? createC07CohortRenderOfflineFixtureFetch()
-            : [
-                  P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
-                  P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
-                ].includes(config.networkMode)
-              ? createP06RenderPersonProfileOfflineFetch(config.profile?.id)
+              : p06OfflineRuntime
+              ? p06OfflineRuntime.offlineFixture
               : isC07RenderComparisonOfflineNetworkMode(config.networkMode)
                 ? createC07RenderComparisonOfflineFetch(config.profile)
                 : getG01RenderQueryOfflineProfileSpec(config.profile)
@@ -591,13 +585,7 @@ async function main(argv = process.argv.slice(2)) {
       : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE
         ? createR04RenderV2SeriesWatchOrderV2AssetFence()
         : null;
-  const p06AssetGuard =
-    [
-      P06_RENDER_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
-      P06_RENDER_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
-    ].includes(config.networkMode) && getP06RenderPersonProfileOfflineConfig(config.profile?.id)
-      ? createP06RenderPersonProfileAssetGuard()
-      : null;
+  const p06AssetGuard = p06OfflineRuntime?.assetGuard ?? null;
   const renderSubjectCardAssetGuard = renderSubjectCardOfflineProfile
     ? createRenderSubjectCardOfflineAssetGuard()
     : null;
@@ -904,7 +892,7 @@ async function main(argv = process.argv.slice(2)) {
         if (config.profile) {
           const artifactSummary =
             isRenderSubjectCardOfflineProfile(config.profile) ||
-            getP06RenderPersonProfileOfflineConfig(config.profile.id) ||
+            p06OfflineRuntime ||
             isC07RenderComparisonOfflineProfileId(config.profile.id) ||
             isG01RenderQueryOfflineProfileId(config.profile.id)
               ? artifactStore.summarize(result?.artifact?.id, { verifyPng: true })

@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import runpy
 import sys
 from pathlib import Path
 
@@ -57,6 +58,14 @@ from acceptance.p01_person_activity_director_offline_acceptance import (
     p01_person_activity_director_offline_signed_report_matches,
 )
 from client_evidence import tool_client_e2e_sources
+P06_V3_PROFILE_ID = 'p06-render-person-profile-offline-agent-mcp-v3'
+P06_V3_PROFILE = next(
+    profile for profile in PROFILE_REGISTRY.get('profiles', [])
+    if isinstance(profile, dict) and profile.get('id') == P06_V3_PROFILE_ID
+)
+P06_ACCEPTANCE_GENERATOR = runpy.run_path(
+    str(ROOT / 'scripts/generate-tool-acceptance-tasks.py'),
+)
 TOOL_ROW = re.compile(r'^\| `(bangumi\.[a-z0-9_]+)` \|')
 SOURCE_REFERENCE = re.compile(r'`(?P<path>tests/[^`|:]+):(?P<line>[1-9][0-9]*)`')
 LIVE_EVIDENCE_REFERENCE = re.compile(r'`(?P<path>docs/live-probes/[^`|]+\.json)`')
@@ -375,6 +384,22 @@ def p03_v4_agent_mcp_matches(name: str, relative_path: str, report: object) -> b
         and isinstance(receipt.get('signature'), str)
         and bool(receipt['signature'])
     )
+
+
+def p06_v3_agent_mcp_matches(
+    name: str, relative_path: str, report: object, report_path: Path | None = None,
+) -> bool:
+    """Use the canonical P06 validator to map v3 only to its renderer matrix cell."""
+    if (
+        not isinstance(report, dict)
+        or report.get('profileId') != P06_V3_PROFILE_ID
+        or P06_V3_PROFILE.get('acceptanceScope') != 'agent-mcp-matrix-only'
+        or name != P06_V3_PROFILE.get('toolName')
+        or relative_path != P06_V3_PROFILE.get('reportPath')
+    ):
+        return False
+    validator = P06_ACCEPTANCE_GENERATOR.get('codex_p06_profile_report_is_valid')
+    return callable(validator) and validator(report, report_path=report_path)
 
 
 def c03_person_activity_offline_v2_report_matches(
@@ -1638,6 +1663,9 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                 name, relative_path, report,
             )
             p03_v4_matches = p03_v4_agent_mcp_matches(name, relative_path, report)
+            p06_v3_matches = p06_v3_agent_mcp_matches(
+                name, relative_path, report, report_path=path,
+            )
             matches = (
                 scenario_matches or c04_matches or title_query_render_matches
                 or g01_render_query_matches or g01_query_subjects_offline_matches
@@ -1645,7 +1673,7 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                 or g06_cast_offline_v2_matches or r02_positive_matches
                 or c03_person_activity_offline_v2_matches or render_subject_card_offline_matches
                 or p01_person_activity_director_offline_matches
-                or p03_v4_matches
+                or p03_v4_matches or p06_v3_matches
             )
         else:
             try:

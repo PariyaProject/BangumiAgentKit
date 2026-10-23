@@ -2503,10 +2503,14 @@
         "docs/research/run95-p06-render-person-profile-public-probe-2026-10-16.md",
         "docs/research/run95-p06-render-person-profile-agent-mcp-offline-fixture-source-contract-2026-10-16.md",
         "docs/research/run95-p06-render-person-profile-agent-mcp-offline-fixture-v2-source-contract-2026-10-18.md",
+        "docs/research/run95-p06-render-person-profile-chronology-v3-source-contract-2026-10-23.md",
         "docs/research/run95-p06-person-profile-offline-renderer-visual-qa-v2-2026-10-18.md",
-        "docs/live-probes/public-tools-2026-10-15-154413213-10706.json"
+        "docs/research/run95-p06-render-person-profile-chronology-v3-visual-qa-2026-10-23.md",
+        "docs/research/assets/run95-p06-render-person-profile-chronology-v3-image-manifest-2026-10-23.json",
+        "docs/live-probes/public-tools-2026-10-15-154413213-10706.json",
+        "docs/live-probes/p06-render-person-profile-agent-mcp-v3-run95.json"
       ],
-      "next_action": "Keep UNASSESSED. The anonymous public render_person_profile observation for personId=13684 is limited to its public/API matrix row, has a four-request combined API+asset budget, and does not establish latest-20 recency or ongoing status. Run #95 selected synthetic offline render_person_profile Agent/MCP profiles v1 and v2 solely for the tool matrix; both are terminal INCONCLUSIVE/no-report/no-retry. V2 claim profile-run-95-pr-223-a034e51bd933-1792304891062 ended with reason code P06_AGENT_MCP_ASSERTION_FAILED; the sanitized record does not identify the individual failed assertion. Do not retry either profile and do not add Agent/MCP matrix credit for v2. The v2 local visual QA at 320/360/520/640/960 widths is documented separately. The synthetic visual QA does not establish real-person data. Neither it nor the matrix report establishes latest-20 ordering, ongoing status, or P06 scenario completion. Do not repeat the public input or infer scenario completion.",
+      "next_action": "Keep UNASSESSED. The anonymous public render_person_profile observation for personId=13684 is limited to its public/API matrix row, has a four-request combined API+asset budget, and does not establish latest-20 recency or ongoing status. Run #95 selected synthetic offline render_person_profile Agent/MCP profiles v1 and v2 solely for the tool matrix; both are terminal INCONCLUSIVE/no-report/no-retry. V2 claim profile-run-95-pr-223-a034e51bd933-1792304891062 ended with reason code P06_AGENT_MCP_ASSERTION_FAILED; the sanitized record does not identify the individual failed assertion. Do not retry either profile and do not add Agent/MCP matrix credit for v2. The v2 local visual QA at 320/360/520/640/960 widths is documented separately. The synthetic visual QA does not establish real-person data. Neither it nor the matrix report establishes latest-20 ordering, ongoing status, or P06 scenario completion; there is no scenario acceptance. On 2026-10-23 the distinct synthetic v3 chronology profile produced a signed report that passed independent report/signature validation. Its report-only post-PASS Candidate refresh was recorded on `b893f10548becbd41eaf66ae41b8044bc8047a73` after exact CI run 39883070842; the MCP bundle stayed unchanged. The generated matrix now credits only this synthetic render_person_profile Agent/MCP cell; the final validator Candidate still requires exact CI and Harness Candidate binding before review. This is matrix-only and does not establish P06 scenario acceptance. The v3 report is matrix-only; the visual-QA report and image manifest document the separate synthetic image audit. None of these results establishes real-person latest-20 ordering, ongoing status, source completeness, QQ delivery, or TIM behavior. Never invoke v3 again.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "evidence": {
         "fresh_render_person_profile_public_observation_2026_10_16": {
@@ -2537,6 +2541,22 @@
           "recorded_api_fetches": 3,
           "total_http_requests": null,
           "reason_not_credited": "The original counter did not observe renderer asset requests or asset redirect hops; the total request count cannot be established from that report."
+        },
+        "synthetic_v3_agent_mcp_matrix_only": {
+          "profile_id": "p06-render-person-profile-offline-agent-mcp-v3",
+          "claim_id": "profile-run-95-pr-266-f43f6d7fc963-1792717081382",
+          "report": "docs/live-probes/p06-render-person-profile-agent-mcp-v3-run95.json",
+          "report_sha256": "110b39d1f6e326ed9c8bf5440c25539f009bf1a5ddd7494fb102a0d0c1871915",
+          "source_candidate_sha": "f43f6d7fc9636559deeb4bb71ef2d35acd5690ca",
+          "base_sha": "d8b17d10bcb9c6b4b1d6031ceffc8fc5c589d6b1",
+          "ci_run_id": "39880360135",
+          "reviewer_id": "gpt-6-luna-max-run95-pr266-round1",
+          "bundle_sha256": "bf5a656a96ab61e20d88cec1f7adfec62e6ea76b948438919a833a1be75ddcce",
+          "independent_report_validation": "passed",
+          "candidate_refresh": "report-only refresh recorded on Candidate b893f10548becbd41eaf66ae41b8044bc8047a73 after exact CI run 39883070842; final matrix/checker Candidate still requires exact CI and Harness binding with the MCP bundle unchanged",
+          "visual_qa_report": "docs/research/run95-p06-render-person-profile-chronology-v3-visual-qa-2026-10-23.md",
+          "visual_qa_manifest": "docs/research/assets/run95-p06-render-person-profile-chronology-v3-image-manifest-2026-10-23.json",
+          "claim_boundary": "One synthetic offline render_person_profile Agent/MCP call and bounded PNG artifact metadata only. Zero live Bangumi API and renderer-asset requests; no real-person, scenario-completion, account/OAuth, QQ-pipeline, or TIM-client evidence."
         }
       },
       "related_ids": []

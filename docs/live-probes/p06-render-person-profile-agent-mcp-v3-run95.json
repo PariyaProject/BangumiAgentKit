@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "codex_cli_p06_render_person_profile_offline_agent_mcp_v3",
+  "runNumber": 95,
+  "frontierId": "P06",
+  "scenarioId": null,
+  "epochId": "run95-p06-render-person-profile-chronology-v3-20261023",
+  "profileId": "p06-render-person-profile-offline-agent-mcp-v3",
+  "profile": "codex-luna-max-offline-agent-mcp-matrix-v3",
+  "model": "gpt-6-luna",
+  "reasoningEffort": "max",
+  "reviewerId": "gpt-6-luna-max-run95-pr266-round1",
+  "codexCliVersion": "0.163.0",
+  "observedAt": "2026-10-23T00:58:28.513Z",
+  "sourceRevision": "f43f6d7fc9636559deeb4bb71ef2d35acd5690ca",
+  "baseSha": "d8b17d10bcb9c6b4b1d6031ceffc8fc5c589d6b1",
+  "ciSha": "f43f6d7fc9636559deeb4bb71ef2d35acd5690ca",
+  "ciStatus": "SUCCESS",
+  "ciRunId": "39880360135",
+  "ciChecks": [
+    {
+      "name": "harness-control",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "sqlite-default",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "host-integration",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "standalone-release-smoke",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "postgres-compat",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "provider-foundation",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "discovery-foundation",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS"
+    }
+  ],
+  "prNumber": 266,
+  "claimId": "profile-run-95-pr-266-f43f6d7fc963-1792717081382",
+  "mcpBundleSha256": "bf5a656a96ab61e20d88cec1f7adfec62e6ea76b948438919a833a1be75ddcce",
+  "registrySha256": "9153ce883ac1ffe68011feb72c585707072f4c7534b52f1cd15277dcf220183c",
+  "selectionEvidenceSha256": "081687af76d4332b33996be0fbd984aa00f794325fd1d818871719aa56f60066",
+  "toolName": "bangumi.render_person_profile",
+  "argumentProfile": "fixed-p06-synthetic-person-990606-four-subjects-chronology-three-20261023-v3",
+  "expectedArgumentsSha256": "89362b243650132461a368e7c1d2da2a23f152e67738a1d8015164da3f4f63a8",
+  "catalogSha256": "1f5b17d76a30ebd2c76e8c9a2317ab9f03640be466e02b5e48b1cbefd97728c7",
+  "toolDescriptionSha256": "b8ddc83aa9922247c20def7ea3e0e837ad70d29262780c27ff5e53f3ef5335af",
+  "inputSchemaSha256": "74a994dc8d1424fc3ab26fdc16b87d312b4a9db99bc9e1358ec8679e89e7e400",
+  "serverToolNames": [
+    "bangumi.render_person_profile"
+  ],
+  "serverToolCount": 1,
+  "networkMode": "run95-p06-render-person-profile-offline-v3",
+  "mcpServerNames": [
+    "bgk_p06_profile"
+  ],
+  "processExitCode": 0,
+  "resultStatus": "SUCCESS",
+  "eventStreamParsed": true,
+  "turnCompleted": true,
+  "codexMcpToolEventCount": 1,
+  "codexErrorItemCount": 0,
+  "nonMcpToolEventCount": 0,
+  "nonMcpToolTypes": [],
+  "shellToolCallCount": 0,
+  "allowedCallCount": 1,
+  "deniedCallCount": 0,
+  "answerCheckMethod": "p06-exact-synthetic-chronology-renderer-execution-only-v3",
+  "answerSha256": "88f1f65792d716873be02f01317ffc929b44706d4054aa25911c8ce33c22ca58",
+  "answerUtf8Bytes": 30,
+  "answerChecks": {
+    "exactRegisteredProfile": true,
+    "oneAllowedMcpTool": true,
+    "fixedArguments": true,
+    "exactCandidateBundle": true,
+    "offlineFixtureOnly": true,
+    "threeExpectedLocalResponses": true,
+    "expectedChronologyResponses": true,
+    "noAssetUrls": true,
+    "artifactReturned": true,
+    "exactAcknowledgement": true,
+    "privacyPreserved": true
+  },
+  "offlineFixture": {
+    "profile": "run95-p06-render-person-profile-offline-v3",
+    "requestCount": 6,
+    "personRequestCount": 1,
+    "subjectsRequestCount": 1,
+    "charactersRequestCount": 1,
+    "duplicateRequestCount": 0,
+    "unexpectedRequestCount": 0,
+    "authorizationHeaderCount": 0,
+    "expectedOperationsComplete": true,
+    "chronologyRequestCount": 3
+  },
+  "offlineAssetBoundary": {
+    "assetResolutionCallCount": 0,
+    "nonEmptyAssetUrlCount": 0,
+    "blockedAssetRequestCount": 0
+  },
+  "networkBoundary": {
+    "liveBangumiApiRequestCount": 0,
+    "rendererAssetRequestCount": 0,
+    "fullCodexHarnessNetworkSandboxed": false
+  },
+  "artifact": {
+    "returned": true,
+    "persisted": false,
+    "mimeType": "image/png",
+    "width": 720,
+    "height": 3898,
+    "byteLength": 424410,
+    "sha256": "bf515d6f7973771ec365873809782acb655a3f1bce5eb9f536c9b29947798134",
+    "pngSignatureValid": true
+  },
+  "privacy": {
+    "authProfile": "anonymous",
+    "oauthAttempted": false,
+    "accountDataRead": false,
+    "writesAttempted": false,
+    "communityRead": false,
+    "qqPipelineTested": false,
+    "timClientTested": false,
+    "promptStored": false,
+    "answerStored": false,
+    "rawFixtureRowsStored": false,
+    "rawToolResultStored": false,
+    "artifactImageBytesStored": false,
+    "credentialsStored": false
+  },
+  "runnerReceipt": {
+    "schemaVersion": 1,
+    "kind": "p06-render-person-profile-offline-runner-receipt-v1",
+    "publicKeyBase64": "MCowBQYDK2VwAyEAFcRy4nc6gNxBWxHQFx5RjJEEjn8w48B2tUWu69DNmAQ=",
+    "publicKeySha256": "b83fe8af0b1b35829d0a04be8afdb7722ef91f6f4e2e180d6d7edfc97221975e",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "p06-render-person-profile-offline-runner-receipt-v1",
+      "sanitizedReportSha256": "f93a14c7f180a957d83b9d910e43bab411ab88db2a7d577984373804d25de2dc",
+      "claimId": "profile-run-95-pr-266-f43f6d7fc963-1792717081382",
+      "profileId": "p06-render-person-profile-offline-agent-mcp-v3",
+      "runNumber": 95,
+      "frontierId": "P06",
+      "epochId": "run95-p06-render-person-profile-chronology-v3-20261023",
+      "prNumber": 266,
+      "sourceRevision": "f43f6d7fc9636559deeb4bb71ef2d35acd5690ca",
+      "baseSha": "d8b17d10bcb9c6b4b1d6031ceffc8fc5c589d6b1",
+      "ciSha": "f43f6d7fc9636559deeb4bb71ef2d35acd5690ca",
+      "ciStatus": "SUCCESS",
+      "ciRunId": "39880360135",
+      "ciChecks": [
+        {
+          "name": "harness-control",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "sqlite-default",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "host-integration",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "standalone-release-smoke",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "postgres-compat",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "provider-foundation",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        },
+        {
+          "name": "discovery-foundation",
+          "status": "COMPLETED",
+          "conclusion": "SUCCESS"
+        }
+      ],
+      "reviewerId": "gpt-6-luna-max-run95-pr266-round1",
+      "bundleSha256": "bf5a656a96ab61e20d88cec1f7adfec62e6ea76b948438919a833a1be75ddcce",
+      "registrySha256": "9153ce883ac1ffe68011feb72c585707072f4c7534b52f1cd15277dcf220183c",
+      "selectionEvidenceSha256": "081687af76d4332b33996be0fbd984aa00f794325fd1d818871719aa56f60066",
+      "toolName": "bangumi.render_person_profile",
+      "argumentProfile": "fixed-p06-synthetic-person-990606-four-subjects-chronology-three-20261023-v3",
+      "expectedArgumentsSha256": "89362b243650132461a368e7c1d2da2a23f152e67738a1d8015164da3f4f63a8",
+      "codexCliVersion": "0.163.0",
+      "processExitCode": 0,
+      "resultStatus": "SUCCESS",
+      "eventStreamParsed": true,
+      "turnCompleted": true,
+      "codexMcpToolEventCount": 1,
+      "codexErrorItemCount": 0,
+      "nonMcpToolEventCount": 0,
+      "shellToolCallCount": 0,
+      "allowedCallCount": 1,
+      "deniedCallCount": 0,
+      "networkMode": "run95-p06-render-person-profile-offline-v3",
+      "offlineFixtureSha256": "7d74a65438a716cf731c25fa44ad6e793a40be5b20caf167db0b41bb6ac689cb",
+      "offlineAssetBoundarySha256": "33a420e12250f5c96bf33506d25c54ab31e7aded5196393a4812431f6496bf16",
+      "artifactSha256": "a78d1a24761546f948bacdfc7f458ec837c07cafa0f3b8e8ca3f7f50a0520206",
+      "answerSha256": "88f1f65792d716873be02f01317ffc929b44706d4054aa25911c8ce33c22ca58",
+      "eventStreamSha256": "1c050c2213ba2d7a75d3b4e0cc099139bc8c260cc1bbb8f2a5730d9b9723c79a",
+      "serverSummarySha256": "ef61450adfb9becb3867e9841e051ca16698122fe053a49f87d4990503c3dea6"
+    },
+    "signature": "qf8hkJocqJ7XVP81ZlaXBtd4mdoSp4n2R6xyiSCiu3JXA143eOmdy+mDQXsg9z6OOsEsLCkSNg9b+RokTcMQDg=="
+  }
+}

@@ -26,6 +26,16 @@ test('profiles outside the exact-CI contract remain excluded', () => {
   assert.equal(profileRequiresExactCiRunEvidence('unknown-profile'), false);
 });
 
+test('P06 v1-v3 profile claims preserve exact CI evidence', () => {
+  for (const profileId of [
+    'p06-render-person-profile-offline-agent-mcp-v1',
+    'p06-render-person-profile-offline-agent-mcp-v2',
+    'p06-render-person-profile-offline-agent-mcp-v3',
+  ]) {
+    assert.equal(profileRequiresExactCiRunEvidence(profileId), true, profileId);
+  }
+});
+
 test('existing v2 profile constants retain their exact CI evidence contract', () => {
   for (const profileId of [
     G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID,

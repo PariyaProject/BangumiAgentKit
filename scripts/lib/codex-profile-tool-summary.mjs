@@ -507,6 +507,7 @@ export function summarizeProfileToolResult(
   if (
     profileId === 'p06-render-person-profile-offline-agent-mcp-v1' ||
     profileId === 'p06-render-person-profile-offline-agent-mcp-v2' ||
+    profileId === 'p06-render-person-profile-offline-agent-mcp-v3' ||
     profileId === 'c07-render-comparison-offline-agent-mcp-matrix-v1' ||
     profileId === C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID ||
     profileId === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID ||

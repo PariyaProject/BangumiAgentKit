@@ -2398,10 +2398,15 @@ CODEX_C03_RECEIPT_PAYLOAD_FIELDS = {
     'eventStreamSha256', 'serverSummarySha256', 'answerSha256', 'answerChecksSha256',
     'actorsSha256', 'comparisonSha256',
 }
-CODEX_P06_PROFILE = next(
-    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
-    if profile.get('id') == 'p06-render-person-profile-offline-agent-mcp-v2'
-)
+CODEX_P06_V2_PROFILE_ID = 'p06-render-person-profile-offline-agent-mcp-v2'
+CODEX_P06_V3_PROFILE_ID = 'p06-render-person-profile-offline-agent-mcp-v3'
+CODEX_P06_PROFILES = {
+    profile['id']: profile
+    for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') in {CODEX_P06_V2_PROFILE_ID, CODEX_P06_V3_PROFILE_ID}
+}
+CODEX_P06_PROFILE = CODEX_P06_PROFILES[CODEX_P06_V2_PROFILE_ID]
+CODEX_P06_V3_PROFILE = CODEX_P06_PROFILES[CODEX_P06_V3_PROFILE_ID]
 CODEX_P06_PROFILE_ID = CODEX_P06_PROFILE['id']
 CODEX_P06_EPOCH_ID = CODEX_P06_PROFILE['epochId']
 CODEX_P06_TOOL_NAME = CODEX_P06_PROFILE['toolName']
@@ -2426,10 +2431,41 @@ CODEX_P06_ANSWER_CHECK_METHOD = CODEX_P06_PROFILE['answerCheckMethod']
 CODEX_P06_NETWORK_MODE = CODEX_P06_PROFILE['networkMode']
 CODEX_P06_PROFILE_VERSION = 2
 CODEX_P06_PROFILE_LABEL = f'codex-luna-max-offline-agent-mcp-matrix-v{CODEX_P06_PROFILE_VERSION}'
+CODEX_P06_V3_EPOCH_ID = CODEX_P06_V3_PROFILE['epochId']
+CODEX_P06_V3_REPORT_RELATIVE_PATH = CODEX_P06_V3_PROFILE['reportPath']
+CODEX_P06_V3_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_P06_V3_PROFILE['selectionEvidencePath']
+CODEX_P06_V3_EVIDENCE_KIND = CODEX_P06_V3_PROFILE['evidenceKind']
+CODEX_P06_V3_EXPECTED_ARGUMENTS_SHA256 = hashlib.sha256(json.dumps(
+    [call['arguments'] for call in CODEX_P06_V3_PROFILE['calls']],
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
+CODEX_P06_V3_PROFILE_REGISTRY_SHA256 = hashlib.sha256(json.dumps(
+    CODEX_P06_V3_PROFILE,
+    sort_keys=True,
+    separators=(',', ':'),
+    ensure_ascii=False,
+).encode('utf-8')).hexdigest()
 CODEX_P06_EVIDENCE_REFRESH_PATHS = {
     CODEX_P06_REPORT_RELATIVE_PATH,
     'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
     'docs/product/frontier-ledger.json',
+}
+CODEX_P06_V3_EVIDENCE_REFRESH_PATHS = {
+    CODEX_P06_V3_REPORT_RELATIVE_PATH,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+    'scripts/agent-harness.mjs',
+    'scripts/check-tool-acceptance-table.py',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/test_acceptance_evidence.py',
+    'tests/integration/tool-e2e-acceptance.test.ts',
+    'tests/harness/agent-harness-cli.test.mjs',
+}
+CODEX_P06_EVIDENCE_REFRESH_PATHS_BY_ID = {
+    CODEX_P06_PROFILE_ID: CODEX_P06_EVIDENCE_REFRESH_PATHS,
+    CODEX_P06_V3_PROFILE_ID: CODEX_P06_V3_EVIDENCE_REFRESH_PATHS,
 }
 CODEX_P06_REPORT_FIELDS = {
     'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
@@ -2495,6 +2531,75 @@ CODEX_P06_REQUIRED_CI_CHECKS = (
     'provider-foundation',
     'discovery-foundation',
 )
+
+
+def codex_p06_profile_spec(profile_id: object = None) -> dict[str, object] | None:
+    selected_id = CODEX_P06_PROFILE_ID if profile_id is None else profile_id
+    return CODEX_P06_PROFILES.get(selected_id) if isinstance(selected_id, str) else None
+
+
+def codex_p06_profile_expected_arguments_sha256(profile: object) -> str | None:
+    if not isinstance(profile, dict) or not isinstance(profile.get('calls'), list):
+        return None
+    return hashlib.sha256(json.dumps(
+        [call['arguments'] for call in profile['calls']],
+        sort_keys=True,
+        separators=(',', ':'),
+        ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+
+
+def codex_p06_profile_registry_sha256(profile: object) -> str | None:
+    if not isinstance(profile, dict):
+        return None
+    return hashlib.sha256(json.dumps(
+        profile,
+        sort_keys=True,
+        separators=(',', ':'),
+        ensure_ascii=False,
+    ).encode('utf-8')).hexdigest()
+
+
+def codex_p06_profile_label(profile: object) -> str | None:
+    profile_id = profile.get('id') if isinstance(profile, dict) else None
+    match = re.search(r'-v([1-9][0-9]*)$', profile_id) if isinstance(profile_id, str) else None
+    return (
+        f'codex-luna-max-offline-agent-mcp-matrix-v{match.group(1)}'
+        if match else None
+    )
+
+
+def codex_p06_profile_chronology_request_count(profile: object) -> int | None:
+    if not isinstance(profile, dict):
+        return None
+    calls = profile.get('calls')
+    arguments = calls[0].get('arguments') if isinstance(calls, list) and calls and isinstance(calls[0], dict) else None
+    if not isinstance(arguments, dict):
+        return None
+    if arguments.get('includeChronology') is not True:
+        return 0
+    request_count = arguments.get('maxChronologySubjects')
+    return request_count if type(request_count) is int and request_count > 0 else None
+
+
+def codex_p06_profile_answer_check_fields(profile: object) -> set[str] | None:
+    request_count = codex_p06_profile_chronology_request_count(profile)
+    if request_count is None:
+        return None
+    return CODEX_P06_ANSWER_CHECK_FIELDS | (
+        {'expectedChronologyResponses'} if request_count > 0 else set()
+    )
+
+
+def codex_p06_profile_offline_fixture_fields(profile: object) -> set[str] | None:
+    request_count = codex_p06_profile_chronology_request_count(profile)
+    if request_count is None:
+        return None
+    return CODEX_P06_OFFLINE_FIXTURE_FIELDS | (
+        {'chronologyRequestCount'} if request_count > 0 else set()
+    )
+
+
 CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'render-subject-card-compact-typography-agent-mcp-v3'
@@ -6159,6 +6264,83 @@ CODEX_P06_PROBE_IMPLEMENTATION_MARKERS = {
         'CODEX_P06_REPORT_RELATIVE_PATH',
     ),
 }
+CODEX_P06_V3_PROBE_IMPLEMENTATION_MARKERS = {
+    **CODEX_P06_PROBE_IMPLEMENTATION_MARKERS,
+    'scripts/acceptance/agent-mcp-profile-registry.json': (
+        *CODEX_P06_PROBE_IMPLEMENTATION_MARKERS[
+            'scripts/acceptance/agent-mcp-profile-registry.json'
+        ],
+        '"id": "p06-render-person-profile-offline-agent-mcp-v3"',
+        '"networkMode": "run95-p06-render-person-profile-offline-v3"',
+        '"personId": 990606',
+        '"maxChronologySubjects": 3',
+    ),
+    'docs/product/frontier-ledger.json': (
+        *CODEX_P06_PROBE_IMPLEMENTATION_MARKERS[
+            'docs/product/frontier-ledger.json'
+        ],
+        'docs/research/run95-p06-render-person-profile-chronology-v3-source-contract-2026-10-23.md',
+    ),
+    'scripts/lib/p06-render-person-profile-offline-fixture.mjs': (
+        *CODEX_P06_PROBE_IMPLEMENTATION_MARKERS[
+            'scripts/lib/p06-render-person-profile-offline-fixture.mjs'
+        ],
+        'export function createP06RenderPersonProfileOfflineRuntime(config)',
+        'profileConfig.networkMode !== config.networkMode',
+        'offlineFixture: createP06RenderPersonProfileOfflineFetch(profileId)',
+        'assetGuard: createP06RenderPersonProfileAssetGuard()',
+        'P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID',
+        'if (config.version === 3)',
+        'maxChronologySubjects: 3',
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        'parseCodexOneToolMcpArguments(argv)',
+        'createP06RenderPersonProfileOfflineRuntime(config)',
+        'p06OfflineRuntime.offlineFixture',
+        'p06OfflineRuntime?.assetGuard',
+    ),
+    'scripts/acceptance/run-p06-render-person-profile-agent-mcp.mjs': (
+        'export function validateP06RunnerArgs(',
+        'P06_RENDER_PERSON_PROFILE_OFFLINE_V2_PROFILE_ID,',
+        'P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID,',
+        'export function assertCandidateReviewGate(',
+        'export function buildP06CodexExecArgs(',
+        'export function validateServerSummary(',
+        'function runP06(',
+        'P06_RENDER_PERSON_PROFILE_V3_PROFILE_ID',
+        'chronologyRequestCount',
+    ),
+    'scripts/acceptance/write-p06-render-person-profile-agent-mcp-report.mjs': (
+        *CODEX_P06_PROBE_IMPLEMENTATION_MARKERS[
+            'scripts/acceptance/write-p06-render-person-profile-agent-mcp-report.mjs'
+        ],
+        'expectedChronologyResponses',
+        'chronologyRequestCount',
+    ),
+    'scripts/lib/codex-profile-tool-summary.mjs': (
+        "profileId === 'p06-render-person-profile-offline-agent-mcp-v3'",
+    ),
+    'scripts/agent-harness.mjs': (
+        *CODEX_P06_PROBE_IMPLEMENTATION_MARKERS['scripts/agent-harness.mjs'],
+        "case 'p06-render-person-profile-offline-agent-mcp-v3'",
+    ),
+    'tests/harness/codex-one-tool-mcp-server-p06-profile.test.mjs': (
+        'P06 v3 profile summary retains only bounded artifact metadata',
+        'P06 server runtime binds v3 to its offline fixture and asset guard',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        *CODEX_P06_PROBE_IMPLEMENTATION_MARKERS[
+            'scripts/generate-tool-acceptance-tasks.py'
+        ],
+        f"CODEX_P06_V3_PROFILE_ID = '{CODEX_P06_V3_PROFILE_ID}'",
+        'def codex_p06_profile_spec(',
+        'def codex_p06_profile_offline_fixture_fields(',
+    ),
+}
+CODEX_P06_PROBE_IMPLEMENTATION_MARKERS_BY_ID = {
+    CODEX_P06_PROFILE_ID: CODEX_P06_PROBE_IMPLEMENTATION_MARKERS,
+    CODEX_P06_V3_PROFILE_ID: CODEX_P06_V3_PROBE_IMPLEMENTATION_MARKERS,
+}
 CODEX_RENDER_SUBJECT_CARD_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/agent-mcp-profile-registry.json': (
         '"id": "render-subject-card-compact-typography-agent-mcp-v3"',
@@ -9526,6 +9708,18 @@ def _run_repository_git(
     )
 
 
+def _codex_committed_candidate_paths(
+    source_revision: str, candidate_sha: str,
+) -> set[str] | None:
+    """Return changed paths from immutable commits, excluding local worktree state."""
+    diff = _run_repository_git(
+        ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}',
+    )
+    if diff.returncode != 0:
+        return None
+    return set(diff.stdout.splitlines())
+
+
 def _report_catalog_matches_source_revision(
     report: object, tool_name: str, current_tool: object,
 ) -> bool:
@@ -10162,16 +10356,7 @@ def _codex_c03_profile_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_c03_profile_report_candidate_binding_is_current(
@@ -10292,16 +10477,7 @@ def _codex_r05_profile_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_r05_profile_report_candidate_binding_is_current(
@@ -10319,32 +10495,44 @@ def codex_r05_profile_report_candidate_binding_is_current(
     )
 
 
-def codex_p06_profile_revision_has_implementation(revision: object) -> bool:
+def codex_p06_profile_revision_has_implementation(
+    revision: object, profile_id: object = None,
+) -> bool:
     """Bind P06 matrix evidence to its exact offline fixture, runner, writer, and Harness path."""
-    if not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+    profile = codex_p06_profile_spec(profile_id)
+    if profile is None or not isinstance(revision, str) or re.fullmatch(r'[0-9a-f]{40}', revision) is None:
         return False
+    markers = CODEX_P06_PROBE_IMPLEMENTATION_MARKERS_BY_ID.get(profile['id'])
     return (
-        codex_probe_revision_has_implementation(revision)
-        and _codex_revision_has_markers(str(ROOT), revision, CODEX_P06_PROBE_IMPLEMENTATION_MARKERS)
+        markers is not None
+        and codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(str(ROOT), revision, markers)
     )
 
 
 def codex_p06_profile_report_matches_candidate_revision(
-    report_path: Path, revision: object,
+    report_path: Path, revision: object, profile_id: object = None,
 ) -> bool:
     """Bind the P06 sanitized report to the exact pre-invocation reviewed Candidate."""
-    if not codex_p06_profile_revision_has_implementation(revision):
+    profile = codex_p06_profile_spec(profile_id)
+    if profile is None or not codex_p06_profile_revision_has_implementation(revision, profile['id']):
         return False
     return _codex_relations_report_matches_candidate_revision(
-        report_path, revision, CODEX_P06_REPORT_RELATIVE_PATH,
+        report_path, revision, profile['reportPath'],
     )
 
 
-def codex_p06_profile_evidence_refresh_paths_are_valid(paths: object) -> bool:
+def codex_p06_profile_evidence_refresh_paths_are_valid(
+    paths: object, profile_id: object = None,
+) -> bool:
+    profile = codex_p06_profile_spec(profile_id)
+    allowed_paths = CODEX_P06_EVIDENCE_REFRESH_PATHS_BY_ID.get(profile['id']) if profile else None
     return (
-        isinstance(paths, (list, tuple, set, frozenset))
-        and CODEX_P06_REPORT_RELATIVE_PATH in paths
-        and all(isinstance(item, str) and item in CODEX_P06_EVIDENCE_REFRESH_PATHS for item in paths)
+        profile is not None
+        and allowed_paths is not None
+        and isinstance(paths, (list, tuple, set, frozenset))
+        and profile['reportPath'] in paths
+        and all(isinstance(item, str) and item in allowed_paths for item in paths)
     )
 
 
@@ -10365,7 +10553,11 @@ def codex_p06_profile_candidate_binding_is_valid(
     epoch = epoch_result.get('state')
     if not isinstance(run_state, dict) or not isinstance(epoch, dict):
         return False
+    profile = codex_p06_profile_spec(report.get('profileId'))
+    if profile is None:
+        return False
     candidate_sha = epoch.get('candidate_sha')
+    pr_head_sha = epoch_result.get('pr_head_sha')
     source_sha = report.get('sourceRevision')
     pr_number = report.get('prNumber')
     branch = epoch.get('branch')
@@ -10385,12 +10577,26 @@ def codex_p06_profile_candidate_binding_is_valid(
         and latest_review.get('reviewed_base_sha') == report.get('baseSha')
         and latest_review.get('verdict') == 'PASS'
     )
+    candidate_chain_valid = (
+        isinstance(source_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
+        and isinstance(candidate_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
+        and isinstance(pr_head_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', pr_head_sha) is not None
+        and _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', source_sha, candidate_sha,
+        ).returncode == 0
+        and _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor', candidate_sha, pr_head_sha,
+        ).returncode == 0
+    )
     return (
         type(pr_number) is int
         and pr_number > 0
         and run.get('number') == 95
         and (active_pr or merged_pr)
-        and epoch.get('epoch_id') == CODEX_P06_EPOCH_ID
+        and epoch.get('epoch_id') == profile['epochId']
         and epoch.get('pr_number') == pr_number
         and epoch.get('base_branch') == 'master'
         and isinstance(branch, str)
@@ -10399,12 +10605,8 @@ def codex_p06_profile_candidate_binding_is_valid(
         and (merged_pr or epoch_result.get('pr_base_sha') == report.get('baseSha'))
         and epoch_result.get('pr_head_ref_name') == branch
         and epoch_result.get('pr_is_draft') is False
-        and isinstance(candidate_sha, str)
-        and re.fullmatch(r'[0-9a-f]{40}', candidate_sha) is not None
-        and epoch_result.get('pr_head_sha') == candidate_sha
-        and isinstance(source_sha, str)
-        and re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None
-        and codex_p06_profile_evidence_refresh_paths_are_valid(changed_paths)
+        and candidate_chain_valid
+        and codex_p06_profile_evidence_refresh_paths_are_valid(changed_paths, profile['id'])
         and current_bundle_sha256 == report.get('mcpBundleSha256')
     )
 
@@ -10422,16 +10624,7 @@ def _codex_p06_profile_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_p06_profile_report_candidate_binding_is_current(
@@ -10440,8 +10633,7 @@ def codex_p06_profile_report_candidate_binding_is_current(
     candidate = None
     if isinstance(epoch_status, dict):
         epoch_result = epoch_status.get('epoch')
-        epoch = epoch_result.get('state') if isinstance(epoch_result, dict) else None
-        candidate = epoch.get('candidate_sha') if isinstance(epoch, dict) else None
+        candidate = epoch_result.get('pr_head_sha') if isinstance(epoch_result, dict) else None
     paths = _codex_p06_profile_report_candidate_paths(report.get('sourceRevision'), candidate)
     bundle_sha256 = codex_g26_candidate_bundle_sha256(candidate)
     return codex_p06_profile_candidate_binding_is_valid(
@@ -10466,16 +10658,19 @@ def codex_p06_profile_epoch_harness_status(pr_number: object) -> dict[str, objec
     return status if isinstance(status, dict) else None
 
 
-def codex_p06_profile_harness_status(pr_number: object) -> dict[str, object] | None:
+def codex_p06_profile_harness_status(
+    pr_number: object, profile_id: object = None,
+) -> dict[str, object] | None:
     """Read the exact P06 one-shot disposition and permanent latches."""
-    if type(pr_number) is not int or pr_number < 1:
+    profile = codex_p06_profile_spec(profile_id)
+    if profile is None or type(pr_number) is not int or pr_number < 1:
         return None
     try:
         result = subprocess.run(
             [
                 'node', str(ROOT / 'scripts/agent-harness.mjs'),
                 'epoch:agent-mcp-profile-status', '--run', '95', '--pr', str(pr_number),
-                '--profile-id', CODEX_P06_PROFILE_ID,
+                '--profile-id', profile['id'],
             ],
             cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
         )
@@ -10491,18 +10686,19 @@ def codex_p06_profile_disposition_matches_report(
     report: dict[str, object], harness_status: object, report_sha256: object,
 ) -> dict[str, object] | None:
     """Require the exact durable P06 report disposition and both permanent profile latches."""
-    if not isinstance(harness_status, dict):
+    profile = codex_p06_profile_spec(report.get('profileId'))
+    if profile is None or not isinstance(harness_status, dict):
         return None
     receipt = report.get('runnerReceipt')
     disposition = harness_status.get('disposition')
     if (
         harness_status.get('state') != 'REPORT_WRITTEN'
-        or harness_status.get('profile_id') != CODEX_P06_PROFILE_ID
+        or harness_status.get('profile_id') != profile['id']
         or harness_status.get('pr') != report.get('prNumber')
-        or harness_status.get('tool_name') != CODEX_P06_TOOL_NAME
-        or harness_status.get('argument_profile') != CODEX_P06_ARGUMENT_PROFILE
-        or harness_status.get('expected_arguments_sha256') != CODEX_P06_EXPECTED_ARGUMENTS_SHA256
-        or harness_status.get('registry_sha256') != CODEX_P06_PROFILE_REGISTRY_SHA256
+        or harness_status.get('tool_name') != profile['toolName']
+        or harness_status.get('argument_profile') != profile['argumentProfile']
+        or harness_status.get('expected_arguments_sha256') != codex_p06_profile_expected_arguments_sha256(profile)
+        or harness_status.get('registry_sha256') != codex_p06_profile_registry_sha256(profile)
         or harness_status.get('claim_label_present') is not True
         or harness_status.get('terminal_label_present') is not True
         or not isinstance(disposition, dict)
@@ -10513,9 +10709,9 @@ def codex_p06_profile_disposition_matches_report(
         return None
     expected = {
         'claimId': report.get('claimId'),
-        'profileId': CODEX_P06_PROFILE_ID,
+        'profileId': profile['id'],
         'frontierId': 'P06',
-        'epochId': CODEX_P06_EPOCH_ID,
+        'epochId': profile['epochId'],
         'runNumber': 95,
         'prNumber': report.get('prNumber'),
         'state': 'REPORT_WRITTEN',
@@ -10527,12 +10723,12 @@ def codex_p06_profile_disposition_matches_report(
         'ciChecks': report.get('ciChecks'),
         'reviewerId': report.get('reviewerId'),
         'bundleSha256': report.get('mcpBundleSha256'),
-        'registrySha256': CODEX_P06_PROFILE_REGISTRY_SHA256,
-        'toolName': CODEX_P06_TOOL_NAME,
-        'argumentProfile': CODEX_P06_ARGUMENT_PROFILE,
-        'expectedArgumentsSha256': CODEX_P06_EXPECTED_ARGUMENTS_SHA256,
+        'registrySha256': codex_p06_profile_registry_sha256(profile),
+        'toolName': profile['toolName'],
+        'argumentProfile': profile['argumentProfile'],
+        'expectedArgumentsSha256': codex_p06_profile_expected_arguments_sha256(profile),
         'reportWritten': True,
-        'reportPath': CODEX_P06_REPORT_RELATIVE_PATH,
+        'reportPath': profile['reportPath'],
         'reportSha256': report_sha256,
         'retryAllowed': False,
         'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
@@ -13732,8 +13928,11 @@ def codex_r05_profile_report_is_valid(
     return result.get('passed') is True and result.get('reportSha256') == report_sha256
 
 
-def codex_p06_frontier_is_unassessed() -> bool:
+def codex_p06_frontier_is_unassessed(profile_id: object = None) -> bool:
     """Require P06 to remain a scenario gap even when its renderer matrix row is credited."""
+    profile = codex_p06_profile_spec(profile_id)
+    if profile is None:
+        return False
     try:
         frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -13748,7 +13947,7 @@ def codex_p06_frontier_is_unassessed() -> bool:
         isinstance(record, dict)
         and record.get('status') == 'UNASSESSED'
         and isinstance(source_refs, list)
-        and CODEX_P06_SELECTION_EVIDENCE_RELATIVE_PATH in source_refs
+        and profile['selectionEvidencePath'] in source_refs
     )
 
 
@@ -13761,11 +13960,38 @@ def codex_p06_profile_report_is_valid(
     """Validate signed synthetic P06 execution evidence for one matrix cell only."""
     if not isinstance(report, dict) or set(report) != CODEX_P06_REPORT_FIELDS:
         return False
-    path = report_path or (LIVE_PROBE_DIR / Path(CODEX_P06_REPORT_RELATIVE_PATH).name)
+    profile = codex_p06_profile_spec(report.get('profileId'))
+    if profile is None:
+        return False
+    profile_id = profile['id']
+    chronology_request_count = codex_p06_profile_chronology_request_count(profile)
+    answer_check_fields = codex_p06_profile_answer_check_fields(profile)
+    offline_fixture_fields = codex_p06_profile_offline_fixture_fields(profile)
+    expected_arguments_sha256 = codex_p06_profile_expected_arguments_sha256(profile)
+    registry_sha256 = codex_p06_profile_registry_sha256(profile)
+    profile_label = codex_p06_profile_label(profile)
+    if any(value is None for value in (
+        chronology_request_count, answer_check_fields, offline_fixture_fields,
+        expected_arguments_sha256, registry_sha256, profile_label,
+    )):
+        return False
+    expected_fixture = {
+        'profile': profile['networkMode'],
+        'requestCount': 3 + chronology_request_count,
+        'personRequestCount': 1,
+        'subjectsRequestCount': 1,
+        'charactersRequestCount': 1,
+        **({'chronologyRequestCount': chronology_request_count} if chronology_request_count else {}),
+        'duplicateRequestCount': 0,
+        'unexpectedRequestCount': 0,
+        'authorizationHeaderCount': 0,
+        'expectedOperationsComplete': True,
+    }
+    path = report_path or (LIVE_PROBE_DIR / Path(str(profile['reportPath'])).name)
     try:
         relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
         report_bytes = path.read_bytes()
-        selection_bytes = (ROOT / CODEX_P06_SELECTION_EVIDENCE_RELATIVE_PATH).read_bytes()
+        selection_bytes = (ROOT / str(profile['selectionEvidencePath'])).read_bytes()
     except (OSError, ValueError):
         return False
     source_revision = report.get('sourceRevision')
@@ -13777,36 +14003,36 @@ def codex_p06_profile_report_is_valid(
     network_boundary = report.get('networkBoundary')
     privacy = report.get('privacy')
     if (
-        relative_path != CODEX_P06_REPORT_RELATIVE_PATH
+        relative_path != profile['reportPath']
         or len(report_bytes) > 64 * 1024
         or type(report.get('schemaVersion')) is not int
         or report.get('schemaVersion') != 1
-        or report.get('evidenceKind') != CODEX_P06_EVIDENCE_KIND
+        or report.get('evidenceKind') != profile['evidenceKind']
         or type(report.get('runNumber')) is not int
         or report.get('runNumber') != 95
         or report.get('frontierId') != 'P06'
         or report.get('scenarioId') is not None
-        or report.get('epochId') != CODEX_P06_EPOCH_ID
-        or report.get('profileId') != CODEX_P06_PROFILE_ID
-        or report.get('profile') != CODEX_P06_PROFILE_LABEL
-        or report.get('model') != 'gpt-6-luna'
-        or report.get('reasoningEffort') != 'max'
+        or report.get('epochId') != profile['epochId']
+        or report.get('profileId') != profile_id
+        or report.get('profile') != profile_label
+        or report.get('model') != profile.get('model')
+        or report.get('reasoningEffort') != profile.get('reasoningEffort')
         or not isinstance(report.get('reviewerId'), str)
         or re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', report['reviewerId']) is None
         or not isinstance(report.get('codexCliVersion'), str)
         or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
         or not isinstance(observed_at, str)
         or re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', observed_at) is None
-        or report.get('toolName') != CODEX_P06_TOOL_NAME
-        or report.get('argumentProfile') != CODEX_P06_ARGUMENT_PROFILE
-        or report.get('expectedArgumentsSha256') != CODEX_P06_EXPECTED_ARGUMENTS_SHA256
-        or report.get('registrySha256') != CODEX_P06_PROFILE_REGISTRY_SHA256
+        or report.get('toolName') != profile['toolName']
+        or report.get('argumentProfile') != profile['argumentProfile']
+        or report.get('expectedArgumentsSha256') != expected_arguments_sha256
+        or report.get('registrySha256') != registry_sha256
         or report.get('selectionEvidenceSha256') != hashlib.sha256(selection_bytes).hexdigest()
-        or report.get('networkMode') != CODEX_P06_NETWORK_MODE
+        or report.get('networkMode') != profile['networkMode']
         or not isinstance(source_revision, str)
         or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
-        or not codex_p06_profile_revision_has_implementation(source_revision)
-        or not codex_p06_frontier_is_unassessed()
+        or not codex_p06_profile_revision_has_implementation(source_revision, profile_id)
+        or not codex_p06_frontier_is_unassessed(profile_id)
         or not isinstance(report.get('baseSha'), str)
         or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
         or report.get('ciSha') != source_revision
@@ -13840,11 +14066,11 @@ def codex_p06_profile_report_is_valid(
         or report.get('allowedCallCount') != 1
         or type(report.get('deniedCallCount')) is not int
         or report.get('deniedCallCount') != 0
-        or report.get('serverToolNames') != [CODEX_P06_TOOL_NAME]
+        or report.get('serverToolNames') != [profile['toolName']]
         or type(report.get('serverToolCount')) is not int
         or report.get('serverToolCount') != 1
         or report.get('mcpServerNames') != ['bgk_p06_profile']
-        or report.get('answerCheckMethod') != CODEX_P06_ANSWER_CHECK_METHOD
+        or report.get('answerCheckMethod') != profile['answerCheckMethod']
         or report.get('answerSha256') != hashlib.sha256(b'P06_SYNTHETIC_PROFILE_RENDERED').hexdigest()
         or report.get('answerUtf8Bytes') != len(b'P06_SYNTHETIC_PROFILE_RENDERED')
     ):
@@ -13852,21 +14078,11 @@ def codex_p06_profile_report_is_valid(
 
     if (
         not isinstance(report.get('answerChecks'), dict)
-        or set(report['answerChecks']) != CODEX_P06_ANSWER_CHECK_FIELDS
+        or set(report['answerChecks']) != answer_check_fields
         or any(value is not True for value in report['answerChecks'].values())
         or not isinstance(fixture, dict)
-        or set(fixture) != CODEX_P06_OFFLINE_FIXTURE_FIELDS
-        or fixture != {
-            'profile': CODEX_P06_NETWORK_MODE,
-            'requestCount': 3,
-            'personRequestCount': 1,
-            'subjectsRequestCount': 1,
-            'charactersRequestCount': 1,
-            'duplicateRequestCount': 0,
-            'unexpectedRequestCount': 0,
-            'authorizationHeaderCount': 0,
-            'expectedOperationsComplete': True,
-        }
+        or set(fixture) != offline_fixture_fields
+        or fixture != expected_fixture
         or not isinstance(asset_boundary, dict)
         or set(asset_boundary) != CODEX_P06_OFFLINE_ASSET_FIELDS
         or asset_boundary != {
@@ -13922,7 +14138,7 @@ def codex_p06_profile_report_is_valid(
         catalog_bytes = CATALOG.read_bytes()
         catalog = json.loads(catalog_bytes)
         catalog_tool = next(
-            (item for item in catalog if isinstance(item, dict) and item.get('name') == CODEX_P06_TOOL_NAME),
+            (item for item in catalog if isinstance(item, dict) and item.get('name') == profile['toolName']),
             None,
         )
     except (OSError, ValueError):
@@ -13943,7 +14159,7 @@ def codex_p06_profile_report_is_valid(
     current_epoch_status = epoch_status or codex_p06_profile_epoch_harness_status(pr_number)
     if not codex_p06_profile_report_candidate_binding_is_current(report, current_epoch_status):
         return False
-    status = harness_status or codex_p06_profile_harness_status(pr_number)
+    status = harness_status or codex_p06_profile_harness_status(pr_number, profile_id)
     disposition = codex_p06_profile_disposition_matches_report(report, status, report_sha256)
     if disposition is None:
         return False
@@ -16911,16 +17127,7 @@ def _codex_p02_profile_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_p02_profile_report_candidate_binding_is_current(
@@ -17642,16 +17849,7 @@ def codex_p03_profile_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_p03_v2_profile_report_candidate_paths(
@@ -18105,16 +18303,7 @@ def _codex_g06_cast_offline_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_g06_cast_offline_profile_report_candidate_binding_is_current(
@@ -18566,16 +18755,7 @@ def _codex_r04_profile_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_r04_profile_report_candidate_binding_is_current(
@@ -19032,16 +19212,7 @@ def codex_r04_render_profile_report_candidate_paths(
         or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', source_revision, candidate_sha).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_r04_render_profile_report_candidate_binding_is_current(
@@ -19443,16 +19614,7 @@ def codex_r04_render_v2_profile_report_candidate_paths(
         or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', source_revision, candidate_sha).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_r04_render_v2_profile_report_candidate_binding_is_current(
@@ -19801,16 +19963,7 @@ def _codex_r01_offline_profile_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_r01_offline_profile_report_candidate_binding_is_current(
@@ -20267,16 +20420,7 @@ def _codex_r03_offline_profile_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_r03_offline_profile_report_candidate_binding_is_current(
@@ -20657,16 +20801,7 @@ def codex_r02_profile_candidate_paths(source_revision: object, candidate_sha: ob
         or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', source_revision, candidate_sha).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_r02_profile_candidate_binding_is_valid(
@@ -21414,16 +21549,7 @@ def _codex_c04_profile_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_c04_profile_candidate_binding_is_valid(
@@ -21733,16 +21859,7 @@ def _codex_a01_rating_dispersion_profile_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_a01_rating_dispersion_profile_candidate_binding_is_valid(
@@ -22084,16 +22201,7 @@ def _codex_title_query_render_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_title_query_render_profile_candidate_binding_is_valid(
@@ -22487,16 +22595,7 @@ def _codex_p07_profile_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_p07_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
@@ -22880,16 +22979,7 @@ def _codex_s05_profile_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_s05_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
@@ -23273,16 +23363,7 @@ def _codex_s01_profile_report_candidate_paths(
         ).returncode != 0
     ):
         return None
-    diff = _run_repository_git(ROOT, 'diff', '--name-only', f'{source_revision}...{candidate_sha}')
-    status = _run_repository_git(ROOT, 'status', '--porcelain=v1', '--untracked-files=all')
-    if diff.returncode != 0 or status.returncode != 0:
-        return None
-    paths = set(diff.stdout.splitlines())
-    for line in status.stdout.splitlines():
-        if len(line) < 4:
-            return None
-        paths.add(line[3:])
-    return paths
+    return _codex_committed_candidate_paths(source_revision, candidate_sha)
 
 
 def codex_s01_profile_epoch_harness_status(pr_number: object) -> dict[str, object] | None:
@@ -26572,7 +26653,10 @@ def model_mcp_e2e_report_paths() -> list[Path]:
     report_paths.append(
         LIVE_PROBE_DIR / Path(CODEX_P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_REPORT_RELATIVE_PATH).name,
     )
-    report_paths.append(LIVE_PROBE_DIR / CODEX_P06_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.extend(
+        LIVE_PROBE_DIR / Path(str(profile['reportPath'])).name
+        for profile in CODEX_P06_PROFILES.values()
+    )
     report_paths.append(
         LIVE_PROBE_DIR / Path(CODEX_RENDER_SUBJECT_CARD_OFFLINE_REPORT_RELATIVE_PATH).name,
     )
@@ -26949,20 +27033,22 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 continue
             sources.setdefault(CODEX_R05_TOOL_NAME, set()).add(report_source_ref(path))
             continue
-        if report.get('evidenceKind') == CODEX_P06_EVIDENCE_KIND:
-            current_status = codex_p06_profile_harness_status(report.get('prNumber'))
+        p06_profile = codex_p06_profile_spec(report.get('profileId'))
+        if p06_profile is not None and report.get('evidenceKind') == p06_profile['evidenceKind']:
+            profile_id = str(p06_profile['id'])
+            current_status = codex_p06_profile_harness_status(report.get('prNumber'), profile_id)
             current_epoch_status = codex_p06_profile_epoch_harness_status(report.get('prNumber'))
             if (
-                path.name != Path(CODEX_P06_REPORT_RELATIVE_PATH).name
+                path.name != Path(str(p06_profile['reportPath'])).name
                 or not codex_p06_profile_report_is_valid(
                     report, current_status, path, current_epoch_status,
                 )
                 or not codex_p06_profile_report_matches_candidate_revision(
-                    path, report.get('sourceRevision'),
+                    path, report.get('sourceRevision'), profile_id,
                 )
             ):
                 continue
-            sources.setdefault(CODEX_P06_TOOL_NAME, set()).add(report_source_ref(path))
+            sources.setdefault(str(p06_profile['toolName']), set()).add(report_source_ref(path))
             continue
         if report.get('evidenceKind') == CODEX_RENDER_SUBJECT_CARD_OFFLINE_EVIDENCE_KIND:
             current_status = codex_render_subject_card_offline_profile_harness_status(report.get('prNumber'))
