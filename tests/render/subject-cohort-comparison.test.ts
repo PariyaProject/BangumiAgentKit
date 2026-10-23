@@ -76,7 +76,7 @@ describe('subject cohort comparison renderer', () => {
       metrics: result.metrics.map((metric) => ({
         ...metric,
         averages: [undefined, undefined],
-        partialAverages: [metric.partialAverages?.[0] ?? metric.averages?.[0], undefined],
+        partialAverages: [metric.averages?.[0], undefined],
         state: 'partial',
         // Deliberately keep the complete-state delta to guard against stale fixture data.
         delta: metric.delta,
