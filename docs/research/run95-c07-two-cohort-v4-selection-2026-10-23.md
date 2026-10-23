@@ -12,11 +12,11 @@ Current synchronized source is BangumiAgentKit master `0e2db352dc7823d9f0b07b06e
 
 Live Harness status calls on 2026-10-23 show all three registered matrix profiles are spent and non-retryable. Each exact input contains one cohort definition (`cohorts.length=1`):
 
-| Profile | PR | Harness state | Calls | Report | Retry | Exact input distinction |
-| --- | ---: | --- | ---: | --- | --- | --- |
-| `c07-render-comparison-offline-agent-mcp-matrix-v1` | #140 | `AMBIGUOUS_TERMINAL_LATCH`; terminal label says `INCONCLUSIVE no-report`; disposition is absent | 1 | no | forbidden | synthetic cohort C, one query, `maxSubjects=1` |
-| `c07-render-comparison-offline-agent-mcp-matrix-v2` | #225 | `INCONCLUSIVE` | 1 | no | forbidden | synthetic cohort D, one query, `maxSubjects=1` |
-| `c07-render-comparison-offline-agent-mcp-matrix-v3` | #229 | `INCONCLUSIVE` | 1 | no | forbidden | synthetic cohort E, one query, `maxSubjects=1` |
+| Profile                                             |   PR | Harness state                                                                                   | Calls | Report | Retry     | Exact input distinction                        |
+| --------------------------------------------------- | ---: | ----------------------------------------------------------------------------------------------- | ----: | ------ | --------- | ---------------------------------------------- |
+| `c07-render-comparison-offline-agent-mcp-matrix-v1` | #140 | `AMBIGUOUS_TERMINAL_LATCH`; terminal label says `INCONCLUSIVE no-report`; disposition is absent |     1 | no     | forbidden | synthetic cohort C, one query, `maxSubjects=1` |
+| `c07-render-comparison-offline-agent-mcp-matrix-v2` | #225 | `INCONCLUSIVE`                                                                                  |     1 | no     | forbidden | synthetic cohort D, one query, `maxSubjects=1` |
+| `c07-render-comparison-offline-agent-mcp-matrix-v3` | #229 | `INCONCLUSIVE`                                                                                  |     1 | no     | forbidden | synthetic cohort E, one query, `maxSubjects=1` |
 
 For v2/v3, Harness exposes no diagnostic cause. Do not infer one or replay any claim. PR #140/#225/#229 are merged; their green CI and reviews do not change the terminal no-report result.
 
@@ -71,7 +71,6 @@ The distinct source branch makes v4 a candidate for the source-coverage reopen c
 
 No API, account/OAuth, community, write, QQ, or TIM action occurred during this assessment.
 
-
 ## Active Epoch implementation and visual QA — 2026-10-23
 
 The selected Epoch is `run95-renderer-v19-c07-two-cohort-v4-20261023`, branch `codex/epoch-run95-renderer-v19-c07-two-cohort-v4-20261023`, Base `0e2db352dc7823d9f0b07b06ebd77eda89859f40`. It remains selected and awaits its first Candidate commit. The user rejected the earlier flattened renderer preview; the SubjectCard and title layout have been restored to the saved v19 baseline, with 12/12 original 320/360 PNG hashes matched exactly.
@@ -85,7 +84,6 @@ The selected Epoch is `run95-renderer-v19-c07-two-cohort-v4-20261023`, branch `c
 ## Next
 
 Review the exact dirty diff and all epoch-scope documents, finish any source/report issues, then make the first meaningful Candidate commit. Require exact seven-check CI, Harness `candidate:check`, matching bundle and same-identity GPT-6 Luna Max review PASS before the single v4 claim.
-
 
 ## Current-bundle visual receipt refresh — 2026-10-23
 
@@ -108,7 +106,6 @@ The first 320px comparison output repeated every subject metric inside each coho
 - Current tracked matrix is [`run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-23.json`](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-23.json), SHA-256 `ce1ed4e7ad3e12c9993c9a719843db3d22c56fd80d35c5fe70f171d6b55cf225`; `validateC07V4VisualQaEvidence()` returned true against the exact bundle and 60 local PNG receipts.
 - The earlier v1 visual directory and prior-bundle manifest are retained as historical evidence; the v2 matrix is the current C07 gate. C07 v4 remains UNCLAIMED, no acceptance credit is added, and no live API, OAuth/account, community, write, QQ, or TIM action occurred.
 
-
 ## Luna Max corrective review and second visual pass — 2026-10-23T15:30Z
 
 The exact Candidate `faec3e1e6a4c3fc9cd9e07ba474c815ee88ea8a1` on Base `0e2db352dc7823d9f0b07b06ebd77eda89859f40` received `CORRECTIVE_REQUIRED` with four P1 findings. Harness recorded them on PR #271. No C07 v4 claim was made.
@@ -121,7 +118,6 @@ The exact Candidate `faec3e1e6a4c3fc9cd9e07ba474c815ee88ea8a1` on Base `0e2db352
 - Image generation succeeds with `pnpm exec ts-node --transpile-only -P tsconfig.base.json scripts/acceptance/generate-c07-render-comparison-offline-v4-visuals.ts`. The default ts-node type-checking mode reports existing source/dist declaration mismatches in this script; transpile-only generation completed and produced all 60 PNGs.
 
 The v3 visual receipt is local synthetic evidence only. C07 remains UNASSESSED and v4 UNCLAIMED; no Bangumi request, OAuth/account/community/write action, QQ, or TIM action occurred.
-
 
 ## Full local verification — 2026-10-23T15:40Z
 
@@ -203,3 +199,15 @@ The user pointed out that the result had regressed from the previous accepted-lo
 - Final ignored images: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v19/`. Pixel widths are twice the CSS width; maximum image height is 2,608px and largest PNG is 460,008 bytes. The local matrix totals 19,126,929 bytes.
 - Tracked receipt: [run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json), SHA-256 `8b3a966c3a916a88ef1ccae2c3539c02d01d92d658fcdd9274d9b103d947eee9`. Exact bundle SHA-256 `d79cfbde310f8f180baa14a3da461d3ceb321b969268fffd5b38b0584fe3daa3`; generation-source SHA-256 `ed4152fd5c1e100ae84087a54a17f1d93cc06d4505009c123ebce3c733c07147`. The strict validator and the new runner-pin regression must pass against these exact values before the profile can be considered.
 - The matrix remains local synthetic visual QA, not user aesthetic acceptance, production-font proof, QQ/TIM display acceptance, or C07 scenario credit. C07 remains `UNASSESSED`; v4 remains unclaimed, and no API/account/OAuth/community/write/QQ/TIM action occurred.
+
+## User visual-regression correction and v21 receipt — 2026-10-24
+
+The user reported that the render had looked better before. A direct comparison confirmed a layout regression at the actual 360 CSS px chat width: v19 stacked two full-width cohort panels, adding vertical weight and making the card read like a long report; Clean Gallery also gave its primary average score no greater hierarchy than the supporting rows. The prior image-bearing v19 baseline's type scale, palette, title treatment, and pack identity remain the reference. C07 has no cover field, so this correction stays data-led instead of adding unrelated artwork.
+
+- Cohorts are paired at 320/360 CSS px again. Clean Gallery uses one shared, clipped comparison panel with a center divider; its real average score is the lead visual, with the three supporting metrics in the open A/B/delta matrix. Warm Editorial keeps its featured folio score and quiet rows; Graphic Zine keeps its cut-paper metric collage. Existing configured fonts, colors, and semantic icons are preserved.
+- The final DPR2 matrix covers complete/partial × three packs × light/dark × 320/360/520/640/960 CSS px. Thirty-six images differ from v19 and were opened and inspected individually at CSS-sized display; the remaining 24 are byte-identical to individually inspected v19 images. At 320/360 the paired panels stay readable; at 520+ the paired overview and wider metric matrix retain their intended proportions. Complete values and signed deltas align. Partial values remain `未知`, coverage remains dashed, and `B−A` remains `不可计算`. No clipping, overlap, or horizontal overflow appeared.
+- Final ignored images: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v21/`. Pixel widths are twice CSS width; maximum height is 2,362px, maximum PNG size is 460,008 bytes, and the matrix totals 19,009,873 bytes.
+- The tracked 60-image receipt is [`run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json`](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json), SHA-256 `1d2ee8f6f5db022694c1ceefc04398e298b0ab95a952f03a697a5fd88ab134a0`. Bundle SHA-256 is `d57f042e2540a6c895afe8a93361010f6fb06186c581227e9366e145250dc0f7`; generation-source SHA-256 is `4ca2092641ff66b414f4b27dfb16a64a5ef47863e36ec8e2566403e9a49fa258`. The strict visual evidence validator passes for this exact bundle, source, manifest, and all 60 PNG hashes.
+- The screenshots remain synthetic local visual QA, not user aesthetic acceptance, production-font proof, QQ/TIM display acceptance, or C07 scenario credit. C07 remains `UNASSESSED`; v4 remains unclaimed pending the exact Candidate, CI, Harness, and review gates.
+
+No Bangumi request, OAuth/account/community/write operation, QQ action, or TIM action occurred.

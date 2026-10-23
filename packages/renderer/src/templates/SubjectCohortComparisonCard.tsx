@@ -567,6 +567,8 @@ const CleanGalleryMetricBoard: React.FC<CohortMetricBoardProps> = ({
   theme,
   width,
 }) => {
+  const lead = metrics.find((metric) => metric.key === 'score') ?? metrics[0];
+  const secondary = metrics.filter((metric) => metric !== lead);
   const columns =
     width <= 400
       ? 'minmax(76px, 1.25fr) repeat(2, minmax(0, 1fr)) minmax(48px, 0.78fr)'
@@ -575,67 +577,142 @@ const CleanGalleryMetricBoard: React.FC<CohortMetricBoardProps> = ({
 
   return (
     <div
-      data-layout="gallery-comparison-matrix"
-      style={{ borderTop: `1px solid ${theme.border}`, minWidth: 0 }}
+      data-layout="gallery-score-composition"
+      style={{ display: 'grid', gap: '8px', minWidth: 0 }}
     >
-      <div
-        data-layout="gallery-matrix-header"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: columns,
-          gap: width <= 400 ? '4px' : '8px',
-          padding: '5px 2px 7px',
-          color: theme.accent,
-          borderBottom: `1px solid ${theme.border}`,
-          fontSize: width <= 400 ? '11px' : '13px',
-          fontWeight: 800,
-          letterSpacing: '0.04em',
-        }}
-      >
-        <div>指标</div>
-        <div>分组 A</div>
-        <div>分组 B</div>
-        <div style={{ textAlign: 'right' }}>B − A</div>
-      </div>
-      {metrics.map((metric) => (
-        <div
-          key={metric.key}
+      {lead ? (
+        <section
           data-layout="cohort-metric-card"
-          data-layout-variant="gallery-open-row"
+          data-layout-variant="gallery-score-lead"
           style={{
-            display: 'grid',
-            gridTemplateColumns: columns,
-            alignItems: 'center',
-            gap: width <= 400 ? '4px' : '8px',
-            padding: width <= 400 ? '7px 2px' : '10px 2px',
+            borderTop: `2px solid ${theme.accent}`,
             borderBottom: `1px solid ${theme.border}`,
+            padding: width <= 400 ? '8px 2px 9px' : '12px 4px 13px',
             minWidth: 0,
           }}
         >
-          <CohortMetricCaption metric={metric} theme={theme} width={width} titleSize="12px" />
-          {cohorts.map((cohort, index) => (
-            <CohortMetricValueBlock
-              key={`${metric.key}-${index}`}
-              metric={metric}
-              cohort={cohort}
-              index={index}
+          <div
+            data-layout="cohort-metric-comparison"
+            style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '8px' }}
+          >
+            <CohortMetricCaption metric={lead} theme={theme} width={width} titleSize="15px" />
+            <CohortMetricDeltaBlock
+              metric={lead}
               theme={theme}
-              valueFontSize={width <= 400 ? '15px' : '17px'}
-              valueFontFamily={valueFontFamily}
-              coverageFontSize={width <= 400 ? '10px' : '12px'}
-              showGroupLabel={false}
+              fontFamily={valueFontFamily}
+              valueFontSize={width <= 400 ? '14px' : '16px'}
+              align="right"
+              showState={false}
             />
-          ))}
-          <CohortMetricDeltaBlock
-            metric={metric}
-            theme={theme}
-            fontFamily={valueFontFamily}
-            valueFontSize={width <= 400 ? '13px' : '15px'}
-            showLabel={false}
-            align="right"
-          />
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) 1px minmax(0, 1fr)',
+              alignItems: 'center',
+              gap: width <= 400 ? '9px' : '16px',
+              marginTop: width <= 400 ? '7px' : '10px',
+            }}
+          >
+            {cohorts.map((cohort, index) => (
+              <React.Fragment key={`${lead.key}-${index}`}>
+                {index === 1 ? (
+                  <div
+                    aria-hidden="true"
+                    style={{ height: '100%', backgroundColor: theme.border }}
+                  />
+                ) : null}
+                <div data-layout="cohort-featured-value" style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      color: cohortMetricColor(theme, index),
+                      fontSize: width <= 400 ? '11px' : '12px',
+                      fontWeight: 800,
+                      letterSpacing: '0.08em',
+                      marginBottom: '2px',
+                    }}
+                  >
+                    {`分组 ${index === 0 ? 'A' : 'B'}`}
+                  </div>
+                  <CohortMetricValueBlock
+                    metric={lead}
+                    cohort={cohort}
+                    index={index}
+                    theme={theme}
+                    valueFontSize={width <= 400 ? '27px' : '36px'}
+                    valueFontFamily={valueFontFamily}
+                    coverageFontSize={width <= 400 ? '10px' : '12px'}
+                    showGroupLabel={false}
+                  />
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      <div
+        data-layout="gallery-comparison-matrix"
+        style={{ borderTop: `1px solid ${theme.border}`, minWidth: 0 }}
+      >
+        <div
+          data-layout="gallery-matrix-header"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: columns,
+            gap: width <= 400 ? '4px' : '8px',
+            padding: '5px 2px 7px',
+            color: theme.accent,
+            borderBottom: `1px solid ${theme.border}`,
+            fontSize: width <= 400 ? '11px' : '13px',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+          }}
+        >
+          <div>指标</div>
+          <div>分组 A</div>
+          <div>分组 B</div>
+          <div style={{ textAlign: 'right' }}>B − A</div>
         </div>
-      ))}
+        {secondary.map((metric) => (
+          <div
+            key={metric.key}
+            data-layout="cohort-metric-card"
+            data-layout-variant="gallery-open-row"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: columns,
+              alignItems: 'center',
+              gap: width <= 400 ? '4px' : '8px',
+              padding: width <= 400 ? '7px 2px' : '10px 2px',
+              borderBottom: `1px solid ${theme.border}`,
+              minWidth: 0,
+            }}
+          >
+            <CohortMetricCaption metric={metric} theme={theme} width={width} titleSize="12px" />
+            {cohorts.map((cohort, index) => (
+              <CohortMetricValueBlock
+                key={`${metric.key}-${index}`}
+                metric={metric}
+                cohort={cohort}
+                index={index}
+                theme={theme}
+                valueFontSize={width <= 400 ? '15px' : '17px'}
+                valueFontFamily={valueFontFamily}
+                coverageFontSize={width <= 400 ? '10px' : '12px'}
+                showGroupLabel={false}
+              />
+            ))}
+            <CohortMetricDeltaBlock
+              metric={metric}
+              theme={theme}
+              fontFamily={valueFontFamily}
+              valueFontSize={width <= 400 ? '13px' : '15px'}
+              showLabel={false}
+              align="right"
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -745,16 +822,12 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
   const showComparison = dimensions.length === 2;
   const compactComparison = showComparison && viewportWidth <= 640;
   const twoColumnComparison = compactComparison && viewportWidth <= 400;
-  const cohortOverviewLayout = !showComparison
-    ? 'single'
-    : viewportWidth < 520
-      ? 'stacked'
-      : 'paired';
-  const cohortGridColumns =
-    cohortOverviewLayout === 'paired' ? 'repeat(2, minmax(0, 1fr))' : '1fr';
+  const cohortOverviewLayout = showComparison ? 'paired' : 'single';
+  const cohortGridColumns = cohortOverviewLayout === 'paired' ? 'repeat(2, minmax(0, 1fr))' : '1fr';
   const isZine = theme.designPack === 'graphic-zine';
   const isGallery = theme.designPack === 'clean-gallery';
   const isWarm = theme.designPack === 'warm-editorial';
+  const sharedGalleryOverview = isGallery && twoColumnComparison;
   const supportingTypeSize = viewportWidth <= 400 ? '14px' : viewportWidth <= 520 ? '14px' : '15px';
   const microTypeSize = viewportWidth <= 520 ? '14px' : '13px';
   const visibleSubjectsPerCohort =
@@ -847,10 +920,19 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
       <div
         data-layout="cohort-overview"
         data-layout-variant={`cohort-${cohortOverviewLayout}`}
+        data-render-mask={sharedGalleryOverview ? 'panel' : undefined}
         style={{
           display: 'grid',
           gridTemplateColumns: cohortGridColumns,
-          gap: viewportWidth <= 400 ? theme.spacing.sm : theme.spacing.md,
+          gap: sharedGalleryOverview
+            ? 0
+            : viewportWidth <= 400
+              ? theme.spacing.sm
+              : theme.spacing.md,
+          backgroundColor: sharedGalleryOverview ? theme.surfaceAlt : undefined,
+          borderTop: sharedGalleryOverview ? `1px solid ${theme.border}` : undefined,
+          borderBottom: sharedGalleryOverview ? `1px solid ${theme.border}` : undefined,
+          clipPath: sharedGalleryOverview ? theme.design.masks.panel : undefined,
         }}
       >
         {dimensions.map((cohort, index) => {
@@ -874,15 +956,24 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
             <section
               key={`${cohort.label}-${index}`}
               data-layout="cohort-column"
-              data-render-mask={index === 0 ? 'panel' : 'panel-alt'}
+              data-render-mask={
+                sharedGalleryOverview ? undefined : index === 0 ? 'panel' : 'panel-alt'
+              }
               style={{
-                backgroundColor: cohortSurface,
+                backgroundColor: sharedGalleryOverview ? 'transparent' : cohortSurface,
                 border: 'none',
-                borderTop: isGallery ? `1px solid ${theme.border}` : undefined,
+                borderTop:
+                  isGallery && !sharedGalleryOverview ? `1px solid ${theme.border}` : undefined,
+                borderLeft:
+                  sharedGalleryOverview && index === 1 ? `1px solid ${theme.border}` : undefined,
                 borderRadius: isWarm ? '18px 5px 18px 5px' : undefined,
                 boxShadow: isZine ? `2px 3px 0 ${theme.text}` : undefined,
-                clipPath: cohortMask,
-                padding: viewportWidth <= 400 ? '12px 14px 16px' : theme.spacing.md,
+                clipPath: sharedGalleryOverview ? undefined : cohortMask,
+                padding: sharedGalleryOverview
+                  ? '8px 8px 11px'
+                  : viewportWidth <= 400
+                    ? '12px 14px 16px'
+                    : theme.spacing.md,
                 margin: isZine ? '0 2px 3px 0' : undefined,
                 minWidth: 0,
               }}

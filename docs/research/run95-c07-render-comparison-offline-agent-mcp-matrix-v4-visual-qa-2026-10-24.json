@@ -1,32 +1,19 @@
 {
   "schemaVersion": 1,
   "profileId": "c07-render-comparison-offline-agent-mcp-matrix-v4",
-  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v19",
-  "cssWidths": [
-    320,
-    360,
-    520,
-    640,
-    960
-  ],
-  "designPacks": [
-    "warm-editorial",
-    "clean-gallery",
-    "graphic-zine"
-  ],
-  "themes": [
-    "bangumi-light",
-    "bangumi-dark"
-  ],
+  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v21",
+  "cssWidths": [320, 360, 520, 640, 960],
+  "designPacks": ["warm-editorial", "clean-gallery", "graphic-zine"],
+  "themes": ["bangumi-light", "bangumi-dark"],
   "deviceScaleFactor": 2,
-  "buildBundleSha256": "d79cfbde310f8f180baa14a3da461d3ceb321b969268fffd5b38b0584fe3daa3",
-  "generationSourceSha256": "ed4152fd5c1e100ae84087a54a17f1d93cc06d4505009c123ebce3c733c07147",
+  "buildBundleSha256": "d57f042e2540a6c895afe8a93361010f6fb06186c581227e9366e145250dc0f7",
+  "generationSourceSha256": "4ca2092641ff66b414f4b27dfb16a64a5ef47863e36ec8e2566403e9a49fa258",
   "reviewAcknowledgement": {
     "decision": "PASS",
     "allImagesIndividuallyInspected": true,
     "reviewedBy": "Codex",
-    "reviewedAt": "2026-10-23T19:25:23.000Z",
-    "summary": "Opened all 60 exact-source DPR2 images individually across complete/partial, three packs, two palettes, and 320/360/520/640/960 CSS px. Includes the actual 360px chat size; no visible clipping, overlap, or overflow. Partial values stay unknown/dashed/non-computable."
+    "reviewedAt": "2026-10-23T19:51:27.000Z",
+    "summary": "All 36 pixel-changed images were opened and inspected individually at CSS-scaled size; the other 24 are byte-identical to individually inspected v19 images. Complete and partial states, both palettes, all design packs, and all five widths retain legible data with no clipping or horizontal overflow. This synthetic local review is not user aesthetic acceptance or QQ/TIM client proof."
   },
   "images": [
     {
@@ -36,12 +23,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 640,
-      "pixelHeight": 2566,
-      "byteLength": 262816,
-      "sha256": "1214069ac4a7ae549c0caa5c7bb7eb49d676d5dc7e6f0cb6aacc3160ab464933",
+      "pixelHeight": 2296,
+      "byteLength": 246758,
+      "sha256": "978e937fc1fa927819d770f50a09c6bab308e0e32c9d1b232f238f931f3a17d7",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-light, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 320px. Rounded folio panels and featured score remain legible; complete values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -51,12 +38,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 720,
-      "pixelHeight": 2536,
-      "byteLength": 268297,
-      "sha256": "f3bc5f3de1c2dff27e840129b1ae15acffd9ea514ce28334d96682a6bac663dc",
+      "pixelHeight": 2236,
+      "byteLength": 251549,
+      "sha256": "5d91392c85c4ca51bf282e2a448ee4e31960277a7a5ed396329fea70d78bb3dc",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-light, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 360px. Rounded folio panels and featured score remain legible; complete values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -71,7 +58,7 @@
       "sha256": "4651aa2410faa6718a77ef4143b0ffa1d7dd39b644ba1de7fd74a769771c7407",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-light, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -86,7 +73,7 @@
       "sha256": "3ac196daf898f9d0d789f5660e5acd631e160c80c7fad280d9391b939bcd6012",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-light, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -101,7 +88,7 @@
       "sha256": "ec9d4c9db71c426b5d10ccd39a015016984473ce0869008b133645ecedd8d16b",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-light, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -111,12 +98,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 640,
-      "pixelHeight": 2566,
-      "byteLength": 262205,
-      "sha256": "73805056374ebd1e039436e6535578a495383e70ed922e7428de02e3e8a74ea4",
+      "pixelHeight": 2296,
+      "byteLength": 246596,
+      "sha256": "71871de3446e537e6e58119435cca1479df400062c3170e0673ad16448208f04",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-dark, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 320px. Rounded folio panels and featured score remain legible; complete values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -126,12 +113,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 720,
-      "pixelHeight": 2536,
-      "byteLength": 267523,
-      "sha256": "3228f394c829350a767cd0ee95fcf60a721668e531f9d2545db33826bccdbde4",
+      "pixelHeight": 2236,
+      "byteLength": 251267,
+      "sha256": "4f64f82dd9cda1da22c80c9ae371421e135025f033a22c3fdec7ef7a83f31a07",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-dark, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 360px. Rounded folio panels and featured score remain legible; complete values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -146,7 +133,7 @@
       "sha256": "8d10db06953f96414bf8da4270e769f99f17266b1ccbe35b6c9057d722e7b1e8",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-dark, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -161,7 +148,7 @@
       "sha256": "b0688ee3334da334d97e090562e31750d6b18728cabdf3b43c2a5f9f75ac1d7a",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-dark, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -176,7 +163,7 @@
       "sha256": "f8cfb75e71204f153d91f364227f45ee1fd6e61adcf8951210b64731f5ee6fc2",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; warm-editorial/bangumi-dark, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -186,12 +173,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 640,
-      "pixelHeight": 2254,
-      "byteLength": 245496,
-      "sha256": "926c1c4a4b574f84d115989ab0b16174739b6999538fc7c399c89080fc2e1f2a",
+      "pixelHeight": 2078,
+      "byteLength": 235854,
+      "sha256": "2565807295d5081adcbc1f1777d588d1d5cb133fefb8b1bed65061b13d2e2a75",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-light, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 320px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -201,12 +188,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 720,
-      "pixelHeight": 2254,
-      "byteLength": 253468,
-      "sha256": "16d29d973908b5b0488ad4a2ac5cd68c591ec031c8884f754dd160267b65bc01",
+      "pixelHeight": 2058,
+      "byteLength": 240856,
+      "sha256": "9061551a6d98feab09b308c83fac8209aaa6f3c8bcbd0980ea4224a1c490e222",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-light, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 360px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -216,12 +203,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-light-520.png",
       "cssWidth": 520,
       "pixelWidth": 1040,
-      "pixelHeight": 2100,
-      "byteLength": 350852,
-      "sha256": "84598292f69eda566f0ffdff51c3b65dcb822f003430387692bb41b804bf8852",
+      "pixelHeight": 2258,
+      "byteLength": 358330,
+      "sha256": "9b6897ecd7d3b74e1dfa35aa31d85bc693866b98a20d0c56dac034b67ab81fdd",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-light, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 520px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -231,12 +218,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-light-640.png",
       "cssWidth": 640,
       "pixelWidth": 1280,
-      "pixelHeight": 1936,
-      "byteLength": 357415,
-      "sha256": "cacf54aa81045d7823ed860909e71eeb1e255ad1065956a5c607d4e67989faea",
+      "pixelHeight": 2092,
+      "byteLength": 364628,
+      "sha256": "c80a765058dbe3c05b838e5a3a4a295b4187622e7119016879ea95061dd0c7fe",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-light, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 640px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -246,12 +233,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-light-960.png",
       "cssWidth": 960,
       "pixelWidth": 1920,
-      "pixelHeight": 1976,
-      "byteLength": 385901,
-      "sha256": "532b022151ef48bc3c3612c46863b2bfd4c4066ebfc50ef13b854461a370300e",
+      "pixelHeight": 2132,
+      "byteLength": 395003,
+      "sha256": "8d61e41f66224653a2d7a62b405099e1f6dc2fc5aec5ddbfaf03d297c662a1c1",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-light, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 960px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -261,12 +248,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 640,
-      "pixelHeight": 2254,
-      "byteLength": 252870,
-      "sha256": "030af14d737b2cb92e0b66340e17b156a32650d33b0425e614e1a9890d4da894",
+      "pixelHeight": 2078,
+      "byteLength": 243367,
+      "sha256": "1f63dc4b0acfe9079471d5a421611ae8c6388cef6adcc98bfc2b14251402842e",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-dark, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 320px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -276,12 +263,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 720,
-      "pixelHeight": 2254,
-      "byteLength": 261286,
-      "sha256": "7edb6ad70ceeb9643bd4390864b35368f4fc83e8a9660d84f7297fb38ebb583a",
+      "pixelHeight": 2058,
+      "byteLength": 248594,
+      "sha256": "f4f52f178c2da0cbbeef582d7722c562a93fc499a3a289f2bea26da84cf292c0",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-dark, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 360px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -291,12 +278,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-520.png",
       "cssWidth": 520,
       "pixelWidth": 1040,
-      "pixelHeight": 2100,
-      "byteLength": 364353,
-      "sha256": "377d2be44c48a3a33ca6352cc0be1b5c09b221ff23373c0c74329e174f58b1dc",
+      "pixelHeight": 2258,
+      "byteLength": 371669,
+      "sha256": "2b3b30c2aaa52c85363f046cc766340c369b40ddef3b12cfbf599644e69b2e84",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-dark, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 520px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -306,12 +293,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-640.png",
       "cssWidth": 640,
       "pixelWidth": 1280,
-      "pixelHeight": 1936,
-      "byteLength": 370658,
-      "sha256": "c2be058c57c3cd6f1873c7cb9b49457580b3db512950e63edb6066ef6aba6e1a",
+      "pixelHeight": 2092,
+      "byteLength": 377184,
+      "sha256": "0a77032b12db3728df3598effa25fc5b0f972447f0840dfa2d76d1a18b3677fe",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-dark, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 640px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -321,12 +308,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-960.png",
       "cssWidth": 960,
       "pixelWidth": 1920,
-      "pixelHeight": 1976,
-      "byteLength": 397738,
-      "sha256": "becc5f3147a49534c0640869ec61d4c0e0419a0bc3b064c5085041b7cf56585f",
+      "pixelHeight": 2132,
+      "byteLength": 406471,
+      "sha256": "bb300c6108a03c9c1097fabce77c562025f8c40140684ffb83d45128bd917f5c",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; clean-gallery/bangumi-dark, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 960px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -336,12 +323,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 640,
-      "pixelHeight": 2328,
-      "byteLength": 273773,
-      "sha256": "414f0217839dc35db9147b7a5376f672aaf70901fbaababd50df78508ffbb8d7",
+      "pixelHeight": 2044,
+      "byteLength": 270879,
+      "sha256": "a38252c9adbbd9fe613c3b567d38f9598862cf832a8df97b8f889d83c7c58450",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-light, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 320px. Cut-paper cohort panels and sticker metrics remain distinct; complete values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -351,12 +338,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 720,
-      "pixelHeight": 2296,
-      "byteLength": 279244,
-      "sha256": "9a0c565848e63fff7bd3a3bf485680f57d1c1b0a91ebf019348c8e4252f29992",
+      "pixelHeight": 1992,
+      "byteLength": 275386,
+      "sha256": "8b6efa52014e590350c2d150ad8ff131c264536e3cece82fd8ff1246f9eaddef",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-light, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 360px. Cut-paper cohort panels and sticker metrics remain distinct; complete values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -371,7 +358,7 @@
       "sha256": "836d3ac0cd54eced3dd92bbefbc7e3a06066404d18892d0aa8a548d56c4d0d97",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-light, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -386,7 +373,7 @@
       "sha256": "cf7e3ff07147156d184d5cfd6613b747f7a1a27f75c9cff8d249e31009cd2fc6",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-light, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -401,7 +388,7 @@
       "sha256": "d577c4e7f3b4d08443d80c7decfdecaad31cfe08dc00271b14b3b1316602d49d",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-light, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -411,12 +398,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 640,
-      "pixelHeight": 2328,
-      "byteLength": 275582,
-      "sha256": "2ad521acef474ecb90dc4bfbe78913bf413c3766eb65ca1d4d3071b73ccac14e",
+      "pixelHeight": 2044,
+      "byteLength": 272273,
+      "sha256": "d5a85681bb1f9b0a1a36ee007f986399431f3d5394bab4cc4f553a627312e322",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-dark, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 320px. Cut-paper cohort panels and sticker metrics remain distinct; complete values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -426,12 +413,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 720,
-      "pixelHeight": 2296,
-      "byteLength": 281262,
-      "sha256": "78f53190a94eb2c262630505986a9fc244430cfc7dd2eddb7e4f55b6c2a783ec",
+      "pixelHeight": 1992,
+      "byteLength": 276800,
+      "sha256": "187cb92a62b1c3919eb2aa041c153a07227508dad168df3448f5a63e21b8b1f4",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-dark, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 360px. Cut-paper cohort panels and sticker metrics remain distinct; complete values and signed delta align without clipping or overflow."
       }
     },
     {
@@ -446,7 +433,7 @@
       "sha256": "6c0a7337f44f2b7f9fca3f0bc7c762885092881559f299f0bb381f9a25969440",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-dark, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -461,7 +448,7 @@
       "sha256": "4fdef1035f9071f1b6c27e97932688983e07de114116fd7ad959ec8b72d9eeda",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-dark, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -476,7 +463,7 @@
       "sha256": "798372d7a4e7615993d6dfa7088a8df179a10518431c1f57c094753f012db0ca",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Complete state individually inspected: paired cohort values, normalized bars, and signed B−A remain visible; graphic-zine/bangumi-dark, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -486,12 +473,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 640,
-      "pixelHeight": 2608,
-      "byteLength": 268265,
-      "sha256": "553dfd2199a2482a1b3f9cf13ba087865b894c3360681c2af26cdf4ceaaf9439",
+      "pixelHeight": 2340,
+      "byteLength": 256951,
+      "sha256": "58cda0a4f456ea1bc7614bf210d4b22074591c3ccdff4fce1e83770ae4ff11d0",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-light, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 320px. Rounded folio panels remain legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -501,12 +488,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 720,
-      "pixelHeight": 2578,
-      "byteLength": 270097,
-      "sha256": "95495626b72cebd0cdbf6cbe1f400acb5d8611ec31756fd01e85c7dec5cd7baa",
+      "pixelHeight": 2278,
+      "byteLength": 257482,
+      "sha256": "c267947a167ba55cc81d4b1a1ed71e2191a87e06a783c145389eb552d63ffdd2",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-light, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 360px. Rounded folio panels remain legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -521,7 +508,7 @@
       "sha256": "1b18f827108690c56a234400807ec0380a09f6fb734a8c2e68adcc0c1f1df8ef",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-light, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -536,7 +523,7 @@
       "sha256": "8a15256c592f307f3ce535ae63a7222d47bba8fe686e4f2001e681c8da64139a",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-light, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -551,7 +538,7 @@
       "sha256": "da35ee1338546711e034d1b61a4cbb2324409f3e84045cbf1d7f0668d817c79d",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-light, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -561,12 +548,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 640,
-      "pixelHeight": 2608,
-      "byteLength": 266730,
-      "sha256": "249882c13ae2a9da958b440d4b31d41145b3d132b5093cf4354f6101226072cf",
+      "pixelHeight": 2340,
+      "byteLength": 255644,
+      "sha256": "d31cd0408a91ec5d65b602636406e47b31938de49c52d1548b11f607c3ede86c",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-dark, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 320px. Rounded folio panels remain legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -576,12 +563,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 720,
-      "pixelHeight": 2578,
-      "byteLength": 268364,
-      "sha256": "680d0f8bb523edcf45ec5551b2335e5f2f57ab3fbc4e0d1d213d316e5d7de83d",
+      "pixelHeight": 2278,
+      "byteLength": 255919,
+      "sha256": "6e794eb6509d05cab1dd1e363cad92c0dc1e47cd9e64abecd319876890509477",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-dark, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 360px. Rounded folio panels remain legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -596,7 +583,7 @@
       "sha256": "5be50c795f23e0bee93fadffe9468e9a412b14997af33ff63234491578ddca8e",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-dark, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -611,7 +598,7 @@
       "sha256": "68b823d728dde64315c26c71d9acb9d7f520ca21cdbdf723e6c1b7e9e91f9d1a",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-dark, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -626,7 +613,7 @@
       "sha256": "7c910114c4b074db423a6a0e54c0bed70b372c171803ab1761cd2cf9e2f21fae",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; warm-editorial/bangumi-dark, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -636,12 +623,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 640,
-      "pixelHeight": 2286,
-      "byteLength": 252184,
-      "sha256": "c11563a981705cb2e4297aed337799fed8a59652ac763bc55fa95148d3e01e31",
+      "pixelHeight": 2144,
+      "byteLength": 244589,
+      "sha256": "fcea03c4dea4c5f78272d5f8f656f4d0c91f2edfaa08d65eeadfad0032e0cef8",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-light, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 320px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -651,12 +638,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 720,
-      "pixelHeight": 2286,
-      "byteLength": 251720,
-      "sha256": "7c6916c879982955bc3f535b4fb82831def3823eeb6b14ca4237c37bea48892e",
+      "pixelHeight": 2112,
+      "byteLength": 244103,
+      "sha256": "ee376004bd6c23e6035febd2a3fdc85bdcd86d694e4c7f3257eaf26250995ad9",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-light, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 360px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -666,12 +653,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-light-520.png",
       "cssWidth": 520,
       "pixelWidth": 1040,
-      "pixelHeight": 1900,
-      "byteLength": 278648,
-      "sha256": "c339c01447deccacd85cbf174f981b8f3822390bfa7ce34ae88a6a5ec5ba382b",
+      "pixelHeight": 2056,
+      "byteLength": 286332,
+      "sha256": "6f4b80b759a81250c2e52c4cfad92661adf68cbced2ad41b1f70242bd6a13545",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-light, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 520px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -681,12 +668,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-light-640.png",
       "cssWidth": 640,
       "pixelWidth": 1280,
-      "pixelHeight": 1882,
-      "byteLength": 295099,
-      "sha256": "ec643f2b8a6548f9fb888a3112eec0f028e8c24a03a68e3956657b63a5ff39f6",
+      "pixelHeight": 2040,
+      "byteLength": 302046,
+      "sha256": "df9f620aaa85d1b5dc6f4dc97a26ce02eca1bf85ea6b9ecff93db6bf6d2a8ba5",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-light, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 640px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -696,12 +683,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-light-960.png",
       "cssWidth": 960,
       "pixelWidth": 1920,
-      "pixelHeight": 1892,
-      "byteLength": 324838,
-      "sha256": "2409f8a5a14f6fd9c612bbe4f8659fc72ac989dce08909087bc316d7e7148ed6",
+      "pixelHeight": 2048,
+      "byteLength": 333814,
+      "sha256": "2a1acb1663dbb1b8f4dad0019f4745ac1dbd899a099b249651fbb1a1953ba749",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-light, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 960px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -711,12 +698,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 640,
-      "pixelHeight": 2286,
-      "byteLength": 259038,
-      "sha256": "1f2e2fb309677b7c4be10a4fef03e984b5ba1b06c4e5ce39211f5d016674ce50",
+      "pixelHeight": 2144,
+      "byteLength": 251678,
+      "sha256": "b30761e7fc1d0d557558cb114195641aed117037c9e4326ed77992efddbdbf17",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-dark, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 320px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -726,12 +713,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 720,
-      "pixelHeight": 2286,
-      "byteLength": 258603,
-      "sha256": "ddbfe0c2e0d01d72f0cfcc0402972fef058affb95527ee5eb23e2ca6d29a2df4",
+      "pixelHeight": 2112,
+      "byteLength": 250621,
+      "sha256": "e67604d6177b18126ac65aa0051aef5a6c5031e367e3993ee90186c577855ab5",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-dark, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 360px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -741,12 +728,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-520.png",
       "cssWidth": 520,
       "pixelWidth": 1040,
-      "pixelHeight": 1900,
-      "byteLength": 285806,
-      "sha256": "d4cd9026c712def4ff378f73483426e21eea542f7ccb61a6043552297a8dcbbc",
+      "pixelHeight": 2056,
+      "byteLength": 293587,
+      "sha256": "ad55173f411a7c016d515cbb5206841f23c904a73ab640c3492b0286fd83567e",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-dark, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 520px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -756,12 +743,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-640.png",
       "cssWidth": 640,
       "pixelWidth": 1280,
-      "pixelHeight": 1882,
-      "byteLength": 302658,
-      "sha256": "0f11c975df5ef62b9fc8e076abc983a4ea00f876b76bb69ff5096bbae7025aff",
+      "pixelHeight": 2040,
+      "byteLength": 309469,
+      "sha256": "ff9140b135f8824ef38b2909c26d546883478308f045f14162a8b64937e4c816",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-dark, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 640px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -771,12 +758,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-960.png",
       "cssWidth": 960,
       "pixelWidth": 1920,
-      "pixelHeight": 1892,
-      "byteLength": 330874,
-      "sha256": "1d22ec37edc9238ed64ec5877394c2b08db1622dbb8ffde9b080bc93ffdfdf4e",
+      "pixelHeight": 2048,
+      "byteLength": 340030,
+      "sha256": "7d5dd6fb8e26ace1d8aad258dd7c7096088efaba2760b33e3ec8acca4f472601",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; clean-gallery/bangumi-dark, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 960px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -786,12 +773,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 640,
-      "pixelHeight": 2358,
-      "byteLength": 271402,
-      "sha256": "5869fa94d37d57a1960c4c4968bd46710c21bdadf392a0ecdfb622cb58da7d1d",
+      "pixelHeight": 2106,
+      "byteLength": 269743,
+      "sha256": "57ded60f85a76a10232ca68d2287d1053c7e879b5a2cc9b273967fceb50d5623",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-light, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 320px. Cut-paper panels remain distinct; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -801,12 +788,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 720,
-      "pixelHeight": 2328,
-      "byteLength": 272287,
-      "sha256": "b99ee60478f2149aafea4f056f4e49771c6b5f0fb806b86ac04b8498aa3aafa1",
+      "pixelHeight": 2046,
+      "byteLength": 269826,
+      "sha256": "1a1c2df1844057f11a816787a99e16159ba3f011a0570a2460acd52dc750b137",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-light, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 360px. Cut-paper panels remain distinct; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -821,7 +808,7 @@
       "sha256": "b77d2b4668b1b3f5bf8e701134757aa11ee57335e67b46bb4dc0a47b9f1358b3",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-light, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -836,7 +823,7 @@
       "sha256": "08d46a278a46e87b4e6fb5306292594d1c4cc268744f6729ea168206bb6b9a63",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-light, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -851,7 +838,7 @@
       "sha256": "36281afa8ab326a7c1590e7226ebc7149dbb572fa75bfba94d98bb2cb1e33d3b",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-light, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -861,12 +848,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 640,
-      "pixelHeight": 2358,
-      "byteLength": 272767,
-      "sha256": "9ad350ba284f15cd4a9d86b122f19b574de72cb3a7ac09f44d09312250049b6d",
+      "pixelHeight": 2106,
+      "byteLength": 270739,
+      "sha256": "24c890fab3fc26d32439df800e9a61cffd347017fbbaa03264b1e4c71fe9045f",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-dark, 320 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 320px. Cut-paper panels remain distinct; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -876,12 +863,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 720,
-      "pixelHeight": 2328,
-      "byteLength": 273844,
-      "sha256": "1546f9d80462a82383eb3d35bb496d02317867a10f1f40341dc8009c0ec94280",
+      "pixelHeight": 2046,
+      "byteLength": 270870,
+      "sha256": "399d38ba23d324f450b04d1294ff5092938d03255cad2a738dd1a986a0559d59",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-dark, 360 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Individually inspected at CSS 360px. Cut-paper panels remain distinct; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
       }
     },
     {
@@ -896,7 +883,7 @@
       "sha256": "9626a3fcd5b551c02db96d30b9053d51fa624bfd9326446ea09dbba89ff27b14",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-dark, 520 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -911,7 +898,7 @@
       "sha256": "3daf27890432decd827dec5ffbbde8f3f9e9a07105ff9e0732975fd90e4f5aac",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-dark, 640 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     },
     {
@@ -926,7 +913,7 @@
       "sha256": "baa938c54c8ee364e2a733d909419f4107537b64fd3ff21a1f3d8fa8eaa04062",
       "visualReview": {
         "decision": "PASS",
-        "finding": "Partial state individually inspected: missing values remain 未知 with dashed tracks and B−A remains 不可计算; graphic-zine/bangumi-dark, 960 CSS px at DPR 2: text, values, and pack-specific masks remain contained; no visible clipping, overlap, or horizontal overflow."
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
       }
     }
   ]

@@ -64,7 +64,8 @@ describe('subject cohort comparison renderer', () => {
     expect(zineHtml).not.toContain('border-left:6px solid');
     expect(galleryHtml).toContain('data-render-mask="panel"');
     expect(zineHtml).toContain('data-render-mask="panel-alt"');
-    expect(galleryHtml).toContain('data-layout-variant="cohort-stacked"');
+    expect(galleryHtml).toContain('data-layout-variant="cohort-paired"');
+    expect(galleryHtml).toContain('data-layout-variant="gallery-score-lead"');
     expect(galleryHtml).toContain('data-layout="gallery-comparison-matrix"');
     expect(galleryHtml).toContain('data-layout-variant="gallery-open-row"');
     expect(zineHtml).toContain('drop-shadow(1px 2px 0');
@@ -78,7 +79,7 @@ describe('subject cohort comparison renderer', () => {
     const mobileHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320);
 
     expect(mobileHtml).toContain('data-layout="cohort-overview"');
-    expect(mobileHtml).toContain('data-layout-variant="cohort-stacked"');
+    expect(mobileHtml).toContain('data-layout-variant="cohort-paired"');
     expect(mobileHtml).toContain('data-layout="cohort-meta-compact"');
     expect(mobileHtml).toContain('padding:12px 14px 16px');
     expect(mobileHtml).toContain('flex-direction:column');
