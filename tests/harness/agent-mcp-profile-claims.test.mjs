@@ -103,7 +103,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 50);
+  assert.equal(listAgentMcpProfiles().length, 51);
   const renderSubjectCardV4 = getAgentMcpProfileById(
     'render-subject-card-compact-typography-agent-mcp-v4',
   );
@@ -589,6 +589,27 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(
     agentMcpProfileClaimLabelDescription(r04V2),
     'Run 95 R04 profile r04-series-watch-order-offline-agent-mcp-v2; permanent one-shot latch.',
+  );
+  const r04V3 = getAgentMcpProfileById('r04-series-watch-order-offline-agent-mcp-v3');
+  assert.ok(r04V3);
+  assert.notEqual(r04V3.id, r04V2.id);
+  assert.notEqual(r04V3.argumentProfile, r04V2.argumentProfile);
+  assert.equal(r04V3.frontierId, 'R04');
+  assert.equal(r04V3.epochId, 'run95-r04-series-watch-order-offline-matrix-v3-20261023');
+  assert.equal(r04V3.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(r04V3.networkMode, 'run95-r04-series-watch-order-offline-multi-node-v3');
+  assert.equal(r04V3.toolName, 'bangumi.get_series_watch_order');
+  assert.deepEqual(r04V3.calls, [
+    {
+      toolName: 'bangumi.get_series_watch_order',
+      arguments: { subjectId: 991404, depth: 1, maxNodes: 2, media: 'anime' },
+    },
+  ]);
+  assert.match(agentMcpProfileArgumentsSha256(r04V3), /^[0-9a-f]{64}$/u);
+  assert.match(agentMcpProfileRegistrySha256(r04V3.id), /^[0-9a-f]{64}$/u);
+  assert.equal(
+    agentMcpProfileClaimLabelDescription(r04V3),
+    'Run 95 R04 profile r04-series-watch-order-offline-agent-mcp-v3; permanent one-shot latch.',
   );
   const r01Offline = getAgentMcpProfileById('r01-subject-relations-offline-agent-mcp-v1');
   assert.ok(r01Offline);
