@@ -3621,6 +3621,8 @@
         "docs/research/run95-r03-relations-agent-mcp-offline-matrix-2026-10-17.md",
         "docs/research/run95-r03-direct-relations-offline-agent-mcp-matrix-v2-2026-10-17.md",
         "docs/research/run95-r03-two-hop-rating-agent-mcp-offline-matrix-v1-2026-10-23.md",
+        "docs/research/run95-r03-g26-mcp-bundle-attestation-refresh-2026-10-23.md",
+        "docs/product/g26-mcp-bundle-attestation.json",
         "packages/tools/src/definitions/read-tools.ts",
         "openapi/upstream/v0.yaml",
         "scripts/acceptance/agent-mcp-profile-registry.json",
@@ -3653,7 +3655,7 @@
         "tests/semantic/subject-relations-analysis.test.ts",
         "tests/integration/subject-relations-analysis-presenter.test.ts"
       ],
-      "next_action": "R03 remains PARTIAL. The existing bangumi.get_subject_relations tool now has an explicit analysisMode=observed_two_hop_rating for the highest successfully rated subject observed in its bounded outgoing two-hop sample; direct-array and includeEvidence defaults remain unchanged. Source, coverage, truncation, request limits, paths, failures, ties, and current score totals are exposed and covered by local fixtures. This does not establish the complete two-hop graph, a global highest-rated relation, or absence of unreturned paths. Fixtures and local tests earn no Agent/MCP matrix credit. A distinct matrix-only analysis-mode profile has been selected in the 2026-10-23 R03 Epoch at base 9d7a563adfb17a6220520a775e6c5fb5cd9891f6; it uses four closed synthetic GET routes and has not been claimed or invoked. Only a signed exact-Candidate Harness report can earn the one Agent/MCP matrix cell; it cannot change R03 scenario status and must not change the 65/65 public API target. PR #208 v1 and PR #212 v2 R03 claims are terminal INCONCLUSIVE with retryAllowed=false and must never be repeated.",
+      "next_action": "R03 remains PARTIAL. The explicit two-hop rating analysis profile is implemented on PR #270 and remains matrix-only. Its exact-Candidate runner stopped before claim because the tracked G26 bundle attestation was stale; Harness still reports UNCLAIMED and no report or MCP call occurred. The reproducible bundle hash and attestation refresh are recorded in docs/research/run95-r03-g26-mcp-bundle-attestation-refresh-2026-10-23.md. This docs-only Candidate descendant needs fresh exact-SHA CI, Harness candidate:check, and same-identity review before the one synthetic call. Only a signed exact-Candidate Harness report can add one Agent/MCP matrix cell; scenario R03 stays PARTIAL and public API remains 65/65. Do not repeat earlier terminal R03 v1/v2 claims or make live API, OAuth/account, QQ, or TIM calls.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
