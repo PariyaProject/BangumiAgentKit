@@ -126,6 +126,39 @@ test('G01 v2 MCP profile exposes only the fixed query_subjects tool', () => {
   assert.equal(exposed[0].auth, undefined);
 });
 
+test('R03 analysis-mode MCP profile exposes only the fixed subject-relations tool', () => {
+  const profile = getAgentMcpProfileById('r03-two-hop-rating-analysis-offline-agent-mcp-v1');
+  const tool = {
+    name: profile.toolName,
+    description: 'Read bounded synthetic two-hop subject relations and rating data.',
+    input: z.object({
+      subjectId: z.number(),
+      analysisMode: z.literal('observed_two_hop_rating'),
+    }),
+    auth: 'none',
+    risk: 'read',
+    scopes: [],
+  };
+  const exposed = createCodexOneToolMcpToolList([tool], {
+    toolName: profile.toolName,
+    toolNames: [profile.toolName],
+    profile,
+  });
+
+  assert.equal(exposed.length, 1);
+  assert.equal(exposed[0].name, 'bangumi.get_subject_relations');
+  assert.deepEqual(exposed[0].annotations, {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+  });
+  assert.ok(
+    JSON.stringify(exposed[0].inputSchema.properties.analysisMode).includes(
+      'observed_two_hop_rating',
+    ),
+  );
+});
+
 test('offline auth_start MCP module imports without stdio and resolves the repository root', async () => {
   const serverModule = await import('../../apps/mcp/codex-auth-start-offline-mcp-server.mjs');
   assert.equal(serverModule.PRODUCT_ROOT, productRoot);

@@ -4215,7 +4215,7 @@ CODEX_R01_OFFLINE_RECEIPT_PAYLOAD_FIELDS = {
 }
 CODEX_R03_OFFLINE_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
-    if profile.get('id') == 'r03-direct-relations-offline-agent-mcp-matrix-v2'
+    if profile.get('id') == 'r03-two-hop-rating-analysis-offline-agent-mcp-v1'
 )
 CODEX_R03_OFFLINE_PROFILE_ID = CODEX_R03_OFFLINE_PROFILE['id']
 CODEX_R03_OFFLINE_EPOCH_ID = CODEX_R03_OFFLINE_PROFILE['epochId']
@@ -4254,8 +4254,8 @@ CODEX_R03_OFFLINE_ANSWER_CHECK_FIELDS = {
 CODEX_R03_OFFLINE_PRIVACY_FIELDS = set(CODEX_R01_OFFLINE_PRIVACY_FIELDS)
 CODEX_R03_OFFLINE_FIXTURE_FIELDS = {
     'profile', 'requestCount', 'relationRequestCount', 'rootRequestCount',
-    'intermediateRequestCount', 'duplicateRequestCount', 'unexpectedRequestCount',
-    'authorizationHeaderCount', 'expectedOperationsComplete',
+    'intermediateRequestCount', 'subjectDetailRequestCount', 'duplicateRequestCount',
+    'unexpectedRequestCount', 'authorizationHeaderCount', 'expectedOperationsComplete',
 }
 CODEX_R03_OFFLINE_NETWORK_BOUNDARY_FIELDS = set(CODEX_R01_OFFLINE_NETWORK_BOUNDARY_FIELDS)
 CODEX_R03_OFFLINE_RECEIPT_FIELDS = set(CODEX_R01_OFFLINE_RECEIPT_FIELDS)
@@ -7706,16 +7706,22 @@ CODEX_R01_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
 CODEX_R03_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
     'scripts/lib/r03-relations-offline-profile.mjs': (
         "'r03-direct-relations-offline-agent-mcp-matrix-v2'",
+        "'r03-two-hop-rating-analysis-offline-agent-mcp-v1'",
+        "analysisMode: 'observed_two_hop_rating'",
+        'subjectId: 993811',
+        'id: 993813',
         'export function summarizeR03RelationsOfflineToolResult(',
         'export function assertR03RelationsOfflineProfile(',
         'subjectId: 991020',
-        'Object.freeze([991021])',
     ),
     'scripts/lib/r03-relations-offline-fixture.mjs': (
-        'export function createR03RelationsOfflineFetch()',
+        'export function createR03RelationsOfflineFetch(profile = R03_RELATIONS_OFFLINE_PROFILE_ID)',
         'const EXPECTED_REQUEST_HEADERS = Object.freeze({',
         'function hasExactExpectedHeaders(headers)',
         "direct: '/v0/subjects/991020/subjects'",
+        "twoHopRoot: '/v0/subjects/993811/subjects'",
+        "twoHopIntermediate: '/v0/subjects/993812/subjects'",
+        'subjectDetailRequestCount',
         'rootRequestCount',
         'intermediateRequestCount',
         'authorizationHeaderCount',
@@ -7725,21 +7731,24 @@ CODEX_R03_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
         'A registered profile cannot be combined with arbitrary tool, arguments, or network mode.',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
-        'createR03RelationsOfflineFetch()',
-        'R03_RELATIONS_OFFLINE_NETWORK_MODE',
+        'createR03RelationsOfflineFetch(config.profile)',
+        'isR03RelationsOfflineNetworkMode(config.networkMode)',
         'assertR03RelationsOfflineFixture(config.profile)',
     ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
         'profileId === R03_RELATIONS_OFFLINE_PROFILE_ID',
-        'summarizeR03RelationsOfflineToolResult(result, expectedArguments)',
+        'R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID',
+        'summarizeR03RelationsOfflineToolResult(result, expectedArguments, profileId)',
     ),
     'scripts/acceptance/agent-mcp-profile-registry.json': (
-        '"id": "r03-direct-relations-offline-agent-mcp-matrix-v2"',
-        '"networkMode": "run95-r03-direct-relations-offline-matrix-v2"',
-        '"subjectId": 991020',
+        '"id": "r03-two-hop-rating-analysis-offline-agent-mcp-v1"',
+        '"networkMode": "run95-r03-two-hop-rating-analysis-offline-matrix-v1"',
+        '"subjectId": 993811',
+        '"analysisMode": "observed_two_hop_rating"',
     ),
     'scripts/acceptance/run-r03-relations-offline-agent-mcp.mjs': (
         'export function validateR03RunnerArgs(',
+        'export function activateR03Profile(',
         'export function assertR03CandidateReviewGate(',
         'export function sameR03CandidateReviewGate(',
         'export function buildR03CodexExecArgs(',
@@ -7756,12 +7765,18 @@ CODEX_R03_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
         "openSync(target, 'wx', 0o600)",
     ),
     'scripts/acceptance/validate-r03-relations-offline-agent-mcp-report.mjs': (
-        'validateR03ProfileReport(report, value.claim, reportBytes)',
+        'validateR03ProfileReport(',
     ),
     'scripts/agent-harness.mjs': (
         "case 'r03-direct-relations-offline-agent-mcp-matrix-v2'",
+        "case 'r03-two-hop-rating-analysis-offline-agent-mcp-v1'",
         'validateR03RelationsOfflineSanitizedReportFile(',
-        "'r03-direct-relations-offline-agent-mcp-matrix-v2',",
+        "'r03-two-hop-rating-analysis-offline-agent-mcp-v1',",
+    ),
+    'docs/research/run95-r03-two-hop-rating-agent-mcp-offline-matrix-v1-2026-10-23.md': (
+        'analysisMode=observed_two_hop_rating',
+        'exactly four anonymous GETs',
+        'R03 remains PARTIAL',
     ),
     'docs/research/run95-r03-direct-relations-offline-agent-mcp-matrix-v2-2026-10-17.md': (
         'R03 remains `UNASSESSED`',
@@ -7770,24 +7785,31 @@ CODEX_R03_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'docs/product/frontier-ledger.json': (
         'docs/research/run95-r03-direct-relations-offline-agent-mcp-matrix-v2-2026-10-17.md',
-        'r03-direct-relations-offline-agent-mcp-matrix-v2',
+        'docs/research/run95-r03-two-hop-rating-agent-mcp-offline-matrix-v1-2026-10-23.md',
+        'r03-two-hop-rating-analysis-offline-agent-mcp-v1',
     ),
     'tests/harness/r03-relations-offline-fixture.test.mjs': (
         'R03 fixture returns one bounded synthetic direct-relation response',
         'R03 fixture rejects unregistered routes, requests, authorization, and duplicates',
+        'R03 two-hop fixture permits only its four exact anonymous GETs',
     ),
     'tests/harness/run-r03-relations-offline-agent-mcp.test.mjs': (
         'R03 review gate binds the current Candidate, Base, seven checks, and Luna Max PASS',
         'R03 pre-invocation gate comparison includes Candidate, Base, review, and exact CI',
         'R03 Codex invocation is ephemeral, read-only, and exposes only the fixed relations tool',
         'R03 server summary accepts exactly one local relation response',
+        'R03 two-hop Codex invocation binds the analysis profile and exact one-tool server',
     ),
     'tests/harness/write-r03-relations-offline-agent-mcp-report.test.mjs': (
         'R03 report builder signs only sanitized matrix evidence without scenario credit',
         'R03 report validator rejects modified signatures and local request counters',
     ),
+    'tests/integration/codex-one-tool-mcp-server-load.test.mjs': (
+        'R03 analysis-mode MCP profile exposes only the fixed subject-relations tool',
+    ),
     'scripts/test_acceptance_evidence.py': (
         'class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):',
+        'test_accepts_matrix_report_while_R03_remains_partial',
         'test_routes_the_report_to_only_subject_relations_agent_mcp',
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
@@ -13772,6 +13794,7 @@ def codex_c03_profile_report_is_valid(
         cwd=ROOT,
         input=json.dumps({
             'claim': disposition,
+            'profileId': CODEX_R03_OFFLINE_PROFILE_ID,
             'reportBytesBase64': base64.b64encode(report_bytes).decode('ascii'),
         }),
         capture_output=True,
@@ -20828,8 +20851,8 @@ def codex_r03_offline_profile_disposition_matches_report(
     return disposition
 
 
-def codex_r03_offline_frontier_is_unassessed(require_report_ref: bool = False) -> bool:
-    """Keep R03 UNASSESSED while a synthetic matrix-only report is recorded."""
+def codex_r03_offline_frontier_remains_partial(require_report_ref: bool = False) -> bool:
+    """Keep the R03 scenario PARTIAL while recording matrix-only evidence."""
     try:
         frontier = json.loads((ROOT / 'docs/product/frontier-ledger.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -20842,7 +20865,7 @@ def codex_r03_offline_frontier_is_unassessed(require_report_ref: bool = False) -
     source_refs = record.get('source_refs') if isinstance(record, dict) else None
     return bool(
         isinstance(record, dict)
-        and record.get('status') == 'UNASSESSED'
+        and record.get('status') == 'PARTIAL'
         and isinstance(source_refs, list)
         and CODEX_R03_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH in source_refs
         and (not require_report_ref or CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH in source_refs)
@@ -20895,7 +20918,7 @@ def codex_r03_offline_profile_report_is_valid(
         or not isinstance(source_revision, str)
         or re.fullmatch(r'[0-9a-f]{40}', source_revision) is None
         or not codex_r03_offline_profile_revision_has_implementation(source_revision)
-        or not codex_r03_offline_frontier_is_unassessed(require_report_ref=True)
+        or not codex_r03_offline_frontier_remains_partial()
         or not isinstance(report.get('baseSha'), str)
         or re.fullmatch(r'[0-9a-f]{40}', report['baseSha']) is None
         or report.get('ciSha') != source_revision
@@ -20914,7 +20937,7 @@ def codex_r03_offline_profile_report_is_valid(
     ):
         return False
 
-    answer = b'R03_SYNTHETIC_DIRECT_RELATION_MATRIX_READ'
+    answer = b'R03_SYNTHETIC_TWO_HOP_RATING_ANALYSIS_READ'
     fixture = report.get('offlineFixture')
     network_boundary = report.get('networkBoundary')
     privacy = report.get('privacy')
@@ -20952,7 +20975,7 @@ def codex_r03_offline_profile_report_is_valid(
         or report.get('serverToolNames') != [CODEX_R03_OFFLINE_TOOL_NAME]
         or type(report.get('serverToolCount')) is not int
         or report.get('serverToolCount') != 1
-        or report.get('mcpServerNames') != ['bgk_r03_relations_v2']
+        or report.get('mcpServerNames') != ['bgk_r03_two_hop_rating_v1']
         or report.get('answerCheckMethod') != CODEX_R03_OFFLINE_ANSWER_CHECK_METHOD
         or report.get('answerSha256') != hashlib.sha256(answer).hexdigest()
         or report.get('answerUtf8Bytes') != len(answer)
@@ -20962,25 +20985,79 @@ def codex_r03_offline_profile_report_is_valid(
         or result_summary != [
             {
                 'state': 'observed',
-                'sourceDirection': 'source_subject_to_returned_target',
-                'responseRowsObserved': 1,
-                'rowsReturned': 1,
-                'schemaDriftRows': 0,
-                'truncated': False,
-                'paginationAvailable': False,
-                'totalCountAvailable': False,
-                'completeness': 'not_provided_by_source',
-                'relationLabels': ['续篇'],
+                'subjectId': 993811,
+                'sourceDirection': 'outgoing_source_to_target',
+                'sourceScope': 'highest_observed_rating_in_bounded_two_hop_sample',
+                'operationCount': 4,
+                'warningCount': 0,
+                'analysisMode': 'observed_two_hop_rating',
+                'maxDepth': 2,
+                'topScore': 9.2,
+                'topCandidateCount': 1,
+                'topCandidatesOmitted': 0,
+                'scoredCandidateCount': 2,
+                'tiePolicy': 'exact_numeric_score_ties_are_preserved',
+                'topCandidates': [
+                    {
+                        'id': 993813,
+                        'score': 9.2,
+                        'ratingTotal': 37,
+                        'paths': [
+                            {
+                                'subjectIds': [993811, 993812, 993813],
+                                'depth': 2,
+                                'relationLabels': ['续集', '续集'],
+                            },
+                        ],
+                    },
+                ],
+                'coverage': {
+                    'rootRelationRowsObserved': 1,
+                    'rootRelationRowsSelected': 1,
+                    'rootRelationRowsOmitted': 0,
+                    'rootRelationSchemaDriftRows': 0,
+                    'intermediateSubjectsObserved': 1,
+                    'intermediateSubjectsSelected': 1,
+                    'intermediateSubjectsOmitted': 0,
+                    'intermediateRelationRowsObserved': 1,
+                    'intermediateRelationRowsSelected': 1,
+                    'intermediateRelationRowsOmitted': 0,
+                    'intermediateRelationSchemaDriftRows': 0,
+                    'depth1CandidatesObserved': 1,
+                    'depth1CandidatesSelected': 1,
+                    'depth1CandidatesOmitted': 0,
+                    'depth2CandidatesObserved': 1,
+                    'depth2CandidatesSelected': 1,
+                    'depth2CandidatesOmitted': 0,
+                    'detailRequestsAttempted': 2,
+                    'detailRequestsSucceeded': 2,
+                    'detailRequestsFailed': 0,
+                    'usableRatings': 2,
+                    'missingRatings': 0,
+                    'duplicateRelationRows': 0,
+                    'cycleEdgesSkipped': 0,
+                    'pathEvidenceOmitted': 0,
+                    'truncated': False,
+                    'partialReasons': [],
+                    'requestBudget': {
+                        'maxResponseBytesPerRequest': 1048576,
+                        'logicalRequestsAttempted': 4,
+                        'maxLogicalRequests': 11,
+                        'maxAttemptsPerLogicalRequest': 3,
+                        'maximumPossibleWireAttempts': 33,
+                    },
+                },
             },
         ]
         or not isinstance(fixture, dict)
         or set(fixture) != CODEX_R03_OFFLINE_FIXTURE_FIELDS
         or fixture != {
             'profile': CODEX_R03_OFFLINE_NETWORK_MODE,
-            'requestCount': 1,
-            'relationRequestCount': 1,
+            'requestCount': 4,
+            'relationRequestCount': 2,
             'rootRequestCount': 1,
-            'intermediateRequestCount': 0,
+            'intermediateRequestCount': 1,
+            'subjectDetailRequestCount': 2,
             'duplicateRequestCount': 0,
             'unexpectedRequestCount': 0,
             'authorizationHeaderCount': 0,

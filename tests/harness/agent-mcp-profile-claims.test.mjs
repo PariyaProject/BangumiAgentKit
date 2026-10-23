@@ -103,7 +103,7 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 52);
+  assert.equal(listAgentMcpProfiles().length, 53);
   const r01TextProjection = getAgentMcpProfileById(
     'r01-subject-relations-text-projection-agent-mcp-v2',
   );
@@ -670,6 +670,27 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.notEqual(r03MatrixV2.argumentProfile, r03Offline.argumentProfile);
   assert.match(agentMcpProfileArgumentsSha256(r03MatrixV2), /^[0-9a-f]{64}$/u);
   assert.match(agentMcpProfileRegistrySha256(r03MatrixV2.id), /^[0-9a-f]{64}$/u);
+  const r03TwoHopRating = getAgentMcpProfileById(
+    'r03-two-hop-rating-analysis-offline-agent-mcp-v1',
+  );
+  assert.ok(r03TwoHopRating);
+  assert.equal(r03TwoHopRating.frontierId, 'R03');
+  assert.equal(
+    r03TwoHopRating.epochId,
+    'run95-r03-two-hop-rating-agent-mcp-offline-20261023',
+  );
+  assert.equal(r03TwoHopRating.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(r03TwoHopRating.networkMode, 'run95-r03-two-hop-rating-analysis-offline-matrix-v1');
+  assert.deepEqual(r03TwoHopRating.calls, [
+    {
+      toolName: 'bangumi.get_subject_relations',
+      arguments: { subjectId: 993811, analysisMode: 'observed_two_hop_rating' },
+    },
+  ]);
+  assert.notEqual(r03TwoHopRating.claimLabelName, r03MatrixV2.claimLabelName);
+  assert.notEqual(r03TwoHopRating.argumentProfile, r03MatrixV2.argumentProfile);
+  assert.match(agentMcpProfileArgumentsSha256(r03TwoHopRating), /^[0-9a-f]{64}$/u);
+  assert.match(agentMcpProfileRegistrySha256(r03TwoHopRating.id), /^[0-9a-f]{64}$/u);
   const r02 = getAgentMcpProfileById('r02-positive-direct-relations-agent-mcp-v1');
   assert.ok(r02);
   assert.equal(r02.frontierId, 'R02');

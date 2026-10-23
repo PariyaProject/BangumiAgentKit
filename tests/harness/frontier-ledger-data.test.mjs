@@ -315,6 +315,7 @@ test('R03 bounded rating evidence is partial and does not credit Agent/MCP', () 
   for (const source of [
     'docs/research/run95-r03-relations-agent-mcp-offline-matrix-2026-10-17.md',
     'docs/research/run95-r03-direct-relations-offline-agent-mcp-matrix-v2-2026-10-17.md',
+    'docs/research/run95-r03-two-hop-rating-agent-mcp-offline-matrix-v1-2026-10-23.md',
     'scripts/lib/codex-mcp-approval-config.mjs',
     'tests/harness/codex-mcp-approval-config.test.mjs',
     'scripts/acceptance/agent-mcp-profile-registry.json',

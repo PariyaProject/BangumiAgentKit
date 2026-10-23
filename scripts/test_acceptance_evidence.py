@@ -13126,16 +13126,15 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
         self.report_path.parent.mkdir(parents=True)
         selection_path = self.root / GENERATOR.CODEX_R03_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH
         selection_path.parent.mkdir(parents=True)
-        selection_path.write_text('R03 scenario remains UNASSESSED; matrix-only fixture.\n', encoding='utf-8')
+        selection_path.write_text('R03 remains PARTIAL; matrix-only fixture.\n', encoding='utf-8')
         frontier_path = self.root / 'docs/product/frontier-ledger.json'
         frontier_path.parent.mkdir(parents=True)
         frontier_path.write_text(json.dumps({
             'records': [{
                 'id': 'R03',
-                'status': 'UNASSESSED',
+                'status': 'PARTIAL',
                 'source_refs': [
                     GENERATOR.CODEX_R03_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH,
-                    GENERATOR.CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH,
                 ],
             }],
         }), encoding='utf-8')
@@ -13145,7 +13144,7 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
             'name': GENERATOR.CODEX_R03_OFFLINE_TOOL_NAME,
             'auth': 'none',
             'risk': 'read',
-            'description': 'Synthetic direct relations test tool.',
+            'description': 'Synthetic two-hop rating analysis test tool.',
             'inputSchema': {'type': 'object', 'required': ['subjectId']},
         }]
         self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
@@ -13196,7 +13195,7 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
             'serverToolNames': [GENERATOR.CODEX_R03_OFFLINE_TOOL_NAME],
             'serverToolCount': 1,
             'networkMode': GENERATOR.CODEX_R03_OFFLINE_NETWORK_MODE,
-            'mcpServerNames': ['bgk_r03_relations_v2'],
+            'mcpServerNames': ['bgk_r03_two_hop_rating_v1'],
             'processExitCode': 0,
             'resultStatus': 'SUCCESS',
             'eventStreamParsed': True,
@@ -13211,29 +13210,79 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
             'allowedCallCount': 1,
             'deniedCallCount': 0,
             'answerCheckMethod': GENERATOR.CODEX_R03_OFFLINE_ANSWER_CHECK_METHOD,
-            'answerSha256': hashlib.sha256(b'R03_SYNTHETIC_DIRECT_RELATION_MATRIX_READ').hexdigest(),
-            'answerUtf8Bytes': len(b'R03_SYNTHETIC_DIRECT_RELATION_MATRIX_READ'),
+            'answerSha256': hashlib.sha256(b'R03_SYNTHETIC_TWO_HOP_RATING_ANALYSIS_READ').hexdigest(),
+            'answerUtf8Bytes': len(b'R03_SYNTHETIC_TWO_HOP_RATING_ANALYSIS_READ'),
             'answerChecks': {key: True for key in GENERATOR.CODEX_R03_OFFLINE_ANSWER_CHECK_FIELDS},
             'resultSummary': [
                 {
                     'state': 'observed',
-                    'sourceDirection': 'source_subject_to_returned_target',
-                    'responseRowsObserved': 1,
-                    'rowsReturned': 1,
-                    'schemaDriftRows': 0,
-                    'truncated': False,
-                    'paginationAvailable': False,
-                    'totalCountAvailable': False,
-                    'completeness': 'not_provided_by_source',
-                    'relationLabels': ['续篇'],
+                    'subjectId': 993811,
+                    'sourceDirection': 'outgoing_source_to_target',
+                    'sourceScope': 'highest_observed_rating_in_bounded_two_hop_sample',
+                    'operationCount': 4,
+                    'warningCount': 0,
+                    'analysisMode': 'observed_two_hop_rating',
+                    'maxDepth': 2,
+                    'topScore': 9.2,
+                    'topCandidateCount': 1,
+                    'topCandidatesOmitted': 0,
+                    'scoredCandidateCount': 2,
+                    'tiePolicy': 'exact_numeric_score_ties_are_preserved',
+                    'topCandidates': [{
+                        'id': 993813,
+                        'score': 9.2,
+                        'ratingTotal': 37,
+                        'paths': [{
+                            'subjectIds': [993811, 993812, 993813],
+                            'depth': 2,
+                            'relationLabels': ['续集', '续集'],
+                        }],
+                    }],
+                    'coverage': {
+                        'rootRelationRowsObserved': 1,
+                        'rootRelationRowsSelected': 1,
+                        'rootRelationRowsOmitted': 0,
+                        'rootRelationSchemaDriftRows': 0,
+                        'intermediateSubjectsObserved': 1,
+                        'intermediateSubjectsSelected': 1,
+                        'intermediateSubjectsOmitted': 0,
+                        'intermediateRelationRowsObserved': 1,
+                        'intermediateRelationRowsSelected': 1,
+                        'intermediateRelationRowsOmitted': 0,
+                        'intermediateRelationSchemaDriftRows': 0,
+                        'depth1CandidatesObserved': 1,
+                        'depth1CandidatesSelected': 1,
+                        'depth1CandidatesOmitted': 0,
+                        'depth2CandidatesObserved': 1,
+                        'depth2CandidatesSelected': 1,
+                        'depth2CandidatesOmitted': 0,
+                        'detailRequestsAttempted': 2,
+                        'detailRequestsSucceeded': 2,
+                        'detailRequestsFailed': 0,
+                        'usableRatings': 2,
+                        'missingRatings': 0,
+                        'duplicateRelationRows': 0,
+                        'cycleEdgesSkipped': 0,
+                        'pathEvidenceOmitted': 0,
+                        'truncated': False,
+                        'partialReasons': [],
+                        'requestBudget': {
+                            'maxResponseBytesPerRequest': 1048576,
+                            'logicalRequestsAttempted': 4,
+                            'maxLogicalRequests': 11,
+                            'maxAttemptsPerLogicalRequest': 3,
+                            'maximumPossibleWireAttempts': 33,
+                        },
+                    },
                 },
             ],
             'offlineFixture': {
                 'profile': GENERATOR.CODEX_R03_OFFLINE_NETWORK_MODE,
-                'requestCount': 1,
-                'relationRequestCount': 1,
+                'requestCount': 4,
+                'relationRequestCount': 2,
                 'rootRequestCount': 1,
-                'intermediateRequestCount': 0,
+                'intermediateRequestCount': 1,
+                'subjectDetailRequestCount': 2,
                 'duplicateRequestCount': 0,
                 'unexpectedRequestCount': 0,
                 'authorizationHeaderCount': 0,
@@ -13262,7 +13311,7 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
         }
 
     def candidate_epoch_status(self, candidate_sha=None):
-        branch = 'codex/epoch-run95-r03-direct-relations-offline-agent-mcp-matrix-v2-20261017'
+        branch = 'codex/epoch-run95-r03-two-hop-rating-agent-mcp-v1-20261023'
         candidate_sha = candidate_sha or self.report['sourceRevision']
         base_sha = self.report['baseSha']
         reviewer_id = self.report['reviewerId']
@@ -13471,9 +13520,9 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
                 epoch_status={'fixture': True},
             )
 
-    def test_accepts_matrix_report_while_R03_remains_unassessed(self):
+    def test_accepts_matrix_report_while_R03_remains_partial(self):
         with patch.object(GENERATOR, 'ROOT', self.root):
-            self.assertTrue(GENERATOR.codex_r03_offline_frontier_is_unassessed(require_report_ref=True))
+            self.assertTrue(GENERATOR.codex_r03_offline_frontier_remains_partial())
         self.assertTrue(self.validate_report(self.report))
 
     def test_rejects_scenario_credit_expanded_fixture_and_unclassified_errors(self):
