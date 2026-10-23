@@ -40,17 +40,20 @@ describe('design-pack default render typography', () => {
     ]);
   });
 
-  it('uses a restrained system serif display stack for Graphic Zine', async () => {
+  it('preserves the bundled rounded body and brush display faces for Graphic Zine', async () => {
     const options = getDefaultRenderTypographyOptions('graphic-zine');
     expect(options).toMatchObject({
-      bodyFontFamily: 'PingFang SC, Hiragino Sans GB, "Noto Sans CJK SC", sans-serif',
-      displayFontFamily: 'Georgia, "Songti SC", "Noto Serif CJK SC", "Noto Serif CJK JP", serif',
+      bodyFontFamily: 'GenSen Rounded',
+      bodyFontFile: 'GenSenRounded2TW-R.woff2',
+      displayFontFamily: 'Ma Shan Zheng',
+      displayFontFile: 'MaShanZheng-Regular.woff2',
       fontSizeScale: DEFAULT_RENDER_FONT_SIZE_SCALE,
     });
-    expect(options.bodyFontFile).toBeUndefined();
-    expect(options.displayFontFile).toBeUndefined();
     const resolved = await resolveRenderTypography(options);
-    expect(resolved.fontFaces).toEqual([]);
+    expect(resolved.fontFaces.map(({ role, sha256 }) => ({ role, sha256 }))).toEqual([
+      { role: 'body', sha256: await fontHash('GenSenRounded2TW-R.woff2') },
+      { role: 'display', sha256: await fontHash('MaShanZheng-Regular.woff2') },
+    ]);
   });
 
   it('does not let an operator font override silently fall back to the bundled directory', async () => {
@@ -76,15 +79,18 @@ describe('design-pack default render typography', () => {
     expect(resolved.fontFaces).toEqual([]);
   });
 
-  it('uses a family-only Graphic Zine display override without registering bundled bytes', async () => {
+  it('uses a family-only Graphic Zine display override and keeps the bundled body face', async () => {
     const options = getDefaultRenderTypographyOptions('graphic-zine', {
       displayFontFamily: 'Georgia, serif',
     });
-    expect(options.bodyFontFile).toBeUndefined();
+    expect(options.bodyFontFile).toBe('GenSenRounded2TW-R.woff2');
     expect(options.displayFontFile).toBeUndefined();
+    expect(options.fontDirectory).toBeDefined();
 
     const resolved = await resolveRenderTypography(options);
     expect(resolved.displayFontFamily).toBe('"Georgia", serif');
-    expect(resolved.fontFaces).toEqual([]);
+    expect(resolved.fontFaces.map(({ role, sha256 }) => ({ role, sha256 }))).toEqual([
+      { role: 'body', sha256: await fontHash('GenSenRounded2TW-R.woff2') },
+    ]);
   });
 });

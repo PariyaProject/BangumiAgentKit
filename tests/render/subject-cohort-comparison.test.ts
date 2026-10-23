@@ -77,13 +77,15 @@ describe('subject cohort comparison renderer', () => {
     expect(zineHtml).toContain('data-layout="zine-title-paper"');
     expect(zineHtml).toContain('data-layout-variant="cohort-zine-headline-pair"');
     expect(zineHtml).toContain('data-layout-variant="zine-cohort-paper"');
+    expect(zineHtml).toContain('Georgia');
     expect(zineHtml).toContain('data-layout="cohort-query-summary"');
     expect(zineHtml).toContain('媒介=anime');
     expect(zineHtml).toContain('data-layout="zine-waterfront-illustration"');
-    expect(zineHtml).toContain('data-layout-variant="zine-score-lead"');
-    expect(zineHtml).toContain('data-layout="zine-score-pair"');
+    expect(zineHtml).toContain('data-layout="zine-score-caption"');
+    expect(zineHtml).toContain('aria-label="分组 A 平均评分 8.00"');
+    expect(zineHtml).not.toContain('data-layout="zine-score-pair"');
+    expect(zineHtml).not.toContain('data-layout-variant="zine-score-paper"');
     expect(zineHtml).toContain('data-layout="zine-score-bridge"');
-    expect(zineHtml).toContain('data-layout-variant="zine-score-paper"');
     expect(zineHtml).toContain('data-layout-variant="zine-delta-paper"');
     expect(zineHtml).toContain('data-layout-variant="zine-paper-row"');
     expect(zineHtml).toContain('data-layout="zine-metric-header"');
@@ -91,7 +93,6 @@ describe('subject cohort comparison renderer', () => {
     expect(zineHtml).toContain('data-layout="zine-colophon"');
     expect(zineHtml).toContain('2026 春季');
     expect(zineHtml).toContain('Spring One');
-    expect(zineHtml).not.toContain('Ma Shan Zheng');
     expect(zineHtml).not.toContain('聚合指标');
     expect(zineHtml).not.toContain('data-layout-variant="zine-sticker"');
     expect(zineHtml).not.toContain('data-layout="zine-delta-sticker"');

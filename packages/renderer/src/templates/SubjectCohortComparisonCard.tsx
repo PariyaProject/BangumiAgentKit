@@ -210,6 +210,8 @@ function metricCoverageCompactLabel(
 
 type CohortMetric = SubjectCohortComparisonViewModel['metrics'][number];
 type CohortMember = SubjectCohortComparisonViewModel['cohorts'][number];
+const COHORT_ZINE_DISPLAY_FONT =
+  'Georgia, "Songti SC", "Noto Serif CJK SC", "Noto Serif CJK JP", serif';
 
 function observedAverage(metric: CohortMetric, index: number): number | undefined {
   return metric.averages[index] ?? metric.partialAverages?.[index];
@@ -846,9 +848,10 @@ function zineShortMetricLabel(key: string): string {
 
 const CohortZineMasthead: React.FC<{
   cohorts: CohortMember[];
+  leadMetric?: CohortMetric;
   theme: ThemeTokens;
   width: number;
-}> = ({ cohorts, theme, width }) => (
+}> = ({ cohorts, leadMetric, theme, width }) => (
   <div
     data-layout="cohort-overview"
     data-layout-variant="cohort-zine-headline-pair"
@@ -863,16 +866,17 @@ const CohortZineMasthead: React.FC<{
       const subject = cohort.subjects[0];
       const queryCoverage = cohort.coverage.query.coverage;
       const title = subject?.displayName || subject?.name || '暂无可展示作品';
-      const querySummary = cohort.querySummary.startsWith(cohort.label)
-        ? cohort.querySummary.slice(cohort.label.length).replace(/^[\s·•:：]+/u, '') ||
-          cohort.querySummary
-        : cohort.querySummary;
       const alternateName =
         subject?.displayName && subject.name && subject.displayName !== subject.name
           ? subject.name
           : undefined;
+      const querySummary = cohort.querySummary.startsWith(cohort.label)
+        ? cohort.querySummary.slice(cohort.label.length).replace(/^[\s·•:：]+/u, '') ||
+          cohort.querySummary
+        : cohort.querySummary;
       const cohortColor = index === 0 ? theme.tones.coral.foreground : theme.tones.blue.foreground;
       const cohortSurface = index === 0 ? theme.tones.coral.surface : theme.tones.blue.surface;
+      const score = leadMetric ? averageLabel(leadMetric, index) : '—';
 
       return (
         <section
@@ -884,7 +888,7 @@ const CohortZineMasthead: React.FC<{
             backgroundColor: theme.surface,
             clipPath: index === 0 ? theme.design.masks.panel : theme.design.masks.panelAlt,
             boxShadow: '3px 3px 0 ' + theme.tones.blue.border,
-            padding: width <= 400 ? '8px 9px 10px' : '12px 16px 14px',
+            padding: width <= 400 ? '9px 10px 11px' : '14px 18px 16px',
             transform: index === 0 ? 'rotate(-0.45deg)' : 'rotate(0.45deg)',
           }}
         >
@@ -899,7 +903,7 @@ const CohortZineMasthead: React.FC<{
               backgroundColor: cohortSurface,
               clipPath: theme.design.masks.tag,
               padding: width <= 400 ? '2px 6px' : '3px 8px',
-              fontSize: width <= 400 ? '9px' : '11px',
+              fontSize: width <= 400 ? '10px' : '11px',
               fontWeight: 800,
               letterSpacing: '0.04em',
               lineHeight: 1.25,
@@ -913,8 +917,8 @@ const CohortZineMasthead: React.FC<{
             data-layout="cohort-label"
             style={{
               color: theme.text,
-              fontFamily: theme.design.displayFontFamily,
-              fontSize: width <= 400 ? '12px' : '17px',
+              fontFamily: COHORT_ZINE_DISPLAY_FONT,
+              fontSize: width <= 400 ? '14px' : '18px',
               fontWeight: 650,
               lineHeight: 1.22,
               marginTop: '5px',
@@ -927,31 +931,13 @@ const CohortZineMasthead: React.FC<{
           >
             {title}
           </div>
-          <div
-            data-layout="cohort-query-summary"
-            title={cohort.querySummary}
-            style={{
-              color: theme.textMuted,
-              fontSize: width <= 400 ? '8px' : '10px',
-              lineHeight: 1.25,
-              marginTop: '4px',
-              overflowWrap: 'anywhere',
-              display: '-webkit-box',
-              WebkitBoxOrient: 'vertical',
-              WebkitLineClamp: 2,
-              overflow: 'hidden',
-            }}
-          >
-            {querySummary}
-          </div>
           {alternateName ? (
             <div
               style={{
                 color: theme.textMuted,
-                fontSize: width <= 400 ? '8px' : '10px',
+                fontSize: width <= 400 ? '10px' : '11px',
                 lineHeight: 1.2,
-                marginTop: '3px',
-                overflowWrap: 'anywhere',
+                marginTop: '2px',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -961,12 +947,72 @@ const CohortZineMasthead: React.FC<{
             </div>
           ) : null}
           <div
+            data-layout="zine-score-caption"
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: '6px',
+              color: theme.textMuted,
+              fontSize: width <= 400 ? '10px' : '11px',
+              lineHeight: 1.2,
+              marginTop: width <= 400 ? '5px' : '8px',
+            }}
+          >
+            <span>平均评分</span>
+            <span>
+              {leadMetric ? metricCoverageCompactLabel(cohort, leadMetric.key) : '暂无评分'}
+            </span>
+          </div>
+          <div
+            data-layout="cohort-metric-number"
+            data-state={leadMetric?.state ?? 'missing'}
+            aria-label={`分组 ${index === 0 ? 'A' : 'B'} 平均评分 ${score}`}
+            style={{
+              color: cohortColor,
+              fontFamily: COHORT_ZINE_DISPLAY_FONT,
+              fontSize:
+                score.length > 6
+                  ? width <= 400
+                    ? '23px'
+                    : '34px'
+                  : width <= 400
+                    ? '34px'
+                    : width <= 640
+                      ? '44px'
+                      : '52px',
+              fontWeight: 700,
+              lineHeight: 1.02,
+              letterSpacing: '-0.025em',
+              fontVariantNumeric: 'tabular-nums',
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {score}
+          </div>
+          <div
+            data-layout="cohort-query-summary"
+            title={cohort.querySummary}
+            style={{
+              color: theme.textMuted,
+              fontSize: width <= 400 ? '9px' : '10px',
+              lineHeight: 1.25,
+              marginTop: '3px',
+              overflowWrap: 'anywhere',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {querySummary}
+          </div>
+          <div
             data-layout="cohort-meta-compact"
             style={{
               color: theme.textMuted,
-              fontSize: width <= 400 ? '8px' : '9px',
+              fontSize: width <= 400 ? '9px' : '10px',
               lineHeight: 1.25,
-              marginTop: '5px',
+              marginTop: '3px',
               overflowWrap: 'anywhere',
             }}
           >
@@ -981,6 +1027,61 @@ const CohortZineMasthead: React.FC<{
     })}
   </div>
 );
+
+const CohortZineTitleBlock: React.FC<{
+  title: string;
+  subtitle: string;
+  theme: ThemeTokens;
+  width: number;
+}> = ({ title, subtitle, theme, width }) => {
+  const titleSize = width <= 400 ? 18 : 22;
+  return (
+    <div
+      data-title-pack="graphic-zine"
+      style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs, minWidth: 0 }}
+    >
+      <h1
+        data-title-max-lines={2}
+        title={title}
+        style={{
+          backgroundImage: `linear-gradient(${theme.tones.coral.foreground}, ${theme.tones.coral.foreground})`,
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'left bottom',
+          backgroundSize: '72px 2px',
+          paddingBottom: '5px',
+          fontFamily: COHORT_ZINE_DISPLAY_FONT,
+          fontSize: `${titleSize * theme.design.titleScale}px`,
+          fontWeight: theme.design.titleWeight,
+          color: theme.text,
+          margin: 0,
+          lineHeight: 1.16,
+          letterSpacing: theme.design.titleLetterSpacing,
+          textWrap: 'balance',
+          display: '-webkit-box',
+          WebkitBoxOrient: 'vertical',
+          WebkitLineClamp: 2,
+          overflow: 'hidden',
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
+        }}
+      >
+        {title}
+      </h1>
+      <div
+        style={{
+          fontSize: width <= 320 ? '9px' : width <= 400 ? '10px' : '12px',
+          color: theme.textMuted,
+          lineHeight: 1.4,
+          fontFamily: theme.design.bodyFontFamily,
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
+        }}
+      >
+        {subtitle}
+      </div>
+    </div>
+  );
+};
 
 const CohortWaterfrontScene: React.FC<{
   theme: ThemeTokens;
@@ -1024,8 +1125,7 @@ const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
 }) => {
   const lead = metrics.find((metric) => metric.key === 'score') ?? metrics[0];
   const secondary = metrics.filter((metric) => metric !== lead);
-  const valueFontFamily = theme.design.displayFontFamily;
-  const paperText = theme.text;
+  const valueFontFamily = COHORT_ZINE_DISPLAY_FONT;
   const posterText = theme.name === 'bangumi-dark' ? theme.text : theme.surface;
   const columns =
     width <= 400
@@ -1045,149 +1145,52 @@ const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
       }}
     >
       {lead ? (
-        <section
-          data-layout="cohort-metric-card"
-          data-layout-variant="zine-score-lead"
+        <div
+          data-layout="zine-score-bridge"
+          data-layout-variant="zine-delta-paper"
           style={{
+            alignSelf: 'center',
             display: 'flex',
-            flexDirection: 'column',
-            gap: width <= 400 ? '6px' : '10px',
-            minWidth: 0,
+            alignItems: 'baseline',
+            justifyContent: 'center',
+            gap: width <= 400 ? '8px' : '14px',
+            maxWidth: '100%',
+            color: theme.tones.butter.foreground,
+            backgroundColor: theme.tones.butter.surface,
+            clipPath: theme.design.masks.panelAlt,
+            boxShadow: '3px 3px 0 ' + theme.tones.coral.border,
+            padding: width <= 400 ? '4px 16px 6px' : '6px 24px 8px',
+            transform: 'rotate(-0.8deg)',
+            marginTop: width <= 400 ? '-1px' : '-2px',
           }}
         >
-          <CohortMetricCaption
-            metric={lead}
-            theme={theme}
-            width={width}
-            titleSize={width <= 400 ? '10px' : '13px'}
-            titleColor={posterText}
-            sourceColor={posterText}
-          />
-          <div
-            data-layout="zine-score-pair"
+          <span
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              alignItems: 'stretch',
-              gap: width <= 400 ? '8px' : '16px',
-              minWidth: 0,
-            }}
-          >
-            {cohorts.slice(0, 2).map((cohort, index) => {
-              const accent =
-                index === 0 ? theme.tones.coral.foreground : theme.tones.blue.foreground;
-              return (
-                <div
-                  key={'lead-score-' + index}
-                  data-layout="cohort-metric-card"
-                  data-layout-variant="zine-score-paper"
-                  data-cohort-index={index}
-                  style={{
-                    minWidth: 0,
-                    backgroundColor: theme.surface,
-                    color: paperText,
-                    clipPath: index === 0 ? theme.design.masks.panel : theme.design.masks.panelAlt,
-                    boxShadow: '3px 3px 0 ' + theme.tones.blue.border,
-                    padding: width <= 400 ? '7px 8px 9px' : '11px 16px 12px',
-                    transform: index === 0 ? 'rotate(-0.55deg)' : 'rotate(0.55deg)',
-                  }}
-                >
-                  <div
-                    style={{
-                      color: accent,
-                      fontSize: width <= 400 ? '9px' : '11px',
-                      fontWeight: 800,
-                      letterSpacing: '0.05em',
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    分组 {index === 0 ? 'A' : 'B'}
-                  </div>
-                  <div
-                    data-layout="cohort-metric-number"
-                    style={{
-                      color: accent,
-                      fontFamily: valueFontFamily,
-                      fontSize:
-                        averageLabel(lead, index).length > 6
-                          ? width <= 400
-                            ? '20px'
-                            : '28px'
-                          : width <= 400
-                            ? '31px'
-                            : width <= 640
-                              ? '40px'
-                              : '48px',
-                      fontWeight: 700,
-                      lineHeight: 1.04,
-                      letterSpacing: '-0.03em',
-                      fontVariantNumeric: 'tabular-nums',
-                      overflowWrap: 'anywhere',
-                    }}
-                  >
-                    {averageLabel(lead, index)}
-                  </div>
-                  <div
-                    style={{
-                      color: theme.textMuted,
-                      fontSize: width <= 400 ? '8px' : '10px',
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {metricCoverageCompactLabel(cohort, lead.key)}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div
-            data-layout="zine-score-bridge"
-            data-layout-variant="zine-delta-paper"
-            style={{
-              alignSelf: 'center',
-              display: 'flex',
-              alignItems: 'baseline',
-              justifyContent: 'center',
-              gap: width <= 400 ? '8px' : '14px',
-              maxWidth: '100%',
               color: theme.tones.butter.foreground,
-              backgroundColor: theme.tones.butter.surface,
-              clipPath: theme.design.masks.panelAlt,
-              boxShadow: '3px 3px 0 ' + theme.tones.coral.border,
-              padding: width <= 400 ? '3px 14px 5px' : '5px 22px 7px',
-              transform: 'rotate(-0.8deg)',
-              marginTop: width <= 400 ? '-2px' : '-4px',
+              fontSize: width <= 400 ? '10px' : '11px',
+              fontWeight: 800,
+              letterSpacing: '0.06em',
+              whiteSpace: 'nowrap',
             }}
           >
-            <span
-              style={{
-                color: theme.tones.butter.foreground,
-                fontSize: width <= 400 ? '8px' : '10px',
-                fontWeight: 800,
-                letterSpacing: '0.08em',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              B − A
-            </span>
-            <strong
-              data-layout="cohort-metric-delta"
-              data-state={lead.state}
-              style={{
-                color: theme.tones.butter.foreground,
-                fontFamily: valueFontFamily,
-                fontSize:
-                  lead.state === 'complete' ? (width <= 400 ? '20px' : '25px') : '12px',
-                fontWeight: 800,
-                lineHeight: 1.1,
-                fontVariantNumeric: 'tabular-nums',
-                overflowWrap: 'anywhere',
-              }}
-            >
-              {deltaLabel(lead)}
-            </strong>
-          </div>
-        </section>
+            平均评分 · B − A
+          </span>
+          <strong
+            data-layout="cohort-metric-delta"
+            data-state={lead.state}
+            style={{
+              color: theme.tones.butter.foreground,
+              fontFamily: valueFontFamily,
+              fontSize: lead.state === 'complete' ? (width <= 400 ? '22px' : '27px') : '13px',
+              fontWeight: 800,
+              lineHeight: 1.1,
+              fontVariantNumeric: 'tabular-nums',
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {deltaLabel(lead)}
+          </strong>
+        </div>
       ) : null}
       <div
         data-layout="zine-metric-header"
@@ -1196,7 +1199,7 @@ const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
           gridTemplateColumns: columns,
           gap: width <= 400 ? '4px' : '8px',
           color: posterText,
-          fontSize: width <= 400 ? '8px' : '10px',
+          fontSize: width <= 400 ? '10px' : '10px',
           fontWeight: 800,
           letterSpacing: '0.05em',
           padding: '2px 6px 0',
@@ -1245,7 +1248,7 @@ const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
               style={{
                 minWidth: 0,
                 color: theme.text,
-                fontSize: width <= 400 ? '8px' : '12px',
+                fontSize: width <= 400 ? '10px' : '12px',
                 fontWeight: 700,
                 lineHeight: 1.2,
                 overflowWrap: 'anywhere',
@@ -1269,7 +1272,7 @@ const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
                 data-layout="cohort-metric-number"
                 style={{
                   fontFamily: valueFontFamily,
-                  fontSize: width <= 400 ? '10px' : '14px',
+                  fontSize: width <= 400 ? '12px' : '14px',
                   fontWeight: 700,
                   lineHeight: 1.15,
                   fontVariantNumeric: 'tabular-nums',
@@ -1281,7 +1284,7 @@ const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
               <div
                 style={{
                   color: theme.textMuted,
-                  fontSize: width <= 400 ? '7px' : '9px',
+                  fontSize: width <= 400 ? '9px' : '9px',
                   lineHeight: 1.15,
                   whiteSpace: 'nowrap',
                 }}
@@ -1304,7 +1307,7 @@ const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
               data-state={metric.state}
               style={{
                 fontFamily: valueFontFamily,
-                fontSize: width <= 400 ? '9px' : '13px',
+                fontSize: width <= 400 ? '11px' : '13px',
                 fontWeight: 800,
                 lineHeight: 1.15,
                 fontVariantNumeric: 'tabular-nums',
@@ -1317,7 +1320,7 @@ const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
               <div
                 style={{
                   color: theme.warning,
-                  fontSize: width <= 400 ? '7px' : '9px',
+                  fontSize: width <= 400 ? '9px' : '9px',
                   lineHeight: 1.2,
                 }}
               >
@@ -1349,7 +1352,6 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
   const isWarm = theme.designPack === 'warm-editorial';
   const sharedGalleryOverview = isGallery && twoColumnComparison;
   const sharedZineOverview = isZine && showComparison;
-  const isZineComparison = isZine && showComparison;
   const zinePosterBackground =
     theme.name === 'bangumi-dark' ? theme.background : theme.tones.blue.foreground;
   const zineFooterColor = theme.name === 'bangumi-dark' ? theme.text : theme.surface;
@@ -1442,19 +1444,24 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
     count > 1 ? `${message}（共 ${count} 条）` : message,
   );
   const hasWarnings = warningMessages.length > 0;
+  const title = showComparison ? '条目群体比较' : '条目群体聚合';
+  const subtitle =
+    showComparison && viewportWidth <= 360
+      ? `Bangumi · ${stateLabel(viewModel.state)} · B−A · 仅作对照`
+      : `Bangumi 公共数据 · ${stateLabel(viewModel.state)} · ${showComparison ? '差值按 B − A 展示' : '仅展示单组样本'}，不生成推荐结论`;
 
   return (
     <CardFrame
       theme={theme}
       width={width}
-      showMarker={!isZineComparison}
+      showMarker={!sharedZineOverview}
       rootStyle={
-        isZineComparison
+        sharedZineOverview
           ? { padding: viewportWidth <= 400 ? '10px 12px' : '18px 36px', backgroundColor: theme.background }
           : undefined
       }
       frameStyle={
-        isZineComparison
+        sharedZineOverview
           ? {
               backgroundColor: zinePosterBackground,
               backgroundImage: `radial-gradient(circle at 50% 50%, ${zineSunColor} 0 47%, transparent 49%)`,
@@ -1472,9 +1479,9 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
       }
     >
       <div
-        data-layout={isZineComparison ? 'zine-title-paper' : undefined}
+        data-layout={sharedZineOverview ? 'zine-title-paper' : undefined}
         style={
-          isZineComparison
+          sharedZineOverview
             ? {
                 alignSelf: 'flex-start',
                 maxWidth: '100%',
@@ -1487,28 +1494,31 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
             : undefined
         }
       >
-        <TitleBlock
-          title={showComparison ? '条目群体比较' : '条目群体聚合'}
-          subtitle={
-            showComparison && viewportWidth <= 360
-              ? `Bangumi · ${stateLabel(viewModel.state)} · B−A · 仅作对照`
-              : `Bangumi 公共数据 · ${stateLabel(viewModel.state)} · ${showComparison ? '差值按 B − A 展示' : '仅展示单组样本'}，不生成推荐结论`
-          }
-          theme={theme}
-          icon="comparison"
-          iconSize={18}
-          titleFontSize={viewportWidth <= 400 ? '18px' : '22px'}
-          subtitleFontSize={viewportWidth <= 320 ? '9px' : viewportWidth <= 400 ? '10px' : '12px'}
-          eyebrowFontSize="12px"
-          titleStyle={
-            isGallery ? 'cohort-gallery-open' : isZine ? 'cohort-zine-poster' : 'cohort-report'
-          }
-          showIconEyebrow={!isZine}
-        />
+        {sharedZineOverview ? (
+          <CohortZineTitleBlock title={title} subtitle={subtitle} theme={theme} width={viewportWidth} />
+        ) : (
+          <TitleBlock
+            title={title}
+            subtitle={subtitle}
+            theme={theme}
+            icon="comparison"
+            iconSize={18}
+            titleFontSize={viewportWidth <= 400 ? '18px' : '22px'}
+            subtitleFontSize={viewportWidth <= 320 ? '9px' : viewportWidth <= 400 ? '10px' : '12px'}
+            eyebrowFontSize="12px"
+            titleStyle={isGallery ? 'cohort-gallery-open' : isZine ? 'cohort-zine-poster' : 'cohort-report'}
+            showIconEyebrow={!isZine}
+          />
+        )}
       </div>
 
-      {isZineComparison ? (
-        <CohortZineMasthead cohorts={dimensions} theme={theme} width={viewportWidth} />
+      {sharedZineOverview ? (
+        <CohortZineMasthead
+          cohorts={dimensions}
+          leadMetric={viewModel.metrics.find((metric) => metric.key === 'score') ?? viewModel.metrics[0]}
+          theme={theme}
+          width={viewportWidth}
+        />
       ) : (
         <div
           data-layout="cohort-overview"
@@ -2114,7 +2124,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
         data-layout-variant={
           isGallery && viewportWidth <= 400
             ? 'gallery-open-method-notes'
-            : isZineComparison
+            : sharedZineOverview
               ? 'zine-colophon-notes'
               : undefined
         }
@@ -2124,18 +2134,18 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
           gap:
             isGallery && viewportWidth <= 400
               ? '4px'
-              : isZineComparison
+              : sharedZineOverview
                 ? '8px'
                 : viewportWidth <= 400
                   ? '6px'
                   : '8px',
-          borderTop: isZineComparison ? undefined : `1px solid ${theme.border}`,
-          backgroundColor: isZineComparison ? theme.tones.butter.surface : undefined,
-          clipPath: isZineComparison ? theme.design.masks.panelAlt : undefined,
-          padding: isZineComparison ? (viewportWidth <= 400 ? '8px 9px' : '12px 16px') : undefined,
-          paddingTop: isZineComparison ? undefined : '8px',
-          color: isZineComparison ? theme.text : theme.textMuted,
-          fontSize: isZineComparison ? (viewportWidth <= 400 ? '9px' : '11px') : footnoteTypeSize,
+          borderTop: sharedZineOverview ? undefined : `1px solid ${theme.border}`,
+          backgroundColor: sharedZineOverview ? theme.tones.butter.surface : undefined,
+          clipPath: sharedZineOverview ? theme.design.masks.panelAlt : undefined,
+          padding: sharedZineOverview ? (viewportWidth <= 400 ? '8px 9px' : '12px 16px') : undefined,
+          paddingTop: sharedZineOverview ? undefined : '8px',
+          color: sharedZineOverview ? theme.text : theme.textMuted,
+          fontSize: sharedZineOverview ? (viewportWidth <= 400 ? '9px' : '11px') : footnoteTypeSize,
           lineHeight: isGallery && viewportWidth <= 400 ? 1.35 : 1.4,
         }}
       >
@@ -2205,7 +2215,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
           </>
         )}
       </section>
-      {isZineComparison ? (
+      {sharedZineOverview ? (
         <footer
           data-layout="zine-colophon"
           style={{

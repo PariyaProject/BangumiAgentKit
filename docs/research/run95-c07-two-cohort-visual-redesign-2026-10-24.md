@@ -1,7 +1,7 @@
 # Run #95 C07 two-cohort renderer visual redesign
 
 Date: 2026-10-24 (JST)
-Status: v32 reference-board visual QA recorded; exact candidate delivery gates pending; user aesthetic acceptance not recorded.
+Status: v34 corrective visual QA recorded; exact candidate delivery gates pending; user aesthetic acceptance not recorded.
 
 ## Why this iteration exists
 
@@ -70,3 +70,12 @@ Generated a C07-specific three-pack triptych from the exact comparison content. 
 - Final output: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v32/`; exact receipt: [`run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v32.json`](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v32.json).
 - All 60 outputs were accounted for across two states, three design packs, two themes, and five CSS widths. The 40 non-Zine PNGs are byte-identical to previously reviewed v30 outputs; all 20 changed Zine PNGs were inspected in four five-width sheets. No clipping, overlap, or horizontal overflow was found. Missing values remain unknown and their deltas remain non-computable.
 - Manifest SHA-256 `98d3ad9e2dc65d4588a6e5237d91c767f14ccb9a6743a8f39bf6b366d2d1ae4c`; bundle SHA-256 `1f305b7b8ddd9d51d80b9371a94d55e90bb150a6d1ee43e1af05db4d29510757`; generation-source SHA-256 `5c63da069d03f25aa4252f5d105fe22c30a06c08e7c0a7cf8b96f40f5d557dfc`. Strict evidence validation passes. This is still synthetic renderer QA, not user aesthetic acceptance, real Bangumi scenario proof, or QQ/TIM delivery. C07 remains UNASSESSED and v4 remains UNCLAIMED.
+
+### v34 reviewer correction and final local layout — 2026-10-24 JST
+
+- Round-5 review found the global Graphic Zine font changes had widened scope without current-source SubjectCard evidence. Shared defaults in `packages/renderer/src/themes/index.ts` and `packages/renderer/src/typography.ts` are restored to the prior PASS Candidate; the serif display treatment is implemented entirely inside the C07 two-cohort card. The shared `TitleBlock` component remains unchanged.
+- C07 no longer repeats the same A/B identity above separate score cards. Each irregular paper panel now presents its cohort label, work title, average score, coverage, and bounded query detail together. The separate yellow B−A strip remains between the paired papers and secondary metric rows. Narrow metric labels, values, and coverage labels were increased for legibility.
+- Final output directory: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v34/`; tracked receipt: [`run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v34.json`](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v34.json). It contains all 60 current-source images: two states × three design packs × light/dark × 320/360/520/640/960 CSS px.
+- Relative to v32, 20 Graphic Zine images changed and were individually inspected in v33. Every v34 PNG SHA-256 matches its individually reviewed v33 image; all 40 non-Zine outputs also match the previously inspected v30 PNGs. Strict current-source receipt test passes 3/3. The complete/light/360 image is 698 CSS px tall, down from v32's 719 CSS px (2.9% shorter).
+- Manifest SHA-256 `11b20ad2963296bf104e14bf3dae0598651472db0c14dd74507fe84453ad2df7`; bundle SHA-256 `9576a30413a18119c5f19b42bda6e1edd9f63f9d7ec39d03a58537bcc1ce6371`; generation-source SHA-256 `999e046606032ad6a571e117ce4b6835c2a6daf3810ffc197a65d0c8ce62beeb`. Strict validation binds these hashes and every PNG.
+- Focused C07 renderer and typography tests pass 19/19; `pnpm build` passes. Broader local checks, exact-Candidate CI, Harness refresh, and round-6 review are still pending. This remains local synthetic rendering evidence; user aesthetic acceptance, real Bangumi scenario coverage, and QQ/TIM delivery are not claimed. C07 remains UNASSESSED and v4 UNCLAIMED.

@@ -255,7 +255,7 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
       720,
       'graphic-zine',
     );
-    expect(zineLongTitle).toContain('font-size:32.13px');
+    expect(zineLongTitle).toContain('font-size:34.65px');
     expect(zineLongTitle).toContain('data-title-max-lines="3"');
     const zineLongTitleLayout = await measureRenderRootLayout(zineLongTitle, 720);
     expect(
