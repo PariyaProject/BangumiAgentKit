@@ -79,3 +79,16 @@ export function createP06RenderPersonProfileAssetGuard(): {
     blockedAssetRequestCount: number;
   };
 };
+
+export function createP06RenderPersonProfileOfflineRuntime(
+  config:
+    | {
+        networkMode: string;
+        profile?: { id?: unknown } | null;
+      }
+    | null
+    | undefined,
+): {
+  offlineFixture: ReturnType<typeof createP06RenderPersonProfileOfflineFetch>;
+  assetGuard: ReturnType<typeof createP06RenderPersonProfileAssetGuard>;
+} | null;
