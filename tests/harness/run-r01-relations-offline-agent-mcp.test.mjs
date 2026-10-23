@@ -5,6 +5,10 @@ import {
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
+  R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID,
+  R01_RELATIONS_TEXT_PROJECTION_OFFLINE_NETWORK_MODE,
+} from '../../scripts/lib/r01-relations-text-projection-offline-profile.mjs';
+import {
   R01_RELATIONS_OFFLINE_EXPECTED_ARGUMENTS,
   R01_RELATIONS_OFFLINE_NETWORK_MODE,
   R01_RELATIONS_OFFLINE_PROFILE_ID,
@@ -18,6 +22,9 @@ import {
 } from '../../scripts/acceptance/run-r01-relations-offline-agent-mcp.mjs';
 
 const PROFILE = getAgentMcpProfileById(R01_RELATIONS_OFFLINE_PROFILE_ID);
+const TEXT_PROJECTION_PROFILE = getAgentMcpProfileById(
+  R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID,
+);
 const SOURCE_SHA = 'a'.repeat(40);
 const BUNDLE_SHA = 'b'.repeat(64);
 const SERVER_ID = 'bgk_r01_relations';
@@ -122,6 +129,77 @@ test('R01 server summary accepts exactly one local fixture response', () => {
       },
       SOURCE_SHA,
       BUNDLE_SHA,
+    ),
+    false,
+  );
+});
+
+test('R01 runner accepts only the exact new text-projection profile option', () => {
+  assert.equal(
+    validateR01RunnerArgs([
+      '--run',
+      '95',
+      '--profile-id',
+      R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID,
+    ]),
+    'run',
+  );
+  assert.throws(() =>
+    validateR01RunnerArgs([
+      '--run',
+      '95',
+      '--profile-id',
+      'r01-subject-relations-offline-agent-mcp-v1',
+    ]),
+  );
+});
+
+test('R01 server summary accepts the v2 source-row summary only for its exact profile', () => {
+  const v2 = {
+    ...serverSummary(),
+    profileId: TEXT_PROJECTION_PROFILE.id,
+    argumentProfile: TEXT_PROJECTION_PROFILE.argumentProfile,
+    networkMode: R01_RELATIONS_TEXT_PROJECTION_OFFLINE_NETWORK_MODE,
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(TEXT_PROJECTION_PROFILE),
+    results: [
+      {
+        sequenceIndex: 0,
+        status: 'SUCCESS',
+        resultSummary: {
+          state: 'observed',
+          sourceRowsObserved: 30,
+          sourceRowsReturned: 30,
+          sourceSchemaDriftRows: 0,
+          sourceTruncated: false,
+          paginationAvailable: false,
+          totalCountAvailable: false,
+          completeness: 'not_provided_by_source',
+        },
+      },
+    ],
+    offlineFixture: {
+      ...serverSummary().offlineFixture,
+      profile: R01_RELATIONS_TEXT_PROJECTION_OFFLINE_NETWORK_MODE,
+    },
+  };
+  assert.equal(
+    validateR01ServerSummary(v2, SOURCE_SHA, BUNDLE_SHA, TEXT_PROJECTION_PROFILE.id),
+    true,
+  );
+  assert.equal(
+    validateR01ServerSummary(
+      {
+        ...v2,
+        results: [
+          {
+            ...v2.results[0],
+            resultSummary: { ...v2.results[0].resultSummary, sourceRowsReturned: 29 },
+          },
+        ],
+      },
+      SOURCE_SHA,
+      BUNDLE_SHA,
+      TEXT_PROJECTION_PROFILE.id,
     ),
     false,
   );

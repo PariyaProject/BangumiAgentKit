@@ -155,6 +155,14 @@ import {
   R01_RELATIONS_OFFLINE_PROFILE_ID,
 } from '../../scripts/lib/r01-relations-offline-profile.mjs';
 import {
+  assertR01RelationsTextProjectionOfflineFixture,
+  createR01RelationsTextProjectionOfflineFetch,
+} from '../../scripts/lib/r01-relations-text-projection-offline-fixture.mjs';
+import {
+  R01_RELATIONS_TEXT_PROJECTION_OFFLINE_NETWORK_MODE,
+  R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID,
+} from '../../scripts/lib/r01-relations-text-projection-offline-profile.mjs';
+import {
   assertR03RelationsOfflineFixture,
   createR03RelationsOfflineFetch,
 } from '../../scripts/lib/r03-relations-offline-fixture.mjs';
@@ -425,6 +433,9 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE) {
     assertR01RelationsOfflineFixture(config.profile);
   }
+  if (config.networkMode === R01_RELATIONS_TEXT_PROJECTION_OFFLINE_NETWORK_MODE) {
+    assertR01RelationsTextProjectionOfflineFixture(config.profile);
+  }
   if (config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE) {
     assertR03RelationsOfflineFixture(config.profile);
   }
@@ -576,6 +587,9 @@ async function main(argv = process.argv.slice(2)) {
                                 ? createR04RenderV2SeriesWatchOrderOfflineV2Fetch()
                                 : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
                                   ? createR01RelationsOfflineFetch()
+                                  : config.networkMode ===
+                                      R01_RELATIONS_TEXT_PROJECTION_OFFLINE_NETWORK_MODE
+                                    ? createR01RelationsTextProjectionOfflineFetch()
                                   : config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE
                                     ? createR03RelationsOfflineFetch()
                                     : null;
@@ -1189,6 +1203,37 @@ async function main(argv = process.argv.slice(2)) {
           return {
             content: [{ type: 'text', text }],
             structuredContent: safeProjection,
+          };
+        }
+        if (config.profile?.id === R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID) {
+          const safeProjection = summary.results[sequenceIndex]?.resultSummary;
+          const presentation = presentMcpToolResult(expectedToolName, result);
+          if (
+            !safeProjection ||
+            !presentation.structuredContent ||
+            !Number.isInteger(safeProjection.sourceRowsReturned) ||
+            !Number.isInteger(safeProjection.sourceRowsObserved)
+          ) {
+            summary = {
+              ...summary,
+              serverResultStatus: 'ERROR',
+              results: [
+                {
+                  sequenceIndex,
+                  status: 'ERROR',
+                  errorCode: 'R01_TEXT_PROJECTION_SUMMARY_UNAVAILABLE',
+                },
+              ],
+            };
+            persistSummary();
+            return {
+              content: [{ type: 'text', text: 'R01 text projection summary is unavailable.' }],
+              isError: true,
+            };
+          }
+          return {
+            content: [{ type: 'text', text: presentation.text }],
+            structuredContent: presentation.structuredContent,
           };
         }
         if (config.profile?.id === R02_POSITIVE_DIRECT_RELATIONS_PROFILE_ID) {

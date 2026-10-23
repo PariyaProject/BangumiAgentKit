@@ -35,6 +35,10 @@ import {
   summarizeR01RelationsOfflineToolResult,
 } from './r01-relations-offline-profile.mjs';
 import {
+  R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID,
+  summarizeR01RelationsTextProjectionToolResult,
+} from './r01-relations-text-projection-offline-profile.mjs';
+import {
   R03_RELATIONS_OFFLINE_PROFILE_ID,
   summarizeR03RelationsOfflineToolResult,
 } from './r03-relations-offline-profile.mjs';
@@ -548,6 +552,9 @@ export function summarizeProfileToolResult(
   }
   if (profileId === R01_RELATIONS_OFFLINE_PROFILE_ID) {
     return summarizeR01RelationsOfflineToolResult(result, expectedArguments);
+  }
+  if (profileId === R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID) {
+    return summarizeR01RelationsTextProjectionToolResult(result, expectedArguments);
   }
   if (profileId === R03_RELATIONS_OFFLINE_PROFILE_ID) {
     return summarizeR03RelationsOfflineToolResult(result, expectedArguments);

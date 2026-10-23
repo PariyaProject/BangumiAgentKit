@@ -1283,6 +1283,61 @@ function makeDiscoveryResult(count = 100) {
 }
 
 describe('MCP tool result presentation', () => {
+  it('returns bounded R01 relation text projection and all synthetic rows in structured content', async () => {
+    const subjectId = 991408;
+    const items = Array.from({ length: 30 }, (_, index) => {
+      const ordinal = String(index + 1).padStart(2, '0');
+      return {
+        id: subjectId + index + 1,
+        type: 'anime',
+        name: `Synthetic R01 relation target ${ordinal}`,
+        nameCn: `合成关系目标${ordinal}`,
+        relation: index === 0 ? '改编' : '相关作品',
+      };
+    });
+    const result = {
+      state: 'observed',
+      subjectId,
+      source: {
+        api: 'Bangumi official v0',
+        operation: 'GET /v0/subjects/{subject_id}/subjects',
+        direction: 'source_subject_to_returned_target',
+        scope: 'visible_direct_rows_returned_for_source_subject',
+        retrievedAt: '2026-10-23T00:00:00.000Z',
+      },
+      coverage: {
+        responseRowsObserved: items.length,
+        rowsReturned: items.length,
+        schemaDriftRows: 0,
+        truncated: false,
+        paginationAvailable: false,
+        totalCountAvailable: false,
+        completeness: 'not_provided_by_source',
+      },
+      limitations: [
+        '仅表示本次响应中指定来源条目指向目标条目的直接关系，不含反向或传递关系。',
+        '官方 v0 此操作没有分页、总数或系列完整性字段；未返回关系不等于不存在。',
+        'relation 是来源记录的原始标签；接口行顺序不表示官方观看顺序。',
+        '匿名可见性可能不包含敏感条目。',
+      ],
+      items,
+    };
+    const response = await callMcpToolWithResult('bangumi.get_subject_relations', result);
+    const text = (response.content as Array<{ type: string; text?: string }>)[0]?.text;
+    const parsed = JSON.parse(text ?? '');
+    const structuredContent = response.structuredContent as { items: unknown[] } | undefined;
+
+    expect(structuredContent).toEqual(result);
+    expect(typeof text).toBe('string');
+    expect(Buffer.byteLength(text ?? '', 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(parsed.textProjection.fullStructuredContentAvailable).toBe(true);
+    expect(parsed.textProjection.rowsIncluded).toBeGreaterThan(0);
+    expect(parsed.textProjection.rowsIncluded).toBeLessThan(items.length);
+    expect(parsed.textProjection.rowsOmitted).toBe(items.length - parsed.textProjection.rowsIncluded);
+    expect(parsed.items).toEqual(items.slice(0, parsed.textProjection.rowsIncluded));
+    expect(structuredContent?.items).toHaveLength(30);
+  });
+
   it('keeps the existing full pretty JSON text for small and unrelated results', () => {
     const small = { state: 'complete', count: 1 };
     const smallPresentation = presentMcpToolResult('bangumi.get_person_activity', small);
