@@ -615,6 +615,7 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
             'sourceRevision': self.source,
         })
         branch = f"codex/epoch-{profile['epochId']}"
+        corrective_review_head = 'd' * 40
         refreshed_head = 'e' * 40
         epoch_status = {
             'run': {
@@ -641,7 +642,7 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
                         },
                         {
                             'reviewer_id': report['reviewerId'],
-                            'candidate_sha': refreshed_head,
+                            'candidate_sha': corrective_review_head,
                             'reviewed_base_sha': self.base,
                             'verdict': 'CORRECTIVE_REQUIRED',
                         },
@@ -683,11 +684,11 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
                 ),
             )
 
-            wrong_latest_sha = json.loads(json.dumps(epoch_status))
-            wrong_latest_sha['epoch']['state']['review_history'][-1]['candidate_sha'] = 'f' * 40
+            wrong_latest_reviewer = json.loads(json.dumps(epoch_status))
+            wrong_latest_reviewer['epoch']['state']['review_history'][-1]['reviewer_id'] = 'other-reviewer'
             self.assertFalse(
                 GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
-                    report, wrong_latest_sha, refresh_paths, report['mcpBundleSha256'],
+                    report, wrong_latest_reviewer, refresh_paths, report['mcpBundleSha256'],
                 ),
             )
 
@@ -698,10 +699,19 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
                 ),
             )
 
-        failed_ancestry = subprocess.CompletedProcess(
+        successful_source_ancestry = subprocess.CompletedProcess(
+            ['git', 'merge-base', '--is-ancestor'], 0, '', '',
+        )
+        failed_review_ancestry = subprocess.CompletedProcess(
             ['git', 'merge-base', '--is-ancestor'], 1, '', '',
         )
-        with patch.object(GENERATOR, '_run_repository_git', return_value=failed_ancestry):
+
+        def reject_corrective_review_ancestor(_root, *_args):
+            return successful_source_ancestry if _args[-2] == self.source else failed_review_ancestry
+
+        with patch.object(
+            GENERATOR, '_run_repository_git', side_effect=reject_corrective_review_ancestor,
+        ):
             self.assertFalse(
                 GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
                     report, epoch_status, refresh_paths, report['mcpBundleSha256'],

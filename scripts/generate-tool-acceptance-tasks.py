@@ -14431,12 +14431,23 @@ def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
             for review in reviews[:-1]
         )
     )
-    latest_corrective_review_matches_head = (
+    latest_corrective_review_matches_report = (
         isinstance(latest_review, dict)
-        and latest_review.get('candidate_sha') == branch_head_sha
+        and isinstance(latest_review.get('candidate_sha'), str)
+        and re.fullmatch(r'[0-9a-f]{40}', latest_review.get('candidate_sha')) is not None
+        and latest_review.get('candidate_sha') != branch_head_sha
         and latest_review.get('reviewed_base_sha') == report.get('baseSha')
         and latest_review.get('verdict') == 'CORRECTIVE_REQUIRED'
         and latest_review.get('reviewer_id') == report.get('reviewerId')
+    )
+    latest_corrective_review_is_ancestor = (
+        latest_corrective_review_matches_report
+        and isinstance(branch_head_sha, str)
+        and re.fullmatch(r'[0-9a-f]{40}', branch_head_sha) is not None
+        and _run_repository_git(
+            ROOT, 'merge-base', '--is-ancestor',
+            latest_review.get('candidate_sha'), branch_head_sha,
+        ).returncode == 0
     )
     pass_review_refresh_pending = (
         epoch.get('state') == 'REVIEW_PASSED'
@@ -14448,7 +14459,7 @@ def codex_render_subject_card_offline_profile_candidate_binding_is_valid(
         epoch.get('state') == 'CORRECTIVE_REQUIRED'
         and candidate_sha is None
         and epoch.get('review_pass_sha') is None
-        and latest_corrective_review_matches_head
+        and latest_corrective_review_is_ancestor
         and source_pass_is_preserved
     )
     report_refresh_pending = (
