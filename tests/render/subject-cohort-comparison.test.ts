@@ -49,6 +49,26 @@ describe('subject cohort comparison renderer', () => {
     expect(html).not.toContain('searchSubjects');
   });
 
+  it('prioritizes A, B, and delta values at narrow widths without repeating sample metrics', () => {
+    const viewModel = buildSubjectCohortComparisonViewModel(result, { maxSubjectsPerCohort: 1 });
+    const mobileHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320);
+
+    expect(mobileHtml.match(/data-layout="cohort-metric-card"/gu)).toHaveLength(4);
+    expect(mobileHtml.match(/data-layout="cohort-metric-comparison"/gu)).toHaveLength(4);
+    expect(mobileHtml.match(/data-layout="cohort-metric-value"/gu)).toHaveLength(12);
+    expect(mobileHtml).not.toContain('data-layout="cohort-subject-metrics"');
+    expect(mobileHtml).not.toContain('评分 8.00');
+    expect(mobileHtml).not.toContain('评分 7.00');
+    expect(mobileHtml).toContain('8.00');
+    expect(mobileHtml).toContain('7.00');
+    expect(mobileHtml).toContain('-1.00');
+    expect(mobileHtml).toContain('1 条完整样本');
+
+    const desktopHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 960);
+    expect(desktopHtml).not.toContain('data-layout="cohort-metric-comparison"');
+    expect(desktopHtml).toContain('评分分布离散度');
+  });
+
   it('decodes the offline C07 comparison card and verifies its nonblank pixel signal', async () => {
     const viewModel = buildSubjectCohortComparisonViewModel(result, { maxSubjectsPerCohort: 1 });
     const service = new RenderService();
@@ -222,7 +242,7 @@ describe('subject cohort comparison renderer', () => {
     expect(mobileHtml.match(/data-layout="cohort-label"/gu)).toHaveLength(2);
     expect(mobileHtml).toContain('-webkit-line-clamp:2');
     expect(mobileHtml.match(/data-layout="cohort-subject-item"/gu)).toHaveLength(6);
-    expect(mobileHtml.match(/data-layout="cohort-subject-metrics"/gu)).toHaveLength(6);
+    expect(mobileHtml.match(/data-layout="cohort-subject-metrics"/gu) ?? []).toHaveLength(0);
     expect(mobileHtml.match(/data-layout="cohort-subject-summary"/gu)).toHaveLength(2);
     expect(mobileHtml.match(/图片展示 3\/60 条已返回样本/gu)).toHaveLength(2);
     expect(mobileHtml).toContain('卡片另有 9 条告警未展开。');

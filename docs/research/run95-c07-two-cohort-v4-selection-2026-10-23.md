@@ -97,3 +97,13 @@ After the Graphic Zine caption refinement changed the renderer bundle, the C07 v
 - The runner now binds that exact manifest SHA. `validateC07V4VisualQaEvidence()` returned `true` against the current bundle and all 60 local PNG receipts.
 - Added a v4 negative fixture regression for extra search-body fields and unregistered subject IDs; the seven focused C07/Harness test files now pass 45/45.
 - C07 v4 remains UNCLAIMED; v1/v2/v3 remain terminal/no-retry. No matrix credit, API call, account action, or QQ/TIM action occurred.
+
+## Narrow comparison layout correction and current visual receipt — 2026-10-23T14:47Z
+
+The first 320px comparison output repeated every subject metric inside each cohort panel, then repeated the same values in four vertically stacked aggregate cards. The narrow presentation was dense and the A/B/delta values were hard to scan. The renderer now switches at 640px and below to a three-column A / B / B−A metric layout, omits repeated subject-level numbers while retaining sample titles, coverage states, sample counts, and aggregate values, and applies each design pack's panel mask to the metric cards. The wider 720px diagnostic view retains per-subject conflict details.
+
+- Exact source validation: `pnpm build` PASS; `pnpm exec vitest run tests/render/subject-cohort-comparison.test.ts` PASS (10/10); `git diff --check` PASS.
+- Regenerated all 60 images at `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261023-v2/` (two result states × three design packs × two palettes × five widths). Each image was opened and inspected individually. A/B/delta values remain visible, the partial cohort remains unknown rather than zero, and no clipped or overlapping content was found.
+- Current MCP bundle attestation: `8fb10dbfd60a7645e86185647476f67198a460160e8f903c09604aebd2c726ac`. Generation-source SHA-256: `e37a2b66e56bc36adbb9f33866684684981acbd23d8d81f6249d386a49f7fe22`.
+- Current tracked matrix is [`run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-23.json`](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-23.json), SHA-256 `ce1ed4e7ad3e12c9993c9a719843db3d22c56fd80d35c5fe70f171d6b55cf225`; `validateC07V4VisualQaEvidence()` returned true against the exact bundle and 60 local PNG receipts.
+- The earlier v1 visual directory and prior-bundle manifest are retained as historical evidence; the v2 matrix is the current C07 gate. C07 v4 remains UNCLAIMED, no acceptance credit is added, and no live API, OAuth/account, community, write, QQ, or TIM action occurred.

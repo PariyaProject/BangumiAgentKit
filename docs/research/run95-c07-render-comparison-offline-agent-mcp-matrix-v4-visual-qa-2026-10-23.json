@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "profileId": "c07-render-comparison-offline-agent-mcp-matrix-v4",
-  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261023",
+  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261023-v2",
   "cssWidths": [
     320,
     360,
@@ -19,14 +19,14 @@
     "bangumi-dark"
   ],
   "deviceScaleFactor": 1,
-  "buildBundleSha256": "d0b81eaf0f9f01fc3c088b563c095f1d0f79714db31827a915c234a136854be2",
-  "generationSourceSha256": "96b61c4f1d05152fa0369537d0b9ed66bb6833a1ae530ec8fa0b8be457926744",
+  "buildBundleSha256": "8fb10dbfd60a7645e86185647476f67198a460160e8f903c09604aebd2c726ac",
+  "generationSourceSha256": "e37a2b66e56bc36adbb9f33866684684981acbd23d8d81f6249d386a49f7fe22",
   "reviewAcknowledgement": {
     "decision": "PASS",
     "allImagesIndividuallyInspected": true,
     "reviewedBy": "Codex",
-    "reviewedAt": "2026-10-23T14:05:56.000Z",
-    "summary": "All 60 PNG SHA-256 values match the prior individually inspected matrix; only the attested bundle and source digest changed."
+    "reviewedAt": "2026-10-23T14:47:45.000Z",
+    "summary": "60/60 images individually inspected across two result states, three design packs, both palettes, and five widths. Narrow layouts keep A/B/delta prominent, omit repeated sample values, preserve missing values as unknown, and show no clipping or overlap."
   },
   "images": [
     {
@@ -36,12 +36,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1550,
-      "byteLength": 110331,
-      "sha256": "02a8b8bf5f91bf4be66b1f055fb5d559bf1695fc5e32dc383db154b6939f01fa",
+      "pixelHeight": 1283,
+      "byteLength": 110269,
+      "sha256": "92b7b3fdebfb45c2bba78ddeedc2a0a56fba7b6462aeb8af6df52efcc89c326a",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -51,12 +51,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1489,
-      "byteLength": 110767,
-      "sha256": "d63b1f5999f3e6ef11f375cd95283f3a80ad60ffd0c31095552ada750ad48171",
+      "pixelHeight": 1223,
+      "byteLength": 111918,
+      "sha256": "1a35d7606d06b0aadaca9ed962df49e55729a2fa6dd1e7b294b1f84d2e03bb54",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -66,12 +66,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-light-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1370,
-      "byteLength": 138475,
-      "sha256": "cba5492bc528200299ac4c059584a4d3e780bba72e1d04ead0d4d4155949641d",
+      "pixelHeight": 1191,
+      "byteLength": 129305,
+      "sha256": "159eac9f73f042e9010456851593f9c15b780ea822c24d1912a14a932fad94a2",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -81,12 +81,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-light-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1370,
-      "byteLength": 140731,
-      "sha256": "c35eebc59b881a2d6392e07ea10af6cc79f7ae166b3817e2f82558a4b0000dc8",
+      "pixelHeight": 1187,
+      "byteLength": 130677,
+      "sha256": "3c5cae202cfe638588ef3a8ee4d25fc0abdb54af37c429fe19f558172191c393",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -96,12 +96,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-light-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 846,
-      "byteLength": 123716,
-      "sha256": "b3a88d5a71b051660b24e952c51854ed2dcdf0bdb5d870ec731753afa74b7e0d",
+      "pixelHeight": 850,
+      "byteLength": 126276,
+      "sha256": "3fb77c0e4c54e0b0240b6b8f22a9cc297afd205c54339ec6f02739e6201e04a9",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠."
       }
     },
     {
@@ -111,12 +111,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1550,
-      "byteLength": 108999,
-      "sha256": "941258a8b6afb88b0b69993612218988dff7a45e8393fa17d6d8eb3a69d27e83",
+      "pixelHeight": 1283,
+      "byteLength": 108804,
+      "sha256": "dd57eec7b0fc9bb4adec157f6a696afb8d821c3805b88250b09142c5ed7487ec",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -126,12 +126,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1489,
-      "byteLength": 109224,
-      "sha256": "da6a7af3e90b368d5745a06965dd8283027a490677241cc9206964a7e53b2a01",
+      "pixelHeight": 1223,
+      "byteLength": 110227,
+      "sha256": "833248edf6dab6fb0896191a585726a35b30914d73cd86ef671c87d6c2012e9d",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -141,12 +141,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1370,
-      "byteLength": 135836,
-      "sha256": "d6204d79e7f3a2c2e6f5644af9f488e321031f34b58655043189cabb47707257",
+      "pixelHeight": 1191,
+      "byteLength": 127669,
+      "sha256": "307a4d341de99dc8f844b46affe308adddd902f7a063c6f45ebb3ab542cc8c23",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -156,12 +156,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1370,
-      "byteLength": 137726,
-      "sha256": "97e31a47a8840de53b33457ba65d89b17d55d294a1fbacea43aee07f08989a19",
+      "pixelHeight": 1187,
+      "byteLength": 128785,
+      "sha256": "b95dff74d555dd834dbe5a5b862529196822b8616ddd8242d645730388443a7b",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -171,12 +171,12 @@
       "file": "complete-two-cohort-warm-editorial-bangumi-dark-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 846,
-      "byteLength": 121075,
-      "sha256": "77e5183153b7979ad7eb04e670ad5f632229da5f0e947de927d62ef5f7f1d751",
+      "pixelHeight": 850,
+      "byteLength": 123773,
+      "sha256": "1aecf3943596f2c470af8220a4003526c706b2b3b2a748f3d778bf18e1a2b2cb",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠."
       }
     },
     {
@@ -186,12 +186,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1483,
-      "byteLength": 107589,
-      "sha256": "0e4745cea35ffeaa7e1acfdd815e2d53950410e6099e6fe694aaf31e28b4ea0e",
+      "pixelHeight": 1284,
+      "byteLength": 105403,
+      "sha256": "4818658321d4dff4a0e7f5142e31ea710d4c23cc74e210fa62f1f7a68bcf3279",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -201,12 +201,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1410,
-      "byteLength": 108244,
-      "sha256": "729a9527504682eebf3b1aca754ae427136a43e5a317c51ad6287c37257d3f79",
+      "pixelHeight": 1211,
+      "byteLength": 103047,
+      "sha256": "16b4685891010fc71ffa677aeee19f2e68ded3678de55a0044a10b976f4cae0d",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -216,12 +216,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-light-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1294,
-      "byteLength": 135274,
-      "sha256": "6b29cc9944dcc0918413d4d0ea4552ee23581f82e20025c8eaf156486d798328",
+      "pixelHeight": 1182,
+      "byteLength": 129121,
+      "sha256": "8585186d8e192964c81e1da161a5d2e31912e61c325fc1ea69b302d29bf185ed",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -231,12 +231,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-light-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1294,
-      "byteLength": 136976,
-      "sha256": "a765b354a16770dc39769223ad7017c9787df9ba996be2a7395abac9a6903595",
+      "pixelHeight": 1178,
+      "byteLength": 129851,
+      "sha256": "62fe03141cd57f43e4730db08380c4b4e20357baa2f2633d77616e0cb4c85ae4",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -246,12 +246,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-light-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 847,
-      "byteLength": 117507,
-      "sha256": "29593bfc77cb01537d8099b1ce472bffbce7e985919612c9864b6554d231f5f2",
+      "pixelHeight": 849,
+      "byteLength": 119451,
+      "sha256": "b4130a1b53062559b426f8f2653e5938bf442fdaf22fff53f128225ef0a56043",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠."
       }
     },
     {
@@ -261,12 +261,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1483,
-      "byteLength": 110376,
-      "sha256": "d1cfe45111543a7be160da706881004d563a04b62d0f4aeaba237ed872267fcf",
+      "pixelHeight": 1284,
+      "byteLength": 107989,
+      "sha256": "5f2aa107c67fec6a33dd3ac248a1f8cb62c56d2ea596698b31dc0bf05ce81f97",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -276,12 +276,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1410,
-      "byteLength": 110788,
-      "sha256": "70f714af42f9afafe5deb125a2bd8a7c00007942fd7091880f9d039f7aa56954",
+      "pixelHeight": 1211,
+      "byteLength": 105155,
+      "sha256": "308ccf1d89dcbf69d3ccd17cd30057ee8583781ee2ae66aefb597f741c47aa91",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -291,12 +291,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1294,
-      "byteLength": 138837,
-      "sha256": "20c69cd1e18667250349da3d108e851339ac31ed615d3d29fb8f788c221e54df",
+      "pixelHeight": 1182,
+      "byteLength": 132548,
+      "sha256": "a2f46bec81f62b0c74f4ccb382478e05c6031a9a83574f2da5de6b05a24c2f93",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -306,12 +306,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1294,
-      "byteLength": 140546,
-      "sha256": "773e34ae97366cee6201787894a106e434e630f87fcc0bb1bf2e30e9d98e418f",
+      "pixelHeight": 1178,
+      "byteLength": 133560,
+      "sha256": "30757066980821da86aff3033466ea28946f3254259b40e7f2417545424d8a67",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -321,12 +321,12 @@
       "file": "complete-two-cohort-clean-gallery-bangumi-dark-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 847,
-      "byteLength": 120622,
-      "sha256": "a732c0191505cb54ca21eacf35e1e68acfe7a0a238799209d994937dec2bc756",
+      "pixelHeight": 849,
+      "byteLength": 122612,
+      "sha256": "df68f2152ff9f6ffe4795c335388a6d773c175052fc0fb3b83845540affa12dc",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠."
       }
     },
     {
@@ -336,12 +336,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1298,
-      "byteLength": 111778,
-      "sha256": "dec147a2f7a523e101566392b3d8ca6b0b3f177a3198dedfef0f9397b375713f",
+      "pixelHeight": 1106,
+      "byteLength": 111263,
+      "sha256": "f76b5c48ae57c3bf752c151b0d2f569bce0c835595b7229fcad7db93060afbeb",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -351,12 +351,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1264,
-      "byteLength": 112429,
-      "sha256": "af8a0d738adf7bd550a51d0cf36ac59b18afa5af152f5b3615ec88f4360a0bf2",
+      "pixelHeight": 1073,
+      "byteLength": 108632,
+      "sha256": "c7db29c0f333290efa2c824ce28be50a20a718ac470b0330de61dc4e490d9bdc",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -366,12 +366,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-light-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1159,
-      "byteLength": 135987,
-      "sha256": "5f4b53969bf2aa29d6625cf1b36f20668b05c2e97cd45e422a228956aee97680",
+      "pixelHeight": 1056,
+      "byteLength": 135927,
+      "sha256": "332fef2474cac9b51739b6d887740a8fb5664c18e570ec285b83d72c0cf64f83",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -381,12 +381,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-light-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1159,
-      "byteLength": 142100,
-      "sha256": "648455e3a6d18378e2c3c50d0bb23d962b058398a11c1434fe03f24f3ad9dbc4",
+      "pixelHeight": 1052,
+      "byteLength": 136782,
+      "sha256": "d0ee386b1ac91b3ba38b907b4e1f5ca08ab15f55fbe6ead690baf713b0f2dd0b",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -396,12 +396,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-light-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 750,
-      "byteLength": 127267,
-      "sha256": "d3b99dd7cc8238361e69de3a1973ac0adc06e82a9231672240d002b13a4c6091",
+      "pixelHeight": 752,
+      "byteLength": 130101,
+      "sha256": "75dfa50e5de930237816b60e8612f7b7354e563a34263ae78980c366c686f1fd",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠."
       }
     },
     {
@@ -411,12 +411,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1298,
-      "byteLength": 112755,
-      "sha256": "709473bddecda30e5158a803fdfd90d1751b1950c2552c00ff20c1f47ecd83fb",
+      "pixelHeight": 1106,
+      "byteLength": 111509,
+      "sha256": "5cec3442a7c270cd6e8f46a8a3f0713b92b75d386896048655863d81ac18324c",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -426,12 +426,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1264,
-      "byteLength": 113289,
-      "sha256": "f91143e7cb58baa5debdaa0b82832842733c66425db7b57387b69b953b93d835",
+      "pixelHeight": 1073,
+      "byteLength": 109180,
+      "sha256": "c194e210df7fbd1bff5bf20b6bb855fee8fb757dc267dc4b3915ab82b926bb82",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -441,12 +441,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1159,
-      "byteLength": 136426,
-      "sha256": "104fbbaa20cbdacfd723867ef2a792571b7da609006e680119fb7e43451a57e8",
+      "pixelHeight": 1056,
+      "byteLength": 136406,
+      "sha256": "0bd1456b975bd8d53837ab958c8f37038228eee0f86d69ecbe4a51c0cc83afeb",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -456,12 +456,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1159,
-      "byteLength": 142810,
-      "sha256": "0eba25cf1147d5bda5304130766d54853e8ab72bc3904570ed04fdb47906d831",
+      "pixelHeight": 1052,
+      "byteLength": 137244,
+      "sha256": "c7b3969ada542d4386aff8b79075f261ced3286a7fb0e1ebaba3d797c71c02c4",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。"
       }
     },
     {
@@ -471,12 +471,12 @@
       "file": "complete-two-cohort-graphic-zine-bangumi-dark-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 750,
-      "byteLength": 126948,
-      "sha256": "6379083c969440cc6ea86e361f7ab81b9ff5125b8c5c0b1797bee2d873d98b56",
+      "pixelHeight": 752,
+      "byteLength": 130266,
+      "sha256": "dfdb33da220c952c74d8e73b33884809f29adb9f3005e750868bcee378c93872",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠."
       }
     },
     {
@@ -486,12 +486,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1469,
-      "byteLength": 114254,
-      "sha256": "61f4b57d8daf0e68c3b356e85dd031e7aeac1a06e5f6fe369c64bc61c591680d",
+      "pixelHeight": 1257,
+      "byteLength": 114139,
+      "sha256": "53a45f75f0695312f186e4878def44d3d3caa398ee358588e1d55d71192becbc",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -501,12 +501,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1409,
-      "byteLength": 114424,
-      "sha256": "2015f26cbfa886ffd250f88e4c9f42702c72ad4dc789df845237c44ca9878e82",
+      "pixelHeight": 1197,
+      "byteLength": 114874,
+      "sha256": "6ec1b3765cc9a79a437c01d5613376edaca7d092b1c1ccf4491cb4d23e80feeb",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -516,12 +516,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-light-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1298,
-      "byteLength": 119171,
-      "sha256": "0525931191fe1331bab3d5ed5323ebd9e852c2c5c85d659a8ed4878da80e3160",
+      "pixelHeight": 1130,
+      "byteLength": 116032,
+      "sha256": "416cc0b69a9bb3b075148820de829102c106ac7cc68bb462a01a5d509aba1379",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -531,12 +531,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-light-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1298,
-      "byteLength": 120637,
-      "sha256": "9db974a8044d2d9ebdf02c5b878213760609a06610db8f68048b502a5c59e7b0",
+      "pixelHeight": 1126,
+      "byteLength": 117003,
+      "sha256": "aa9a7d1e7ab334b3d333b3fd7eab8d8f8f1fbc7259c3a5d0acb1b27713ef3a37",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -546,12 +546,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-light-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 812,
-      "byteLength": 110861,
-      "sha256": "96dbfac705fd44c7feb71a5dd09cdccb44395540e02f8885b2fc8949a4667335",
+      "pixelHeight": 816,
+      "byteLength": 113209,
+      "sha256": "8a84425f4af8a277aa581109fc32211e1e5e20a5905566c9e22552c91949dd84",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "宽版分组与指标布局稳定；缺失组保持未知并明确部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -561,12 +561,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1469,
-      "byteLength": 112036,
-      "sha256": "0dfc9ad445814c90e50c002cf0df187a382f8c4862bc1a8a4f965a6f7bee5d32",
+      "pixelHeight": 1257,
+      "byteLength": 111894,
+      "sha256": "655f6423acd4ebc9229727e42dad3a9b6cce25a4bc2a2a79a5d237dad8a1c826",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -576,12 +576,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1409,
-      "byteLength": 112245,
-      "sha256": "88b7eb74e2227f23cecd3baff0c91332ca274da48c6d8c660f70e4764b02b703",
+      "pixelHeight": 1197,
+      "byteLength": 112768,
+      "sha256": "45794afaccdccb3c19099f2a6750bc4c9da0497d476913f5dce42b9fe5ab1415",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -591,12 +591,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1298,
-      "byteLength": 116407,
-      "sha256": "19cc96177d71a9dff19968f7b3d17cdc8ba43a33e1b986fcf121a1d2a3178950",
+      "pixelHeight": 1130,
+      "byteLength": 113818,
+      "sha256": "d832a78267ac42e1a37809331d80507e400a46449cd4044edf5c19d0d430c617",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -606,12 +606,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1298,
-      "byteLength": 117854,
-      "sha256": "bbca0addd798e621b2fd36e279e3eb4a3091a5c4d0819fe5d5ef53d977d432f0",
+      "pixelHeight": 1126,
+      "byteLength": 114680,
+      "sha256": "bb58d0e24957f9a2837ea8a0a47d88551a44f84b37dd0d0b614eee94f4c840de",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -621,12 +621,12 @@
       "file": "partial-two-cohort-warm-editorial-bangumi-dark-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 812,
-      "byteLength": 108470,
-      "sha256": "5410009d2492d781159e2022c419470dd77bf8462ef442ccaf93cc30ef4e3c86",
+      "pixelHeight": 816,
+      "byteLength": 111023,
+      "sha256": "f6f2777a735e21039e950d5ef7a9f0ed51ecc940c0a606c3a0ed0fd919bd6e74",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "宽版分组与指标布局稳定；缺失组保持未知并明确部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -636,12 +636,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1417,
-      "byteLength": 108889,
-      "sha256": "24d58c875fb96c232cebf2beb9ae1af9f7919e3f751fad94588ba3be48145f7a",
+      "pixelHeight": 1312,
+      "byteLength": 109953,
+      "sha256": "f4214da42731ff3268d3058f6332adf2c1b522e794de217462132db914a1e509",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -651,12 +651,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1333,
-      "byteLength": 109344,
-      "sha256": "30cb398415f7bc97aa8444031a3ed5e8dc9d2fd4c8e40dcf038ee567650ce6ca",
+      "pixelHeight": 1188,
+      "byteLength": 109446,
+      "sha256": "0a28b98bb8443bee4ed37b1206e80ef8f73b3254e40144f24c7d89de8c5731ef",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -666,12 +666,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-light-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1225,
-      "byteLength": 115744,
-      "sha256": "678626600d5507dee582cccded81ece47d6638d34f89896d94ead0516add4130",
+      "pixelHeight": 1124,
+      "byteLength": 114275,
+      "sha256": "4df8fc2581a3b09ce15bb04458ec296c0f5a842809754c0bd3a774bd451c928c",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -681,12 +681,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-light-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1225,
-      "byteLength": 117675,
-      "sha256": "5431a150865e307e74521219a6a63a41006302d7941f04135e31d109bbfc6019",
+      "pixelHeight": 1120,
+      "byteLength": 115348,
+      "sha256": "54d48f3157983f4e7f0ec3f9c0efb818a3469e15bc20aa335011b4b3f302d6e1",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -696,12 +696,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-light-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 813,
-      "byteLength": 106213,
-      "sha256": "8137df8c731b45944b8c40d271260808666bde7d953ffe74f58b290ffde95ee3",
+      "pixelHeight": 815,
+      "byteLength": 107958,
+      "sha256": "e9b0fdad7ef9e8e6e76196ed5291edbc6596e08bc7d5352083bdb710b85787fe",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "宽版分组与指标布局稳定；缺失组保持未知并明确部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -711,12 +711,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1417,
-      "byteLength": 111505,
-      "sha256": "2c3d2b8941a2d2c346c0819f55938a5153e37ad9ff3ce77ab2fed1281ad7b913",
+      "pixelHeight": 1312,
+      "byteLength": 112072,
+      "sha256": "3f5b03979091441123249d4cb37fe5c8db929fe2c0132e16173ad90c7a801ff7",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -726,12 +726,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1333,
-      "byteLength": 111752,
-      "sha256": "caf87e23e0e78634ddb69a7a12da1028be763131f0e74ef92e6f3c8d706a212e",
+      "pixelHeight": 1188,
+      "byteLength": 111370,
+      "sha256": "4c7cba98cb4b8d5a312cf17a5b1efbe41c22def7e9d81874684f4854e465b524",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -741,12 +741,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1225,
-      "byteLength": 118262,
-      "sha256": "32c51dc6ad99978a2487cef270961b0613aefaad6cf5f1f614ea4fd4f6ca1cd8",
+      "pixelHeight": 1124,
+      "byteLength": 116132,
+      "sha256": "0763d74be89ca42ce6517d24e65574ca9447578d3e74396bbb42c1bf1bd77523",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -756,12 +756,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1225,
-      "byteLength": 120154,
-      "sha256": "d9692412b0130b7a380d015a26f44e5abc21be61399dac5d70987d3821bc730a",
+      "pixelHeight": 1120,
+      "byteLength": 117314,
+      "sha256": "71deb8873e10b95ac93eff06ab113072ec9c8c3f57a3f0c9e9ed3ea7025f8071",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -771,12 +771,12 @@
       "file": "partial-two-cohort-clean-gallery-bangumi-dark-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 813,
-      "byteLength": 107984,
-      "sha256": "cef25918d984fad65e488674f5eaa68918cb34306932c607cbbc45b2052816df",
+      "pixelHeight": 815,
+      "byteLength": 110011,
+      "sha256": "e0af20b8f33ed23b9242aa171d193c3abad88db6a2de2a82d9a2d27bec44f404",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "宽版分组与指标布局稳定；缺失组保持未知并明确部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -786,12 +786,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-light-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1221,
-      "byteLength": 113381,
-      "sha256": "3f041d68f247fd0ddc3d2c7ae3f68d1e69fae75c0b0e0ad70420a2d76ffe3723",
+      "pixelHeight": 1084,
+      "byteLength": 115350,
+      "sha256": "ca7ec62de3908a2a6b7a12b6ae50b7b48a51e35038f58ec8b97b84d527a54039",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -801,12 +801,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-light-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1188,
-      "byteLength": 113715,
-      "sha256": "567190433f75211fb316bac44bba46a698df3b88f12f5808922a26548845eb50",
+      "pixelHeight": 1051,
+      "byteLength": 115036,
+      "sha256": "88be7eec1772d994a82432ef4acf015dc95b0c0cc9a74c8f56ca7d2968ed4cf4",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -816,12 +816,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-light-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1092,
-      "byteLength": 117215,
-      "sha256": "36b31472156a6a7cbd195720ea1a36810e530d1dcc46f7f23a7ad81406e8b745",
+      "pixelHeight": 999,
+      "byteLength": 120209,
+      "sha256": "b4db66bb36f5fef5d0d03b765b761abe94b3918e1433ced5e61aeb5a1720c8a0",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -831,12 +831,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-light-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1092,
-      "byteLength": 122140,
-      "sha256": "5122227551021dc09de3acdde397e660155628beb3522b3326a4e8d70444546c",
+      "pixelHeight": 995,
+      "byteLength": 121142,
+      "sha256": "36d9ffe0a1cda7026cc1c561ad057564676c8953a4e42e98a450e2d0a25c67ee",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -846,12 +846,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-light-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 716,
-      "byteLength": 112131,
-      "sha256": "454cfb7f66c51ea4c5ac921116f63f7fe047015a072e4b54fd22530aa8a5bdd8",
+      "pixelHeight": 718,
+      "byteLength": 115117,
+      "sha256": "025802185f7fdf6b7f6cb6f305ddbb8db8e0da23492aa3f7829c6c4abe791544",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "宽版分组与指标布局稳定；缺失组保持未知并明确部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -861,12 +861,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-320.png",
       "cssWidth": 320,
       "pixelWidth": 320,
-      "pixelHeight": 1221,
-      "byteLength": 113665,
-      "sha256": "5cba147c48049bc3251a8c5c00c58cd0e8dae685e6e7dcc86994e5b77f52ca1e",
+      "pixelHeight": 1084,
+      "byteLength": 115520,
+      "sha256": "710d658ffda917edc0b3f86f7ae36498a603d3714e0a78c4507da73a2a823e57",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -876,12 +876,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-360.png",
       "cssWidth": 360,
       "pixelWidth": 360,
-      "pixelHeight": 1188,
-      "byteLength": 113782,
-      "sha256": "feda37f6bd9418d11526d276119ca53ad863e0ca8259f1e3a0019f68a9b5890b",
+      "pixelHeight": 1051,
+      "byteLength": 115182,
+      "sha256": "005f5670b57ec290b88ecc9b26d81930181754376c2cbffeb4f30b43d8a9762c",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -891,12 +891,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-520.png",
       "cssWidth": 520,
       "pixelWidth": 520,
-      "pixelHeight": 1092,
-      "byteLength": 117146,
-      "sha256": "874def806d03051e7e25c8352aa58b15ae78afbd03bc40c9e51e0e2169a5efce",
+      "pixelHeight": 999,
+      "byteLength": 120208,
+      "sha256": "2f001e56f93c3664b66942b3560a9050a18f88998d4438a08f41c6b9fa191e1b",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -906,12 +906,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-640.png",
       "cssWidth": 640,
       "pixelWidth": 640,
-      "pixelHeight": 1092,
-      "byteLength": 122438,
-      "sha256": "2d7c19e7b6fac262e6a3578072a5e3d01adafb73996dcdeb2e6894c3f44d706b",
+      "pixelHeight": 995,
+      "byteLength": 121211,
+      "sha256": "d8317ded4ee5b9b29d49e799d27c54a78557c3a1156893754934ecf040a929b4",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "A/B/差值在窄版保持并列；缺失组明确为未知并标为部分覆盖，无裁切或重叠。"
       }
     },
     {
@@ -921,12 +921,12 @@
       "file": "partial-two-cohort-graphic-zine-bangumi-dark-960.png",
       "cssWidth": 960,
       "pixelWidth": 960,
-      "pixelHeight": 716,
-      "byteLength": 112007,
-      "sha256": "f5a03a1d1f03071a356f0778592451721b369c0960f1e094bb33fa2630c2d487",
+      "pixelHeight": 718,
+      "byteLength": 115357,
+      "sha256": "80ecd50cf4dcbc7e70826f0b6cb91c8f5e4496fa4c2e1d695957bc999811c4cf",
       "visualReview": {
         "decision": "PASS",
-        "finding": "PNG SHA-256 is identical to the prior bundle-bound matrix image, which was individually inspected; current renderer output is unchanged."
+        "finding": "宽版分组与指标布局稳定；缺失组保持未知并明确部分覆盖，无裁切或重叠。"
       }
     }
   ]

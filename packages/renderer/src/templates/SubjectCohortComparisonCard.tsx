@@ -151,6 +151,8 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
 }) => {
   const dimensions = viewModel.cohorts;
   const viewportWidth = width ?? 960;
+  const showComparison = dimensions.length === 2;
+  const compactComparison = showComparison && viewportWidth <= 640;
   const visibleSubjectsPerCohort =
     viewportWidth <= 360 ? 3 : viewportWidth < 520 ? 5 : viewportWidth < 760 ? 6 : 8;
   const warningLimit = 3;
@@ -203,7 +205,6 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
             overflow: 'hidden',
           }
         : {};
-  const showComparison = dimensions.length === 2;
   const officialOperations =
     viewModel.source.official.operations
       .map((operation) => OFFICIAL_OPERATION_LABELS[operation] ?? '查询条目数据')
@@ -351,7 +352,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                           #{subject.id}
                         </span>
                       </div>
-                      {viewportWidth < 520 ? (
+                      {compactComparison ? null : viewportWidth < 520 ? (
                         <div
                           data-layout="cohort-subject-metrics"
                           style={{
@@ -465,10 +466,14 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
           {viewModel.metrics.map((metric) => (
             <div
               key={metric.key}
+              data-layout="cohort-metric-card"
+              data-render-mask="panel"
               style={{
                 display: 'grid',
                 gridTemplateColumns:
-                  width !== undefined && width >= 760
+                  compactComparison
+                    ? '1fr'
+                    : width !== undefined && width >= 760
                     ? showComparison
                       ? '1.7fr 1fr 1fr 1fr'
                       : '1.7fr 1fr 1fr'
@@ -478,38 +483,122 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                 border: `1px solid ${theme.border}`,
                 borderRadius: theme.radius.sm,
                 padding: theme.spacing.sm,
-                fontSize: '11px',
+                fontSize: viewportWidth <= 520 ? '12px' : '11px',
+                minWidth: 0,
+                clipPath: theme.design.masks.panel,
               }}
             >
               <div>
                 <div style={{ color: theme.text, fontWeight: 700 }}>{metric.label}</div>
-                <div style={{ color: theme.textMuted, fontSize: '9px' }}>
+                <div style={{ color: theme.textMuted, fontSize: '10px' }}>
                   {metricSourceLabel(metric.key)}
                 </div>
                 {metric.formula ? (
-                  <div style={{ color: theme.textMuted, fontSize: '9px' }}>
+                  <div style={{ color: theme.textMuted, fontSize: '10px' }}>
                     计算口径：评分分布标准差（v{metric.formula.version}）
                   </div>
                 ) : null}
               </div>
-              {viewModel.cohorts.map((cohort, index) => (
-                <div key={`${metric.key}-${index}`} style={{ color: theme.textMuted }}>
-                  {showComparison ? `分组 ${index === 0 ? 'A' : 'B'}` : '样本'} ·{' '}
-                  <strong style={{ color: theme.text }}>{averageLabel(metric, index)}</strong>
-                  <div>{metricCoverageLabel(cohort, metric.key)}</div>
-                </div>
-              ))}
-              {showComparison ? (
-                <div style={{ color: metric.delta === undefined ? theme.warning : theme.text }}>
-                  B − A · {deltaLabel(metric)}
-                  <div style={{ color: theme.textMuted }}>{stateLabel(metric.state)}</div>
+              {compactComparison ? (
+                <div
+                  data-layout="cohort-metric-comparison"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: showComparison
+                      ? 'repeat(3, minmax(0, 1fr))'
+                      : 'repeat(2, minmax(0, 1fr))',
+                    gap: theme.spacing.xs,
+                    minWidth: 0,
+                  }}
+                >
+                  {viewModel.cohorts.map((cohort, index) => (
+                    <div
+                      key={`${metric.key}-${index}`}
+                      data-layout="cohort-metric-value"
+                      style={{ minWidth: 0, color: theme.textMuted }}
+                    >
+                      <div
+                        style={{
+                          color: theme.accent,
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        {showComparison ? `分组 ${index === 0 ? 'A' : 'B'}` : '样本'}
+                      </div>
+                      <div
+                        style={{
+                          color: theme.text,
+                          fontSize: '16px',
+                          fontWeight: 700,
+                          lineHeight: 1.25,
+                          overflowWrap: 'anywhere',
+                        }}
+                      >
+                        {averageLabel(metric, index)}
+                      </div>
+                      <div style={{ fontSize: '10px', lineHeight: 1.35 }}>
+                        {metricCoverageLabel(cohort, metric.key)}
+                      </div>
+                    </div>
+                  ))}
+                  {showComparison ? (
+                    <div
+                      data-layout="cohort-metric-value"
+                      style={{
+                        minWidth: 0,
+                        color: metric.delta === undefined ? theme.warning : theme.text,
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: theme.accent,
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        B − A
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '16px',
+                          fontWeight: 700,
+                          lineHeight: 1.25,
+                          overflowWrap: 'anywhere',
+                        }}
+                      >
+                        {deltaLabel(metric)}
+                      </div>
+                      <div style={{ color: theme.textMuted, fontSize: '10px' }}>
+                        {stateLabel(metric.state)}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
-                <div
-                  style={{ color: metric.state === 'complete' ? theme.textMuted : theme.warning }}
-                >
-                  状态 · {stateLabel(metric.state)}
-                </div>
+                <>
+                  {viewModel.cohorts.map((cohort, index) => (
+                    <div key={`${metric.key}-${index}`} style={{ color: theme.textMuted }}>
+                      {showComparison ? `分组 ${index === 0 ? 'A' : 'B'}` : '样本'} ·{' '}
+                      <strong style={{ color: theme.text }}>{averageLabel(metric, index)}</strong>
+                      <div>{metricCoverageLabel(cohort, metric.key)}</div>
+                    </div>
+                  ))}
+                  {showComparison ? (
+                    <div style={{ color: metric.delta === undefined ? theme.warning : theme.text }}>
+                      B − A · {deltaLabel(metric)}
+                      <div style={{ color: theme.textMuted }}>{stateLabel(metric.state)}</div>
+                    </div>
+                  ) : (
+                    <div
+                      style={{ color: metric.state === 'complete' ? theme.textMuted : theme.warning }}
+                    >
+                      状态 · {stateLabel(metric.state)}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           ))}

@@ -5,7 +5,7 @@ import path from 'node:path';
 export const C07_V4_VISUAL_QA_MANIFEST_PATH =
   'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-23.json';
 export const C07_V4_VISUAL_QA_ARTIFACT_DIRECTORY =
-  '.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261023';
+  '.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261023-v2';
 
 const PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v4';
 const WIDTHS = [320, 360, 520, 640, 960];
