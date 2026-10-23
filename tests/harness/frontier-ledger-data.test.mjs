@@ -611,7 +611,15 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   assert.match(r04.next_action, /v3 multi-node offline profile is selected/u);
   assert.match(r04.next_action, /it may credit only this Agent\/MCP matrix cell/u);
   assert.match(r04.next_action, /cannot establish real relation coverage.*canonical order/u);
-  assert.ok(r04.next_action.includes('Preserve the historical boundary phrase: keep the R04 theatrical-film scenario UNASSESSED'));
+  assert.ok(
+    r04.next_action.includes(
+      'earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry',
+    ),
+  );
+  assert.ok(r04.next_action.includes('do not claim canonical order or visual quality'));
+  assert.ok(r04.next_action.includes('distinct matrix-only render_series_watch_order profile'));
+  assert.ok(r04.next_action.includes('Keep the R04 theatrical-film scenario UNASSESSED'));
+  assert.ok(r04.next_action.includes('keep the R04 theatrical-film scenario UNASSESSED'));
   assert.ok(r04.next_action.includes('never retry them'));
   assert.ok(r04.next_action.includes('separately keyed R04 renderer v2 profile'));
   assert.doesNotMatch(r04.next_action, /UNCLAIMED|unclaimed|selected.*get_series_watch_order v2/u);
