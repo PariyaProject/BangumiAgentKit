@@ -40,6 +40,7 @@ import {
 } from './r01-relations-text-projection-offline-profile.mjs';
 import {
   R03_RELATIONS_OFFLINE_PROFILE_ID,
+  R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID,
   summarizeR03RelationsOfflineToolResult,
 } from './r03-relations-offline-profile.mjs';
 import {
@@ -556,8 +557,10 @@ export function summarizeProfileToolResult(
   if (profileId === R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID) {
     return summarizeR01RelationsTextProjectionToolResult(result, expectedArguments);
   }
-  if (profileId === R03_RELATIONS_OFFLINE_PROFILE_ID) {
-    return summarizeR03RelationsOfflineToolResult(result, expectedArguments);
+  if (
+    [R03_RELATIONS_OFFLINE_PROFILE_ID, R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID].includes(profileId)
+  ) {
+    return summarizeR03RelationsOfflineToolResult(result, expectedArguments, profileId);
   }
   if (profileId === R02_POSITIVE_DIRECT_RELATIONS_PROFILE_ID) {
     return summarizeR02PositiveDirectRelationsToolResult(result, expectedArguments);

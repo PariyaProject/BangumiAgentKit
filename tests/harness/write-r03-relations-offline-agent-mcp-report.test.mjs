@@ -13,8 +13,9 @@ import {
 import {
   R03_RELATIONS_OFFLINE_ACKNOWLEDGEMENT,
   R03_RELATIONS_OFFLINE_EXPECTED_RESULT_SUMMARIES,
-  R03_RELATIONS_OFFLINE_NETWORK_MODE,
   R03_RELATIONS_OFFLINE_PROFILE_ID,
+  R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID,
+  getR03RelationsOfflineProfileSpec,
 } from '../../scripts/lib/r03-relations-offline-profile.mjs';
 import {
   buildR03ProfileReport,
@@ -39,26 +40,28 @@ const CI_CHECKS = [
   'discovery-foundation',
 ].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
 
-function input(errorCount = 0) {
+function input(errorCount = 0, profileId = R03_RELATIONS_OFFLINE_PROFILE_ID) {
+  const profile = getAgentMcpProfileById(profileId);
+  const spec = getR03RelationsOfflineProfileSpec(profileId);
   const keys = generateKeyPairSync('ed25519');
   const publicKeyDer = keys.publicKey.export({ type: 'spki', format: 'der' });
   const catalogBytes = readFileSync(path.resolve('docs/tool-catalog.json'));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
-  const catalogTool = catalog.find((row) => row.name === PROFILE.toolName);
+  const catalogTool = catalog.find((row) => row.name === profile.toolName);
   const claim = {
     schemaVersion: 1,
     claimId: `profile-run-95-pr-195-${SOURCE_SHA.slice(0, 12)}-1792100000000`,
     state: 'CLAIMED',
-    profileId: PROFILE.id,
+    profileId: profile.id,
     frontierId: 'R03',
-    epochId: PROFILE.epochId,
+    epochId: profile.epochId,
     runNumber: 95,
     prNumber: 195,
-    toolName: PROFILE.toolName,
-    argumentProfile: PROFILE.argumentProfile,
-    expectedArguments: PROFILE.calls.map((call) => call.arguments),
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
-    registrySha256: agentMcpProfileRegistrySha256(PROFILE.id),
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
+    expectedArguments: profile.calls.map((call) => call.arguments),
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+    registrySha256: agentMcpProfileRegistrySha256(profile.id),
     sourceCandidateSha: SOURCE_SHA,
     baseSha: BASE_SHA,
     ciSha: SOURCE_SHA,
@@ -74,33 +77,36 @@ function input(errorCount = 0) {
   };
   const serverSummary = {
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
-    profileId: PROFILE.id,
-    argumentProfile: PROFILE.argumentProfile,
-    networkMode: R03_RELATIONS_OFFLINE_NETWORK_MODE,
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
+    profileId: profile.id,
+    argumentProfile: profile.argumentProfile,
+    networkMode: spec.networkMode,
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
     sourceRevision: SOURCE_SHA,
     bundleSha256: BUNDLE_SHA,
     catalogSha256: sha256(catalogBytes),
-    toolName: PROFILE.toolName,
+    toolName: profile.toolName,
     toolDescriptionSha256: sha256(catalogTool.description ?? ''),
     inputSchemaSha256: sha256(canonicalAgentMcpProfileJson(catalogTool.inputSchema)),
-    serverToolNames: [PROFILE.toolName],
+    serverToolNames: [profile.toolName],
     serverToolCount: 1,
     expectedCallCount: 1,
     serverResultStatus: 'SUCCESS',
     allowedCallCount: 1,
     deniedCallCount: 0,
-    results: SUMMARIES.map((resultSummary, sequenceIndex) => ({
+    results: spec.expectedResultSummaries.map((resultSummary, sequenceIndex) => ({
       sequenceIndex,
       status: 'SUCCESS',
       resultSummary,
     })),
     offlineFixture: {
-      profile: R03_RELATIONS_OFFLINE_NETWORK_MODE,
-      requestCount: 1,
-      relationRequestCount: 1,
+      profile: spec.networkMode,
+      requestCount: profileId === R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID ? 4 : 1,
+      relationRequestCount: profileId === R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID ? 2 : 1,
       rootRequestCount: 1,
-      intermediateRequestCount: 0,
+      intermediateRequestCount: profileId === R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID ? 1 : 0,
+      ...(profileId === R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID
+        ? { subjectDetailRequestCount: 2 }
+        : {}),
       duplicateRequestCount: 0,
       unexpectedRequestCount: 0,
       authorizationHeaderCount: 0,
@@ -118,29 +124,34 @@ function input(errorCount = 0) {
     nonMcpToolEventCount: 0,
     nonMcpToolTypes: [],
     shellToolCallCount: 0,
-    mcpServerNames: ['bgk_r03_relations_v2'],
+    mcpServerNames: [spec.serverId],
     exactCall: true,
     exactToolEvent: true,
     allowedCallCount: 1,
     deniedCallCount: 0,
   };
-  return { claim, serverSummary, events, keys };
+  return { claim, serverSummary, events, keys, profile, spec };
 }
 
 function build(value, root) {
-  const reportPath = path.join(root, PROFILE.reportPath);
+  const reportPath = path.join(root, value.profile.reportPath);
   mkdirSync(path.dirname(reportPath), { recursive: true });
   return buildR03ProfileReport(
     {
       claim: value.claim,
       serverSummary: value.serverSummary,
       events: value.events,
-      answer: ACK,
+      answer: value.spec.acknowledgement,
       codexCliVersion: '0.162.0',
       eventStreamSha256: '1'.repeat(64),
       serverSummarySha256: '2'.repeat(64),
     },
-    { privateKey: value.keys.privateKey, root, reportPath },
+    {
+      privateKey: value.keys.privateKey,
+      root,
+      reportPath,
+      profileId: value.profile.id,
+    },
   );
 }
 
@@ -184,6 +195,47 @@ test('R03 report validator rejects modified signatures and local request counter
     const tampered = { ...report, offlineFixture: value.serverSummary.offlineFixture };
     tampered.resultSummary[0].rowsReturned = 0;
     assert.equal(validateR03ProfileReport(tampered, value.claim).passed, false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('R03 two-hop report signs the bounded synthetic path without scenario credit', () => {
+  const value = input(0, R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID);
+  const root = mkdtempSync(path.join(os.tmpdir(), 'r03-two-hop-report-test-'));
+  try {
+    const result = build(value, root);
+    assert.equal(result.passed, true, result.reason);
+    const reportPath = path.join(root, value.profile.reportPath);
+    const report = JSON.parse(readFileSync(reportPath, 'utf8'));
+    assert.equal(report.profileId, R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID);
+    assert.equal(report.scenarioId, null);
+    assert.deepEqual(report.resultSummary[0].topCandidates[0].paths[0].subjectIds, [
+      993811,
+      993812,
+      993813,
+    ]);
+    assert.equal(report.offlineFixture.requestCount, 4);
+    assert.equal(JSON.stringify(report).includes('Synthetic R03'), false);
+    const validated = validateR03SanitizedReportFile(
+      value.claim,
+      root,
+      reportPath,
+      R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID,
+    );
+    assert.equal(validated.passed, true, validated.reason);
+    assert.equal(validated.reportSha256, result.reportSha256);
+
+    report.resultSummary[0].topCandidates[0].score = 9.3;
+    assert.equal(
+      validateR03ProfileReport(
+        report,
+        value.claim,
+        null,
+        R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID,
+      ).passed,
+      false,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

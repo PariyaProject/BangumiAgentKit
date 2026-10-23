@@ -4658,6 +4658,13 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateR03RelationsOfflineSanitizedReportFile(claim, root, reportPath);
     case 'r03-direct-relations-offline-agent-mcp-matrix-v2':
       return validateR03RelationsOfflineSanitizedReportFile(claim, root, reportPath);
+    case 'r03-two-hop-rating-analysis-offline-agent-mcp-v1':
+      return validateR03RelationsOfflineSanitizedReportFile(
+        claim,
+        root,
+        reportPath,
+        'r03-two-hop-rating-analysis-offline-agent-mcp-v1',
+      );
     case 'r02-positive-direct-relations-agent-mcp-v1':
       return validateR02SanitizedReportFile(claim, root, reportPath);
     case 'c04-cohort-comparison-agent-mcp-matrix-v1':

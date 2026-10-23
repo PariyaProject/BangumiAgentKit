@@ -1177,6 +1177,32 @@
       ]
     },
     {
+      "id": "r03-two-hop-rating-analysis-offline-agent-mcp-v1",
+      "frontierId": "R03",
+      "epochId": "run95-r03-two-hop-rating-agent-mcp-offline-20261023",
+      "toolName": "bangumi.get_subject_relations",
+      "argumentProfile": "fixed-r03-two-hop-rating-analysis-993811-v1",
+      "claimLabelName": "harness-r95-r03-two-hop-rating-v1-claimed",
+      "reportPath": "docs/live-probes/r03-two-hop-rating-analysis-agent-mcp-matrix-v1-run95.json",
+      "selectionEvidencePath": "docs/research/run95-r03-two-hop-rating-agent-mcp-offline-matrix-v1-2026-10-23.md",
+      "evidenceKind": "codex_cli_r03_two_hop_rating_analysis_offline_agent_mcp_matrix_v1",
+      "answerCheckMethod": "r03-synthetic-two-hop-rating-analysis-execution-only-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-r03-two-hop-rating-analysis-offline-matrix-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 1024,
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 993811,
+            "analysisMode": "observed_two_hop_rating"
+          }
+        }
+      ]
+    },
+    {
       "id": "g01-render-query-subjects-offline-agent-mcp-v1",
       "frontierId": "G01",
       "epochId": "run95-g01-render-query-subjects-offline-matrix-20261017",
