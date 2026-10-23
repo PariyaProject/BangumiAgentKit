@@ -1,7 +1,7 @@
 # Run #95 C07 two-cohort renderer visual redesign
 
 Date: 2026-10-24 (JST)
-Status: v28 synthetic visual QA recorded; exact candidate delivery gates pending; user aesthetic acceptance not recorded.
+Status: v32 reference-board visual QA recorded; exact candidate delivery gates pending; user aesthetic acceptance not recorded.
 
 ## Why this iteration exists
 
@@ -61,3 +61,12 @@ Generated a C07-specific three-pack triptych from the exact comparison content. 
 - Output: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v28/`. The 60 images cover complete/partial data, three design packs, light/dark palettes, and 320/360/520/640/960 CSS px. I inspected all 60 in twelve five-width sheets; no clipping, overlap, horizontal overflow, or missing-value/delta ambiguity appeared.
 - Receipt: [`run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v28.json`](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v28.json), SHA-256 `cc26e6ac9fbd8e84edcb4de03efc051fd1db59d79ea829d9594218a2781ab41f`. Bundle SHA-256 `eae7b5eba1498e0cfce25fff67e4e5811a9813bb4dc3f80a42e536a53d17745a`; generation-source SHA-256 `3d0159e3d1dbd248dd559a340c7a8542df7ab9fa15ea0bdbccaf3157bbc93dce`. Strict validation passes for the exact 60 receipts, manifest bytes, source, and bundle.
 - `pnpm build` passed after the v28 renderer changes. Full renderer/Harness checks and PR #271 exact-head gates remain pending. This is synthetic renderer QA only, not user aesthetic acceptance, real Bangumi scenario proof, or QQ/TIM delivery. C07 remains UNASSESSED and the v4 profile remains UNCLAIMED.
+
+### v32 reference-board recovery — 2026-10-24 JST
+
+- The user pointed out that the earlier Graphic Zine direction had felt stronger and that the pale v28 watercolor report looked like a regression. Side-by-side review confirmed it had discarded the reference board's dark cobalt poster field, torn ivory paper, coral sun, yellow delta label, and cut-paper coast. Geometry checks alone had incorrectly been treated as a visual pass.
+- v32 restores that composition in the C07 comparison card: a clipped cobalt poster surface, a paper title plate, two asymmetrical cohort sheets, two A/B score sheets, a yellow B−A label, irregular metric strips, a coral sun stamp, and a textured shore illustration. Theme-specific foreground colors preserve dark-mode contrast. No additional runtime dependency or network asset is used.
+- New illustration: `packages/renderer/assets/illustrations/run95-c07-cut-paper-coast-zine-2026-10-24.png`, transparent RGBA 1983×793 PNG (~1.3 MB), generated for this card from the reference-board palette and cut-paper treatment. The older v28 watercolor asset remains for historical reproducibility.
+- Final output: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v32/`; exact receipt: [`run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v32.json`](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v32.json).
+- All 60 outputs were accounted for across two states, three design packs, two themes, and five CSS widths. The 40 non-Zine PNGs are byte-identical to previously reviewed v30 outputs; all 20 changed Zine PNGs were inspected in four five-width sheets. No clipping, overlap, or horizontal overflow was found. Missing values remain unknown and their deltas remain non-computable.
+- Manifest SHA-256 `98d3ad9e2dc65d4588a6e5237d91c767f14ccb9a6743a8f39bf6b366d2d1ae4c`; bundle SHA-256 `1f305b7b8ddd9d51d80b9371a94d55e90bb150a6d1ee43e1af05db4d29510757`; generation-source SHA-256 `5c63da069d03f25aa4252f5d105fe22c30a06c08e7c0a7cf8b96f40f5d557dfc`. Strict evidence validation passes. This is still synthetic renderer QA, not user aesthetic acceptance, real Bangumi scenario proof, or QQ/TIM delivery. C07 remains UNASSESSED and v4 remains UNCLAIMED.
