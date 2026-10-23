@@ -4,14 +4,18 @@ import {
   agentMcpProfileArgumentsSha256,
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
+import { P06_REQUIRED_CI_CHECKS } from '../../scripts/lib/p06-ci-run-evidence.mjs';
 import {
   R04_SERIES_WATCH_ORDER_V2_EXPECTED_ARGUMENTS,
   R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE,
   R04_SERIES_WATCH_ORDER_V2_PROFILE_ID,
 } from '../../scripts/lib/r04-series-watch-order-offline-v2-fixture.mjs';
+import { R04_SERIES_WATCH_ORDER_V3_PROFILE_ID } from '../../scripts/lib/r04-series-watch-order-offline-v3-fixture.mjs';
 import {
+  assertR04CandidateReviewGate,
   buildR04CodexExecArgs,
   classifyR04AssertionFailure,
+  configureR04RunnerProfile,
   recoverR04RunnerFailure,
   r04ClaimBelongsToRunner,
   validateR04RunnerArgs,
@@ -19,10 +23,77 @@ import {
 } from '../../scripts/acceptance/run-r04-series-watch-order-offline-agent-mcp-v2.mjs';
 
 const PROFILE = getAgentMcpProfileById(R04_SERIES_WATCH_ORDER_V2_PROFILE_ID);
+const V3_PROFILE = getAgentMcpProfileById(R04_SERIES_WATCH_ORDER_V3_PROFILE_ID);
 const SOURCE_SHA = 'a'.repeat(40);
+const BASE_SHA = 'b'.repeat(40);
 const BUNDLE_SHA = 'b'.repeat(64);
 const ACK = 'R04_SYNTHETIC_WATCH_ORDER_PREQUEL_CHAIN_READ';
 const SERVER_ID = 'bgk_r04_watch_order_v2';
+const REVIEWER_ID = '/root/run95_pr267_review';
+const PR_NUMBER = 267;
+
+function candidateReviewGateFixture(reviewerId) {
+  const branch = 'codex/epoch-run95-r04-series-watch-order-offline-matrix-v3';
+  const ciRunId = '1234567890';
+  return {
+    status: {
+      git: { status: '', head: SOURCE_SHA, branch },
+      run: {
+        state: {
+          state: 'EPOCH_ACTIVE',
+          profile: 'AUTONOMOUS_EVOLUTION',
+          active_epoch_pr: PR_NUMBER,
+          pending_epoch: null,
+        },
+      },
+      epoch: {
+        number: PR_NUMBER,
+        github_state: 'OPEN',
+        state: {
+          epoch_id: V3_PROFILE.epochId,
+          branch,
+          pr_number: PR_NUMBER,
+          base_branch: 'master',
+          base_sha: BASE_SHA,
+          reviewed_base_sha: BASE_SHA,
+          candidate_sha: SOURCE_SHA,
+          review_pass_sha: SOURCE_SHA,
+          ci: {
+            sha: SOURCE_SHA,
+            status: 'SUCCESS',
+            url: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`,
+          },
+          state: 'REVIEW_PASSED',
+          advances_frontier_ids: ['R04'],
+          scope_closure: { related_work_remaining: false },
+          adversarial_preflight: { completed: true },
+          review_history: [
+            {
+              candidate_sha: SOURCE_SHA,
+              reviewed_base_sha: BASE_SHA,
+              verdict: 'PASS',
+              reviewer_id: reviewerId,
+            },
+          ],
+        },
+      },
+    },
+    pr: {
+      state: 'OPEN',
+      isDraft: false,
+      baseRefName: 'master',
+      baseRefOid: BASE_SHA,
+      headRefName: branch,
+      headRefOid: SOURCE_SHA,
+      statusCheckRollup: P06_REQUIRED_CI_CHECKS.map((name) => ({
+        name,
+        status: 'COMPLETED',
+        conclusion: 'SUCCESS',
+        detailsUrl: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}/job/120000`,
+      })),
+    },
+  };
+}
 
 function serverSummary() {
   return {
@@ -75,6 +146,33 @@ function serverSummary() {
     },
   };
 }
+
+test('R04 candidate gate accepts the Harness local Luna Max reviewer identity', () => {
+  configureR04RunnerProfile(R04_SERIES_WATCH_ORDER_V3_PROFILE_ID);
+  try {
+    const { status, pr } = candidateReviewGateFixture(REVIEWER_ID);
+    const readGit = (...args) => (args[0] === 'status' ? '' : SOURCE_SHA);
+    const gate = assertR04CandidateReviewGate(status, pr, {
+      sourceRevision: SOURCE_SHA,
+      currentBaseSha: BASE_SHA,
+      readGit,
+    });
+    assert.equal(gate.reviewerId, REVIEWER_ID);
+
+    const invalid = candidateReviewGateFixture('untrusted-reviewer-id');
+    assert.throws(
+      () =>
+        assertR04CandidateReviewGate(invalid.status, invalid.pr, {
+          sourceRevision: SOURCE_SHA,
+          currentBaseSha: BASE_SHA,
+          readGit,
+        }),
+      /same-identity Luna Max PASS/,
+    );
+  } finally {
+    configureR04RunnerProfile(R04_SERIES_WATCH_ORDER_V2_PROFILE_ID);
+  }
+});
 
 test('R04 Codex invocation is ephemeral, read-only, and exposes only its fixed tool', () => {
   assert.equal(validateR04RunnerArgs(['--help']), 'help');
