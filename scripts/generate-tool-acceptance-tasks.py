@@ -7730,6 +7730,9 @@ CODEX_R03_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
         'assertR03RelationsOfflineProfile(profile)',
         'A registered profile cannot be combined with arbitrary tool, arguments, or network mode.',
     ),
+    'scripts/lib/agent-mcp-profile-ci-evidence.mjs': (
+        "'r03-two-hop-rating-analysis-offline-agent-mcp-v1'",
+    ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
         'createR03RelationsOfflineFetch(config.profile)',
         'isR03RelationsOfflineNetworkMode(config.networkMode)',
@@ -7803,6 +7806,9 @@ CODEX_R03_OFFLINE_PROFILE_IMPLEMENTATION_MARKERS = {
     'tests/harness/write-r03-relations-offline-agent-mcp-report.test.mjs': (
         'R03 report builder signs only sanitized matrix evidence without scenario credit',
         'R03 report validator rejects modified signatures and local request counters',
+    ),
+    'tests/harness/agent-mcp-profile-ci-evidence.test.mjs': (
+        'R03 two-hop rating profile requires exact CI evidence',
     ),
     'tests/integration/codex-one-tool-mcp-server-load.test.mjs': (
         'R03 analysis-mode MCP profile exposes only the fixed subject-relations tool',

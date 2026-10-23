@@ -5,6 +5,7 @@ import { G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID } from '../../scripts/lib/g01-
 import { G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID } from '../../scripts/lib/g01-render-query-subjects-offline-profile.mjs';
 import { G06_CAST_OFFLINE_V2_PROFILE_ID } from '../../scripts/lib/g06-subject-cast-offline-profile.mjs';
 import { R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID } from '../../scripts/lib/r01-relations-text-projection-offline-profile.mjs';
+import { R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID } from '../../scripts/lib/r03-relations-offline-profile.mjs';
 
 test('subject-card compact typography v4 claims require exact CI evidence', () => {
   assert.equal(
@@ -59,4 +60,8 @@ test('R01 v2 text projection profile requires exact CI evidence', () => {
     profileRequiresExactCiRunEvidence(R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID),
     true,
   );
+});
+
+test('R03 two-hop rating profile requires exact CI evidence', () => {
+  assert.equal(profileRequiresExactCiRunEvidence(R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID), true);
 });
