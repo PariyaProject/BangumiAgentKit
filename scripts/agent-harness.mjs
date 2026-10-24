@@ -58,6 +58,12 @@ import {
 } from './lib/agent-harness-core.mjs';
 import { canonicalHash, inspectFrontierLedger } from './lib/frontier-ledger.mjs';
 import {
+  appendContinuationEvent,
+  assertContinuationMayAdvance,
+  buildContinuationBrief,
+  continuationEvents,
+} from './lib/harness-continuation.mjs';
+import {
   acquireG06OneShotGitHubLatch,
   acquireG06OneShotTerminalGitHubLatch,
   claimG06OneShotAtomically,
@@ -824,6 +830,9 @@ function commandHelp() {
 Usage: pnpm harness <command> [options]
 
   status --run <issue> [--pr <number>]
+  continuation:show --run <issue> [--goal-state active|paused|blocked|complete]
+  run:directive --run <issue> --expected-sequence <n> --action continue|pause|replan --source-ref <ref> --reason <text>
+  run:checkpoint --run <issue> --expected-sequence <n> --evidence <json>
   frontier:check
   frontier:status
   discovery:check [--now <ISO timestamp>]
@@ -938,6 +947,87 @@ function commandStatus(options) {
     };
   }
   print(result);
+}
+
+function commandContinuationShow(options) {
+  ensureControlPlane();
+  const runResult = issueState(required(options, 'run'));
+  const prNumber = options.pr ?? runResult.state.active_epoch_pr;
+  const epochResult = prNumber ? epochState(prNumber) : null;
+  print(buildContinuationBrief({
+    run: runResult.state,
+    epoch: epochResult?.state,
+    pr: epochResult?.view,
+    goalState: options['goal-state'] ?? 'unobserved',
+  }));
+}
+
+function commandContinuationRecord(options, type) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const observed = issueState(runNumber);
+  if (observed.view.state !== 'OPEN' || isTerminalRunState(observed.state.state)) {
+    throw new HarnessInvariantError('CONTINUATION_RUN_NOT_ACTIVE', 'Record against an open nonterminal Run');
+  }
+  const epochResult = observed.state.active_epoch_pr ? epochState(observed.state.active_epoch_pr) : null;
+  const input = type === 'directive' ? {
+    type,
+    action: required(options, 'action'),
+    source_ref: required(options, 'source-ref'),
+    reason: required(options, 'reason'),
+  } : { ...readJsonFile(required(options, 'evidence')), type };
+  const next = appendContinuationEvent(
+    observed.state, epochResult?.state, input, Number(required(options, 'expected-sequence')),
+  );
+  // GitHub body PATCH is not atomic compare-and-swap. Recheck immediately before
+  // writing and read back afterwards; only one Harness writer may run at a time.
+  const latest = issueState(runNumber);
+  if (canonicalHash(latest.state) !== canonicalHash(observed.state)) {
+    throw new HarnessInvariantError('CONTINUATION_CONCURRENT_WRITE', 'Run changed; read it again before recording');
+  }
+  updateIssue(runNumber, next);
+  const saved = issueState(runNumber);
+  if (canonicalHash(saved.state) !== canonicalHash(next)) {
+    throw new HarnessInvariantError('CONTINUATION_READBACK_MISMATCH', 'Read back the Run before retrying any write');
+  }
+  print({ state: 'CONTINUATION_EVENT_RECORDED', event: continuationEvents(next).at(-1) });
+}
+
+// Observation and recording an already-completed result must remain possible
+// during a pause; no such command may launch another Product tool call.
+function guardContinuationCommand(command, options) {
+  const exempt = new Set([
+    'help', 'status', 'continuation:show', 'run:directive', 'run:checkpoint',
+    'frontier:check', 'frontier:status', 'frontier:review-context',
+    'discovery:check', 'goal:check', 'guard:legacy-paths',
+    'review:result', 'review:runtime', 'review:wait', 'review:reconcile',
+    'frontier:review-result', 'frontier:review-runtime', 'frontier:review-wait',
+    'frontier:review-reconcile', 'epoch:agent-mcp-profile-status',
+    'epoch:agent-mcp-profile-result', 'epoch:agent-mcp-profile-reconcile-ambiguous',
+    'epoch:g19-one-shot-result', 'epoch:p05-one-shot-result', 'epoch:d07-one-shot-result',
+    'epoch:p01-one-shot-result', 'epoch:r01-one-shot-reconcile', 'epoch:g06-one-shot-reconcile',
+  ]);
+  if (exempt.has(command)) return;
+  let runNumber = options.run;
+  if (!runNumber && command === 'candidate:check') {
+    const matchingRuns = JSON.parse(gh('issue', 'list', '--state', 'open', '--limit', '100',
+      '--json', 'number,body')).filter((view) => {
+      if (!view.body?.includes('<!-- ' + RUN_MARKER + ':start -->')) return false;
+      return parseControlBlock(view.body, RUN_MARKER).active_epoch_pr === Number(options.pr);
+    });
+    if (matchingRuns.length > 1) {
+      throw new HarnessInvariantError('MULTIPLE_OPEN_OUTER_RUNS', 'Cannot infer a unique active Run');
+    }
+    runNumber = matchingRuns[0]?.number;
+  }
+  if (!runNumber) return;
+  ensureControlPlane();
+  const runResult = issueState(runNumber);
+  if (options.pr && runResult.state.active_epoch_pr !== Number(options.pr)) {
+    throw new HarnessInvariantError('CONTINUATION_EPOCH_MISMATCH', 'Mutations must name the Run active Epoch');
+  }
+  const epoch = runResult.state.active_epoch_pr ? epochState(runResult.state.active_epoch_pr).state : null;
+  assertContinuationMayAdvance(runResult.state, epoch);
 }
 
 function inspectDiscoveryCheck(options) {
@@ -1076,6 +1166,11 @@ function commandRunStart(options) {
     );
   }
   if (resumableRuns.length === 1) {
+    const active = resumableRuns[0].run;
+    assertContinuationMayAdvance(
+      active,
+      active.active_epoch_pr ? epochState(active.active_epoch_pr).state : null,
+    );
     for (const issue of terminalRuns) {
       gh('issue', 'close', String(issue.number), '--reason', 'completed');
     }
@@ -9282,6 +9377,9 @@ function commandGoalCheck(options) {
 const commands = {
   help: commandHelp,
   status: commandStatus,
+  'continuation:show': commandContinuationShow,
+  'run:directive': (options) => commandContinuationRecord(options, 'directive'),
+  'run:checkpoint': (options) => commandContinuationRecord(options, 'checkpoint'),
   'frontier:check': commandFrontierCheck,
   'frontier:status': commandFrontierStatus,
   'discovery:check': commandDiscoveryCheck,
@@ -9339,6 +9437,7 @@ function main() {
   const { command, options } = parseArgs(process.argv.slice(2));
   const handler = commands[command];
   if (!handler) throw new HarnessInvariantError('UNKNOWN_COMMAND', `Unknown command: ${command}`);
+  guardContinuationCommand(command, options);
   handler(options);
 }
 

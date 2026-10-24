@@ -67,8 +67,10 @@ authoritative.
 
 ## 2. Standing execution policy
 
-- All configured implementation, research, and reviewer roles use GPT-6 Luna at
-  `max` reasoning. No Sol model is configured or used.
+- Ordinary implementation, research, and Product reviewer roles use GPT-6 Luna
+  at `max` reasoning. A user-selected advanced model may perform the
+  supplementary strategy recovery described in §2a; it does not replace a
+  formal Product/frontier reviewer or its exact-Candidate requirements.
 - Generic implementation/research subagents: `0` unless explicitly authorized
   for a specific use or required by an applicable skill.
 - Default Product reviewer: one comprehensive Luna Max reviewer; reviews remain
@@ -86,6 +88,100 @@ authoritative.
 
 Cost is controlled by fewer launches and better batching, not weaker Luna
 reasoning.
+
+## 2a. Continuation, human intent, and strategy recovery
+
+Run #95 follows the versioned [recovery delivery plan](RUN95_RECOVERY_PLAN.md).
+The plan owns package order and quality criteria; this section owns execution
+mechanics. Runtime state remains in the existing GitHub control plane.
+
+At each continuation/model switch, observe the Codex app Goal and run:
+
+    pnpm harness continuation:show --run 95 --goal-state active
+
+Use the actually observed active/paused/blocked/complete value, or omit the
+flag to report unobserved. The brief reads the live Run/active PR, latest
+directive, review findings, current PR head/base, remaining allowances and
+recent meaningful checkpoints. It is routing advice, never claim/merge
+authority. Inspect actual CI/profile status at the normal gates.
+
+### Human directives
+
+    pnpm harness run:directive --run 95 --expected-sequence 0 \
+      --action replan --source-ref user-message:2026-10-24:strategy-recovery \
+      --reason "The user requested a durable recovery plan before more Product work."
+
+Actions are continue, pause, or replan. Record only a new explicit human
+instruction with a stable source reference; never fabricate or replay one.
+The latest directive wins by monotonically increasing sequence. A later
+continue revokes an earlier pause; quoting the word pause has no effect.
+An interruption/model switch alone is not a human pause.
+
+A replan request is fulfilled by a later strategy_review checkpoint for the
+same active Epoch. This resolves only the replan task, preserving the original
+directive in history and all app Goal controls. A pause always requires an
+explicit later human continue; a strategy checkpoint cannot cancel it.
+
+Legacy Runs opt in on the first directive. Read-only inspection never changes
+the Run or retroactively blocks legacy commands. Once enabled, pause/replan
+guards prevent new Product mutations, extensions, review launches and claims.
+Read-only diagnostics, recording completed results, and reconciliation remain
+available. Do not evade these guards through direct GitHub edits, an older
+checkout, a renamed Run, or arbitrary shell invocations.
+
+A manual recovery request may be completed while the app Goal is paused.
+Harness cannot change that app lifecycle, and a directive does not claim that
+the app Goal resumed. The user resumes the existing Goal with its app control.
+
+### Meaningful execution history
+
+    pnpm harness run:checkpoint --run 95 --expected-sequence 1 --evidence /path/to/checkpoint.json
+
+Evidence schema (no raw logs or private payloads):
+
+    {
+      "kind": "no_progress",
+      "epoch_pr": 271,
+      "problem": "stable-contract-or-failure-family",
+      "input_sha256": "<64 lowercase hex characters>",
+      "outcome": "What was actually learned or delivered",
+      "next_action": "One concrete next action and its purpose",
+      "evidence_refs": ["docs/agent/RUN95_RECOVERY_PLAN.md"]
+    }
+
+Kinds are progress, no_progress, and strategy_review. A strategy review also
+requires the actual reviewer_id and model; Harness binds it to the exact
+existing review-history prefix. Identity is opaque. Model is recorded from
+the runtime/dispatch, never inferred from the identity. The caller must
+truthfully record the observed review and supporting evidence.
+
+Record at meaningful engineering/research/failure/handoff boundaries, not
+every tool call or unchanged poll. Keep summaries bounded and use evidence
+references/hashes. The source digest describes inputs relevant to the
+failure; Candidate/profile renaming alone is not a changed hypothesis.
+
+Two consecutive no_progress checkpoints with identical problem/input digest,
+or three corrective verdicts since the last strategy review, require strategy
+reassessment before further Product mutations. A budget extension does not
+clear the signal. Reassess cause, rejected attempts, scope, changed hypothesis
+and expected outcome with a user-authorized advanced model. Finish safe
+preparation if that runtime is unavailable; do not invent its verdict.
+
+Strategy review is not a formal Product/frontier PASS and spends no formal
+review slot. All normal same-identity reviews, exact CI, permanent claim
+limits, privacy boundaries and integration gates still apply. New ordinary
+model roles remain Luna Max. The current user-authorized strategy session may
+record its review without impersonating an independent Product reviewer.
+
+The Run Issue contains hash-linked append-only continuation events, losslessly
+compressed with digest/count checks once the JSON exceeds 4 KiB. Appends
+require the observed sequence, pre-write reread and post-write readback. Use
+one writer; GitHub PATCH has no atomic compare-and-swap guarantee. A readback
+failure demands reinspection, not blind replay. No events are silently
+trimmed. The existing control-body size gate applies; if full, stop writes
+and implement an explicit archive migration before adding more history.
+No raw chat, credentials, account identifiers, QR/media, or mutable tracked
+runtime-log fallback belongs here.
 
 ## 3. Goal modes
 

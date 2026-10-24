@@ -257,6 +257,65 @@ function buildP02V2ReportForClaim(claim, keyPair) {
   );
 }
 
+test('continuation CLI persists latest human intent without changing budgets or Epoch claims', () => {
+  const environment = createMockEnvironment();
+  try {
+    const original = environment.readState();
+    const paused = environment.execute([
+      'run:directive', '--run', '1', '--expected-sequence', '0', '--action', 'pause',
+      '--source-ref', 'user-message:pause', '--reason', 'User explicitly paused work.',
+    ]);
+    assert.equal(paused.status, 0, paused.stderr);
+    const denied = environment.execute(['review:reserve', '--run', '1', '--pr', '42']);
+    assert.equal(denied.status, 2);
+    assert.match(denied.stderr, /^HUMAN_PAUSE_ACTIVE:/u);
+    // candidate:check permits omitted --run; it must still find the active pause.
+    const candidate = environment.execute(['candidate:check', '--pr', '42', '--evidence', 'unused.json']);
+    assert.equal(candidate.status, 2);
+    assert.match(candidate.stderr, /^HUMAN_PAUSE_ACTIVE:/u);
+    const resumed = environment.execute([
+      'run:directive', '--run', '1', '--expected-sequence', '1', '--action', 'continue',
+      '--source-ref', 'user-message:resume', '--reason', 'The old pause is cancelled; continue.',
+    ]);
+    assert.equal(resumed.status, 0, resumed.stderr);
+    const brief = environment.execute(['continuation:show', '--run', '1', '--goal-state', 'paused']);
+    assert.equal(brief.status, 0, brief.stderr);
+    const parsed = JSON.parse(brief.stdout);
+    assert.equal(parsed.latest_human_directive.data.action, 'continue');
+    assert.equal(parsed.next_action, 'RESUME_CODEX_GOAL_IN_APP');
+    assert.equal(parsed.sequence, 2);
+    const final = environment.readState();
+    assert.equal(final.prBody, original.prBody);
+    assert.deepEqual(parseControlBlock(final.runBody, RUN_MARKER).outer_sol,
+      parseControlBlock(original.runBody, RUN_MARKER).outer_sol);
+  } finally { environment.cleanup(); }
+});
+
+test('continuation CLI records a strategy checkpoint and rejects stale replay', () => {
+  const environment = createMockEnvironment();
+  try {
+    const evidence = path.join(environment.directory, 'checkpoint.json');
+    fs.writeFileSync(evidence, JSON.stringify({
+      kind: 'strategy_review', epoch_pr: 42, problem: 'repetitive-corrective-work',
+      input_sha256: 'f'.repeat(64), outcome: 'Pinned scope and replaced the failed approach.',
+      next_action: 'Complete the exact pending correction before new work.',
+      evidence_refs: ['docs/agent/RUN95_RECOVERY_PLAN.md'],
+      reviewer_id: 'strategy-session', model: 'gpt-6.1-sol',
+    }));
+    const result = environment.execute([
+      'run:checkpoint', '--run', '1', '--expected-sequence', '0', '--evidence', evidence,
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const beforeReplay = environment.readState().runBody;
+    const replay = environment.execute([
+      'run:checkpoint', '--run', '1', '--expected-sequence', '0', '--evidence', evidence,
+    ]);
+    assert.equal(replay.status, 2);
+    assert.match(replay.stderr, /^STALE_CONTINUATION_SEQUENCE:/u);
+    assert.equal(environment.readState().runBody, beforeReplay);
+  } finally { environment.cleanup(); }
+});
+
 function controlFixture() {
   const run = createRunState({ runId: 'run-cli' });
   run.state = 'EPOCH_ACTIVE';
