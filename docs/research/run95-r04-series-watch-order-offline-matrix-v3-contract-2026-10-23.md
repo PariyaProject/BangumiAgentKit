@@ -22,3 +22,17 @@ The official relation operation and item schema expose relation data but no pagi
 A valid signed report may credit only the `bangumi.get_series_watch_order` Agent/MCP matrix cell. It must bind the exact profile, six fixture operations, source revision, Base, seven required exact-SHA checks, assigned Luna Max reviewer, built bundle, and privacy counters. It must preserve `scenarioId: null` and leave R04 `UNASSESSED`.
 
 No live Bangumi API or HTML, OAuth/account, community, write, QQ, or TIM path is part of this profile. No prior terminal profile is retried.
+
+## Terminal outcome and implementation integration
+
+The sole v3 attempt on PR #267 ended `INCONCLUSIVE`, without a report and with
+`retryAllowed=false`. The report conditions above remain the frozen contract;
+they do not grant another attempt. No matrix or scenario credit is earned.
+
+HARNESS.md §10's pinned technical recovery preserves the original disposition,
+source PASS/CI, permanent latches, review history and budgets. Its explicit
+no-credit amendment allows only fresh review and integration of the existing
+bounded implementation on the same PR/branch. The current-master shared failure
+pipeline applies to both v2/v3, while their exact arguments, summaries and report
+schemas remain distinct. Synthetic replay and signed-report tests verify this
+integration without starting Codex, invoking MCP or consuming another claim.

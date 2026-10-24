@@ -113,7 +113,7 @@ function assertOneShotRuntimeIsHarnessOwned(record) {
   );
 }
 
-test('C07 v3 renderer matrix selection keeps the scenario unassessed and binds its visual QA receipt', () => {
+test('C07 v4 matrix-only selection keeps the scenario unassessed and preserves older no-retry profiles', () => {
   const record = ledger.records.find(({ id }) => id === 'C07');
   assert.ok(record, 'C07 must remain in the canonical frontier');
   assert.equal(record.status, 'UNASSESSED');
@@ -127,6 +127,14 @@ test('C07 v3 renderer matrix selection keeps the scenario unassessed and binds i
       'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v3-visual-qa-2026-10-18.json',
     ),
   );
+  assert.ok(
+    record.source_refs.includes('docs/research/run95-c07-two-cohort-v4-selection-2026-10-23.md'),
+  );
+  assert.ok(
+    record.source_refs.includes(
+      'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-23.json',
+    ),
+  );
   assert.ok(record.source_refs.includes('docs/product/g26-mcp-bundle-attestation.json'));
   assert.ok(record.source_refs.includes('scripts/lib/c07-render-comparison-visual-qa.mjs'));
   assert.ok(record.source_refs.includes('scripts/lib/c07-render-comparison-visual-qa.d.mts'));
@@ -138,13 +146,15 @@ test('C07 v3 renderer matrix selection keeps the scenario unassessed and binds i
   assert.equal(profile.retry_allowed, false);
   assert.match(
     record.next_action,
-    /c07-render-comparison-offline-agent-mcp-matrix-v3` profile is terminal INCONCLUSIVE after one call/u,
+    /C07 profiles v1-v3 remain terminal INCONCLUSIVE\/no-report\/retryAllowed=false/u,
   );
-  assert.match(record.next_action, /no C07 scenario or Agent\/MCP matrix credit/u);
-  assert.ok(record.next_action.includes('Never retry or recreate it'));
+  assert.match(record.next_action, /distinct v4 profile targets only the render_subject_cohort_comparison Agent\/MCP matrix row/u);
+  assert.match(record.next_action, /sole attempt is now terminal INCONCLUSIVE\/no-report\/retryAllowed=false/u);
+  assert.match(record.next_action, /earns no matrix or scenario credit/u);
+  assert.doesNotMatch(record.next_action, /currently unclaimed/u);
   assert.doesNotMatch(
     record.next_action,
-    /No v3 call or report exists yet|UNCLAIMED|unclaimed|before .*one-shot/iu,
+    /No v3 call or report exists yet/u,
   );
 });
 
@@ -315,6 +325,7 @@ test('R03 bounded rating evidence is partial and does not credit Agent/MCP', () 
   for (const source of [
     'docs/research/run95-r03-relations-agent-mcp-offline-matrix-2026-10-17.md',
     'docs/research/run95-r03-direct-relations-offline-agent-mcp-matrix-v2-2026-10-17.md',
+    'docs/research/run95-r03-two-hop-rating-agent-mcp-offline-matrix-v1-2026-10-23.md',
     'scripts/lib/codex-mcp-approval-config.mjs',
     'tests/harness/codex-mcp-approval-config.test.mjs',
     'scripts/acceptance/agent-mcp-profile-registry.json',
@@ -608,9 +619,10 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
     /separately keyed R04 renderer v2 profile remains only its existing Agent\/MCP matrix row/u,
   );
   assert.match(r04.next_action, /^R04 remains UNASSESSED\./u);
-  assert.match(r04.next_action, /v3 multi-node offline profile is selected/u);
-  assert.match(r04.next_action, /it may credit only this Agent\/MCP matrix cell/u);
-  assert.match(r04.next_action, /cannot establish real relation coverage.*canonical order/u);
+  assert.match(r04.next_action, /v3 is also terminal INCONCLUSIVE\/no-report\/no-retry/u);
+  assert.match(r04.next_action, /earns no matrix or scenario credit/u);
+  assert.match(r04.next_action, /fresh Candidate\/current Base\/exact CI and the same reviewer/u);
+  assert.doesNotMatch(r04.next_action, /v3 multi-node offline profile is selected/u);
   assert.ok(
     r04.next_action.includes(
       'earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry',

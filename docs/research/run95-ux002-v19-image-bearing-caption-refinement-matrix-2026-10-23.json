@@ -1,0 +1,616 @@
+{
+  "schemaVersion": 1,
+  "runId": "run95-ux002-v19-caption-refinement-20261023-v5",
+  "generationSourceSha256": "219b74a6f002620f690852fe6c0f13121281d811749d30b4eae505d7e1a02f49",
+  "sourceBase": "0e2db352dc7823d9f0b07b06ebd77eda89859f40",
+  "sourceDigest": "4e51c4d861d1482b1c548e8bd354f519183a2f1175ee55a8c5f433711a4e770b",
+  "sourceFiles": {
+    "packages/renderer/src/components/TitleBlock.tsx": "17bd9d33a73bc2e86dcd7d748a7fb0bfe2400a355f6189e6e3ca508f40fea22d",
+    "packages/renderer/src/render-service.ts": "6764f787c4ad2741bc12eaad79ef6ffbf5844b3c9673fcc3ff9fc7965e2649e0",
+    "packages/renderer/src/templates/SubjectCard.tsx": "a3bd53ee272b1ccefd99ceed17caf06a54846580ec9824f4cb92af73e6c2e67e",
+    "packages/renderer/src/themes/index.ts": "d111fc3f7bad653b78b9b3b35e6d32d7f406bae57b93f052bdf1df12094a9c40",
+    "packages/renderer/src/typography.ts": "5d5c36a6465c158ecd704a278c998cce237cf9dfc8871269616089031ef2f1c0",
+    "packages/renderer/assets/fonts/GenSenRounded2TW-R.woff2": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739",
+    "packages/renderer/assets/fonts/MaShanZheng-Regular.woff2": "c2ce27c105667f9b8544af24bb0edc718d69373975b2ee132aaa063ebe7244de"
+  },
+  "sourceData": "Synthetic Bangumi subject; no public API or account request.",
+  "coverAssets": {
+    "warm-editorial": {
+      "sha256": "e97263d62f8a9f82ac4aa476c9e0da6357290710666d2097c57aecaf4b515595",
+      "byteLength": 2963819
+    },
+    "clean-gallery": {
+      "sha256": "467de046a96a84e71c90085974375fd8956abba3e193740aa813482efb9c9ac6",
+      "byteLength": 2711781
+    },
+    "graphic-zine": {
+      "sha256": "c63fc525dcea4056e83c33ad43c7b5cf410be2f88a9f00ebae681a698b9928ff",
+      "byteLength": 3307325
+    }
+  },
+  "typographyProfiles": {
+    "warm-editorial": {
+      "fontSizeScale": 0.75,
+      "bodyFontFamily": "\"PingFang SC\", \"Hiragino Sans GB\", sans-serif",
+      "displayFontFamily": "\"Songti SC\", \"Noto Serif CJK SC\", serif",
+      "fontFiles": []
+    },
+    "clean-gallery": {
+      "fontSizeScale": 0.75,
+      "bodyFontFamily": "\"GenSen Rounded\"",
+      "displayFontFamily": "\"GenSen Rounded\"",
+      "fontFiles": [
+        {
+          "role": "body",
+          "sha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+        }
+      ]
+    },
+    "graphic-zine": {
+      "fontSizeScale": 0.75,
+      "bodyFontFamily": "\"GenSen Rounded\"",
+      "displayFontFamily": "\"Ma Shan Zheng\"",
+      "fontFiles": [
+        {
+          "role": "body",
+          "sha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+        },
+        {
+          "role": "display",
+          "sha256": "c2ce27c105667f9b8544af24bb0edc718d69373975b2ee132aaa063ebe7244de"
+        }
+      ]
+    }
+  },
+  "designPacks": [
+    "warm-editorial",
+    "clean-gallery",
+    "graphic-zine"
+  ],
+  "themes": [
+    "bangumi-light",
+    "bangumi-dark"
+  ],
+  "widthsCssPx": [
+    320,
+    360,
+    375,
+    414,
+    520,
+    640,
+    768,
+    960
+  ],
+  "deviceScaleFactor": 2,
+  "externalRequests": 0,
+  "outputs": [
+    {
+      "filename": "warm-editorial-bangumi-light-320.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "cssWidthPx": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1578,
+      "byteLength": 393452,
+      "sha256": "f4213476d32790c18a3ad6546364c5d7e3b94955d1e1bda2676fab6515aad912",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-light-360.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "cssWidthPx": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1604,
+      "byteLength": 474049,
+      "sha256": "93817df042b1006bfbdbd1af9e94d0e48cc6f3de911c064cd8eecb6811fcdfae",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-light-375.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "cssWidthPx": 375,
+      "pixelWidth": 750,
+      "pixelHeight": 1658,
+      "byteLength": 514269,
+      "sha256": "a6a5554f7b3ae9747eefaa3d79cfcd4da997b1d370d7703395728c1783a19213",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-light-414.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "cssWidthPx": 414,
+      "pixelWidth": 828,
+      "pixelHeight": 1634,
+      "byteLength": 665975,
+      "sha256": "72d7965df5bd3d68351cba094646d3b69891a43d55017020d9cd53e9afa1a11e",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-light-520.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "cssWidthPx": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1648,
+      "byteLength": 1033093,
+      "sha256": "4d19b5e74f2dc45f178c011f8db6703078cf0094ae5ae4bbe0d082e275bff4f9",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-light-640.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "cssWidthPx": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1806,
+      "byteLength": 1520104,
+      "sha256": "27832bfcff3414d1b1a3423f4528eec62be6ffa4068bdc1d461b14de0500e5e8",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-light-768.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "cssWidthPx": 768,
+      "pixelWidth": 1536,
+      "pixelHeight": 1992,
+      "byteLength": 2117419,
+      "sha256": "b287776f8cc550abb17ccca0b8d32651b88d7cf4884aea72d8ecb1a0ca40cff2",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-light-960.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "cssWidthPx": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2270,
+      "byteLength": 3150460,
+      "sha256": "2566679c66b38fd0e758699d75416cc13aa784f7a7e0531530672166f7282f44",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-dark-320.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1578,
+      "byteLength": 391155,
+      "sha256": "de04c8bbda253ca6f1bde862312f9b817a0803ddede89bb1e92dc48fcb15b5ab",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-dark-360.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1604,
+      "byteLength": 471552,
+      "sha256": "24c4d58f1253b09333c85313adae892d9322dd7105a5031d936f8e35909ccdc0",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-dark-375.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 375,
+      "pixelWidth": 750,
+      "pixelHeight": 1658,
+      "byteLength": 511631,
+      "sha256": "da7c58a563e6cf52fe6c72e6c3eddd05b9460130a175932a66445de02858ea86",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-dark-414.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 414,
+      "pixelWidth": 828,
+      "pixelHeight": 1634,
+      "byteLength": 661016,
+      "sha256": "445b123c3b52f3c3d9ae87c3975563b5b1da04ffd82d19c29c08bd845f184987",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-dark-520.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1648,
+      "byteLength": 1027912,
+      "sha256": "aa3e4d545d0b0bac895ae98c769780eba1265aff5f8e0c64e2d5762f0e03dcf3",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-dark-640.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1806,
+      "byteLength": 1515448,
+      "sha256": "4a5231ffd4d9a1c8790b7e3146dc2107c203f6c19aa2780c8713cfe03a49120a",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-dark-768.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 768,
+      "pixelWidth": 1536,
+      "pixelHeight": 1992,
+      "byteLength": 2112941,
+      "sha256": "65505df54beefdb9e3e4488a98b498244905a23edcaa869924efaaa4c21631de",
+      "warningCount": 0
+    },
+    {
+      "filename": "warm-editorial-bangumi-dark-960.png",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2270,
+      "byteLength": 3146822,
+      "sha256": "3a4e74c40268f27c28897c66c472dd41fc6f40cb6e237fc075d7b304c3fb8e6a",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-light-320.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "cssWidthPx": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1542,
+      "byteLength": 327732,
+      "sha256": "3a7462ad73a50225b1919c6b6f382010fb9f0d04b8531ec97f006c0b4fed56d8",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-light-360.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "cssWidthPx": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1532,
+      "byteLength": 405435,
+      "sha256": "4dda80ddb2d213b2f2291837de1e04f2754cae4ad5559871201581e28d4ca301",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-light-375.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "cssWidthPx": 375,
+      "pixelWidth": 750,
+      "pixelHeight": 1488,
+      "byteLength": 439296,
+      "sha256": "0faf846482e6c30960fa1a8488b7a15dfcc559c20d747b70720ddb9806bea766",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-light-414.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "cssWidthPx": 414,
+      "pixelWidth": 828,
+      "pixelHeight": 1474,
+      "byteLength": 572884,
+      "sha256": "4d4b96d60b3171a6f4c4fcb6e48169cc0d851108a5034509c2713cfede568dda",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-light-520.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "cssWidthPx": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1610,
+      "byteLength": 917729,
+      "sha256": "875f9037d945beb6ce28ab93bf12e444e59b1ca2916cd4348256602644992916",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-light-640.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "cssWidthPx": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1762,
+      "byteLength": 1372616,
+      "sha256": "fbd39a970810d972f743cb0b70bad2e3c6c30e46c4e21b990c953bf0267ba3cf",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-light-768.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "cssWidthPx": 768,
+      "pixelWidth": 1536,
+      "pixelHeight": 1924,
+      "byteLength": 1939179,
+      "sha256": "07034027e15c037eaef4b284b74aa2bd001815eddfbe0f1e70a962f0314b69bb",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-light-960.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "cssWidthPx": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2168,
+      "byteLength": 2919062,
+      "sha256": "adc54bc51b3254c08b115639a9228f062391921bcd1097b96a1eec2152959bc6",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-dark-320.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1542,
+      "byteLength": 330047,
+      "sha256": "d2a30e14257e7fd205053fcb7cb58c463803e2732099c8f211d7b7887403f128",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-dark-360.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1532,
+      "byteLength": 407234,
+      "sha256": "82a848a5bb88d3c4ea5a18233b1ef0a0131ae84972ce1357ba483fb708b0efd4",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-dark-375.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 375,
+      "pixelWidth": 750,
+      "pixelHeight": 1488,
+      "byteLength": 441258,
+      "sha256": "f5635aa405b2a0e264022a777ec56c458b7099a3915952e9816e9b22505ea7c9",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-dark-414.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 414,
+      "pixelWidth": 828,
+      "pixelHeight": 1474,
+      "byteLength": 575887,
+      "sha256": "d06db13aa32dd9b60307605ea4b7dad7d20f0c1b9dcf3d35b4b106af0ddf3ff6",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-dark-520.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1610,
+      "byteLength": 920712,
+      "sha256": "d97d788bf33786f3de2c3255d93bacaf77728a445c1de2ffd72dc593e40be851",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-dark-640.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1762,
+      "byteLength": 1375518,
+      "sha256": "d84fb29b70f36a7a53ae24e581912a65f2c8a41d69c35d7e2f51c238d1dddf4e",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-dark-768.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 768,
+      "pixelWidth": 1536,
+      "pixelHeight": 1924,
+      "byteLength": 1942122,
+      "sha256": "7448c9a6a2f5bdd9b41cc6f99551fff6a045dc45a7e5b6ed472715b226371d6a",
+      "warningCount": 0
+    },
+    {
+      "filename": "clean-gallery-bangumi-dark-960.png",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2168,
+      "byteLength": 2922350,
+      "sha256": "5aafe112c7598761b9d9f8d0d449c403971980dbac7a1c4b8a804e520d29047b",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-light-320.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "cssWidthPx": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1362,
+      "byteLength": 385379,
+      "sha256": "5c156aa46446512bfd0f170f67a7645eba129b5c8e75cbc4f04229968f13b008",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-light-360.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "cssWidthPx": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1388,
+      "byteLength": 469883,
+      "sha256": "2924efc1c88c76ad8d7f77be16b4cf314622328ecaab389793078f0646fb7453",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-light-375.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "cssWidthPx": 375,
+      "pixelWidth": 750,
+      "pixelHeight": 1406,
+      "byteLength": 509680,
+      "sha256": "b35b4896617f10b2c1806b563c3c3eaeb3761d26401d08da8a06855baef90675",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-light-414.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "cssWidthPx": 414,
+      "pixelWidth": 828,
+      "pixelHeight": 1426,
+      "byteLength": 618430,
+      "sha256": "9c5b828c11ec0a692008640c14f030e4fdaab42551dead99132bac96bbda7299",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-light-520.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "cssWidthPx": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1422,
+      "byteLength": 1039262,
+      "sha256": "806e7d2e89449c20739e2a9353914d95c4b21de345ee037bc354f63181c9a079",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-light-640.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "cssWidthPx": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1568,
+      "byteLength": 1549008,
+      "sha256": "b67c56d6a9e40346f0e7ab5ae3877afa05f7a00cae1e2837d3e3e9922abaecd6",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-light-768.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "cssWidthPx": 768,
+      "pixelWidth": 1536,
+      "pixelHeight": 1744,
+      "byteLength": 2173646,
+      "sha256": "2d573d04ea3c55e93bf48ff02e0be90127cd84e92e4e673ac1d506e47881a28e",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-light-960.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "cssWidthPx": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2006,
+      "byteLength": 3256642,
+      "sha256": "6b157ea3f567dcc0935bc8892a5e9ee7b31a35464c091883c517bccaccf928fc",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-dark-320.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1362,
+      "byteLength": 386864,
+      "sha256": "b59a85526573655c402cdbc506a840893c730f8ea490d34238e53670d5d26a05",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-dark-360.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1388,
+      "byteLength": 471255,
+      "sha256": "15cffd487d4c656f1290f09b48cb528b714778805c0eafc09992a8b31fae2681",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-dark-375.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 375,
+      "pixelWidth": 750,
+      "pixelHeight": 1406,
+      "byteLength": 511149,
+      "sha256": "a4d379df789405daa1b840f61df746e93da8c696a0b6cd3171a2abfb103caa95",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-dark-414.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 414,
+      "pixelWidth": 828,
+      "pixelHeight": 1426,
+      "byteLength": 619849,
+      "sha256": "abc6d605b0df9d5f89f31a56bf0916e0dd769d5e643169500f7da186bfef24e0",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-dark-520.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1422,
+      "byteLength": 1040368,
+      "sha256": "a22498f56ea78d60bf400b3df4fe376e9d94db45862b8e21d6a925bf443db167",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-dark-640.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1568,
+      "byteLength": 1550110,
+      "sha256": "75e9f5b64852f755df6815f1f3ee3e20540df83bddaa3b5d9f8eda7e0733cf0e",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-dark-768.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 768,
+      "pixelWidth": 1536,
+      "pixelHeight": 1744,
+      "byteLength": 2175202,
+      "sha256": "6d10fc184ad4cc1c011a6d86a15ec34a03d72274ec32b906bd372c223f488e37",
+      "warningCount": 0
+    },
+    {
+      "filename": "graphic-zine-bangumi-dark-960.png",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "cssWidthPx": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2006,
+      "byteLength": 3259526,
+      "sha256": "75d44b241a461d026bd8e70151b56dfdd88b87b2d1096e9c1dfaebc17b263d42",
+      "warningCount": 0
+    }
+  ]
+}

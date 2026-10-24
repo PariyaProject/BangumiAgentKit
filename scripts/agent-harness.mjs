@@ -6,6 +6,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { gzipSync, gunzipSync } from 'node:zlib';
+import { readProductCommitSubjects } from './lib/product-commit-subjects.mjs';
+import {
+  inspectRendererDesignBaselines,
+  RENDERER_BASELINE_PATH,
+} from './lib/renderer-design-baselines.mjs';
 import {
   DISCOVERY_POLICY_VERSION,
   DEFAULT_EPOCH_REVIEW_SLOTS,
@@ -56,7 +61,17 @@ import {
   waitForFrontierReviewer,
   waitForSameReviewer,
 } from './lib/agent-harness-core.mjs';
+import {
+  LEGACY_R04_TERMINAL_RECOVERY,
+  planLegacyTerminalRecovery,
+} from './lib/harness-terminal-recovery.mjs';
 import { canonicalHash, inspectFrontierLedger } from './lib/frontier-ledger.mjs';
+import {
+  appendContinuationEvent,
+  assertContinuationMayAdvance,
+  buildContinuationBrief,
+  continuationEvents,
+} from './lib/harness-continuation.mjs';
 import {
   acquireG06OneShotGitHubLatch,
   acquireG06OneShotTerminalGitHubLatch,
@@ -176,6 +191,7 @@ import {
 import { validateR04RenderSanitizedReportFile } from './acceptance/write-r04-render-series-watch-order-offline-agent-mcp-report.mjs';
 import { validateR04RenderV2SanitizedReportFile } from './acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs';
 import { validateR01RelationsOfflineSanitizedReportFile } from './acceptance/write-r01-relations-offline-agent-mcp-report.mjs';
+import { validateR01RelationsTextProjectionOfflineSanitizedReportFile } from './acceptance/write-r01-relations-text-projection-offline-agent-mcp-v2-report.mjs';
 import { validateR03RelationsOfflineSanitizedReportFile } from './acceptance/write-r03-relations-offline-agent-mcp-report.mjs';
 import { validateC04SanitizedReportFile } from './acceptance/write-c04-cohort-comparison-agent-mcp-report.mjs';
 import { validateTitleQueryRenderSanitizedReportFile } from './acceptance/write-title-query-render-agent-mcp-report.mjs';
@@ -200,7 +216,9 @@ import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
+  isC07ReviewerId,
 } from './lib/c07-render-comparison-offline-profile.mjs';
 import {
   G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
@@ -280,6 +298,10 @@ import {
 } from './acceptance/d07-current-rank-answer-check.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
+const rendererBaselineRoot =
+  process.env.HARNESS_MOCK_STATE && process.env.HARNESS_RENDERER_BASELINE_ROOT
+    ? path.resolve(process.env.HARNESS_RENDERER_BASELINE_ROOT)
+    : root;
 const G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
   '.github/workflows/ci.yml',
   'docs/agent/HARNESS.md',
@@ -486,13 +508,15 @@ const mandatoryCiChecks = [
 const MAX_CONTROL_BODY_BYTES = 65_536;
 
 function run(command, args, options = {}) {
-  return execFileSync(command, args, {
+  const preserveLeadingWhitespace = options.preserveLeadingWhitespace === true;
+  const output = execFileSync(command, args, {
     cwd: root,
     encoding: 'utf8',
     stdio: options.capture === false ? 'inherit' : ['pipe', 'pipe', 'pipe'],
     input: options.input,
     env: { ...process.env, ...options.env },
-  }).trim();
+  });
+  return preserveLeadingWhitespace ? output.replace(/\r?\n$/u, '') : output.trim();
 }
 
 function git(...args) {
@@ -503,6 +527,10 @@ function gh(...args) {
   const last = args.at(-1);
   const options = last && typeof last === 'object' ? args.pop() : {};
   return run('gh', args, options);
+}
+
+function gitPorcelain(...args) {
+  return run('git', args, { preserveLeadingWhitespace: true });
 }
 
 function parseArgs(argv) {
@@ -722,8 +750,7 @@ function changedPaths(base, head = 'HEAD') {
 }
 
 function commitSubjects(base, head = 'HEAD') {
-  const output = git('log', '--format=%s', `${base}..${head}`);
-  return output.split('\n').filter(Boolean);
+  return readProductCommitSubjects(root, base, head);
 }
 
 function eventPrBody() {
@@ -820,6 +847,10 @@ function commandHelp() {
 Usage: pnpm harness <command> [options]
 
   status --run <issue> [--pr <number>]
+  continuation:show --run <issue> [--goal-state active|paused|blocked|complete]
+  renderer:baseline-check [--base <ref>]
+  run:directive --run <issue> --expected-sequence <n> --action continue|pause|replan --source-ref <ref> --reason <text>
+  run:checkpoint --run <issue> --expected-sequence <n> --evidence <json>
   frontier:check
   frontier:status
   discovery:check [--now <ISO timestamp>]
@@ -828,6 +859,7 @@ Usage: pnpm harness <command> [options]
   review:budget-extend --run <issue> --pr <number> --add <count> --reason <text>
   epoch:start --run <issue> --spec <json>
   epoch:open-pr --run <issue> --title <title>
+  epoch:frontier-amend --run <issue> --pr <number> --frontier-id <id> --reason <text>
   guard:legacy-paths [--base origin/master] [--product-epoch]
   candidate:check --pr <number> [--run <issue>] --evidence <json>
   review:reserve --run <issue> --pr <number> [--runtime-recovery]
@@ -866,6 +898,7 @@ Usage: pnpm harness <command> [options]
   frontier:review-result --run <issue> --verdict <PASS|DISCOVERY_REQUIRED> [--findings <json>]
   frontier:resume-discovery --run <issue>
   epoch:park --run <issue> --pr <number> --state <state> --reason <text>
+  epoch:resume-terminal-failure --run <issue> --pr <number> --expected-claim-sha256 <sha>
   epoch:resume-final-corrective --run <issue> --pr <number>
   epoch:resume-integration --run <issue> --pr <number>
   epoch:merge --run <issue> --pr <number>
@@ -934,6 +967,170 @@ function commandStatus(options) {
     };
   }
   print(result);
+}
+
+function commandContinuationShow(options) {
+  ensureControlPlane();
+  const runResult = issueState(required(options, 'run'));
+  const prNumber = options.pr ?? runResult.state.active_epoch_pr;
+  const epochResult = prNumber ? epochState(prNumber) : null;
+  print({
+    ...buildContinuationBrief({
+      run: runResult.state,
+      epoch: epochResult?.state,
+      pr: epochResult?.view,
+      goalState: options['goal-state'] ?? 'unobserved',
+    }),
+    renderer_design_baselines: inspectRendererDesignBaselines(rendererBaselineRoot),
+  });
+}
+
+function requireRendererBaselines(base) {
+  let priorRegistry;
+  if (base) {
+    const tracked = git('ls-tree', '--name-only', base, '--', RENDERER_BASELINE_PATH);
+    if (tracked) priorRegistry = JSON.parse(git('show', `${base}:${RENDERER_BASELINE_PATH}`));
+  }
+  const result = inspectRendererDesignBaselines(rendererBaselineRoot, {
+    priorRegistry,
+    readSourceAtCommit: (commit, file) =>
+      execFileSync('git', ['show', `${commit}:${file}`], {
+        cwd: root,
+        env: sanitizeP01GitEnvironment(process.env),
+        maxBuffer: 24 * 1024 * 1024,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }),
+  });
+  if (!result.ok)
+    throw new HarnessInvariantError(
+      'RENDERER_DESIGN_BASELINE_DRIFT',
+      'Preserve completed designs; a changed baseline needs an audited successor, not another styling loop.',
+      result.issues,
+    );
+  return result;
+}
+
+function commandRendererBaselineCheck(options) {
+  print({ state: 'RENDERER_DESIGN_BASELINES_VALID', ...requireRendererBaselines(options.base) });
+}
+
+function commandContinuationRecord(options, type) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const observed = issueState(runNumber);
+  if (observed.view.state !== 'OPEN' || isTerminalRunState(observed.state.state)) {
+    throw new HarnessInvariantError(
+      'CONTINUATION_RUN_NOT_ACTIVE',
+      'Record against an open nonterminal Run',
+    );
+  }
+  const epochResult = observed.state.active_epoch_pr
+    ? epochState(observed.state.active_epoch_pr)
+    : null;
+  const input =
+    type === 'directive'
+      ? {
+          type,
+          action: required(options, 'action'),
+          source_ref: required(options, 'source-ref'),
+          reason: required(options, 'reason'),
+        }
+      : { ...readJsonFile(required(options, 'evidence')), type };
+  const next = appendContinuationEvent(
+    observed.state,
+    epochResult?.state,
+    input,
+    Number(required(options, 'expected-sequence')),
+  );
+  // GitHub body PATCH is not atomic compare-and-swap. Recheck immediately before
+  // writing and read back afterwards; only one Harness writer may run at a time.
+  const latest = issueState(runNumber);
+  if (canonicalHash(latest.state) !== canonicalHash(observed.state)) {
+    throw new HarnessInvariantError(
+      'CONTINUATION_CONCURRENT_WRITE',
+      'Run changed; read it again before recording',
+    );
+  }
+  updateIssue(runNumber, next);
+  const saved = issueState(runNumber);
+  if (canonicalHash(saved.state) !== canonicalHash(next)) {
+    throw new HarnessInvariantError(
+      'CONTINUATION_READBACK_MISMATCH',
+      'Read back the Run before retrying any write',
+    );
+  }
+  print({ state: 'CONTINUATION_EVENT_RECORDED', event: continuationEvents(next).at(-1) });
+}
+
+// Observation and recording an already-completed result must remain possible
+// during a pause; no such command may launch another Product tool call.
+function guardContinuationCommand(command, options) {
+  const exempt = new Set([
+    'help',
+    'status',
+    'continuation:show',
+    'renderer:baseline-check',
+    'run:directive',
+    'run:checkpoint',
+    'frontier:check',
+    'frontier:status',
+    'frontier:review-context',
+    'discovery:check',
+    'goal:check',
+    'guard:legacy-paths',
+    'review:result',
+    'review:runtime',
+    'review:wait',
+    'review:reconcile',
+    'frontier:review-result',
+    'frontier:review-runtime',
+    'frontier:review-wait',
+    'frontier:review-reconcile',
+    'epoch:agent-mcp-profile-status',
+    'epoch:agent-mcp-profile-result',
+    'epoch:agent-mcp-profile-reconcile-ambiguous',
+    'epoch:g19-one-shot-result',
+    'epoch:p05-one-shot-result',
+    'epoch:d07-one-shot-result',
+    'epoch:p01-one-shot-result',
+    'epoch:r01-one-shot-reconcile',
+    'epoch:g06-one-shot-reconcile',
+  ]);
+  if (exempt.has(command)) return;
+  let runNumber = options.run;
+  if (!runNumber && command === 'candidate:check') {
+    const matchingRuns = JSON.parse(
+      gh('issue', 'list', '--state', 'open', '--limit', '100', '--json', 'number,body'),
+    ).filter((view) => {
+      if (!view.body?.includes('<!-- ' + RUN_MARKER + ':start -->')) return false;
+      return parseControlBlock(view.body, RUN_MARKER).active_epoch_pr === Number(options.pr);
+    });
+    if (matchingRuns.length > 1) {
+      throw new HarnessInvariantError(
+        'MULTIPLE_OPEN_OUTER_RUNS',
+        'Cannot infer a unique active Run',
+      );
+    }
+    runNumber = matchingRuns[0]?.number;
+  }
+  if (!runNumber) return;
+  ensureControlPlane();
+  const runResult = issueState(runNumber);
+  if (runResult.state.continuation === undefined) return;
+  if (
+    options.pr &&
+    runResult.state.active_epoch_pr != null &&
+    runResult.state.active_epoch_pr !== Number(options.pr)
+  ) {
+    throw new HarnessInvariantError(
+      'CONTINUATION_EPOCH_MISMATCH',
+      'Mutations must name the Run active Epoch',
+    );
+  }
+  const epoch = runResult.state.active_epoch_pr
+    ? epochState(runResult.state.active_epoch_pr).state
+    : null;
+  assertContinuationMayAdvance(runResult.state, epoch);
 }
 
 function inspectDiscoveryCheck(options) {
@@ -1072,6 +1269,11 @@ function commandRunStart(options) {
     );
   }
   if (resumableRuns.length === 1) {
+    const active = resumableRuns[0].run;
+    assertContinuationMayAdvance(
+      active,
+      active.active_epoch_pr ? epochState(active.active_epoch_pr).state : null,
+    );
     for (const issue of terminalRuns) {
       gh('issue', 'close', String(issue.number), '--reason', 'completed');
     }
@@ -1336,6 +1538,142 @@ function commandEpochOpenPr(options) {
   print({ state: 'EPOCH_PR_OPEN', pr: pr.number, url });
 }
 
+function commandEpochFrontierAmend(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = required(options, 'run');
+  const prNumber = Number(required(options, 'pr'));
+  const frontierId = required(options, 'frontier-id');
+  const reason = required(options, 'reason').trim();
+  if (!/^[A-Z][A-Z0-9-]{1,15}$/u.test(frontierId)) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_INVALID',
+      'frontier-id must name one canonical frontier record.',
+    );
+  }
+  if (reason.length < 12 || reason.length > 500) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_REASON_REQUIRED',
+      'reason must contain 12 to 500 non-whitespace characters.',
+    );
+  }
+
+  const runResult = issueState(runNumber);
+  const epochResult = epochState(prNumber);
+  const run = structuredClone(runResult.state);
+  const epoch = structuredClone(epochResult.state);
+  if (
+    Number(runNumber) !== 95 ||
+    run.state !== 'EPOCH_ACTIVE' ||
+    run.active_epoch_pr !== prNumber ||
+    epoch.state !== 'CORRECTIVE_REQUIRED' ||
+    epochResult.view.state !== 'OPEN'
+  ) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_REQUIRES_CORRECTIVE_REVIEW',
+      'A frontier binding may be amended only on the active open Run #95 Epoch after a recorded corrective review.',
+    );
+  }
+  const latestReview = epoch.review_history?.at(-1);
+  if (
+    latestReview?.verdict !== 'CORRECTIVE_REQUIRED' ||
+    latestReview.reviewed_base_sha !== epoch.base_sha ||
+    !/^[0-9a-f]{40}$/u.test(latestReview.candidate_sha ?? '') ||
+    currentBranch() !== epoch.branch
+  ) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_REVIEW_MISMATCH',
+      'The active corrective review must bind the same Epoch Base and branch.',
+    );
+  }
+  if (Object.keys(agentMcpProfileClaims(epoch)).length > 0) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_AFTER_PROFILE_CLAIM',
+      'Frontier bindings are immutable after any profile claim is recorded.',
+    );
+  }
+
+  const profiles = listAgentMcpProfiles().filter(
+    (profile) =>
+      profile.epochId === epoch.epoch_id &&
+      profile.frontierId === frontierId &&
+      profile.acceptanceScope === 'agent-mcp-matrix-only',
+  );
+  if (profiles.length === 0) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_PROFILE_REQUIRED',
+      'The target frontier must match a registered matrix-only Agent/MCP profile in this Epoch.',
+      { epochId: epoch.epoch_id, frontierId },
+    );
+  }
+  const priorFrontiers = [...(epoch.advances_frontier_ids ?? [])];
+  if (priorFrontiers.includes(frontierId)) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_DUPLICATE',
+      'The requested frontier is already bound to this Epoch.',
+      { frontierId },
+    );
+  }
+  const frontier = requireValidFrontier();
+  const frontierRecord = frontier.ledger.records.find((record) => record.id === frontierId);
+  if (
+    !frontierRecord ||
+    !frontier.actionable_ids.includes(frontierId) ||
+    frontierRecord.status !== 'UNASSESSED'
+  ) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_TARGET_INVALID',
+      'A matrix-only binding must target an actionable UNASSESSED scenario record.',
+      { frontierId, status: frontierRecord?.status ?? null },
+    );
+  }
+  for (const profile of profiles) {
+    if (!fs.existsSync(path.join(root, profile.selectionEvidencePath))) {
+      throw new HarnessInvariantError(
+        'EPOCH_FRONTIER_AMENDMENT_EVIDENCE_MISSING',
+        'Every matching profile must have its tracked selection evidence in the checkout.',
+        { profileId: profile.id, selectionEvidencePath: profile.selectionEvidencePath },
+      );
+    }
+  }
+
+  epoch.advances_frontier_ids = [...priorFrontiers, frontierId];
+  epoch.next_action = `REFRESH_CANDIDATE_AFTER_${frontierId}_FRONTIER_BINDING`;
+  run.selection_amendment_history = Array.isArray(run.selection_amendment_history)
+    ? run.selection_amendment_history
+    : [];
+  run.selection_amendment_history.push({
+    at: new Date().toISOString(),
+    from_epoch_id: epoch.epoch_id,
+    to_epoch_id: epoch.epoch_id,
+    from_target_tool: priorFrontiers.join(', '),
+    to_target_tool: profiles.map((profile) => profile.toolName).join(', '),
+    reason,
+    prior_frontiers: priorFrontiers,
+    new_frontiers: epoch.advances_frontier_ids,
+    scope_amendment: {
+      added_frontier_id: frontierId,
+      profile_ids: profiles.map((profile) => profile.id),
+      matrix_only: true,
+      scenario_status_preserved: frontierRecord.status,
+      scenario_credit: false,
+    },
+  });
+  run.next_action = `REFRESH_CANDIDATE_PR_${prNumber}`;
+  updatePr(prNumber, epoch);
+  updateIssue(runNumber, run);
+  print({
+    state: 'EPOCH_FRONTIER_BINDING_AMENDED',
+    run: Number(runNumber),
+    pr: prNumber,
+    epoch_id: epoch.epoch_id,
+    advances_frontier_ids: epoch.advances_frontier_ids,
+    profile_ids: profiles.map((profile) => profile.id),
+    frontier_status: frontierRecord.status,
+    scenario_credit: false,
+  });
+}
+
 function commandGuard(options) {
   if (!isProductEpoch(options)) {
     print({ state: 'NOT_A_V3_PRODUCT_EPOCH', checked: false });
@@ -1345,6 +1683,7 @@ function commandGuard(options) {
   const head = process.env.HARNESS_HEAD_REF ?? 'HEAD';
   assertNoLegacyRuntimeChanges(changedPaths(base, head));
   assertProductCommitHygiene(commitSubjects(base, head));
+  requireRendererBaselines(base);
   print({ state: 'LEGACY_RUNTIME_PATH_GUARD_PASS', base, head });
 }
 
@@ -1421,6 +1760,7 @@ function commandCandidateCheck(options) {
     throw new HarnessInvariantError('WRONG_EPOCH_BRANCH', `Checkout ${epoch.branch} first`);
   }
   const baseSha = git('rev-parse', `origin/${epoch.base_branch}`);
+  requireRendererBaselines(baseSha);
   if (evidence.base_sha !== baseSha || evidence.candidate_sha !== head) {
     throw new HarnessInvariantError(
       'FRESH_CANDIDATE_EVIDENCE_REQUIRED',
@@ -3581,6 +3921,12 @@ function isA01AggregateClaimTerminalizedDuringReconciliation(
   );
 }
 
+function porcelainModificationMatches(statusLines, expectedPath) {
+  return statusLines.some(
+    (line) => [' M', 'M '].includes(line.slice(0, 2)) && line.slice(3) === expectedPath,
+  );
+}
+
 function agentMcpProfileBundleMatches(
   candidateSha,
   bundleSha256,
@@ -3588,7 +3934,7 @@ function agentMcpProfileBundleMatches(
   profile = null,
 ) {
   if (process.env.HARNESS_MOCK_STATE) {
-    const status = git('status', '--porcelain', '--untracked-files=all');
+    const status = gitPorcelain('status', '--porcelain', '--untracked-files=all');
     const statusLines = status.split('\n').filter(Boolean);
     const reportOnly = listAgentMcpProfiles().some(
       (registered) => statusLines.length === 1 && statusLines[0] === `?? ${registered.reportPath}`,
@@ -3597,15 +3943,22 @@ function agentMcpProfileBundleMatches(
       profile?.id === 'p01-person-director-offline-matrix-v1-20261023' &&
       statusLines.length === 2 &&
       statusLines.includes(`?? ${profile.reportPath}`) &&
-      statusLines.includes('M scripts/agent-harness.mjs');
+      porcelainModificationMatches(statusLines, 'scripts/agent-harness.mjs');
+    const renderSubjectCardV5ReportWithValidatorFix =
+      profile?.id === 'render-subject-card-compact-typography-agent-mcp-v5' &&
+      statusLines.length === 2 &&
+      statusLines.includes(`?? ${profile.reportPath}`) &&
+      porcelainModificationMatches(statusLines, 'scripts/agent-harness.mjs');
     return (
       bundleSha256 === process.env.HARNESS_G04_BUNDLE_SHA256 &&
       currentHead() === candidateSha &&
-      (status === '' || (allowReportWorktree && (reportOnly || p01ReportWithValidatorFix)))
+      (status === '' ||
+        (allowReportWorktree &&
+          (reportOnly || p01ReportWithValidatorFix || renderSubjectCardV5ReportWithValidatorFix)))
     );
   }
   try {
-    const status = git('status', '--porcelain', '--untracked-files=all');
+    const status = gitPorcelain('status', '--porcelain', '--untracked-files=all');
     const statusLines = status.split('\n').filter(Boolean);
     const clean = status === '';
     const reportOnly = listAgentMcpProfiles().some(
@@ -3618,9 +3971,21 @@ function agentMcpProfileBundleMatches(
       profile?.id === 'p01-person-director-offline-matrix-v1-20261023' &&
       statusLines.length === 2 &&
       statusLines.includes(`?? ${profile.reportPath}`) &&
-      statusLines.includes('M scripts/agent-harness.mjs');
+      porcelainModificationMatches(statusLines, 'scripts/agent-harness.mjs');
+    // The v5 report must be validated by the newly registered dispatcher before this Harness
+    // repair can be committed. Permit only the exact report plus this file; the Candidate, Base,
+    // CI, reviewer, and MCP bundle stay bound to the original reviewed source.
+    const renderSubjectCardV5ReportWithValidatorFix =
+      profile?.id === 'render-subject-card-compact-typography-agent-mcp-v5' &&
+      statusLines.length === 2 &&
+      statusLines.includes(`?? ${profile.reportPath}`) &&
+      porcelainModificationMatches(statusLines, 'scripts/agent-harness.mjs');
     return (
-      (clean || (allowReportWorktree && (reportOnly || p01ReportWithValidatorFix))) &&
+      (clean ||
+        (allowReportWorktree &&
+          (reportOnly ||
+            p01ReportWithValidatorFix ||
+            renderSubjectCardV5ReportWithValidatorFix))) &&
       git('rev-parse', 'HEAD') === candidateSha &&
       computeMcpBundleSha256(root) === bundleSha256 &&
       readG26McpBundleAttestation(root) === bundleSha256
@@ -3684,6 +4049,16 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
             'tests/integration/tool-e2e-acceptance.test.ts',
           ]
         : []),
+      ...(profile.id === 'render-subject-card-compact-typography-agent-mcp-v5'
+        ? [
+            'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/integration/tool-e2e-acceptance.test.ts',
+            'tests/harness/agent-harness-cli.test.mjs',
+          ]
+        : []),
     ]);
     if (
       !changedSinceReport.includes(profile.reportPath) ||
@@ -3700,7 +4075,9 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
               ? 'A P03 v4 report refresh may also include only the exact acceptance validator, Harness allowlist, and their regressions needed to record the signed source-Candidate result; the MCP bundle must remain unchanged.'
               : profile.id === 'p01-person-director-offline-matrix-v1-20261023'
                 ? 'A P01 director report refresh may include its sanitized report, acceptance matrix, frontier evidence, Harness report-validator allowlist, and its exact public-probe and per-tool acceptance regressions; the MCP bundle must remain unchanged.'
-                : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
+                : profile.id === 'render-subject-card-compact-typography-agent-mcp-v5'
+                  ? 'A v5 report refresh may include only its signed report, Harness validator routing, acceptance-table mapping, exact regressions, task table, and frontier references; the MCP bundle must remain unchanged.'
+                  : 'A report-bearing Candidate refresh may include only its sanitized report, acceptance matrix, and frontier evidence, with the exact MCP bundle unchanged.',
         { profileId: profile.id, changedPaths: changedSinceReport },
       );
     }
@@ -3716,6 +4093,12 @@ function readAgentMcpProfileLabels() {
     );
   }
   return labels;
+}
+
+function isAgentMcpProfileReviewerId(profile, reviewerId, prNumber) {
+  return getC07RenderComparisonOfflineConfig(profile?.id)
+    ? isC07ReviewerId(reviewerId)
+    : isG16LunaMaxReviewerId(reviewerId, prNumber);
 }
 
 function assertAgentMcpProfileReviewReadiness(
@@ -3779,7 +4162,7 @@ function assertAgentMcpProfileReviewReadiness(
     latestReview?.candidate_sha !== candidateSha ||
     latestReview.reviewed_base_sha !== baseSha ||
     latestReview.verdict !== 'PASS' ||
-    !isG16LunaMaxReviewerId(latestReview.reviewer_id, Number(prNumber)) ||
+    !isAgentMcpProfileReviewerId(profile, latestReview.reviewer_id, Number(prNumber)) ||
     (profile.id === 'c02-cardcaptor-tv-movie-v1' &&
       latestReview.reviewer_id !== epoch.review_history?.[0]?.reviewer_id) ||
     (runnerReceiptPublicKey?.reviewerId !== undefined &&
@@ -3793,7 +4176,7 @@ function assertAgentMcpProfileReviewReadiness(
   ) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_CLAIM_GATE_FAILED',
-      'A profile one-shot claim requires the clean active exact Candidate, unchanged Base, seven-check CI, and exact Luna Max PASS.',
+      'A profile one-shot claim requires the clean active exact Candidate, unchanged Base, seven-check CI, and exact trusted Product PASS; execution retains its pinned model and effort.',
       { runNumber, prNumber, candidateSha, baseSha, profileId: profile.id },
     );
   }
@@ -4582,10 +4965,12 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'render-subject-card-offline-agent-mcp-v1':
     case 'render-subject-card-compact-typography-agent-mcp-v2':
     case 'render-subject-card-compact-typography-agent-mcp-v3':
+    case 'render-subject-card-compact-typography-agent-mcp-v5':
       return validateRenderSubjectCardOfflineSanitizedReportFile(claim, root, reportPath);
     case 'c07-render-comparison-offline-agent-mcp-matrix-v1':
     case 'c07-render-comparison-offline-agent-mcp-matrix-v2':
     case 'c07-render-comparison-offline-agent-mcp-matrix-v3':
+    case 'c07-render-comparison-offline-agent-mcp-matrix-v4':
       return validateC07RenderComparisonOfflineSanitizedReportFile(claim, root, reportPath);
     case 'g01-render-query-subjects-offline-agent-mcp-v1':
     case 'g01-render-query-subjects-offline-agent-mcp-v2':
@@ -4612,10 +4997,19 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateR04RenderV2SanitizedReportFile(claim, root, reportPath);
     case 'r01-subject-relations-offline-agent-mcp-v1':
       return validateR01RelationsOfflineSanitizedReportFile(claim, root, reportPath);
+    case 'r01-subject-relations-text-projection-agent-mcp-v2':
+      return validateR01RelationsTextProjectionOfflineSanitizedReportFile(claim, root, reportPath);
     case 'r03-two-hop-relations-offline-agent-mcp-v1':
       return validateR03RelationsOfflineSanitizedReportFile(claim, root, reportPath);
     case 'r03-direct-relations-offline-agent-mcp-matrix-v2':
       return validateR03RelationsOfflineSanitizedReportFile(claim, root, reportPath);
+    case 'r03-two-hop-rating-analysis-offline-agent-mcp-v1':
+      return validateR03RelationsOfflineSanitizedReportFile(
+        claim,
+        root,
+        reportPath,
+        'r03-two-hop-rating-analysis-offline-agent-mcp-v1',
+      );
     case 'r02-positive-direct-relations-agent-mcp-v1':
       return validateR02SanitizedReportFile(claim, root, reportPath);
     case 'c04-cohort-comparison-agent-mcp-matrix-v1':
@@ -4718,7 +5112,7 @@ function commandEpochAgentMcpProfileResult(options) {
     current.sourceCandidateSha === current.ciSha &&
     current.ciStatus === 'SUCCESS' &&
     current.reviewerId &&
-    isG16LunaMaxReviewerId(current.reviewerId, Number(prNumber)) &&
+    isAgentMcpProfileReviewerId(profile, current.reviewerId, Number(prNumber)) &&
     current.bundleSha256 &&
     current.runnerReceiptPublicKeySha256 &&
     current.retryAllowed === false &&
@@ -4841,14 +5235,23 @@ function commandEpochAgentMcpProfileResult(options) {
     // The exact terminal label is the write-ahead record. Replay it even if the
     // Candidate went stale after the first PR-body write failed.
     if (!replayingTerminalLatch) assertAgentMcpProfileClaimCurrent(profile, current);
-    const status = git('status', '--porcelain', '--untracked-files=all');
+    const status = gitPorcelain('status', '--porcelain', '--untracked-files=all');
     const statusLines = status.split('\n').filter(Boolean);
     const p01ReportWithValidatorFix =
       profile.id === 'p01-person-director-offline-matrix-v1-20261023' &&
       statusLines.length === 2 &&
       statusLines.includes(`?? ${profile.reportPath}`) &&
-      statusLines.includes('M scripts/agent-harness.mjs');
-    if (status !== `?? ${profile.reportPath}` && !p01ReportWithValidatorFix) {
+      porcelainModificationMatches(statusLines, 'scripts/agent-harness.mjs');
+    const renderSubjectCardV5ReportWithValidatorFix =
+      profile.id === 'render-subject-card-compact-typography-agent-mcp-v5' &&
+      statusLines.length === 2 &&
+      statusLines.includes(`?? ${profile.reportPath}`) &&
+      porcelainModificationMatches(statusLines, 'scripts/agent-harness.mjs');
+    if (
+      status !== `?? ${profile.reportPath}` &&
+      !p01ReportWithValidatorFix &&
+      !renderSubjectCardV5ReportWithValidatorFix
+    ) {
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_WORKTREE_UNEXPECTED',
         'Only the claim-bound report, plus the exact P01 Harness validator registration when applicable, may be present while recording REPORT_WRITTEN.',
@@ -7810,6 +8213,167 @@ function commandEpochPark(options) {
   print({ state, same_pr: Number(prNumber), branch: epoch.branch });
 }
 
+function commandEpochResumeTerminalFailure(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const policy = LEGACY_R04_TERMINAL_RECOVERY;
+  const runNumber = required(options, 'run');
+  const prNumber = required(options, 'pr');
+  const expectedClaimSha256 = required(options, 'expected-claim-sha256');
+  if (
+    Number(runNumber) !== policy.run ||
+    Number(prNumber) !== policy.pr ||
+    !/^[a-f0-9]{64}$/u.test(expectedClaimSha256)
+  ) {
+    throw new HarnessInvariantError(
+      'TERMINAL_RECOVERY_UNSUPPORTED',
+      'This reviewed migration supports only Run95 PR267 with its exact observed claim digest.',
+    );
+  }
+  let runResult = issueState(runNumber);
+  let epochResult = epochState(prNumber);
+  if (
+    (runResult.state.active_epoch_pr && runResult.state.active_epoch_pr !== policy.pr) ||
+    runResult.state.pending_epoch
+  ) {
+    throw new HarnessInvariantError(
+      'TERMINAL_RECOVERY_INELIGIBLE',
+      'Finish the active or pending Epoch before recovering parked work.',
+    );
+  }
+  const epoch = epochResult.state;
+  const claim = epoch.adversarial_preflight?.agent_mcp_profile_dispositions?.[policy.profileId];
+  if (
+    epoch.branch !== `codex/epoch-${policy.epochId}` ||
+    epochResult.view.headRefName !== epoch.branch ||
+    !claim ||
+    canonicalHash(claim) !== expectedClaimSha256 ||
+    !/^[a-f0-9]{40}$/u.test(claim.baseSha ?? '') ||
+    !/^[0-9]{4,20}$/u.test(claim.ciRunId ?? '')
+  ) {
+    throw new HarnessInvariantError(
+      'TERMINAL_RECOVERY_INELIGIBLE',
+      'The same branch and exact immutable historical claim are required.',
+    );
+  }
+  git('fetch', 'origin', epoch.branch);
+  const registry = JSON.parse(
+    git('show', `${policy.sourceSha}:scripts/acceptance/agent-mcp-profile-registry.json`),
+  );
+  const sourceProfile = registry?.profiles?.find((profile) => profile.id === policy.profileId);
+  if (
+    !sourceProfile ||
+    typeof sourceProfile.reportPath !== 'string' ||
+    !/^docs\/live-probes\/[a-z0-9-]+\.json$/u.test(sourceProfile.reportPath)
+  ) {
+    throw new HarnessInvariantError(
+      'TERMINAL_RECOVERY_INELIGIBLE',
+      'The immutable source registry must name its bounded report path.',
+    );
+  }
+  const sourceRun = JSON.parse(
+    gh('run', 'view', claim.ciRunId, '--json', 'headSha,status,conclusion,jobs'),
+  );
+  const sourceChecks = Array.isArray(claim.ciChecks)
+    ? claim.ciChecks.map((expected) => {
+        const jobs = Array.isArray(sourceRun.jobs)
+          ? sourceRun.jobs.filter((job) => job.name === expected.name)
+          : [];
+        return jobs.length === 1
+          ? {
+              name: expected.name,
+              status: jobs[0].status?.toUpperCase(),
+              conclusion: jobs[0].conclusion?.toUpperCase(),
+            }
+          : null;
+      })
+    : [];
+  const proof = {
+    expectedClaimSha256,
+    sourceProfile,
+    pr: epochResult.view,
+    headIncludesSource: isAncestor(policy.sourceSha, epochResult.view.headRefOid),
+    headIncludesParkedHead: isAncestor(policy.parkedHeadSha, epochResult.view.headRefOid),
+    sourceIncludesBase: isAncestor(claim.baseSha, policy.sourceSha),
+    sourceCi: {
+      sha: sourceRun.headSha,
+      runId: claim.ciRunId,
+      status:
+        sourceRun.status === 'completed' && sourceRun.conclusion === 'success'
+          ? 'SUCCESS'
+          : 'UNVERIFIED',
+      checks: sourceChecks,
+    },
+    reportExists:
+      Boolean(
+        git(
+          'ls-tree',
+          '-r',
+          '--name-only',
+          epochResult.view.headRefOid,
+          '--',
+          sourceProfile.reportPath,
+        ),
+      ) || fs.existsSync(path.resolve(root, sourceProfile.reportPath)),
+    labels: readAgentMcpProfileLabels(),
+  };
+  let plan = planLegacyTerminalRecovery(runResult.state, epochResult.state, proof);
+  if (plan.state === 'TERMINAL_RECOVERY_ALREADY_RESUMED') {
+    print(plan);
+    return;
+  }
+  const readPair = () => ({ run: issueState(runNumber), epoch: epochState(prNumber) });
+  const unchanged = (pair) => {
+    if (
+      canonicalHash(pair.run.state) !== canonicalHash(runResult.state) ||
+      canonicalHash(pair.epoch.state) !== canonicalHash(epochResult.state) ||
+      pair.epoch.view.headRefOid !== proof.pr.headRefOid
+    ) {
+      throw new HarnessInvariantError(
+        'TERMINAL_RECOVERY_CONCURRENT_WRITE',
+        'Reinspect the Run/PR before resuming this exact recovery intent.',
+      );
+    }
+  };
+  const readback = (actual, expected) => {
+    if (canonicalHash(actual) !== canonicalHash(expected)) {
+      throw new HarnessInvariantError(
+        'TERMINAL_RECOVERY_READBACK_MISMATCH',
+        'A control write needs reinspection before retry; no query or merge is authorized.',
+      );
+    }
+  };
+  if (!runResult.state.pending_terminal_recovery) {
+    unchanged(readPair());
+    updateIssue(runNumber, plan.pendingRun);
+    runResult = issueState(runNumber);
+    readback(runResult.state, plan.pendingRun);
+  }
+  const beforeEpoch = readPair();
+  unchanged(beforeEpoch);
+  plan = planLegacyTerminalRecovery(runResult.state, epochResult.state, proof);
+  if (canonicalHash(epochResult.state) !== canonicalHash(plan.preparedEpoch)) {
+    updatePr(prNumber, plan.preparedEpoch);
+    epochResult = epochState(prNumber);
+    readback(epochResult.state, plan.preparedEpoch);
+  }
+  unchanged(readPair());
+  plan = planLegacyTerminalRecovery(runResult.state, epochResult.state, proof);
+  updateIssue(runNumber, plan.completedRun);
+  const saved = readPair();
+  readback(saved.run.state, plan.completedRun);
+  readback(saved.epoch.state, plan.preparedEpoch);
+  print({
+    state: 'TERMINAL_RECOVERY_RESUMED',
+    same_pr: policy.pr,
+    branch: epoch.branch,
+    intent_id: plan.intent_id,
+    query_authorized: false,
+    merge_authorized: false,
+    next_action: 'SYNCHRONIZE_SAME_BRANCH_AND_VALIDATE_NEW_CANDIDATE',
+  });
+}
+
 function commandEpochResumeFinalCorrective(options) {
   ensureControlPlane();
   ensureCleanWorkingTree();
@@ -8423,7 +8987,7 @@ function assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(
     latestReview?.reviewed_base_sha !== epoch.base_sha ||
     latestReview?.verdict !== 'PASS' ||
     epoch.review_pass_sha !== epoch.candidate_sha ||
-    !isG16LunaMaxReviewerId(latestReview?.reviewer_id, Number(prNumber)) ||
+    !isC07ReviewerId(latestReview?.reviewer_id) ||
     !epoch.advances_frontier_ids?.includes('C07')
   ) {
     throw new HarnessInvariantError(
@@ -8875,6 +9439,7 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
       C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
       C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
       C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+      C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
     ].some(
       (profileId) => getC07RenderComparisonOfflineConfig(profileId)?.epochId === epoch.epoch_id,
     )
@@ -8883,6 +9448,7 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
       C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
       C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
       C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+      C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
     ].find(
       (candidate) => getC07RenderComparisonOfflineConfig(candidate)?.epochId === epoch.epoch_id,
     );
@@ -9224,6 +9790,10 @@ function commandGoalCheck(options) {
 const commands = {
   help: commandHelp,
   status: commandStatus,
+  'continuation:show': commandContinuationShow,
+  'renderer:baseline-check': commandRendererBaselineCheck,
+  'run:directive': (options) => commandContinuationRecord(options, 'directive'),
+  'run:checkpoint': (options) => commandContinuationRecord(options, 'checkpoint'),
   'frontier:check': commandFrontierCheck,
   'frontier:status': commandFrontierStatus,
   'discovery:check': commandDiscoveryCheck,
@@ -9231,6 +9801,7 @@ const commands = {
   'run:budget-extend': commandRunBudgetExtend,
   'epoch:start': commandEpochStart,
   'epoch:open-pr': commandEpochOpenPr,
+  'epoch:frontier-amend': commandEpochFrontierAmend,
   'guard:legacy-paths': commandGuard,
   'candidate:check': commandCandidateCheck,
   'review:reserve': commandReviewReserve,
@@ -9270,6 +9841,7 @@ const commands = {
   'frontier:review-result': commandFrontierReviewResult,
   'frontier:resume-discovery': commandFrontierResumeDiscovery,
   'epoch:park': commandEpochPark,
+  'epoch:resume-terminal-failure': commandEpochResumeTerminalFailure,
   'epoch:resume-final-corrective': commandEpochResumeFinalCorrective,
   'epoch:resume-integration': commandEpochResumeIntegration,
   'epoch:merge': commandEpochMerge,
@@ -9281,6 +9853,7 @@ function main() {
   const { command, options } = parseArgs(process.argv.slice(2));
   const handler = commands[command];
   if (!handler) throw new HarnessInvariantError('UNKNOWN_COMMAND', `Unknown command: ${command}`);
+  guardContinuationCommand(command, options);
   handler(options);
 }
 

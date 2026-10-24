@@ -18,6 +18,11 @@ import {
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
 import { isG16LunaMaxReviewerId } from '../lib/g16-reviewer-id.mjs';
+import {
+  summarizeAgentMcpProcess,
+  firstAgentMcpExecutionFailure,
+  agentMcpExecutionDiagnostics,
+} from '../lib/agent-mcp-execution.mjs';
 import { deriveP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   computeMcpBundleSha256,
@@ -413,13 +418,7 @@ function invokeCodex({ summaryPath, sourceRevision, bundleSha256 }) {
       stdio: ['ignore', 'pipe', 'pipe'],
     },
   );
-  return {
-    exitCode: Number.isInteger(result.status) ? result.status : 1,
-    stdout: typeof result.stdout === 'string' ? result.stdout : '',
-    failed: Boolean(result.error) || result.status !== 0,
-    spawnErrorCode: typeof result.error?.code === 'string' ? result.error.code : null,
-    stderrPresent: typeof result.stderr === 'string' && result.stderr.length > 0,
-  };
+  return summarizeAgentMcpProcess(result);
 }
 
 function readServerSummary(file) {
@@ -506,7 +505,13 @@ function readProfileDisposition(prNumber) {
   return status.disposition;
 }
 
-function persistProfileResult(prNumber, claimId, state, reportSha256 = null) {
+function persistProfileResult(
+  prNumber,
+  claimId,
+  state,
+  reportSha256 = null,
+  failureDiagnostics = null,
+) {
   const args = [
     'epoch:agent-mcp-profile-result',
     '--run',
@@ -521,6 +526,7 @@ function persistProfileResult(prNumber, claimId, state, reportSha256 = null) {
     state,
   ];
   if (reportSha256) args.push('--report-sha256', reportSha256);
+  if (failureDiagnostics) args.push('--diagnostics-json', JSON.stringify(failureDiagnostics));
   return runHarness(args);
 }
 
@@ -536,7 +542,7 @@ function recordInconclusive(
 ) {
   const reportPath = path.join(ROOT, PROFILE.reportPath);
   const reportSha256 = existsSync(reportPath) ? sha256(readFileSync(reportPath)) : null;
-  const result = persistProfileResult(prNumber, claimId, 'INCONCLUSIVE', reportSha256);
+  const result = persistProfileResult(prNumber, claimId, 'INCONCLUSIVE', reportSha256, diagnostics);
   const accepted =
     result.exitCode === 0 && result.output?.state === 'AGENT_MCP_PROFILE_RESULT_RECORDED';
   printSafe({
@@ -548,6 +554,84 @@ function recordInconclusive(
     retryAllowed: false,
   });
   return accepted;
+}
+
+// In-process replay only; external execution and terminal recording stay in the runner.
+export function evaluateR04Execution({
+  execution,
+  serverSummary,
+  summaryPresent = serverSummary !== null && serverSummary !== undefined,
+  sourceRevision,
+  bundleSha256,
+  candidateBundleCurrent: checkCurrentBundle = () => false,
+}) {
+  const parsed = parseCodexJsonl(execution.stdout);
+  const events = summarizeCodexEvents(parsed.events);
+  const actualCall = events.completedMcpCalls[0];
+  const exactCall =
+    events.completedMcpCalls.length === 1 &&
+    actualCall?.tool === PROFILE.toolName &&
+    canonicalAgentMcpProfileJson(actualCall?.arguments) ===
+      canonicalAgentMcpProfileJson(EXPECTED_ARGUMENTS);
+  const exactToolEvent = hasExactCompletedCodexToolCalls(events.toolCalls, [PROFILE.toolName]);
+  let summaryValid = false;
+  try {
+    summaryValid = validateR04ServerSummary(serverSummary, sourceRevision, bundleSha256);
+  } catch {
+    /* Invalid summary fails closed. */
+  }
+  let candidateBundleCurrent = false;
+  try {
+    candidateBundleCurrent = checkCurrentBundle() === true;
+  } catch {
+    /* No current bundle proof. */
+  }
+  const safeEvents = {
+    processExitCode: execution.exitCode,
+    eventStreamParsed: parsed.parsed === true && events.eventStreamComplete === true,
+    turnCompleted: events.turnCompleted === true,
+    codexMcpToolEventCount: events.codexMcpToolEventCount,
+    codexErrorItemCount: events.codexErrorItemCount,
+    nonMcpToolEventCount: events.nonMcpToolEventCount,
+    nonMcpToolTypes: safeCodexNonMcpEventSummary(events).nonMcpToolTypes,
+    shellToolCallCount: events.shellToolCallCount,
+    mcpServerNames: events.mcpServerNames,
+    exactCall,
+    exactToolEvent,
+    allowedCallCount: serverSummary?.allowedCallCount ?? 0,
+    deniedCallCount: serverSummary?.deniedCallCount ?? null,
+  };
+  const diagnosticContext = {
+    execution,
+    parsed,
+    events,
+    summary: serverSummary,
+    checks: {
+      exactCallSequence:
+        exactCall &&
+        safeEvents.codexMcpToolEventCount === 1 &&
+        safeEvents.nonMcpToolEventCount === 0 &&
+        safeEvents.shellToolCallCount === 0 &&
+        canonicalAgentMcpProfileJson(safeEvents.mcpServerNames) ===
+          canonicalAgentMcpProfileJson([SERVER_ID]),
+      exactToolEvents: exactToolEvent,
+      mcpToolErrorResultCountZero: events.mcpToolErrorResultCount === 0,
+      safeWebSearchErrorClassification: safeEvents.codexErrorItemCount === 0,
+      serverSummaryPresent: summaryPresent === true,
+      serverSummaryValid: summaryValid,
+      answerValid: events.answer === ACKNOWLEDGEMENT,
+      candidateBundleCurrent,
+    },
+  };
+  const failureDiagnostics = firstAgentMcpExecutionFailure(diagnosticContext);
+  return {
+    parsed,
+    events,
+    safeEvents,
+    diagnosticContext,
+    failureDiagnostics,
+    passed: failureDiagnostics === null,
+  };
 }
 
 export function runR04({ runNumber, profileId = R04_SERIES_WATCH_ORDER_V2_PROFILE_ID }) {
@@ -614,6 +698,8 @@ export function runR04({ runNumber, profileId = R04_SERIES_WATCH_ORDER_V2_PROFIL
   let observedClaimId = null;
   let ownedClaimId = null;
   let temporaryDirectory = null;
+  let failureContext = null;
+  let failureStage = 'AGENT_MCP_PROCESS_OBSERVATION_FAILED';
   try {
     const claimResult = runHarness([
       'epoch:agent-mcp-profile-claim',
@@ -677,84 +763,30 @@ export function runR04({ runNumber, profileId = R04_SERIES_WATCH_ORDER_V2_PROFIL
     }
     temporaryDirectory = mkdtempSync(path.join(path.resolve(os.tmpdir()), 'bgk-r04-run95-'));
     const summaryPath = path.join(temporaryDirectory, 'server-summary.json');
+    failureContext = { checks: { invocationAttempted: true } };
     const execution = invokeCodex({ summaryPath, sourceRevision, bundleSha256 });
-    const parsed = parseCodexJsonl(execution.stdout);
-    const events = summarizeCodexEvents(parsed.events);
+    failureContext.execution = execution;
+    failureStage = 'AGENT_MCP_SUMMARY_OBSERVATION_FAILED';
     const serverSummaryBytes = existsSync(summaryPath) ? readFileSync(summaryPath) : null;
     const serverSummary = serverSummaryBytes ? readServerSummary(summaryPath) : null;
-    const actualCall = events.completedMcpCalls[0];
-    const exactCall =
-      events.completedMcpCalls.length === 1 &&
-      actualCall?.tool === PROFILE.toolName &&
-      canonicalAgentMcpProfileJson(actualCall?.arguments) ===
-        canonicalAgentMcpProfileJson(EXPECTED_ARGUMENTS);
-    const exactToolEvent = hasExactCompletedCodexToolCalls(events.toolCalls, [PROFILE.toolName]);
-    const summaryValid = validateR04ServerSummary(serverSummary, sourceRevision, bundleSha256);
-    const candidateBundleCurrent = assertCurrentCandidateBundle(sourceRevision, bundleSha256);
-    const safeEvents = {
-      processExitCode: execution.exitCode,
-      eventStreamParsed: parsed.parsed === true && events.eventStreamComplete === true,
-      turnCompleted: events.turnCompleted === true,
-      codexMcpToolEventCount: events.codexMcpToolEventCount,
-      codexErrorItemCount: events.codexErrorItemCount,
-      nonMcpToolEventCount: events.nonMcpToolEventCount,
-      nonMcpToolTypes: safeCodexNonMcpEventSummary(events).nonMcpToolTypes,
-      shellToolCallCount: events.shellToolCallCount,
-      mcpServerNames: events.mcpServerNames,
-      exactCall,
-      exactToolEvent,
-      allowedCallCount: serverSummary?.allowedCallCount ?? 0,
-      deniedCallCount: serverSummary?.deniedCallCount ?? null,
-    };
-    const passed =
-      !execution.failed &&
-      safeEvents.eventStreamParsed &&
-      safeEvents.turnCompleted &&
-      safeEvents.codexMcpToolEventCount === 1 &&
-      safeEvents.codexErrorItemCount === 0 &&
-      safeEvents.nonMcpToolEventCount === 0 &&
-      safeEvents.shellToolCallCount === 0 &&
-      canonicalAgentMcpProfileJson(safeEvents.mcpServerNames) ===
-        canonicalAgentMcpProfileJson([SERVER_ID]) &&
-      exactCall &&
-      exactToolEvent &&
-      events.answer === ACKNOWLEDGEMENT &&
-      summaryValid &&
-      candidateBundleCurrent;
+    const evaluated = evaluateR04Execution({
+      execution,
+      serverSummary,
+      summaryPresent: serverSummaryBytes !== null,
+      sourceRevision,
+      bundleSha256,
+      candidateBundleCurrent: () => assertCurrentCandidateBundle(sourceRevision, bundleSha256),
+    });
+    const { events, safeEvents, passed, failureDiagnostics } = evaluated;
+    failureContext = evaluated.diagnosticContext;
+    failureStage = 'AGENT_MCP_POSTRUN_GATE_FAILED';
     if (!passed) {
-      const reasonCode = classifyR04AssertionFailure({
-        execution,
-        parsed,
-        events,
-        exactCall,
-        exactToolEvent,
-        serverSummary,
-        serverSummaryValid: summaryValid,
-        candidateBundleCurrent,
-      });
-      recordInconclusive(prNumber, claim.claimId, reasonCode, {
-        processExitCode: execution.exitCode,
-        spawnErrorCode: ['ENOENT', 'EACCES', 'ETIMEDOUT', 'ENOMEM'].includes(
-          execution.spawnErrorCode,
-        )
-          ? execution.spawnErrorCode
-          : execution.spawnErrorCode === null
-            ? null
-            : 'OTHER',
-        stderrPresent: execution.stderrPresent,
-        eventStreamParsed: safeEvents.eventStreamParsed,
-        turnCompleted: safeEvents.turnCompleted,
-        codexMcpToolEventCount: safeEvents.codexMcpToolEventCount,
-        codexErrorItemCount: safeEvents.codexErrorItemCount,
-        nonMcpToolEventCount: safeEvents.nonMcpToolEventCount,
-        shellToolCallCount: safeEvents.shellToolCallCount,
-        serverSummaryPresent: serverSummary !== null,
-        serverSummaryValid: summaryValid,
-        fixtureRequestCount: serverSummary?.offlineFixture?.requestCount ?? null,
-        fixtureUnexpectedRequestCount:
-          serverSummary?.offlineFixture?.unexpectedRequestCount ?? null,
-        candidateBundleCurrent,
-      });
+      recordInconclusive(
+        prNumber,
+        claim.claimId,
+        failureDiagnostics.reasonCode,
+        failureDiagnostics,
+      );
       return 1;
     }
 
@@ -773,6 +805,7 @@ export function runR04({ runNumber, profileId = R04_SERIES_WATCH_ORDER_V2_PROFIL
       recordInconclusive(prNumber, claim.claimId, 'R04_ACTIVE_GATE_CHANGED_DURING_QUERY');
       return 1;
     }
+    failureStage = 'AGENT_MCP_REPORT_BUILD_FAILED';
     const reportResult = buildR04ProfileReport(
       {
         claim,
@@ -786,7 +819,15 @@ export function runR04({ runNumber, profileId = R04_SERIES_WATCH_ORDER_V2_PROFIL
       { privateKey: keyPair.privateKey },
     );
     if (!reportResult.passed) {
-      recordInconclusive(prNumber, claim.claimId, reportResult.reason ?? 'R04_REPORT_BUILD_FAILED');
+      recordInconclusive(
+        prNumber,
+        claim.claimId,
+        reportResult.reason ?? 'R04_REPORT_BUILD_FAILED',
+        agentMcpExecutionDiagnostics('AGENT_MCP_REPORT_BUILD_FAILED', {
+          ...failureContext,
+          checks: { ...failureContext.checks, reportBuildValid: false },
+        }),
+      );
       return 1;
     }
     const reportValidation =
@@ -798,9 +839,15 @@ export function runR04({ runNumber, profileId = R04_SERIES_WATCH_ORDER_V2_PROFIL
         prNumber,
         claim.claimId,
         reportValidation.reason ?? 'R04_REPORT_READBACK_INVALID',
+        agentMcpExecutionDiagnostics('AGENT_MCP_REPORT_BUILD_FAILED', {
+          ...failureContext,
+          checks: { ...failureContext.checks, runnerReceiptValid: false },
+        }),
       );
       return 1;
     }
+    failureContext.checks.reportBuildValid = true;
+    failureStage = 'AGENT_MCP_TERMINAL_ACK_FAILED';
     const terminal = persistProfileResult(
       prNumber,
       claim.claimId,
@@ -857,7 +904,12 @@ export function runR04({ runNumber, profileId = R04_SERIES_WATCH_ORDER_V2_PROFIL
       claimId: ownedClaimId ?? observedClaimId,
       runnerReceiptPublicKey: publicKeyBase64,
       recordInconclusive: (claimId) =>
-        recordInconclusive(prNumber, claimId, 'R04_RUNNER_FAILED_AFTER_CLAIM'),
+        recordInconclusive(
+          prNumber,
+          claimId,
+          failureContext ? failureStage : 'R04_RUNNER_FAILED_AFTER_CLAIM',
+          failureContext ? agentMcpExecutionDiagnostics(failureStage, failureContext) : null,
+        ),
     });
     if (recovery.state === 'REPORT_WRITTEN') {
       printSafe({

@@ -103,13 +103,34 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 51);
+  assert.equal(listAgentMcpProfiles().length, 55);
+  const r01TextProjection = getAgentMcpProfileById(
+    'r01-subject-relations-text-projection-agent-mcp-v2',
+  );
+  assert.ok(r01TextProjection);
+  assert.equal(r01TextProjection.frontierId, 'R01');
+  assert.equal(r01TextProjection.calls.length, 1);
   const renderSubjectCardV4 = getAgentMcpProfileById(
     'render-subject-card-compact-typography-agent-mcp-v4',
   );
   assert.ok(renderSubjectCardV4);
   assert.equal(renderSubjectCardV4.frontierId, 'OP-008');
   assert.equal(renderSubjectCardV4.calls[0].arguments.subjectId, 991904);
+  const renderSubjectCardV5 = getAgentMcpProfileById(
+    'render-subject-card-compact-typography-agent-mcp-v5',
+  );
+  assert.ok(renderSubjectCardV5);
+  assert.equal(renderSubjectCardV5.frontierId, 'OP-008');
+  assert.equal(
+    renderSubjectCardV5.epochId,
+    'run95-op008-render-card-compact-typography-v5-20261023',
+  );
+  assert.equal(renderSubjectCardV5.calls[0].arguments.subjectId, 991905);
+  assert.notEqual(renderSubjectCardV5.id, renderSubjectCardV4.id);
+  assert.notEqual(renderSubjectCardV5.argumentProfile, renderSubjectCardV4.argumentProfile);
+  assert.notEqual(renderSubjectCardV5.claimLabelName, renderSubjectCardV4.claimLabelName);
+  assert.notEqual(renderSubjectCardV5.reportPath, renderSubjectCardV4.reportPath);
+  assert.notEqual(renderSubjectCardV5.epochId, renderSubjectCardV4.epochId);
   const g01QuerySubjectsV2 = getAgentMcpProfileById(
     'g01-query-subjects-offline-agent-mcp-matrix-v2',
   );
@@ -231,6 +252,25 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   );
   assert.equal(c07RenderComparisonV3.calls[0].arguments.maxSubjects, 1);
   assert.notDeepEqual(c07RenderComparisonV3.calls, c07RenderComparisonV2.calls);
+  const c07RenderComparisonV4 = getAgentMcpProfileById(
+    'c07-render-comparison-offline-agent-mcp-matrix-v4',
+  );
+  assert.ok(c07RenderComparisonV4);
+  assert.equal(c07RenderComparisonV4.frontierId, 'C07');
+  assert.equal(c07RenderComparisonV4.epochId, 'run95-renderer-v19-c07-two-cohort-v4-20261023');
+  assert.equal(c07RenderComparisonV4.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(c07RenderComparisonV4.calls[0].arguments.cohorts.length, 2);
+  assert.deepEqual(
+    c07RenderComparisonV4.calls[0].arguments.cohorts.map((cohort) => cohort.query.keyword),
+    [
+      'run95 c07 synthetic cohort f offline matrix 20261023',
+      'run95 c07 synthetic cohort g offline matrix 20261023',
+    ],
+  );
+  assert.equal(c07RenderComparisonV4.calls[0].arguments.maxSubjects, 1);
+  assert.notDeepEqual(c07RenderComparisonV4.calls, c07RenderComparisonV3.calls);
+  assert.notEqual(c07RenderComparisonV4.reportPath, c07RenderComparisonV3.reportPath);
+  assert.notEqual(c07RenderComparisonV4.claimLabelName, c07RenderComparisonV3.claimLabelName);
   const g01RenderQuery = getAgentMcpProfileById('g01-render-query-subjects-offline-agent-mcp-v1');
   assert.ok(g01RenderQuery);
   assert.equal(g01RenderQuery.frontierId, 'G01');
@@ -670,6 +710,24 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.notEqual(r03MatrixV2.argumentProfile, r03Offline.argumentProfile);
   assert.match(agentMcpProfileArgumentsSha256(r03MatrixV2), /^[0-9a-f]{64}$/u);
   assert.match(agentMcpProfileRegistrySha256(r03MatrixV2.id), /^[0-9a-f]{64}$/u);
+  const r03TwoHopRating = getAgentMcpProfileById(
+    'r03-two-hop-rating-analysis-offline-agent-mcp-v1',
+  );
+  assert.ok(r03TwoHopRating);
+  assert.equal(r03TwoHopRating.frontierId, 'R03');
+  assert.equal(r03TwoHopRating.epochId, 'run95-r03-two-hop-rating-agent-mcp-offline-20261023');
+  assert.equal(r03TwoHopRating.acceptanceScope, 'agent-mcp-matrix-only');
+  assert.equal(r03TwoHopRating.networkMode, 'run95-r03-two-hop-rating-analysis-offline-matrix-v1');
+  assert.deepEqual(r03TwoHopRating.calls, [
+    {
+      toolName: 'bangumi.get_subject_relations',
+      arguments: { subjectId: 993811, analysisMode: 'observed_two_hop_rating' },
+    },
+  ]);
+  assert.notEqual(r03TwoHopRating.claimLabelName, r03MatrixV2.claimLabelName);
+  assert.notEqual(r03TwoHopRating.argumentProfile, r03MatrixV2.argumentProfile);
+  assert.match(agentMcpProfileArgumentsSha256(r03TwoHopRating), /^[0-9a-f]{64}$/u);
+  assert.match(agentMcpProfileRegistrySha256(r03TwoHopRating.id), /^[0-9a-f]{64}$/u);
   const r02 = getAgentMcpProfileById('r02-positive-direct-relations-agent-mcp-v1');
   assert.ok(r02);
   assert.equal(r02.frontierId, 'R02');

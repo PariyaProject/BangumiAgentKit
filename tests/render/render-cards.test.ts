@@ -224,6 +224,11 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
 
     const zine = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'graphic-zine');
     expect(zine).toContain('data-layout="zine-subject-title-overlay"');
+    expect(zine).toContain('data-layout="zine-subject-original-title"');
+    expect(zine.indexOf('data-layout="zine-subject-original-title"')).toBeGreaterThan(
+      zine.indexOf('data-layout="subject-card-copy"'),
+    );
+    expect(zine.match(/Star Harbor Journey/gu)).toHaveLength(1);
     expect(zine).toContain('data-title-eyebrow-backplate="true"');
     expect(zine).toContain('条目档案');
     expect(zine).not.toContain('BANGUMI · 条目档案');
@@ -231,6 +236,11 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(zine).toContain('综合评分');
     expect(zine.match(/data-layout="subject-cover-artwork"/gu)).toHaveLength(1);
     expect(zine).not.toContain('data-layout="subject-cover-poster"');
+    const zineLayout = await measureRenderRootLayout(zine, 320);
+    expect(zineLayout.titleBlocks[0]?.subtitle).toBe('');
+    expect(zine.indexOf('data-layout="subject-card-copy"')).toBeGreaterThan(
+      zine.indexOf('data-layout="subject-cover-art-stage"'),
+    );
 
     const zineLongTitle = renderHtmlTemplate(
       {

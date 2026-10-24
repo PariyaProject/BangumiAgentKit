@@ -1,12 +1,18 @@
 import crypto from 'node:crypto';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { RendererError } from './errors.js';
+import type { RenderDesignPackName } from './themes/index.js';
 
 export const MIN_RENDER_FONT_SIZE_SCALE = 0.75;
 export const MAX_RENDER_FONT_SIZE_SCALE = 1.25;
 export const DEFAULT_RENDER_FONT_SIZE_SCALE = 0.75;
 const MAX_RENDER_FONT_FILE_BYTES = 20 * 1024 * 1024;
+const BUNDLED_FONT_DIRECTORY = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../assets/fonts',
+);
 
 const GENERIC_FAMILIES = new Set([
   'cursive',
@@ -41,6 +47,51 @@ export interface RenderTypographyOptions {
   /** Font file basenames within fontDirectory. Paths and traversal are rejected. */
   bodyFontFile?: string;
   displayFontFile?: string;
+}
+
+export function getDefaultRenderTypographyOptions(
+  designPack: RenderDesignPackName,
+  overrides: RenderTypographyOptions = {},
+): RenderTypographyOptions {
+  const defaults: RenderTypographyOptions =
+    designPack === 'warm-editorial'
+      ? {
+          fontSizeScale: DEFAULT_RENDER_FONT_SIZE_SCALE,
+          bodyFontFamily: 'PingFang SC, Hiragino Sans GB, sans-serif',
+          displayFontFamily: 'Songti SC, Noto Serif CJK SC, serif',
+        }
+      : {
+          fontSizeScale: DEFAULT_RENDER_FONT_SIZE_SCALE,
+          bodyFontFamily: 'GenSen Rounded',
+          bodyFontFile: 'GenSenRounded2TW-R.woff2',
+          fontDirectory: BUNDLED_FONT_DIRECTORY,
+          ...(designPack === 'graphic-zine'
+            ? {
+                displayFontFamily: 'Ma Shan Zheng',
+                displayFontFile: 'MaShanZheng-Regular.woff2',
+              }
+            : { displayFontFamily: 'GenSen Rounded' }),
+        };
+  const customFiles = Boolean(overrides.bodyFontFile || overrides.displayFontFile);
+  if (customFiles) {
+    return {
+      ...defaults,
+      ...overrides,
+      bodyFontFile: overrides.bodyFontFile || undefined,
+      displayFontFile: overrides.displayFontFile || undefined,
+      fontDirectory: overrides.fontDirectory,
+    };
+  }
+
+  return {
+    ...defaults,
+    ...overrides,
+    // A family-only override names a system stack, not the bundled face bytes.
+    // Keep the default face for the other role when only one role is changed.
+    bodyFontFile: overrides.bodyFontFamily ? undefined : defaults.bodyFontFile,
+    displayFontFile: overrides.displayFontFamily ? undefined : defaults.displayFontFile,
+    fontDirectory: defaults.fontDirectory,
+  };
 }
 
 export interface ResolvedRenderFontFace {

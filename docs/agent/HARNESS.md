@@ -67,11 +67,14 @@ authoritative.
 
 ## 2. Standing execution policy
 
-- All configured implementation, research, and reviewer roles use GPT-6 Luna at
-  `max` reasoning. No Sol model is configured or used.
+- Ordinary implementation, research, and Product reviewer roles use GPT-6.1 Sol
+  at `xhigh` reasoning. This is the explicit 2026-10-24 user decision and
+  supersedes older Luna Max instructions, including historical app Goal text.
+  Strategy reviews in §2a remain supplementary to formal Product/frontier
+  review and its exact-Candidate requirements.
 - Generic implementation/research subagents: `0` unless explicitly authorized
   for a specific use or required by an applicable skill.
-- Default Product reviewer: one comprehensive Luna Max reviewer; reviews remain
+- Default Product reviewer: one comprehensive Sol xhigh reviewer; reviews remain
   sequential and continue the same reviewer identity.
 - New Epochs receive six review slots by default. New Outer Runs receive 96
   Product-review slots and one independent frontier-closure review.
@@ -84,8 +87,142 @@ authoritative.
   exceptional execution context, not a normal review round and not a refund.
 - Git worktrees are prohibited.
 
-Cost is controlled by fewer launches and better batching, not weaker Luna
-reasoning.
+The effective project defaults live in [`.codex/config.toml`](../../.codex/config.toml)
+and every selectable role in [`.codex/agents/`](../../.codex/agents/). Legacy
+`luna_*` role names/files are compatibility selectors; they dispatch
+`gpt-6.1-sol` with `xhigh`, not Luna. New work and newly launched reviewers use
+these defaults; do not silently fall back to another model or effort.
+
+Preserve two continuity exceptions when adopting this policy:
+
+- Existing signed reports, frozen Agent/MCP execution profiles, their explicit
+  model/effort CLI arguments, fixtures and one-shot latches remain pinned to
+  their original contracts. They are acceptance workloads, not ordinary worker
+  defaults. A new project default neither reruns nor revalidates them. A future
+  contract migration needs its own reviewed scope; renaming is not a retry.
+- Keep a launched Product reviewer's durable identity and historical model
+  provenance. If that same task supports an in-place model/effort change, use
+  Sol xhigh for future dispatches and record the actual model used each time.
+  Otherwise continue its existing runtime as a documented legacy exception.
+  Never relabel prior verdicts as Sol, declare a task unavailable merely to
+  replace its model, or spend a replacement slot for this migration. All new
+  reviewer tasks use Sol xhigh.
+
+Serialized legacy action tokens such as `LUNA_STABLE`, `LUNA_FIX_ALL_P0_P1`
+and the `outer_sol` budget field keep their existing meanings and spelling;
+they are not runtime model selectors. The budget-extension reason strings in
+§14 illustrate historical events and are not current dispatch instructions.
+
+Cost is controlled by fewer launches and better batching, not weaker reasoning.
+
+## 2a. Continuation, human intent, and strategy recovery
+
+Run #95 follows the versioned [recovery delivery plan](RUN95_RECOVERY_PLAN.md).
+The plan owns package order and quality criteria; this section owns execution
+mechanics. Runtime state remains in the existing GitHub control plane.
+
+At each continuation/model switch, observe the Codex app Goal and run:
+
+    pnpm harness continuation:show --run 95 --goal-state active
+
+Use the actually observed active/paused/blocked/complete value, or omit the
+flag to report unobserved. The brief reads the live Run/active PR, latest
+directive, review findings, current PR head/base, remaining allowances and
+recent meaningful checkpoints. It is routing advice, never claim/merge
+authority. Inspect actual CI/profile status at the normal gates.
+
+### Human directives
+
+    pnpm harness run:directive --run 95 --expected-sequence 0 \
+      --action replan --source-ref user-message:2026-10-24:strategy-recovery \
+      --reason "The user requested a durable recovery plan before more Product work."
+
+Actions are continue, pause, or replan. Record only a new explicit human
+instruction with a stable source reference; never fabricate or replay one.
+The latest directive wins by monotonically increasing sequence. A later
+continue revokes an earlier pause; quoting the word pause has no effect.
+An interruption/model switch alone is not a human pause.
+
+A replan request is fulfilled by a later strategy_review checkpoint, explicitly
+bound to that directive sequence. Fulfilment survives Epoch merge and the next
+Epoch; it cannot resurrect as pending just because the active PR changed.
+This resolves only the replan task, preserving the directive and app controls.
+An outstanding pause always requires explicit later human continue, even if a
+manual replan/strategy review occurs in between; neither cancels that pause.
+
+Legacy Runs opt in on the first directive. Read-only inspection never changes
+the Run or retroactively blocks legacy commands. Once enabled, pause/replan
+guards prevent new Product mutations, extensions, review launches and claims.
+Read-only diagnostics, recording completed results, and reconciliation remain
+available. Do not evade these guards through direct GitHub edits, an older
+checkout, a renamed Run, or arbitrary shell invocations.
+
+A manual recovery request may be completed while the app Goal is paused.
+Harness cannot change that app lifecycle, and a directive does not claim that
+the app Goal resumed. The user resumes the existing Goal with its app control.
+
+### Meaningful execution history
+
+    pnpm harness run:checkpoint --run 95 --expected-sequence 1 --evidence /path/to/checkpoint.json
+
+Evidence schema (no raw logs or private payloads):
+
+    {
+      "kind": "no_progress",
+      "epoch_pr": 271,
+      "problem": "stable-contract-or-failure-family",
+      "input_sha256": "<64 lowercase hex characters>",
+      "outcome": "What was actually learned or delivered",
+      "next_action": "One concrete next action and its purpose",
+      "evidence_refs": ["docs/agent/RUN95_RECOVERY_PLAN.md"]
+    }
+
+Kinds are progress, no_progress, and strategy_review. A strategy review also
+requires the actual reviewer_id and model; Harness binds it to the exact
+existing review-history prefix. Identity is opaque. Model is recorded from
+the runtime/dispatch, never inferred from the identity. The caller must
+truthfully record the observed review and supporting evidence.
+
+When no Epoch is active, epoch_pr is null and a Run-level strategy review can
+fulfil a Run-level replan request; it creates no placeholder Epoch or PR.
+
+Record at meaningful engineering/research/failure/handoff boundaries, not
+every tool call or unchanged poll. Keep summaries bounded and use evidence
+references/hashes. The source digest describes inputs relevant to the
+failure; Candidate/profile renaming alone is not a changed hypothesis.
+
+Two consecutive no_progress checkpoints with identical problem/input digest,
+or three corrective verdicts since the last strategy review, require strategy
+reassessment before further Product mutations. A budget extension does not
+clear the signal. Reassess cause, rejected attempts, scope, changed hypothesis
+and expected outcome with a user-authorized advanced model. Finish safe
+preparation if that runtime is unavailable; do not invent its verdict.
+
+Strategy review is not a formal Product/frontier PASS and spends no formal
+review slot. All normal same-identity reviews, exact CI, permanent claim
+limits, privacy boundaries and integration gates still apply. New ordinary
+model roles remain Sol xhigh. The current user-authorized strategy session may
+record its review without impersonating an independent Product reviewer.
+
+Renderer completion is scoped by pack/template in
+[`docs/design/renderer-baselines.json`](../design/renderer-baselines.json), when
+present. `continuation:show` reports its preserve/continue advice;
+`renderer:baseline-check`, `guard:legacy-paths` and `candidate:check` validate
+source/evidence hashes and a recoverable source commit. Preserve accepted
+entries. Only an explicit new user request or verified regression permits an
+appended successor; generic Goal continuation/model change does not reopen a
+finished design. Designer acceptance is separate from concrete user aesthetic
+approval and formal Product review. See [design scope and QA](../design/README.md).
+
+The Run Issue contains hash-linked append-only continuation events, losslessly
+compressed with digest/count checks once the JSON exceeds 4 KiB. Appends
+require the observed sequence, pre-write reread and post-write readback. Use
+one writer; GitHub PATCH has no atomic compare-and-swap guarantee. A readback
+failure demands reinspection, not blind replay. No events are silently
+trimmed. The existing control-body size gate applies; if full, stop writes
+and implement an explicit archive migration before adding more history.
+No raw chat, credentials, account identifiers, QR/media, or mutable tracked
+runtime-log fallback belongs here.
 
 ## 3. Goal modes
 
@@ -107,8 +244,8 @@ The cheap check returns exactly one state:
 - `FRONTIER_RESEARCH_REQUIRED`: no current-policy audit exists, the discovery
   policy/source authorization changed, or any ledger record remains
   `UNASSESSED`, `PARTIAL`, `RESEARCH_READY`, or `IMPLEMENTATION_READY`.
-- `FRONTIER_REVIEW_REQUIRED`: Luna has closed every ledger record and the exact
-  closure evidence now requires the one independent Luna Max review.
+- `FRONTIER_REVIEW_REQUIRED`: Sol has closed every ledger record and the exact
+  closure evidence now requires the one independent Sol xhigh review.
 - `DISCOVERY_REFRESH_DUE`: seven days elapsed since the latest current-policy
   trusted closure audit.
 - `UNCHANGED_EXHAUSTION`: the same master, policy version, ledger hash, closure
@@ -129,7 +266,7 @@ review. They are historical evidence only and mechanically classify as
 Opportunity discovery is bounded in breadth, not superficial in depth. Absence
 of a ready entry in the opportunity log, completion of the currently named
 official-v0 domains, or completion of one implementation stage is not evidence
-that valuable work is exhausted. Before selecting trusted frontier closure, Luna
+that valuable work is exhausted. Before selecting trusted frontier closure, Sol
 must inspect all of these lanes against the current synchronized `master`:
 
 1. recorded product opportunities and deferred/remediation state;
@@ -162,7 +299,7 @@ keep a run alive. A protected direction does not block independent safe work,
 and routine correctness/remediation is not human-only merely because an older
 review budget was exhausted. Discovery itself launches no reviewer.
 
-Before rejecting any candidate, Luna must attempt scope salvage: narrow the
+Before rejecting any candidate, Sol must attempt scope salvage: narrow the
 question, prefer positive-only or partial observations, preserve coverage and
 truncation, prohibit unsupported negative claims, and set explicit resource
 bounds. The outcome is one of:
@@ -174,7 +311,7 @@ bounds. The outcome is one of:
   concrete evidence.
 
 `IMPLEMENTATION_READY` becomes the next Product Epoch. `RESEARCH_READY` remains
-inside the same Luna-controlled Run until research either produces an
+inside the same Sol-controlled Run until research either produces an
 implementation-ready contract or closes the candidate. Neither permits a
 trusted frontier closure.
 
@@ -198,7 +335,7 @@ architectural/product slice.
 The phrase “smallest coherent vertical slice” is explicitly rejected as an
 Epoch objective. An initial end-to-end slice may be one Work Package, not an
 automatic review boundary. An Epoch may contain multiple Work Packages, many
-meaningful commits, and several hours of Luna Max work.
+meaningful commits, and several hours of Sol xhigh work.
 
 Do not trigger review because of commit count, file count, line count, elapsed
 time, stage completion, one passing test, individual fixes, incremental
@@ -221,7 +358,7 @@ status transition without direct implementation/test evidence is rejected.
 
 ### Scope Closure
 
-Before Candidate readiness, Luna must record two truthful answers in the Epoch
+Before Candidate readiness, Sol must record two truthful answers in the Epoch
 PR:
 
 **Why Not Review Earlier?**
@@ -232,7 +369,7 @@ PR:
 - Would reviewing now duplicate likely future review work?
 
 If closely related high-value work remains and coherence is preserved, continue
-Luna engineering. The readiness command rejects a micro-Epoch while
+Sol engineering. The readiness command rejects a micro-Epoch while
 `related_work_remaining` is true.
 
 **Why Not Extend Further?**
@@ -276,12 +413,12 @@ safely, record the blocker and stop.
 
 ## 6. Validation funnel and adversarial preflight
 
-Luna validates continuously with the cheapest relevant checks, then widens the
+Sol validates continuously with the cheapest relevant checks, then widens the
 funnel as the Epoch stabilizes: focused tests, integration/contract tests,
 User QA, Agent QA, Renderer/visual QA when applicable, and the mandatory
 repository suite.
 
-Before review, Luna performs one consolidated adversarial falsification
+Before review, Sol performs one consolidated adversarial falsification
 pass asking: **What would an independent reviewer most likely reject?**
 
 Challenge, where applicable:
@@ -298,7 +435,7 @@ Challenge, where applicable:
 - cross-Work-Package integration;
 - regression of frozen capabilities.
 
-The preflight creates no standalone report commit. Luna finds, fixes, validates,
+The preflight creates no standalone report commit. Sol finds, fixes, validates,
 and repeats inside the same engineering history. The PR control block records
 only that the consolidated preflight completed and its validation summary.
 
@@ -430,7 +567,7 @@ When an exact terminal one-shot claim predates the repository label, the
 Harness may reconcile that legacy disposition only after verifying its merged
 source PR, exact Candidate/Base/CI/reviewer binding, terminal result, and
 absence of a report. The active Epoch must independently pass its exact
-Candidate/Base/seven-check CI/Luna Max review gates before the Harness creates
+Candidate/Base/seven-check CI/governed review gates before the Harness creates
 the same permanent label and records an exact no-retry tombstone in the Run
 Issue and Epoch PR. This reconciliation grants no query authority. If a label
 or persisted control state is ambiguous, fail closed; never rerun the query or
@@ -586,16 +723,16 @@ slot. Both states prohibit integration or trusted exhaustion.
 Normal sequence:
 
 ```text
-Luna Max engineering
+Sol xhigh engineering
 -> Scope Closure
 -> adversarial preflight
 -> exact Candidate
 -> exact-SHA CI
--> Luna Max review #1
+-> Sol xhigh review #1
 ```
 
 `PASS` proceeds to automatic integration. `CORRECTIVE_REQUIRED` sends every
-recorded finding back to Luna Max. Fix the root-cause classes, establish a new
+recorded finding back to Sol xhigh. Fix the root-cause classes, establish a new
 Candidate, repeat validation/CI, and continue the same reviewer identity. If
 related findings remain as the configured allowance approaches exhaustion,
 extend the Epoch and Run budgets before reserving the final available review
@@ -620,9 +757,9 @@ the implementation report.
 For Run #95 Agent/MCP profile work, `reviewer_id` is an opaque durable
 identity. Keep its exact value across same-reviewer rounds; a stable Codex task
 or thread handle may serve as that identity. Do not infer model or reasoning
-effort from the ID's spelling. Select GPT-6 Luna Max explicitly at reviewer
-dispatch, and keep any mapping between the runtime handle and model choice in
-the local recovery note. The profile runner validates the nonempty ID and its
+effort from the ID's spelling. Select GPT-6.1 Sol xhigh explicitly for new reviewer
+dispatch, subject to the existing-task continuity exception in §2. Keep the
+runtime-handle/model mapping in the local recovery note. The profile runner validates the nonempty ID and its
 exact PASS/Candidate/Base binding before it creates a one-shot claim.
 
 A launched reviewer has a durable id. Durable control state alone never proves
@@ -682,11 +819,11 @@ example.
 
 ### Frontier-closure reviewer
 
-Trusted exhaustion is a different review job from Product review. After Luna
+Trusted exhaustion is a different review job from Product review. After Sol
 has made the ledger valid, closed every actionable record, produced a complete
 cross-consistent evidence inventory, and bound it to the exact synchronized
 master SHA, policy version, ledger hash, and evidence hash, reserve the single
-Outer closure slot and launch one comprehensive GPT-6 Luna Max reviewer in a
+Outer closure slot and launch one comprehensive GPT-6.1 Sol xhigh reviewer in a
 separate task context.
 The reservation persists the complete verified closure evidence in a
 hash-bound, lossless compressed control payload. Before any Issue update the CLI
@@ -703,11 +840,11 @@ delta, and the claimed absence of valuable safe work. Its verdicts are:
   `STOPPED_TRUSTED_FRONTIER_EXHAUSTED`;
 - `DISCOVERY_REQUIRED`: record consolidated missing or contradictory frontiers,
   enter `FRONTIER_REVIEW_REJECTED`, then use the explicit zero-budget
-  `frontier:resume-discovery` transition to return the Run to `ACTIVE` Luna
+  `frontier:resume-discovery` transition to return the Run to `ACTIVE` Sol
   discovery while preserving the rejected closure record.
 
 There is no automatic second verdict-bearing closure review. A rejection never
-permits trusted exhaustion in that Run. Luna may resolve the findings and
+permits trusted exhaustion in that Run. Sol may resolve the findings and
 continue Product work, but the next closure attempt stops the Run as
 `STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE`; a fresh Run must revalidate current
 inputs before using its closure slot. Do not relabel budget exhaustion as
@@ -730,10 +867,53 @@ independent safe work may continue when the repository is safe.
 
 Routine engineering findings never use `PARKED_FOR_HUMAN`. Corrective
 findings enter `FINAL_CORRECTIVE_REQUIRED`, remain the active Epoch, and block
-discovery of another Epoch until Luna completes the final corrective and
+discovery of another Epoch until Sol completes the final corrective and
 integration. The legacy `PARKED_REVIEW_LIMIT` / `QUALITY_CIRCUIT_BREAKER`
 combination may be migrated in place with
 `epoch:resume-final-corrective`; it is not produced by the normal lifecycle.
+
+### Pinned legacy technical-terminal migration
+
+One reviewed migration corrects Run #95 PR #267's technical no-report park:
+
+    pnpm harness epoch:resume-terminal-failure --run 95 --pr 267 \
+      --expected-claim-sha256 <canonical-sha256-of-the-observed-original-disposition>
+
+This is limited to the exact R04 v3 Epoch, original source Candidate
+`a93e1e5c06954a1b195f6603f81d47498d7a6eda`, parked head
+`5b0bcc646773cdab61228c1b0a9e052e3f05e539` and recorded technical park-reason
+digest. It is not a general resume command for `PARKED_FOR_HUMAN`.
+Any Human verdict, unresolved finding, different park, active/pending Epoch,
+review reservation or non-completed reviewer runtime is ineligible. Complete
+the current Epoch before using it. Preserve the deliverable existing reviewer
+identity under §2/§9; this migration grants no replacement context.
+
+The command verifies the same open PR/branch and source/head/Base ancestry,
+reads the immutable source registry, matches the caller-observed claim digest,
+source PASS/reviewer, registry/arguments/receipt-key bindings and historical
+seven-check CI run, and reads both permanent latches. Accepted, unaccepted or
+orphan reports prevent the migration. Every original disposition field, review
+record and consumed budget remains unchanged; no query or Codex execution is
+performed.
+
+Three sequential control writes use pre-write reread and post-write readback:
+Run write-ahead intent → prepared Epoch → paired active Run. The intermediate
+`TERMINAL_RECOVERY_PENDING` state blocks new Epochs and routes continuation to
+the same intent. An interrupted write can resume only with the same claim,
+head and exact prepared scope; a completed paired invocation is read-only.
+Current human pause/replan and app Goal controls retain priority. GitHub has
+no atomic multi-body compare-and-swap; use one writer and reinspect after an
+uncertain response.
+
+Preparation clears stale Candidate/PASS/CI authority and preflight completion,
+leaves Scope Closure open, and appends an explicit no-credit amendment to the
+original acceptance criteria/history. That amendment permits integration of
+freshly reviewed implementation with the original `INCONCLUSIVE` disposition;
+it does not accept a report or credit any matrix/scenario row. Synchronize the
+same branch with current master, establish fresh Candidate/Base/exact-SHA CI
+and complete preflight including the **entire unchanged** prior disposition,
+then obtain the next normal same-reviewer PASS and ordinary integration gates.
+The original no-report/no-retry result stays terminal throughout.
 
 Only an Outer Run in `ACTIVE` state with no active or pending Epoch may start a
 new Epoch. An Epoch in final corrective remains active. Legacy circuit-breaker,
@@ -890,7 +1070,7 @@ candidates, missing cross-audit delta, or missing scope salvage are rejected.
 `UNASSESSED`, `PARTIAL`, `IMPLEMENTATION_READY`, `RESEARCH_READY`, or still-open
 source research blocks trusted closure.
 
-After mechanical validation, the independent Luna Max frontier reviewer must return
+After mechanical validation, the independent Sol xhigh frontier reviewer must return
 `PASS` on the exact master SHA, ledger hash, and evidence hash. Missing review,
 `DISCOVERY_REQUIRED`, runtime uncertainty, or any hash drift blocks the stop.
 `UNCHANGED_EXHAUSTION` may reuse only this trusted closure for seven days while
@@ -1072,7 +1252,7 @@ help` for exact arguments.
   authorizing another closure reviewer in the same Run.
 - `epoch:park`: park the same PR/branch truthfully.
 - `epoch:resume-final-corrective`: migrate an exhausted legacy review-limit PR
-  into the same-branch Luna final-corrective path.
+  into the same-branch Sol final-corrective path.
 - `epoch:resume-integration`: revalidate an `INTEGRATION_BLOCKED` PR and either
   retry an unchanged open integration or reconcile a merge whose response was
   lost, without spending review budget or bypassing freshness/CI/ancestry.

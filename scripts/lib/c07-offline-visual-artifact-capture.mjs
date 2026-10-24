@@ -14,6 +14,7 @@ import path from 'node:path';
 import {
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
 } from './c07-render-comparison-offline-profile.mjs';
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -21,6 +22,7 @@ const MAX_PNG_BYTES = 5_000_000;
 const TEMP_ARTIFACT_SUFFIXES = new Map([
   [C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID, '.c07-v2-artifact.png'],
   [C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID, '.c07-v3-artifact.png'],
+  [C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID, '.c07-v4-artifact.png'],
 ]);
 
 function assertVisualProfile(profileId) {
@@ -118,7 +120,11 @@ export function persistC07OfflineVisualArtifactForInspection({
   }
 
   const { repositoryRoot, outputDirectory } = ensureLocalArtifactDirectory(root);
-  const profileVersion = profileId.endsWith('-v3') ? 'v3' : 'v2';
+  const profileVersion = profileId.endsWith('-v4')
+    ? 'v4'
+    : profileId.endsWith('-v3')
+      ? 'v3'
+      : 'v2';
   const absolutePath = path.join(
     outputDirectory,
     `c07-render-comparison-${profileVersion}-mcp-${sourceRevision.slice(0, 12)}.png`,

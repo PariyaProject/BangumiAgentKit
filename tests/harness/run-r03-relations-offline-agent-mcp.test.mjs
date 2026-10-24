@@ -10,8 +10,11 @@ import {
   R03_RELATIONS_OFFLINE_EXPECTED_RESULT_SUMMARIES,
   R03_RELATIONS_OFFLINE_NETWORK_MODE,
   R03_RELATIONS_OFFLINE_PROFILE_ID,
+  R03_TWO_HOP_RATING_OFFLINE_ACKNOWLEDGEMENT,
+  R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID,
 } from '../../scripts/lib/r03-relations-offline-profile.mjs';
 import {
+  activateR03Profile,
   assertR03CandidateReviewGate,
   buildR03CodexExecArgs,
   classifyR03AssertionFailure,
@@ -259,6 +262,50 @@ test('R03 Codex invocation is ephemeral, read-only, and exposes only the fixed r
     true,
   );
   assert.equal(args.at(-1).includes(R03_RELATIONS_OFFLINE_ACKNOWLEDGEMENT), true);
+});
+
+test('R03 two-hop Codex invocation binds the analysis profile and exact one-tool server', () => {
+  assert.equal(
+    validateR03RunnerArgs([
+      '--run',
+      '95',
+      '--profile-id',
+      R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID,
+    ]),
+    'run',
+  );
+  assert.throws(() =>
+    validateR03RunnerArgs(['--run', '95', '--profile-id', 'unknown-profile']),
+  );
+  activateR03Profile(R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID);
+  try {
+    const args = buildR03CodexExecArgs({
+      nodePath: '/usr/bin/node',
+      summaryPath: '/tmp/r03-two-hop-summary.json',
+      sourceRevision: SOURCE_SHA,
+      bundleSha256: BUNDLE_SHA,
+    });
+    assert.ok(args.includes('gpt-6-luna'));
+    assert.ok(args.includes('read-only'));
+    assert.ok(
+      args.some(
+        (item) =>
+          typeof item === 'string' &&
+          item.includes('mcp_servers.bgk_r03_two_hop_rating_v1.args='),
+      ),
+    );
+    assert.ok(
+      args.some(
+        (item) =>
+          typeof item === 'string' &&
+          item.includes(R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID),
+      ),
+    );
+    assert.ok(args.at(-1).includes('"analysisMode":"observed_two_hop_rating"'));
+    assert.ok(args.at(-1).includes(R03_TWO_HOP_RATING_OFFLINE_ACKNOWLEDGEMENT));
+  } finally {
+    activateR03Profile(R03_RELATIONS_OFFLINE_PROFILE_ID);
+  }
 });
 
 test('R03 server summary accepts exactly one local relation response', () => {

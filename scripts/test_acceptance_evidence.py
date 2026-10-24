@@ -404,6 +404,320 @@ class RenderSubjectCardOfflineProfileAcceptanceTests(unittest.TestCase):
             self.report, epoch_status, paths, self.report['mcpBundleSha256'],
         ))
 
+    def test_v5_profile_is_registered_with_its_exact_report_path_and_refresh_scope(self):
+        profile_id = 'render-subject-card-compact-typography-agent-mcp-v5'
+        profile = TABLE_CHECKER.RENDER_SUBJECT_CARD_OFFLINE_PROFILES[profile_id]
+        arguments = [call['arguments'] for call in profile['calls']]
+        arguments_sha = hashlib.sha256(json.dumps(
+            arguments, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
+        registry_sha = hashlib.sha256(json.dumps(
+            profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+        ).encode('utf-8')).hexdigest()
+        report = json.loads(json.dumps(self.report))
+        report.update({
+            'epochId': profile['epochId'],
+            'profileId': profile_id,
+            'evidenceKind': profile['evidenceKind'],
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v5',
+            'toolName': profile['toolName'],
+            'argumentProfile': profile['argumentProfile'],
+            'answerCheckMethod': profile['answerCheckMethod'],
+            'expectedArgumentsSha256': arguments_sha,
+            'registrySha256': registry_sha,
+            'networkMode': profile['networkMode'],
+        })
+        report['offlineFixture'].update({
+            'profile': profile['networkMode'],
+            'expectedOperation': f"GET /v0/subjects/{arguments[0]['subjectId']}",
+        })
+
+        self.assertTrue(TABLE_CHECKER.render_subject_card_offline_agent_mcp_matches(
+            profile['toolName'], profile['reportPath'], report,
+        ))
+        self.assertFalse(TABLE_CHECKER.render_subject_card_offline_agent_mcp_matches(
+            profile['toolName'], self.profile['reportPath'], report,
+        ))
+        self.assertEqual(
+            GENERATOR.codex_render_subject_card_offline_profile_spec(profile_id),
+            profile,
+        )
+        self.assertTrue(
+            GENERATOR.codex_render_subject_card_offline_profile_revision_has_implementation(
+                '3d13ce869ab473fc65bc556e1cf75db4cc73e100', profile,
+            ),
+        )
+        self.assertIn(
+            GENERATOR.LIVE_PROBE_DIR / Path(profile['reportPath']).name,
+            GENERATOR.model_mcp_e2e_report_paths(),
+        )
+        refresh_paths = [
+            profile['reportPath'],
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+            'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/integration/tool-e2e-acceptance.test.ts',
+            'tests/harness/agent-harness-cli.test.mjs',
+        ]
+        self.assertTrue(
+            GENERATOR.codex_render_subject_card_offline_profile_evidence_refresh_paths_are_valid(
+                refresh_paths, profile,
+            ),
+        )
+        refresh_paths.append('scripts/unrelated.py')
+        self.assertFalse(
+            GENERATOR.codex_render_subject_card_offline_profile_evidence_refresh_paths_are_valid(
+                refresh_paths, profile,
+            ),
+        )
+
+        candidate = 'e' * 40
+        branch = f"codex/epoch-{profile['epochId']}"
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': self.pr},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'candidate_sha': candidate,
+                    'epoch_id': profile['epochId'],
+                    'pr_number': self.pr,
+                    'base_branch': 'master',
+                    'base_sha': self.base,
+                    'branch': branch,
+                    'review_history': [],
+                },
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': self.base,
+                'pr_head_ref_name': branch,
+                'pr_is_draft': False,
+                'pr_head_sha': candidate,
+            },
+        }
+        refresh_paths = [
+            profile['reportPath'],
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+            'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/integration/tool-e2e-acceptance.test.ts',
+            'tests/harness/agent-harness-cli.test.mjs',
+        ]
+        self.assertTrue(
+            GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                report, epoch_status, refresh_paths, report['mcpBundleSha256'],
+            ),
+        )
+
+    def test_v5_post_pass_candidate_refresh_keeps_the_original_review_and_exact_scope(self):
+        profile = TABLE_CHECKER.RENDER_SUBJECT_CARD_OFFLINE_PROFILES[
+            'render-subject-card-compact-typography-agent-mcp-v5'
+        ]
+        report = json.loads(json.dumps(self.report))
+        report.update({
+            'profileId': profile['id'],
+            'epochId': profile['epochId'],
+            'sourceRevision': self.source,
+        })
+        branch = f"codex/epoch-{profile['epochId']}"
+        refreshed_head = 'e' * 40
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': self.pr},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'candidate_sha': self.source,
+                    'review_pass_sha': self.source,
+                    'state': 'REVIEW_PASSED',
+                    'epoch_id': profile['epochId'],
+                    'pr_number': self.pr,
+                    'base_branch': 'master',
+                    'base_sha': self.base,
+                    'branch': branch,
+                    'review_history': [{
+                        'reviewer_id': report['reviewerId'],
+                        'candidate_sha': self.source,
+                        'reviewed_base_sha': self.base,
+                        'verdict': 'PASS',
+                    }],
+                },
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': self.base,
+                'pr_head_ref_name': branch,
+                'pr_head_sha': refreshed_head,
+                'pr_is_draft': False,
+            },
+        }
+        refresh_paths = [
+            profile['reportPath'],
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+            'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/integration/tool-e2e-acceptance.test.ts',
+            'tests/harness/agent-harness-cli.test.mjs',
+        ]
+        successful_ancestry = subprocess.CompletedProcess(
+            ['git', 'merge-base', '--is-ancestor'], 0, '', '',
+        )
+        with patch.object(GENERATOR, '_run_repository_git', return_value=successful_ancestry):
+            self.assertTrue(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, epoch_status, refresh_paths, report['mcpBundleSha256'],
+                ),
+            )
+
+            changed_review = json.loads(json.dumps(epoch_status))
+            changed_review['epoch']['state']['review_history'][0]['candidate_sha'] = 'f' * 40
+            self.assertFalse(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, changed_review, refresh_paths, report['mcpBundleSha256'],
+                ),
+            )
+
+            disallowed = [*refresh_paths, 'packages/renderer/src/templates/SubjectCard.tsx']
+            self.assertFalse(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, epoch_status, disallowed, report['mcpBundleSha256'],
+                ),
+            )
+
+        failed_ancestry = subprocess.CompletedProcess(
+            ['git', 'merge-base', '--is-ancestor'], 1, '', '',
+        )
+        with patch.object(GENERATOR, '_run_repository_git', return_value=failed_ancestry):
+            self.assertFalse(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, epoch_status, refresh_paths, report['mcpBundleSha256'],
+                ),
+            )
+
+    def test_v5_post_corrective_candidate_refresh_requires_preserved_pass_and_exact_finding(self):
+        profile = TABLE_CHECKER.RENDER_SUBJECT_CARD_OFFLINE_PROFILES[
+            'render-subject-card-compact-typography-agent-mcp-v5'
+        ]
+        report = json.loads(json.dumps(self.report))
+        report.update({
+            'profileId': profile['id'],
+            'epochId': profile['epochId'],
+            'sourceRevision': self.source,
+        })
+        branch = f"codex/epoch-{profile['epochId']}"
+        corrective_review_head = 'd' * 40
+        refreshed_head = 'e' * 40
+        epoch_status = {
+            'run': {
+                'number': 95,
+                'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': self.pr},
+            },
+            'epoch': {
+                'github_state': 'OPEN',
+                'state': {
+                    'candidate_sha': None,
+                    'review_pass_sha': None,
+                    'state': 'CORRECTIVE_REQUIRED',
+                    'epoch_id': profile['epochId'],
+                    'pr_number': self.pr,
+                    'base_branch': 'master',
+                    'base_sha': self.base,
+                    'branch': branch,
+                    'review_history': [
+                        {
+                            'reviewer_id': report['reviewerId'],
+                            'candidate_sha': self.source,
+                            'reviewed_base_sha': self.base,
+                            'verdict': 'PASS',
+                        },
+                        {
+                            'reviewer_id': report['reviewerId'],
+                            'candidate_sha': corrective_review_head,
+                            'reviewed_base_sha': self.base,
+                            'verdict': 'CORRECTIVE_REQUIRED',
+                        },
+                    ],
+                },
+                'pr_base_ref_name': 'master',
+                'pr_base_sha': self.base,
+                'pr_head_ref_name': branch,
+                'pr_head_sha': refreshed_head,
+                'pr_is_draft': False,
+            },
+        }
+        refresh_paths = [
+            profile['reportPath'],
+            'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+            'docs/product/frontier-ledger.json',
+            'scripts/agent-harness.mjs',
+            'scripts/check-tool-acceptance-table.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_acceptance_evidence.py',
+            'tests/integration/tool-e2e-acceptance.test.ts',
+            'tests/harness/agent-harness-cli.test.mjs',
+        ]
+        successful_ancestry = subprocess.CompletedProcess(
+            ['git', 'merge-base', '--is-ancestor'], 0, '', '',
+        )
+        with patch.object(GENERATOR, '_run_repository_git', return_value=successful_ancestry):
+            self.assertTrue(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, epoch_status, refresh_paths, report['mcpBundleSha256'],
+                ),
+            )
+
+            missing_source_pass = json.loads(json.dumps(epoch_status))
+            missing_source_pass['epoch']['state']['review_history'].pop(0)
+            self.assertFalse(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, missing_source_pass, refresh_paths, report['mcpBundleSha256'],
+                ),
+            )
+
+            wrong_latest_reviewer = json.loads(json.dumps(epoch_status))
+            wrong_latest_reviewer['epoch']['state']['review_history'][-1]['reviewer_id'] = 'other-reviewer'
+            self.assertFalse(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, wrong_latest_reviewer, refresh_paths, report['mcpBundleSha256'],
+                ),
+            )
+
+            unrelated_path = [*refresh_paths, 'packages/renderer/src/templates/SubjectCard.tsx']
+            self.assertFalse(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, epoch_status, unrelated_path, report['mcpBundleSha256'],
+                ),
+            )
+
+        successful_source_ancestry = subprocess.CompletedProcess(
+            ['git', 'merge-base', '--is-ancestor'], 0, '', '',
+        )
+        failed_review_ancestry = subprocess.CompletedProcess(
+            ['git', 'merge-base', '--is-ancestor'], 1, '', '',
+        )
+
+        def reject_corrective_review_ancestor(_root, *_args):
+            return successful_source_ancestry if _args[-2] == self.source else failed_review_ancestry
+
+        with patch.object(
+            GENERATOR, '_run_repository_git', side_effect=reject_corrective_review_ancestor,
+        ):
+            self.assertFalse(
+                GENERATOR.codex_render_subject_card_offline_profile_candidate_binding_is_valid(
+                    report, epoch_status, refresh_paths, report['mcpBundleSha256'],
+                ),
+            )
+
 
 class C03PersonActivityOfflineV2MatrixTests(unittest.TestCase):
     def setUp(self):
@@ -9434,7 +9748,7 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
             'acceptanceScope': 'agent-mcp-matrix-only',
             'epochId': TABLE_CHECKER.R01_OFFLINE_EPOCH_ID,
             'profileId': TABLE_CHECKER.R01_OFFLINE_PROFILE_ID,
-            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
             'model': 'gpt-6-luna',
             'reasoningEffort': 'max',
             'toolName': TABLE_CHECKER.R01_OFFLINE_TOOL_NAME,
@@ -9457,7 +9771,20 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
             'deniedCallCount': 0,
             'networkMode': TABLE_CHECKER.R01_OFFLINE_NETWORK_MODE,
             'answerCheckMethod': TABLE_CHECKER.R01_OFFLINE_ANSWER_CHECK_METHOD,
-            'resultSummary': TABLE_CHECKER.R01_OFFLINE_RESULT_SUMMARY,
+            'answerSha256': 'f' * 64,
+            'answerUtf8Bytes': 512,
+            'resultSummary': {
+                'sourceRowsObserved': 30,
+                'sourceRowsReturned': 30,
+                'sourceSchemaDriftRows': 0,
+                'sourceTruncated': False,
+                'textRowsIncluded': 12,
+                'textRowsOmitted': 18,
+                'textUtf8Bytes': 2580,
+                'structuredContentAvailable': True,
+                'textProjectionConsistent': True,
+                'firstDisplayedRelationMatched': True,
+            },
             'offlineFixture': TABLE_CHECKER.R01_OFFLINE_FIXTURE,
             'networkBoundary': TABLE_CHECKER.R01_OFFLINE_NETWORK_BOUNDARY,
             'privacy': TABLE_CHECKER.R01_OFFLINE_PRIVACY,
@@ -10631,9 +10958,111 @@ class C07RenderComparisonOfflineProfileReportValidationTests(unittest.TestCase):
         report['offlineFixture']['profile'] = profile['networkMode']
         return report
 
+    def signed_v4_fixture(self, reviewer_id):
+        profile_id = 'c07-render-comparison-offline-agent-mcp-matrix-v4'
+        profile = next(p for p in GENERATOR.CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles'] if p['id'] == profile_id)
+        helper = self.originals[0] / 'tests/harness/fixtures/c07-signed-report.mjs'
+        program = (
+            'import {createSignedC07Report} from ' + json.dumps(helper.as_uri()) + ';'
+            'process.stdout.write(JSON.stringify(createSignedC07Report('
+            + json.dumps(profile_id) + ',' + json.dumps(reviewer_id) + ')));'
+        )
+        built = json.loads(subprocess.run(
+            ['node', '--input-type=module', '-e', program],
+            cwd=self.originals[0], check=True, capture_output=True, text=True,
+        ).stdout)
+        selection = self.root / profile['selectionEvidencePath']
+        selection.parent.mkdir(parents=True, exist_ok=True)
+        selection.write_bytes((self.originals[0] / profile['selectionEvidencePath']).read_bytes())
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier = json.loads(frontier_path.read_text())
+        next(row for row in frontier['records'] if row['id'] == 'C07')['source_refs'].extend([
+            profile['reportPath'], profile['selectionEvidencePath'],
+        ])
+        frontier_path.write_text(json.dumps(frontier))
+        return built['report'], built['claim'], profile
+
+    def validate_signed_v4_fixture(self, report, claim, profile, *, wrong_reviewer=False, wrong_base=False):
+        # Stub only external Git/control-plane observations. Both languages' report
+        # validators, exact snapshot bindings and Ed25519 verification run for real.
+        report_path = self.root / profile['reportPath']
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        receipt = report['runnerReceipt']
+        disposition = {**claim, 'state': 'REPORT_WRITTEN', 'reportWritten': True,
+            'reportPath': profile['reportPath'],
+            'reportSha256': hashlib.sha256(report_path.read_bytes()).hexdigest(),
+            'runnerReceiptSha256': GENERATOR._canonical_json_sha256(receipt)}
+        if wrong_reviewer:
+            disposition['reviewerId'] = 'other opaque identity'
+        status = {'state': 'REPORT_WRITTEN', 'profile_id': profile['id'], 'pr': claim['prNumber'],
+            'tool_name': profile['toolName'], 'argument_profile': profile['argumentProfile'],
+            'registry_sha256': claim['registrySha256'],
+            'expected_arguments_sha256': claim['expectedArgumentsSha256'],
+            'claim_label_present': True, 'terminal_label_present': True, 'disposition': disposition}
+        candidate = 'f' * 40
+        branch = 'codex/synthetic-c07-v4-report'
+        epoch = {'number': 95, 'state': 'EPOCH_ACTIVE', 'active_epoch_pr': claim['prNumber']}
+        epoch_state = {'state': 'REVIEW_PASSED', 'epoch_id': profile['epochId'],
+            'pr_number': claim['prNumber'], 'base_branch': 'master', 'branch': branch,
+            'base_sha': 'e' * 40 if wrong_base else claim['baseSha'], 'candidate_sha': candidate}
+        epoch_status = {'run': {'number': 95, 'state': epoch}, 'epoch': {
+            'state': epoch_state, 'github_state': 'OPEN', 'pr_base_ref_name': 'master',
+            'pr_base_sha': claim['baseSha'], 'pr_head_ref_name': branch,
+            'pr_head_sha': candidate, 'pr_is_draft': False}}
+        real_run = subprocess.run
+        def verify_signature(args, **kwargs):
+            self.assertEqual(Path(args[1]).name, 'validate-c07-render-comparison-offline-agent-mcp-report.mjs')
+            return real_run(['node', str(self.originals[0] / 'scripts/acceptance' / Path(args[1]).name)],
+                **{**kwargs, 'cwd': self.originals[0]})
+        def snapshot_binding(actual_report, actual_epoch, actual_profile):
+            return GENERATOR.codex_c07_render_comparison_offline_profile_candidate_binding_is_valid(
+                actual_report, actual_epoch, {profile['reportPath']}, claim['bundleSha256'], actual_profile)
+        with (
+            patch.object(GENERATOR, 'codex_c07_render_comparison_offline_profile_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value=claim['bundleSha256']),
+            patch.object(GENERATOR, 'codex_c07_render_comparison_offline_profile_report_candidate_binding_is_current', side_effect=snapshot_binding),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=verify_signature),
+        ):
+            return GENERATOR.codex_c07_render_comparison_offline_profile_report_is_valid(
+                report, harness_status=status, report_path=report_path, epoch_status=epoch_status)
+
+    def test_v4_registration_uses_the_current_exact_profile(self):
+        profile_id = 'c07-render-comparison-offline-agent-mcp-matrix-v4'
+        expected = next(p for p in GENERATOR.CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles'] if p['id'] == profile_id)
+        self.assertEqual(GENERATOR.codex_c07_render_comparison_offline_profile_spec(profile_id), expected)
+
+    def test_v4_real_signed_report_crosses_python_and_js_with_exact_snapshot_bindings(self):
+        for reviewer_id in ('/root/pr271_review', 'opaque://reviewer handle#10'):
+            report, claim, profile = self.signed_v4_fixture(reviewer_id)
+            self.assertTrue(self.validate_signed_v4_fixture(report, claim, profile))
+            self.assertFalse(self.validate_signed_v4_fixture(report, claim, profile, wrong_reviewer=True))
+            self.assertFalse(self.validate_signed_v4_fixture(report, claim, profile, wrong_base=True))
+            for key, value in (('requestCount', 2), ('searchRequestCount', 1), ('subjectDetailRequestCount', 1)):
+                changed = json.loads(json.dumps(report))
+                changed['offlineFixture'][key] = value
+                with self.subTest(reviewer=reviewer_id, wrong_counter=key):
+                    self.assertFalse(self.validate_signed_v4_fixture(changed, claim, profile))
+            changed = json.loads(json.dumps(report))
+            changed['answerChecks'].pop('fourExpectedLocalResponses', None)
+            changed['answerChecks']['twoExpectedLocalResponses'] = True
+            self.assertFalse(self.validate_signed_v4_fixture(changed, claim, profile))
+            changed = json.loads(json.dumps(report))
+            changed['runnerReceipt']['signature'] = 'AA=='
+            self.assertFalse(self.validate_signed_v4_fixture(changed, claim, profile))
+
     def test_accepts_one_synthetic_matrix_report_while_C07_remains_unassessed(self):
         self.assertTrue(GENERATOR.codex_c07_render_comparison_offline_frontier_is_unassessed())
         self.assertTrue(self.validate_report(self.report))
+
+    def test_c07_opaque_reviewer_spelling_does_not_replace_claim_identity_authority(self):
+        for reviewer_id in ('/root/pr271_review', 'opaque://reviewer handle#9'):
+            report = json.loads(json.dumps(self.report))
+            report['reviewerId'] = reviewer_id
+            report['runnerReceipt']['payload']['reviewerId'] = reviewer_id
+            self.assertTrue(self.validate_report(report))
+        report['reviewerId'] = '   '
+        self.assertFalse(self.validate_report(report))
 
     def test_v3_report_accepts_only_bounded_safe_web_search_error_counts(self):
         profile = GENERATOR.CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V3
@@ -12640,7 +13069,7 @@ class R01OfflineRelationsProfileReportValidationTests(unittest.TestCase):
             'acceptanceScope': 'agent-mcp-matrix-only',
             'epochId': GENERATOR.CODEX_R01_OFFLINE_EPOCH_ID,
             'profileId': GENERATOR.CODEX_R01_OFFLINE_PROFILE_ID,
-            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v1',
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
             'model': 'gpt-6-luna',
             'reasoningEffort': 'max',
             'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
@@ -12684,20 +13113,20 @@ class R01OfflineRelationsProfileReportValidationTests(unittest.TestCase):
             'allowedCallCount': 1,
             'deniedCallCount': 0,
             'answerCheckMethod': GENERATOR.CODEX_R01_OFFLINE_ANSWER_CHECK_METHOD,
-            'answerSha256': hashlib.sha256(b'R01_SYNTHETIC_SUBJECT_RELATIONS_READ').hexdigest(),
-            'answerUtf8Bytes': len(b'R01_SYNTHETIC_SUBJECT_RELATIONS_READ'),
+            'answerSha256': 'f' * 64,
+            'answerUtf8Bytes': 512,
             'answerChecks': {key: True for key in GENERATOR.CODEX_R01_OFFLINE_ANSWER_CHECK_FIELDS},
             'resultSummary': {
-                'state': 'observed',
-                'sourceDirection': 'source_subject_to_returned_target',
-                'responseRowsObserved': 1,
-                'rowsReturned': 1,
-                'schemaDriftRows': 0,
-                'truncated': False,
-                'paginationAvailable': False,
-                'totalCountAvailable': False,
-                'completeness': 'not_provided_by_source',
-                'relationLabels': ['改编'],
+                'sourceRowsObserved': 30,
+                'sourceRowsReturned': 30,
+                'sourceSchemaDriftRows': 0,
+                'sourceTruncated': False,
+                'textRowsIncluded': 12,
+                'textRowsOmitted': 18,
+                'textUtf8Bytes': 2580,
+                'structuredContentAvailable': True,
+                'textProjectionConsistent': True,
+                'firstDisplayedRelationMatched': True,
             },
             'offlineFixture': {
                 'profile': GENERATOR.CODEX_R01_OFFLINE_NETWORK_MODE,
@@ -12722,7 +13151,7 @@ class R01OfflineRelationsProfileReportValidationTests(unittest.TestCase):
             },
             'runnerReceipt': {
                 'schemaVersion': 1,
-                'kind': 'r01-relations-offline-agent-mcp-runner-receipt-v1',
+                'kind': 'r01-relations-text-projection-offline-agent-mcp-v2-runner-receipt-v1',
                 'publicKeyBase64': 'AQ==',
                 'publicKeySha256': 'd' * 64,
                 'payload': {field: None for field in GENERATOR.CODEX_R01_OFFLINE_RECEIPT_PAYLOAD_FIELDS},
@@ -12805,16 +13234,15 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
         self.report_path.parent.mkdir(parents=True)
         selection_path = self.root / GENERATOR.CODEX_R03_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH
         selection_path.parent.mkdir(parents=True)
-        selection_path.write_text('R03 scenario remains UNASSESSED; matrix-only fixture.\n', encoding='utf-8')
+        selection_path.write_text('R03 remains PARTIAL; matrix-only fixture.\n', encoding='utf-8')
         frontier_path = self.root / 'docs/product/frontier-ledger.json'
         frontier_path.parent.mkdir(parents=True)
         frontier_path.write_text(json.dumps({
             'records': [{
                 'id': 'R03',
-                'status': 'UNASSESSED',
+                'status': 'PARTIAL',
                 'source_refs': [
                     GENERATOR.CODEX_R03_OFFLINE_SELECTION_EVIDENCE_RELATIVE_PATH,
-                    GENERATOR.CODEX_R03_OFFLINE_REPORT_RELATIVE_PATH,
                 ],
             }],
         }), encoding='utf-8')
@@ -12824,7 +13252,7 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
             'name': GENERATOR.CODEX_R03_OFFLINE_TOOL_NAME,
             'auth': 'none',
             'risk': 'read',
-            'description': 'Synthetic direct relations test tool.',
+            'description': 'Synthetic two-hop rating analysis test tool.',
             'inputSchema': {'type': 'object', 'required': ['subjectId']},
         }]
         self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
@@ -12875,7 +13303,7 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
             'serverToolNames': [GENERATOR.CODEX_R03_OFFLINE_TOOL_NAME],
             'serverToolCount': 1,
             'networkMode': GENERATOR.CODEX_R03_OFFLINE_NETWORK_MODE,
-            'mcpServerNames': ['bgk_r03_relations_v2'],
+            'mcpServerNames': ['bgk_r03_two_hop_rating_v1'],
             'processExitCode': 0,
             'resultStatus': 'SUCCESS',
             'eventStreamParsed': True,
@@ -12890,29 +13318,79 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
             'allowedCallCount': 1,
             'deniedCallCount': 0,
             'answerCheckMethod': GENERATOR.CODEX_R03_OFFLINE_ANSWER_CHECK_METHOD,
-            'answerSha256': hashlib.sha256(b'R03_SYNTHETIC_DIRECT_RELATION_MATRIX_READ').hexdigest(),
-            'answerUtf8Bytes': len(b'R03_SYNTHETIC_DIRECT_RELATION_MATRIX_READ'),
+            'answerSha256': hashlib.sha256(b'R03_SYNTHETIC_TWO_HOP_RATING_ANALYSIS_READ').hexdigest(),
+            'answerUtf8Bytes': len(b'R03_SYNTHETIC_TWO_HOP_RATING_ANALYSIS_READ'),
             'answerChecks': {key: True for key in GENERATOR.CODEX_R03_OFFLINE_ANSWER_CHECK_FIELDS},
             'resultSummary': [
                 {
                     'state': 'observed',
-                    'sourceDirection': 'source_subject_to_returned_target',
-                    'responseRowsObserved': 1,
-                    'rowsReturned': 1,
-                    'schemaDriftRows': 0,
-                    'truncated': False,
-                    'paginationAvailable': False,
-                    'totalCountAvailable': False,
-                    'completeness': 'not_provided_by_source',
-                    'relationLabels': ['续篇'],
+                    'subjectId': 993811,
+                    'sourceDirection': 'outgoing_source_to_target',
+                    'sourceScope': 'highest_observed_rating_in_bounded_two_hop_sample',
+                    'operationCount': 4,
+                    'warningCount': 0,
+                    'analysisMode': 'observed_two_hop_rating',
+                    'maxDepth': 2,
+                    'topScore': 9.2,
+                    'topCandidateCount': 1,
+                    'topCandidatesOmitted': 0,
+                    'scoredCandidateCount': 2,
+                    'tiePolicy': 'exact_numeric_score_ties_are_preserved',
+                    'topCandidates': [{
+                        'id': 993813,
+                        'score': 9.2,
+                        'ratingTotal': 37,
+                        'paths': [{
+                            'subjectIds': [993811, 993812, 993813],
+                            'depth': 2,
+                            'relationLabels': ['续集', '续集'],
+                        }],
+                    }],
+                    'coverage': {
+                        'rootRelationRowsObserved': 1,
+                        'rootRelationRowsSelected': 1,
+                        'rootRelationRowsOmitted': 0,
+                        'rootRelationSchemaDriftRows': 0,
+                        'intermediateSubjectsObserved': 1,
+                        'intermediateSubjectsSelected': 1,
+                        'intermediateSubjectsOmitted': 0,
+                        'intermediateRelationRowsObserved': 1,
+                        'intermediateRelationRowsSelected': 1,
+                        'intermediateRelationRowsOmitted': 0,
+                        'intermediateRelationSchemaDriftRows': 0,
+                        'depth1CandidatesObserved': 1,
+                        'depth1CandidatesSelected': 1,
+                        'depth1CandidatesOmitted': 0,
+                        'depth2CandidatesObserved': 1,
+                        'depth2CandidatesSelected': 1,
+                        'depth2CandidatesOmitted': 0,
+                        'detailRequestsAttempted': 2,
+                        'detailRequestsSucceeded': 2,
+                        'detailRequestsFailed': 0,
+                        'usableRatings': 2,
+                        'missingRatings': 0,
+                        'duplicateRelationRows': 0,
+                        'cycleEdgesSkipped': 0,
+                        'pathEvidenceOmitted': 0,
+                        'truncated': False,
+                        'partialReasons': [],
+                        'requestBudget': {
+                            'maxResponseBytesPerRequest': 1048576,
+                            'logicalRequestsAttempted': 4,
+                            'maxLogicalRequests': 11,
+                            'maxAttemptsPerLogicalRequest': 3,
+                            'maximumPossibleWireAttempts': 33,
+                        },
+                    },
                 },
             ],
             'offlineFixture': {
                 'profile': GENERATOR.CODEX_R03_OFFLINE_NETWORK_MODE,
-                'requestCount': 1,
-                'relationRequestCount': 1,
+                'requestCount': 4,
+                'relationRequestCount': 2,
                 'rootRequestCount': 1,
-                'intermediateRequestCount': 0,
+                'intermediateRequestCount': 1,
+                'subjectDetailRequestCount': 2,
                 'duplicateRequestCount': 0,
                 'unexpectedRequestCount': 0,
                 'authorizationHeaderCount': 0,
@@ -12941,7 +13419,7 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
         }
 
     def candidate_epoch_status(self, candidate_sha=None):
-        branch = 'codex/epoch-run95-r03-direct-relations-offline-agent-mcp-matrix-v2-20261017'
+        branch = 'codex/epoch-run95-r03-two-hop-rating-agent-mcp-v1-20261023'
         candidate_sha = candidate_sha or self.report['sourceRevision']
         base_sha = self.report['baseSha']
         reviewer_id = self.report['reviewerId']
@@ -13128,6 +13606,7 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
 
         def validate_embedded_report(args, **kwargs):
             payload = json.loads(kwargs['input'])
+            self.assertEqual(payload.get('profileId'), GENERATOR.CODEX_R03_OFFLINE_PROFILE_ID)
             embedded = base64.b64decode(payload['reportBytesBase64'])
             return subprocess.CompletedProcess(
                 args, 0,
@@ -13150,9 +13629,9 @@ class R03OfflineRelationsProfileReportValidationTests(unittest.TestCase):
                 epoch_status={'fixture': True},
             )
 
-    def test_accepts_matrix_report_while_R03_remains_unassessed(self):
+    def test_accepts_matrix_report_while_R03_remains_partial(self):
         with patch.object(GENERATOR, 'ROOT', self.root):
-            self.assertTrue(GENERATOR.codex_r03_offline_frontier_is_unassessed(require_report_ref=True))
+            self.assertTrue(GENERATOR.codex_r03_offline_frontier_remains_partial())
         self.assertTrue(self.validate_report(self.report))
 
     def test_rejects_scenario_credit_expanded_fixture_and_unclassified_errors(self):

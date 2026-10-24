@@ -8,7 +8,12 @@ try {
   const value = JSON.parse(input);
   const reportBytes = Buffer.from(value.reportBytesBase64 ?? '', 'base64');
   const report = JSON.parse(reportBytes.toString('utf8'));
-  const result = validateR03ProfileReport(report, value.claim, reportBytes);
+  const result = validateR03ProfileReport(
+    report,
+    value.claim,
+    reportBytes,
+    value.profileId ?? undefined,
+  );
   process.stdout.write(
     `${JSON.stringify({
       passed: result.passed === true,

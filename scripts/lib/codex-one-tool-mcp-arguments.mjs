@@ -17,6 +17,7 @@ import { assertR04SeriesWatchOrderOfflineProfile } from './r04-series-watch-orde
 import { assertR04SeriesWatchOrderOfflineV2Profile } from './r04-series-watch-order-offline-v2-fixture.mjs';
 import { assertR04SeriesWatchOrderOfflineV3Profile } from './r04-series-watch-order-offline-v3-fixture.mjs';
 import { assertR01RelationsOfflineProfile } from './r01-relations-offline-profile.mjs';
+import { assertR01RelationsTextProjectionOfflineProfile } from './r01-relations-text-projection-offline-profile.mjs';
 import { assertR03RelationsOfflineProfile } from './r03-relations-offline-profile.mjs';
 import {
   assertC04CohortComparisonPublicProfile,
@@ -199,6 +200,7 @@ export function parseCodexOneToolMcpArguments(argv) {
           assertR04SeriesWatchOrderOfflineV2Profile(profile) ||
           assertR04SeriesWatchOrderOfflineV3Profile(profile) ||
           assertR01RelationsOfflineProfile(profile) ||
+          assertR01RelationsTextProjectionOfflineProfile(profile) ||
           assertR03RelationsOfflineProfile(profile) ||
           assertR02PositiveDirectRelationsProfile(profile) ||
           assertQuerySubjectsFreshPublicProfile(profile) ||

@@ -1,3 +1,5 @@
+import { terminalRecoveryFixture } from './fixtures/terminal-recovery.mjs';
+import { LEGACY_R04_TERMINAL_RECOVERY } from '../../scripts/lib/harness-terminal-recovery.mjs';
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import fs from 'node:fs';
@@ -113,6 +115,7 @@ import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 import {
@@ -169,6 +172,9 @@ const R04_RENDER_V2_PROFILE = getAgentMcpProfileById(
 );
 const C04_PROFILE = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
 const TITLE_QUERY_RENDER_PROFILE = getAgentMcpProfileById('query-render-title-agent-mcp-v1');
+const RENDER_SUBJECT_CARD_V5_PROFILE = getAgentMcpProfileById(
+  'render-subject-card-compact-typography-agent-mcp-v5',
+);
 const mandatoryChecks = [
   'harness-control',
   'sqlite-default',
@@ -254,6 +260,120 @@ function buildP02V2ReportForClaim(claim, keyPair) {
   );
 }
 
+test('continuation CLI persists latest human intent without changing budgets or Epoch claims', () => {
+  const environment = createMockEnvironment();
+  try {
+    const original = environment.readState();
+    const paused = environment.execute([
+      'run:directive',
+      '--run',
+      '1',
+      '--expected-sequence',
+      '0',
+      '--action',
+      'pause',
+      '--source-ref',
+      'user-message:pause',
+      '--reason',
+      'User explicitly paused work.',
+    ]);
+    assert.equal(paused.status, 0, paused.stderr);
+    const denied = environment.execute(['review:reserve', '--run', '1', '--pr', '42']);
+    assert.equal(denied.status, 2);
+    assert.match(denied.stderr, /^HUMAN_PAUSE_ACTIVE:/u);
+    // candidate:check permits omitted --run; it must still find the active pause.
+    const candidate = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      'unused.json',
+    ]);
+    assert.equal(candidate.status, 2);
+    assert.match(candidate.stderr, /^HUMAN_PAUSE_ACTIVE:/u);
+    const resumed = environment.execute([
+      'run:directive',
+      '--run',
+      '1',
+      '--expected-sequence',
+      '1',
+      '--action',
+      'continue',
+      '--source-ref',
+      'user-message:resume',
+      '--reason',
+      'The old pause is cancelled; continue.',
+    ]);
+    assert.equal(resumed.status, 0, resumed.stderr);
+    const brief = environment.execute([
+      'continuation:show',
+      '--run',
+      '1',
+      '--goal-state',
+      'paused',
+    ]);
+    assert.equal(brief.status, 0, brief.stderr);
+    const parsed = JSON.parse(brief.stdout);
+    assert.equal(parsed.latest_human_directive.data.action, 'continue');
+    assert.equal(parsed.next_action, 'RESUME_CODEX_GOAL_IN_APP');
+    assert.equal(parsed.sequence, 2);
+    const final = environment.readState();
+    assert.equal(final.prBody, original.prBody);
+    assert.deepEqual(
+      parseControlBlock(final.runBody, RUN_MARKER).outer_sol,
+      parseControlBlock(original.runBody, RUN_MARKER).outer_sol,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('continuation CLI records a strategy checkpoint and rejects stale replay', () => {
+  const environment = createMockEnvironment();
+  try {
+    const evidence = path.join(environment.directory, 'checkpoint.json');
+    fs.writeFileSync(
+      evidence,
+      JSON.stringify({
+        kind: 'strategy_review',
+        epoch_pr: 42,
+        problem: 'repetitive-corrective-work',
+        input_sha256: 'f'.repeat(64),
+        outcome: 'Pinned scope and replaced the failed approach.',
+        next_action: 'Complete the exact pending correction before new work.',
+        evidence_refs: ['docs/agent/RUN95_RECOVERY_PLAN.md'],
+        reviewer_id: 'strategy-session',
+        model: 'gpt-6.1-sol',
+      }),
+    );
+    const result = environment.execute([
+      'run:checkpoint',
+      '--run',
+      '1',
+      '--expected-sequence',
+      '0',
+      '--evidence',
+      evidence,
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const beforeReplay = environment.readState().runBody;
+    const replay = environment.execute([
+      'run:checkpoint',
+      '--run',
+      '1',
+      '--expected-sequence',
+      '0',
+      '--evidence',
+      evidence,
+    ]);
+    assert.equal(replay.status, 2);
+    assert.match(replay.stderr, /^STALE_CONTINUATION_SEQUENCE:/u);
+    assert.equal(environment.readState().runBody, beforeReplay);
+  } finally {
+    environment.cleanup();
+  }
+});
+
 function controlFixture() {
   const run = createRunState({ runId: 'run-cli' });
   run.state = 'EPOCH_ACTIVE';
@@ -335,6 +455,7 @@ function createMockEnvironment(overrides = {}) {
             PATH: `${binDirectory}:${process.env.PATH}`,
             HARNESS_MOCK_STATE: statePath,
             HARNESS_FRONTIER_LEDGER_PATH: frontierLedgerPath,
+            HARNESS_RENDERER_BASELINE_ROOT: directory,
             HARNESS_G04_BUNDLE_SHA256: 'c'.repeat(64),
             ...envOverrides,
           },
@@ -343,6 +464,9 @@ function createMockEnvironment(overrides = {}) {
     },
     readState() {
       return JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    },
+    readFrontierLedger() {
+      return JSON.parse(fs.readFileSync(frontierLedgerPath, 'utf8'));
     },
     cleanup() {
       fs.rmSync(directory, { recursive: true, force: true });
@@ -887,6 +1011,62 @@ function terminalRunBody(evidence = makeDiscoveryEvidence()) {
   run.next_action = 'Recheck only after the frontier changes or refresh is due.';
   return renderRunBody(run);
 }
+
+test('renderer baseline CLI preserves completed scope and rejects source drift or registry deletion', () => {
+  const environment = createMockEnvironment();
+  try {
+    const artifact = (file, content) => {
+      fs.writeFileSync(path.join(environment.directory, file), content);
+      return { path: file, sha256: createHash('sha256').update(content).digest('hex') };
+    };
+    const entry = {
+      id: 'magazine-test-v1',
+      design_pack: 'anime-magazine',
+      template: 'subject-cohort-comparison',
+      source_commit: sha('a'),
+      source_inputs: [artifact('component.tsx', 'fixture source')],
+      reference: artifact('reference.png', 'reference'),
+      native_receipt: artifact('receipt.json', 'receipt'),
+      native_previews: [artifact('native.png', 'native')],
+      quality_scores: [4, 4, 4, 4, 5, 4],
+      release_decision: 'ACCEPTED_FOR_SCOPE',
+      user_aesthetic_acceptance: 'unobserved',
+      supersedes: null,
+    };
+    const registry = JSON.stringify({
+      schema: 'bangumi-renderer-design-baselines/v1',
+      baselines: [entry],
+    });
+    const registryRelative = 'docs/design/renderer-baselines.json';
+    const registryPath = path.join(environment.directory, registryRelative);
+    fs.mkdirSync(path.dirname(registryPath), { recursive: true });
+    fs.writeFileSync(registryPath, registry);
+    const state = environment.readState();
+    state.treePaths = [registryRelative];
+    state.gitObjects = {
+      [`origin/master:${registryRelative}`]: Buffer.from(registry).toString('base64'),
+      [`${sha('a')}:component.tsx`]: Buffer.from('fixture source').toString('base64'),
+    };
+    fs.writeFileSync(environment.statePath, JSON.stringify(state));
+    const check = () => environment.execute(['renderer:baseline-check', '--base', 'origin/master']);
+    const valid = check();
+    assert.equal(valid.status, 0, valid.stderr);
+    assert.equal(JSON.parse(valid.stdout).locks[0].action, 'PRESERVE_BASELINE_CONTINUE_OTHER_WORK');
+    fs.writeFileSync(path.join(environment.directory, 'component.tsx'), 'unrequested restyling');
+    const drifted = check();
+    assert.equal(drifted.status, 2);
+    assert.match(drifted.stderr, /^RENDERER_DESIGN_BASELINE_DRIFT:/u);
+    fs.rmSync(registryPath);
+    const removed = check();
+    assert.equal(removed.status, 2);
+    assert.match(removed.stderr, /DESIGN_BASELINE_HISTORY_CHANGED/u);
+    const final = environment.readState();
+    assert.equal(final.runBody, state.runBody);
+    assert.equal(final.prBody, state.prBody);
+  } finally {
+    environment.cleanup();
+  }
+});
 
 test('CLI run:start resumes the one open nonterminal Outer Run without creating another Issue', () => {
   const run = createRunState({ runId: 'existing-run', outerSolMax: 4 });
@@ -1872,6 +2052,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
   const exactCiProfileIds = [
     P06_PROFILE.id,
     'render-subject-card-compact-typography-agent-mcp-v3',
+    C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
     P02_PROFILE.id,
     P02_V2_PROFILE.id,
     C04_PROFILE.id,
@@ -1880,6 +2061,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
     A01_PROFILE.id,
     G06_V2_PROFILE.id,
     R04_RENDER_V2_PROFILE.id,
+    RENDER_SUBJECT_CARD_V5_PROFILE.id,
   ];
   const checks = exactCiProfileIds.includes(profile.id)
     ? mandatoryChecks.map((name, index) => ({
@@ -3498,6 +3680,167 @@ test('compact typography v3 Harness profile claim persists the exact successful 
   }
 });
 
+test('C07 v4 Harness profile claim persists the exact successful CI run and check identities', () => {
+  const profile = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
+  assert.ok(profile);
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(profile);
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', profile.id];
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    assert.equal(claimResult.profileId, profile.id);
+    assert.equal(claimResult.ciRunId, '38806371672');
+    assert.deepEqual(
+      claimResult.ciChecks.map(({ name, status, conclusion }) => ({ name, status, conclusion })),
+      mandatoryChecks.map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' })),
+    );
+
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    const disposition = stored.adversarial_preflight.agent_mcp_profile_dispositions[profile.id];
+    assert.equal(disposition.ciRunId, claimResult.ciRunId);
+    assert.deepEqual(disposition.ciChecks, claimResult.ciChecks);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C07 opaque identities survive the actual claim and terminal result without weakening exact identity binding', () => {
+  const profile = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
+  const { environment, epoch } = agentMcpProfileReviewReadyEnvironment(profile);
+  const reviewerId = 'opaque://reviewer handle#9';
+  const diagnostics = {
+    schemaVersion: 1,
+    reasonCode: 'AGENT_MCP_SUMMARY_MISSING',
+    checks: { serverSummaryPresent: false, artifactCaptureAttempted: false },
+    counters: { httpRequests: null },
+  };
+  epoch.review_history[0].reviewer_id = reviewerId;
+  const state = environment.readState();
+  state.prBody = renderEpochBody(epoch);
+  fs.writeFileSync(environment.statePath, JSON.stringify(state));
+  const keys = generateG04RunnerReceiptKeyPair();
+  const common = ['--run', '95', '--pr', '42', '--profile-id', profile.id];
+  const claim = (id) =>
+    environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...common,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      id,
+      '--runner-public-key',
+      keys.publicKeyBase64,
+    ]);
+  try {
+    assert.equal(claim('different opaque identity').status, 2);
+    const claimed = claim(reviewerId);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimId = JSON.parse(claimed.stdout).claimId;
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...common,
+      '--claim-id',
+      claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--diagnostics-json',
+      JSON.stringify(diagnostics),
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    const saved = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.agent_mcp_profile_dispositions[profile.id];
+    assert.equal(saved.reviewerId, reviewerId);
+    assert.equal(saved.retryAllowed, false);
+    assert.equal(saved.state, 'INCONCLUSIVE');
+    assert.deepEqual(saved.failureDiagnostics, diagnostics);
+    const altered = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...common,
+      '--claim-id',
+      claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--diagnostics-json',
+      JSON.stringify({ ...diagnostics, checks: { serverSummaryPresent: true } }),
+    ]);
+    assert.equal(altered.status, 2);
+    assert.match(altered.stderr, /TERMINAL_DIAGNOSTICS_MISMATCH/);
+    const unsafe = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...common,
+      '--claim-id',
+      claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--diagnostics-json',
+      JSON.stringify({ ...diagnostics, checks: { rawOutput: 'private fixture text' } }),
+    ]);
+    assert.equal(unsafe.status, 2);
+    assert.match(unsafe.stderr, /DIAGNOSTICS_INVALID/);
+    assert.equal(claim(reviewerId).status, 2);
+    const unchanged = environment.readState();
+    unchanged.candidateRefreshRange = `${sha('b')}...HEAD`;
+    unchanged.candidateRefreshPaths = [];
+    fs.writeFileSync(environment.statePath, JSON.stringify(unchanged));
+    const merged = environment.execute(['epoch:merge', '--run', '95', '--pr', '42']);
+    assert.equal(merged.status, 0, merged.stderr);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C07 v4 profile result reaches the sanitized report validator', () => {
+  const profile = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
+  assert.ok(profile);
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(profile);
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const commonArgs = ['--run', '95', '--pr', '42', '--profile-id', profile.id];
+  try {
+    const claim = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...commonArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claim.status, 0, claim.stderr);
+    const claimId = JSON.parse(claim.stdout).claimId;
+    const state = environment.readState();
+    state.dirty = `?? ${profile.reportPath}`;
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const result = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...commonArgs,
+      '--claim-id',
+      claimId,
+      '--state',
+      'REPORT_WRITTEN',
+      '--report-sha256',
+      'e'.repeat(64),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REPORT_INVALID:/u);
+    assert.doesNotMatch(result.stderr, /AGENT_MCP_PROFILE_REPORT_VALIDATOR_MISSING/u);
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('G06 v2 Harness profile claim persists the exact successful CI run and check identities', () => {
   const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(G06_V2_PROFILE);
   const keyPair = generateG04RunnerReceiptKeyPair();
@@ -4827,6 +5170,102 @@ function p06V3ReportRefreshEnvironment(disposition, overrides = {}) {
   return { environment, run, epoch };
 }
 
+function renderSubjectCardV5ReportWrittenDisposition() {
+  return {
+    claimId: `profile-run-95-pr-42-${sha('b').slice(0, 12)}-1700000000000`,
+    profileId: RENDER_SUBJECT_CARD_V5_PROFILE.id,
+    state: 'REPORT_WRITTEN',
+    sourceCandidateSha: sha('b'),
+    bundleSha256: 'c'.repeat(64),
+    reportPath: RENDER_SUBJECT_CARD_V5_PROFILE.reportPath,
+    reportSha256: 'd'.repeat(64),
+    reportWritten: true,
+    retryAllowed: false,
+  };
+}
+
+function renderSubjectCardV5ReportRefreshEnvironment(disposition, overrides = {}) {
+  const { run, epoch } = passedCandidateFixture();
+  const prNumber = 42;
+  const branch = `codex/epoch-${RENDER_SUBJECT_CARD_V5_PROFILE.epochId}`;
+  const ciRunId = '39915023185';
+  const ciRunUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
+  run.state = 'EPOCH_ACTIVE';
+  run.profile = 'AUTONOMOUS_EVOLUTION';
+  run.active_epoch_pr = prNumber;
+  run.pending_epoch = null;
+  run.next_action = `RESUME_PR_${prNumber}`;
+  epoch.epoch_id = RENDER_SUBJECT_CARD_V5_PROFILE.epochId;
+  epoch.branch = branch;
+  epoch.base_branch = 'master';
+  epoch.pr_number = prNumber;
+  epoch.base_sha = sha('a');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.candidate_sha = sha('b');
+  epoch.review_pass_sha = sha('b');
+  epoch.state = 'REVIEW_PASSED';
+  epoch.advances_frontier_ids = [];
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: ciRunUrl };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'The signed v5 report and its matrix route are ready for refresh.',
+    why_not_extend_further: 'Image-bearing visual fidelity remains separate acceptance work.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'Preserve the terminal v5 report and exact renderer matrix boundary.',
+    agent_mcp_profile_dispositions: {
+      [RENDER_SUBJECT_CARD_V5_PROFILE.id]: structuredClone(disposition),
+    },
+  };
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: `gpt-6-luna-max-run95-pr${prNumber}-round1`,
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  const refreshPaths = [
+    RENDER_SUBJECT_CARD_V5_PROFILE.reportPath,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+    'scripts/agent-harness.mjs',
+    'scripts/check-tool-acceptance-table.py',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/test_acceptance_evidence.py',
+    'tests/integration/tool-e2e-acceptance.test.ts',
+    'tests/harness/agent-harness-cli.test.mjs',
+  ];
+  const environment = createMockEnvironment({
+    runIssueNumber: 95,
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch,
+    featureBranch: branch,
+    featureHeadSha: sha('e'),
+    baseSha: sha('a'),
+    candidateRefreshRange: `${sha('b')}...${sha('e')}`,
+    candidateRefreshPaths: refreshPaths,
+    changedPaths: [
+      'packages/renderer/src/templates/SubjectCard.tsx',
+      'tests/render/subject-card-compact-typography.test.ts',
+      ...refreshPaths,
+    ],
+    checks: mandatoryChecks.map((name, index) => ({
+      name,
+      status: 'COMPLETED',
+      conclusion: 'SUCCESS',
+      detailsUrl: `${ciRunUrl}/job/${120286538651 + index}`,
+    })),
+    draft: false,
+    ...overrides,
+  });
+  return { environment, epoch, refreshPaths };
+}
+
 test('C03 report Candidate refresh accepts only the report and bounded acceptance evidence', () => {
   const disposition = c03ReportWrittenDisposition();
   const { environment } = c03ReportRefreshEnvironment(disposition);
@@ -5208,6 +5647,90 @@ test('P06 v3 report Candidate refresh rejects runtime and unrelated paths or bun
     );
   } finally {
     environment.cleanup();
+  }
+});
+
+test('v5 subject-card Candidate refresh allows its exact matrix integration regression', () => {
+  const disposition = renderSubjectCardV5ReportWrittenDisposition();
+  const { environment, epoch } = renderSubjectCardV5ReportRefreshEnvironment(disposition);
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('e'),
+        ci: {
+          url: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/39915023185',
+        },
+        candidate_refresh_reason:
+          'Register the signed v5 renderer result in the exact model-to-MCP integration matrix.',
+        scope_closure: epoch.scope_closure,
+        corrective_closure: epoch.corrective_closure,
+        adversarial_preflight: epoch.adversarial_preflight,
+      }),
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_READY');
+    assert.equal(stored.candidate_sha, sha('e'));
+    assert.deepEqual(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[
+        RENDER_SUBJECT_CARD_V5_PROFILE.id
+      ],
+      disposition,
+    );
+  } finally {
+    environment.cleanup();
+  }
+
+  const dispositionWithRuntimePath = renderSubjectCardV5ReportWrittenDisposition();
+  const refreshPaths = [
+    RENDER_SUBJECT_CARD_V5_PROFILE.reportPath,
+    'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
+    'docs/product/frontier-ledger.json',
+    'scripts/agent-harness.mjs',
+    'scripts/check-tool-acceptance-table.py',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'scripts/test_acceptance_evidence.py',
+    'tests/integration/tool-e2e-acceptance.test.ts',
+    'tests/harness/agent-harness-cli.test.mjs',
+    'packages/renderer/src/templates/SubjectCard.tsx',
+  ];
+  const unsafe = renderSubjectCardV5ReportRefreshEnvironment(dispositionWithRuntimePath, {
+    candidateRefreshPaths: refreshPaths,
+    changedPaths: refreshPaths,
+  });
+  try {
+    const result = unsafe.environment.execute([
+      'candidate:check',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(unsafe.environment, {
+        candidate_sha: sha('e'),
+        ci: {
+          url: 'https://github.com/PariyaProject/BangumiAgentKit/actions/runs/39915023185',
+        },
+        candidate_refresh_reason: 'Reject any renderer runtime change after the v5 report.',
+        scope_closure: unsafe.epoch.scope_closure,
+        corrective_closure: unsafe.epoch.corrective_closure,
+        adversarial_preflight: unsafe.epoch.adversarial_preflight,
+      }),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+    assert.equal(
+      parseControlBlock(unsafe.environment.readState().prBody, EPOCH_MARKER).candidate_sha,
+      sha('b'),
+    );
+  } finally {
+    unsafe.environment.cleanup();
   }
 });
 
@@ -8707,9 +9230,12 @@ function c07RenderComparisonOfflineMergeEnvironment({
   const frontierLedger = JSON.parse(
     fs.readFileSync(path.join(root, 'docs/product/frontier-ledger.json'), 'utf8'),
   );
+  const c07Record = frontierLedger.records.find((item) => item.id === 'C07');
+  if (!c07Record.source_refs.includes(profile.selectionEvidencePath)) {
+    c07Record.source_refs.push(profile.selectionEvidencePath);
+  }
   if (reportWritten) {
-    const c07 = frontierLedger.records.find((item) => item.id === 'C07');
-    c07.source_refs.push(profile.reportPath);
+    c07Record.source_refs.push(profile.reportPath);
   }
   return createMockEnvironment({
     runBody: renderRunBody(run),
@@ -8794,6 +9320,36 @@ test('C07 renderer matrix v3 Epoch uses its own profile and merges a terminal no
   }
 });
 
+test('C07 renderer matrix v4 Epoch cannot merge without its exact terminal profile result', () => {
+  const environment = c07RenderComparisonOfflineMergeEnvironment({
+    profileId: C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
+  });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^C07_RENDER_COMPARISON_OFFLINE_RECONCILIATION_REQUIRED:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C07 renderer matrix v4 REPORT_WRITTEN reaches signed report validation', () => {
+  const environment = c07RenderComparisonOfflineMergeEnvironment({
+    terminal: true,
+    reportWritten: true,
+    profileId: C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
+  });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^C07_RENDER_COMPARISON_OFFLINE_REPORT_INVALID:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('C07 renderer matrix Epoch accepts a removed, hash-bound inconclusive report only as no-credit', () => {
   const environment = c07RenderComparisonOfflineMergeEnvironment({
     terminal: true,
@@ -8818,6 +9374,78 @@ test('C07 REPORT_WRITTEN with a null unaccepted digest reaches signed report val
     assert.equal(result.status, 2);
     assert.match(result.stderr, /^C07_RENDER_COMPARISON_OFFLINE_REPORT_INVALID:/u);
     assert.equal(environment.readState().prState, 'OPEN');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C07 v4 frontier binding is amended through Harness without granting scenario credit', () => {
+  const { run, epoch } = controlFixture();
+  const profile = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
+  const prNumber = 223;
+  run.state = 'EPOCH_ACTIVE';
+  run.active_epoch_pr = prNumber;
+  run.outer_sol.consumed = 17;
+  run.outer_sol.product.consumed = 16;
+  epoch.epoch_id = profile.epochId;
+  epoch.base_sha = sha('a');
+  epoch.base_branch = 'master';
+  epoch.branch = `codex/epoch-${profile.epochId}`;
+  epoch.pr_number = prNumber;
+  epoch.state = 'CORRECTIVE_REQUIRED';
+  epoch.advances_frontier_ids = ['OP-008'];
+  epoch.review.max = 6;
+  epoch.review.consumed = 1;
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: '/root/pr271_review',
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'CORRECTIVE_REQUIRED',
+      findings: [{ id: 'c07-v4-frontier-binding', priority: 'P1', summary: 'Bind C07.' }],
+    },
+  ];
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'No profile claim has been made.',
+  };
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    draft: false,
+    branch: epoch.branch,
+    baseBranch: 'master',
+    featureBranch: epoch.branch,
+    baseSha: sha('a'),
+    featureHeadSha: sha('b'),
+  });
+  try {
+    const result = environment.execute([
+      'epoch:frontier-amend',
+      '--run',
+      '95',
+      '--pr',
+      String(prNumber),
+      '--frontier-id',
+      'C07',
+      '--reason',
+      'The registered v4 profile targets C07; preserve the scenario as UNASSESSED while binding its matrix evidence.',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+
+    const state = environment.readState();
+    const storedEpoch = parseControlBlock(state.prBody, EPOCH_MARKER);
+    const storedRun = parseControlBlock(state.runBody, RUN_MARKER);
+    assert.deepEqual(storedEpoch.advances_frontier_ids, ['OP-008', 'C07']);
+    assert.equal(storedEpoch.state, 'CORRECTIVE_REQUIRED');
+    assert.equal(storedEpoch.review.consumed, 1);
+    assert.equal(storedEpoch.review_history[0].verdict, 'CORRECTIVE_REQUIRED');
+    assert.equal(storedRun.outer_sol.consumed, 17);
+    assert.equal(storedRun.outer_sol.product.consumed, 16);
+    assert.deepEqual(storedRun.selection_amendment_history.at(-1).new_frontiers, ['OP-008', 'C07']);
+    const c07 = environment.readFrontierLedger().records.find((record) => record.id === 'C07');
+    assert.equal(c07.status, 'UNASSESSED');
   } finally {
     environment.cleanup();
   }
@@ -9570,5 +10198,216 @@ test('CLI post-merge ancestry failure records the merged PR and truthful blocker
     assert.equal(parseControlBlock(state.runBody, RUN_MARKER).state, 'INTEGRATION_BLOCKED');
   } finally {
     environment.cleanup();
+  }
+});
+
+test('v5 subject-card result routes its report through the registered validator during repair', () => {
+  const harnessRoot = createIsolatedHarnessRoot([RENDER_SUBJECT_CARD_V5_PROFILE.reportPath]);
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(
+    RENDER_SUBJECT_CARD_V5_PROFILE,
+    { harnessRoot },
+  );
+  const runnerKeyPair = generateKeyPairSync('ed25519');
+  const runnerPublicKey = runnerKeyPair.publicKey
+    .export({ type: 'spki', format: 'der' })
+    .toString('base64');
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--profile-id',
+      RENDER_SUBJECT_CARD_V5_PROFILE.id,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      runnerPublicKey,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claim = JSON.parse(claimed.stdout);
+
+    const reportPath = path.join(harnessRoot, RENDER_SUBJECT_CARD_V5_PROFILE.reportPath);
+    fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+    const reportBytes = Buffer.from('{"invalid":true}\n', 'utf8');
+    fs.writeFileSync(reportPath, reportBytes);
+    const state = environment.readState();
+    state.dirty = ` M scripts/agent-harness.mjs\n?? ${RENDER_SUBJECT_CARD_V5_PROFILE.reportPath}`;
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const result = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--profile-id',
+      RENDER_SUBJECT_CARD_V5_PROFILE.id,
+      '--claim-id',
+      claim.claimId,
+      '--state',
+      'REPORT_WRITTEN',
+      '--report-sha256',
+      createHash('sha256').update(reportBytes).digest('hex'),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REPORT_INVALID:/u);
+    assert.doesNotMatch(result.stderr, /AGENT_MCP_PROFILE_REPORT_VALIDATOR_MISSING/u);
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).adversarial_preflight
+        .agent_mcp_profile_dispositions[RENDER_SUBJECT_CARD_V5_PROFILE.id].state,
+      'CLAIMED',
+    );
+  } finally {
+    environment.cleanup();
+    fs.rmSync(harnessRoot, { recursive: true, force: true });
+  }
+});
+
+function terminalRecoveryEnvironment(extra = {}) {
+  const { run, epoch, proof, claim } = terminalRecoveryFixture();
+  return {
+    claim,
+    run,
+    epoch,
+    environment: createMockEnvironment({
+      runIssueNumber: 95,
+      runBody: renderRunBody(run),
+      prBody: renderEpochBody(epoch),
+      branch: 'master',
+      featureBranch: epoch.branch,
+      featureHeadSha: proof.pr.headRefOid,
+      draft: false,
+      candidateIsAncestor: true,
+      gitObjects: {
+        [`${LEGACY_R04_TERMINAL_RECOVERY.sourceSha}:scripts/acceptance/agent-mcp-profile-registry.json`]:
+          Buffer.from(
+            JSON.stringify({ schemaVersion: 1, profiles: [proof.sourceProfile] }),
+          ).toString('base64'),
+      },
+      repositoryLabels: Object.fromEntries(proof.labels.map((label) => [label.name, label])),
+      workflowRuns: {
+        [claim.ciRunId]: {
+          headSha: claim.sourceCandidateSha,
+          status: 'completed',
+          conclusion: 'success',
+          jobs: claim.ciChecks.map((check) => ({
+            name: check.name,
+            status: 'completed',
+            conclusion: 'success',
+          })),
+        },
+      },
+      ...extra,
+    }),
+  };
+}
+const terminalRecoveryArgs = (claim) => [
+  'epoch:resume-terminal-failure',
+  '--run',
+  '95',
+  '--pr',
+  '267',
+  '--expected-claim-sha256',
+  canonicalHash(claim),
+];
+
+test('terminal recovery CLI verifies historical proof and preserves the exact claim without query/merge authority', () => {
+  const { environment, claim, epoch, run } = terminalRecoveryEnvironment();
+  try {
+    const result = environment.execute(terminalRecoveryArgs(claim));
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).state, 'TERMINAL_RECOVERY_RESUMED');
+    const state = environment.readState();
+    const savedRun = parseControlBlock(state.runBody, RUN_MARKER);
+    const savedEpoch = parseControlBlock(state.prBody, EPOCH_MARKER);
+    assert.equal(savedRun.active_epoch_pr, 267);
+    assert.equal(savedEpoch.state, 'CORRECTIVE_REQUIRED');
+    assert.equal(savedEpoch.candidate_sha, null);
+    assert.deepEqual(
+      savedEpoch.adversarial_preflight.agent_mcp_profile_dispositions[claim.profileId],
+      claim,
+    );
+    assert.deepEqual(savedEpoch.review, epoch.review);
+    assert.deepEqual(savedRun.outer_sol, run.outer_sol);
+    assert.equal(
+      state.calls.some((call) => call.args[0] === 'pr' && call.args[1] === 'merge'),
+      false,
+    );
+    const patchCount = state.calls.filter((call) => call.args.includes('PATCH')).length;
+    assert.equal(patchCount, 3);
+    const replay = environment.execute(terminalRecoveryArgs(claim));
+    assert.equal(replay.status, 0, replay.stderr);
+    assert.equal(JSON.parse(replay.stdout).state, 'TERMINAL_RECOVERY_ALREADY_RESUMED');
+    assert.equal(
+      environment.readState().calls.filter((call) => call.args.includes('PATCH')).length,
+      patchCount,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('terminal recovery CLI resumes either partial control write without duplicate history or consumption', () => {
+  for (const failure of [{ failNextPullRequestPatch: true }, { failIssuePatchAt: 2 }]) {
+    const { environment, claim, run } = terminalRecoveryEnvironment(failure);
+    try {
+      const interrupted = environment.execute(terminalRecoveryArgs(claim));
+      assert.notEqual(interrupted.status, 0);
+      const pending = parseControlBlock(environment.readState().runBody, RUN_MARKER);
+      assert.equal(pending.state, 'TERMINAL_RECOVERY_PENDING');
+      assert.equal(pending.active_epoch_pr, null);
+      const brief = environment.execute([
+        'continuation:show',
+        '--run',
+        '95',
+        '--goal-state',
+        'active',
+      ]);
+      assert.equal(brief.status, 0, brief.stderr);
+      assert.equal(JSON.parse(brief.stdout).next_action, 'RESUME_TERMINAL_RECOVERY');
+      const resumed = environment.execute(terminalRecoveryArgs(claim));
+      assert.equal(resumed.status, 0, resumed.stderr);
+      const savedRun = parseControlBlock(environment.readState().runBody, RUN_MARKER);
+      const savedEpoch = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+      assert.equal(savedRun.terminal_recovery_history.length, 1);
+      assert.equal(savedEpoch.terminal_recovery_history.length, 1);
+      assert.deepEqual(savedRun.outer_sol, run.outer_sol);
+    } finally {
+      environment.cleanup();
+    }
+  }
+});
+
+test('terminal recovery CLI refuses another active Epoch, changed claim, missing CI or orphan report before any control mutation', () => {
+  for (const kind of ['active', 'claim', 'ci', 'report']) {
+    const fixture = terminalRecoveryEnvironment();
+    const { environment, claim } = fixture;
+    try {
+      const state = environment.readState();
+      if (kind === 'active') {
+        const run = parseControlBlock(state.runBody, RUN_MARKER);
+        run.active_epoch_pr = 274;
+        run.state = 'EPOCH_ACTIVE';
+        state.runBody = renderRunBody(run);
+      }
+      if (kind === 'claim') claim.finishedAt = 'changed after inspection';
+      if (kind === 'ci') state.workflowRuns[claim.ciRunId].conclusion = 'failure';
+      if (kind === 'report')
+        state.treePaths = ['docs/live-probes/synthetic-terminal-recovery.json'];
+      fs.writeFileSync(environment.statePath, JSON.stringify(state));
+      const result = environment.execute(terminalRecoveryArgs(claim));
+      assert.notEqual(result.status, 0, kind);
+      assert.equal(
+        environment.readState().calls.some((call) => call.args.includes('PATCH')),
+        false,
+        kind,
+      );
+    } finally {
+      environment.cleanup();
+    }
   }
 });

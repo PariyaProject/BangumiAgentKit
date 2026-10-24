@@ -40,11 +40,18 @@ P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_PROFILE = next(
     if isinstance(profile, dict)
     and profile.get('id') == 'p01-person-director-offline-matrix-v1-20261023'
 )
-RENDER_SUBJECT_CARD_OFFLINE_PROFILE = next(
-    profile for profile in PROFILE_REGISTRY.get('profiles', [])
+RENDER_SUBJECT_CARD_OFFLINE_PROFILES = {
+    profile['id']: profile
+    for profile in PROFILE_REGISTRY.get('profiles', [])
     if isinstance(profile, dict)
-    and profile.get('id') == 'render-subject-card-compact-typography-agent-mcp-v3'
-)
+    and profile.get('id') in {
+        'render-subject-card-compact-typography-agent-mcp-v3',
+        'render-subject-card-compact-typography-agent-mcp-v5',
+    }
+}
+RENDER_SUBJECT_CARD_OFFLINE_PROFILE = RENDER_SUBJECT_CARD_OFFLINE_PROFILES[
+    'render-subject-card-compact-typography-agent-mcp-v3'
+]
 P03_V4_AGENT_MCP_PROFILE = next(
     profile for profile in PROFILE_REGISTRY.get('profiles', [])
     if isinstance(profile, dict)
@@ -162,7 +169,9 @@ def render_subject_card_offline_agent_mcp_matches(
     """Map only the fixed synthetic render_subject_card call to its Agent/MCP cell."""
     if not isinstance(report, dict):
         return False
-    profile = RENDER_SUBJECT_CARD_OFFLINE_PROFILE
+    profile = RENDER_SUBJECT_CARD_OFFLINE_PROFILES.get(report.get('profileId'))
+    if profile is None:
+        return False
     calls = profile.get('calls')
     expected_arguments = calls[0].get('arguments') if isinstance(calls, list) and len(calls) == 1 else None
     if not isinstance(expected_arguments, dict):
@@ -170,6 +179,10 @@ def render_subject_card_offline_agent_mcp_matches(
     registry_sha256 = hashlib.sha256(json.dumps(
         profile, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
     ).encode('utf-8')).hexdigest()
+    profile_label = (
+        'codex-luna-max-offline-agent-mcp-matrix-'
+        + str(profile.get('id', '')).rsplit('-', 1)[-1]
+    )
     arguments_sha256 = hashlib.sha256(json.dumps(
         [call.get('arguments') for call in calls] if isinstance(calls, list) else None,
         sort_keys=True, separators=(',', ':'), ensure_ascii=False,
@@ -221,11 +234,13 @@ def render_subject_card_offline_agent_mcp_matches(
         and report.get('epochId') == profile.get('epochId')
         and type(report.get('runNumber')) is int and report.get('runNumber') == 95
         and report.get('frontierId') == 'OP-008' and report.get('scenarioId') is None
-        and report.get('profile') == 'codex-luna-max-offline-agent-mcp-matrix-v3'
+        and report.get('profile') == profile_label
         and report.get('model') == 'gpt-6-luna' and report.get('reasoningEffort') == 'max'
         and report.get('toolName') == profile.get('toolName')
         and report.get('argumentProfile') == profile.get('argumentProfile')
-        and expected_arguments == {'subjectId': 991903, 'includeCollection': False}
+        and expected_arguments.get('includeCollection') is False
+        and type(expected_arguments.get('subjectId')) is int
+        and expected_arguments.get('subjectId') > 0
         and report.get('expectedArgumentsSha256') == arguments_sha256
         and report.get('registrySha256') == registry_sha256
         and report.get('networkMode') == profile.get('networkMode')
@@ -712,13 +727,19 @@ def p01_person_activity_director_offline_report_matches(
 
 
 R01_OFFLINE_TOOL_NAME = 'bangumi.get_subject_relations'
-R01_OFFLINE_REPORT_PATH = 'docs/live-probes/r01-relations-offline-agent-mcp-run95.json'
-R01_OFFLINE_REPORT_KIND = 'codex_cli_r01_subject_relations_offline_agent_mcp_matrix'
-R01_OFFLINE_PROFILE_ID = 'r01-subject-relations-offline-agent-mcp-v1'
-R01_OFFLINE_EPOCH_ID = 'run95-r01-subject-relations-matrix-offline-20261016'
-R01_OFFLINE_ARGUMENT_PROFILE = 'fixed-r01-offline-relations-990902-one-row-v1'
-R01_OFFLINE_ANSWER_CHECK_METHOD = 'r01-synthetic-direct-relation-execution-only-v1'
-R01_OFFLINE_NETWORK_MODE = 'run95-r01-relations-offline-v1'
+R01_OFFLINE_PROFILE = next(
+    profile for profile in PROFILE_REGISTRY.get('profiles', [])
+    if isinstance(profile, dict)
+    and profile.get('id') == 'r01-subject-relations-text-projection-agent-mcp-v2'
+)
+R01_OFFLINE_REPORT_PATH = R01_OFFLINE_PROFILE['reportPath']
+R01_OFFLINE_REPORT_KIND = R01_OFFLINE_PROFILE['evidenceKind']
+R01_OFFLINE_PROFILE_ID = R01_OFFLINE_PROFILE['id']
+R01_OFFLINE_EPOCH_ID = R01_OFFLINE_PROFILE['epochId']
+R01_OFFLINE_ARGUMENT_PROFILE = R01_OFFLINE_PROFILE['argumentProfile']
+R01_OFFLINE_ANSWER_CHECK_METHOD = R01_OFFLINE_PROFILE['answerCheckMethod']
+R01_OFFLINE_NETWORK_MODE = R01_OFFLINE_PROFILE['networkMode']
+R01_OFFLINE_MAX_ANSWER_BYTES = R01_OFFLINE_PROFILE['maxAnswerBytes']
 G06_CAST_OFFLINE_V2_PROFILE = next(
     profile for profile in PROFILE_REGISTRY.get('profiles', [])
     if isinstance(profile, dict) and profile.get('id') == 'g06-cast-offline-agent-mcp-matrix-v2'
@@ -877,17 +898,10 @@ R02_POSITIVE_ANSWER_CHECK_FIELDS = {
     'exactAnonymousRequestScope', 'positiveRowsMatchSourceContract', 'boundedClaimsOnly',
     'exactAcknowledgement', 'privacyPreserved',
 }
-R01_OFFLINE_RESULT_SUMMARY = {
-    'state': 'observed',
-    'sourceDirection': 'source_subject_to_returned_target',
-    'responseRowsObserved': 1,
-    'rowsReturned': 1,
-    'schemaDriftRows': 0,
-    'truncated': False,
-    'paginationAvailable': False,
-    'totalCountAvailable': False,
-    'completeness': 'not_provided_by_source',
-    'relationLabels': ['改编'],
+R01_OFFLINE_RESULT_SUMMARY_FIELDS = {
+    'sourceRowsObserved', 'sourceRowsReturned', 'sourceSchemaDriftRows', 'sourceTruncated',
+    'textRowsIncluded', 'textRowsOmitted', 'textUtf8Bytes', 'structuredContentAvailable',
+    'textProjectionConsistent', 'firstDisplayedRelationMatched',
 }
 R01_OFFLINE_FIXTURE = {
     'profile': R01_OFFLINE_NETWORK_MODE,
@@ -919,9 +933,8 @@ R01_OFFLINE_PRIVACY = {
     'credentialsStored': False,
 }
 R01_OFFLINE_ANSWER_CHECK_FIELDS = {
-    'exactRegisteredProfile', 'oneAllowedMcpTool', 'fixedArguments',
-    'exactCandidateBundle', 'offlineFixtureOnly', 'oneExpectedLocalResponse',
-    'noAssetRequests', 'exactAcknowledgement', 'privacyPreserved',
+    'exactArguments', 'exactlyOneCompletedToolCall', 'exactSyntheticSourceResult',
+    'textProjectionConsistent', 'textBudgetVerified', 'exactAnswerShape', 'answerMatchesSource',
 }
 LOCAL_AUTH_DENIAL_TEST_PROFILE = 'bangumi-tool-registry-no-account-auth-denial-v1'
 LOCAL_AUTH_DENIAL_TESTS = {
@@ -1055,6 +1068,28 @@ def r01_offline_agent_mcp_matches(name: str, relative_path: str, report: object)
         return False
     error_count = report.get('codexErrorItemCount')
     answer_checks = report.get('answerChecks')
+    result_summary = report.get('resultSummary')
+    answer_bytes = report.get('answerUtf8Bytes')
+    result_summary_matches = (
+        isinstance(result_summary, dict)
+        and set(result_summary) == R01_OFFLINE_RESULT_SUMMARY_FIELDS
+        and type(result_summary.get('sourceRowsObserved')) is int
+        and result_summary.get('sourceRowsObserved') == 30
+        and type(result_summary.get('sourceRowsReturned')) is int
+        and result_summary.get('sourceRowsReturned') == 30
+        and type(result_summary.get('sourceSchemaDriftRows')) is int
+        and result_summary.get('sourceSchemaDriftRows') == 0
+        and result_summary.get('sourceTruncated') is False
+        and type(result_summary.get('textRowsIncluded')) is int
+        and 1 <= result_summary['textRowsIncluded'] < 30
+        and type(result_summary.get('textRowsOmitted')) is int
+        and result_summary['textRowsOmitted'] == 30 - result_summary['textRowsIncluded']
+        and type(result_summary.get('textUtf8Bytes')) is int
+        and 0 < result_summary['textUtf8Bytes'] <= 3600
+        and result_summary.get('structuredContentAvailable') is True
+        and result_summary.get('textProjectionConsistent') is True
+        and result_summary.get('firstDisplayedRelationMatched') is True
+    )
     return (
         name == R01_OFFLINE_TOOL_NAME
         and relative_path == R01_OFFLINE_REPORT_PATH
@@ -1068,7 +1103,7 @@ def r01_offline_agent_mcp_matches(name: str, relative_path: str, report: object)
         and report.get('acceptanceScope') == 'agent-mcp-matrix-only'
         and report.get('epochId') == R01_OFFLINE_EPOCH_ID
         and report.get('profileId') == R01_OFFLINE_PROFILE_ID
-        and report.get('profile') == 'codex-luna-max-offline-agent-mcp-matrix-v1'
+        and report.get('profile') == 'codex-luna-max-offline-agent-mcp-matrix-v2'
         and report.get('model') == 'gpt-6-luna'
         and report.get('reasoningEffort') == 'max'
         and report.get('toolName') == R01_OFFLINE_TOOL_NAME
@@ -1101,7 +1136,11 @@ def r01_offline_agent_mcp_matches(name: str, relative_path: str, report: object)
         and report.get('deniedCallCount') == 0
         and report.get('networkMode') == R01_OFFLINE_NETWORK_MODE
         and report.get('answerCheckMethod') == R01_OFFLINE_ANSWER_CHECK_METHOD
-        and report.get('resultSummary') == R01_OFFLINE_RESULT_SUMMARY
+        and result_summary_matches
+        and isinstance(report.get('answerSha256'), str)
+        and re.fullmatch(r'[0-9a-f]{64}', report['answerSha256']) is not None
+        and type(answer_bytes) is int
+        and 0 < answer_bytes <= R01_OFFLINE_MAX_ANSWER_BYTES
         and report.get('offlineFixture') == R01_OFFLINE_FIXTURE
         and report.get('networkBoundary') == R01_OFFLINE_NETWORK_BOUNDARY
         and report.get('privacy') == R01_OFFLINE_PRIVACY

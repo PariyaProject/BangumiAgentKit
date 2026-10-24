@@ -492,6 +492,32 @@
       ]
     },
     {
+      "id": "r01-subject-relations-text-projection-agent-mcp-v2",
+      "frontierId": "R01",
+      "epochId": "run95-r01-relations-text-projection-offline-matrix-v2-20261023",
+      "toolName": "bangumi.get_subject_relations",
+      "argumentProfile": "fixed-r01-synthetic-relations-991408-30-row-mcp-text-projection-v2",
+      "claimLabelName": "harness-r95-r01-relations-text-v2-claimed",
+      "reportPath": "docs/live-probes/r01-relations-text-projection-offline-agent-mcp-v2-run95.json",
+      "selectionEvidencePath": "docs/research/run95-r01-relations-text-projection-offline-matrix-v2-contract-2026-10-23.md",
+      "evidenceKind": "codex_cli_r01_relations_text_projection_offline_agent_mcp_matrix_v2",
+      "answerCheckMethod": "r01-mcp-text-projection-omission-boundary-v2",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-r01-relations-text-projection-offline-v2",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 1536,
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 991408,
+            "includeEvidence": true
+          }
+        }
+      ]
+    },
+    {
       "id": "r02-positive-direct-relations-agent-mcp-v1",
       "frontierId": "R02",
       "epochId": "run95-r02-positive-direct-relations-agent-mcp-20261016",
@@ -1090,6 +1116,51 @@
       ]
     },
     {
+      "id": "c07-render-comparison-offline-agent-mcp-matrix-v4",
+      "frontierId": "C07",
+      "epochId": "run95-renderer-v19-c07-two-cohort-v4-20261023",
+      "toolName": "bangumi.render_subject_cohort_comparison",
+      "argumentProfile": "fixed-c07-synthetic-cohorts-f-g-render-comparison-matrix-v4",
+      "claimLabelName": "harness-r95-c07-render-v4-claimed",
+      "reportPath": "docs/live-probes/c07-render-comparison-offline-agent-mcp-matrix-v4-run95.json",
+      "selectionEvidencePath": "docs/research/run95-c07-two-cohort-v4-selection-2026-10-23.md",
+      "evidenceKind": "codex_cli_c07_render_comparison_offline_agent_mcp_matrix_v4",
+      "answerCheckMethod": "c07-exact-synthetic-two-cohort-render-comparison-execution-only-v4",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-c07-render-comparison-synthetic-offline-matrix-v4",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 1024,
+      "calls": [
+        {
+          "toolName": "bangumi.render_subject_cohort_comparison",
+          "arguments": {
+            "cohorts": [
+              {
+                "label": "合成样本 F",
+                "query": {
+                  "keyword": "run95 c07 synthetic cohort f offline matrix 20261023",
+                  "media": "anime",
+                  "resultMode": "all",
+                  "limit": 1
+                }
+              },
+              {
+                "label": "合成样本 G",
+                "query": {
+                  "keyword": "run95 c07 synthetic cohort g offline matrix 20261023",
+                  "media": "anime",
+                  "resultMode": "all",
+                  "limit": 1
+                }
+              }
+            ],
+            "maxSubjects": 1
+          }
+        }
+      ]
+    },
+    {
       "id": "s05-bounded-non-tv-voice-agent-mcp-v1",
       "frontierId": "S05",
       "epochId": "run95-s05-bounded-non-tv-voice-agent-mcp-20261017",
@@ -1174,6 +1245,32 @@
           "arguments": {
             "subjectId": 991020,
             "includeEvidence": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "r03-two-hop-rating-analysis-offline-agent-mcp-v1",
+      "frontierId": "R03",
+      "epochId": "run95-r03-two-hop-rating-agent-mcp-offline-20261023",
+      "toolName": "bangumi.get_subject_relations",
+      "argumentProfile": "fixed-r03-two-hop-rating-analysis-993811-v1",
+      "claimLabelName": "harness-r95-r03-two-hop-rating-v1-claimed",
+      "reportPath": "docs/live-probes/r03-two-hop-rating-analysis-agent-mcp-matrix-v1-run95.json",
+      "selectionEvidencePath": "docs/research/run95-r03-two-hop-rating-agent-mcp-offline-matrix-v1-2026-10-23.md",
+      "evidenceKind": "codex_cli_r03_two_hop_rating_analysis_offline_agent_mcp_matrix_v1",
+      "answerCheckMethod": "r03-synthetic-two-hop-rating-analysis-execution-only-v1",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-r03-two-hop-rating-analysis-offline-matrix-v1",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 1024,
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 993811,
+            "analysisMode": "observed_two_hop_rating"
           }
         }
       ]
@@ -1588,6 +1685,32 @@
           "toolName": "bangumi.render_subject_card",
           "arguments": {
             "subjectId": 991904,
+            "includeCollection": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "render-subject-card-compact-typography-agent-mcp-v5",
+      "frontierId": "OP-008",
+      "epochId": "run95-op008-render-card-compact-typography-v5-20261023",
+      "toolName": "bangumi.render_subject_card",
+      "argumentProfile": "fixed-ux002-subject-card-991905-no-collection-default-scale-075-v5",
+      "claimLabelName": "harness-r95-render-card-typography-v5-claimed",
+      "reportPath": "docs/live-probes/render-subject-card-compact-typography-v5-agent-mcp-run95.json",
+      "selectionEvidencePath": "docs/research/run95-ux002-render-subject-card-compact-typography-v5-source-contract-2026-10-23.md",
+      "evidenceKind": "codex_cli_render_subject_card_compact_typography_v5_agent_mcp",
+      "answerCheckMethod": "render-subject-card-compact-typography-v5-artifact",
+      "acceptanceScope": "agent-mcp-matrix-only",
+      "networkMode": "run95-render-subject-card-compact-typography-v5",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "maxAnswerBytes": 128,
+      "calls": [
+        {
+          "toolName": "bangumi.render_subject_card",
+          "arguments": {
+            "subjectId": 991905,
             "includeCollection": false
           }
         }

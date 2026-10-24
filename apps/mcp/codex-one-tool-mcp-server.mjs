@@ -70,9 +70,7 @@ import {
   assertA01AggregateCohortOfflineProfile,
   createA01AggregateCohortOfflineFetch,
 } from '../../scripts/lib/a01-aggregate-cohort-offline-matrix-profile.mjs';
-import {
-  createP06RenderPersonProfileOfflineRuntime,
-} from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
+import { createP06RenderPersonProfileOfflineRuntime } from '../../scripts/lib/p06-render-person-profile-offline-fixture.mjs';
 import {
   assertC07RenderComparisonOfflineFixtureProfile,
   createC07RenderComparisonOfflineAssetGuard,
@@ -90,6 +88,7 @@ import {
 import {
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
   isC07RenderComparisonOfflineNetworkMode,
   isC07RenderComparisonOfflineProfileId,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
@@ -160,10 +159,18 @@ import {
   R01_RELATIONS_OFFLINE_PROFILE_ID,
 } from '../../scripts/lib/r01-relations-offline-profile.mjs';
 import {
+  assertR01RelationsTextProjectionOfflineFixture,
+  createR01RelationsTextProjectionOfflineFetch,
+} from '../../scripts/lib/r01-relations-text-projection-offline-fixture.mjs';
+import {
+  R01_RELATIONS_TEXT_PROJECTION_OFFLINE_NETWORK_MODE,
+  R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID,
+} from '../../scripts/lib/r01-relations-text-projection-offline-profile.mjs';
+import {
   assertR03RelationsOfflineFixture,
   createR03RelationsOfflineFetch,
 } from '../../scripts/lib/r03-relations-offline-fixture.mjs';
-import { R03_RELATIONS_OFFLINE_NETWORK_MODE } from '../../scripts/lib/r03-relations-offline-profile.mjs';
+import { isR03RelationsOfflineNetworkMode } from '../../scripts/lib/r03-relations-offline-profile.mjs';
 import {
   assertC04CohortComparisonPublicProfile,
   createC04CohortComparisonPublicFetch,
@@ -433,7 +440,10 @@ async function main(argv = process.argv.slice(2)) {
   if (config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE) {
     assertR01RelationsOfflineFixture(config.profile);
   }
-  if (config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE) {
+  if (config.networkMode === R01_RELATIONS_TEXT_PROJECTION_OFFLINE_NETWORK_MODE) {
+    assertR01RelationsTextProjectionOfflineFixture(config.profile);
+  }
+  if (isR03RelationsOfflineNetworkMode(config.networkMode)) {
     assertR03RelationsOfflineFixture(config.profile);
   }
   if (config.networkMode === R02_POSITIVE_DIRECT_RELATIONS_NETWORK_MODE) {
@@ -545,50 +555,55 @@ async function main(argv = process.argv.slice(2)) {
       ? createC03PersonActivityOfflineV2Fetch(config.profile)
       : config.networkMode === P01_PERSON_ACTIVITY_DIRECTOR_OFFLINE_NETWORK_MODE
         ? createP01PersonActivityDirectorOfflineFetch(config.profile)
-      : [
-            A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE,
-            A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
-          ].includes(config.networkMode)
-        ? createA01AggregateCohortOfflineFetch(config.profile)
-        : config.networkMode === A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE
-          ? createA01RenderCohortAggregationOfflineFetch()
-          : config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
-            ? createC07CohortRenderOfflineFixtureFetch()
+        : [
+              A01_AGGREGATE_COHORT_OFFLINE_NETWORK_MODE,
+              A01_AGGREGATE_COHORT_OFFLINE_V2_NETWORK_MODE,
+            ].includes(config.networkMode)
+          ? createA01AggregateCohortOfflineFetch(config.profile)
+          : config.networkMode === A01_RENDER_COHORT_AGGREGATION_NETWORK_MODE
+            ? createA01RenderCohortAggregationOfflineFetch()
+            : config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
+              ? createC07CohortRenderOfflineFixtureFetch()
               : p06OfflineRuntime
-              ? p06OfflineRuntime.offlineFixture
-              : isC07RenderComparisonOfflineNetworkMode(config.networkMode)
-                ? createC07RenderComparisonOfflineFetch(config.profile)
-                : getG01RenderQueryOfflineProfileSpec(config.profile)
-                  ? createG01RenderQueryOfflineFetch(config.profile)
-                  : [
-                        G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
-                        G01_QUERY_SUBJECTS_OFFLINE_V2_NETWORK_MODE,
-                      ].includes(config.networkMode)
-                    ? createG01QuerySubjectsOfflineFetch(config.profile)
+                ? p06OfflineRuntime.offlineFixture
+                : isC07RenderComparisonOfflineNetworkMode(config.networkMode)
+                  ? createC07RenderComparisonOfflineFetch(config.profile)
+                  : getG01RenderQueryOfflineProfileSpec(config.profile)
+                    ? createG01RenderQueryOfflineFetch(config.profile)
                     : [
-                          P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
-                          P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+                          G01_QUERY_SUBJECTS_OFFLINE_NETWORK_MODE,
+                          G01_QUERY_SUBJECTS_OFFLINE_V2_NETWORK_MODE,
                         ].includes(config.networkMode)
-                      ? createP02PersonProfileOfflineFetch(config.profile.id)
-                      : [G06_CAST_OFFLINE_NETWORK_MODE, G06_CAST_OFFLINE_V2_NETWORK_MODE].includes(
-                            config.networkMode,
-                          )
-                        ? createG06SubjectCastOfflineFetch(config.profile)
-                        : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
-                          ? createR04SeriesWatchOrderOfflineFetch()
-                          : config.networkMode === R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE
-                            ? createR04SeriesWatchOrderOfflineV2Fetch()
-                            : config.networkMode === R04_SERIES_WATCH_ORDER_V3_NETWORK_MODE
-                              ? createR04SeriesWatchOrderOfflineV3Fetch()
-                              : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
-                              ? createR04RenderSeriesWatchOrderOfflineFetch()
-                              : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE
-                                ? createR04RenderV2SeriesWatchOrderOfflineV2Fetch()
-                                : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
-                                  ? createR01RelationsOfflineFetch()
-                                  : config.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE
-                                    ? createR03RelationsOfflineFetch()
-                                    : null;
+                      ? createG01QuerySubjectsOfflineFetch(config.profile)
+                      : [
+                            P02_PERSON_PROFILE_OFFLINE_NETWORK_MODE,
+                            P02_PERSON_PROFILE_OFFLINE_V2_NETWORK_MODE,
+                          ].includes(config.networkMode)
+                        ? createP02PersonProfileOfflineFetch(config.profile.id)
+                        : [
+                              G06_CAST_OFFLINE_NETWORK_MODE,
+                              G06_CAST_OFFLINE_V2_NETWORK_MODE,
+                            ].includes(config.networkMode)
+                          ? createG06SubjectCastOfflineFetch(config.profile)
+                          : config.networkMode === R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE
+                            ? createR04SeriesWatchOrderOfflineFetch()
+                            : config.networkMode === R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE
+                              ? createR04SeriesWatchOrderOfflineV2Fetch()
+                              : config.networkMode === R04_SERIES_WATCH_ORDER_V3_NETWORK_MODE
+                                ? createR04SeriesWatchOrderOfflineV3Fetch()
+                                : config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
+                                  ? createR04RenderSeriesWatchOrderOfflineFetch()
+                                  : config.networkMode ===
+                                      R04_RENDER_SERIES_WATCH_ORDER_V2_NETWORK_MODE
+                                    ? createR04RenderV2SeriesWatchOrderOfflineV2Fetch()
+                                    : config.networkMode === R01_RELATIONS_OFFLINE_NETWORK_MODE
+                                      ? createR01RelationsOfflineFetch()
+                                      : config.networkMode ===
+                                          R01_RELATIONS_TEXT_PROJECTION_OFFLINE_NETWORK_MODE
+                                        ? createR01RelationsTextProjectionOfflineFetch()
+                                        : isR03RelationsOfflineNetworkMode(config.networkMode)
+                                          ? createR03RelationsOfflineFetch(config.profile)
+                                          : null;
   const r04RenderAssetFence =
     config.networkMode === R04_RENDER_SERIES_WATCH_ORDER_NETWORK_MODE
       ? createR04RenderSeriesWatchOrderAssetFence()
@@ -881,6 +896,7 @@ async function main(argv = process.argv.slice(2)) {
           [
             C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
             C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+            C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
           ].includes(config.profile?.id)
         ) {
           const pngBytes = artifactStore.copyPngBufferForLocalVisualInspection(
@@ -1199,6 +1215,37 @@ async function main(argv = process.argv.slice(2)) {
           return {
             content: [{ type: 'text', text }],
             structuredContent: safeProjection,
+          };
+        }
+        if (config.profile?.id === R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID) {
+          const safeProjection = summary.results[sequenceIndex]?.resultSummary;
+          const presentation = presentMcpToolResult(expectedToolName, result);
+          if (
+            !safeProjection ||
+            !presentation.structuredContent ||
+            !Number.isInteger(safeProjection.sourceRowsReturned) ||
+            !Number.isInteger(safeProjection.sourceRowsObserved)
+          ) {
+            summary = {
+              ...summary,
+              serverResultStatus: 'ERROR',
+              results: [
+                {
+                  sequenceIndex,
+                  status: 'ERROR',
+                  errorCode: 'R01_TEXT_PROJECTION_SUMMARY_UNAVAILABLE',
+                },
+              ],
+            };
+            persistSummary();
+            return {
+              content: [{ type: 'text', text: 'R01 text projection summary is unavailable.' }],
+              isError: true,
+            };
+          }
+          return {
+            content: [{ type: 'text', text: presentation.text }],
+            structuredContent: presentation.structuredContent,
           };
         }
         if (config.profile?.id === R02_POSITIVE_DIRECT_RELATIONS_PROFILE_ID) {

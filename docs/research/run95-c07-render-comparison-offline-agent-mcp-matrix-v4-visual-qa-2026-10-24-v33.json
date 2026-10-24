@@ -1,0 +1,933 @@
+{
+  "schemaVersion": 1,
+  "profileId": "c07-render-comparison-offline-agent-mcp-matrix-v4",
+  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v33",
+  "cssWidths": [
+    320,
+    360,
+    520,
+    640,
+    960
+  ],
+  "designPacks": [
+    "warm-editorial",
+    "clean-gallery",
+    "graphic-zine"
+  ],
+  "themes": [
+    "bangumi-light",
+    "bangumi-dark"
+  ],
+  "deviceScaleFactor": 2,
+  "buildBundleSha256": "93dd977453a65ca30f4e50712538d823041dca06c76a49f37b7a42997a73dc54",
+  "generationSourceSha256": "57d7190f092a4cff2fdefb0c450668ee97bb584d8c6970809a2efdc8518e28b6",
+  "reviewAcknowledgement": {
+    "decision": "PASS",
+    "allImagesIndividuallyInspected": true,
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-10-23T23:21:41.573Z",
+    "summary": "All 60 outputs are accounted for. I individually inspected the 20 changed Graphic Zine images across complete/partial states, light/dark themes, and 320/360/520/640/960px; the remaining 40 are byte-identical to previously inspected v30 outputs. The local serif type and merged cohort-score panels follow the reference hierarchy. No clipping or overflow; missing values remain unknown and deltas stay non-computable."
+  },
+  "images": [
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2216,
+      "byteLength": 232098,
+      "sha256": "c7badda944906731781c6b4488e30f6f39acea492de90165f1e051a54d5d376d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 320px (complete-two-cohort, warm-editorial, bangumi-light)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2160,
+      "byteLength": 237697,
+      "sha256": "214ba87990ebafebb0851a541aadd4c22f17d8b9713c90ffb13d0c1438256da3",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 360px (complete-two-cohort, warm-editorial, bangumi-light)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2326,
+      "byteLength": 357193,
+      "sha256": "80bc263d7722470a50a9c308c79d61a358bd7ca44bd040c9b0b50ae856d1b1fe",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 520px (complete-two-cohort, warm-editorial, bangumi-light)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2194,
+      "byteLength": 357367,
+      "sha256": "f81846e21ec517476ee164d4844c22280b8122a07a5d587fe9a6e6865a0d564b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 640px (complete-two-cohort, warm-editorial, bangumi-light)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2198,
+      "byteLength": 393560,
+      "sha256": "be1f4210ff6fc3f779eff491c9463b26af3ba82516ff8401b2be3cede194dac2",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 960px (complete-two-cohort, warm-editorial, bangumi-light)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2216,
+      "byteLength": 231960,
+      "sha256": "7e8e79e1cd10ffd8b9bb0bebe12de4a941b8fc562397fc840ce8e01dda551b28",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 320px (complete-two-cohort, warm-editorial, bangumi-dark)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2160,
+      "byteLength": 237402,
+      "sha256": "892ca961dd7d571f8e394f7f186c955fc90ef431fb4fd59b3d19332b5fa0a8ed",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 360px (complete-two-cohort, warm-editorial, bangumi-dark)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2326,
+      "byteLength": 355939,
+      "sha256": "efc482edcb43d6f0ae9f82bff5a9a5fbd4f4a142b7e10893675ce4bdcd760b43",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 520px (complete-two-cohort, warm-editorial, bangumi-dark)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2194,
+      "byteLength": 356338,
+      "sha256": "87222cfbb307f0a77ae28dfdec5b0358b41eeff3433a92a1370dbccb21fe5c8d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 640px (complete-two-cohort, warm-editorial, bangumi-dark)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2198,
+      "byteLength": 390928,
+      "sha256": "19fad76161dc317830de52d469e1ec32f796db9e99387bc5c7f4597a271cb609",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 960px (complete-two-cohort, warm-editorial, bangumi-dark)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1640,
+      "byteLength": 173900,
+      "sha256": "09c283236e887a79533f90d3a56b9b05ac6663645fba59b137ed6b6e049a0543",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 320px (complete-two-cohort, clean-gallery, bangumi-light)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1642,
+      "byteLength": 178996,
+      "sha256": "366d6e217cd9c6d4683f205cfd645cbead8615f2f49b851879f3aec633744f9b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 360px (complete-two-cohort, clean-gallery, bangumi-light)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1966,
+      "byteLength": 285034,
+      "sha256": "92bdd23d4352ea368c2f597df1299763bf8c10ddda90efd8308d3b186e391fec",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 520px (complete-two-cohort, clean-gallery, bangumi-light)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2000,
+      "byteLength": 339867,
+      "sha256": "d5889854d51f7e751642c6b33d8573bd48f5846c42268e84c71ad5b1ff59cb4a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 640px (complete-two-cohort, clean-gallery, bangumi-light)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2042,
+      "byteLength": 375314,
+      "sha256": "42479f5e8ed3d0c48736a76206198a60e920330658ac1eed7e6173175bd959d7",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 960px (complete-two-cohort, clean-gallery, bangumi-light)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1640,
+      "byteLength": 179827,
+      "sha256": "b1f7406a7e82faa22c7eb5e0f99a99fdfc1cd24fe9b343c20d94382324fdc60a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 320px (complete-two-cohort, clean-gallery, bangumi-dark)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1642,
+      "byteLength": 185261,
+      "sha256": "af3f2790cd3c19dbfef19f9ec3ee5da88803506916b1b33e71a20f03552ee5ab",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 360px (complete-two-cohort, clean-gallery, bangumi-dark)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1966,
+      "byteLength": 294929,
+      "sha256": "639d223e01a87a059b3f1b6d115e0eca4707eabd09ada7c74a47020a15902fef",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 520px (complete-two-cohort, clean-gallery, bangumi-dark)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2000,
+      "byteLength": 352273,
+      "sha256": "6fb991a74e8013cc7b2c01ba887843af8ca4755f74d2bc737ca4a3fca294eefb",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 640px (complete-two-cohort, clean-gallery, bangumi-dark)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2042,
+      "byteLength": 386778,
+      "sha256": "8737fe27d8fd962f054d49bc6d901d8743bb3f720ee7ec285f7de5f897e5d977",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 960px (complete-two-cohort, clean-gallery, bangumi-dark)."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1432,
+      "byteLength": 263880,
+      "sha256": "5d831e3ee0c5ad7b22f7cf2e014ae013fa549fae21d4b3ba97123ab233b24c53",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Complete/light/320px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1396,
+      "byteLength": 276824,
+      "sha256": "c6b1072af7c96076e127f50a15272da84ded1473711b23774a48e973ecc92927",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Complete/light/360px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2004,
+      "byteLength": 481364,
+      "sha256": "3f37650057feb17970380d7baddf1d4e25579f70b64ac619ab52cfcd7bbee2d3",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Complete/light/520px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1884,
+      "byteLength": 537685,
+      "sha256": "c6ae43eaf160d1c468f55077755fb291712adc4fbbc8c1646f19fe87becdfabc",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Complete/light/640px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1960,
+      "byteLength": 761190,
+      "sha256": "9392a3d03a92b12582e4fd87e10d5e498b5335bfaa0de073662925564f7653cb",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Complete/light/960px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1432,
+      "byteLength": 259925,
+      "sha256": "7b02a09ab3b8c52c572e79de7cfa412e215f2b70d85aabcd18d8c60ecf8136ce",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Complete/dark/320px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1396,
+      "byteLength": 271801,
+      "sha256": "4ac80540305ee742cd26c734ce80cba2dcad9e4db0317c7363e5bfe56d5b05b5",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Complete/dark/360px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2004,
+      "byteLength": 473574,
+      "sha256": "cb268748323fdab3b44b52e8e6c9e408c03c6214610921ff1e86e6495ad2665b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Complete/dark/520px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1884,
+      "byteLength": 528000,
+      "sha256": "5731aab1273405da9414d70a408b0fbcd2820dacdadf7098095e5d5a8e9bb23b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Complete/dark/640px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1960,
+      "byteLength": 742291,
+      "sha256": "47d0798a8f9a73a765409b7e97ec5194f37d80b2665bfe574a1b1e93fa953d72",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Complete/dark/960px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2260,
+      "byteLength": 241355,
+      "sha256": "e60e76182132aa2bdc90607de598f0f694ee12f5982c678d0093407a4b20217d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 320px (partial-two-cohort, warm-editorial, bangumi-light)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2200,
+      "byteLength": 242808,
+      "sha256": "e1b8f993b559f0507de47e94db7c2bf1f22f3a7a9072d2703fad61b2a4f06776",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 360px (partial-two-cohort, warm-editorial, bangumi-light)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2144,
+      "byteLength": 285072,
+      "sha256": "df343ee3559f4212c1b42bf96806094fc5b6d6bf54f9ea7cd25c58d1aaddf9c2",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 520px (partial-two-cohort, warm-editorial, bangumi-light)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2110,
+      "byteLength": 297958,
+      "sha256": "719a4c432c9c23633c85b01f668e31b648cd12aff1f0313ebd20e8f279ad91f0",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 640px (partial-two-cohort, warm-editorial, bangumi-light)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2116,
+      "byteLength": 327337,
+      "sha256": "1f777b82de382afbd1f517d2536494cbbb0b9dd42111052aa542408c24d996f8",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 960px (partial-two-cohort, warm-editorial, bangumi-light)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2260,
+      "byteLength": 240016,
+      "sha256": "7bdd2b9a3c9525cb6098494440dcbe2c117bd691317b54f2ea4639f254d82639",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 320px (partial-two-cohort, warm-editorial, bangumi-dark)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2200,
+      "byteLength": 241197,
+      "sha256": "df5df1839f31f8117a0675b979262303c17ec38072ff266b81d082dc8157139a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 360px (partial-two-cohort, warm-editorial, bangumi-dark)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2144,
+      "byteLength": 282725,
+      "sha256": "18aff80b76178b85bbf286629018f7cdaf3203191ed704aeba3ca7756cc8c927",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 520px (partial-two-cohort, warm-editorial, bangumi-dark)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2110,
+      "byteLength": 295562,
+      "sha256": "cd4f2e9a5912f4fede412c2f75c9601ca85b6a3856eedfa5a21703186d5304fb",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 640px (partial-two-cohort, warm-editorial, bangumi-dark)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2116,
+      "byteLength": 323866,
+      "sha256": "5bfe6201b788123eb3ff1e520937345ac14025713d1dd1c7910d700340d60685",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 960px (partial-two-cohort, warm-editorial, bangumi-dark)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1682,
+      "byteLength": 177399,
+      "sha256": "61e2a75b27e66801344ced63b083d64818b26871739232694b0595651e4ae796",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 320px (partial-two-cohort, clean-gallery, bangumi-light)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1618,
+      "byteLength": 179273,
+      "sha256": "0521e2c255f64060af17a2ea9f8fb1ba5f04af548be169f443b0009ef72c9170",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 360px (partial-two-cohort, clean-gallery, bangumi-light)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1870,
+      "byteLength": 237416,
+      "sha256": "de22824574f857b05153aacc24cac906352f10f53038f01a59a4d0941114a25b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 520px (partial-two-cohort, clean-gallery, bangumi-light)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1952,
+      "byteLength": 276392,
+      "sha256": "65f13a667278ddb394900db90ec3056c1335fbc7dcef0c63c0059030aeb13f8d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 640px (partial-two-cohort, clean-gallery, bangumi-light)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1960,
+      "byteLength": 307569,
+      "sha256": "e432bb9d60f1cdc9ff68e51870750ee4bde20dba6d59556e1489075c86084255",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 960px (partial-two-cohort, clean-gallery, bangumi-light)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1682,
+      "byteLength": 182555,
+      "sha256": "ecfe092986c4355fba1e0702376242e95962d0dfdf768b0b83ab5b83b73cc2ba",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 320px (partial-two-cohort, clean-gallery, bangumi-dark)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1618,
+      "byteLength": 184329,
+      "sha256": "271a6ae04e924f7ce0e4fc8be8239d58c59097bb53bebd7350cdbf7fa92f9de1",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 360px (partial-two-cohort, clean-gallery, bangumi-dark)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1870,
+      "byteLength": 242639,
+      "sha256": "57aa253261e7dc8e38beb96c7d9ab1d71aea376579b1dfff1171f68e32d6995d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 520px (partial-two-cohort, clean-gallery, bangumi-dark)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1952,
+      "byteLength": 282647,
+      "sha256": "138b940d9c862c98d8f1f98ded7c82bd98d7d4d9d8c428231abeb7147d676754",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 640px (partial-two-cohort, clean-gallery, bangumi-dark)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1960,
+      "byteLength": 313175,
+      "sha256": "be1ab405c71801312ecfa9b67033620bd26eb149e72dbc2bfbb532216b13b4e5",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the reviewed v30 image; retained its visual receipt at 960px (partial-two-cohort, clean-gallery, bangumi-dark)."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1380,
+      "byteLength": 254602,
+      "sha256": "aa6f2bd2cac8c0ec9f8bdfbb1726b98b068f3e321868c2832d832fc1a378fd6e",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Partial/light/320px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1362,
+      "byteLength": 267617,
+      "sha256": "b91c635689490fad793c5a47880109659bbe787707e9d28722af3847add0c464",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Partial/light/360px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1820,
+      "byteLength": 398599,
+      "sha256": "bdce287328e527e76e81a32278e135e84324e7b08ca99c7a3817d21ddcf6af37",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Partial/light/520px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1768,
+      "byteLength": 455968,
+      "sha256": "70e0af631cec9f24efdfcf7d01ce0584574b2f0a3a4c0acf5a8a13bc501d1c20",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Partial/light/640px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1868,
+      "byteLength": 681539,
+      "sha256": "40e5ac5f2b28dc0dfa67ce5684c90306137a51f7cedb597c744406e4e1c80ead",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Partial/light/960px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1380,
+      "byteLength": 250454,
+      "sha256": "0582d50bf8bf059bb0936daa502d037fac8e677dc201e725bf2fca23a263afbe",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Partial/dark/320px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1362,
+      "byteLength": 262671,
+      "sha256": "8482b61e55c56bcdbaa8196eba0bfadbb7b94790a991e49763004f1f5dc0fc21",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Partial/dark/360px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1820,
+      "byteLength": 390876,
+      "sha256": "6d70deea25cf973820601b18af6e44448bc66d8965b938816933449fdbfbd668",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Partial/dark/520px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1768,
+      "byteLength": 446199,
+      "sha256": "43cfe4d09282a79c4ce183141a6443b53d8c2b15c6d56d473d5040f98b3cfc27",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Partial/dark/640px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1868,
+      "byteLength": 662258,
+      "sha256": "657a1a8d2e4a26aa05d60e2dfe371eecc8f4b295b084762eb2dae0f635d3378f",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Partial/dark/960px C07 Zine: serif score hierarchy is integrated with cohort identity; A/B metric rows remain aligned and legible; partial values stay unknown and B−A remains non-computable where coverage is incomplete; no clipping or overflow."
+      }
+    }
+  ]
+}

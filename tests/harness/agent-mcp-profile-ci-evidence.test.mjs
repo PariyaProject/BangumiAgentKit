@@ -4,10 +4,20 @@ import { profileRequiresExactCiRunEvidence } from '../../scripts/lib/agent-mcp-p
 import { G01_QUERY_SUBJECTS_OFFLINE_V2_PROFILE_ID } from '../../scripts/lib/g01-query-subjects-offline-matrix-profile.mjs';
 import { G01_RENDER_QUERY_OFFLINE_V2_PROFILE_ID } from '../../scripts/lib/g01-render-query-subjects-offline-profile.mjs';
 import { G06_CAST_OFFLINE_V2_PROFILE_ID } from '../../scripts/lib/g06-subject-cast-offline-profile.mjs';
+import { R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID } from '../../scripts/lib/r01-relations-text-projection-offline-profile.mjs';
+import { R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID } from '../../scripts/lib/r03-relations-offline-profile.mjs';
+import { C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 
 test('subject-card compact typography v4 claims require exact CI evidence', () => {
   assert.equal(
     profileRequiresExactCiRunEvidence('render-subject-card-compact-typography-agent-mcp-v4'),
+    true,
+  );
+});
+
+test('subject-card compact typography v5 claims require exact CI evidence', () => {
+  assert.equal(
+    profileRequiresExactCiRunEvidence('render-subject-card-compact-typography-agent-mcp-v5'),
     true,
   );
 });
@@ -44,4 +54,19 @@ test('existing v2 profile constants retain their exact CI evidence contract', ()
   ]) {
     assert.equal(profileRequiresExactCiRunEvidence(profileId), true, profileId);
   }
+});
+
+test('R01 v2 text projection profile requires exact CI evidence', () => {
+  assert.equal(
+    profileRequiresExactCiRunEvidence(R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID),
+    true,
+  );
+});
+
+test('R03 two-hop rating profile requires exact CI evidence', () => {
+  assert.equal(profileRequiresExactCiRunEvidence(R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID), true);
+});
+
+test('C07 v4 comparison renderer profile requires exact CI evidence', () => {
+  assert.equal(profileRequiresExactCiRunEvidence(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID), true);
 });

@@ -1,0 +1,2473 @@
+{
+  "schema": "bangumi-native-scoped-design-release/v1",
+  "sourceCommit": "833e41373663e8d9283fa3f9b5e3965f98f22e46",
+  "designPack": "anime-magazine",
+  "template": "subject-cohort-comparison",
+  "releaseDecision": "ACCEPTED_FOR_SCOPE",
+  "decisionBasis": "User delegated autonomous design judgment; bounded verified regression fix with native PNG inspection and measured QA. Formal Product review and integration remain required.",
+  "userAestheticAcceptance": "unobserved",
+  "reference": {
+    "path": "docs/design/references/c07-anime-magazine-v1.png",
+    "sha256": "ea161ceb5d09ae935de741ce2bbcd9eff89732c322c2b3f51db9335cec0d9b11"
+  },
+  "supersedes": "c07-anime-magazine-v1",
+  "reopen": {
+    "kind": "verified_regression",
+    "evidence_ref": "harness:run95/pr271/review9#anime-magazine-long-name-caption-clip",
+    "reason": "A valid 180-CJK original name clipped at 320 CSS pixels and maximum 1.25 font scale; source names must survive PNG output."
+  },
+  "defaultNativeMatrix": {
+    "schema": "bangumi-native-design-qa/v1",
+    "designPack": "anime-magazine",
+    "fontSizeScale": 0.75,
+    "template": "subject-cohort-comparison",
+    "reference": "docs/design/references/c07-anime-magazine-v1.png",
+    "sourceKind": "synthetic-closed-fixture",
+    "externalRequests": 0,
+    "accountOrClientActions": 0,
+    "sourceResponses": 4,
+    "coverResolutions": 72,
+    "userAestheticAcceptance": "unobserved",
+    "images": [
+      {
+        "state": "complete",
+        "theme": "bangumi-light",
+        "width": 320,
+        "file": "complete-bangumi-light-320.png",
+        "pixelWidth": 640,
+        "pixelHeight": 1476,
+        "bytes": 553236,
+        "sha256": "863b22aceb61022f35d463c7414141ad9bfb50c6294f6e206299008c68348686",
+        "warningCount": 0
+      },
+      {
+        "state": "complete",
+        "theme": "bangumi-dark",
+        "width": 320,
+        "file": "complete-bangumi-dark-320.png",
+        "pixelWidth": 640,
+        "pixelHeight": 1476,
+        "bytes": 553979,
+        "sha256": "5d0edea824c135c12bf36b0e384eb635132a280d9cfd4a97612aa5f995badf25",
+        "warningCount": 0
+      },
+      {
+        "state": "complete",
+        "theme": "bangumi-light",
+        "width": 375,
+        "file": "complete-bangumi-light-375.png",
+        "pixelWidth": 750,
+        "pixelHeight": 1500,
+        "bytes": 700455,
+        "sha256": "babbcb965a1a69a362227f9511c5bf8c3d8bfbd542a19b34d51adc4607238cc2",
+        "warningCount": 0
+      },
+      {
+        "state": "complete",
+        "theme": "bangumi-dark",
+        "width": 375,
+        "file": "complete-bangumi-dark-375.png",
+        "pixelWidth": 750,
+        "pixelHeight": 1500,
+        "bytes": 700841,
+        "sha256": "886603d643a64fd847ec0bfc7d761b50d878d874f7ec5eb744e35cf75890657b",
+        "warningCount": 0
+      },
+      {
+        "state": "complete",
+        "theme": "bangumi-light",
+        "width": 414,
+        "file": "complete-bangumi-light-414.png",
+        "pixelWidth": 828,
+        "pixelHeight": 1554,
+        "bytes": 835381,
+        "sha256": "f944e32df8fea438de9ae24e615bb478d5c4803687cf4a1cdabb570e5919e772",
+        "warningCount": 0
+      },
+      {
+        "state": "complete",
+        "theme": "bangumi-dark",
+        "width": 414,
+        "file": "complete-bangumi-dark-414.png",
+        "pixelWidth": 828,
+        "pixelHeight": 1554,
+        "bytes": 835400,
+        "sha256": "655f6024044a2c84b381d53fd8070669cbea0f4f2656d4a14c67b8e0a42ec323",
+        "warningCount": 0
+      },
+      {
+        "state": "complete",
+        "theme": "bangumi-light",
+        "width": 768,
+        "file": "complete-bangumi-light-768.png",
+        "pixelWidth": 1536,
+        "pixelHeight": 1822,
+        "bytes": 1983365,
+        "sha256": "8571271f705d7ee4735d7f38a3863517f4039141177b95e127ef411d53114ecf",
+        "warningCount": 0
+      },
+      {
+        "state": "complete",
+        "theme": "bangumi-dark",
+        "width": 768,
+        "file": "complete-bangumi-dark-768.png",
+        "pixelWidth": 1536,
+        "pixelHeight": 1822,
+        "bytes": 1984060,
+        "sha256": "808791ca6822f458b7cbe3594efd08f9141e4e43a44601e90d8fbfc7d3d07dbf",
+        "warningCount": 0
+      },
+      {
+        "state": "partial",
+        "theme": "bangumi-light",
+        "width": 320,
+        "file": "partial-bangumi-light-320.png",
+        "pixelWidth": 640,
+        "pixelHeight": 1624,
+        "bytes": 359757,
+        "sha256": "5753bb0380832daa2bfdb4e6728dbb89fc36e018aa8b504a89dc8af4253e2b43",
+        "warningCount": 0
+      },
+      {
+        "state": "partial",
+        "theme": "bangumi-dark",
+        "width": 320,
+        "file": "partial-bangumi-dark-320.png",
+        "pixelWidth": 640,
+        "pixelHeight": 1624,
+        "bytes": 361251,
+        "sha256": "6b7267fd6567ada470b2561b428303be6d205391dcc20d51fe1dcd8580d408d2",
+        "warningCount": 0
+      },
+      {
+        "state": "partial",
+        "theme": "bangumi-light",
+        "width": 375,
+        "file": "partial-bangumi-light-375.png",
+        "pixelWidth": 750,
+        "pixelHeight": 1648,
+        "bytes": 436062,
+        "sha256": "b36de89a94495b5142262177d9b12374d380ddedda7d1749f8e26cb098eb1790",
+        "warningCount": 0
+      },
+      {
+        "state": "partial",
+        "theme": "bangumi-dark",
+        "width": 375,
+        "file": "partial-bangumi-dark-375.png",
+        "pixelWidth": 750,
+        "pixelHeight": 1648,
+        "bytes": 437441,
+        "sha256": "56ab368570657bbf8ad22607a25bf7f265acdf8ab37fd03f288ff53a28648011",
+        "warningCount": 0
+      },
+      {
+        "state": "partial",
+        "theme": "bangumi-light",
+        "width": 414,
+        "file": "partial-bangumi-light-414.png",
+        "pixelWidth": 828,
+        "pixelHeight": 1702,
+        "bytes": 502865,
+        "sha256": "d06e73b38e4fbb2cc30e7f694447dbf0d457318257a237ec96deb0c12ea2bd42",
+        "warningCount": 0
+      },
+      {
+        "state": "partial",
+        "theme": "bangumi-dark",
+        "width": 414,
+        "file": "partial-bangumi-dark-414.png",
+        "pixelWidth": 828,
+        "pixelHeight": 1702,
+        "bytes": 504003,
+        "sha256": "4e824254c87cdb2677693fd8359ef9eeeaa1c20e82560b39d0d81eb931dffe9b",
+        "warningCount": 0
+      },
+      {
+        "state": "partial",
+        "theme": "bangumi-light",
+        "width": 768,
+        "file": "partial-bangumi-light-768.png",
+        "pixelWidth": 1536,
+        "pixelHeight": 1972,
+        "bytes": 1107160,
+        "sha256": "942cf08cd3b594c3da1923d6e5ae3bbd1008c1f0e999e99b8ef7a0b528fa56f3",
+        "warningCount": 0
+      },
+      {
+        "state": "partial",
+        "theme": "bangumi-dark",
+        "width": 768,
+        "file": "partial-bangumi-dark-768.png",
+        "pixelWidth": 1536,
+        "pixelHeight": 1972,
+        "bytes": 1107518,
+        "sha256": "ee7e214502bd5e42ef1246707b0283f84d0f8980af4e6f692e16725634eeb7c9",
+        "warningCount": 0
+      },
+      {
+        "state": "missing-covers",
+        "theme": "bangumi-light",
+        "width": 320,
+        "file": "missing-covers-bangumi-light-320.png",
+        "pixelWidth": 640,
+        "pixelHeight": 1314,
+        "bytes": 150659,
+        "sha256": "36617205a9b94ba837f948fc6ba5a35e41ff4845d49f7cfdae47f08ca591c872",
+        "warningCount": 0
+      },
+      {
+        "state": "missing-covers",
+        "theme": "bangumi-dark",
+        "width": 320,
+        "file": "missing-covers-bangumi-dark-320.png",
+        "pixelWidth": 640,
+        "pixelHeight": 1314,
+        "bytes": 151836,
+        "sha256": "f9bce342ba90953e7579c408c2ee4b14f7ed722fa48cd4e54bda174ae71618b9",
+        "warningCount": 0
+      },
+      {
+        "state": "missing-covers",
+        "theme": "bangumi-light",
+        "width": 375,
+        "file": "missing-covers-bangumi-light-375.png",
+        "pixelWidth": 750,
+        "pixelHeight": 1262,
+        "bytes": 152643,
+        "sha256": "764f9530ea30cc557a85495f8a985719b8774db64a4b093da20a692815f19ed6",
+        "warningCount": 0
+      },
+      {
+        "state": "missing-covers",
+        "theme": "bangumi-dark",
+        "width": 375,
+        "file": "missing-covers-bangumi-dark-375.png",
+        "pixelWidth": 750,
+        "pixelHeight": 1262,
+        "bytes": 153425,
+        "sha256": "9bb706e62b88ae71e1953f17d6d91cab025d1def56a9cb5ff5060f367b0b6d1f",
+        "warningCount": 0
+      },
+      {
+        "state": "missing-covers",
+        "theme": "bangumi-light",
+        "width": 414,
+        "file": "missing-covers-bangumi-light-414.png",
+        "pixelWidth": 828,
+        "pixelHeight": 1230,
+        "bytes": 152568,
+        "sha256": "2246b53fed60bdebe0689daccac956eaad06b59bc9b499ccbc8cf3d659408d06",
+        "warningCount": 0
+      },
+      {
+        "state": "missing-covers",
+        "theme": "bangumi-dark",
+        "width": 414,
+        "file": "missing-covers-bangumi-dark-414.png",
+        "pixelWidth": 828,
+        "pixelHeight": 1230,
+        "bytes": 153416,
+        "sha256": "78c3041d2fa3bb82422bf4b35ac4927f5e135b0eb2d76f574e19b779b776285e",
+        "warningCount": 0
+      },
+      {
+        "state": "missing-covers",
+        "theme": "bangumi-light",
+        "width": 768,
+        "file": "missing-covers-bangumi-light-768.png",
+        "pixelWidth": 1536,
+        "pixelHeight": 1230,
+        "bytes": 162816,
+        "sha256": "d380b8ba244491236dccfeb607e7a60ab82e243a71c03cb072b93e4dfebff8c3",
+        "warningCount": 0
+      },
+      {
+        "state": "missing-covers",
+        "theme": "bangumi-dark",
+        "width": 768,
+        "file": "missing-covers-bangumi-dark-768.png",
+        "pixelWidth": 1536,
+        "pixelHeight": 1230,
+        "bytes": 163573,
+        "sha256": "d44c81e820f07e30b1a756bb4cdadff41bd8bf0c994a64b79fd8bc008fd1aac5",
+        "warningCount": 0
+      },
+      {
+        "state": "long-titles",
+        "theme": "bangumi-light",
+        "width": 320,
+        "file": "long-titles-bangumi-light-320.png",
+        "pixelWidth": 640,
+        "pixelHeight": 1680,
+        "bytes": 603276,
+        "sha256": "4e26c52bfc317ca44be898e3db6dda803d6c512f754f562a822282c393c1c2dc",
+        "warningCount": 0
+      },
+      {
+        "state": "long-titles",
+        "theme": "bangumi-dark",
+        "width": 320,
+        "file": "long-titles-bangumi-dark-320.png",
+        "pixelWidth": 640,
+        "pixelHeight": 1680,
+        "bytes": 604427,
+        "sha256": "05901bd7565e6ddcc1827b81b7d40f3eb64af188025552b249ce4c2c6c8b0b8e",
+        "warningCount": 0
+      },
+      {
+        "state": "long-titles",
+        "theme": "bangumi-light",
+        "width": 375,
+        "file": "long-titles-bangumi-light-375.png",
+        "pixelWidth": 750,
+        "pixelHeight": 1666,
+        "bytes": 754541,
+        "sha256": "f68e2068d184f6095ed467bf44858d923ec2bed6662006b9f3e95f4d740447d2",
+        "warningCount": 0
+      },
+      {
+        "state": "long-titles",
+        "theme": "bangumi-dark",
+        "width": 375,
+        "file": "long-titles-bangumi-dark-375.png",
+        "pixelWidth": 750,
+        "pixelHeight": 1666,
+        "bytes": 755348,
+        "sha256": "a79b54e0f1f05a1d330099e2aefe0569c526d55db584e070d23ea3bc195a96ec",
+        "warningCount": 0
+      },
+      {
+        "state": "long-titles",
+        "theme": "bangumi-light",
+        "width": 414,
+        "file": "long-titles-bangumi-light-414.png",
+        "pixelWidth": 828,
+        "pixelHeight": 1720,
+        "bytes": 881720,
+        "sha256": "a919f96a8c48622a41b680d9c1aca0ea38049687456303991b37d6bb7b5ce1ed",
+        "warningCount": 0
+      },
+      {
+        "state": "long-titles",
+        "theme": "bangumi-dark",
+        "width": 414,
+        "file": "long-titles-bangumi-dark-414.png",
+        "pixelWidth": 828,
+        "pixelHeight": 1720,
+        "bytes": 882048,
+        "sha256": "5fb2b9db7fb3562336739f0c27e93381b125d558422486729586f25edd29904b",
+        "warningCount": 0
+      },
+      {
+        "state": "long-titles",
+        "theme": "bangumi-light",
+        "width": 768,
+        "file": "long-titles-bangumi-light-768.png",
+        "pixelWidth": 1536,
+        "pixelHeight": 1914,
+        "bytes": 2046471,
+        "sha256": "6ef905c99e26f3636a1a2a4b79ea33a593fbfd62d7ff8844f5e494f3085fa3d7",
+        "warningCount": 0
+      },
+      {
+        "state": "long-titles",
+        "theme": "bangumi-dark",
+        "width": 768,
+        "file": "long-titles-bangumi-dark-768.png",
+        "pixelWidth": 1536,
+        "pixelHeight": 1914,
+        "bytes": 2047101,
+        "sha256": "5aa9b757e30945cf52458a813c85b523f507d33ddd3e26a226599cebc763cf19",
+        "warningCount": 0
+      },
+      {
+        "state": "long-original",
+        "theme": "bangumi-light",
+        "width": 320,
+        "file": "long-original-bangumi-light-320.png",
+        "pixelWidth": 640,
+        "pixelHeight": 1790,
+        "bytes": 619537,
+        "sha256": "4dee4313082c5a0bdc4e8be754fd29dfd0ce175fa7baaa041e3b8cdb4da36c03",
+        "warningCount": 0
+      },
+      {
+        "state": "long-original",
+        "theme": "bangumi-dark",
+        "width": 320,
+        "file": "long-original-bangumi-dark-320.png",
+        "pixelWidth": 640,
+        "pixelHeight": 1790,
+        "bytes": 620717,
+        "sha256": "fa4b2dd544cf6bd982cb197e2c4b7c99de3e63c4afb921b0b581ea03ffa122ee",
+        "warningCount": 0
+      },
+      {
+        "state": "long-original",
+        "theme": "bangumi-light",
+        "width": 375,
+        "file": "long-original-bangumi-light-375.png",
+        "pixelWidth": 750,
+        "pixelHeight": 1776,
+        "bytes": 766904,
+        "sha256": "4768cd747f7381403ec6097595f3409378b4e0ffcd52db511ae42b7cd67b2043",
+        "warningCount": 0
+      },
+      {
+        "state": "long-original",
+        "theme": "bangumi-dark",
+        "width": 375,
+        "file": "long-original-bangumi-dark-375.png",
+        "pixelWidth": 750,
+        "pixelHeight": 1776,
+        "bytes": 767661,
+        "sha256": "e3be270684335a3a2384818ea7a41d1ae87eda5751cd63fdf23f929b56847b39",
+        "warningCount": 0
+      },
+      {
+        "state": "long-original",
+        "theme": "bangumi-light",
+        "width": 414,
+        "file": "long-original-bangumi-light-414.png",
+        "pixelWidth": 828,
+        "pixelHeight": 1792,
+        "bytes": 902073,
+        "sha256": "d5bfcd3b3d7c9699e39d5aa7a0a47575f5b744a3a85ca63298e83ef019d449e0",
+        "warningCount": 0
+      },
+      {
+        "state": "long-original",
+        "theme": "bangumi-dark",
+        "width": 414,
+        "file": "long-original-bangumi-dark-414.png",
+        "pixelWidth": 828,
+        "pixelHeight": 1792,
+        "bytes": 902804,
+        "sha256": "1dd97d859622a8bab0879114b7d57c9c8646db9269c628864b9f64148f0b89d4",
+        "warningCount": 0
+      },
+      {
+        "state": "long-original",
+        "theme": "bangumi-light",
+        "width": 768,
+        "file": "long-original-bangumi-light-768.png",
+        "pixelWidth": 1536,
+        "pixelHeight": 1988,
+        "bytes": 2054848,
+        "sha256": "9fff6b0bd9c53e83bc7a3f259242d35bbb3c0b6ad2838aa62713d846d3aa05a8",
+        "warningCount": 0
+      },
+      {
+        "state": "long-original",
+        "theme": "bangumi-dark",
+        "width": 768,
+        "file": "long-original-bangumi-dark-768.png",
+        "pixelWidth": 1536,
+        "pixelHeight": 1988,
+        "bytes": 2055819,
+        "sha256": "e7f696ffa4d725ac3530ec7f85e7c5edf58d6c9b24092789c6d517fe45550381",
+        "warningCount": 0
+      },
+      {
+        "state": "large-counts",
+        "theme": "bangumi-light",
+        "width": 320,
+        "file": "large-counts-bangumi-light-320.png",
+        "pixelWidth": 640,
+        "pixelHeight": 1476,
+        "bytes": 554408,
+        "sha256": "ecf02b86d48a9afbe94a161c9323c188d796d702b764391d5a0916ade07ba3ff",
+        "warningCount": 0
+      },
+      {
+        "state": "large-counts",
+        "theme": "bangumi-dark",
+        "width": 320,
+        "file": "large-counts-bangumi-dark-320.png",
+        "pixelWidth": 640,
+        "pixelHeight": 1476,
+        "bytes": 555024,
+        "sha256": "e7342838852e03540778047bb1f76d3bec5969d05150a88b968519e3694eda2b",
+        "warningCount": 0
+      },
+      {
+        "state": "large-counts",
+        "theme": "bangumi-light",
+        "width": 375,
+        "file": "large-counts-bangumi-light-375.png",
+        "pixelWidth": 750,
+        "pixelHeight": 1500,
+        "bytes": 701556,
+        "sha256": "d6e577cc1f14e6cd65390b06ae3edb7b6bbcb601102a1d56c7a01c574321b037",
+        "warningCount": 0
+      },
+      {
+        "state": "large-counts",
+        "theme": "bangumi-dark",
+        "width": 375,
+        "file": "large-counts-bangumi-dark-375.png",
+        "pixelWidth": 750,
+        "pixelHeight": 1500,
+        "bytes": 701858,
+        "sha256": "ab62bb86bd7fc17a3b596f305ccda26c1036019b02d022ae7291fc319dc32b2a",
+        "warningCount": 0
+      },
+      {
+        "state": "large-counts",
+        "theme": "bangumi-light",
+        "width": 414,
+        "file": "large-counts-bangumi-light-414.png",
+        "pixelWidth": 828,
+        "pixelHeight": 1554,
+        "bytes": 836572,
+        "sha256": "60eca9b3a19104dc080ce3145c14897c94806989ef34b3b55d20b321625afe5f",
+        "warningCount": 0
+      },
+      {
+        "state": "large-counts",
+        "theme": "bangumi-dark",
+        "width": 414,
+        "file": "large-counts-bangumi-dark-414.png",
+        "pixelWidth": 828,
+        "pixelHeight": 1554,
+        "bytes": 836504,
+        "sha256": "113c983c0ceeca16bd5dff2a8658c9a5faf2b45716528049285cde8a15ab0669",
+        "warningCount": 0
+      },
+      {
+        "state": "large-counts",
+        "theme": "bangumi-light",
+        "width": 768,
+        "file": "large-counts-bangumi-light-768.png",
+        "pixelWidth": 1536,
+        "pixelHeight": 1822,
+        "bytes": 1984638,
+        "sha256": "d59fe4d905e2e0558934af3d3ce3113f4c756e9be8deba6233764cbd8ef99a86",
+        "warningCount": 0
+      },
+      {
+        "state": "large-counts",
+        "theme": "bangumi-dark",
+        "width": 768,
+        "file": "large-counts-bangumi-dark-768.png",
+        "pixelWidth": 1536,
+        "pixelHeight": 1822,
+        "bytes": 1985292,
+        "sha256": "8d592bdb0d00b2e48f3311c75db645723a5e57d6bff30e2d79360a13e53ba4e8",
+        "warningCount": 0
+      }
+    ]
+  },
+  "maximumFontPreviews": {
+    "schema": "bangumi-native-design-qa/v1",
+    "designPack": "anime-magazine",
+    "fontSizeScale": 1.25,
+    "template": "subject-cohort-comparison",
+    "reference": "docs/design/references/c07-anime-magazine-v1.png",
+    "sourceKind": "synthetic-closed-fixture",
+    "externalRequests": 0,
+    "accountOrClientActions": 0,
+    "sourceResponses": 4,
+    "coverResolutions": 2,
+    "userAestheticAcceptance": "unobserved",
+    "images": [
+      {
+        "state": "long-original",
+        "theme": "bangumi-dark",
+        "width": 320,
+        "file": "long-original-bangumi-dark-320.png",
+        "pixelWidth": 640,
+        "pixelHeight": 3506,
+        "bytes": 792263,
+        "sha256": "32ea4068cdf208a01912489cd4388f2472ac3b2a1747f4195d8a87d5af96744f",
+        "warningCount": 0
+      }
+    ]
+  },
+  "browserAudit": {
+    "schema": "bangumi-native-design-dom-audit/v1",
+    "fixtureSha256": "bf3331bd9579d257d60f25ac7f48817c9a5680ca3458058c3e62a2bea73e8fc0",
+    "designPack": "anime-magazine",
+    "networkAttempts": 0,
+    "results": [
+      {
+        "state": "complete",
+        "width": 320,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 737.46875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 320,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1310.296875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 320,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 737.46875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 320,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1310.296875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 375,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 749.421875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 375,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1287.25,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 375,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 749.421875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 375,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1287.25,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 414,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 776.328125,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 414,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1284.15625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 414,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 776.328125,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 414,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1284.15625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 768,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 910.671875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 768,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1112.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 768,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 910.671875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "complete",
+        "width": 768,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1112.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 320,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 811.84375,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 320,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1464.296875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 320,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 811.84375,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 320,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1464.296875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 375,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 823.796875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 375,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1441.25,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 375,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 823.796875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 375,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1441.25,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 414,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 850.703125,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 414,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1438.15625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 414,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 850.703125,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 414,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1438.15625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 768,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 985.046875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 768,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1236.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 768,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 985.046875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "partial",
+        "width": 768,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 43,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1236.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 320,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 656.859375,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 320,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1292.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 320,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 656.859375,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 320,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1292.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 375,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 630.859375,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 375,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1203.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 375,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 630.859375,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 375,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1203.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 414,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 614.0625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 414,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1173.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 414,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 614.0625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 414,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1173.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 768,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 614.0625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 768,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 839.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 768,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 614.0625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "missing-covers",
+        "width": 768,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 41,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 839.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 320,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [5],
+        "height": 839.328125,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 320,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [4],
+        "height": 1568.296875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 320,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [5],
+        "height": 839.328125,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 320,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [4],
+        "height": 1568.296875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 375,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [7],
+        "height": 832.390625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 375,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [5],
+        "height": 1482.75,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 375,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [7],
+        "height": 832.390625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 375,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [5],
+        "height": 1482.75,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 414,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [7],
+        "height": 859.296875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 414,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [7],
+        "height": 1448.15625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 414,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [7],
+        "height": 859.296875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 414,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [7],
+        "height": 1448.15625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 768,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [11],
+        "height": 956.15625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 768,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [11],
+        "height": 1214,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 768,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [11],
+        "height": 956.15625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-titles",
+        "width": 768,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [11],
+        "height": 1214,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 320,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 894.21875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 320,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1752.296875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 320,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 894.21875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 320,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1752.296875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 375,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 887.578125,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 375,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1636.25,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 375,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 887.578125,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 375,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1636.25,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 414,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 895.890625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 414,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1602.15625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 414,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 895.890625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 414,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1602.15625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 768,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 993.046875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 768,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1306.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 768,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 993.046875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "long-original",
+        "width": 768,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 40,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1306.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 320,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 737.46875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 320,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1310.296875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 320,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 737.46875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 320,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1310.296875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 375,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 749.421875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 375,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1287.25,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 375,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 749.421875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 375,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1287.25,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 414,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 776.328125,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 414,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1284.15625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 414,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 776.328125,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 414,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1284.15625,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 768,
+        "theme": "bangumi-light",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 910.671875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 768,
+        "theme": "bangumi-light",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 5.690480054145669,
+        "lastLineGlyphCounts": [],
+        "height": 1112.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 768,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 0.75,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 12,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 910.671875,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      {
+        "state": "large-counts",
+        "width": 768,
+        "theme": "bangumi-dark",
+        "fontSizeScale": 1.25,
+        "issues": [],
+        "textNodes": 39,
+        "minimumFontSize": 20,
+        "minimumContrast": 7.808270678919693,
+        "lastLineGlyphCounts": [],
+        "height": 1112.5,
+        "titleFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      }
+    ],
+    "issues": []
+  },
+  "regressionEvidence": {
+    "oldSourceCommit": "f9d07dbac728cb110a90512cf2f04a02a09ddaa6",
+    "oldAuditSha256": "3ec10c1653ce4ba76fb6fe75ff02b695c2efedf1b052870230656cf53ec286eb",
+    "oldAuditCases": 96,
+    "oldAuditIssueCount": 276,
+    "currentAuditSha256": "a3ec4605e5fcc98b19ba11c705ee37323f51d1c4e90800870daeb27fed206d89",
+    "exactOriginalCharacters": 180,
+    "currentAuditCases": 96,
+    "currentAuditIssueCount": 0
+  },
+  "legacyPreservation": {
+    "schema": "bangumi-renderer-pack-preservation/v1",
+    "previousManifest": "docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v40.json",
+    "previousManifestSha256": "b817bfd13ff9b68007cee5b24f5cfb2241deafa836aaf76526a42cd74dbb0a11",
+    "currentManifest": "docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-caption-flow-v2.json",
+    "currentManifestSha256": "96907b36ccec1c12ea0ec826ba08d846c6c76e546208a6a122f6d7a33bc873b6",
+    "imageCount": 60,
+    "byteIdenticalImages": 60,
+    "packs": ["warm-editorial", "clean-gallery", "graphic-zine"],
+    "newPackCoverage": "Separate magazine-v2 native48+one maximum-font boundary receipt; frozen C07v4 profile arguments and model/effort unchanged."
+  },
+  "inspectedNativePreviews": [
+    {
+      "path": "docs/design/native/anime-magazine-v2/complete-light-375.png",
+      "sha256": "babbcb965a1a69a362227f9511c5bf8c3d8bfbd542a19b34d51adc4607238cc2"
+    },
+    {
+      "path": "docs/design/native/anime-magazine-v2/partial-dark-320.png",
+      "sha256": "6b7267fd6567ada470b2561b428303be6d205391dcc20d51fe1dcd8580d408d2"
+    },
+    {
+      "path": "docs/design/native/anime-magazine-v2/missing-covers-light-375.png",
+      "sha256": "764f9530ea30cc557a85495f8a985719b8774db64a4b093da20a692815f19ed6"
+    },
+    {
+      "path": "docs/design/native/anime-magazine-v2/long-titles-light-320.png",
+      "sha256": "4e26c52bfc317ca44be898e3db6dda803d6c512f754f562a822282c393c1c2dc"
+    },
+    {
+      "path": "docs/design/native/anime-magazine-v2/long-original-light-320.png",
+      "sha256": "4dee4313082c5a0bdc4e8be754fd29dfd0ce175fa7baaa041e3b8cdb4da36c03"
+    },
+    {
+      "path": "docs/design/native/anime-magazine-v2/large-counts-light-320.png",
+      "sha256": "ecf02b86d48a9afbe94a161c9323c188d796d702b764391d5a0916ade07ba3ff"
+    },
+    {
+      "path": "docs/design/native/anime-magazine-v2/maximum-font-original-dark-320.png",
+      "sha256": "32ea4068cdf208a01912489cd4388f2472ac3b2a1747f4195d8a87d5af96744f"
+    }
+  ],
+  "visualInspectionBasis": "Inspected these seven native outputs, including complete, partial, missing-cover, long display/original names, large counts, and 180-CJK original at320px/max1.25. Full names flow below the cover pair instead of becoming tall cover pillars; art, typography, palette and metric hierarchy preserve the chosen direction. No pixel-identity claim against ImageGen or v1 magazine output; all60 legacy outputs remain byte-identical."
+}

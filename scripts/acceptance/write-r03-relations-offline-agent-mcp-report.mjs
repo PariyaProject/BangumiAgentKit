@@ -12,17 +12,13 @@ import {
 import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   assertR03RelationsOfflineProfile,
-  R03_RELATIONS_OFFLINE_ACKNOWLEDGEMENT,
-  R03_RELATIONS_OFFLINE_EXPECTED_RESULT_SUMMARIES,
-  R03_RELATIONS_OFFLINE_NETWORK_MODE,
   R03_RELATIONS_OFFLINE_PROFILE_ID,
+  R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID,
+  getR03RelationsOfflineProfileSpec,
 } from '../lib/r03-relations-offline-profile.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const PROFILE = getAgentMcpProfileById(R03_RELATIONS_OFFLINE_PROFILE_ID);
-const REPORT_RELATIVE_PATH = PROFILE?.reportPath;
-const ACKNOWLEDGEMENT = R03_RELATIONS_OFFLINE_ACKNOWLEDGEMENT;
-const SERVER_ID = 'bgk_r03_relations_v2';
+const DEFAULT_PROFILE_ID = R03_RELATIONS_OFFLINE_PROFILE_ID;
 const RECEIPT_KIND = 'r03-relations-offline-agent-mcp-runner-receipt-v2';
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const canonicalSha256 = (value) => sha256(canonicalAgentMcpProfileJson(value));
@@ -148,6 +144,10 @@ const OFFLINE_FIXTURE_FIELDS = new Set([
   'authorizationHeaderCount',
   'expectedOperationsComplete',
 ]);
+const TWO_HOP_OFFLINE_FIXTURE_FIELDS = new Set([
+  ...OFFLINE_FIXTURE_FIELDS,
+  'subjectDetailRequestCount',
+]);
 const NETWORK_BOUNDARY_FIELDS = new Set([
   'liveBangumiApiRequestCount',
   'rendererAssetRequestCount',
@@ -189,13 +189,22 @@ function exactKeys(value, fields) {
   );
 }
 
-function expectedFixture() {
+function profileContext(profileId = DEFAULT_PROFILE_ID) {
+  const profile = getAgentMcpProfileById(profileId);
+  const spec = getR03RelationsOfflineProfileSpec(profileId);
+  if (!profile || !spec || !assertR03RelationsOfflineProfile(profile)) return null;
+  return { profile, spec };
+}
+
+function expectedFixture(spec) {
+  const twoHop = spec.expectedCalls[0]?.arguments?.analysisMode === 'observed_two_hop_rating';
   return {
-    profile: R03_RELATIONS_OFFLINE_NETWORK_MODE,
-    requestCount: 1,
-    relationRequestCount: 1,
+    profile: spec.networkMode,
+    requestCount: twoHop ? 4 : 1,
+    relationRequestCount: twoHop ? 2 : 1,
     rootRequestCount: 1,
-    intermediateRequestCount: 0,
+    intermediateRequestCount: twoHop ? 1 : 0,
+    ...(twoHop ? { subjectDetailRequestCount: 2 } : {}),
     duplicateRequestCount: 0,
     unexpectedRequestCount: 0,
     authorizationHeaderCount: 0,
@@ -229,8 +238,8 @@ function expectedPrivacy() {
   };
 }
 
-function expectedResultSummary() {
-  return R03_RELATIONS_OFFLINE_EXPECTED_RESULT_SUMMARIES;
+function expectedResultSummary(spec) {
+  return spec.expectedResultSummaries;
 }
 
 function expectedAnswerChecks() {
@@ -343,11 +352,11 @@ function createRunnerReceipt(payload, { publicKeyBase64, privateKey }) {
   };
 }
 
-function catalogEvidenceMatches(report) {
+function catalogEvidenceMatches(report, profile) {
   try {
     const bytes = readFileSync(path.join(ROOT, 'docs/tool-catalog.json'));
     const catalog = JSON.parse(bytes.toString('utf8'));
-    const item = catalog.find((row) => row?.name === PROFILE?.toolName);
+    const item = catalog.find((row) => row?.name === profile?.toolName);
     return (
       item?.auth === 'none' &&
       item?.risk === 'read' &&
@@ -360,7 +369,19 @@ function catalogEvidenceMatches(report) {
   }
 }
 
-export function validateR03ProfileReport(report, claim, reportBytes = null) {
+export function validateR03ProfileReport(
+  report,
+  claim,
+  reportBytes = null,
+  profileId = DEFAULT_PROFILE_ID,
+) {
+  const context = profileContext(profileId);
+  if (!context) return { passed: false, reason: 'R03_PROFILE_INVALID' };
+  const { profile, spec } = context;
+  const fixtureFields =
+    profileId === R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID
+      ? TWO_HOP_OFFLINE_FIXTURE_FIELDS
+      : OFFLINE_FIXTURE_FIELDS;
   const claimStateValid =
     (claim?.state === 'CLAIMED' && claim.reportWritten === false) ||
     (claim?.state === 'REPORT_WRITTEN' &&
@@ -368,11 +389,9 @@ export function validateR03ProfileReport(report, claim, reportBytes = null) {
       Buffer.isBuffer(reportBytes) &&
       claim.reportSha256 === sha256(reportBytes));
   if (
-    !PROFILE ||
-    !assertR03RelationsOfflineProfile(PROFILE) ||
     !exactKeys(report, REPORT_FIELDS) ||
     !claim ||
-    claim.profileId !== PROFILE.id ||
+    claim.profileId !== profile.id ||
     !claimStateValid ||
     claim.retryAllowed !== false ||
     !isValidP06CiRunEvidence({ ciRunId: report?.ciRunId, ciChecks: report?.ciChecks }) ||
@@ -380,20 +399,20 @@ export function validateR03ProfileReport(report, claim, reportBytes = null) {
   )
     return { passed: false, reason: 'R03_REPORT_CLAIM_INVALID' };
 
-  const selectionBytes = readFileSync(path.join(ROOT, PROFILE.selectionEvidencePath));
+  const selectionBytes = readFileSync(path.join(ROOT, profile.selectionEvidencePath));
   const receipt = report.runnerReceipt;
   const valid =
     report.schemaVersion === 1 &&
-    report.evidenceKind === PROFILE.evidenceKind &&
+    report.evidenceKind === profile.evidenceKind &&
     report.runNumber === 95 &&
     report.frontierId === 'R03' &&
     report.scenarioId === null &&
     report.acceptanceScope === 'agent-mcp-matrix-only' &&
-    report.epochId === PROFILE.epochId &&
-    report.profileId === PROFILE.id &&
+    report.epochId === profile.epochId &&
+    report.profileId === profile.id &&
     report.profile === 'codex-luna-max-offline-agent-mcp-matrix-v2' &&
-    report.model === PROFILE.model &&
-    report.reasoningEffort === PROFILE.reasoningEffort &&
+    report.model === profile.model &&
+    report.reasoningEffort === profile.reasoningEffort &&
     new RegExp(`^gpt-6-luna-max-run95-pr${report.prNumber}-round[1-9]\\d*$`, 'u').test(
       report.reviewerId ?? '',
     ) &&
@@ -411,18 +430,18 @@ export function validateR03ProfileReport(report, claim, reportBytes = null) {
       'u',
     ).test(report.claimId ?? '') &&
     /^[0-9a-f]{64}$/u.test(report.mcpBundleSha256 ?? '') &&
-    report.registrySha256 === agentMcpProfileRegistrySha256(PROFILE.id) &&
+    report.registrySha256 === agentMcpProfileRegistrySha256(profile.id) &&
     report.selectionEvidenceSha256 === sha256(selectionBytes) &&
-    catalogEvidenceMatches(report) &&
-    report.toolName === PROFILE.toolName &&
-    report.argumentProfile === PROFILE.argumentProfile &&
-    report.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(PROFILE) &&
-    report.networkMode === R03_RELATIONS_OFFLINE_NETWORK_MODE &&
+    catalogEvidenceMatches(report, profile) &&
+    report.toolName === profile.toolName &&
+    report.argumentProfile === profile.argumentProfile &&
+    report.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(profile) &&
+    report.networkMode === spec.networkMode &&
     canonicalAgentMcpProfileJson(report.serverToolNames) ===
-      canonicalAgentMcpProfileJson([PROFILE.toolName]) &&
+      canonicalAgentMcpProfileJson([profile.toolName]) &&
     report.serverToolCount === 1 &&
     canonicalAgentMcpProfileJson(report.mcpServerNames) ===
-      canonicalAgentMcpProfileJson([SERVER_ID]) &&
+      canonicalAgentMcpProfileJson([spec.serverId]) &&
     report.processExitCode === 0 &&
     report.resultStatus === 'SUCCESS' &&
     report.eventStreamParsed === true &&
@@ -439,16 +458,16 @@ export function validateR03ProfileReport(report, claim, reportBytes = null) {
     report.shellToolCallCount === 0 &&
     report.allowedCallCount === 1 &&
     report.deniedCallCount === 0 &&
-    report.answerCheckMethod === PROFILE.answerCheckMethod &&
-    report.answerSha256 === sha256(ACKNOWLEDGEMENT) &&
-    report.answerUtf8Bytes === Buffer.byteLength(ACKNOWLEDGEMENT, 'utf8') &&
+    report.answerCheckMethod === profile.answerCheckMethod &&
+    report.answerSha256 === sha256(spec.acknowledgement) &&
+    report.answerUtf8Bytes === Buffer.byteLength(spec.acknowledgement, 'utf8') &&
     Array.isArray(report.resultSummary) &&
     report.resultSummary.length === 1 &&
     canonicalAgentMcpProfileJson(report.resultSummary) ===
-      canonicalAgentMcpProfileJson(expectedResultSummary()) &&
-    exactKeys(report.offlineFixture, OFFLINE_FIXTURE_FIELDS) &&
+      canonicalAgentMcpProfileJson(expectedResultSummary(spec)) &&
+    exactKeys(report.offlineFixture, fixtureFields) &&
     canonicalAgentMcpProfileJson(report.offlineFixture) ===
-      canonicalAgentMcpProfileJson(expectedFixture()) &&
+      canonicalAgentMcpProfileJson(expectedFixture(spec)) &&
     exactKeys(report.networkBoundary, NETWORK_BOUNDARY_FIELDS) &&
     canonicalAgentMcpProfileJson(report.networkBoundary) ===
       canonicalAgentMcpProfileJson(expectedNetworkBoundary()) &&
@@ -494,23 +513,25 @@ export function validateR03ProfileReport(report, claim, reportBytes = null) {
   if (!signatureValid) return { passed: false, reason: 'R03_RUNNER_RECEIPT_INVALID' };
   if (reportBytes && reportBytes.length > 64 * 1024)
     return { passed: false, reason: 'R03_REPORT_TOO_LARGE' };
-  return { passed: true, reportPath: REPORT_RELATIVE_PATH };
+  return { passed: true, reportPath: profile.reportPath };
 }
 
 export function buildR03ProfileReport(
   { claim, serverSummary, events, answer, codexCliVersion, eventStreamSha256, serverSummarySha256 },
-  { privateKey, root = ROOT, reportPath = null } = {},
+  { privateKey, root = ROOT, reportPath = null, profileId = DEFAULT_PROFILE_ID } = {},
 ) {
+  const context = profileContext(profileId);
+  if (!context) return { passed: false, reason: 'R03_PROFILE_INVALID' };
+  const { profile, spec } = context;
+  const resultSummaries = expectedResultSummary(spec);
   if (
-    !PROFILE ||
-    !assertR03RelationsOfflineProfile(PROFILE) ||
-    claim?.profileId !== PROFILE.id ||
+    claim?.profileId !== profile.id ||
     claim.state !== 'CLAIMED' ||
     claim.retryAllowed !== false ||
     !isValidP06CiRunEvidence({ ciRunId: claim.ciRunId, ciChecks: claim.ciChecks }) ||
     !serverSummary ||
     !events ||
-    answer !== ACKNOWLEDGEMENT ||
+    answer !== spec.acknowledgement ||
     events.processExitCode !== 0 ||
     events.eventStreamParsed !== true ||
     events.turnCompleted !== true ||
@@ -525,10 +546,10 @@ export function buildR03ProfileReport(
     events.exactCall !== true ||
     events.exactToolEvent !== true ||
     canonicalAgentMcpProfileJson(events.mcpServerNames) !==
-      canonicalAgentMcpProfileJson([SERVER_ID]) ||
+      canonicalAgentMcpProfileJson([spec.serverId]) ||
     serverSummary.serverToolCount !== 1 ||
     canonicalAgentMcpProfileJson(serverSummary.serverToolNames) !==
-      canonicalAgentMcpProfileJson([PROFILE.toolName]) ||
+      canonicalAgentMcpProfileJson([profile.toolName]) ||
     serverSummary.allowedCallCount !== 1 ||
     serverSummary.deniedCallCount !== 0 ||
     serverSummary.results?.length !== 1 ||
@@ -537,24 +558,24 @@ export function buildR03ProfileReport(
         result?.sequenceIndex !== index ||
         result?.status !== 'SUCCESS' ||
         canonicalAgentMcpProfileJson(result?.resultSummary) !==
-          canonicalAgentMcpProfileJson(expectedResultSummary()[index]),
+          canonicalAgentMcpProfileJson(resultSummaries[index]),
     )
   )
     return { passed: false, reason: 'R03_RUNNER_GATE_INVALID' };
 
-  const bytes = readFileSync(path.join(ROOT, PROFILE.selectionEvidencePath));
+  const bytes = readFileSync(path.join(ROOT, profile.selectionEvidencePath));
   const report = {
     schemaVersion: 1,
-    evidenceKind: PROFILE.evidenceKind,
+    evidenceKind: profile.evidenceKind,
     runNumber: 95,
     frontierId: 'R03',
     scenarioId: null,
     acceptanceScope: 'agent-mcp-matrix-only',
-    epochId: PROFILE.epochId,
-    profileId: PROFILE.id,
+    epochId: profile.epochId,
+    profileId: profile.id,
     profile: 'codex-luna-max-offline-agent-mcp-matrix-v2',
-    model: PROFILE.model,
-    reasoningEffort: PROFILE.reasoningEffort,
+    model: profile.model,
+    reasoningEffort: profile.reasoningEffort,
     reviewerId: claim.reviewerId,
     codexCliVersion,
     observedAt: new Date().toISOString(),
@@ -569,15 +590,15 @@ export function buildR03ProfileReport(
     mcpBundleSha256: claim.bundleSha256,
     registrySha256: claim.registrySha256,
     selectionEvidenceSha256: sha256(bytes),
-    toolName: PROFILE.toolName,
-    argumentProfile: PROFILE.argumentProfile,
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
     catalogSha256: serverSummary.catalogSha256,
     toolDescriptionSha256: serverSummary.toolDescriptionSha256,
     inputSchemaSha256: serverSummary.inputSchemaSha256,
     serverToolNames: serverSummary.serverToolNames,
     serverToolCount: serverSummary.serverToolCount,
-    networkMode: R03_RELATIONS_OFFLINE_NETWORK_MODE,
+    networkMode: spec.networkMode,
     mcpServerNames: events.mcpServerNames,
     processExitCode: events.processExitCode,
     resultStatus: events.processExitCode === 0 ? 'SUCCESS' : 'FAILED',
@@ -592,9 +613,9 @@ export function buildR03ProfileReport(
     shellToolCallCount: events.shellToolCallCount,
     allowedCallCount: serverSummary.allowedCallCount,
     deniedCallCount: serverSummary.deniedCallCount,
-    answerCheckMethod: PROFILE.answerCheckMethod,
-    answerSha256: sha256(ACKNOWLEDGEMENT),
-    answerUtf8Bytes: Buffer.byteLength(ACKNOWLEDGEMENT, 'utf8'),
+    answerCheckMethod: profile.answerCheckMethod,
+    answerSha256: sha256(spec.acknowledgement),
+    answerUtf8Bytes: Buffer.byteLength(spec.acknowledgement, 'utf8'),
     answerChecks: expectedAnswerChecks(),
     resultSummary: serverSummary.results.map((item) => item.resultSummary),
     offlineFixture: serverSummary.offlineFixture,
@@ -610,9 +631,9 @@ export function buildR03ProfileReport(
     publicKeyBase64: claim.runnerReceiptPublicKey,
     privateKey,
   });
-  const validation = validateR03ProfileReport(report, claim);
+  const validation = validateR03ProfileReport(report, claim, null, profileId);
   if (!validation.passed) return validation;
-  const target = reportPath ?? path.join(root, REPORT_RELATIVE_PATH);
+  const target = reportPath ?? path.join(root, profile.reportPath);
   try {
     const fd = openSync(target, 'wx', 0o600);
     try {
@@ -621,26 +642,33 @@ export function buildR03ProfileReport(
       closeSync(fd);
     }
     const reportBytes = readFileSync(target);
-    const finalValidation = validateR03ProfileReport(report, claim, reportBytes);
+    const finalValidation = validateR03ProfileReport(report, claim, reportBytes, profileId);
     if (!finalValidation.passed) return finalValidation;
-    return { passed: true, reportSha256: sha256(reportBytes), reportPath: REPORT_RELATIVE_PATH };
+    return { passed: true, reportSha256: sha256(reportBytes), reportPath: profile.reportPath };
   } catch {
     return { passed: false, reason: 'R03_REPORT_WRITE_FAILED' };
   }
 }
 
-export function validateR03SanitizedReportFile(claim, root = ROOT, reportPath = null) {
-  if (!PROFILE || !assertR03RelationsOfflineProfile(PROFILE))
+export function validateR03SanitizedReportFile(
+  claim,
+  root = ROOT,
+  reportPath = null,
+  profileId = DEFAULT_PROFILE_ID,
+) {
+  const context = profileContext(profileId);
+  if (!context)
     return { passed: false, reason: 'R03_PROFILE_INVALID' };
-  const target = reportPath ?? path.join(root, REPORT_RELATIVE_PATH);
+  const { profile } = context;
+  const target = reportPath ?? path.join(root, profile.reportPath);
   try {
-    if (path.resolve(target) !== path.resolve(root, REPORT_RELATIVE_PATH))
+    if (path.resolve(target) !== path.resolve(root, profile.reportPath))
       return { passed: false, reason: 'R03_REPORT_PATH_INVALID' };
     const bytes = readFileSync(target);
     const report = JSON.parse(bytes.toString('utf8'));
-    const validation = validateR03ProfileReport(report, claim, bytes);
+    const validation = validateR03ProfileReport(report, claim, bytes, profileId);
     if (!validation.passed) return validation;
-    return { passed: true, reportPath: REPORT_RELATIVE_PATH, reportSha256: sha256(bytes), report };
+    return { passed: true, reportPath: profile.reportPath, reportSha256: sha256(bytes), report };
   } catch {
     return { passed: false, reason: 'R03_REPORT_UNAVAILABLE' };
   }

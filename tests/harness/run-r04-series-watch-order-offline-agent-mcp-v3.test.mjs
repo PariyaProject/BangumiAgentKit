@@ -12,12 +12,69 @@ import { parseCodexOneToolMcpArguments } from '../../scripts/lib/codex-one-tool-
 import {
   buildR04CodexExecArgs,
   configureR04RunnerProfile,
+  evaluateR04Execution,
   validateR04RunnerArgs,
   validateR04ServerSummary,
 } from '../../scripts/acceptance/run-r04-series-watch-order-offline-agent-mcp-v2.mjs';
+import { r04SignedReportInput } from './fixtures/r04-signed-report.mjs';
 
 const SOURCE_SHA = 'a'.repeat(40);
 const BUNDLE_SHA = 'b'.repeat(64);
+
+test('R04 v3 retains shared first-failure replay with its exact multi-node arguments', () => {
+  const value = r04SignedReportInput(R04_SERIES_WATCH_ORDER_V3_PROFILE_ID);
+  const events = [
+    { type: 'thread.started' },
+    { type: 'turn.started' },
+    {
+      type: 'item.completed',
+      item: {
+        type: 'mcp_tool_call',
+        id: 'r04-v3-replay',
+        server: value.config.serverId,
+        tool: value.profile.toolName,
+        arguments: value.config.expectedArguments,
+        status: 'completed',
+        result: { isError: false },
+      },
+    },
+    { type: 'item.completed', item: { type: 'agent_message', text: value.config.acknowledgement } },
+    { type: 'turn.completed' },
+  ];
+  const replay = (serverSummary, stream = events) =>
+    evaluateR04Execution({
+      execution: {
+        exitCode: 0,
+        failed: false,
+        stdout: stream.map((event) => JSON.stringify(event)).join('\n'),
+      },
+      serverSummary,
+      sourceRevision: value.claim.sourceCandidateSha,
+      bundleSha256: value.claim.bundleSha256,
+      candidateBundleCurrent: () => true,
+    });
+  try {
+    configureR04RunnerProfile(value.profile.id);
+    assert.equal(replay(value.serverSummary).passed, true);
+    const missing = replay(null);
+    assert.equal(missing.failureDiagnostics.reasonCode, 'AGENT_MCP_SUMMARY_MISSING');
+    assert.equal(missing.failureDiagnostics.counters.allowedToolCalls, null);
+    const wrongArgs = structuredClone(events);
+    wrongArgs[2].item.arguments = getR04SeriesWatchOrderOfflineProfileConfig(
+      R04_SERIES_WATCH_ORDER_V2_PROFILE_ID,
+    ).expectedArguments;
+    assert.equal(
+      replay(value.serverSummary, wrongArgs).failureDiagnostics.reasonCode,
+      'AGENT_MCP_TOOL_RESULT_INVALID',
+    );
+    assert.equal(
+      replay(value.serverSummary, events.slice(0, -1)).failureDiagnostics.reasonCode,
+      'AGENT_MCP_EVENT_STREAM_INVALID',
+    );
+  } finally {
+    configureR04RunnerProfile(R04_SERIES_WATCH_ORDER_V2_PROFILE_ID);
+  }
+});
 
 function summaryFor(profileId) {
   const profile = getAgentMcpProfileById(profileId);

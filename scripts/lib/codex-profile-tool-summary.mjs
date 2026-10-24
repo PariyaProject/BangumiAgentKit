@@ -36,7 +36,12 @@ import {
   summarizeR01RelationsOfflineToolResult,
 } from './r01-relations-offline-profile.mjs';
 import {
+  R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID,
+  summarizeR01RelationsTextProjectionToolResult,
+} from './r01-relations-text-projection-offline-profile.mjs';
+import {
   R03_RELATIONS_OFFLINE_PROFILE_ID,
+  R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID,
   summarizeR03RelationsOfflineToolResult,
 } from './r03-relations-offline-profile.mjs';
 import {
@@ -63,6 +68,7 @@ import {
 import {
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
 } from './c07-render-comparison-offline-profile.mjs';
 import {
   isG01RenderQueryOfflineProfileId,
@@ -512,6 +518,7 @@ export function summarizeProfileToolResult(
     profileId === 'c07-render-comparison-offline-agent-mcp-matrix-v1' ||
     profileId === C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID ||
     profileId === C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID ||
+    profileId === C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID ||
     profileId === A01_RENDER_COHORT_AGGREGATION_PROFILE_ID ||
     profileId === R04_RENDER_SERIES_WATCH_ORDER_PROFILE_ID ||
     profileId === R04_RENDER_SERIES_WATCH_ORDER_V2_PROFILE_ID
@@ -550,8 +557,13 @@ export function summarizeProfileToolResult(
   if (profileId === R01_RELATIONS_OFFLINE_PROFILE_ID) {
     return summarizeR01RelationsOfflineToolResult(result, expectedArguments);
   }
-  if (profileId === R03_RELATIONS_OFFLINE_PROFILE_ID) {
-    return summarizeR03RelationsOfflineToolResult(result, expectedArguments);
+  if (profileId === R01_RELATIONS_TEXT_PROJECTION_OFFLINE_PROFILE_ID) {
+    return summarizeR01RelationsTextProjectionToolResult(result, expectedArguments);
+  }
+  if (
+    [R03_RELATIONS_OFFLINE_PROFILE_ID, R03_TWO_HOP_RATING_OFFLINE_PROFILE_ID].includes(profileId)
+  ) {
+    return summarizeR03RelationsOfflineToolResult(result, expectedArguments, profileId);
   }
   if (profileId === R02_POSITIVE_DIRECT_RELATIONS_PROFILE_ID) {
     return summarizeR02PositiveDirectRelationsToolResult(result, expectedArguments);

@@ -68,6 +68,7 @@ describe('PR-5 BrowserPool, Cache & Options Bounds (R22 - R30)', () => {
     await pool.close();
   });
 
+  // Four real cold-browser renders can exceed Vitest's 5s default on shared CI runners.
   it('R24: Cache hit skips browser rendering (spy on renderHtmlToBuffer)', async () => {
     const pool = new BrowserPool();
     const spy = vi.spyOn(pool, 'renderHtmlToBuffer');
@@ -107,7 +108,7 @@ describe('PR-5 BrowserPool, Cache & Options Bounds (R22 - R30)', () => {
     expect(spy).toHaveBeenCalledTimes(4);
 
     await service.close();
-  });
+  }, 30_000);
 
   it('R25: Cache key changes with theme', () => {
     const vm: SubjectCardViewModel = {
