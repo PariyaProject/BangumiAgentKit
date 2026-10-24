@@ -1,8 +1,9 @@
+# Legacy role name retained for compatibility; dispatch uses GPT-6.1 Sol xhigh.
 name = "luna_code_reviewer"
 description = "Explicit-only specialized BangumiAgentKit reviewer for correctness, architecture, compatibility, security, evidence semantics, resource bounds, regressions, and test completeness."
 
-model = "gpt-6-luna"
-model_reasoning_effort = "max"
+model = "gpt-6.1-sol"
+model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 
 developer_instructions = """

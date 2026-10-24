@@ -8,12 +8,12 @@ and obtain the compact continuation brief per HARNESS.md §2a before working.
 Its latest structured human directive supersedes old chat instructions.
 Observe the app Goal state separately; never infer pause from historical text.
 The user-authorized advanced-model strategy review is supplementary to the
-ordinary Luna roles below and does not replace the same Product reviewer.
+ordinary Sol roles below and does not replace the same Product reviewer.
 
 - Mode: `AUTONOMOUS_EVOLUTION`
-- All configured model roles: GPT-6 Luna `max`
+- Configured model roles: GPT-6.1 Sol `xhigh`; preserve HARNESS.md §2 continuity exceptions
 - Generic subagents: `0`
-- Expected Luna Max reviews per Epoch: `1`
+- Expected Sol xhigh reviews per Epoch: `1`
 - Default Epoch review maximum: `6`, extendable when findings remain actionable
 - Default Outer Product-review maximum: `96`, extendable without losing history
 - Independent frontier-closure review: `1` per run
@@ -46,7 +46,7 @@ research launch no reviewer.
 Do not create work merely to avoid stopping. Conversely, do not use
 `STOPPED_TRUSTED_FRONTIER_EXHAUSTED` as an unverified shortcut: it requires a
 complete valid frontier ledger, current-master evidence, concrete scope
-salvage, cross-source consistency, and one independent Luna Max closure `PASS`
+salvage, cross-source consistency, and one independent Sol xhigh closure `PASS`
 bound to the exact master/ledger/evidence hashes. A governed stop closes the Run Issue; a
 later invocation creates a fresh Run only when no nonterminal Run remains.
 Every rejected candidate must first attempt a bounded partial/positive-only
@@ -57,7 +57,7 @@ create a ledger-only status commit.
 
 After a successful PASS, merge and clean up by default, update the Run Issue,
 then continue discovery while safety permits. If review round 2 returns
-corrective findings, keep the same Epoch active, continue the same Luna Max
+corrective findings, keep the same Epoch active, continue the same Sol xhigh
 reviewer, and extend the Epoch/Run allowances while those findings remain
 actionable. Use the final-corrective path only when another verdict round would
 not add useful evidence. Do not wait for a human on routine engineering
@@ -71,9 +71,9 @@ the Goal complete, or merge directly. The command revalidates all original
 authority, Candidate, CI, base-freshness, PR-state, and ancestry gates; it also
 reconciles a merge already accepted by GitHub when only the response was lost.
 
-After Product work and Luna discovery have closed every ledger record, run
-`pnpm harness frontier:check`, persist complete closure evidence, then spend the reserved independent Luna Max frontier review.
-`DISCOVERY_REQUIRED` returns to Luna but
+After Product work and Sol discovery have closed every ledger record, run
+`pnpm harness frontier:check`, persist complete closure evidence, then spend the reserved independent Sol xhigh frontier review.
+`DISCOVERY_REQUIRED` returns to Sol but
 first records `FRONTIER_REVIEW_REJECTED` and runs
 `frontier:resume-discovery`; it never launches a second ordinary closure verdict
 round in the same Run. If the closure slot is unavailable, stop

@@ -26,19 +26,20 @@ before recording a new directive or checkpoint; never replay old chat text.
 
 ## Standing defaults
 
-- Ordinary implementation and Product review use GPT-6 Luna at `max`.
-  The user's authorized advanced-model strategy recovery is supplementary;
-  follow HARNESS.md §2a without changing the existing Product reviewer identity.
+- Ordinary implementation and Product review use GPT-6.1 Sol at `xhigh`.
+  This is the user's latest model decision (2026-10-24), superseding older
+  Luna Max instructions, including historical Goal wording. Follow HARNESS.md
+  §2 for pinned-contract and existing-reviewer continuity exceptions.
 - Generic implementation/research subagents: `0` unless the user explicitly
   authorizes a specific use or an applicable skill requires it.
-- Normal reviewed Epoch: one comprehensive Luna Max reviewer expected, six
+- Normal reviewed Epoch: one comprehensive Sol xhigh reviewer expected, six
   launches by default, sequentially continuing the same reviewer identity.
 - Autonomous outer run: 96 Product-review launches and one independent
   frontier-closure review by default. Budgets are extendable without resetting
   consumption; do not stop a valid long-running Goal only because a default
   allowance was reached.
 - Normal successful Product Epochs automatically integrate after PASS or the
-  governed exhausted-budget Luna final-corrective gate.
+  governed exhausted-budget Sol final-corrective gate.
 - Product runtime state lives in one Outer Run GitHub Issue and one Epoch
   GitHub PR, never in tracked repository runtime files.
 - Autonomous Goal entry runs `pnpm harness discovery:check` before `run:start`;

@@ -7,28 +7,31 @@ treat the observations below as current permission or completion.
 
 ## Purpose
 
-Keep Luna Max productive across model switches and context compaction. Deliver
+Keep GPT-6.1 Sol productive across model switches and context compaction. Deliver
 usable Bangumi answers and polished, switchable image designs while preserving
 the original all-96-tool acceptance scope. An increased counter, a new fixture
 identifier, a passing structural test, or another design revision is not by
 itself user value.
 
 The user authorized this strategy recovery in the existing conversation on
-2026-10-24, and explicitly permits an advanced-model review when needed. This
-does not authorize new Outer Runs, spent-claim retries, account/QQ actions,
+2026-10-24, then selected GPT-6.1 Sol with `xhigh` for subsequent ordinary
+execution and new review roles. The latest decision supersedes old Luna Max
+Goal text. HARNESS.md §2 preserves frozen acceptance contracts and already
+launched reviewer identities. Supplementary strategy review remains available.
+This does not authorize new Outer Runs, spent-claim retries, account/QQ actions,
 maintainer-decision requests, or bypassing integration gates.
 
 ## Verified diagnosis at the planning baseline
 
-| Observation | Consequence | Required change |
-| --- | --- | --- |
+| Observation                                                                                                                                                              | Consequence                                                                           | Required change                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | 96 registered/schema and direct execute rows; 65/65 applicable public rows with bounded evidence; Agent/MCP 86/96; QQ pipeline 0/96 and TIM 0/96 in the generated matrix | Synthetic tests and public reachability must not be called full end-to-end completion | Track evidence planes independently and finish a bounded milestone before expanding discovery |
-| Run #95 consumed 453 Product reviews, with 28 extensions; Product allowance 454; C07 PR #271 consumed 8 of 9 reviews | More review capacity has not prevented repeated local corrections | Record strategy and attempt outcomes; reassess before more extensions/reviews |
-| PR #271 has 3 PASS-to-refresh records and 5 corrective verdicts; v37 c82e7d46 has exact CI 40050354544 success 7/7 but no v37 reviewer PASS | Prior PASS cannot approve the new design or tool claim | Freeze this candidate's design scope and close concrete findings together |
-| Harness persists review/budget/claim histories; implementation hypotheses and failed approaches are mainly in local notes/chat | History exists but useful lessons are not reliably in the next working context | Compact continuation brief and meaningful checkpoints in the existing Run Issue |
-| Codex Goal service was observed paused while local recovery called it ACTIVE | App lifecycle and product lifecycle have been conflated | Observe both; never infer pause/resume from a word in old chat |
-| PariyaAgent task JSON contained 16 trailing commas; 26 tasks remained after syntax-only repair | The task entry could not be read | Validate JSON and generated Markdown whenever task data changes |
-| Strict receipts establish hashes/dimensions; repeated user rejection establishes unresolved aesthetics | Structural QA is insufficient for design quality | Design approval and engineering proof are separate requirements |
+| Run #95 consumed 453 Product reviews, with 28 extensions; Product allowance 454; C07 PR #271 consumed 8 of 9 reviews                                                     | More review capacity has not prevented repeated local corrections                     | Record strategy and attempt outcomes; reassess before more extensions/reviews                 |
+| PR #271 has 3 PASS-to-refresh records and 5 corrective verdicts; v37 c82e7d46 has exact CI 40050354544 success 7/7 but no v37 reviewer PASS                              | Prior PASS cannot approve the new design or tool claim                                | Freeze this candidate's design scope and close concrete findings together                     |
+| Harness persists review/budget/claim histories; implementation hypotheses and failed approaches are mainly in local notes/chat                                           | History exists but useful lessons are not reliably in the next working context        | Compact continuation brief and meaningful checkpoints in the existing Run Issue               |
+| Codex Goal service was observed paused while local recovery called it ACTIVE                                                                                             | App lifecycle and product lifecycle have been conflated                               | Observe both; never infer pause/resume from a word in old chat                                |
+| PariyaAgent task JSON contained 16 trailing commas; 26 tasks remained after syntax-only repair                                                                           | The task entry could not be read                                                      | Validate JSON and generated Markdown whenever task data changes                               |
+| Strict receipts establish hashes/dimensions; repeated user rejection establishes unresolved aesthetics                                                                   | Structural QA is insufficient for design quality                                      | Design approval and engineering proof are separate requirements                               |
 
 Known remaining Agent/MCP rows at this baseline: aggregate_subject_cohort,
 auth_start, compare_subject_cohorts, get_series_watch_order,
@@ -39,15 +42,15 @@ simply because this list exists.
 
 ## Route and completion criteria
 
-| Package | Concrete work | Exit evidence | Next |
-| --- | --- | --- | --- |
-| REC-01 execution recovery | Integrate continuation commands, structured human intent, compact brief, repetitive-failure escalation and this route | Tests cover pause→continue after serialization, stale instruction rejection, repetitive attempts, exact-head routing and unchanged old claims/budgets | REC-02 and REC-03 |
-| REC-02 finish current C07 increment | Keep PR #271 and its same reviewer; bind round-8 corrections and exact evidence; revalidate against current base after Harness integration | Fresh exact CI, Candidate check, same-identity PASS; verify profile status before its sole permitted call; terminal result and report-bound integration | Stop editing C07 when its scoped contract is met |
-| REC-03 establish design baselines | Compare identical content/template/width across reference, last preferred direction and candidate; lock compositions, typography, icons, asset roles and masks | Native rendered comparisons plus the quality rubric below; affected states covered; preferred/rejected/reference-only labels | REC-04 |
-| REC-04 repair common MCP execution | Use synthetic replay to diagnose event/structuredContent/CI/bundle/report contract failures before any new Product claim; retain safe diagnostics | Reusable regression set proves runner → server → event → artifact → report; no claimed profile re-executed | REC-05 |
-| REC-05 close remaining safe matrix gaps | Choose by shared cause/user value; consolidate coherent changes; a new profile needs genuinely different behavior and justification | Accepted reports earn only exact rows; unresolved rows retain reasons; no version renaming to bypass a spent latch | REC-06 |
-| REC-06 account and client acceptance | Prepare exact commands, expected observations, cleanup and rollback; obtain current scoped consent before account/private/write/client actions | Separate OAuth identity, 33 account results, QQ pipeline and TIM observations; per-tool rows stay pending unless evidenced | REC-07 |
-| REC-07 operational closure | Resolve parked work, bounded storage retention, auth/session recovery and original operations tasks | Current GitHub inventory, truthful task ledger, observation evidence and Harness goal:check | Original Goal completion only when all required gates allow |
+| Package                                 | Concrete work                                                                                                                                                  | Exit evidence                                                                                                                                           | Next                                                        |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| REC-01 execution recovery               | Integrate continuation commands, structured human intent, compact brief, repetitive-failure escalation and this route                                          | Tests cover pause→continue after serialization, stale instruction rejection, repetitive attempts, exact-head routing and unchanged old claims/budgets   | REC-02 and REC-03                                           |
+| REC-02 finish current C07 increment     | Keep PR #271 and its same reviewer; bind round-8 corrections and exact evidence; revalidate against current base after Harness integration                     | Fresh exact CI, Candidate check, same-identity PASS; verify profile status before its sole permitted call; terminal result and report-bound integration | Stop editing C07 when its scoped contract is met            |
+| REC-03 establish design baselines       | Compare identical content/template/width across reference, last preferred direction and candidate; lock compositions, typography, icons, asset roles and masks | Native rendered comparisons plus the quality rubric below; affected states covered; preferred/rejected/reference-only labels                            | REC-04                                                      |
+| REC-04 repair common MCP execution      | Use synthetic replay to diagnose event/structuredContent/CI/bundle/report contract failures before any new Product claim; retain safe diagnostics              | Reusable regression set proves runner → server → event → artifact → report; no claimed profile re-executed                                              | REC-05                                                      |
+| REC-05 close remaining safe matrix gaps | Choose by shared cause/user value; consolidate coherent changes; a new profile needs genuinely different behavior and justification                            | Accepted reports earn only exact rows; unresolved rows retain reasons; no version renaming to bypass a spent latch                                      | REC-06                                                      |
+| REC-06 account and client acceptance    | Prepare exact commands, expected observations, cleanup and rollback; obtain current scoped consent before account/private/write/client actions                 | Separate OAuth identity, 33 account results, QQ pipeline and TIM observations; per-tool rows stay pending unless evidenced                              | REC-07                                                      |
+| REC-07 operational closure              | Resolve parked work, bounded storage retention, auth/session recovery and original operations tasks                                                            | Current GitHub inventory, truthful task ledger, observation evidence and Harness goal:check                                                             | Original Goal completion only when all required gates allow |
 
 REC-01 is Harness maintenance, not a replacement Product Epoch or Outer Run.
 REC-02 can share visual evidence with REC-03, but must not absorb unrelated
@@ -95,13 +98,12 @@ while automatic Goal continuation is paused.
 - Record observed cause, rejected approaches, changed plan, evidence, actual
   reviewer identity/model and next action. "Continue", another test rerun or
   increased budget alone is not a resolution.
-- Luna Max remains the daily worker and normal independent Product reviewer.
+- Sol xhigh remains the daily worker and normal independent Product reviewer.
   A user-selected advanced model may perform the strategy review. It is
   supplementary; it cannot manufacture Product PASS or replace same-reviewer
   identity, budget or exact-SHA requirements.
 - If the required model is unavailable, finish safe preparation and identify
-  the missing capability honestly. Do not silently use Luna to self-certify an
-  advanced review or mark the Goal completed/blocked just because one route waits.
+  the missing capability honestly. Do not fabricate a strategy review or mark the Goal completed/blocked just because one route waits.
 
 ## Design contract
 
@@ -178,7 +180,7 @@ bounds and real client compatibility evidence.
 
 ## Recovery readiness
 
-Luna is ready to continue when the route is linked from AGENTS.md and the Goal
+Sol is ready to continue when the route is linked from AGENTS.md and the Goal
 profile; the CLI explains current human intent, active work, findings and next
 action; pause→continue and repetitive-failure tests pass; task ledgers are
 readable; current PRs have a disposition; and the user-only app Goal control is
