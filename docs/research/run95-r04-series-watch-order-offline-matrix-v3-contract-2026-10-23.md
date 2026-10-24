@@ -36,3 +36,11 @@ bounded implementation on the same PR/branch. The current-master shared failure
 pipeline applies to both v2/v3, while their exact arguments, summaries and report
 schemas remain distinct. Synthetic replay and signed-report tests verify this
 integration without starting Codex, invoking MCP or consuming another claim.
+
+The Python report validator uses the same existing reviewer-ID predicate as
+the JavaScript runner/writer, including the original local reviewer handle.
+A real signed synthetic report reproduces the earlier cross-language rejection
+and now crosses both validators; changed reviewer/Base, signature and fixture
+counts are rejected. Identity spelling grants no authority: exact disposition,
+receipt and Candidate bindings still apply, and historical model provenance is
+not inferred from the handle.

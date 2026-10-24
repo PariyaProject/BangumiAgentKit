@@ -3784,9 +3784,9 @@ CODEX_G06_CAST_OFFLINE_RECEIPT_PAYLOAD_FIELDS = {
     'networkMode', 'offlineFixtureSha256', 'networkBoundarySha256', 'answerSha256',
     'eventStreamSha256', 'serverSummarySha256',
 }
-# v1 and v2 remain permanent terminal no-report records. Current matrix credit
-# can come only from the separately keyed v3 profile; it does not revive either
-# prior one-shot claim.
+# All three attempts are terminal no-report records. Retain the v3 report
+# validator as its frozen evidence contract; this does not authorize a retry
+# or revive any prior claim.
 CODEX_R04_TERMINAL_V1_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'r04-series-watch-order-offline-agent-mcp-v1'
@@ -7477,7 +7477,7 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
     ),
     'docs/product/frontier-ledger.json': (
         'R04 remains UNASSESSED.',
-        'it may credit only this Agent/MCP matrix cell',
+        'do not claim canonical order or visual quality',
     ),
     'tests/harness/r04-series-watch-order-offline-fixture.test.mjs': (
         'R04 profile binds one exact synthetic offline watch-order matrix call',
@@ -19355,7 +19355,7 @@ def codex_r04_profile_report_is_valid(
         or report.get('model') != 'gpt-6-luna'
         or report.get('reasoningEffort') != 'max'
         or not isinstance(report.get('reviewerId'), str)
-        or re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', report['reviewerId']) is None
+        or not codex_g16_reviewer_id_is_valid(report['reviewerId'], pr_number)
         or not isinstance(report.get('codexCliVersion'), str)
         or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
         or not isinstance(observed_at, str)

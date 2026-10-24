@@ -1,5 +1,8 @@
 import { createHash, generateKeyPairSync } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { buildR04ProfileReport } from '../../../scripts/acceptance/write-r04-series-watch-order-offline-agent-mcp-v2-report.mjs';
 import {
   agentMcpProfileArgumentsSha256,
   agentMcpProfileRegistrySha256,
@@ -101,4 +104,29 @@ export function r04SignedReportInput(profileId = R04_SERIES_WATCH_ORDER_V2_PROFI
     deniedCallCount: 0,
   };
   return { claim, serverSummary, events, keys, config, profile };
+}
+
+// Synthetic cross-language verification; never writes to the real report path.
+export function createSignedR04Report(profileId, reviewerId) {
+  const value = r04SignedReportInput(profileId);
+  value.claim.reviewerId = reviewerId;
+  const root = mkdtempSync(path.join(os.tmpdir(), 'r04-signed-fixture-'));
+  const reportPath = path.join(root, value.profile.reportPath);
+  mkdirSync(path.dirname(reportPath), { recursive: true });
+  try {
+    const result = buildR04ProfileReport(
+      {
+        ...value,
+        answer: value.config.acknowledgement,
+        codexCliVersion: '1.2.14',
+        eventStreamSha256: '7'.repeat(64),
+        serverSummarySha256: '8'.repeat(64),
+      },
+      { privateKey: value.keys.privateKey, root, reportPath },
+    );
+    if (!result.passed) throw new Error(result.reason);
+    return { report: JSON.parse(readFileSync(reportPath, 'utf8')), claim: value.claim };
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 }
