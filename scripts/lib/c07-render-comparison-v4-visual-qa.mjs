@@ -3,9 +3,9 @@ import { readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 
 export const C07_V4_VISUAL_QA_MANIFEST_PATH =
-  'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v37.json';
+  'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v40.json';
 export const C07_V4_VISUAL_QA_ARTIFACT_DIRECTORY =
-  '.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v37';
+  '.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v40';
 
 const PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v4';
 const WIDTHS = [320, 360, 520, 640, 960];

@@ -201,6 +201,7 @@ if (tool === 'gh') {
       ).join('\n'),
     );
   } else if (command === 'log') output((state.commitSubjects ?? []).join('\n'));
+  else if (command === 'ls-tree') output((state.treePaths ?? []).join('\n'));
   else if (command === 'merge-base' && rest[0] === '--is-ancestor') {
     if (state.candidateIsAncestor === false) fail('not ancestor');
     else output();

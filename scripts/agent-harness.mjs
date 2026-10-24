@@ -8,6 +8,10 @@ import path from 'node:path';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { readProductCommitSubjects } from './lib/product-commit-subjects.mjs';
 import {
+  inspectRendererDesignBaselines,
+  RENDERER_BASELINE_PATH,
+} from './lib/renderer-design-baselines.mjs';
+import {
   DISCOVERY_POLICY_VERSION,
   DEFAULT_EPOCH_REVIEW_SLOTS,
   DEFAULT_OUTER_PRODUCT_REVIEW_SLOTS,
@@ -832,6 +836,7 @@ Usage: pnpm harness <command> [options]
 
   status --run <issue> [--pr <number>]
   continuation:show --run <issue> [--goal-state active|paused|blocked|complete]
+  renderer:baseline-check [--base <ref>]
   run:directive --run <issue> --expected-sequence <n> --action continue|pause|replan --source-ref <ref> --reason <text>
   run:checkpoint --run <issue> --expected-sequence <n> --evidence <json>
   frontier:check
@@ -956,14 +961,44 @@ function commandContinuationShow(options) {
   const runResult = issueState(required(options, 'run'));
   const prNumber = options.pr ?? runResult.state.active_epoch_pr;
   const epochResult = prNumber ? epochState(prNumber) : null;
-  print(
-    buildContinuationBrief({
+  print({
+    ...buildContinuationBrief({
       run: runResult.state,
       epoch: epochResult?.state,
       pr: epochResult?.view,
       goalState: options['goal-state'] ?? 'unobserved',
     }),
-  );
+    renderer_design_baselines: inspectRendererDesignBaselines(root),
+  });
+}
+
+function requireRendererBaselines(base) {
+  let priorRegistry;
+  if (base) {
+    const tracked = git('ls-tree', '--name-only', base, '--', RENDERER_BASELINE_PATH);
+    if (tracked) priorRegistry = JSON.parse(git('show', `${base}:${RENDERER_BASELINE_PATH}`));
+  }
+  const result = inspectRendererDesignBaselines(root, {
+    priorRegistry,
+    readSourceAtCommit: (commit, file) =>
+      execFileSync('git', ['show', `${commit}:${file}`], {
+        cwd: root,
+        env: sanitizeP01GitEnvironment(process.env),
+        maxBuffer: 24 * 1024 * 1024,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }),
+  });
+  if (!result.ok)
+    throw new HarnessInvariantError(
+      'RENDERER_DESIGN_BASELINE_DRIFT',
+      'Preserve completed designs; a changed baseline needs an audited successor, not another styling loop.',
+      result.issues,
+    );
+  return result;
+}
+
+function commandRendererBaselineCheck(options) {
+  print({ state: 'RENDERER_DESIGN_BASELINES_VALID', ...requireRendererBaselines(options.base) });
 }
 
 function commandContinuationRecord(options, type) {
@@ -1021,6 +1056,7 @@ function guardContinuationCommand(command, options) {
     'help',
     'status',
     'continuation:show',
+    'renderer:baseline-check',
     'run:directive',
     'run:checkpoint',
     'frontier:check',
@@ -1634,6 +1670,7 @@ function commandGuard(options) {
   const head = process.env.HARNESS_HEAD_REF ?? 'HEAD';
   assertNoLegacyRuntimeChanges(changedPaths(base, head));
   assertProductCommitHygiene(commitSubjects(base, head));
+  requireRendererBaselines(base);
   print({ state: 'LEGACY_RUNTIME_PATH_GUARD_PASS', base, head });
 }
 
@@ -1710,6 +1747,7 @@ function commandCandidateCheck(options) {
     throw new HarnessInvariantError('WRONG_EPOCH_BRANCH', `Checkout ${epoch.branch} first`);
   }
   const baseSha = git('rev-parse', `origin/${epoch.base_branch}`);
+  requireRendererBaselines(baseSha);
   if (evidence.base_sha !== baseSha || evidence.candidate_sha !== head) {
     throw new HarnessInvariantError(
       'FRESH_CANDIDATE_EVIDENCE_REQUIRED',
@@ -9571,6 +9609,7 @@ const commands = {
   help: commandHelp,
   status: commandStatus,
   'continuation:show': commandContinuationShow,
+  'renderer:baseline-check': commandRendererBaselineCheck,
   'run:directive': (options) => commandContinuationRecord(options, 'directive'),
   'run:checkpoint': (options) => commandContinuationRecord(options, 'checkpoint'),
   'frontier:check': commandFrontierCheck,

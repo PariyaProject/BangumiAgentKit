@@ -24,6 +24,11 @@ Observe the app Goal separately. The latest structured human directive in
 the Run Issue supersedes older pause/continue messages. Read §2a of HARNESS.md
 before recording a new directive or checkpoint; never replay old chat text.
 
+For renderer work, read `docs/design/README.md` and the per-pack/template
+baseline registry when present. A valid locked design is preserved across Goal
+wakes and model switches; continue other work. Reopen only for a new explicit
+request or reproducible regression with an appended successor/evidence.
+
 ## Standing defaults
 
 - Ordinary implementation and Product review use GPT-6.1 Sol at `xhigh`.

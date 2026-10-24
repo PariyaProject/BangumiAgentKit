@@ -12,6 +12,39 @@ import { inspectC07PngArtifact } from '../../scripts/lib/c07-png-artifact-valida
 const result = cohortComparisonResult;
 
 describe('subject cohort comparison renderer', () => {
+  it('resolves only the two representative covers for magazine and preserves zero-image legacy packs', () => {
+    const vm = buildSubjectCohortComparisonViewModel(result);
+    const urls = ['https://lain.bgm.tv/pic/cover/l/a.png', 'https://lain.bgm.tv/pic/cover/l/b.png'];
+    vm.cohorts.forEach((cohort, index) => {
+      cohort.subjects[0]!.image = urls[index];
+    });
+    vm.cohorts[0]!.subjects.push({
+      ...vm.cohorts[0]!.subjects[0]!,
+      image: 'https://lain.bgm.tv/pic/cover/l/unused.png',
+    });
+    expect(extractImageUrls(vm, 'anime-magazine')).toEqual(urls);
+    for (const pack of ['warm-editorial', 'clean-gallery', 'graphic-zine'] as const)
+      expect(extractImageUrls(vm, pack)).toEqual([]);
+    vm.cohorts[1]!.subjects[0]!.image = urls[0];
+    expect(extractImageUrls(vm, 'anime-magazine')).toEqual([urls[0]]);
+    const html = renderHtmlTemplate(vm, 'bangumi-light', {}, 320, 'anime-magazine');
+    expect(html).toContain('封面暂缺');
+    expect(html).toContain('data-render-pack="anime-magazine"');
+    expect(html).not.toContain('<img');
+    expect(html).not.toContain('src="https:');
+  });
+
+  it('keeps large count means and deltas compact without changing the structured values', () => {
+    const vm = buildSubjectCohortComparisonViewModel(result);
+    const heat = vm.metrics.find((metric) => metric.key === 'heat')!;
+    heat.averages = [2150000, 9600000];
+    heat.delta = 7450000;
+    const html = renderHtmlTemplate(vm, 'bangumi-light', {}, 320, 'anime-magazine');
+    expect(html).toContain('215万');
+    expect(html).toContain('+745万');
+    expect(heat.averages).toEqual([2150000, 9600000]);
+    expect(heat.delta).toBe(7450000);
+  });
   it('builds a bounded first-class card without image/network dependencies', () => {
     const viewModel = buildSubjectCohortComparisonViewModel(result, { maxSubjectsPerCohort: 1 });
     expect(viewModel.template).toBe('subject-cohort-comparison');

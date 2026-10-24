@@ -5,6 +5,7 @@ import React from 'react';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { AnimeMagazineComparisonCard } from './AnimeMagazineComparisonCard.js';
 import { CardFrame } from '../components/CardFrame.js';
 import { Footer } from '../components/Footer.js';
 import { MetaRow } from '../components/MetaRow.js';
@@ -26,6 +27,7 @@ const COHORT_WATERFRONT_DATA_URI = `data:image/png;base64,${readFileSync(
 ).toString('base64')}`;
 
 export interface SubjectCohortComparisonCardProps {
+  resolvedImages?: Record<string, string>;
   viewModel: SubjectCohortComparisonViewModel;
   theme: ThemeTokens;
   width?: number;
@@ -873,9 +875,8 @@ const CohortZineMasthead: React.FC<{
         /\p{Script=Latin}/u.test(titleParts.slice(1).join(' / '))
           ? titleParts[0]!.trim()
           : fullTitle;
-      const sourceTitle = subject?.name?.trim() && subject.name.trim() !== title
-        ? subject.name.trim()
-        : null;
+      const sourceTitle =
+        subject?.name?.trim() && subject.name.trim() !== title ? subject.name.trim() : null;
       const querySummary = cohort.querySummary.startsWith(cohort.label)
         ? cohort.querySummary.slice(cohort.label.length).replace(/^[\s·•:：]+/u, '') ||
           cohort.querySummary
@@ -1366,7 +1367,18 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
   viewModel,
   theme,
   width,
+  resolvedImages,
 }) => {
+  if (theme.designPack === 'anime-magazine') {
+    return (
+      <AnimeMagazineComparisonCard
+        viewModel={viewModel}
+        theme={theme}
+        width={width}
+        resolvedImages={resolvedImages}
+      />
+    );
+  }
   const dimensions = viewModel.cohorts;
   const viewportWidth = width ?? 960;
   const showComparison = dimensions.length === 2;
@@ -1484,7 +1496,10 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
       showMarker={!sharedZineOverview}
       rootStyle={
         sharedZineOverview
-          ? { padding: viewportWidth <= 400 ? '10px 12px' : '18px 36px', backgroundColor: theme.background }
+          ? {
+              padding: viewportWidth <= 400 ? '10px 12px' : '18px 36px',
+              backgroundColor: theme.background,
+            }
           : undefined
       }
       frameStyle={
@@ -1493,8 +1508,14 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
               backgroundColor: zinePosterBackground,
               backgroundImage: `radial-gradient(circle at 50% 50%, ${zineSunColor} 0 47%, transparent 49%)`,
               backgroundRepeat: 'no-repeat',
-              backgroundPosition: viewportWidth <= 400 ? 'right 12px top 8px' : 'right 24px top 18px',
-              backgroundSize: viewportWidth <= 400 ? '72px 72px' : viewportWidth <= 640 ? '96px 96px' : '132px 132px',
+              backgroundPosition:
+                viewportWidth <= 400 ? 'right 12px top 8px' : 'right 24px top 18px',
+              backgroundSize:
+                viewportWidth <= 400
+                  ? '72px 72px'
+                  : viewportWidth <= 640
+                    ? '96px 96px'
+                    : '132px 132px',
               border: 'none',
               borderRadius: 0,
               clipPath: theme.design.masks.frame,
@@ -1522,7 +1543,12 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
         }
       >
         {sharedZineOverview ? (
-          <CohortZineTitleBlock title={title} subtitle={subtitle} theme={theme} width={viewportWidth} />
+          <CohortZineTitleBlock
+            title={title}
+            subtitle={subtitle}
+            theme={theme}
+            width={viewportWidth}
+          />
         ) : (
           <TitleBlock
             title={title}
@@ -1542,7 +1568,9 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
       {sharedZineOverview ? (
         <CohortZineMasthead
           cohorts={dimensions}
-          leadMetric={viewModel.metrics.find((metric) => metric.key === 'score') ?? viewModel.metrics[0]}
+          leadMetric={
+            viewModel.metrics.find((metric) => metric.key === 'score') ?? viewModel.metrics[0]
+          }
           theme={theme}
           width={viewportWidth}
         />
@@ -2169,7 +2197,11 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
           borderTop: sharedZineOverview ? undefined : `1px solid ${theme.border}`,
           backgroundColor: sharedZineOverview ? theme.surface : undefined,
           clipPath: sharedZineOverview ? theme.design.masks.panelAlt : undefined,
-          padding: sharedZineOverview ? (viewportWidth <= 400 ? '8px 9px' : '12px 16px') : undefined,
+          padding: sharedZineOverview
+            ? viewportWidth <= 400
+              ? '8px 9px'
+              : '12px 16px'
+            : undefined,
           paddingTop: sharedZineOverview ? undefined : '8px',
           color: sharedZineOverview ? theme.text : theme.textMuted,
           fontSize: sharedZineOverview ? (viewportWidth <= 400 ? '9px' : '11px') : footnoteTypeSize,
