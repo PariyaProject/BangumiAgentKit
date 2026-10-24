@@ -291,6 +291,19 @@ test('C07 Candidate gate requires exact CI, Base, and same-identity Luna Max PAS
     }),
   );
 
+  const durableLocalReviewer = statusFixture();
+  durableLocalReviewer.epoch.state.review_history[0].reviewer_id = '/root/pr271_review';
+  const localIdentityGate = assertC07RenderComparisonCandidateReviewGate(
+    durableLocalReviewer,
+    pullRequestFixture(),
+    {
+      sourceRevision: SOURCE_SHA,
+      currentBaseSha: BASE_SHA,
+      readGit: readGitFixture,
+    },
+  );
+  assert.equal(localIdentityGate.reviewerId, '/root/pr271_review');
+
   assert.throws(() =>
     assertC07RenderComparisonCandidateReviewGate(statusFixture(), pullRequestFixture(), {
       sourceRevision: SOURCE_SHA,

@@ -23,6 +23,7 @@ import {
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
+import { isG16LunaMaxReviewerId } from '../lib/g16-reviewer-id.mjs';
 import { deriveP06CiRunEvidence as deriveProfileCiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
@@ -248,9 +249,7 @@ export function assertC07RenderComparisonCandidateReviewGate(
   const ciEvidence = deriveProfileCiRunEvidence(epoch?.ci?.url, pr?.statusCheckRollup);
   const reviewIdMatches =
     Number.isSafeInteger(epochView?.number) &&
-    new RegExp(`^gpt-6-luna-max-run95-pr${epochView.number}-round[1-9]\\d*$`, 'u').test(
-      reviewerId ?? '',
-    );
+    isG16LunaMaxReviewerId(reviewerId, epochView.number);
   const valid = [
     status?.git?.status === '',
     status?.git?.head === sourceRevision,
