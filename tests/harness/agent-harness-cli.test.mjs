@@ -3717,6 +3717,12 @@ test('C07 opaque identities survive the actual claim and terminal result without
   const profile = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
   const { environment, epoch } = agentMcpProfileReviewReadyEnvironment(profile);
   const reviewerId = 'opaque://reviewer handle#9';
+  const diagnostics = {
+    schemaVersion: 1,
+    reasonCode: 'AGENT_MCP_SUMMARY_MISSING',
+    checks: { serverSummaryPresent: false, artifactCaptureAttempted: false },
+    counters: { httpRequests: null },
+  };
   epoch.review_history[0].reviewer_id = reviewerId;
   const state = environment.readState();
   state.prBody = renderEpochBody(epoch);
@@ -3746,6 +3752,8 @@ test('C07 opaque identities survive the actual claim and terminal result without
       claimId,
       '--state',
       'INCONCLUSIVE',
+      '--diagnostics-json',
+      JSON.stringify(diagnostics),
     ]);
     assert.equal(terminal.status, 0, terminal.stderr);
     const saved = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
@@ -3753,6 +3761,31 @@ test('C07 opaque identities survive the actual claim and terminal result without
     assert.equal(saved.reviewerId, reviewerId);
     assert.equal(saved.retryAllowed, false);
     assert.equal(saved.state, 'INCONCLUSIVE');
+    assert.deepEqual(saved.failureDiagnostics, diagnostics);
+    const altered = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...common,
+      '--claim-id',
+      claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--diagnostics-json',
+      JSON.stringify({ ...diagnostics, checks: { serverSummaryPresent: true } }),
+    ]);
+    assert.equal(altered.status, 2);
+    assert.match(altered.stderr, /TERMINAL_DIAGNOSTICS_MISMATCH/);
+    const unsafe = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...common,
+      '--claim-id',
+      claimId,
+      '--state',
+      'INCONCLUSIVE',
+      '--diagnostics-json',
+      JSON.stringify({ ...diagnostics, checks: { rawOutput: 'private fixture text' } }),
+    ]);
+    assert.equal(unsafe.status, 2);
+    assert.match(unsafe.stderr, /DIAGNOSTICS_INVALID/);
     assert.equal(claim(reviewerId).status, 2);
     const unchanged = environment.readState();
     unchanged.candidateRefreshRange = `${sha('b')}...HEAD`;
