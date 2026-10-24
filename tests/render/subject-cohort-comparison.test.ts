@@ -91,11 +91,17 @@ describe('subject cohort comparison renderer', () => {
     expect(zineHtml).toContain('data-layout="zine-metric-header"');
     expect(zineHtml).toContain('data-layout-variant="zine-colophon-notes"');
     expect(zineHtml).toContain('data-layout="zine-colophon"');
+    expect(zineHtml).toContain('data-layout="cohort-citation-source"');
+    expect(zineHtml).toContain('2026-08-30 UTC');
     expect(zineHtml).toContain('2026 春季');
-    expect(zineHtml).toContain('Spring One');
+    expect(zineHtml).not.toMatch(/data-layout="cohort-label"[^>]*>[^<]*Spring One/u);
+    expect(zineHtml).toContain('height:160px');
     expect(zineHtml).not.toContain('聚合指标');
     expect(zineHtml).not.toContain('data-layout-variant="zine-sticker"');
     expect(zineHtml).not.toContain('data-layout="zine-delta-sticker"');
+
+    const wideZineHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 520, 'graphic-zine');
+    expect(wideZineHtml).toContain('title="Spring One"');
   });
 
   it('prioritizes A, B, and delta values at narrow widths without repeating sample metrics', () => {

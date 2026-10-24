@@ -1,7 +1,7 @@
 # Run #95 C07 two-cohort renderer visual redesign
 
 Date: 2026-10-24 (JST)
-Status: v35 corrective visual QA recorded; exact candidate delivery gates pending; user aesthetic acceptance not recorded.
+Status: v36 layout-correction visual QA recorded; exact candidate delivery gates pending; user aesthetic acceptance not recorded.
 
 ## Why this iteration exists
 
@@ -86,3 +86,10 @@ Generated a C07-specific three-pack triptych from the exact comparison content. 
 - The complete/light/360 render is 714 CSS px tall: 16px taller than v34 to make the small coverage details readable, while remaining 5px shorter than v32. Manifest SHA-256 `6284247ee4361f0b3c017653c7aa7618da403e01b693df21e55df5f2152ee3e9`; bundle SHA-256 `96c3a56ee336ee6bccd1cd34500040d8ecfeaa95ab6524625c92fa304729bb1a`; generation-source SHA-256 `8eaa1fc2304474fd3a1db855946916be00ad99c2d1f1e631cb3a1e55026516d0`. C07 remains UNASSESSED, v4 remains unclaimed, and user aesthetic acceptance is not recorded.
 - Manifest SHA-256 `11b20ad2963296bf104e14bf3dae0598651472db0c14dd74507fe84453ad2df7`; bundle SHA-256 `9576a30413a18119c5f19b42bda6e1edd9f63f9d7ec39d03a58537bcc1ce6371`; generation-source SHA-256 `999e046606032ad6a571e117ce4b6835c2a6daf3810ffc197a65d0c8ce62beeb`. Strict validation binds these hashes and every PNG.
 - Focused C07 renderer and typography tests pass 19/19; `pnpm build` passes. Broader local checks, exact-Candidate CI, Harness refresh, and round-6 review are still pending. This remains local synthetic rendering evidence; user aesthetic acceptance, real Bangumi scenario coverage, and QQ/TIM delivery are not claimed. C07 remains UNASSESSED and v4 UNCLAIMED.
+
+### v36 user-feedback layout correction — 2026-10-24 JST
+
+- After the user said the composition had regressed from an earlier version, a fresh comparison of the 360px Graphic Zine render against the C07 reference board confirmed three concrete issues: the coast had become a thin footer strip, repeated bilingual/sample metadata crowded both score panels, and the bright yellow notes panel competed with the score delta.
+- The scoped C07 Zine layout now shows the primary localized title while preserving the original title in its accessible tooltip; compact cohort metadata avoids orphan lines at 320–520px; complete metric rows no longer repeat `1/1 完整`, while partial/missing states keep explicit coverage labels. The coast illustration is taller, the dense notes panel uses the paper surface, and 320px metric rows inset values safely inside the cut-paper masks. Narrow citations keep method, source, and UTC date on compact lines. Shared TitleBlock/theme defaults remain unchanged.
+- Current output: `.artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v36/`; tracked receipt: [`run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v36.json`](run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v36.json). All 20 current Graphic Zine images were inspected individually across complete/partial, light/dark, and 320/360/520/640/960px. The other 40 images are byte-identical to the individually inspected v35 outputs. No clipping or overlap was found; partial values remain unknown and their deltas remain non-computable.
+- The complete/light/360 image is 729 CSS px tall (1458 DPR2 pixels), up from v35's 714 CSS px because the coastal illustration now has a visible role in the poster. Manifest SHA-256 `ca32f88065d8e9b0ccb52dd5a330f41b334bd0f8c0a06d97badab224ae0143d5`; bundle SHA-256 `03a586eb4b4cd54b150c7dcf75dc36746add3291235cc8971d40692da9124ba7`; generation-source SHA-256 `bb52807c73e4948f190bafd0c88c2485fe012f273a6d1b1d49bac287c4f109ea`. Strict v36 receipt validation passes. Focused renderer coverage passes 13/13; exact-Candidate CI, Harness Candidate check, and round-8 review remain pending. Synthetic QA is not user aesthetic acceptance or real Bangumi scenario proof. C07 remains UNASSESSED and v4 UNCLAIMED.

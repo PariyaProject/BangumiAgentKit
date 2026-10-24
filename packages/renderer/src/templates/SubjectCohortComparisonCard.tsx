@@ -865,15 +865,33 @@ const CohortZineMasthead: React.FC<{
     {cohorts.slice(0, 2).map((cohort, index) => {
       const subject = cohort.subjects[0];
       const queryCoverage = cohort.coverage.query.coverage;
-      const title = subject?.displayName || subject?.name || '暂无可展示作品';
-      const alternateName =
-        subject?.displayName && subject.name && subject.displayName !== subject.name
-          ? subject.name
-          : undefined;
+      const fullTitle = subject?.displayName || subject?.name || '暂无可展示作品';
+      const titleParts = fullTitle.split(/\s+\/\s+/u);
+      const title =
+        titleParts.length > 1 &&
+        /\p{Script=Han}/u.test(titleParts[0] ?? '') &&
+        /\p{Script=Latin}/u.test(titleParts.slice(1).join(' / '))
+          ? titleParts[0]!.trim()
+          : fullTitle;
       const querySummary = cohort.querySummary.startsWith(cohort.label)
         ? cohort.querySummary.slice(cohort.label.length).replace(/^[\s·•:：]+/u, '') ||
           cohort.querySummary
         : cohort.querySummary;
+      const detailedMetadata = [
+        subject ? `作品 #${subject.id}` : null,
+        `${queryCoverage.returned}/${queryCoverage.scanned} 条`,
+        totalKindLabel(queryCoverage.totalKind),
+        `详情 ${cohort.coverage.detailHydrationsSucceeded}/${cohort.coverage.detailHydrationsAttempted}`,
+      ]
+        .filter((item): item is string => item !== null)
+        .join(' · ');
+      const compactMetadata = subject ? `样本 #${subject.id}` : '作品详情暂不可用';
+      const compactTabletMetadata = [
+        subject ? `#${subject.id}` : '详情暂不可用',
+        `${queryCoverage.returned}/${queryCoverage.scanned}`,
+        totalKindLabel(queryCoverage.totalKind),
+        `详情 ${cohort.coverage.detailHydrationsSucceeded}/${cohort.coverage.detailHydrationsAttempted}`,
+      ].join(' · ');
       const cohortColor = index === 0 ? theme.tones.coral.foreground : theme.tones.blue.foreground;
       const cohortSurface = index === 0 ? theme.tones.coral.surface : theme.tones.blue.surface;
       const score = leadMetric ? averageLabel(leadMetric, index) : '—';
@@ -915,10 +933,11 @@ const CohortZineMasthead: React.FC<{
           </div>
           <div
             data-layout="cohort-label"
+            title={subject?.name ?? fullTitle}
             style={{
               color: theme.text,
               fontFamily: COHORT_ZINE_DISPLAY_FONT,
-              fontSize: width <= 400 ? '14px' : '18px',
+              fontSize: width <= 320 ? '12px' : width <= 400 ? '14px' : '18px',
               fontWeight: 650,
               lineHeight: 1.22,
               marginTop: '5px',
@@ -931,21 +950,6 @@ const CohortZineMasthead: React.FC<{
           >
             {title}
           </div>
-          {alternateName ? (
-            <div
-              style={{
-                color: theme.textMuted,
-                fontSize: width <= 400 ? '10px' : '11px',
-                lineHeight: 1.2,
-                marginTop: '2px',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {alternateName}
-            </div>
-          ) : null}
           <div
             data-layout="zine-score-caption"
             style={{
@@ -1001,7 +1005,7 @@ const CohortZineMasthead: React.FC<{
               overflowWrap: 'anywhere',
               display: '-webkit-box',
               WebkitBoxOrient: 'vertical',
-              WebkitLineClamp: 2,
+              WebkitLineClamp: width <= 400 ? 1 : 2,
               overflow: 'hidden',
             }}
           >
@@ -1016,12 +1020,13 @@ const CohortZineMasthead: React.FC<{
               marginTop: '3px',
               overflowWrap: 'anywhere',
             }}
+            title={detailedMetadata}
           >
-            {subject ? '作品 #' + subject.id + ' · ' : ''}
-            {queryCoverage.returned}/{queryCoverage.scanned} 条 ·{' '}
-            {totalKindLabel(queryCoverage.totalKind)}
-            {' · '}详情 {cohort.coverage.detailHydrationsSucceeded}/
-            {cohort.coverage.detailHydrationsAttempted}
+            {width <= 400
+              ? compactMetadata
+              : width <= 520
+                ? compactTabletMetadata
+                : detailedMetadata}
           </div>
         </section>
       );
@@ -1093,7 +1098,7 @@ const CohortWaterfrontScene: React.FC<{
     style={{
       position: 'relative',
       width: '100%',
-      height: width <= 400 ? '84px' : width <= 640 ? '132px' : '176px',
+      height: width <= 400 ? '160px' : width <= 640 ? '168px' : '192px',
       marginTop: width <= 400 ? '-2px' : '-4px',
       overflow: 'hidden',
       backgroundColor: 'transparent',
@@ -1227,7 +1232,7 @@ const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
             clipPath:
               metricIndex % 2 === 0 ? theme.design.masks.panel : theme.design.masks.panelAlt,
             boxShadow: '2px 2px 0 ' + theme.tones.blue.border,
-            padding: width <= 400 ? '6px 6px' : '9px 12px',
+            padding: width <= 400 ? '6px 18px 6px 6px' : '9px 12px',
             transform: metricIndex % 2 === 0 ? 'rotate(-0.25deg)' : 'rotate(0.25deg)',
           }}
         >
@@ -1282,16 +1287,18 @@ const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
               >
                 {averageLabel(metric, index)}
               </div>
-              <div
-                style={{
-                  color: theme.textMuted,
-                  fontSize: width <= 400 ? '12px' : '10px',
-                  lineHeight: 1.15,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {metricCoverageCompactLabel(cohort, metric.key)}
-              </div>
+              {metric.state === 'complete' ? null : (
+                <div
+                  style={{
+                    color: theme.textMuted,
+                    fontSize: width <= 400 ? '12px' : '10px',
+                    lineHeight: 1.15,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {metricCoverageCompactLabel(cohort, metric.key)}
+                </div>
+              )}
             </div>
           ))}
           <div
@@ -2141,7 +2148,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                   ? '6px'
                   : '8px',
           borderTop: sharedZineOverview ? undefined : `1px solid ${theme.border}`,
-          backgroundColor: sharedZineOverview ? theme.tones.butter.surface : undefined,
+          backgroundColor: sharedZineOverview ? theme.surface : undefined,
           clipPath: sharedZineOverview ? theme.design.masks.panelAlt : undefined,
           padding: sharedZineOverview ? (viewportWidth <= 400 ? '8px 9px' : '12px 16px') : undefined,
           paddingTop: sharedZineOverview ? undefined : '8px',
@@ -2201,7 +2208,18 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
           </div>
         ) : null}
 
-        {isGallery && viewportWidth <= 400 ? (
+        {sharedZineOverview && viewportWidth <= 400 ? (
+          <>
+            <div data-layout="cohort-citation-summary">
+              {cohortCalculationMethodLabel(viewModel.formulaVersion)}
+            </div>
+            <div data-layout="cohort-citation-source">
+              来源：Bangumi 公共条目 ·{' '}
+              {officialOperations.replace('检索条目', '检索').replace('读取条目详情', '详情')} ·{' '}
+              {viewModel.retrievedAt ? `${viewModel.retrievedAt.slice(0, 10)} UTC` : '日期未知'}
+            </div>
+          </>
+        ) : isGallery && viewportWidth <= 400 ? (
           <div data-layout="cohort-citation-summary">
             {cohortCalculationMethodLabel(viewModel.formulaVersion)} · Bangumi 公共条目 ·{' '}
             {officialOperations} · {retrievalDateLabel(viewModel.retrievedAt)}
