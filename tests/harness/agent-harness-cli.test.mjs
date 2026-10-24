@@ -262,23 +262,53 @@ test('continuation CLI persists latest human intent without changing budgets or 
   try {
     const original = environment.readState();
     const paused = environment.execute([
-      'run:directive', '--run', '1', '--expected-sequence', '0', '--action', 'pause',
-      '--source-ref', 'user-message:pause', '--reason', 'User explicitly paused work.',
+      'run:directive',
+      '--run',
+      '1',
+      '--expected-sequence',
+      '0',
+      '--action',
+      'pause',
+      '--source-ref',
+      'user-message:pause',
+      '--reason',
+      'User explicitly paused work.',
     ]);
     assert.equal(paused.status, 0, paused.stderr);
     const denied = environment.execute(['review:reserve', '--run', '1', '--pr', '42']);
     assert.equal(denied.status, 2);
     assert.match(denied.stderr, /^HUMAN_PAUSE_ACTIVE:/u);
     // candidate:check permits omitted --run; it must still find the active pause.
-    const candidate = environment.execute(['candidate:check', '--pr', '42', '--evidence', 'unused.json']);
+    const candidate = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      'unused.json',
+    ]);
     assert.equal(candidate.status, 2);
     assert.match(candidate.stderr, /^HUMAN_PAUSE_ACTIVE:/u);
     const resumed = environment.execute([
-      'run:directive', '--run', '1', '--expected-sequence', '1', '--action', 'continue',
-      '--source-ref', 'user-message:resume', '--reason', 'The old pause is cancelled; continue.',
+      'run:directive',
+      '--run',
+      '1',
+      '--expected-sequence',
+      '1',
+      '--action',
+      'continue',
+      '--source-ref',
+      'user-message:resume',
+      '--reason',
+      'The old pause is cancelled; continue.',
     ]);
     assert.equal(resumed.status, 0, resumed.stderr);
-    const brief = environment.execute(['continuation:show', '--run', '1', '--goal-state', 'paused']);
+    const brief = environment.execute([
+      'continuation:show',
+      '--run',
+      '1',
+      '--goal-state',
+      'paused',
+    ]);
     assert.equal(brief.status, 0, brief.stderr);
     const parsed = JSON.parse(brief.stdout);
     assert.equal(parsed.latest_human_directive.data.action, 'continue');
@@ -286,34 +316,59 @@ test('continuation CLI persists latest human intent without changing budgets or 
     assert.equal(parsed.sequence, 2);
     const final = environment.readState();
     assert.equal(final.prBody, original.prBody);
-    assert.deepEqual(parseControlBlock(final.runBody, RUN_MARKER).outer_sol,
-      parseControlBlock(original.runBody, RUN_MARKER).outer_sol);
-  } finally { environment.cleanup(); }
+    assert.deepEqual(
+      parseControlBlock(final.runBody, RUN_MARKER).outer_sol,
+      parseControlBlock(original.runBody, RUN_MARKER).outer_sol,
+    );
+  } finally {
+    environment.cleanup();
+  }
 });
 
 test('continuation CLI records a strategy checkpoint and rejects stale replay', () => {
   const environment = createMockEnvironment();
   try {
     const evidence = path.join(environment.directory, 'checkpoint.json');
-    fs.writeFileSync(evidence, JSON.stringify({
-      kind: 'strategy_review', epoch_pr: 42, problem: 'repetitive-corrective-work',
-      input_sha256: 'f'.repeat(64), outcome: 'Pinned scope and replaced the failed approach.',
-      next_action: 'Complete the exact pending correction before new work.',
-      evidence_refs: ['docs/agent/RUN95_RECOVERY_PLAN.md'],
-      reviewer_id: 'strategy-session', model: 'gpt-6.1-sol',
-    }));
+    fs.writeFileSync(
+      evidence,
+      JSON.stringify({
+        kind: 'strategy_review',
+        epoch_pr: 42,
+        problem: 'repetitive-corrective-work',
+        input_sha256: 'f'.repeat(64),
+        outcome: 'Pinned scope and replaced the failed approach.',
+        next_action: 'Complete the exact pending correction before new work.',
+        evidence_refs: ['docs/agent/RUN95_RECOVERY_PLAN.md'],
+        reviewer_id: 'strategy-session',
+        model: 'gpt-6.1-sol',
+      }),
+    );
     const result = environment.execute([
-      'run:checkpoint', '--run', '1', '--expected-sequence', '0', '--evidence', evidence,
+      'run:checkpoint',
+      '--run',
+      '1',
+      '--expected-sequence',
+      '0',
+      '--evidence',
+      evidence,
     ]);
     assert.equal(result.status, 0, result.stderr);
     const beforeReplay = environment.readState().runBody;
     const replay = environment.execute([
-      'run:checkpoint', '--run', '1', '--expected-sequence', '0', '--evidence', evidence,
+      'run:checkpoint',
+      '--run',
+      '1',
+      '--expected-sequence',
+      '0',
+      '--evidence',
+      evidence,
     ]);
     assert.equal(replay.status, 2);
     assert.match(replay.stderr, /^STALE_CONTINUATION_SEQUENCE:/u);
     assert.equal(environment.readState().runBody, beforeReplay);
-  } finally { environment.cleanup(); }
+  } finally {
+    environment.cleanup();
+  }
 });
 
 function controlFixture() {
@@ -5398,7 +5453,9 @@ test('v5 subject-card Candidate refresh allows its exact matrix integration regr
     assert.equal(stored.state, 'REVIEW_READY');
     assert.equal(stored.candidate_sha, sha('e'));
     assert.deepEqual(
-      stored.adversarial_preflight.agent_mcp_profile_dispositions[RENDER_SUBJECT_CARD_V5_PROFILE.id],
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[
+        RENDER_SUBJECT_CARD_V5_PROFILE.id
+      ],
       disposition,
     );
   } finally {
@@ -5418,10 +5475,10 @@ test('v5 subject-card Candidate refresh allows its exact matrix integration regr
     'tests/harness/agent-harness-cli.test.mjs',
     'packages/renderer/src/templates/SubjectCard.tsx',
   ];
-  const unsafe = renderSubjectCardV5ReportRefreshEnvironment(
-    dispositionWithRuntimePath,
-    { candidateRefreshPaths: refreshPaths, changedPaths: refreshPaths },
-  );
+  const unsafe = renderSubjectCardV5ReportRefreshEnvironment(dispositionWithRuntimePath, {
+    candidateRefreshPaths: refreshPaths,
+    changedPaths: refreshPaths,
+  });
   try {
     const result = unsafe.environment.execute([
       'candidate:check',
@@ -9848,8 +9905,7 @@ test('v5 subject-card result routes its report through the registered validator 
     const reportBytes = Buffer.from('{"invalid":true}\n', 'utf8');
     fs.writeFileSync(reportPath, reportBytes);
     const state = environment.readState();
-    state.dirty =
-      ` M scripts/agent-harness.mjs\n?? ${RENDER_SUBJECT_CARD_V5_PROFILE.reportPath}`;
+    state.dirty = ` M scripts/agent-harness.mjs\n?? ${RENDER_SUBJECT_CARD_V5_PROFILE.reportPath}`;
     fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
 
     const result = environment.execute([
@@ -9871,9 +9927,8 @@ test('v5 subject-card result routes its report through the registered validator 
     assert.match(result.stderr, /^AGENT_MCP_PROFILE_REPORT_INVALID:/u);
     assert.doesNotMatch(result.stderr, /AGENT_MCP_PROFILE_REPORT_VALIDATOR_MISSING/u);
     assert.equal(
-      parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
-        .adversarial_preflight.agent_mcp_profile_dispositions[RENDER_SUBJECT_CARD_V5_PROFILE.id]
-        .state,
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).adversarial_preflight
+        .agent_mcp_profile_dispositions[RENDER_SUBJECT_CARD_V5_PROFILE.id].state,
       'CLAIMED',
     );
   } finally {

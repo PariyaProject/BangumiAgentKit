@@ -74,7 +74,10 @@ function checkpointData(input, epoch) {
   if (!['progress', 'no_progress', 'strategy_review'].includes(input?.kind)) {
     fail('INVALID_CONTINUATION_EVENT', 'Unknown checkpoint kind');
   }
-  if (!positive(input.epoch_pr) || input.epoch_pr !== epoch?.pr_number) {
+  if (
+    !(input.epoch_pr === null && epoch == null) &&
+    (!positive(input.epoch_pr) || input.epoch_pr !== epoch?.pr_number)
+  ) {
     fail('CONTINUATION_EPOCH_MISMATCH', 'Checkpoint must bind the active Epoch');
   }
   if (!digest(input.input_sha256)) {
@@ -100,7 +103,7 @@ function checkpointData(input, epoch) {
     result.reviewer_id = text(input.reviewer_id, 'reviewer_id', 150);
     result.model = text(input.model, 'model', 80);
     result.review_history_sha256 = reviewHistorySha(epoch);
-    result.review_count = epoch.review_history?.length ?? 0;
+    result.review_count = epoch?.review_history?.length ?? 0;
   }
   return result;
 }
@@ -146,10 +149,15 @@ export function appendContinuationEvent(
       );
     }
   } else {
-    if (run.active_epoch_pr !== epoch?.pr_number) {
+    if ((run.active_epoch_pr ?? null) !== (epoch?.pr_number ?? null)) {
       fail('CONTINUATION_EPOCH_MISMATCH', 'Checkpoint is not for the Run active Epoch');
     }
     data = checkpointData(input, epoch);
+    if (data.kind === 'strategy_review') {
+      const directive = currentDirective(run);
+      data.resolves_directive_sequence =
+        directive?.data.action === 'replan' ? directive.sequence : null;
+    }
   }
   const payload = {
     sequence: events.length + 1,
@@ -178,7 +186,7 @@ export function appendContinuationEvent(
 
 export function continuationRisk(run, epoch) {
   const checkpoints = continuationEvents(run).filter(
-    (event) => event.type === 'checkpoint' && event.data.epoch_pr === epoch?.pr_number,
+    (event) => event.type === 'checkpoint' && event.data.epoch_pr === (epoch?.pr_number ?? null),
   );
   const strategy = checkpoints.findLast((event) => event.data.kind === 'strategy_review');
   const acknowledged = strategy?.data.review_count ?? 0;
@@ -209,9 +217,23 @@ export function continuationRisk(run, epoch) {
   };
 }
 
-function replanPending(directive, risk) {
+function replanPending(run, directive) {
   return (
-    directive?.data.action === 'replan' && (risk.last_strategy_sequence ?? 0) <= directive.sequence
+    directive?.data.action === 'replan' &&
+    !continuationEvents(run).some(
+      (event) =>
+        event.type === 'checkpoint' &&
+        event.data.kind === 'strategy_review' &&
+        event.data.resolves_directive_sequence === directive.sequence,
+    )
+  );
+}
+
+function executionPauseActive(run) {
+  return (
+    continuationEvents(run).findLast(
+      (event) => event.type === 'directive' && ['pause', 'continue'].includes(event.data.action),
+    )?.data.action === 'pause'
   );
 }
 
@@ -221,9 +243,9 @@ export function assertContinuationMayAdvance(run, epoch) {
   if (run.continuation === undefined) return;
   const directive = currentDirective(run);
   const risk = continuationRisk(run, epoch);
-  if (directive?.data.action === 'pause')
-    fail('HUMAN_PAUSE_ACTIVE', 'Latest durable human instruction is pause');
-  if (replanPending(directive, risk))
+  if (executionPauseActive(run))
+    fail('HUMAN_PAUSE_ACTIVE', 'An explicit human pause still requires a later human continue');
+  if (replanPending(run, directive))
     fail('REPLAN_REQUIRED', 'Finish and record the requested strategy review first');
   if (risk.strategy_review_required) {
     fail(
@@ -244,15 +266,20 @@ export function buildContinuationBrief({ run, epoch, pr, goalState = 'unobserved
   const directive = currentDirective(run);
   const risk = continuationRisk(run, epoch);
   let action = 'SELECT_OR_RESUME_EPOCH';
-  if (directive?.data.action === 'pause') action = 'WAIT_FOR_EXPLICIT_CONTINUE';
-  else if (replanPending(directive, risk)) action = 'COMPLETE_REQUESTED_REPLAN';
-  else if (goalState === 'paused') action = 'RESUME_CODEX_GOAL_IN_APP';
+  if (executionPauseActive(run)) action = 'WAIT_FOR_EXPLICIT_CONTINUE';
+  else if (replanPending(run, directive)) action = 'COMPLETE_REQUESTED_REPLAN';
+  else if (['paused', 'blocked'].includes(goalState)) action = 'RESUME_CODEX_GOAL_IN_APP';
   else if (goalState === 'complete') action = 'VERIFY_GOAL_COMPLETION';
   else if (risk.strategy_review_required) action = 'STRATEGY_REVIEW_REQUIRED';
   else if (epoch?.state === 'INTEGRATION_BLOCKED') action = 'RESUME_INTEGRATION';
   else if (['REVIEW_RUNNING', 'REVIEW_INTERRUPTED_RESUMABLE'].includes(epoch?.state))
     action = 'OBSERVE_SAME_REVIEWER_RUNTIME';
-  else if (epoch && pr.headRefOid !== epoch.candidate_sha)
+  else if (epoch?.state === 'IMPLEMENTING') action = 'IMPLEMENT_CURRENT_EPOCH';
+  else if (epoch?.state === 'CORRECTIVE_REQUIRED')
+    action = 'COMPLETE_CORRECTIONS_AND_VALIDATE_CANDIDATE';
+  else if (epoch?.state === 'FINAL_CORRECTIVE_REQUIRED')
+    action = 'COMPLETE_GOVERNED_FINAL_CORRECTIVE';
+  else if (epoch?.candidate_sha && pr.headRefOid !== epoch.candidate_sha)
     action = 'CHECK_CURRENT_HEAD_CI_AND_REFRESH_CANDIDATE';
   else if (epoch?.state === 'REVIEW_PASSED')
     action = 'CHECK_PROFILE_DISPOSITION_AND_INTEGRATION_GATES';
@@ -264,7 +291,8 @@ export function buildContinuationBrief({ run, epoch, pr, goalState = 'unobserved
     authoritative_source: 'GitHub Run Issue and Epoch PR',
     sequence: events.length,
     latest_human_directive: directive,
-    requested_replan_pending: replanPending(directive, risk),
+    requested_replan_pending: replanPending(run, directive),
+    human_execution_pause_active: executionPauseActive(run),
     codex_goal_observation: goalState,
     app_goal_resume_is_not_performed_by_harness: true,
     next_action: action,

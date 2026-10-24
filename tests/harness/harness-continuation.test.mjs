@@ -148,6 +148,7 @@ test('replanning remains separate from pause and does not assert that the app Go
 
 test('a compact brief uses the live head and includes the unresolved review and remaining slots', () => {
   const ep = epoch();
+  ep.state = 'REVIEW_READY';
   ep.review_history = [
     { verdict: 'CORRECTIVE_REQUIRED', findings: [{ id: 'visible-original-title' }] },
   ];
@@ -206,4 +207,79 @@ test('lossless compression preserves old directives, every event and the failure
   assert.equal(continuationRisk(saved, epoch()).repeated_no_progress, true);
   saved.continuation.archive.sha256 = '0'.repeat(64);
   assert.throws(() => continuationEvents(saved), errorCode('INVALID_CONTINUATION_HISTORY'));
+});
+
+test('a Run without an active Epoch can finish replanning without creating a fake Epoch', () => {
+  const state = appendContinuationEvent(
+    { ...run(), active_epoch_pr: null },
+    null,
+    directive('replan'),
+    0,
+  );
+  const planned = appendContinuationEvent(
+    state,
+    null,
+    {
+      ...checkpoint('strategy_review'),
+      epoch_pr: null,
+      reviewer_id: 'strategy-session',
+      model: 'gpt-6.1-sol',
+    },
+    1,
+  );
+  assertContinuationMayAdvance(planned, null);
+  assert.equal(buildContinuationBrief({ run: planned }).requested_replan_pending, false);
+});
+
+test('replanning during a human pause cannot resume Product execution', () => {
+  let state = append(run(), directive('pause'));
+  state = append(state, directive('replan'));
+  state = append(state, {
+    ...checkpoint('strategy_review'),
+    reviewer_id: 'strategy-session',
+    model: 'gpt-6.1-sol',
+  });
+  const brief = buildContinuationBrief({ run: state, epoch: epoch(), pr: pr() });
+  assert.equal(brief.requested_replan_pending, false);
+  assert.equal(brief.human_execution_pause_active, true);
+  assert.throws(
+    () => assertContinuationMayAdvance(state, epoch()),
+    errorCode('HUMAN_PAUSE_ACTIVE'),
+  );
+  state = append(state, directive('continue'));
+  assertContinuationMayAdvance(state, epoch());
+});
+
+test('fulfilled human replan never resurrects after merge or the next Epoch', () => {
+  let state = append(run(), directive('replan'));
+  state = append(state, {
+    ...checkpoint('strategy_review'),
+    reviewer_id: 'strategy-session',
+    model: 'gpt-6.1-sol',
+  });
+  const between = { ...state, active_epoch_pr: null };
+  assertContinuationMayAdvance(between, null);
+  assert.equal(buildContinuationBrief({ run: between }).requested_replan_pending, false);
+  const next = { ...state, active_epoch_pr: 272 };
+  const nextEpoch = { ...epoch(), pr_number: 272, state: 'IMPLEMENTING', candidate_sha: null };
+  assertContinuationMayAdvance(next, nextEpoch);
+  const brief = buildContinuationBrief({
+    run: next,
+    epoch: nextEpoch,
+    pr: { ...pr(), number: 272 },
+  });
+  assert.equal(brief.requested_replan_pending, false);
+  assert.equal(brief.next_action, 'IMPLEMENT_CURRENT_EPOCH');
+});
+
+test('blocked app Goals route to the app control without fabricating a repository blocker', () => {
+  const state = append(run(), directive('continue'));
+  const brief = buildContinuationBrief({
+    run: state,
+    epoch: epoch(),
+    pr: pr(),
+    goalState: 'blocked',
+  });
+  assert.equal(brief.next_action, 'RESUME_CODEX_GOAL_IN_APP');
+  assert.equal(brief.run_state, 'EPOCH_ACTIVE');
 });

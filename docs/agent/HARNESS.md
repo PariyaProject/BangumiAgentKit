@@ -117,10 +117,12 @@ The latest directive wins by monotonically increasing sequence. A later
 continue revokes an earlier pause; quoting the word pause has no effect.
 An interruption/model switch alone is not a human pause.
 
-A replan request is fulfilled by a later strategy_review checkpoint for the
-same active Epoch. This resolves only the replan task, preserving the original
-directive in history and all app Goal controls. A pause always requires an
-explicit later human continue; a strategy checkpoint cannot cancel it.
+A replan request is fulfilled by a later strategy_review checkpoint, explicitly
+bound to that directive sequence. Fulfilment survives Epoch merge and the next
+Epoch; it cannot resurrect as pending just because the active PR changed.
+This resolves only the replan task, preserving the directive and app controls.
+An outstanding pause always requires explicit later human continue, even if a
+manual replan/strategy review occurs in between; neither cancels that pause.
 
 Legacy Runs opt in on the first directive. Read-only inspection never changes
 the Run or retroactively blocks legacy commands. Once enabled, pause/replan
@@ -154,6 +156,9 @@ requires the actual reviewer_id and model; Harness binds it to the exact
 existing review-history prefix. Identity is opaque. Model is recorded from
 the runtime/dispatch, never inferred from the identity. The caller must
 truthfully record the observed review and supporting evidence.
+
+When no Epoch is active, epoch_pr is null and a Run-level strategy review can
+fulfil a Run-level replan request; it creates no placeholder Epoch or PR.
 
 Record at meaningful engineering/research/failure/handoff boundaries, not
 every tool call or unchanged poll. Keep summaries bounded and use evidence
