@@ -149,7 +149,9 @@ test('C07 v4 matrix-only selection keeps the scenario unassessed and preserves o
     /C07 profiles v1-v3 remain terminal INCONCLUSIVE\/no-report\/retryAllowed=false/u,
   );
   assert.match(record.next_action, /distinct v4 profile targets only the render_subject_cohort_comparison Agent\/MCP matrix row/u);
-  assert.match(record.next_action, /currently unclaimed and can earn no scenario credit/u);
+  assert.match(record.next_action, /sole attempt is now terminal INCONCLUSIVE\/no-report\/retryAllowed=false/u);
+  assert.match(record.next_action, /earns no matrix or scenario credit/u);
+  assert.doesNotMatch(record.next_action, /currently unclaimed/u);
   assert.doesNotMatch(
     record.next_action,
     /No v3 call or report exists yet/u,

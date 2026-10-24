@@ -271,6 +271,8 @@ export function buildContinuationBrief({ run, epoch, pr, goalState = 'unobserved
   else if (['paused', 'blocked'].includes(goalState)) action = 'RESUME_CODEX_GOAL_IN_APP';
   else if (goalState === 'complete') action = 'VERIFY_GOAL_COMPLETION';
   else if (risk.strategy_review_required) action = 'STRATEGY_REVIEW_REQUIRED';
+  else if (run.state === 'TERMINAL_RECOVERY_PENDING' && run.pending_terminal_recovery)
+    action = 'RESUME_TERMINAL_RECOVERY';
   else if (epoch?.state === 'INTEGRATION_BLOCKED') action = 'RESUME_INTEGRATION';
   else if (['REVIEW_RUNNING', 'REVIEW_INTERRUPTED_RESUMABLE'].includes(epoch?.state))
     action = 'OBSERVE_SAME_REVIEWER_RUNTIME';

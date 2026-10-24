@@ -55,7 +55,11 @@ if (tool === 'gh') {
   if (group === '--version') output('gh version mock');
   else if (group === 'auth' && action === 'status') output('authenticated');
   else if (group === 'repo' && action === 'view') output({ nameWithOwner: 'mock/repo' });
-  else if (
+  else if (group === 'run' && action === 'view') {
+    const run = state.workflowRuns?.[args[2]];
+    if (run) output(run);
+    else fail('unknown mocked workflow run');
+  } else if (
     group === 'api' &&
     action === 'repos/{owner}/{repo}/labels' &&
     flagValue('--method') === 'POST' &&
@@ -83,6 +87,14 @@ if (tool === 'gh') {
   } else if (group === 'api' && flagValue('--method') === 'PATCH' && flagValue('--input') === '-') {
     const payload = JSON.parse(stdin());
     if (/^repos\/\{owner\}\/\{repo\}\/issues\/\d+$/u.test(action)) {
+      if (state.failIssuePatchAt) {
+        state.issuePatchAttempts = (state.issuePatchAttempts ?? 0) + 1;
+        if (state.issuePatchAttempts === state.failIssuePatchAt) {
+          delete state.failIssuePatchAt;
+          fail('simulated issue body update failure');
+          process.exit(1);
+        }
+      }
       state.runBody = payload.body;
       output('updated');
     } else if (/^repos\/\{owner\}\/\{repo\}\/pulls\/\d+$/u.test(action)) {

@@ -61,6 +61,10 @@ import {
   waitForFrontierReviewer,
   waitForSameReviewer,
 } from './lib/agent-harness-core.mjs';
+import {
+  LEGACY_R04_TERMINAL_RECOVERY,
+  planLegacyTerminalRecovery,
+} from './lib/harness-terminal-recovery.mjs';
 import { canonicalHash, inspectFrontierLedger } from './lib/frontier-ledger.mjs';
 import {
   appendContinuationEvent,
@@ -891,6 +895,7 @@ Usage: pnpm harness <command> [options]
   frontier:review-result --run <issue> --verdict <PASS|DISCOVERY_REQUIRED> [--findings <json>]
   frontier:resume-discovery --run <issue>
   epoch:park --run <issue> --pr <number> --state <state> --reason <text>
+  epoch:resume-terminal-failure --run <issue> --pr <number> --expected-claim-sha256 <sha>
   epoch:resume-final-corrective --run <issue> --pr <number>
   epoch:resume-integration --run <issue> --pr <number>
   epoch:merge --run <issue> --pr <number>
@@ -8203,6 +8208,167 @@ function commandEpochPark(options) {
   print({ state, same_pr: Number(prNumber), branch: epoch.branch });
 }
 
+function commandEpochResumeTerminalFailure(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const policy = LEGACY_R04_TERMINAL_RECOVERY;
+  const runNumber = required(options, 'run');
+  const prNumber = required(options, 'pr');
+  const expectedClaimSha256 = required(options, 'expected-claim-sha256');
+  if (
+    Number(runNumber) !== policy.run ||
+    Number(prNumber) !== policy.pr ||
+    !/^[a-f0-9]{64}$/u.test(expectedClaimSha256)
+  ) {
+    throw new HarnessInvariantError(
+      'TERMINAL_RECOVERY_UNSUPPORTED',
+      'This reviewed migration supports only Run95 PR267 with its exact observed claim digest.',
+    );
+  }
+  let runResult = issueState(runNumber);
+  let epochResult = epochState(prNumber);
+  if (
+    (runResult.state.active_epoch_pr && runResult.state.active_epoch_pr !== policy.pr) ||
+    runResult.state.pending_epoch
+  ) {
+    throw new HarnessInvariantError(
+      'TERMINAL_RECOVERY_INELIGIBLE',
+      'Finish the active or pending Epoch before recovering parked work.',
+    );
+  }
+  const epoch = epochResult.state;
+  const claim = epoch.adversarial_preflight?.agent_mcp_profile_dispositions?.[policy.profileId];
+  if (
+    epoch.branch !== `codex/epoch-${policy.epochId}` ||
+    epochResult.view.headRefName !== epoch.branch ||
+    !claim ||
+    canonicalHash(claim) !== expectedClaimSha256 ||
+    !/^[a-f0-9]{40}$/u.test(claim.baseSha ?? '') ||
+    !/^[0-9]{4,20}$/u.test(claim.ciRunId ?? '')
+  ) {
+    throw new HarnessInvariantError(
+      'TERMINAL_RECOVERY_INELIGIBLE',
+      'The same branch and exact immutable historical claim are required.',
+    );
+  }
+  git('fetch', 'origin', epoch.branch);
+  const registry = JSON.parse(
+    git('show', `${policy.sourceSha}:scripts/acceptance/agent-mcp-profile-registry.json`),
+  );
+  const sourceProfile = registry?.profiles?.find((profile) => profile.id === policy.profileId);
+  if (
+    !sourceProfile ||
+    typeof sourceProfile.reportPath !== 'string' ||
+    !/^docs\/live-probes\/[a-z0-9-]+\.json$/u.test(sourceProfile.reportPath)
+  ) {
+    throw new HarnessInvariantError(
+      'TERMINAL_RECOVERY_INELIGIBLE',
+      'The immutable source registry must name its bounded report path.',
+    );
+  }
+  const sourceRun = JSON.parse(
+    gh('run', 'view', claim.ciRunId, '--json', 'headSha,status,conclusion,jobs'),
+  );
+  const sourceChecks = Array.isArray(claim.ciChecks)
+    ? claim.ciChecks.map((expected) => {
+        const jobs = Array.isArray(sourceRun.jobs)
+          ? sourceRun.jobs.filter((job) => job.name === expected.name)
+          : [];
+        return jobs.length === 1
+          ? {
+              name: expected.name,
+              status: jobs[0].status?.toUpperCase(),
+              conclusion: jobs[0].conclusion?.toUpperCase(),
+            }
+          : null;
+      })
+    : [];
+  const proof = {
+    expectedClaimSha256,
+    sourceProfile,
+    pr: epochResult.view,
+    headIncludesSource: isAncestor(policy.sourceSha, epochResult.view.headRefOid),
+    headIncludesParkedHead: isAncestor(policy.parkedHeadSha, epochResult.view.headRefOid),
+    sourceIncludesBase: isAncestor(claim.baseSha, policy.sourceSha),
+    sourceCi: {
+      sha: sourceRun.headSha,
+      runId: claim.ciRunId,
+      status:
+        sourceRun.status === 'completed' && sourceRun.conclusion === 'success'
+          ? 'SUCCESS'
+          : 'UNVERIFIED',
+      checks: sourceChecks,
+    },
+    reportExists:
+      Boolean(
+        git(
+          'ls-tree',
+          '-r',
+          '--name-only',
+          epochResult.view.headRefOid,
+          '--',
+          sourceProfile.reportPath,
+        ),
+      ) || fs.existsSync(path.resolve(root, sourceProfile.reportPath)),
+    labels: readAgentMcpProfileLabels(),
+  };
+  let plan = planLegacyTerminalRecovery(runResult.state, epochResult.state, proof);
+  if (plan.state === 'TERMINAL_RECOVERY_ALREADY_RESUMED') {
+    print(plan);
+    return;
+  }
+  const readPair = () => ({ run: issueState(runNumber), epoch: epochState(prNumber) });
+  const unchanged = (pair) => {
+    if (
+      canonicalHash(pair.run.state) !== canonicalHash(runResult.state) ||
+      canonicalHash(pair.epoch.state) !== canonicalHash(epochResult.state) ||
+      pair.epoch.view.headRefOid !== proof.pr.headRefOid
+    ) {
+      throw new HarnessInvariantError(
+        'TERMINAL_RECOVERY_CONCURRENT_WRITE',
+        'Reinspect the Run/PR before resuming this exact recovery intent.',
+      );
+    }
+  };
+  const readback = (actual, expected) => {
+    if (canonicalHash(actual) !== canonicalHash(expected)) {
+      throw new HarnessInvariantError(
+        'TERMINAL_RECOVERY_READBACK_MISMATCH',
+        'A control write needs reinspection before retry; no query or merge is authorized.',
+      );
+    }
+  };
+  if (!runResult.state.pending_terminal_recovery) {
+    unchanged(readPair());
+    updateIssue(runNumber, plan.pendingRun);
+    runResult = issueState(runNumber);
+    readback(runResult.state, plan.pendingRun);
+  }
+  const beforeEpoch = readPair();
+  unchanged(beforeEpoch);
+  plan = planLegacyTerminalRecovery(runResult.state, epochResult.state, proof);
+  if (canonicalHash(epochResult.state) !== canonicalHash(plan.preparedEpoch)) {
+    updatePr(prNumber, plan.preparedEpoch);
+    epochResult = epochState(prNumber);
+    readback(epochResult.state, plan.preparedEpoch);
+  }
+  unchanged(readPair());
+  plan = planLegacyTerminalRecovery(runResult.state, epochResult.state, proof);
+  updateIssue(runNumber, plan.completedRun);
+  const saved = readPair();
+  readback(saved.run.state, plan.completedRun);
+  readback(saved.epoch.state, plan.preparedEpoch);
+  print({
+    state: 'TERMINAL_RECOVERY_RESUMED',
+    same_pr: policy.pr,
+    branch: epoch.branch,
+    intent_id: plan.intent_id,
+    query_authorized: false,
+    merge_authorized: false,
+    next_action: 'SYNCHRONIZE_SAME_BRANCH_AND_VALIDATE_NEW_CANDIDATE',
+  });
+}
+
 function commandEpochResumeFinalCorrective(options) {
   ensureControlPlane();
   ensureCleanWorkingTree();
@@ -9670,6 +9836,7 @@ const commands = {
   'frontier:review-result': commandFrontierReviewResult,
   'frontier:resume-discovery': commandFrontierResumeDiscovery,
   'epoch:park': commandEpochPark,
+  'epoch:resume-terminal-failure': commandEpochResumeTerminalFailure,
   'epoch:resume-final-corrective': commandEpochResumeFinalCorrective,
   'epoch:resume-integration': commandEpochResumeIntegration,
   'epoch:merge': commandEpochMerge,

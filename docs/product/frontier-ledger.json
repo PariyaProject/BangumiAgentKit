@@ -2150,11 +2150,22 @@
         "docs/design/c07-anime-magazine.md",
         "docs/design/receipts/c07-anime-magazine-v1.json",
         "docs/design/legacy-pack-preservation-v1.json",
-        "docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v40.json"
+        "docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v40.json",
+        "scripts/lib/agent-mcp-execution.mjs",
+        "tests/harness/agent-mcp-execution-replay.test.mjs",
+        "docs/research/run95-mcp-failure-stage-contract-2026-10-24.md"
       ],
-      "next_action": "Keep C07 UNASSESSED and do not claim compare_subject_cohorts. C07 profiles v1-v3 remain terminal INCONCLUSIVE/no-report/retryAllowed=false and must never be retried or recreated. The distinct v4 profile targets only the render_subject_cohort_comparison Agent/MCP matrix row, is currently unclaimed and can earn no scenario credit. Preserve the scoped anime-magazine C07 baseline and existing selectable packs; a generic Goal wake must continue other work rather than restyle it. The new native pilot has40 default PNGs,2 maximum-font previews and80 measured DOM cases; the existing three-pack60-image matrix remains byte-identical to reviewed v37 output. Reference/native differences and autonomous designer acceptance are documented separately from concrete user approval. Use the active Harness Run/Epoch for exact Candidate/Base/CI, same-identity Product review, claim disposition and report-bound integration. No scenario/public/account/QQ/TIM evidence is created by these synthetic images.",
+      "next_action": "Keep C07 UNASSESSED and do not claim compare_subject_cohorts. C07 profiles v1-v3 remain terminal INCONCLUSIVE/no-report/retryAllowed=false and must never be retried or recreated. The distinct v4 profile targets only the render_subject_cohort_comparison Agent/MCP matrix row; its sole attempt is now terminal INCONCLUSIVE/no-report/retryAllowed=false and earns no matrix or scenario credit. Never retry or recreate it. Preserve the scoped anime-magazine C07 baseline and existing selectable packs; a generic Goal wake must continue other work rather than restyle it. The locked native v2 pilot has48 default PNGs,1 maximum-font preview and96 measured DOM cases; the existing three-pack60-image matrix remains byte-identical to reviewed v37 output. Reference/native differences and autonomous designer acceptance are documented separately from concrete user approval. Use the active Harness Run/Epoch for exact Candidate/Base/CI, same-identity Product review, claim disposition and report-bound integration. No scenario/public/account/QQ/TIM evidence is created by these synthetic images.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "evidence": {
+        "bounded_failure_stage_replay": {
+          "contract": "docs/research/run95-mcp-failure-stage-contract-2026-10-24.md",
+          "implementation": "scripts/lib/agent-mcp-execution.mjs",
+          "regression_test": "tests/harness/agent-mcp-execution-replay.test.mjs",
+          "scope": "Non-consuming synthetic process/event/summary/artifact/report diagnostics only. Real signer/validators are exercised; external observations/claims are synthetic. No scenario, public-source, Agent/MCP, auth or client credit. Historical terminal claims are not retried or rewritten."
+        }
+      }
     },
     {
       "id": "P01",
@@ -3738,11 +3749,24 @@
         "tests/harness/run-r04-series-watch-order-offline-agent-mcp-v2.test.mjs",
         "tests/harness/write-r04-series-watch-order-offline-agent-mcp-v2-report.test.mjs",
         "tests/semantic/series-watch-order.test.ts",
-        "docs/research/run95-r02-r04-c07-terminal-profile-reconciliation-2026-10-21.json"
+        "docs/research/run95-r02-r04-c07-terminal-profile-reconciliation-2026-10-21.json",
+        "scripts/lib/agent-mcp-execution.mjs",
+        "tests/harness/agent-mcp-execution-replay.test.mjs",
+        "docs/research/run95-mcp-failure-stage-contract-2026-10-24.md",
+        "scripts/lib/harness-terminal-recovery.mjs",
+        "tests/harness/terminal-epoch-recovery.test.mjs"
       ],
       "next_action": "R04 remains UNASSESSED. `get_series_watch_order` v1/v2 and `render_series_watch_order` v1 are terminal INCONCLUSIVE/no-report/no-retry. The historical label “distinct matrix-only render_series_watch_order profile” identifies only the renderer v1 matrix attempt. The earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry. `render_series_watch_order` v2 is REPORT_WRITTEN; it is the separately keyed R04 renderer v2 profile, has retryAllowed=false and remains only its existing Agent/MCP matrix row. It may credit only this Agent/MCP matrix cell, which is already counted; it does not prove visual quality or the theatrical-film scenario. Keep R04 UNASSESSED as a scenario. Historical v2 marker: “keep the R04 theatrical-film scenario UNASSESSED”. Current action: Keep the R04 theatrical-film scenario UNASSESSED; do not claim canonical order or visual quality. Never invoke any terminal profile; continue on another safe, unspent frontier. Future R04 scenario work requires a separate current-source contract. See docs/research/run95-r02-r04-c07-terminal-profile-reconciliation-2026-10-21.json.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "evidence": {
+        "bounded_failure_stage_replay": {
+          "contract": "docs/research/run95-mcp-failure-stage-contract-2026-10-24.md",
+          "implementation": "scripts/lib/agent-mcp-execution.mjs",
+          "regression_test": "tests/harness/agent-mcp-execution-replay.test.mjs",
+          "scope": "Non-consuming synthetic process/event/summary/artifact/report diagnostics only. Real signer/validators are exercised; external observations/claims are synthetic. No scenario, public-source, Agent/MCP, auth or client credit. Historical terminal claims are not retried or rewritten."
+        }
+      }
     },
     {
       "id": "R05",
