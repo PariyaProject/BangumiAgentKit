@@ -1,0 +1,933 @@
+{
+  "schemaVersion": 1,
+  "profileId": "c07-render-comparison-offline-agent-mcp-matrix-v4",
+  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261023-v3",
+  "cssWidths": [
+    320,
+    360,
+    520,
+    640,
+    960
+  ],
+  "designPacks": [
+    "warm-editorial",
+    "clean-gallery",
+    "graphic-zine"
+  ],
+  "themes": [
+    "bangumi-light",
+    "bangumi-dark"
+  ],
+  "deviceScaleFactor": 1,
+  "buildBundleSha256": "ae58ae99a26e407368ed4bb045d83bd1c57c5a346c32df1c0ff1f96d44a0c00a",
+  "generationSourceSha256": "b142f0e7c63ceaec76b7bb893909a2c124e8d1178df3a8f2fb8662f3b888a00a",
+  "reviewAcknowledgement": {
+    "decision": "PASS",
+    "allImagesIndividuallyInspected": true,
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-10-23T15:30:42.000Z",
+    "summary": "60 张图已逐项复核：42 张因修复而更新并检查，另 18 张与上一轮已检查图逐字节一致。320/360px 使用 A/B 双列与独立差值行；部分态的 B 保持未知、差值标为不可计算；三种设计包的面板遮罩及两套配色都无裁切或重叠。"
+  },
+  "images": [
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1376,
+      "byteLength": 107801,
+      "sha256": "174e2ed89111314e693b9266819afe39e1d2bb2650429a798e2403179f7aa839",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1315,
+      "byteLength": 108300,
+      "sha256": "0e836c658f093a947e36b43a6c1494a7918104fb76e377bd9c75e1059e0922ab",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1191,
+      "byteLength": 129305,
+      "sha256": "159eac9f73f042e9010456851593f9c15b780ea822c24d1912a14a932fad94a2",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1187,
+      "byteLength": 130677,
+      "sha256": "3c5cae202cfe638588ef3a8ee4d25fc0abdb54af37c429fe19f558172191c393",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 850,
+      "byteLength": 126276,
+      "sha256": "3fb77c0e4c54e0b0240b6b8f22a9cc297afd205c54339ec6f02739e6201e04a9",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠. 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1376,
+      "byteLength": 106680,
+      "sha256": "e7bd0737e2e8656d5da628864ffaa3edbe569459c90c4231f0de7a82770b4d30",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1315,
+      "byteLength": 106810,
+      "sha256": "faa9f02d841ac922b395772066fbaa73995d739c3c1e4d7aa39539889b8ba0c3",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1191,
+      "byteLength": 127669,
+      "sha256": "307a4d341de99dc8f844b46affe308adddd902f7a063c6f45ebb3ab542cc8c23",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1187,
+      "byteLength": 128785,
+      "sha256": "b95dff74d555dd834dbe5a5b862529196822b8616ddd8242d645730388443a7b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 850,
+      "byteLength": 123773,
+      "sha256": "1aecf3943596f2c470af8220a4003526c706b2b3b2a748f3d778bf18e1a2b2cb",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠. 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1388,
+      "byteLength": 108413,
+      "sha256": "5873d98a247b6129c6cfae708f858c2bab495a1a1a5140cf72c4e760c7cbe6d6",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1315,
+      "byteLength": 109064,
+      "sha256": "770bda19fdbdfa77fed8f5541c1154db4474ad850c32461d99f40b6c660710a6",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1182,
+      "byteLength": 129121,
+      "sha256": "8585186d8e192964c81e1da161a5d2e31912e61c325fc1ea69b302d29bf185ed",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1178,
+      "byteLength": 129851,
+      "sha256": "62fe03141cd57f43e4730db08380c4b4e20357baa2f2633d77616e0cb4c85ae4",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 849,
+      "byteLength": 119451,
+      "sha256": "b4130a1b53062559b426f8f2653e5938bf442fdaf22fff53f128225ef0a56043",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠. 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1388,
+      "byteLength": 110943,
+      "sha256": "91536ee890c3a79a70492ef12d1bf374066c1f3d56a57fea6fb8b88e5503bf1c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1315,
+      "byteLength": 111384,
+      "sha256": "941f514d95bf64b1a9c76bd64549694bd4e4d5dd43d1585d35c4d229477ae620",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1182,
+      "byteLength": 132548,
+      "sha256": "a2f46bec81f62b0c74f4ccb382478e05c6031a9a83574f2da5de6b05a24c2f93",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1178,
+      "byteLength": 133560,
+      "sha256": "30757066980821da86aff3033466ea28946f3254259b40e7f2417545424d8a67",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 849,
+      "byteLength": 122612,
+      "sha256": "df68f2152ff9f6ffe4795c335388a6d773c175052fc0fb3b83845540affa12dc",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠. 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1202,
+      "byteLength": 109592,
+      "sha256": "b7d5defe831feee8b669f45ec9372bf0cb845bd2509db8ad00cf6c3a16f5b630",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1169,
+      "byteLength": 109987,
+      "sha256": "c5bea60d6e26f29b7e9fc72ac567a90e10a331814c4d09aca4f706bad5bef6cc",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1056,
+      "byteLength": 135927,
+      "sha256": "332fef2474cac9b51739b6d887740a8fb5664c18e570ec285b83d72c0cf64f83",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1052,
+      "byteLength": 136782,
+      "sha256": "d0ee386b1ac91b3ba38b907b4e1f5ca08ab15f55fbe6ead690baf713b0f2dd0b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 752,
+      "byteLength": 130101,
+      "sha256": "75dfa50e5de930237816b60e8612f7b7354e563a34263ae78980c366c686f1fd",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠. 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1202,
+      "byteLength": 110107,
+      "sha256": "9674ab329124f787de1a41c7ccd4cda0fce7daee6fcec05c36c7546d2171ac51",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1169,
+      "byteLength": 110577,
+      "sha256": "610c2c58125d6dfa32689dd20b0ff1434a59583a7fc317df54a648d4e406affc",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "320–360px 采用 A/B 双列，B−A 独立横跨一行；三种设计遮罩与字阶保持清晰，无裁切或重叠。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1056,
+      "byteLength": 136406,
+      "sha256": "0bd1456b975bd8d53837ab958c8f37038228eee0f86d69ecbe4a51c0cc83afeb",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1052,
+      "byteLength": 137244,
+      "sha256": "c7b3969ada542d4386aff8b79075f261ced3286a7fb0e1ebaba3d797c71c02c4",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "窄版 A/B/差值并列且不重复样本数值，样本数与来源状态完整，无裁切或重叠。 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 752,
+      "byteLength": 130266,
+      "sha256": "dfdb33da220c952c74d8e73b33884809f29adb9f3005e750868bcee378c93872",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "宽版分组与指标布局稳定；A/B/差值与样本状态完整，无裁切或重叠. 与上一轮审阅 PNG 字节一致。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1350,
+      "byteLength": 116054,
+      "sha256": "52b4915f9a224fe813a150921b8182db327df02062c2069f2d8aeee894c67bd8",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1289,
+      "byteLength": 116040,
+      "sha256": "88cdfc9539559dda4932f5dc2b750b69ec226860df67ff8e0151dd32e408bda8",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1130,
+      "byteLength": 118108,
+      "sha256": "7b26b42fa4007385ffda8e12ca5f881a50016b7ae10c743c9bde20159ef219fd",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1126,
+      "byteLength": 119060,
+      "sha256": "1feeb54075e03c98190cda13899fb174b5b7e55e6c2aa07d86bfe0a672170d96",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 816,
+      "byteLength": 114420,
+      "sha256": "9d2d6a410e638e923d694c498c89d1a259c438b0269f05127c56e0edd5d405b3",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1350,
+      "byteLength": 113619,
+      "sha256": "475bbc715522fc02050e00c6f5f21e496be397fae30ce63b0fd9afe39f36e3d7",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1289,
+      "byteLength": 113695,
+      "sha256": "18fcef2b3d336f65f1ac558f8e771e1bd6ea579f53bb1ba1a59c0238bf282f2c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1130,
+      "byteLength": 115787,
+      "sha256": "6bfd8ea48678d7a9ecc89e86b061ef04c30d76231c5860a56e60dfb4cff9b4fd",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1126,
+      "byteLength": 116607,
+      "sha256": "4b27cc35c1df77948fd91470863b0dfbe8bedf2b722324a2d2885ebe8c546f34",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 816,
+      "byteLength": 112208,
+      "sha256": "f30c7eb4f06439614de4ea12d2d178d4235e356e72494b687adc4fa264bcbc6c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1376,
+      "byteLength": 113986,
+      "sha256": "8b695a4f5745ff10a71d30c4120fda2de9536ce6a2daa43db34dbadfa4c7ab7e",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1292,
+      "byteLength": 114357,
+      "sha256": "781c87afadecf75bdc136174c4433b8272bd98b2eceafe782b252b9cb4aebd68",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1124,
+      "byteLength": 116205,
+      "sha256": "c3cd94c942d0f6ea4fc22ae7af08a4ebaf2fae4ce0c645cd08c12fbe7de7b539",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1120,
+      "byteLength": 117253,
+      "sha256": "27f143244d36945e7cd726a7c5ef350d5a08ba59773425ea7e8a1b193feebfa6",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 815,
+      "byteLength": 109196,
+      "sha256": "d1aef1d796b74653a531c79fded86b33a0f9ab48f69a8bfffe0fca121d6e5d3f",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1376,
+      "byteLength": 116153,
+      "sha256": "ec497adc0c0dcf9ce45f4872f711e0d920dce40a268cff3f66820793a352847e",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1292,
+      "byteLength": 116376,
+      "sha256": "c5a6ca1c7f3283b7f47ed6a1ca93a85358a76152e6b5dbc8547ba0d6e584459c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1124,
+      "byteLength": 118073,
+      "sha256": "452c88cb85e8cf2b6a77b622d7c818c7d178441a71275b3efabde1b2e45e735a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1120,
+      "byteLength": 119238,
+      "sha256": "733e28a92f3f876e600f9e75342faedb033d24b6be78876ab8af94c815417852",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 815,
+      "byteLength": 111238,
+      "sha256": "8813a42aba07743e2a7a8a8edabce185b8d19858b88df9cee8dee4bb605de7c5",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1180,
+      "byteLength": 117848,
+      "sha256": "253842bf3df2a59faf8c335eb7294b368c6b3d5e7afdda7c37c66777638d7636",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1147,
+      "byteLength": 118200,
+      "sha256": "c33025d23d3ce494638dd560d8464cf024077454c03df701961fae99d58f5598",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 999,
+      "byteLength": 122051,
+      "sha256": "3901f0d064a12f93c21ee1ee63a1b789baefd7d19a3572d8fc38518c3935139c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 995,
+      "byteLength": 123012,
+      "sha256": "bc219b5af6e578d800fec3d87d46384cb97854bb8017c230d6a174339b442f77",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 718,
+      "byteLength": 116143,
+      "sha256": "1fdcd13ca7ff8b2c2da73b5ce1d2ec0130998f3f526e314bbc80853af1756dc7",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1180,
+      "byteLength": 118170,
+      "sha256": "d496ede3c9d3647a7e5d9f855f4b3d4f507b5e9164b287d3a63a91b5cd32f8b4",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1147,
+      "byteLength": 118406,
+      "sha256": "fe7c98fc844ff9b8002b11b1f53f14707f38a7391b45d0fc8f5bc418ce793bc9",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "B 组仍标为未知，B−A 显示不可计算，不残留数字差值；双列清晰且无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 999,
+      "byteLength": 122066,
+      "sha256": "e4e32262af2460cbd8079740489ca8315f3f28ea6cd127d1499fa800df164a38",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 995,
+      "byteLength": 123058,
+      "sha256": "4a8cda3f80d6e47d0ebb61729b8d1fb97401facabbd75692549acfb1a835c8a7",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 718,
+      "byteLength": 116431,
+      "sha256": "08a7560c70840abdd4d284a32e1847f346d3423e51868d5745b875c97b518bde",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "部分态的未知值保持未知，B−A 显示不可计算，不残留数字差值；无裁切或重叠。"
+      }
+    }
+  ]
+}

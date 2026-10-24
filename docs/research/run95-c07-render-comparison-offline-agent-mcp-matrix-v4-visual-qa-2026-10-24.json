@@ -1,0 +1,920 @@
+{
+  "schemaVersion": 1,
+  "profileId": "c07-render-comparison-offline-agent-mcp-matrix-v4",
+  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v21",
+  "cssWidths": [320, 360, 520, 640, 960],
+  "designPacks": ["warm-editorial", "clean-gallery", "graphic-zine"],
+  "themes": ["bangumi-light", "bangumi-dark"],
+  "deviceScaleFactor": 2,
+  "buildBundleSha256": "d57f042e2540a6c895afe8a93361010f6fb06186c581227e9366e145250dc0f7",
+  "generationSourceSha256": "4ca2092641ff66b414f4b27dfb16a64a5ef47863e36ec8e2566403e9a49fa258",
+  "reviewAcknowledgement": {
+    "decision": "PASS",
+    "allImagesIndividuallyInspected": true,
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-10-23T19:51:27.000Z",
+    "summary": "All 36 pixel-changed images were opened and inspected individually at CSS-scaled size; the other 24 are byte-identical to individually inspected v19 images. Complete and partial states, both palettes, all design packs, and all five widths retain legible data with no clipping or horizontal overflow. This synthetic local review is not user aesthetic acceptance or QQ/TIM client proof."
+  },
+  "images": [
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2296,
+      "byteLength": 246758,
+      "sha256": "978e937fc1fa927819d770f50a09c6bab308e0e32c9d1b232f238f931f3a17d7",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 320px. Rounded folio panels and featured score remain legible; complete values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2236,
+      "byteLength": 251549,
+      "sha256": "5d91392c85c4ca51bf282e2a448ee4e31960277a7a5ed396329fea70d78bb3dc",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 360px. Rounded folio panels and featured score remain legible; complete values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2362,
+      "byteLength": 364060,
+      "sha256": "4651aa2410faa6718a77ef4143b0ffa1d7dd39b644ba1de7fd74a769771c7407",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2224,
+      "byteLength": 363988,
+      "sha256": "3ac196daf898f9d0d789f5660e5acd631e160c80c7fad280d9391b939bcd6012",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2228,
+      "byteLength": 400354,
+      "sha256": "ec9d4c9db71c426b5d10ccd39a015016984473ce0869008b133645ecedd8d16b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2296,
+      "byteLength": 246596,
+      "sha256": "71871de3446e537e6e58119435cca1479df400062c3170e0673ad16448208f04",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 320px. Rounded folio panels and featured score remain legible; complete values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2236,
+      "byteLength": 251267,
+      "sha256": "4f64f82dd9cda1da22c80c9ae371421e135025f033a22c3fdec7ef7a83f31a07",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 360px. Rounded folio panels and featured score remain legible; complete values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2362,
+      "byteLength": 362722,
+      "sha256": "8d10db06953f96414bf8da4270e769f99f17266b1ccbe35b6c9057d722e7b1e8",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2224,
+      "byteLength": 363056,
+      "sha256": "b0688ee3334da334d97e090562e31750d6b18728cabdf3b43c2a5f9f75ac1d7a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2228,
+      "byteLength": 397523,
+      "sha256": "f8cfb75e71204f153d91f364227f45ee1fd6e61adcf8951210b64731f5ee6fc2",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2078,
+      "byteLength": 235854,
+      "sha256": "2565807295d5081adcbc1f1777d588d1d5cb133fefb8b1bed65061b13d2e2a75",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 320px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2058,
+      "byteLength": 240856,
+      "sha256": "9061551a6d98feab09b308c83fac8209aaa6f3c8bcbd0980ea4224a1c490e222",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 360px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2258,
+      "byteLength": 358330,
+      "sha256": "9b6897ecd7d3b74e1dfa35aa31d85bc693866b98a20d0c56dac034b67ab81fdd",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 520px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2092,
+      "byteLength": 364628,
+      "sha256": "c80a765058dbe3c05b838e5a3a4a295b4187622e7119016879ea95061dd0c7fe",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 640px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2132,
+      "byteLength": 395003,
+      "sha256": "8d61e41f66224653a2d7a62b405099e1f6dc2fc5aec5ddbfaf03d297c662a1c1",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 960px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2078,
+      "byteLength": 243367,
+      "sha256": "1f63dc4b0acfe9079471d5a421611ae8c6388cef6adcc98bfc2b14251402842e",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 320px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2058,
+      "byteLength": 248594,
+      "sha256": "f4f52f178c2da0cbbeef582d7722c562a93fc499a3a289f2bea26da84cf292c0",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 360px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2258,
+      "byteLength": 371669,
+      "sha256": "2b3b30c2aaa52c85363f046cc766340c369b40ddef3b12cfbf599644e69b2e84",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 520px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2092,
+      "byteLength": 377184,
+      "sha256": "0a77032b12db3728df3598effa25fc5b0f972447f0840dfa2d76d1a18b3677fe",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 640px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2132,
+      "byteLength": 406471,
+      "sha256": "bb300c6108a03c9c1097fabce77c562025f8c40140684ffb83d45128bd917f5c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 960px. The paired cohort panel and score-led open matrix are legible; complete A/B values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2044,
+      "byteLength": 270879,
+      "sha256": "a38252c9adbbd9fe613c3b567d38f9598862cf832a8df97b8f889d83c7c58450",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 320px. Cut-paper cohort panels and sticker metrics remain distinct; complete values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1992,
+      "byteLength": 275386,
+      "sha256": "8b6efa52014e590350c2d150ad8ff131c264536e3cece82fd8ff1246f9eaddef",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 360px. Cut-paper cohort panels and sticker metrics remain distinct; complete values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2112,
+      "byteLength": 405492,
+      "sha256": "836d3ac0cd54eced3dd92bbefbc7e3a06066404d18892d0aa8a548d56c4d0d97",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2000,
+      "byteLength": 406166,
+      "sha256": "cf7e3ff07147156d184d5cfd6613b747f7a1a27f75c9cff8d249e31009cd2fc6",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1998,
+      "byteLength": 456908,
+      "sha256": "d577c4e7f3b4d08443d80c7decfdecaad31cfe08dc00271b14b3b1316602d49d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2044,
+      "byteLength": 272273,
+      "sha256": "d5a85681bb1f9b0a1a36ee007f986399431f3d5394bab4cc4f553a627312e322",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 320px. Cut-paper cohort panels and sticker metrics remain distinct; complete values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1992,
+      "byteLength": 276800,
+      "sha256": "187cb92a62b1c3919eb2aa041c153a07227508dad168df3448f5a63e21b8b1f4",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 360px. Cut-paper cohort panels and sticker metrics remain distinct; complete values and signed delta align without clipping or overflow."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2112,
+      "byteLength": 408669,
+      "sha256": "6c0a7337f44f2b7f9fca3f0bc7c762885092881559f299f0bb381f9a25969440",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2000,
+      "byteLength": 409262,
+      "sha256": "4fdef1035f9071f1b6c27e97932688983e07de114116fd7ad959ec8b72d9eeda",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1998,
+      "byteLength": 460008,
+      "sha256": "798372d7a4e7615993d6dfa7088a8df179a10518431c1f57c094753f012db0ca",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2340,
+      "byteLength": 256951,
+      "sha256": "58cda0a4f456ea1bc7614bf210d4b22074591c3ccdff4fce1e83770ae4ff11d0",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 320px. Rounded folio panels remain legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2278,
+      "byteLength": 257482,
+      "sha256": "c267947a167ba55cc81d4b1a1ed71e2191a87e06a783c145389eb552d63ffdd2",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 360px. Rounded folio panels remain legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2172,
+      "byteLength": 291290,
+      "sha256": "1b18f827108690c56a234400807ec0380a09f6fb734a8c2e68adcc0c1f1df8ef",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2138,
+      "byteLength": 303918,
+      "sha256": "8a15256c592f307f3ce535ae63a7222d47bba8fe686e4f2001e681c8da64139a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2142,
+      "byteLength": 334383,
+      "sha256": "da35ee1338546711e034d1b61a4cbb2324409f3e84045cbf1d7f0668d817c79d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2340,
+      "byteLength": 255644,
+      "sha256": "d31cd0408a91ec5d65b602636406e47b31938de49c52d1548b11f607c3ede86c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 320px. Rounded folio panels remain legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2278,
+      "byteLength": 255919,
+      "sha256": "6e794eb6509d05cab1dd1e363cad92c0dc1e47cd9e64abecd319876890509477",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 360px. Rounded folio panels remain legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2172,
+      "byteLength": 288912,
+      "sha256": "5be50c795f23e0bee93fadffe9468e9a412b14997af33ff63234491578ddca8e",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2138,
+      "byteLength": 301450,
+      "sha256": "68b823d728dde64315c26c71d9acb9d7f520ca21cdbdf723e6c1b7e9e91f9d1a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2142,
+      "byteLength": 330761,
+      "sha256": "7c910114c4b074db423a6a0e54c0bed70b372c171803ab1761cd2cf9e2f21fae",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2144,
+      "byteLength": 244589,
+      "sha256": "fcea03c4dea4c5f78272d5f8f656f4d0c91f2edfaa08d65eeadfad0032e0cef8",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 320px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2112,
+      "byteLength": 244103,
+      "sha256": "ee376004bd6c23e6035febd2a3fdc85bdcd86d694e4c7f3257eaf26250995ad9",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 360px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2056,
+      "byteLength": 286332,
+      "sha256": "6f4b80b759a81250c2e52c4cfad92661adf68cbced2ad41b1f70242bd6a13545",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 520px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2040,
+      "byteLength": 302046,
+      "sha256": "df9f620aaa85d1b5dc6f4dc97a26ce02eca1bf85ea6b9ecff93db6bf6d2a8ba5",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 640px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2048,
+      "byteLength": 333814,
+      "sha256": "2a1acb1663dbb1b8f4dad0019f4745ac1dbd899a099b249651fbb1a1953ba749",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 960px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2144,
+      "byteLength": 251678,
+      "sha256": "b30761e7fc1d0d557558cb114195641aed117037c9e4326ed77992efddbdbf17",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 320px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2112,
+      "byteLength": 250621,
+      "sha256": "e67604d6177b18126ac65aa0051aef5a6c5031e367e3993ee90186c577855ab5",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 360px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2056,
+      "byteLength": 293587,
+      "sha256": "ad55173f411a7c016d515cbb5206841f23c904a73ab640c3492b0286fd83567e",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 520px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2040,
+      "byteLength": 309469,
+      "sha256": "ff9140b135f8824ef38b2909c26d546883478308f045f14162a8b64937e4c816",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 640px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2048,
+      "byteLength": 340030,
+      "sha256": "7d5dd6fb8e26ace1d8aad258dd7c7096088efaba2760b33e3ec8acca4f472601",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 960px. The paired cohort panel and score-led open matrix are legible; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2106,
+      "byteLength": 269743,
+      "sha256": "57ded60f85a76a10232ca68d2287d1053c7e879b5a2cc9b273967fceb50d5623",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 320px. Cut-paper panels remain distinct; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2046,
+      "byteLength": 269826,
+      "sha256": "1a1c2df1844057f11a816787a99e16159ba3f011a0570a2460acd52dc750b137",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 360px. Cut-paper panels remain distinct; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1944,
+      "byteLength": 320886,
+      "sha256": "b77d2b4668b1b3f5bf8e701134757aa11ee57335e67b46bb4dc0a47b9f1358b3",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1916,
+      "byteLength": 337829,
+      "sha256": "08d46a278a46e87b4e6fb5306292594d1c4cc268744f6729ea168206bb6b9a63",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1912,
+      "byteLength": 370091,
+      "sha256": "36281afa8ab326a7c1590e7226ebc7149dbb572fa75bfba94d98bb2cb1e33d3b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2106,
+      "byteLength": 270739,
+      "sha256": "24c890fab3fc26d32439df800e9a61cffd347017fbbaa03264b1e4c71fe9045f",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 320px. Cut-paper panels remain distinct; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2046,
+      "byteLength": 270870,
+      "sha256": "399d38ba23d324f450b04d1294ff5092938d03255cad2a738dd1a986a0559d59",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected at CSS 360px. Cut-paper panels remain distinct; missing values stay unknown with dashed coverage and no numeric delta, without clipping or overflow."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1944,
+      "byteLength": 322994,
+      "sha256": "9626a3fcd5b551c02db96d30b9053d51fa624bfd9326446ea09dbba89ff27b14",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1916,
+      "byteLength": 339849,
+      "sha256": "3daf27890432decd827dec5ffbbde8f3f9e9a07105ff9e0732975fd90e4f5aac",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1912,
+      "byteLength": 372395,
+      "sha256": "baa938c54c8ee364e2a733d909419f4107537b64fd3ff21a1f3d8fa8eaa04062",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to the individually inspected v19 image; no pixel changes in this candidate."
+      }
+    }
+  ]
+}

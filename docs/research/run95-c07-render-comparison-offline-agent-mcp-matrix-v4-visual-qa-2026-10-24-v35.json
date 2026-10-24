@@ -1,0 +1,933 @@
+{
+  "schemaVersion": 1,
+  "profileId": "c07-render-comparison-offline-agent-mcp-matrix-v4",
+  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v35",
+  "cssWidths": [
+    320,
+    360,
+    520,
+    640,
+    960
+  ],
+  "designPacks": [
+    "warm-editorial",
+    "clean-gallery",
+    "graphic-zine"
+  ],
+  "themes": [
+    "bangumi-light",
+    "bangumi-dark"
+  ],
+  "deviceScaleFactor": 2,
+  "buildBundleSha256": "96c3a56ee336ee6bccd1cd34500040d8ecfeaa95ab6524625c92fa304729bb1a",
+  "generationSourceSha256": "8eaa1fc2304474fd3a1db855946916be00ad99c2d1f1e631cb3a1e55026516d0",
+  "reviewAcknowledgement": {
+    "decision": "PASS",
+    "allImagesIndividuallyInspected": true,
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-10-23T23:54:00.135Z",
+    "summary": "All 20 changed Graphic Zine outputs were inspected individually; the other 40 PNGs are byte-identical to individually inspected v34 outputs. Narrow query and coverage text is larger with clean wrapping. Complete deltas and partial unknown/non-computable values remain correct; no clipping, overflow or overlap found."
+  },
+  "images": [
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2216,
+      "byteLength": 232098,
+      "sha256": "c7badda944906731781c6b4488e30f6f39acea492de90165f1e051a54d5d376d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image c7badda944906731781c6b4488e30f6f39acea492de90165f1e051a54d5d376d; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2160,
+      "byteLength": 237697,
+      "sha256": "214ba87990ebafebb0851a541aadd4c22f17d8b9713c90ffb13d0c1438256da3",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 214ba87990ebafebb0851a541aadd4c22f17d8b9713c90ffb13d0c1438256da3; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2326,
+      "byteLength": 357193,
+      "sha256": "80bc263d7722470a50a9c308c79d61a358bd7ca44bd040c9b0b50ae856d1b1fe",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 80bc263d7722470a50a9c308c79d61a358bd7ca44bd040c9b0b50ae856d1b1fe; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2194,
+      "byteLength": 357367,
+      "sha256": "f81846e21ec517476ee164d4844c22280b8122a07a5d587fe9a6e6865a0d564b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image f81846e21ec517476ee164d4844c22280b8122a07a5d587fe9a6e6865a0d564b; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2198,
+      "byteLength": 393560,
+      "sha256": "be1f4210ff6fc3f779eff491c9463b26af3ba82516ff8401b2be3cede194dac2",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image be1f4210ff6fc3f779eff491c9463b26af3ba82516ff8401b2be3cede194dac2; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2216,
+      "byteLength": 231960,
+      "sha256": "7e8e79e1cd10ffd8b9bb0bebe12de4a941b8fc562397fc840ce8e01dda551b28",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 7e8e79e1cd10ffd8b9bb0bebe12de4a941b8fc562397fc840ce8e01dda551b28; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2160,
+      "byteLength": 237402,
+      "sha256": "892ca961dd7d571f8e394f7f186c955fc90ef431fb4fd59b3d19332b5fa0a8ed",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 892ca961dd7d571f8e394f7f186c955fc90ef431fb4fd59b3d19332b5fa0a8ed; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2326,
+      "byteLength": 355939,
+      "sha256": "efc482edcb43d6f0ae9f82bff5a9a5fbd4f4a142b7e10893675ce4bdcd760b43",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image efc482edcb43d6f0ae9f82bff5a9a5fbd4f4a142b7e10893675ce4bdcd760b43; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2194,
+      "byteLength": 356338,
+      "sha256": "87222cfbb307f0a77ae28dfdec5b0358b41eeff3433a92a1370dbccb21fe5c8d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 87222cfbb307f0a77ae28dfdec5b0358b41eeff3433a92a1370dbccb21fe5c8d; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2198,
+      "byteLength": 390928,
+      "sha256": "19fad76161dc317830de52d469e1ec32f796db9e99387bc5c7f4597a271cb609",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 19fad76161dc317830de52d469e1ec32f796db9e99387bc5c7f4597a271cb609; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1640,
+      "byteLength": 173900,
+      "sha256": "09c283236e887a79533f90d3a56b9b05ac6663645fba59b137ed6b6e049a0543",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 09c283236e887a79533f90d3a56b9b05ac6663645fba59b137ed6b6e049a0543; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1642,
+      "byteLength": 178996,
+      "sha256": "366d6e217cd9c6d4683f205cfd645cbead8615f2f49b851879f3aec633744f9b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 366d6e217cd9c6d4683f205cfd645cbead8615f2f49b851879f3aec633744f9b; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1966,
+      "byteLength": 285034,
+      "sha256": "92bdd23d4352ea368c2f597df1299763bf8c10ddda90efd8308d3b186e391fec",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 92bdd23d4352ea368c2f597df1299763bf8c10ddda90efd8308d3b186e391fec; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2000,
+      "byteLength": 339867,
+      "sha256": "d5889854d51f7e751642c6b33d8573bd48f5846c42268e84c71ad5b1ff59cb4a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image d5889854d51f7e751642c6b33d8573bd48f5846c42268e84c71ad5b1ff59cb4a; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2042,
+      "byteLength": 375314,
+      "sha256": "42479f5e8ed3d0c48736a76206198a60e920330658ac1eed7e6173175bd959d7",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 42479f5e8ed3d0c48736a76206198a60e920330658ac1eed7e6173175bd959d7; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1640,
+      "byteLength": 179827,
+      "sha256": "b1f7406a7e82faa22c7eb5e0f99a99fdfc1cd24fe9b343c20d94382324fdc60a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image b1f7406a7e82faa22c7eb5e0f99a99fdfc1cd24fe9b343c20d94382324fdc60a; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1642,
+      "byteLength": 185261,
+      "sha256": "af3f2790cd3c19dbfef19f9ec3ee5da88803506916b1b33e71a20f03552ee5ab",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image af3f2790cd3c19dbfef19f9ec3ee5da88803506916b1b33e71a20f03552ee5ab; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1966,
+      "byteLength": 294929,
+      "sha256": "639d223e01a87a059b3f1b6d115e0eca4707eabd09ada7c74a47020a15902fef",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 639d223e01a87a059b3f1b6d115e0eca4707eabd09ada7c74a47020a15902fef; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2000,
+      "byteLength": 352273,
+      "sha256": "6fb991a74e8013cc7b2c01ba887843af8ca4755f74d2bc737ca4a3fca294eefb",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 6fb991a74e8013cc7b2c01ba887843af8ca4755f74d2bc737ca4a3fca294eefb; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2042,
+      "byteLength": 386778,
+      "sha256": "8737fe27d8fd962f054d49bc6d901d8743bb3f720ee7ec285f7de5f897e5d977",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 8737fe27d8fd962f054d49bc6d901d8743bb3f720ee7ec285f7de5f897e5d977; no current visual delta."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1464,
+      "byteLength": 272271,
+      "sha256": "50db1969ddf9c16a9d4fee1262026b2fb538b047948f1f1de3c9fc801d39373d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 320px bangumi-light complete-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; complete metric deltas remain correct."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1428,
+      "byteLength": 285367,
+      "sha256": "6cdff6e0961e99a9ee9937991056c0ebf1c9db31699a3b368c25a445e7504a35",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 360px bangumi-light complete-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; complete metric deltas remain correct."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2010,
+      "byteLength": 482447,
+      "sha256": "adb2f5b7802a282ebb5afd402e8f31a9c3a8b3fa7b37bc8ac10873c356d3b4eb",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 520px bangumi-light complete-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; complete metric deltas remain correct."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1888,
+      "byteLength": 538376,
+      "sha256": "b4811e06d0e4ad1c70836981e5e5e99d87de376be8ee8fa1a8084f9f51aa1685",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 640px bangumi-light complete-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; complete metric deltas remain correct."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1966,
+      "byteLength": 761838,
+      "sha256": "4366369654ff83d733ef5067c83b8184550f924936d0a1e9eb0c45ec679487da",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 960px bangumi-light complete-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; complete metric deltas remain correct."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1464,
+      "byteLength": 268264,
+      "sha256": "91e4b0367c68026e3f34030321afdce8e4f2f24ff0004c409709789842955034",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 320px bangumi-dark complete-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; complete metric deltas remain correct."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1428,
+      "byteLength": 280361,
+      "sha256": "cb4eb56111776e6de916a14333e7a332b3e5d6610821cb7976c49b640868920b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 360px bangumi-dark complete-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; complete metric deltas remain correct."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2010,
+      "byteLength": 475024,
+      "sha256": "c16fe77cd5c521082f4bdbd86b48b7033889ca8fb2645f32299791374813413b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 520px bangumi-dark complete-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; complete metric deltas remain correct."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1888,
+      "byteLength": 528694,
+      "sha256": "6f7d1af9b5574008958c7d7ba4c7e1684f486a66f81919ad12d73e730082cc89",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 640px bangumi-dark complete-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; complete metric deltas remain correct."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1966,
+      "byteLength": 743104,
+      "sha256": "c3bbc96e30dea956dd6617bd322f150c1dd8aaeeaedcb8201e0ca63e08ff1e75",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 960px bangumi-dark complete-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; complete metric deltas remain correct."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2260,
+      "byteLength": 241355,
+      "sha256": "e60e76182132aa2bdc90607de598f0f694ee12f5982c678d0093407a4b20217d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image e60e76182132aa2bdc90607de598f0f694ee12f5982c678d0093407a4b20217d; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2200,
+      "byteLength": 242808,
+      "sha256": "e1b8f993b559f0507de47e94db7c2bf1f22f3a7a9072d2703fad61b2a4f06776",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image e1b8f993b559f0507de47e94db7c2bf1f22f3a7a9072d2703fad61b2a4f06776; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2144,
+      "byteLength": 285072,
+      "sha256": "df343ee3559f4212c1b42bf96806094fc5b6d6bf54f9ea7cd25c58d1aaddf9c2",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image df343ee3559f4212c1b42bf96806094fc5b6d6bf54f9ea7cd25c58d1aaddf9c2; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2110,
+      "byteLength": 297958,
+      "sha256": "719a4c432c9c23633c85b01f668e31b648cd12aff1f0313ebd20e8f279ad91f0",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 719a4c432c9c23633c85b01f668e31b648cd12aff1f0313ebd20e8f279ad91f0; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2116,
+      "byteLength": 327337,
+      "sha256": "1f777b82de382afbd1f517d2536494cbbb0b9dd42111052aa542408c24d996f8",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 1f777b82de382afbd1f517d2536494cbbb0b9dd42111052aa542408c24d996f8; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 2260,
+      "byteLength": 240016,
+      "sha256": "7bdd2b9a3c9525cb6098494440dcbe2c117bd691317b54f2ea4639f254d82639",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 7bdd2b9a3c9525cb6098494440dcbe2c117bd691317b54f2ea4639f254d82639; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 2200,
+      "byteLength": 241197,
+      "sha256": "df5df1839f31f8117a0675b979262303c17ec38072ff266b81d082dc8157139a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image df5df1839f31f8117a0675b979262303c17ec38072ff266b81d082dc8157139a; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 2144,
+      "byteLength": 282725,
+      "sha256": "18aff80b76178b85bbf286629018f7cdaf3203191ed704aeba3ca7756cc8c927",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 18aff80b76178b85bbf286629018f7cdaf3203191ed704aeba3ca7756cc8c927; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 2110,
+      "byteLength": 295562,
+      "sha256": "cd4f2e9a5912f4fede412c2f75c9601ca85b6a3856eedfa5a21703186d5304fb",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image cd4f2e9a5912f4fede412c2f75c9601ca85b6a3856eedfa5a21703186d5304fb; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 2116,
+      "byteLength": 323866,
+      "sha256": "5bfe6201b788123eb3ff1e520937345ac14025713d1dd1c7910d700340d60685",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 5bfe6201b788123eb3ff1e520937345ac14025713d1dd1c7910d700340d60685; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1682,
+      "byteLength": 177399,
+      "sha256": "61e2a75b27e66801344ced63b083d64818b26871739232694b0595651e4ae796",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 61e2a75b27e66801344ced63b083d64818b26871739232694b0595651e4ae796; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1618,
+      "byteLength": 179273,
+      "sha256": "0521e2c255f64060af17a2ea9f8fb1ba5f04af548be169f443b0009ef72c9170",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 0521e2c255f64060af17a2ea9f8fb1ba5f04af548be169f443b0009ef72c9170; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1870,
+      "byteLength": 237416,
+      "sha256": "de22824574f857b05153aacc24cac906352f10f53038f01a59a4d0941114a25b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image de22824574f857b05153aacc24cac906352f10f53038f01a59a4d0941114a25b; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1952,
+      "byteLength": 276392,
+      "sha256": "65f13a667278ddb394900db90ec3056c1335fbc7dcef0c63c0059030aeb13f8d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 65f13a667278ddb394900db90ec3056c1335fbc7dcef0c63c0059030aeb13f8d; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1960,
+      "byteLength": 307569,
+      "sha256": "e432bb9d60f1cdc9ff68e51870750ee4bde20dba6d59556e1489075c86084255",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image e432bb9d60f1cdc9ff68e51870750ee4bde20dba6d59556e1489075c86084255; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1682,
+      "byteLength": 182555,
+      "sha256": "ecfe092986c4355fba1e0702376242e95962d0dfdf768b0b83ab5b83b73cc2ba",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image ecfe092986c4355fba1e0702376242e95962d0dfdf768b0b83ab5b83b73cc2ba; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1618,
+      "byteLength": 184329,
+      "sha256": "271a6ae04e924f7ce0e4fc8be8239d58c59097bb53bebd7350cdbf7fa92f9de1",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 271a6ae04e924f7ce0e4fc8be8239d58c59097bb53bebd7350cdbf7fa92f9de1; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1870,
+      "byteLength": 242639,
+      "sha256": "57aa253261e7dc8e38beb96c7d9ab1d71aea376579b1dfff1171f68e32d6995d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 57aa253261e7dc8e38beb96c7d9ab1d71aea376579b1dfff1171f68e32d6995d; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1952,
+      "byteLength": 282647,
+      "sha256": "138b940d9c862c98d8f1f98ded7c82bd98d7d4d9d8c428231abeb7147d676754",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image 138b940d9c862c98d8f1f98ded7c82bd98d7d4d9d8c428231abeb7147d676754; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1960,
+      "byteLength": 313175,
+      "sha256": "be1ab405c71801312ecfa9b67033620bd26eb149e72dbc2bfbb532216b13b4e5",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Byte-identical to individually inspected v34 image be1ab405c71801312ecfa9b67033620bd26eb149e72dbc2bfbb532216b13b4e5; no current visual delta."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1412,
+      "byteLength": 265096,
+      "sha256": "42ce8be6b0a27eab187b56732be2b07eaacfc46d9976f8ac391e8a07b51985a7",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 320px bangumi-light partial-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; unknown values and non-computable deltas remain explicit."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1394,
+      "byteLength": 278920,
+      "sha256": "67178342bbcf01a4d93289f96e72739714f3414f75f5f4bf645a361125640146",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 360px bangumi-light partial-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; unknown values and non-computable deltas remain explicit."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1824,
+      "byteLength": 400610,
+      "sha256": "c9bd602fedfa992add08c22b71725a8a3233e53bc586bb7b6fd81e343822b752",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 520px bangumi-light partial-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; unknown values and non-computable deltas remain explicit."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1774,
+      "byteLength": 457867,
+      "sha256": "424ddcb79587b8f270609cbcc6f8781d19e28a9f8ef3ef0809faa1b26d7da95c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 640px bangumi-light partial-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; unknown values and non-computable deltas remain explicit."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1874,
+      "byteLength": 682977,
+      "sha256": "8518659e6005cb7ffcb969a5f53b1e07d42ee2c71bd6f9551cd3b8802b95fa50",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 960px bangumi-light partial-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; unknown values and non-computable deltas remain explicit."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 640,
+      "pixelHeight": 1412,
+      "byteLength": 261341,
+      "sha256": "e584a46c87ac0c6b7981a32ba9dd3c8f6e0a5610a6f2688e18ad9464cb69d502",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 320px bangumi-dark partial-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; unknown values and non-computable deltas remain explicit."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 720,
+      "pixelHeight": 1394,
+      "byteLength": 273543,
+      "sha256": "46ef5301340fc1a4bc02e4cfe5168ece4a2106df873002eb56134c49aed6ece9",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 360px bangumi-dark partial-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; unknown values and non-computable deltas remain explicit."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 1040,
+      "pixelHeight": 1824,
+      "byteLength": 392911,
+      "sha256": "1eb8d9c9c903f5718bf6d0f8ef8e3f9bee7a8f87fee1edbb403697bd4ea7d772",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 520px bangumi-dark partial-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; unknown values and non-computable deltas remain explicit."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 1280,
+      "pixelHeight": 1774,
+      "byteLength": 448294,
+      "sha256": "02a0e996a6976279d9db190bbd58fc605c3149e6ec0483931f4eed60a5253357",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 640px bangumi-dark partial-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; unknown values and non-computable deltas remain explicit."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 1920,
+      "pixelHeight": 1874,
+      "byteLength": 663743,
+      "sha256": "7cd82a86712e3fdb3c68f7a2d96f73282bf69a1212dc6dd043f1d11e4a465c79",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually inspected v35 960px bangumi-dark partial-two-cohort: enlarged query/coverage labels remain legible; no clipping, overlap or overflow; unknown values and non-computable deltas remain explicit."
+      }
+    }
+  ]
+}

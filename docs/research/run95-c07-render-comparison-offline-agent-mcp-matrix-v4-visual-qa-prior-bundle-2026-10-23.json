@@ -1,0 +1,933 @@
+{
+  "schemaVersion": 1,
+  "profileId": "c07-render-comparison-offline-agent-mcp-matrix-v4",
+  "artifactDirectory": ".artifacts/render/c07-cohort-comparison-v4-visual-qa-candidate-bound-20261023",
+  "cssWidths": [
+    320,
+    360,
+    520,
+    640,
+    960
+  ],
+  "designPacks": [
+    "warm-editorial",
+    "clean-gallery",
+    "graphic-zine"
+  ],
+  "themes": [
+    "bangumi-light",
+    "bangumi-dark"
+  ],
+  "deviceScaleFactor": 1,
+  "buildBundleSha256": "ac3d5e33473df21961278bb6dd6f7db1bbfea07078626fa83e69995b5af7f42f",
+  "generationSourceSha256": "808aabf3a0e2f51df13a729dadf43123614119d4687d3a8ec8bbda4654d504ab",
+  "reviewAcknowledgement": {
+    "decision": "PASS",
+    "allImagesIndividuallyInspected": true,
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-10-23T13:41:26.000Z",
+    "summary": "All 60 PNGs were individually opened and inspected across complete/partial cases, all three design packs, both palettes, and five widths. No text clipping or unintended overlap was found; partial cohort values remain visibly unknown, not zero."
+  },
+  "images": [
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1550,
+      "byteLength": 110331,
+      "sha256": "02a8b8bf5f91bf4be66b1f055fb5d559bf1695fc5e32dc383db154b6939f01fa",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/light at 320px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1489,
+      "byteLength": 110767,
+      "sha256": "d63b1f5999f3e6ef11f375cd95283f3a80ad60ffd0c31095552ada750ad48171",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/light at 360px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1370,
+      "byteLength": 138475,
+      "sha256": "cba5492bc528200299ac4c059584a4d3e780bba72e1d04ead0d4d4155949641d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/light at 520px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1370,
+      "byteLength": 140731,
+      "sha256": "c35eebc59b881a2d6392e07ea10af6cc79f7ae166b3817e2f82558a4b0000dc8",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/light at 640px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-warm-editorial-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 846,
+      "byteLength": 123716,
+      "sha256": "b3a88d5a71b051660b24e952c51854ed2dcdf0bdb5d870ec731753afa74b7e0d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/light at 960px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1550,
+      "byteLength": 108999,
+      "sha256": "941258a8b6afb88b0b69993612218988dff7a45e8393fa17d6d8eb3a69d27e83",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/dark at 320px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1489,
+      "byteLength": 109224,
+      "sha256": "da6a7af3e90b368d5745a06965dd8283027a490677241cc9206964a7e53b2a01",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/dark at 360px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1370,
+      "byteLength": 135836,
+      "sha256": "d6204d79e7f3a2c2e6f5644af9f488e321031f34b58655043189cabb47707257",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/dark at 520px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1370,
+      "byteLength": 137726,
+      "sha256": "97e31a47a8840de53b33457ba65d89b17d55d294a1fbacea43aee07f08989a19",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/dark at 640px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-warm-editorial-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 846,
+      "byteLength": 121075,
+      "sha256": "77e5183153b7979ad7eb04e670ad5f632229da5f0e947de927d62ef5f7f1d751",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/dark at 960px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1483,
+      "byteLength": 107589,
+      "sha256": "0e4745cea35ffeaa7e1acfdd815e2d53950410e6099e6fe694aaf31e28b4ea0e",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/light at 320px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1410,
+      "byteLength": 108244,
+      "sha256": "729a9527504682eebf3b1aca754ae427136a43e5a317c51ad6287c37257d3f79",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/light at 360px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1294,
+      "byteLength": 135274,
+      "sha256": "6b29cc9944dcc0918413d4d0ea4552ee23581f82e20025c8eaf156486d798328",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/light at 520px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1294,
+      "byteLength": 136976,
+      "sha256": "a765b354a16770dc39769223ad7017c9787df9ba996be2a7395abac9a6903595",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/light at 640px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-clean-gallery-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 847,
+      "byteLength": 117507,
+      "sha256": "29593bfc77cb01537d8099b1ce472bffbce7e985919612c9864b6554d231f5f2",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/light at 960px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1483,
+      "byteLength": 110376,
+      "sha256": "d1cfe45111543a7be160da706881004d563a04b62d0f4aeaba237ed872267fcf",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/dark at 320px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1410,
+      "byteLength": 110788,
+      "sha256": "70f714af42f9afafe5deb125a2bd8a7c00007942fd7091880f9d039f7aa56954",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/dark at 360px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1294,
+      "byteLength": 138837,
+      "sha256": "20c69cd1e18667250349da3d108e851339ac31ed615d3d29fb8f788c221e54df",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/dark at 520px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1294,
+      "byteLength": 140546,
+      "sha256": "773e34ae97366cee6201787894a106e434e630f87fcc0bb1bf2e30e9d98e418f",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/dark at 640px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-clean-gallery-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 847,
+      "byteLength": 120622,
+      "sha256": "a732c0191505cb54ca21eacf35e1e68acfe7a0a238799209d994937dec2bc756",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/dark at 960px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1298,
+      "byteLength": 111778,
+      "sha256": "dec147a2f7a523e101566392b3d8ca6b0b3f177a3198dedfef0f9397b375713f",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/light at 320px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1264,
+      "byteLength": 112429,
+      "sha256": "af8a0d738adf7bd550a51d0cf36ac59b18afa5af152f5b3615ec88f4360a0bf2",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/light at 360px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1159,
+      "byteLength": 135987,
+      "sha256": "5f4b53969bf2aa29d6625cf1b36f20668b05c2e97cd45e422a228956aee97680",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/light at 520px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1159,
+      "byteLength": 142100,
+      "sha256": "648455e3a6d18378e2c3c50d0bb23d962b058398a11c1434fe03f24f3ad9dbc4",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/light at 640px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "complete-two-cohort-graphic-zine-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 750,
+      "byteLength": 127267,
+      "sha256": "d3b99dd7cc8238361e69de3a1973ac0adc06e82a9231672240d002b13a4c6091",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/light at 960px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1298,
+      "byteLength": 112755,
+      "sha256": "709473bddecda30e5158a803fdfd90d1751b1950c2552c00ff20c1f47ecd83fb",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/dark at 320px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1264,
+      "byteLength": 113289,
+      "sha256": "f91143e7cb58baa5debdaa0b82832842733c66425db7b57387b69b953b93d835",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/dark at 360px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1159,
+      "byteLength": 136426,
+      "sha256": "104fbbaa20cbdacfd723867ef2a792571b7da609006e680119fb7e43451a57e8",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/dark at 520px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1159,
+      "byteLength": 142810,
+      "sha256": "0eba25cf1147d5bda5304130766d54853e8ab72bc3904570ed04fdb47906d831",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/dark at 640px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "complete-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "complete-two-cohort-graphic-zine-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 750,
+      "byteLength": 126948,
+      "sha256": "6379083c969440cc6ea86e361f7ab81b9ff5125b8c5c0b1797bee2d873d98b56",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/dark at 960px: both cohort records and comparison metrics remain visible, with no clipping or unintended overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1469,
+      "byteLength": 114254,
+      "sha256": "61f4b57d8daf0e68c3b356e85dd031e7aeac1a06e5f6fe369c64bc61c591680d",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/light at 320px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1409,
+      "byteLength": 114424,
+      "sha256": "2015f26cbfa886ffd250f88e4c9f42702c72ad4dc789df845237c44ca9878e82",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/light at 360px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1298,
+      "byteLength": 119171,
+      "sha256": "0525931191fe1331bab3d5ed5323ebd9e852c2c5c85d659a8ed4878da80e3160",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/light at 520px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1298,
+      "byteLength": 120637,
+      "sha256": "9db974a8044d2d9ebdf02c5b878213760609a06610db8f68048b502a5c59e7b0",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/light at 640px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-warm-editorial-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 812,
+      "byteLength": 110861,
+      "sha256": "96dbfac705fd44c7feb71a5dd09cdccb44395540e02f8885b2fc8949a4667335",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/light at 960px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1469,
+      "byteLength": 112036,
+      "sha256": "0dfc9ad445814c90e50c002cf0df187a382f8c4862bc1a8a4f965a6f7bee5d32",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/dark at 320px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1409,
+      "byteLength": 112245,
+      "sha256": "88b7eb74e2227f23cecd3baff0c91332ca274da48c6d8c660f70e4764b02b703",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/dark at 360px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1298,
+      "byteLength": 116407,
+      "sha256": "19cc96177d71a9dff19968f7b3d17cdc8ba43a33e1b986fcf121a1d2a3178950",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/dark at 520px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1298,
+      "byteLength": 117854,
+      "sha256": "bbca0addd798e621b2fd36e279e3eb4a3091a5c4d0819fe5d5ef53d977d432f0",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/dark at 640px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "warm-editorial",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-warm-editorial-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 812,
+      "byteLength": 108470,
+      "sha256": "5410009d2492d781159e2022c419470dd77bf8462ef442ccaf93cc30ef4e3c86",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed warm-editorial/dark at 960px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1417,
+      "byteLength": 108889,
+      "sha256": "24d58c875fb96c232cebf2beb9ae1af9f7919e3f751fad94588ba3be48145f7a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/light at 320px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1333,
+      "byteLength": 109344,
+      "sha256": "30cb398415f7bc97aa8444031a3ed5e8dc9d2fd4c8e40dcf038ee567650ce6ca",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/light at 360px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1225,
+      "byteLength": 115744,
+      "sha256": "678626600d5507dee582cccded81ece47d6638d34f89896d94ead0516add4130",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/light at 520px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1225,
+      "byteLength": 117675,
+      "sha256": "5431a150865e307e74521219a6a63a41006302d7941f04135e31d109bbfc6019",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/light at 640px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-clean-gallery-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 813,
+      "byteLength": 106213,
+      "sha256": "8137df8c731b45944b8c40d271260808666bde7d953ffe74f58b290ffde95ee3",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/light at 960px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1417,
+      "byteLength": 111505,
+      "sha256": "2c3d2b8941a2d2c346c0819f55938a5153e37ad9ff3ce77ab2fed1281ad7b913",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/dark at 320px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1333,
+      "byteLength": 111752,
+      "sha256": "caf87e23e0e78634ddb69a7a12da1028be763131f0e74ef92e6f3c8d706a212e",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/dark at 360px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1225,
+      "byteLength": 118262,
+      "sha256": "32c51dc6ad99978a2487cef270961b0613aefaad6cf5f1f614ea4fd4f6ca1cd8",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/dark at 520px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1225,
+      "byteLength": 120154,
+      "sha256": "d9692412b0130b7a380d015a26f44e5abc21be61399dac5d70987d3821bc730a",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/dark at 640px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "clean-gallery",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-clean-gallery-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 813,
+      "byteLength": 107984,
+      "sha256": "cef25918d984fad65e488674f5eaa68918cb34306932c607cbbc45b2052816df",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed clean-gallery/dark at 960px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1221,
+      "byteLength": 113381,
+      "sha256": "3f041d68f247fd0ddc3d2c7ae3f68d1e69fae75c0b0e0ad70420a2d76ffe3723",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/light at 320px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1188,
+      "byteLength": 113715,
+      "sha256": "567190433f75211fb316bac44bba46a698df3b88f12f5808922a26548845eb50",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/light at 360px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1092,
+      "byteLength": 117215,
+      "sha256": "36b31472156a6a7cbd195720ea1a36810e530d1dcc46f7f23a7ad81406e8b745",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/light at 520px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1092,
+      "byteLength": 122140,
+      "sha256": "5122227551021dc09de3acdde397e660155628beb3522b3326a4e8d70444546c",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/light at 640px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-light",
+      "file": "partial-two-cohort-graphic-zine-bangumi-light-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 716,
+      "byteLength": 112131,
+      "sha256": "454cfb7f66c51ea4c5ac921116f63f7fe047015a072e4b54fd22530aa8a5bdd8",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/light at 960px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-320.png",
+      "cssWidth": 320,
+      "pixelWidth": 320,
+      "pixelHeight": 1221,
+      "byteLength": 113665,
+      "sha256": "5cba147c48049bc3251a8c5c00c58cd0e8dae685e6e7dcc86994e5b77f52ca1e",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/dark at 320px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-360.png",
+      "cssWidth": 360,
+      "pixelWidth": 360,
+      "pixelHeight": 1188,
+      "byteLength": 113782,
+      "sha256": "feda37f6bd9418d11526d276119ca53ad863e0ca8259f1e3a0019f68a9b5890b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/dark at 360px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-520.png",
+      "cssWidth": 520,
+      "pixelWidth": 520,
+      "pixelHeight": 1092,
+      "byteLength": 117146,
+      "sha256": "874def806d03051e7e25c8352aa58b15ae78afbd03bc40c9e51e0e2169a5efce",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/dark at 520px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-640.png",
+      "cssWidth": 640,
+      "pixelWidth": 640,
+      "pixelHeight": 1092,
+      "byteLength": 122438,
+      "sha256": "2d7c19e7b6fac262e6a3578072a5e3d01adafb73996dcdeb2e6894c3f44d706b",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/dark at 640px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    },
+    {
+      "case": "partial-two-cohort",
+      "designPack": "graphic-zine",
+      "theme": "bangumi-dark",
+      "file": "partial-two-cohort-graphic-zine-bangumi-dark-960.png",
+      "cssWidth": 960,
+      "pixelWidth": 960,
+      "pixelHeight": 716,
+      "byteLength": 112007,
+      "sha256": "f5a03a1d1f03071a356f0778592451721b369c0960f1e094bb33fa2630c2d487",
+      "visualReview": {
+        "decision": "PASS",
+        "finding": "Individually reviewed graphic-zine/dark at 960px: partial warning is visible, missing cohort values remain unknown, and text/artifacts stay within the frame without overlap."
+      }
+    }
+  ]
+}

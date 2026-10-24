@@ -85,6 +85,8 @@ export interface SubjectCohortComparisonOptions {
 }
 
 export interface SubjectCohortSubject {
+  /** Public representative-cover metadata; the renderer still resolves it through its asset boundary. */
+  image?: string;
   id: number;
   name: string;
   displayName: string;
@@ -609,7 +611,17 @@ function buildSubjectRow(
     metric.conflict
       ? 'conflict'
       : metric.state || (metric.value === undefined ? 'missing' : 'available');
+  const image = [
+    item.image,
+    detail?.images.medium,
+    detail?.images.common,
+    detail?.images.large,
+  ].find(
+    (value): value is string =>
+      typeof value === 'string' && value.trim().length > 0 && value.length <= 2048,
+  );
   const subject: SubjectCohortSubject = {
+    ...(image ? { image } : {}),
     id: item.id,
     name: boundedText(item.name, 180),
     displayName: boundedText(item.displayName, 180),
@@ -733,8 +745,7 @@ function buildGroup(
           (item) => item.requestAttempted && item.result.state === 'ok' && item.result.data,
         ).length,
         detailHydrationsFailed: hydrated.filter(
-          (item) =>
-            item.requestAttempted && (item.result.state !== 'ok' || !item.result.data),
+          (item) => item.requestAttempted && (item.result.state !== 'ok' || !item.result.data),
         ).length,
         metrics,
       },

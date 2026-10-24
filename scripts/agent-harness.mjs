@@ -6,6 +6,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { gzipSync, gunzipSync } from 'node:zlib';
+import { readProductCommitSubjects } from './lib/product-commit-subjects.mjs';
+import {
+  inspectRendererDesignBaselines,
+  RENDERER_BASELINE_PATH,
+} from './lib/renderer-design-baselines.mjs';
 import {
   DISCOVERY_POLICY_VERSION,
   DEFAULT_EPOCH_REVIEW_SLOTS,
@@ -204,7 +209,9 @@ import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
+  isC07ReviewerId,
 } from './lib/c07-render-comparison-offline-profile.mjs';
 import {
   G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
@@ -284,6 +291,10 @@ import {
 } from './acceptance/d07-current-rank-answer-check.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
+const rendererBaselineRoot =
+  process.env.HARNESS_MOCK_STATE && process.env.HARNESS_RENDERER_BASELINE_ROOT
+    ? path.resolve(process.env.HARNESS_RENDERER_BASELINE_ROOT)
+    : root;
 const G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
   '.github/workflows/ci.yml',
   'docs/agent/HARNESS.md',
@@ -732,8 +743,7 @@ function changedPaths(base, head = 'HEAD') {
 }
 
 function commitSubjects(base, head = 'HEAD') {
-  const output = git('log', '--format=%s', `${base}..${head}`);
-  return output.split('\n').filter(Boolean);
+  return readProductCommitSubjects(root, base, head);
 }
 
 function eventPrBody() {
@@ -831,6 +841,7 @@ Usage: pnpm harness <command> [options]
 
   status --run <issue> [--pr <number>]
   continuation:show --run <issue> [--goal-state active|paused|blocked|complete]
+  renderer:baseline-check [--base <ref>]
   run:directive --run <issue> --expected-sequence <n> --action continue|pause|replan --source-ref <ref> --reason <text>
   run:checkpoint --run <issue> --expected-sequence <n> --evidence <json>
   frontier:check
@@ -841,6 +852,7 @@ Usage: pnpm harness <command> [options]
   review:budget-extend --run <issue> --pr <number> --add <count> --reason <text>
   epoch:start --run <issue> --spec <json>
   epoch:open-pr --run <issue> --title <title>
+  epoch:frontier-amend --run <issue> --pr <number> --frontier-id <id> --reason <text>
   guard:legacy-paths [--base origin/master] [--product-epoch]
   candidate:check --pr <number> [--run <issue>] --evidence <json>
   review:reserve --run <issue> --pr <number> [--runtime-recovery]
@@ -954,14 +966,44 @@ function commandContinuationShow(options) {
   const runResult = issueState(required(options, 'run'));
   const prNumber = options.pr ?? runResult.state.active_epoch_pr;
   const epochResult = prNumber ? epochState(prNumber) : null;
-  print(
-    buildContinuationBrief({
+  print({
+    ...buildContinuationBrief({
       run: runResult.state,
       epoch: epochResult?.state,
       pr: epochResult?.view,
       goalState: options['goal-state'] ?? 'unobserved',
     }),
-  );
+    renderer_design_baselines: inspectRendererDesignBaselines(rendererBaselineRoot),
+  });
+}
+
+function requireRendererBaselines(base) {
+  let priorRegistry;
+  if (base) {
+    const tracked = git('ls-tree', '--name-only', base, '--', RENDERER_BASELINE_PATH);
+    if (tracked) priorRegistry = JSON.parse(git('show', `${base}:${RENDERER_BASELINE_PATH}`));
+  }
+  const result = inspectRendererDesignBaselines(rendererBaselineRoot, {
+    priorRegistry,
+    readSourceAtCommit: (commit, file) =>
+      execFileSync('git', ['show', `${commit}:${file}`], {
+        cwd: root,
+        env: sanitizeP01GitEnvironment(process.env),
+        maxBuffer: 24 * 1024 * 1024,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }),
+  });
+  if (!result.ok)
+    throw new HarnessInvariantError(
+      'RENDERER_DESIGN_BASELINE_DRIFT',
+      'Preserve completed designs; a changed baseline needs an audited successor, not another styling loop.',
+      result.issues,
+    );
+  return result;
+}
+
+function commandRendererBaselineCheck(options) {
+  print({ state: 'RENDERER_DESIGN_BASELINES_VALID', ...requireRendererBaselines(options.base) });
 }
 
 function commandContinuationRecord(options, type) {
@@ -1019,6 +1061,7 @@ function guardContinuationCommand(command, options) {
     'help',
     'status',
     'continuation:show',
+    'renderer:baseline-check',
     'run:directive',
     'run:checkpoint',
     'frontier:check',
@@ -1487,6 +1530,142 @@ function commandEpochOpenPr(options) {
   print({ state: 'EPOCH_PR_OPEN', pr: pr.number, url });
 }
 
+function commandEpochFrontierAmend(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = required(options, 'run');
+  const prNumber = Number(required(options, 'pr'));
+  const frontierId = required(options, 'frontier-id');
+  const reason = required(options, 'reason').trim();
+  if (!/^[A-Z][A-Z0-9-]{1,15}$/u.test(frontierId)) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_INVALID',
+      'frontier-id must name one canonical frontier record.',
+    );
+  }
+  if (reason.length < 12 || reason.length > 500) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_REASON_REQUIRED',
+      'reason must contain 12 to 500 non-whitespace characters.',
+    );
+  }
+
+  const runResult = issueState(runNumber);
+  const epochResult = epochState(prNumber);
+  const run = structuredClone(runResult.state);
+  const epoch = structuredClone(epochResult.state);
+  if (
+    Number(runNumber) !== 95 ||
+    run.state !== 'EPOCH_ACTIVE' ||
+    run.active_epoch_pr !== prNumber ||
+    epoch.state !== 'CORRECTIVE_REQUIRED' ||
+    epochResult.view.state !== 'OPEN'
+  ) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_REQUIRES_CORRECTIVE_REVIEW',
+      'A frontier binding may be amended only on the active open Run #95 Epoch after a recorded corrective review.',
+    );
+  }
+  const latestReview = epoch.review_history?.at(-1);
+  if (
+    latestReview?.verdict !== 'CORRECTIVE_REQUIRED' ||
+    latestReview.reviewed_base_sha !== epoch.base_sha ||
+    !/^[0-9a-f]{40}$/u.test(latestReview.candidate_sha ?? '') ||
+    currentBranch() !== epoch.branch
+  ) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_REVIEW_MISMATCH',
+      'The active corrective review must bind the same Epoch Base and branch.',
+    );
+  }
+  if (Object.keys(agentMcpProfileClaims(epoch)).length > 0) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_AFTER_PROFILE_CLAIM',
+      'Frontier bindings are immutable after any profile claim is recorded.',
+    );
+  }
+
+  const profiles = listAgentMcpProfiles().filter(
+    (profile) =>
+      profile.epochId === epoch.epoch_id &&
+      profile.frontierId === frontierId &&
+      profile.acceptanceScope === 'agent-mcp-matrix-only',
+  );
+  if (profiles.length === 0) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_PROFILE_REQUIRED',
+      'The target frontier must match a registered matrix-only Agent/MCP profile in this Epoch.',
+      { epochId: epoch.epoch_id, frontierId },
+    );
+  }
+  const priorFrontiers = [...(epoch.advances_frontier_ids ?? [])];
+  if (priorFrontiers.includes(frontierId)) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_DUPLICATE',
+      'The requested frontier is already bound to this Epoch.',
+      { frontierId },
+    );
+  }
+  const frontier = requireValidFrontier();
+  const frontierRecord = frontier.ledger.records.find((record) => record.id === frontierId);
+  if (
+    !frontierRecord ||
+    !frontier.actionable_ids.includes(frontierId) ||
+    frontierRecord.status !== 'UNASSESSED'
+  ) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_AMENDMENT_TARGET_INVALID',
+      'A matrix-only binding must target an actionable UNASSESSED scenario record.',
+      { frontierId, status: frontierRecord?.status ?? null },
+    );
+  }
+  for (const profile of profiles) {
+    if (!fs.existsSync(path.join(root, profile.selectionEvidencePath))) {
+      throw new HarnessInvariantError(
+        'EPOCH_FRONTIER_AMENDMENT_EVIDENCE_MISSING',
+        'Every matching profile must have its tracked selection evidence in the checkout.',
+        { profileId: profile.id, selectionEvidencePath: profile.selectionEvidencePath },
+      );
+    }
+  }
+
+  epoch.advances_frontier_ids = [...priorFrontiers, frontierId];
+  epoch.next_action = `REFRESH_CANDIDATE_AFTER_${frontierId}_FRONTIER_BINDING`;
+  run.selection_amendment_history = Array.isArray(run.selection_amendment_history)
+    ? run.selection_amendment_history
+    : [];
+  run.selection_amendment_history.push({
+    at: new Date().toISOString(),
+    from_epoch_id: epoch.epoch_id,
+    to_epoch_id: epoch.epoch_id,
+    from_target_tool: priorFrontiers.join(', '),
+    to_target_tool: profiles.map((profile) => profile.toolName).join(', '),
+    reason,
+    prior_frontiers: priorFrontiers,
+    new_frontiers: epoch.advances_frontier_ids,
+    scope_amendment: {
+      added_frontier_id: frontierId,
+      profile_ids: profiles.map((profile) => profile.id),
+      matrix_only: true,
+      scenario_status_preserved: frontierRecord.status,
+      scenario_credit: false,
+    },
+  });
+  run.next_action = `REFRESH_CANDIDATE_PR_${prNumber}`;
+  updatePr(prNumber, epoch);
+  updateIssue(runNumber, run);
+  print({
+    state: 'EPOCH_FRONTIER_BINDING_AMENDED',
+    run: Number(runNumber),
+    pr: prNumber,
+    epoch_id: epoch.epoch_id,
+    advances_frontier_ids: epoch.advances_frontier_ids,
+    profile_ids: profiles.map((profile) => profile.id),
+    frontier_status: frontierRecord.status,
+    scenario_credit: false,
+  });
+}
+
 function commandGuard(options) {
   if (!isProductEpoch(options)) {
     print({ state: 'NOT_A_V3_PRODUCT_EPOCH', checked: false });
@@ -1496,6 +1675,7 @@ function commandGuard(options) {
   const head = process.env.HARNESS_HEAD_REF ?? 'HEAD';
   assertNoLegacyRuntimeChanges(changedPaths(base, head));
   assertProductCommitHygiene(commitSubjects(base, head));
+  requireRendererBaselines(base);
   print({ state: 'LEGACY_RUNTIME_PATH_GUARD_PASS', base, head });
 }
 
@@ -1572,6 +1752,7 @@ function commandCandidateCheck(options) {
     throw new HarnessInvariantError('WRONG_EPOCH_BRANCH', `Checkout ${epoch.branch} first`);
   }
   const baseSha = git('rev-parse', `origin/${epoch.base_branch}`);
+  requireRendererBaselines(baseSha);
   if (evidence.base_sha !== baseSha || evidence.candidate_sha !== head) {
     throw new HarnessInvariantError(
       'FRESH_CANDIDATE_EVIDENCE_REQUIRED',
@@ -3906,6 +4087,12 @@ function readAgentMcpProfileLabels() {
   return labels;
 }
 
+function isAgentMcpProfileReviewerId(profile, reviewerId, prNumber) {
+  return getC07RenderComparisonOfflineConfig(profile?.id)
+    ? isC07ReviewerId(reviewerId)
+    : isG16LunaMaxReviewerId(reviewerId, prNumber);
+}
+
 function assertAgentMcpProfileReviewReadiness(
   { runNumber, prNumber, profile, runnerReceiptPublicKey },
   { checkRunnerReceiptKey = true, checkBundle = true } = {},
@@ -3967,7 +4154,7 @@ function assertAgentMcpProfileReviewReadiness(
     latestReview?.candidate_sha !== candidateSha ||
     latestReview.reviewed_base_sha !== baseSha ||
     latestReview.verdict !== 'PASS' ||
-    !isG16LunaMaxReviewerId(latestReview.reviewer_id, Number(prNumber)) ||
+    !isAgentMcpProfileReviewerId(profile, latestReview.reviewer_id, Number(prNumber)) ||
     (profile.id === 'c02-cardcaptor-tv-movie-v1' &&
       latestReview.reviewer_id !== epoch.review_history?.[0]?.reviewer_id) ||
     (runnerReceiptPublicKey?.reviewerId !== undefined &&
@@ -3981,7 +4168,7 @@ function assertAgentMcpProfileReviewReadiness(
   ) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_CLAIM_GATE_FAILED',
-      'A profile one-shot claim requires the clean active exact Candidate, unchanged Base, seven-check CI, and exact Luna Max PASS.',
+      'A profile one-shot claim requires the clean active exact Candidate, unchanged Base, seven-check CI, and exact trusted Product PASS; execution retains its pinned model and effort.',
       { runNumber, prNumber, candidateSha, baseSha, profileId: profile.id },
     );
   }
@@ -4775,6 +4962,7 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
     case 'c07-render-comparison-offline-agent-mcp-matrix-v1':
     case 'c07-render-comparison-offline-agent-mcp-matrix-v2':
     case 'c07-render-comparison-offline-agent-mcp-matrix-v3':
+    case 'c07-render-comparison-offline-agent-mcp-matrix-v4':
       return validateC07RenderComparisonOfflineSanitizedReportFile(claim, root, reportPath);
     case 'g01-render-query-subjects-offline-agent-mcp-v1':
     case 'g01-render-query-subjects-offline-agent-mcp-v2':
@@ -4914,7 +5102,7 @@ function commandEpochAgentMcpProfileResult(options) {
     current.sourceCandidateSha === current.ciSha &&
     current.ciStatus === 'SUCCESS' &&
     current.reviewerId &&
-    isG16LunaMaxReviewerId(current.reviewerId, Number(prNumber)) &&
+    isAgentMcpProfileReviewerId(profile, current.reviewerId, Number(prNumber)) &&
     current.bundleSha256 &&
     current.runnerReceiptPublicKeySha256 &&
     current.retryAllowed === false &&
@@ -8628,7 +8816,7 @@ function assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(
     latestReview?.reviewed_base_sha !== epoch.base_sha ||
     latestReview?.verdict !== 'PASS' ||
     epoch.review_pass_sha !== epoch.candidate_sha ||
-    !isG16LunaMaxReviewerId(latestReview?.reviewer_id, Number(prNumber)) ||
+    !isC07ReviewerId(latestReview?.reviewer_id) ||
     !epoch.advances_frontier_ids?.includes('C07')
   ) {
     throw new HarnessInvariantError(
@@ -9080,6 +9268,7 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
       C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
       C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
       C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+      C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
     ].some(
       (profileId) => getC07RenderComparisonOfflineConfig(profileId)?.epochId === epoch.epoch_id,
     )
@@ -9088,6 +9277,7 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
       C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
       C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
       C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+      C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
     ].find(
       (candidate) => getC07RenderComparisonOfflineConfig(candidate)?.epochId === epoch.epoch_id,
     );
@@ -9430,6 +9620,7 @@ const commands = {
   help: commandHelp,
   status: commandStatus,
   'continuation:show': commandContinuationShow,
+  'renderer:baseline-check': commandRendererBaselineCheck,
   'run:directive': (options) => commandContinuationRecord(options, 'directive'),
   'run:checkpoint': (options) => commandContinuationRecord(options, 'checkpoint'),
   'frontier:check': commandFrontierCheck,
@@ -9439,6 +9630,7 @@ const commands = {
   'run:budget-extend': commandRunBudgetExtend,
   'epoch:start': commandEpochStart,
   'epoch:open-pr': commandEpochOpenPr,
+  'epoch:frontier-amend': commandEpochFrontierAmend,
   'guard:legacy-paths': commandGuard,
   'candidate:check': commandCandidateCheck,
   'review:reserve': commandReviewReserve,

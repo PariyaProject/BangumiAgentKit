@@ -1,6 +1,13 @@
+import {
+  ANIME_MAGAZINE_DESIGN,
+  ANIME_MAGAZINE_RADIUS,
+  ANIME_MAGAZINE_SPACING,
+  animeMagazinePalette,
+} from './anime-magazine.js';
 export type RenderThemeName = 'bangumi-dark' | 'bangumi-light';
 
-export type RenderDesignPackName = 'warm-editorial' | 'clean-gallery' | 'graphic-zine';
+export type RenderDesignPackName =
+  'warm-editorial' | 'clean-gallery' | 'graphic-zine' | 'anime-magazine';
 
 export const DEFAULT_RENDER_THEME: RenderThemeName = 'bangumi-light';
 export const DEFAULT_RENDER_DESIGN_PACK: RenderDesignPackName = 'warm-editorial';
@@ -8,6 +15,7 @@ export const RENDER_DESIGN_PACK_NAMES: readonly RenderDesignPackName[] = [
   'warm-editorial',
   'clean-gallery',
   'graphic-zine',
+  'anime-magazine',
 ];
 
 export type SemanticToneName = 'coral' | 'mint' | 'butter' | 'plum' | 'indigo' | 'blue';
@@ -91,6 +99,7 @@ const DESIGN_MASKS: Readonly<
     badge:
       'shape(from 8px 0px, line to 24px 0px, line to 32px 8px, line to 32px 24px, line to 24px 32px, line to 8px 32px, line to 0px 24px, line to 0px 8px, close)',
   },
+  'anime-magazine': ANIME_MAGAZINE_DESIGN.masks,
   'graphic-zine': {
     // A die-cut cover frame: offset paper teeth stay within the card's padding.
     frame:
@@ -215,6 +224,7 @@ const WARM_DARK: ThemePalette = {
 };
 
 const DESIGN_PACKS: Record<RenderDesignPackName, DesignPackTokens> = {
+  'anime-magazine': ANIME_MAGAZINE_DESIGN,
   'warm-editorial': {
     name: 'warm-editorial',
     label: '暖调编辑',
@@ -287,12 +297,14 @@ const DESIGN_PACKS: Record<RenderDesignPackName, DesignPackTokens> = {
 };
 
 const DESIGN_RADIUS: Record<RenderDesignPackName, ThemeTokens['radius']> = {
+  'anime-magazine': ANIME_MAGAZINE_RADIUS,
   'warm-editorial': { sm: '6px', md: '10px', lg: '16px', xl: '24px' },
   'clean-gallery': { sm: '3px', md: '5px', lg: '8px', xl: '10px' },
   'graphic-zine': { sm: '2px', md: '4px', lg: '6px', xl: '8px' },
 };
 
 const DESIGN_SPACING: Record<RenderDesignPackName, ThemeTokens['spacing']> = {
+  'anime-magazine': ANIME_MAGAZINE_SPACING,
   'warm-editorial': { xs: '4px', sm: '8px', md: '16px', lg: '24px', xl: '32px' },
   'clean-gallery': { xs: '5px', sm: '10px', md: '18px', lg: '26px', xl: '34px' },
   'graphic-zine': { xs: '4px', sm: '8px', md: '14px', lg: '18px', xl: '24px' },
@@ -309,6 +321,7 @@ export function isRenderDesignPackName(value: unknown): value is RenderDesignPac
 }
 
 function paletteFor(theme: RenderThemeName, designPack: RenderDesignPackName): ThemePalette {
+  if (designPack === 'anime-magazine') return animeMagazinePalette(theme);
   if (designPack === 'warm-editorial') return theme === 'bangumi-dark' ? WARM_DARK : WARM_LIGHT;
 
   if (designPack === 'clean-gallery' && theme === 'bangumi-light') {

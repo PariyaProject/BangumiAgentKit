@@ -14,7 +14,9 @@ function save() {
 
 function output(value = '') {
   save();
-  process.stdout.write(typeof value === 'string' ? value : JSON.stringify(value));
+  process.stdout.write(
+    typeof value === 'string' || Buffer.isBuffer(value) ? value : JSON.stringify(value),
+  );
 }
 
 function fail(message) {
@@ -201,6 +203,9 @@ if (tool === 'gh') {
       ).join('\n'),
     );
   } else if (command === 'log') output((state.commitSubjects ?? []).join('\n'));
+  else if (command === 'ls-tree') output((state.treePaths ?? []).join('\n'));
+  else if (command === 'show' && state.gitObjects?.[rest[0]] !== undefined)
+    output(Buffer.from(state.gitObjects[rest[0]], 'base64'));
   else if (command === 'merge-base' && rest[0] === '--is-ancestor') {
     if (state.candidateIsAncestor === false) fail('not ancestor');
     else output();

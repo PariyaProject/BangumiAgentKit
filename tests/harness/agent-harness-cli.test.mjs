@@ -113,6 +113,7 @@ import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 import {
@@ -452,6 +453,7 @@ function createMockEnvironment(overrides = {}) {
             PATH: `${binDirectory}:${process.env.PATH}`,
             HARNESS_MOCK_STATE: statePath,
             HARNESS_FRONTIER_LEDGER_PATH: frontierLedgerPath,
+            HARNESS_RENDERER_BASELINE_ROOT: directory,
             HARNESS_G04_BUNDLE_SHA256: 'c'.repeat(64),
             ...envOverrides,
           },
@@ -460,6 +462,9 @@ function createMockEnvironment(overrides = {}) {
     },
     readState() {
       return JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    },
+    readFrontierLedger() {
+      return JSON.parse(fs.readFileSync(frontierLedgerPath, 'utf8'));
     },
     cleanup() {
       fs.rmSync(directory, { recursive: true, force: true });
@@ -1004,6 +1009,62 @@ function terminalRunBody(evidence = makeDiscoveryEvidence()) {
   run.next_action = 'Recheck only after the frontier changes or refresh is due.';
   return renderRunBody(run);
 }
+
+test('renderer baseline CLI preserves completed scope and rejects source drift or registry deletion', () => {
+  const environment = createMockEnvironment();
+  try {
+    const artifact = (file, content) => {
+      fs.writeFileSync(path.join(environment.directory, file), content);
+      return { path: file, sha256: createHash('sha256').update(content).digest('hex') };
+    };
+    const entry = {
+      id: 'magazine-test-v1',
+      design_pack: 'anime-magazine',
+      template: 'subject-cohort-comparison',
+      source_commit: sha('a'),
+      source_inputs: [artifact('component.tsx', 'fixture source')],
+      reference: artifact('reference.png', 'reference'),
+      native_receipt: artifact('receipt.json', 'receipt'),
+      native_previews: [artifact('native.png', 'native')],
+      quality_scores: [4, 4, 4, 4, 5, 4],
+      release_decision: 'ACCEPTED_FOR_SCOPE',
+      user_aesthetic_acceptance: 'unobserved',
+      supersedes: null,
+    };
+    const registry = JSON.stringify({
+      schema: 'bangumi-renderer-design-baselines/v1',
+      baselines: [entry],
+    });
+    const registryRelative = 'docs/design/renderer-baselines.json';
+    const registryPath = path.join(environment.directory, registryRelative);
+    fs.mkdirSync(path.dirname(registryPath), { recursive: true });
+    fs.writeFileSync(registryPath, registry);
+    const state = environment.readState();
+    state.treePaths = [registryRelative];
+    state.gitObjects = {
+      [`origin/master:${registryRelative}`]: Buffer.from(registry).toString('base64'),
+      [`${sha('a')}:component.tsx`]: Buffer.from('fixture source').toString('base64'),
+    };
+    fs.writeFileSync(environment.statePath, JSON.stringify(state));
+    const check = () => environment.execute(['renderer:baseline-check', '--base', 'origin/master']);
+    const valid = check();
+    assert.equal(valid.status, 0, valid.stderr);
+    assert.equal(JSON.parse(valid.stdout).locks[0].action, 'PRESERVE_BASELINE_CONTINUE_OTHER_WORK');
+    fs.writeFileSync(path.join(environment.directory, 'component.tsx'), 'unrequested restyling');
+    const drifted = check();
+    assert.equal(drifted.status, 2);
+    assert.match(drifted.stderr, /^RENDERER_DESIGN_BASELINE_DRIFT:/u);
+    fs.rmSync(registryPath);
+    const removed = check();
+    assert.equal(removed.status, 2);
+    assert.match(removed.stderr, /DESIGN_BASELINE_HISTORY_CHANGED/u);
+    const final = environment.readState();
+    assert.equal(final.runBody, state.runBody);
+    assert.equal(final.prBody, state.prBody);
+  } finally {
+    environment.cleanup();
+  }
+});
 
 test('CLI run:start resumes the one open nonterminal Outer Run without creating another Issue', () => {
   const run = createRunState({ runId: 'existing-run', outerSolMax: 4 });
@@ -1989,6 +2050,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
   const exactCiProfileIds = [
     P06_PROFILE.id,
     'render-subject-card-compact-typography-agent-mcp-v3',
+    C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
     P02_PROFILE.id,
     P02_V2_PROFILE.id,
     C04_PROFILE.id,
@@ -3611,6 +3673,134 @@ test('compact typography v3 Harness profile claim persists the exact successful 
     const disposition = stored.adversarial_preflight.agent_mcp_profile_dispositions[profile.id];
     assert.equal(disposition.ciRunId, claimResult.ciRunId);
     assert.deepEqual(disposition.ciChecks, claimResult.ciChecks);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C07 v4 Harness profile claim persists the exact successful CI run and check identities', () => {
+  const profile = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
+  assert.ok(profile);
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(profile);
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', profile.id];
+  try {
+    const claimed = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimResult = JSON.parse(claimed.stdout);
+    assert.equal(claimResult.profileId, profile.id);
+    assert.equal(claimResult.ciRunId, '38806371672');
+    assert.deepEqual(
+      claimResult.ciChecks.map(({ name, status, conclusion }) => ({ name, status, conclusion })),
+      mandatoryChecks.map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' })),
+    );
+
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    const disposition = stored.adversarial_preflight.agent_mcp_profile_dispositions[profile.id];
+    assert.equal(disposition.ciRunId, claimResult.ciRunId);
+    assert.deepEqual(disposition.ciChecks, claimResult.ciChecks);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C07 opaque identities survive the actual claim and terminal result without weakening exact identity binding', () => {
+  const profile = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
+  const { environment, epoch } = agentMcpProfileReviewReadyEnvironment(profile);
+  const reviewerId = 'opaque://reviewer handle#9';
+  epoch.review_history[0].reviewer_id = reviewerId;
+  const state = environment.readState();
+  state.prBody = renderEpochBody(epoch);
+  fs.writeFileSync(environment.statePath, JSON.stringify(state));
+  const keys = generateG04RunnerReceiptKeyPair();
+  const common = ['--run', '95', '--pr', '42', '--profile-id', profile.id];
+  const claim = (id) =>
+    environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...common,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      id,
+      '--runner-public-key',
+      keys.publicKeyBase64,
+    ]);
+  try {
+    assert.equal(claim('different opaque identity').status, 2);
+    const claimed = claim(reviewerId);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimId = JSON.parse(claimed.stdout).claimId;
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...common,
+      '--claim-id',
+      claimId,
+      '--state',
+      'INCONCLUSIVE',
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    const saved = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.agent_mcp_profile_dispositions[profile.id];
+    assert.equal(saved.reviewerId, reviewerId);
+    assert.equal(saved.retryAllowed, false);
+    assert.equal(saved.state, 'INCONCLUSIVE');
+    assert.equal(claim(reviewerId).status, 2);
+    const unchanged = environment.readState();
+    unchanged.candidateRefreshRange = `${sha('b')}...HEAD`;
+    unchanged.candidateRefreshPaths = [];
+    fs.writeFileSync(environment.statePath, JSON.stringify(unchanged));
+    const merged = environment.execute(['epoch:merge', '--run', '95', '--pr', '42']);
+    assert.equal(merged.status, 0, merged.stderr);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C07 v4 profile result reaches the sanitized report validator', () => {
+  const profile = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
+  assert.ok(profile);
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(profile);
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const commonArgs = ['--run', '95', '--pr', '42', '--profile-id', profile.id];
+  try {
+    const claim = environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...commonArgs,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      keyPair.publicKeyBase64,
+    ]);
+    assert.equal(claim.status, 0, claim.stderr);
+    const claimId = JSON.parse(claim.stdout).claimId;
+    const state = environment.readState();
+    state.dirty = `?? ${profile.reportPath}`;
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const result = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...commonArgs,
+      '--claim-id',
+      claimId,
+      '--state',
+      'REPORT_WRITTEN',
+      '--report-sha256',
+      'e'.repeat(64),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^AGENT_MCP_PROFILE_REPORT_INVALID:/u);
+    assert.doesNotMatch(result.stderr, /AGENT_MCP_PROFILE_REPORT_VALIDATOR_MISSING/u);
   } finally {
     environment.cleanup();
   }
@@ -9005,9 +9195,12 @@ function c07RenderComparisonOfflineMergeEnvironment({
   const frontierLedger = JSON.parse(
     fs.readFileSync(path.join(root, 'docs/product/frontier-ledger.json'), 'utf8'),
   );
+  const c07Record = frontierLedger.records.find((item) => item.id === 'C07');
+  if (!c07Record.source_refs.includes(profile.selectionEvidencePath)) {
+    c07Record.source_refs.push(profile.selectionEvidencePath);
+  }
   if (reportWritten) {
-    const c07 = frontierLedger.records.find((item) => item.id === 'C07');
-    c07.source_refs.push(profile.reportPath);
+    c07Record.source_refs.push(profile.reportPath);
   }
   return createMockEnvironment({
     runBody: renderRunBody(run),
@@ -9092,6 +9285,36 @@ test('C07 renderer matrix v3 Epoch uses its own profile and merges a terminal no
   }
 });
 
+test('C07 renderer matrix v4 Epoch cannot merge without its exact terminal profile result', () => {
+  const environment = c07RenderComparisonOfflineMergeEnvironment({
+    profileId: C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
+  });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^C07_RENDER_COMPARISON_OFFLINE_RECONCILIATION_REQUIRED:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C07 renderer matrix v4 REPORT_WRITTEN reaches signed report validation', () => {
+  const environment = c07RenderComparisonOfflineMergeEnvironment({
+    terminal: true,
+    reportWritten: true,
+    profileId: C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
+  });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '223']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^C07_RENDER_COMPARISON_OFFLINE_REPORT_INVALID:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('C07 renderer matrix Epoch accepts a removed, hash-bound inconclusive report only as no-credit', () => {
   const environment = c07RenderComparisonOfflineMergeEnvironment({
     terminal: true,
@@ -9116,6 +9339,78 @@ test('C07 REPORT_WRITTEN with a null unaccepted digest reaches signed report val
     assert.equal(result.status, 2);
     assert.match(result.stderr, /^C07_RENDER_COMPARISON_OFFLINE_REPORT_INVALID:/u);
     assert.equal(environment.readState().prState, 'OPEN');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('C07 v4 frontier binding is amended through Harness without granting scenario credit', () => {
+  const { run, epoch } = controlFixture();
+  const profile = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
+  const prNumber = 223;
+  run.state = 'EPOCH_ACTIVE';
+  run.active_epoch_pr = prNumber;
+  run.outer_sol.consumed = 17;
+  run.outer_sol.product.consumed = 16;
+  epoch.epoch_id = profile.epochId;
+  epoch.base_sha = sha('a');
+  epoch.base_branch = 'master';
+  epoch.branch = `codex/epoch-${profile.epochId}`;
+  epoch.pr_number = prNumber;
+  epoch.state = 'CORRECTIVE_REQUIRED';
+  epoch.advances_frontier_ids = ['OP-008'];
+  epoch.review.max = 6;
+  epoch.review.consumed = 1;
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: '/root/pr271_review',
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'CORRECTIVE_REQUIRED',
+      findings: [{ id: 'c07-v4-frontier-binding', priority: 'P1', summary: 'Bind C07.' }],
+    },
+  ];
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'No profile claim has been made.',
+  };
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    draft: false,
+    branch: epoch.branch,
+    baseBranch: 'master',
+    featureBranch: epoch.branch,
+    baseSha: sha('a'),
+    featureHeadSha: sha('b'),
+  });
+  try {
+    const result = environment.execute([
+      'epoch:frontier-amend',
+      '--run',
+      '95',
+      '--pr',
+      String(prNumber),
+      '--frontier-id',
+      'C07',
+      '--reason',
+      'The registered v4 profile targets C07; preserve the scenario as UNASSESSED while binding its matrix evidence.',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+
+    const state = environment.readState();
+    const storedEpoch = parseControlBlock(state.prBody, EPOCH_MARKER);
+    const storedRun = parseControlBlock(state.runBody, RUN_MARKER);
+    assert.deepEqual(storedEpoch.advances_frontier_ids, ['OP-008', 'C07']);
+    assert.equal(storedEpoch.state, 'CORRECTIVE_REQUIRED');
+    assert.equal(storedEpoch.review.consumed, 1);
+    assert.equal(storedEpoch.review_history[0].verdict, 'CORRECTIVE_REQUIRED');
+    assert.equal(storedRun.outer_sol.consumed, 17);
+    assert.equal(storedRun.outer_sol.product.consumed, 16);
+    assert.deepEqual(storedRun.selection_amendment_history.at(-1).new_frontiers, ['OP-008', 'C07']);
+    const c07 = environment.readFrontierLedger().records.find((record) => record.id === 'C07');
+    assert.equal(c07.status, 'UNASSESSED');
   } finally {
     environment.cleanup();
   }

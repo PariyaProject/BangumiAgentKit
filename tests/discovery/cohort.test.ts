@@ -23,6 +23,8 @@ interface FixtureSubject {
   ratingHistogram?: SubjectStatsData['ratingHistogram'];
   ratingHistogramPresence?: SubjectStatsData['ratingHistogramPresence'];
   ratingTotal?: number;
+  image?: string;
+  detailImages?: ProviderSubjectData['images'];
 }
 
 function stats(subject: FixtureSubject): SubjectStatsData {
@@ -123,7 +125,7 @@ class CohortProvider implements SubjectDiscoveryProvider {
           locked: false,
           date: '2026-01-01',
           platform: 'TV',
-          images: {},
+          images: subject.detailImages ?? {},
           eps: subject.episodes,
           totalEpisodes: subject.episodes,
           stats: stats(subject),
@@ -156,6 +158,7 @@ class CohortProvider implements SubjectDiscoveryProvider {
       type: 2,
       name: subject.name,
       nameCn: subject.name,
+      image: subject.image ?? '',
       date: '2026-01-01',
       platform: 'TV',
       ...(this.missingIds.has(subject.id) ? {} : { score: subject.score }),
@@ -217,6 +220,29 @@ const definitions = [
 ] as const;
 
 describe('subject cohort comparison', () => {
+  it('retains bounded public covers and falls back from empty discovery images to hydrated metadata', async () => {
+    const cover = 'https://lain.bgm.tv/pic/cover/l/cohort.png';
+    const provider = new CohortProvider({
+      A: [
+        {
+          id: 1,
+          name: 'A',
+          score: 8,
+          heat: 10,
+          episodes: 12,
+          image: '',
+          detailImages: { medium: cover },
+        },
+      ],
+      B: [{ id: 2, name: 'B', score: 7, heat: 9, episodes: 12, image: 'x'.repeat(2049) }],
+    });
+    const result = await compareSubjectCohorts(definitions, { maxSubjects: 1 }, provider, {
+      authScope: 'public',
+    });
+    expect(result.cohorts[0]!.subjects[0]!.image).toBe(cover);
+    expect(result.cohorts[1]!.subjects[0]!).not.toHaveProperty('image');
+    expect(provider.detailCalls).toHaveLength(2);
+  });
   it('aggregates two bounded official discovery cohorts with deterministic B-minus-A deltas', async () => {
     const provider = new CohortProvider({
       A: [

@@ -5,13 +5,15 @@ import {
   getAgentMcpProfileById,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import {
-  C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
+  getC07RenderComparisonOfflineConfig,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 import {
   assertC07RenderComparisonCandidateReviewGate,
   buildC07RenderComparisonOfflineCodexExecArgs,
+  configureC07RenderComparisonOfflineRunnerProfile,
   validateC07RenderComparisonOfflineRunnerArgs,
   validateC07RenderComparisonOfflineServerSummary,
   isC07CodexErrorSummaryAcceptable,
@@ -102,13 +104,16 @@ function readGitFixture(...args) {
   throw new Error(`Unexpected Git query: ${args.join(' ')}`);
 }
 
-function serverSummaryFixture() {
+function serverSummaryFixture(profileId = PROFILE.id) {
+  const profile = getAgentMcpProfileById(profileId);
+  const config = getC07RenderComparisonOfflineConfig(profileId);
+  const cohortCount = config.cohorts.length;
   return {
     serverProfile: 'closed-profile-sequence-anonymous-offline-v1',
-    profileId: PROFILE.id,
-    argumentProfile: PROFILE.argumentProfile,
-    networkMode: C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
-    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(PROFILE),
+    profileId: profile.id,
+    argumentProfile: profile.argumentProfile,
+    networkMode: config.networkMode,
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
     sourceRevision: SOURCE_SHA,
     bundleSha256: BUNDLE_SHA,
     toolName: PROFILE.toolName,
@@ -126,10 +131,10 @@ function serverSummaryFixture() {
       },
     ],
     offlineFixture: {
-      profile: C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
-      requestCount: 2,
-      searchRequestCount: 1,
-      subjectDetailRequestCount: 1,
+      profile: config.networkMode,
+      requestCount: cohortCount * 2,
+      searchRequestCount: cohortCount,
+      subjectDetailRequestCount: cohortCount,
       duplicateRequestCount: 0,
       unexpectedRequestCount: 0,
       authorizationHeaderCount: 0,
@@ -153,6 +158,15 @@ test('C07 runner accepts only its single governed Run #95 entry point', () => {
       '95',
       '--profile-id',
       C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
+    ]),
+    'run',
+  );
+  assert.equal(
+    validateC07RenderComparisonOfflineRunnerArgs([
+      '--run',
+      '95',
+      '--profile-id',
+      C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
     ]),
     'run',
   );
@@ -200,6 +214,14 @@ test('C07 v3 accepts only bounded classified disabled-web-search errors', () => 
     false,
   );
   assert.equal(
+    isC07CodexErrorSummaryAcceptable(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID, 0, {
+      errorItemCount: 0,
+      blockedWebSearchErrorItemCount: 0,
+      unexpectedCodexErrorItemCount: 0,
+    }),
+    true,
+  );
+  assert.equal(
     isC07CodexErrorSummaryAcceptable(C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID, 1, {
       errorItemCount: 0,
       blockedWebSearchErrorItemCount: 0,
@@ -209,7 +231,7 @@ test('C07 v3 accepts only bounded classified disabled-web-search errors', () => 
   );
 });
 
-test('C07 Candidate gate requires exact CI, Base, and same-identity Luna Max PASS', () => {
+test('C07 Candidate gate requires exact CI, Base, and a bound opaque reviewer PASS', () => {
   const gate = assertC07RenderComparisonCandidateReviewGate(statusFixture(), pullRequestFixture(), {
     sourceRevision: SOURCE_SHA,
     currentBaseSha: BASE_SHA,
@@ -259,15 +281,29 @@ test('C07 Candidate gate requires exact CI, Base, and same-identity Luna Max PAS
     }),
   );
 
-  const wrongReviewer = statusFixture();
-  wrongReviewer.epoch.state.review_history[0].reviewer_id = 'gpt-6-sol-run95-reviewer';
+  const emptyReviewer = statusFixture();
+  emptyReviewer.epoch.state.review_history[0].reviewer_id = '   ';
   assert.throws(() =>
-    assertC07RenderComparisonCandidateReviewGate(wrongReviewer, pullRequestFixture(), {
+    assertC07RenderComparisonCandidateReviewGate(emptyReviewer, pullRequestFixture(), {
       sourceRevision: SOURCE_SHA,
       currentBaseSha: BASE_SHA,
       readGit: readGitFixture,
     }),
   );
+
+  const durableLocalReviewer = statusFixture();
+  const opaqueReviewerId = 'opaque://reviewer handle#8';
+  durableLocalReviewer.epoch.state.review_history[0].reviewer_id = opaqueReviewerId;
+  const localIdentityGate = assertC07RenderComparisonCandidateReviewGate(
+    durableLocalReviewer,
+    pullRequestFixture(),
+    {
+      sourceRevision: SOURCE_SHA,
+      currentBaseSha: BASE_SHA,
+      readGit: readGitFixture,
+    },
+  );
+  assert.equal(localIdentityGate.reviewerId, opaqueReviewerId);
 
   assert.throws(() =>
     assertC07RenderComparisonCandidateReviewGate(statusFixture(), pullRequestFixture(), {
@@ -343,4 +379,27 @@ test('C07 server summary requires exactly two local reads and zero renderer asse
     validateC07RenderComparisonOfflineServerSummary(missingArtifact, SOURCE_SHA, BUNDLE_SHA),
     false,
   );
+});
+
+test('C07 v4 server summary requires two anonymous search/detail pairs', () => {
+  configureC07RenderComparisonOfflineRunnerProfile(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
+  try {
+    const summary = serverSummaryFixture(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
+    assert.equal(summary.offlineFixture.requestCount, 4);
+    assert.equal(summary.offlineFixture.searchRequestCount, 2);
+    assert.equal(summary.offlineFixture.subjectDetailRequestCount, 2);
+    assert.equal(
+      validateC07RenderComparisonOfflineServerSummary(summary, SOURCE_SHA, BUNDLE_SHA),
+      true,
+    );
+
+    const missingDetail = structuredClone(summary);
+    missingDetail.offlineFixture.subjectDetailRequestCount = 1;
+    assert.equal(
+      validateC07RenderComparisonOfflineServerSummary(missingDetail, SOURCE_SHA, BUNDLE_SHA),
+      false,
+    );
+  } finally {
+    configureC07RenderComparisonOfflineRunnerProfile(PROFILE.id);
+  }
 });

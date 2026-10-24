@@ -243,8 +243,13 @@ registerTemplate<SubjectComparisonViewModel>({
 registerTemplate<SubjectCohortComparisonViewModel>({
   id: 'subject-cohort-comparison',
   version: 1,
-  render: (vm, theme, _resolvedImages, width) => (
-    <SubjectCohortComparisonCard viewModel={vm} theme={theme} width={width} />
+  render: (vm, theme, resolvedImages, width) => (
+    <SubjectCohortComparisonCard
+      viewModel={vm}
+      theme={theme}
+      width={width}
+      resolvedImages={resolvedImages}
+    />
   ),
 });
 

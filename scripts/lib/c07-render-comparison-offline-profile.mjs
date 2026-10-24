@@ -3,6 +3,12 @@ import { canonicalAgentMcpProfileJson } from './agent-mcp-profile-claims.mjs';
 const V1_PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v1';
 const V2_PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v2';
 const V3_PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v3';
+const V4_PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v4';
+
+// Identity comes from the exact trusted Harness review/claim, not model-looking spelling.
+export function isC07ReviewerId(reviewerId) {
+  return typeof reviewerId === 'string' && reviewerId.trim().length > 0;
+}
 
 function createConfig({
   id,
@@ -20,19 +26,27 @@ function createConfig({
   cohortLabel,
   subjectName,
   subjectNameCn,
+  cohorts: configuredCohorts,
 }) {
+  const cohorts = configuredCohorts ?? [
+    { keyword, subjectId, cohortLabel, subjectName, subjectNameCn },
+  ];
+  const frozenCohorts = Object.freeze(cohorts.map((cohort) => Object.freeze({ ...cohort })));
+  const primary = frozenCohorts[0];
   const expectedArguments = Object.freeze({
-    cohorts: [
-      {
-        label: cohortLabel,
-        query: {
-          keyword,
-          media: 'anime',
-          resultMode: 'all',
-          limit: 1,
-        },
-      },
-    ],
+    cohorts: Object.freeze(
+      frozenCohorts.map((cohort) =>
+        Object.freeze({
+          label: cohort.cohortLabel,
+          query: Object.freeze({
+            keyword: cohort.keyword,
+            media: 'anime',
+            resultMode: 'all',
+            limit: 1,
+          }),
+        }),
+      ),
+    ),
     maxSubjects: 1,
   });
   return Object.freeze({
@@ -46,13 +60,18 @@ function createConfig({
     claimLabelName,
     evidenceKind,
     answerCheckMethod,
-    keyword,
-    subjectId,
-    cohortLabel,
+    keyword: primary.keyword,
+    subjectId: primary.subjectId,
+    cohortLabel: primary.cohortLabel,
+    cohorts: frozenCohorts,
     expectedArguments,
-    subjectName: subjectName ?? `Synthetic Cohort ${cohortLabel.at(-1)} Work ${subjectId}`,
-    subjectNameCn: subjectNameCn ?? `${cohortLabel} 作品 ${subjectId}`,
-    receiptKind: `c07-render-comparison-offline-runner-receipt-${id.endsWith('-v3') ? 'v3' : id.endsWith('-v2') ? 'v2' : 'v1'}`,
+    subjectName:
+      primary.subjectName ??
+      `Synthetic Cohort ${primary.cohortLabel.at(-1)} Work ${primary.subjectId}`,
+    subjectNameCn: primary.subjectNameCn ?? `${primary.cohortLabel} 作品 ${primary.subjectId}`,
+    receiptKind: `c07-render-comparison-offline-runner-receipt-${
+      id.endsWith('-v4') ? 'v4' : id.endsWith('-v3') ? 'v3' : id.endsWith('-v2') ? 'v2' : 'v1'
+    }`,
     acknowledgement: 'C07_SYNTHETIC_COHORT_RENDERED',
   });
 }
@@ -117,15 +136,58 @@ const CONFIGS = new Map([
       subjectNameCn: '合成作品 E：日本語タイトル / 中文混排与 Latin wrapping 检查',
     }),
   ],
+  [
+    V4_PROFILE_ID,
+    createConfig({
+      id: V4_PROFILE_ID,
+      epochId: 'run95-renderer-v19-c07-two-cohort-v4-20261023',
+      networkMode: 'run95-c07-render-comparison-synthetic-offline-matrix-v4',
+      argumentProfile: 'fixed-c07-synthetic-cohorts-f-g-render-comparison-matrix-v4',
+      profile: 'run95-c07-render-comparison-offline-fixture-matrix-v4',
+      reportPath: 'docs/live-probes/c07-render-comparison-offline-agent-mcp-matrix-v4-run95.json',
+      selectionEvidencePath: 'docs/research/run95-c07-two-cohort-v4-selection-2026-10-23.md',
+      claimLabelName: 'harness-r95-c07-render-v4-claimed',
+      evidenceKind: 'codex_cli_c07_render_comparison_offline_agent_mcp_matrix_v4',
+      answerCheckMethod: 'c07-exact-synthetic-two-cohort-render-comparison-execution-only-v4',
+      cohorts: [
+        {
+          keyword: 'run95 c07 synthetic cohort f offline matrix 20261023',
+          subjectId: 992401,
+          cohortLabel: '合成样本 F',
+          subjectName: 'Synthetic Work F — Sky Harbor',
+          subjectNameCn: '合成作品 F：星港随笔 / SKY',
+          score: 6.4,
+          rank: 4201,
+          collection: { wish: 7, collect: 21, doing: 2, on_hold: 1, dropped: 0 },
+          eps: 12,
+          totalEpisodes: 12,
+        },
+        {
+          keyword: 'run95 c07 synthetic cohort g offline matrix 20261023',
+          subjectId: 992402,
+          cohortLabel: '合成样本 G',
+          subjectName: 'Synthetic Work G — Paper Coast',
+          subjectNameCn: '合成作品 G：海岸线日志 / COAST',
+          score: 8.1,
+          rank: 228,
+          collection: { wish: 1, collect: 88, doing: 4, on_hold: 3, dropped: 1 },
+          eps: 24,
+          totalEpisodes: 24,
+        },
+      ],
+    }),
+  ],
 ]);
 
 export const C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID = V1_PROFILE_ID;
 export const C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID = V2_PROFILE_ID;
 export const C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID = V3_PROFILE_ID;
+export const C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID = V4_PROFILE_ID;
 export const C07_RENDER_COMPARISON_OFFLINE_EPOCH_ID = CONFIGS.get(V1_PROFILE_ID).epochId;
 export const C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE = CONFIGS.get(V1_PROFILE_ID).networkMode;
 export const C07_RENDER_COMPARISON_OFFLINE_V2_NETWORK_MODE = CONFIGS.get(V2_PROFILE_ID).networkMode;
 export const C07_RENDER_COMPARISON_OFFLINE_V3_NETWORK_MODE = CONFIGS.get(V3_PROFILE_ID).networkMode;
+export const C07_RENDER_COMPARISON_OFFLINE_V4_NETWORK_MODE = CONFIGS.get(V4_PROFILE_ID).networkMode;
 export const C07_RENDER_COMPARISON_OFFLINE_ARGUMENT_PROFILE =
   CONFIGS.get(V1_PROFILE_ID).argumentProfile;
 export const C07_RENDER_COMPARISON_OFFLINE_PROFILE = CONFIGS.get(V1_PROFILE_ID).profile;

@@ -1,0 +1,130 @@
+{
+  "schema": "bangumi-renderer-design-baselines/v1",
+  "baselines": [
+    {
+      "id": "c07-anime-magazine-v1",
+      "design_pack": "anime-magazine",
+      "template": "subject-cohort-comparison",
+      "source_commit": "f9d07dbac728cb110a90512cf2f04a02a09ddaa6",
+      "source_inputs": [
+        {
+          "path": "packages/renderer/src/templates/AnimeMagazineComparisonCard.tsx",
+          "sha256": "f080282b049144f6c3fb6735ff19a927e2caeb1f210848779c42fa57f2f0cc21"
+        },
+        {
+          "path": "packages/renderer/src/themes/anime-magazine.ts",
+          "sha256": "e837188f17776c25efccd464106c95129c2f1dc1e89bae84716a1ff883472454"
+        },
+        {
+          "path": "packages/renderer/assets/fonts/GenSenRounded2TW-R.woff2",
+          "sha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+        }
+      ],
+      "reference": {
+        "path": "docs/design/references/c07-anime-magazine-v1.png",
+        "sha256": "ea161ceb5d09ae935de741ce2bbcd9eff89732c322c2b3f51db9335cec0d9b11"
+      },
+      "native_receipt": {
+        "path": "docs/design/receipts/c07-anime-magazine-v1.json",
+        "sha256": "c1c2730f0a39ca0bac5448227fdb0602e5212dc37bccbaf08c07c0d9f11bebe7"
+      },
+      "native_previews": [
+        {
+          "path": "docs/design/native/anime-magazine-v1/complete-light-375.png",
+          "sha256": "8a3126fdc01da75e066b79e6ffcee95ea1bfabe627a6069c3c499e4f697e5925"
+        },
+        {
+          "path": "docs/design/native/anime-magazine-v1/partial-dark-320.png",
+          "sha256": "17016aacfb30b5c0583fbf55e07d1449f0a0d5e44319385b6a533ed3b1724fa6"
+        },
+        {
+          "path": "docs/design/native/anime-magazine-v1/missing-covers-light-375.png",
+          "sha256": "6df9204660a5e760d4b32c82fc8c87a5e0bf37c20320b667d649d03ad283108d"
+        },
+        {
+          "path": "docs/design/native/anime-magazine-v1/long-titles-light-320.png",
+          "sha256": "49996b5550a3ef4bdfcec3c3eb4cc4c20dc33e908a23e30b46dbe41fca83586b"
+        },
+        {
+          "path": "docs/design/native/anime-magazine-v1/large-counts-light-320.png",
+          "sha256": "d80eb4db164bad4b9b0536094f5d8f8365514c8bfef62ecf03421428a09d9e48"
+        },
+        {
+          "path": "docs/design/native/anime-magazine-v1/large-font-light-360.png",
+          "sha256": "cbe46e569f749846237b493710f81f259473b93e4bab23838f3cffc6242a67c6"
+        }
+      ],
+      "quality_scores": [4, 4, 4, 4, 5, 4],
+      "release_decision": "ACCEPTED_FOR_SCOPE",
+      "user_aesthetic_acceptance": "unobserved",
+      "supersedes": null
+    },
+    {
+      "id": "c07-anime-magazine-v2",
+      "design_pack": "anime-magazine",
+      "template": "subject-cohort-comparison",
+      "source_commit": "833e41373663e8d9283fa3f9b5e3965f98f22e46",
+      "source_inputs": [
+        {
+          "path": "packages/renderer/src/templates/AnimeMagazineComparisonCard.tsx",
+          "sha256": "ba6110ddef0167282eaa8ed18a195c821440760e4e283cfea9b41d7d125938d7"
+        },
+        {
+          "path": "packages/renderer/src/themes/anime-magazine.ts",
+          "sha256": "e837188f17776c25efccd464106c95129c2f1dc1e89bae84716a1ff883472454"
+        },
+        {
+          "path": "packages/renderer/assets/fonts/GenSenRounded2TW-R.woff2",
+          "sha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+        }
+      ],
+      "reference": {
+        "path": "docs/design/references/c07-anime-magazine-v1.png",
+        "sha256": "ea161ceb5d09ae935de741ce2bbcd9eff89732c322c2b3f51db9335cec0d9b11"
+      },
+      "native_receipt": {
+        "path": "docs/design/receipts/c07-anime-magazine-v2.json",
+        "sha256": "d40590cb503e6c3f52aa744db8fcea59d7e5353776e1260495c4fac2296c322c"
+      },
+      "native_previews": [
+        {
+          "path": "docs/design/native/anime-magazine-v2/complete-light-375.png",
+          "sha256": "babbcb965a1a69a362227f9511c5bf8c3d8bfbd542a19b34d51adc4607238cc2"
+        },
+        {
+          "path": "docs/design/native/anime-magazine-v2/partial-dark-320.png",
+          "sha256": "6b7267fd6567ada470b2561b428303be6d205391dcc20d51fe1dcd8580d408d2"
+        },
+        {
+          "path": "docs/design/native/anime-magazine-v2/missing-covers-light-375.png",
+          "sha256": "764f9530ea30cc557a85495f8a985719b8774db64a4b093da20a692815f19ed6"
+        },
+        {
+          "path": "docs/design/native/anime-magazine-v2/long-titles-light-320.png",
+          "sha256": "4e26c52bfc317ca44be898e3db6dda803d6c512f754f562a822282c393c1c2dc"
+        },
+        {
+          "path": "docs/design/native/anime-magazine-v2/long-original-light-320.png",
+          "sha256": "4dee4313082c5a0bdc4e8be754fd29dfd0ce175fa7baaa041e3b8cdb4da36c03"
+        },
+        {
+          "path": "docs/design/native/anime-magazine-v2/large-counts-light-320.png",
+          "sha256": "ecf02b86d48a9afbe94a161c9323c188d796d702b764391d5a0916ade07ba3ff"
+        },
+        {
+          "path": "docs/design/native/anime-magazine-v2/maximum-font-original-dark-320.png",
+          "sha256": "32ea4068cdf208a01912489cd4388f2472ac3b2a1747f4195d8a87d5af96744f"
+        }
+      ],
+      "quality_scores": [4, 4, 4, 4, 5, 4],
+      "release_decision": "ACCEPTED_FOR_SCOPE",
+      "user_aesthetic_acceptance": "unobserved",
+      "supersedes": "c07-anime-magazine-v1",
+      "reopen": {
+        "kind": "verified_regression",
+        "evidence_ref": "harness:run95/pr271/review9#anime-magazine-long-name-caption-clip",
+        "reason": "A valid 180-CJK original name clipped at 320 CSS pixels and maximum 1.25 font scale; source names must survive PNG output."
+      }
+    }
+  ]
+}

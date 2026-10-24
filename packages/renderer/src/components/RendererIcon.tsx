@@ -8,6 +8,7 @@ export type RendererIconName =
   | 'person'
   | 'calendar'
   | 'collection'
+  | 'rating'
   | 'stats'
   | 'history'
   | 'search'
@@ -32,6 +33,7 @@ const iconLabels: Record<RendererIconName, string> = {
   person: '人物档案',
   calendar: '放送日历',
   collection: '收藏进度',
+  rating: '评分比较',
   stats: '统计观察',
   history: '历史记录',
   search: '条目搜索',
@@ -61,6 +63,7 @@ const iconTones: Record<RendererIconName, SemanticToneName> = {
   person: 'blue',
   calendar: 'butter',
   collection: 'mint',
+  rating: 'butter',
   stats: 'coral',
   history: 'indigo',
   search: 'blue',
@@ -118,6 +121,11 @@ const iconPaths: Record<RendererIconName, React.ReactNode> = {
     <>
       <path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v14L12 16l-7.5 4V6A1.5 1.5 0 0 1 6 4.5Z" />
       <path d="M8.5 8h7M8.5 11h7" />
+    </>
+  ),
+  rating: (
+    <>
+      <path d="m12 3 2.7 5.5 6 .9-4.35 4.25 1.03 6.02L12 16.85l-5.38 2.82 1.03-6.02L3.3 9.4l6-.9L12 3Z" />
     </>
   ),
   stats: (
@@ -256,6 +264,9 @@ const galleryIconPaths: Partial<Record<RendererIconName, React.ReactNode>> = {
       <path d="M9 8h6M9 11h6" />
     </>
   ),
+  rating: (
+    <path d="m12 3 2.7 5.5 6 .9-4.35 4.25 1.03 6.02L12 16.85l-5.38 2.82 1.03-6.02L3.3 9.4l6-.9L12 3Z" />
+  ),
   stats: (
     <>
       <rect x="4" y="12" width="3.5" height="8" />
@@ -335,6 +346,9 @@ const zineIconRenderers: Record<RendererIconName, (cutout: string) => React.Reac
       <path d="M5 3.5h14v18l-7-4.5-7 4.5z" />
       <path d="M8 8h8M8 11h8" fill="none" stroke={cutout} strokeWidth="2" />
     </>
+  ),
+  rating: () => (
+    <path d="m12 2 3.1 6.2 6.9 1-5 4.9 1.18 6.9L12 17.75l-6.18 3.25L7 14.1l-5-4.9 6.9-1L12 2Z" />
   ),
   stats: () => (
     <>

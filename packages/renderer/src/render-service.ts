@@ -14,6 +14,7 @@ import { RendererError } from './errors.js';
 import { RendererLruCache } from './lru-cache.js';
 import {
   DEFAULT_RENDER_FONT_SIZE_SCALE,
+  getDefaultRenderTypographyOptions,
   type RenderTypographyOptions,
   resolveRenderTypography,
 } from './typography.js';
@@ -98,10 +99,18 @@ export function computeRenderCacheKey(
   return crypto.createHash('sha256').update(rawKey).digest('hex');
 }
 
-export function extractImageUrls(viewModel: RenderViewModel): string[] {
+export function extractImageUrls(
+  viewModel: RenderViewModel,
+  designPack?: RenderDesignPackName,
+): string[] {
   const urls = new Set<string>();
 
-  if (viewModel.template === 'subject-card') {
+  if (viewModel.template === 'subject-cohort-comparison' && designPack === 'anime-magazine') {
+    for (const cohort of viewModel.cohorts.slice(0, 2)) {
+      const image = cohort.subjects[0]?.image;
+      if (image) urls.add(image);
+    }
+  } else if (viewModel.template === 'subject-card') {
     if (viewModel.subject.image) urls.add(viewModel.subject.image);
   } else if (viewModel.template === 'search-list') {
     for (const item of viewModel.items) {
@@ -356,7 +365,9 @@ export class RenderService {
       );
     }
 
-    const typography = await resolveRenderTypography(options.typography);
+    const typography = await resolveRenderTypography(
+      getDefaultRenderTypographyOptions(designPack, options.typography),
+    );
 
     const controller = new AbortController();
     let timeoutTimer: NodeJS.Timeout | null = setTimeout(() => {
@@ -364,7 +375,7 @@ export class RenderService {
     }, this.timeoutMs);
 
     try {
-      const imageUrls = extractImageUrls(normalizedViewModel);
+      const imageUrls = extractImageUrls(normalizedViewModel, designPack);
       const resolvedAssets = await mapConcurrent(
         imageUrls,
         this.maxAssetConcurrency,

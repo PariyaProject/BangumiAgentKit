@@ -1,0 +1,11 @@
+{
+  "schema": "bangumi-renderer-pack-preservation/v1",
+  "previousManifest": "docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v37.json",
+  "previousManifestSha256": "524d8e6d24cd2390013f2bdcdd8d7e01ad05f693ed9e4971da628993f5e0a811",
+  "currentManifest": "docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v40.json",
+  "currentManifestSha256": "b817bfd13ff9b68007cee5b24f5cfb2241deafa836aaf76526a42cd74dbb0a11",
+  "imageCount": 60,
+  "byteIdenticalImages": 60,
+  "packs": ["warm-editorial", "clean-gallery", "graphic-zine"],
+  "newPackCoverage": "Separate native magazine receipt; frozen C07 v4 profile remains unchanged."
+}

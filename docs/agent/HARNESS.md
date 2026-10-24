@@ -204,6 +204,16 @@ limits, privacy boundaries and integration gates still apply. New ordinary
 model roles remain Sol xhigh. The current user-authorized strategy session may
 record its review without impersonating an independent Product reviewer.
 
+Renderer completion is scoped by pack/template in
+[`docs/design/renderer-baselines.json`](../design/renderer-baselines.json), when
+present. `continuation:show` reports its preserve/continue advice;
+`renderer:baseline-check`, `guard:legacy-paths` and `candidate:check` validate
+source/evidence hashes and a recoverable source commit. Preserve accepted
+entries. Only an explicit new user request or verified regression permits an
+appended successor; generic Goal continuation/model change does not reopen a
+finished design. Designer acceptance is separate from concrete user aesthetic
+approval and formal Product review. See [design scope and QA](../design/README.md).
+
 The Run Issue contains hash-linked append-only continuation events, losslessly
 compressed with digest/count checks once the JSON exceeds 4 KiB. Appends
 require the observed sequence, pre-write reread and post-write readback. Use

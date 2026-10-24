@@ -6,6 +6,7 @@ import {
   C07_RENDER_COMPARISON_OFFLINE_EXPECTED_ARGUMENTS,
   C07_RENDER_COMPARISON_OFFLINE_NETWORK_MODE,
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
@@ -51,6 +52,21 @@ test('registered C07 v3 selects its exact synthetic cohort-E fixture', () => {
   assert.deepEqual(config.expectedArgumentSequence, [expected.expectedArguments]);
 });
 
+test('registered C07 v4 selects the exact two-cohort F/G fixture', () => {
+  const expected = getC07RenderComparisonOfflineConfig(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
+  const config = parseCodexOneToolMcpArguments([
+    '--profile-id',
+    C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
+    ...REQUIRED,
+  ]);
+  assert.equal(config.profile.id, C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
+  assert.equal(config.networkMode, expected.networkMode);
+  assert.equal(expected.cohorts.length, 2);
+  assert.deepEqual(expected.cohorts.map((cohort) => cohort.subjectId), [992401, 992402]);
+  assert.equal(config.expectedArgumentSequence[0].cohorts.length, 2);
+  assert.deepEqual(config.expectedArgumentSequence, [expected.expectedArguments]);
+});
+
 test('one-tool MCP server imports C07 profile selectors from their defining module', () => {
   const profileImport = SERVER_SOURCE.match(
     /import\s*\{([^}]+)\}\s*from\s*['"]\.\.\/\.\.\/scripts\/lib\/c07-render-comparison-offline-profile\.mjs['"]/u,
@@ -59,6 +75,7 @@ test('one-tool MCP server imports C07 profile selectors from their defining modu
   assert.match(profileImport[1], /\bisC07RenderComparisonOfflineNetworkMode\b/u);
   assert.match(profileImport[1], /\bisC07RenderComparisonOfflineProfileId\b/u);
   assert.match(profileImport[1], /\bC07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID\b/u);
+  assert.match(profileImport[1], /\bC07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID\b/u);
 
   const fixtureImport = SERVER_SOURCE.match(
     /import\s*\{([^}]+)\}\s*from\s*['"]\.\.\/\.\.\/scripts\/lib\/c07-render-comparison-offline-fixture\.mjs['"]/u,

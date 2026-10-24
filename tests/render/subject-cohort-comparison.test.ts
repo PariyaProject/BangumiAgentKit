@@ -12,6 +12,39 @@ import { inspectC07PngArtifact } from '../../scripts/lib/c07-png-artifact-valida
 const result = cohortComparisonResult;
 
 describe('subject cohort comparison renderer', () => {
+  it('resolves only the two representative covers for magazine and preserves zero-image legacy packs', () => {
+    const vm = buildSubjectCohortComparisonViewModel(result);
+    const urls = ['https://lain.bgm.tv/pic/cover/l/a.png', 'https://lain.bgm.tv/pic/cover/l/b.png'];
+    vm.cohorts.forEach((cohort, index) => {
+      cohort.subjects[0]!.image = urls[index];
+    });
+    vm.cohorts[0]!.subjects.push({
+      ...vm.cohorts[0]!.subjects[0]!,
+      image: 'https://lain.bgm.tv/pic/cover/l/unused.png',
+    });
+    expect(extractImageUrls(vm, 'anime-magazine')).toEqual(urls);
+    for (const pack of ['warm-editorial', 'clean-gallery', 'graphic-zine'] as const)
+      expect(extractImageUrls(vm, pack)).toEqual([]);
+    vm.cohorts[1]!.subjects[0]!.image = urls[0];
+    expect(extractImageUrls(vm, 'anime-magazine')).toEqual([urls[0]]);
+    const html = renderHtmlTemplate(vm, 'bangumi-light', {}, 320, 'anime-magazine');
+    expect(html).toContain('封面暂缺');
+    expect(html).toContain('data-render-pack="anime-magazine"');
+    expect(html).not.toContain('<img');
+    expect(html).not.toContain('src="https:');
+  });
+
+  it('keeps large count means and deltas compact without changing the structured values', () => {
+    const vm = buildSubjectCohortComparisonViewModel(result);
+    const heat = vm.metrics.find((metric) => metric.key === 'heat')!;
+    heat.averages = [2150000, 9600000];
+    heat.delta = 7450000;
+    const html = renderHtmlTemplate(vm, 'bangumi-light', {}, 320, 'anime-magazine');
+    expect(html).toContain('215万');
+    expect(html).toContain('+745万');
+    expect(heat.averages).toEqual([2150000, 9600000]);
+    expect(heat.delta).toBe(7450000);
+  });
   it('builds a bounded first-class card without image/network dependencies', () => {
     const viewModel = buildSubjectCohortComparisonViewModel(result, { maxSubjectsPerCohort: 1 });
     expect(viewModel.template).toBe('subject-cohort-comparison');
@@ -49,6 +82,126 @@ describe('subject cohort comparison renderer', () => {
     expect(html).not.toContain('searchSubjects');
   });
 
+  it('uses pack-specific metric structure and cohort treatments for the comparison card', () => {
+    const viewModel = buildSubjectCohortComparisonViewModel(result, { maxSubjectsPerCohort: 1 });
+    const warmHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'warm-editorial');
+    const galleryHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'clean-gallery');
+    const zineHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320, 'graphic-zine');
+
+    expect(warmHtml).toContain('data-layout-variant="warm-folio-lead"');
+    expect(warmHtml).toContain('data-layout-variant="warm-folio-row"');
+    expect(galleryHtml).toContain('data-title-pack="clean-gallery"');
+    expect(galleryHtml).not.toContain('border-left:3px solid');
+    expect(galleryHtml).toContain('border-bottom:1px solid');
+    expect(zineHtml).toContain('data-title-pack="graphic-zine"');
+    expect(zineHtml).not.toContain('border-left:6px solid');
+    expect(zineHtml).not.toContain('data-render-mask="panel"');
+    expect(zineHtml).not.toContain('data-render-mask="panel-alt"');
+    expect(galleryHtml).toContain('data-layout-variant="cohort-paired"');
+    expect(galleryHtml).toContain('data-layout-variant="gallery-score-lead"');
+    expect(galleryHtml).toContain('data-layout="gallery-score-bridge"');
+    expect(galleryHtml).not.toContain('data-layout="gallery-score-orbit"');
+    expect(galleryHtml).toContain('data-layout="gallery-comparison-matrix"');
+    expect(galleryHtml).toContain('data-layout-variant="gallery-open-row"');
+    expect(galleryHtml).toContain('data-layout-variant="gallery-open-method-notes"');
+    expect(galleryHtml).not.toContain('data-layout="cohort-metric-bar"');
+    expect(zineHtml).not.toContain('drop-shadow(2px 3px 0');
+    expect(zineHtml).toContain('data-layout="zine-poster-board"');
+    expect(zineHtml).toContain('data-layout="zine-title-paper"');
+    expect(zineHtml).toContain('data-layout-variant="cohort-zine-headline-pair"');
+    expect(zineHtml).toContain('data-layout-variant="zine-cohort-paper"');
+    expect(zineHtml).toMatch(/data-layout="cohort-source-title"[^>]*>Spring One<\/div>/u);
+    expect(zineHtml).toMatch(/data-layout="cohort-source-title"[^>]*>Summer One<\/div>/u);
+    expect(galleryHtml).not.toContain('data-layout="cohort-source-title"');
+    expect(zineHtml).toContain('Georgia');
+    expect(zineHtml).toContain('data-layout="cohort-query-summary"');
+    expect(zineHtml).toContain('媒介=anime');
+    expect(zineHtml).toContain('data-layout="zine-waterfront-illustration"');
+    expect(zineHtml).toContain('data-layout="zine-score-caption"');
+    expect(zineHtml).toContain('aria-label="分组 A 平均评分 8.00"');
+    expect(zineHtml).not.toContain('data-layout="zine-score-pair"');
+    expect(zineHtml).not.toContain('data-layout-variant="zine-score-paper"');
+    expect(zineHtml).toContain('data-layout="zine-score-bridge"');
+    expect(zineHtml).toContain('data-layout-variant="zine-delta-paper"');
+    expect(zineHtml).toContain('data-layout-variant="zine-paper-row"');
+    expect(zineHtml).toContain('data-layout="zine-metric-header"');
+    expect(zineHtml).toContain('data-layout-variant="zine-colophon-notes"');
+    expect(zineHtml).toContain('data-layout="zine-colophon"');
+    expect(zineHtml).toContain('data-layout="cohort-citation-source"');
+    expect(zineHtml).toContain('2026-08-30 UTC');
+    expect(zineHtml).toContain('2026 春季');
+    expect(zineHtml).not.toMatch(/data-layout="cohort-label"[^>]*>[^<]*Spring One/u);
+    expect(zineHtml).toContain('height:160px');
+    expect(zineHtml).not.toContain('聚合指标');
+    expect(zineHtml).not.toContain('data-layout-variant="zine-sticker"');
+    expect(zineHtml).not.toContain('data-layout="zine-delta-sticker"');
+
+    const wideZineHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 520, 'graphic-zine');
+    expect(wideZineHtml).toContain('title="Spring One"');
+  });
+
+  it('prioritizes A, B, and delta values at narrow widths without repeating sample metrics', () => {
+    const viewModel = buildSubjectCohortComparisonViewModel(result, { maxSubjectsPerCohort: 1 });
+    const mobileHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320);
+
+    expect(mobileHtml).toContain('data-layout="cohort-overview"');
+    expect(mobileHtml).toContain('data-layout-variant="cohort-paired"');
+    expect(mobileHtml).toContain('data-layout="cohort-meta-compact"');
+    expect(mobileHtml).toContain('Bangumi · 完整 · B−A · 仅作对照');
+    expect(mobileHtml).toContain('padding:12px 14px 16px');
+    expect(mobileHtml).toContain('flex-direction:column');
+    expect(mobileHtml.match(/data-layout="cohort-metric-board"/gu)).toHaveLength(1);
+    expect(mobileHtml.match(/data-layout="cohort-metric-header"/gu)).toBeNull();
+    expect(mobileHtml.match(/data-layout="cohort-metric-bar"/gu)).toHaveLength(8);
+    expect(mobileHtml).toContain('data-render-mask="panel"');
+    expect(mobileHtml.match(/data-layout="cohort-metric-card"/gu)).toHaveLength(4);
+    expect(mobileHtml.match(/data-layout="cohort-metric-comparison"/gu)).toHaveLength(4);
+    expect(mobileHtml.match(/data-layout="cohort-metric-value"/gu)).toHaveLength(12);
+    expect(mobileHtml).not.toContain('data-layout="cohort-subject-metrics"');
+    expect(mobileHtml).not.toContain('评分 8.00');
+    expect(mobileHtml).not.toContain('评分 7.00');
+    expect(mobileHtml).toContain('8.00');
+    expect(mobileHtml).toContain('7.00');
+    expect(mobileHtml).toContain('-1.00');
+    expect(mobileHtml).toContain('1/1 完整');
+
+    const desktopHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 960);
+    expect(desktopHtml.match(/data-layout="cohort-metric-comparison"/gu)).toHaveLength(4);
+    expect(desktopHtml).toContain('计算口径：评分分布标准差');
+
+    const pairedHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 520, 'clean-gallery');
+    expect(pairedHtml).toContain('data-layout-variant="cohort-paired"');
+    expect(pairedHtml).toContain('data-layout="gallery-comparison-matrix"');
+  });
+
+  it('never renders a numeric delta for a partial metric with a stale value', () => {
+    const partialWithStaleDeltas = buildSubjectCohortComparisonViewModel({
+      ...result,
+      state: 'partial',
+      metrics: result.metrics.map((metric) => ({
+        ...metric,
+        averages: [undefined, undefined],
+        partialAverages: [metric.averages?.[0], undefined],
+        state: 'partial',
+        // Deliberately keep the complete-state delta to guard against stale fixture data.
+        delta: metric.delta,
+      })),
+    });
+    const html = renderHtmlTemplate(partialWithStaleDeltas, 'bangumi-light', {}, 320);
+    const partialZineHtml = renderHtmlTemplate(
+      partialWithStaleDeltas,
+      'bangumi-light',
+      {},
+      320,
+      'graphic-zine',
+    );
+
+    expect(html.match(/不可计算/gu)).toHaveLength(result.metrics.length);
+    expect(partialZineHtml).toContain('Bangumi · 部分覆盖 · B−A · 仅作对照');
+    expect(html.match(/data-state="missing"/gu)).toHaveLength(result.metrics.length);
+    expect(html.match(/data-state="unscaled"/gu)).toHaveLength(result.metrics.length);
+  });
+
   it('decodes the offline C07 comparison card and verifies its nonblank pixel signal', async () => {
     const viewModel = buildSubjectCohortComparisonViewModel(result, { maxSubjectsPerCohort: 1 });
     const service = new RenderService();
@@ -72,6 +225,25 @@ describe('subject cohort comparison renderer', () => {
     const partial = buildSubjectCohortComparisonViewModel({
       ...result,
       state: 'partial',
+      cohorts: result.cohorts.map((cohort, index) =>
+        index === 1
+          ? {
+              ...cohort,
+              coverage: {
+                ...cohort.coverage,
+                metrics: {
+                  ...cohort.coverage.metrics,
+                  score: {
+                    ...cohort.coverage.metrics.score,
+                    valid: 0,
+                    missing: 1,
+                    state: 'partial',
+                  },
+                },
+              },
+            }
+          : cohort,
+      ),
       metrics: [
         {
           ...result.metrics[0]!,
@@ -85,6 +257,16 @@ describe('subject cohort comparison renderer', () => {
     });
     const html = renderHtmlTemplate(partial, 'bangumi-dark', {}, 720);
     expect(html).toContain('部分样本');
+    const narrowGalleryHtml = renderHtmlTemplate(
+      partial,
+      'bangumi-light',
+      {},
+      320,
+      'clean-gallery',
+    );
+    expect(narrowGalleryHtml).toContain('data-layout-variant="gallery-open-row"');
+    expect(narrowGalleryHtml).toContain('不可计算');
+    expect(narrowGalleryHtml).toContain('0/1 缺失');
   });
 
   it('shows warning guidance without exposing internal warning codes', () => {
@@ -120,6 +302,23 @@ describe('subject cohort comparison renderer', () => {
     expect(html).not.toContain('SYNTHETIC_PARTIAL_FIXTURE');
     expect(html).not.toContain('EXPERIMENTAL_SOURCE');
     expect(html).not.toContain('FUTURE_PROVIDER_WARNING');
+  });
+
+  it('deduplicates repeated provider warnings in the visual summary', () => {
+    const viewModel = buildSubjectCohortComparisonViewModel(result);
+    const duplicate = {
+      code: 'EXPERIMENTAL_SOURCE',
+      state: 'partial' as const,
+      message: 'Official v0 subject search is marked experimental upstream.',
+    };
+    const html = renderHtmlTemplate(
+      { ...viewModel, warnings: [duplicate, duplicate] },
+      'bangumi-light',
+      {},
+      320,
+    );
+
+    expect(html.match(/官方作品搜索接口仍处于实验阶段。（共 2 条）/gu)).toHaveLength(1);
   });
 
   it('explains when search returned a row but no subject detail can be displayed', () => {
@@ -221,11 +420,11 @@ describe('subject cohort comparison renderer', () => {
     const mobileHtml = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 320);
     expect(mobileHtml.match(/data-layout="cohort-label"/gu)).toHaveLength(2);
     expect(mobileHtml).toContain('-webkit-line-clamp:2');
-    expect(mobileHtml.match(/data-layout="cohort-subject-item"/gu)).toHaveLength(6);
-    expect(mobileHtml.match(/data-layout="cohort-subject-metrics"/gu)).toHaveLength(6);
+    expect(mobileHtml.match(/data-layout="cohort-subject-item"/gu)).toHaveLength(2);
+    expect(mobileHtml.match(/data-layout="cohort-subject-metrics"/gu) ?? []).toHaveLength(0);
     expect(mobileHtml.match(/data-layout="cohort-subject-summary"/gu)).toHaveLength(2);
-    expect(mobileHtml.match(/图片展示 3\/60 条已返回样本/gu)).toHaveLength(2);
-    expect(mobileHtml).toContain('卡片另有 9 条告警未展开。');
+    expect(mobileHtml.match(/图片展示 1\/60 条已返回样本/gu)).toHaveLength(2);
+    expect(mobileHtml).toContain('（共 12 条）');
     expect(mobileHtml).toContain('另有 6 条限制未展开。');
     expect(mobileHtml).toContain('聚合指标仍按已取得的有效样本计算。');
 

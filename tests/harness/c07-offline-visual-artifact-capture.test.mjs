@@ -12,6 +12,7 @@ import {
 import {
   C07_RENDER_COMPARISON_OFFLINE_V2_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
 } from '../../scripts/lib/c07-render-comparison-offline-profile.mjs';
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -95,6 +96,35 @@ test('C07 v3 visual capture uses a distinct create-only temporary and output pat
     assert.equal(
       persisted.relativePath,
       '.artifacts/render/c07-render-comparison-v3-mcp-bbbbbbbbbbbb.png',
+    );
+    assert.deepEqual(readFileSync(persisted.absolutePath), pngBytes);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test('C07 v4 visual capture uses its own create-only temporary and output path', () => {
+  const temporaryRoot = mkdtempSync(path.join(os.tmpdir(), 'c07-v4-visual-capture-'));
+  try {
+    const summaryPath = path.join(temporaryRoot, 'summary.json');
+    const pngBytes = Buffer.concat([PNG_SIGNATURE, Buffer.from('synthetic-v4-png')]);
+    const tempPath = writeC07OfflineVisualArtifactTempCopy({
+      profileId: C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
+      summaryPath,
+      pngBytes,
+    });
+    assert.equal(tempPath.endsWith('.c07-v4-artifact.png'), true);
+    const persisted = persistC07OfflineVisualArtifactForInspection({
+      profileId: C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
+      summaryPath,
+      root: temporaryRoot,
+      sourceRevision: 'd'.repeat(40),
+      expectedSha256: createHash('sha256').update(pngBytes).digest('hex'),
+      expectedByteLength: pngBytes.length,
+    });
+    assert.equal(
+      persisted.relativePath,
+      '.artifacts/render/c07-render-comparison-v4-mcp-dddddddddddd.png',
     );
     assert.deepEqual(readFileSync(persisted.absolutePath), pngBytes);
   } finally {
