@@ -453,6 +453,7 @@ function createMockEnvironment(overrides = {}) {
             PATH: `${binDirectory}:${process.env.PATH}`,
             HARNESS_MOCK_STATE: statePath,
             HARNESS_FRONTIER_LEDGER_PATH: frontierLedgerPath,
+            HARNESS_RENDERER_BASELINE_ROOT: directory,
             HARNESS_G04_BUNDLE_SHA256: 'c'.repeat(64),
             ...envOverrides,
           },
@@ -1008,6 +1009,62 @@ function terminalRunBody(evidence = makeDiscoveryEvidence()) {
   run.next_action = 'Recheck only after the frontier changes or refresh is due.';
   return renderRunBody(run);
 }
+
+test('renderer baseline CLI preserves completed scope and rejects source drift or registry deletion', () => {
+  const environment = createMockEnvironment();
+  try {
+    const artifact = (file, content) => {
+      fs.writeFileSync(path.join(environment.directory, file), content);
+      return { path: file, sha256: createHash('sha256').update(content).digest('hex') };
+    };
+    const entry = {
+      id: 'magazine-test-v1',
+      design_pack: 'anime-magazine',
+      template: 'subject-cohort-comparison',
+      source_commit: sha('a'),
+      source_inputs: [artifact('component.tsx', 'fixture source')],
+      reference: artifact('reference.png', 'reference'),
+      native_receipt: artifact('receipt.json', 'receipt'),
+      native_previews: [artifact('native.png', 'native')],
+      quality_scores: [4, 4, 4, 4, 5, 4],
+      release_decision: 'ACCEPTED_FOR_SCOPE',
+      user_aesthetic_acceptance: 'unobserved',
+      supersedes: null,
+    };
+    const registry = JSON.stringify({
+      schema: 'bangumi-renderer-design-baselines/v1',
+      baselines: [entry],
+    });
+    const registryRelative = 'docs/design/renderer-baselines.json';
+    const registryPath = path.join(environment.directory, registryRelative);
+    fs.mkdirSync(path.dirname(registryPath), { recursive: true });
+    fs.writeFileSync(registryPath, registry);
+    const state = environment.readState();
+    state.treePaths = [registryRelative];
+    state.gitObjects = {
+      [`origin/master:${registryRelative}`]: Buffer.from(registry).toString('base64'),
+      [`${sha('a')}:component.tsx`]: Buffer.from('fixture source').toString('base64'),
+    };
+    fs.writeFileSync(environment.statePath, JSON.stringify(state));
+    const check = () => environment.execute(['renderer:baseline-check', '--base', 'origin/master']);
+    const valid = check();
+    assert.equal(valid.status, 0, valid.stderr);
+    assert.equal(JSON.parse(valid.stdout).locks[0].action, 'PRESERVE_BASELINE_CONTINUE_OTHER_WORK');
+    fs.writeFileSync(path.join(environment.directory, 'component.tsx'), 'unrequested restyling');
+    const drifted = check();
+    assert.equal(drifted.status, 2);
+    assert.match(drifted.stderr, /^RENDERER_DESIGN_BASELINE_DRIFT:/u);
+    fs.rmSync(registryPath);
+    const removed = check();
+    assert.equal(removed.status, 2);
+    assert.match(removed.stderr, /DESIGN_BASELINE_HISTORY_CHANGED/u);
+    const final = environment.readState();
+    assert.equal(final.runBody, state.runBody);
+    assert.equal(final.prBody, state.prBody);
+  } finally {
+    environment.cleanup();
+  }
+});
 
 test('CLI run:start resumes the one open nonterminal Outer Run without creating another Issue', () => {
   const run = createRunState({ runId: 'existing-run', outerSolMax: 4 });
@@ -9299,10 +9356,7 @@ test('C07 v4 frontier binding is amended through Harness without granting scenar
     assert.equal(storedEpoch.review_history[0].verdict, 'CORRECTIVE_REQUIRED');
     assert.equal(storedRun.outer_sol.consumed, 17);
     assert.equal(storedRun.outer_sol.product.consumed, 16);
-    assert.deepEqual(storedRun.selection_amendment_history.at(-1).new_frontiers, [
-      'OP-008',
-      'C07',
-    ]);
+    assert.deepEqual(storedRun.selection_amendment_history.at(-1).new_frontiers, ['OP-008', 'C07']);
     const c07 = environment.readFrontierLedger().records.find((record) => record.id === 'C07');
     assert.equal(c07.status, 'UNASSESSED');
   } finally {

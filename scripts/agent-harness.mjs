@@ -290,6 +290,10 @@ import {
 } from './acceptance/d07-current-rank-answer-check.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
+const rendererBaselineRoot =
+  process.env.HARNESS_MOCK_STATE && process.env.HARNESS_RENDERER_BASELINE_ROOT
+    ? path.resolve(process.env.HARNESS_RENDERER_BASELINE_ROOT)
+    : root;
 const G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS = new Set([
   '.github/workflows/ci.yml',
   'docs/agent/HARNESS.md',
@@ -968,7 +972,7 @@ function commandContinuationShow(options) {
       pr: epochResult?.view,
       goalState: options['goal-state'] ?? 'unobserved',
     }),
-    renderer_design_baselines: inspectRendererDesignBaselines(root),
+    renderer_design_baselines: inspectRendererDesignBaselines(rendererBaselineRoot),
   });
 }
 
@@ -978,7 +982,7 @@ function requireRendererBaselines(base) {
     const tracked = git('ls-tree', '--name-only', base, '--', RENDERER_BASELINE_PATH);
     if (tracked) priorRegistry = JSON.parse(git('show', `${base}:${RENDERER_BASELINE_PATH}`));
   }
-  const result = inspectRendererDesignBaselines(root, {
+  const result = inspectRendererDesignBaselines(rendererBaselineRoot, {
     priorRegistry,
     readSourceAtCommit: (commit, file) =>
       execFileSync('git', ['show', `${commit}:${file}`], {
