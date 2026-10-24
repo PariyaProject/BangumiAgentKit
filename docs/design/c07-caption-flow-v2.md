@@ -50,3 +50,15 @@ two functional corrections and would broaden changes to retained layouts.
 The native receipt and source commit in `renderer-baselines.json` identify the
 current evidence. Preserve the completed version and resume other acceptance
 work. Further change requires another explicit request or reproducible regression.
+
+## Dual-cohort report contract
+
+The current v4 acceptance path registers the exact existing v4 profile in the
+Python receiver and derives its four source responses from both cohorts. The
+signed report asserts `fourExpectedLocalResponses`; historical v1–v3 reports
+retain their original two-response field and schemas. A shared synthetic fixture
+now feeds the real JavaScript signer through Python's exact report/disposition
+and Candidate snapshot checks into the real JavaScript Ed25519 validator.
+Negative cases cover old response counts/keys, mismatched reviewer or Base and
+a modified signature. External Git/control-plane observations are synthetic;
+this regression neither invokes a model nor consumes a permanent claim.

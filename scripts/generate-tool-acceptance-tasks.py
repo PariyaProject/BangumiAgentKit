@@ -2681,12 +2681,17 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V3 = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'c07-render-comparison-offline-agent-mcp-matrix-v3'
 )
+CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V4 = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'c07-render-comparison-offline-agent-mcp-matrix-v4'
+)
 CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILES = {
     profile['id']: profile
     for profile in (
         CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE,
         CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V2,
         CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V3,
+        CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V4,
     )
 }
 CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID = CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE['id']
@@ -14981,6 +14986,10 @@ def codex_c07_render_comparison_offline_profile_report_is_valid(
         or set(report) != expected_report_fields
     ):
         return False
+    cohort_count = len(profile['calls'][0]['arguments']['cohorts'])
+    answer_check_fields = CODEX_C07_RENDER_COMPARISON_OFFLINE_ANSWER_CHECK_FIELDS
+    if profile['id'] == CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V4['id']:
+        answer_check_fields = (answer_check_fields - {'twoExpectedLocalResponses'}) | {'fourExpectedLocalResponses'}
     registry_sha256, expected_arguments_sha256 = codex_c07_render_comparison_offline_profile_hashes(
         profile,
     )
@@ -15091,15 +15100,15 @@ def codex_c07_render_comparison_offline_profile_report_is_valid(
 
     if (
         not isinstance(report.get('answerChecks'), dict)
-        or set(report['answerChecks']) != CODEX_C07_RENDER_COMPARISON_OFFLINE_ANSWER_CHECK_FIELDS
+        or set(report['answerChecks']) != answer_check_fields
         or any(value is not True for value in report['answerChecks'].values())
         or not isinstance(fixture, dict)
         or set(fixture) != CODEX_C07_RENDER_COMPARISON_OFFLINE_FIXTURE_FIELDS
         or fixture != {
             'profile': profile['networkMode'],
-            'requestCount': 2,
-            'searchRequestCount': 1,
-            'subjectDetailRequestCount': 1,
+            'requestCount': cohort_count * 2,
+            'searchRequestCount': cohort_count,
+            'subjectDetailRequestCount': cohort_count,
             'duplicateRequestCount': 0,
             'unexpectedRequestCount': 0,
             'authorizationHeaderCount': 0,

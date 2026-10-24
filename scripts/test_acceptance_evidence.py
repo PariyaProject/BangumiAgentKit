@@ -10958,6 +10958,99 @@ class C07RenderComparisonOfflineProfileReportValidationTests(unittest.TestCase):
         report['offlineFixture']['profile'] = profile['networkMode']
         return report
 
+    def signed_v4_fixture(self, reviewer_id):
+        profile_id = 'c07-render-comparison-offline-agent-mcp-matrix-v4'
+        profile = next(p for p in GENERATOR.CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles'] if p['id'] == profile_id)
+        helper = self.originals[0] / 'tests/harness/fixtures/c07-signed-report.mjs'
+        program = (
+            'import {createSignedC07Report} from ' + json.dumps(helper.as_uri()) + ';'
+            'process.stdout.write(JSON.stringify(createSignedC07Report('
+            + json.dumps(profile_id) + ',' + json.dumps(reviewer_id) + ')));'
+        )
+        built = json.loads(subprocess.run(
+            ['node', '--input-type=module', '-e', program],
+            cwd=self.originals[0], check=True, capture_output=True, text=True,
+        ).stdout)
+        selection = self.root / profile['selectionEvidencePath']
+        selection.parent.mkdir(parents=True, exist_ok=True)
+        selection.write_bytes((self.originals[0] / profile['selectionEvidencePath']).read_bytes())
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier = json.loads(frontier_path.read_text())
+        next(row for row in frontier['records'] if row['id'] == 'C07')['source_refs'].extend([
+            profile['reportPath'], profile['selectionEvidencePath'],
+        ])
+        frontier_path.write_text(json.dumps(frontier))
+        return built['report'], built['claim'], profile
+
+    def validate_signed_v4_fixture(self, report, claim, profile, *, wrong_reviewer=False, wrong_base=False):
+        # Stub only external Git/control-plane observations. Both languages' report
+        # validators, exact snapshot bindings and Ed25519 verification run for real.
+        report_path = self.root / profile['reportPath']
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        receipt = report['runnerReceipt']
+        disposition = {**claim, 'state': 'REPORT_WRITTEN', 'reportWritten': True,
+            'reportPath': profile['reportPath'],
+            'reportSha256': hashlib.sha256(report_path.read_bytes()).hexdigest(),
+            'runnerReceiptSha256': GENERATOR._canonical_json_sha256(receipt)}
+        if wrong_reviewer:
+            disposition['reviewerId'] = 'other opaque identity'
+        status = {'state': 'REPORT_WRITTEN', 'profile_id': profile['id'], 'pr': claim['prNumber'],
+            'tool_name': profile['toolName'], 'argument_profile': profile['argumentProfile'],
+            'registry_sha256': claim['registrySha256'],
+            'expected_arguments_sha256': claim['expectedArgumentsSha256'],
+            'claim_label_present': True, 'terminal_label_present': True, 'disposition': disposition}
+        candidate = 'f' * 40
+        branch = 'codex/synthetic-c07-v4-report'
+        epoch = {'number': 95, 'state': 'EPOCH_ACTIVE', 'active_epoch_pr': claim['prNumber']}
+        epoch_state = {'state': 'REVIEW_PASSED', 'epoch_id': profile['epochId'],
+            'pr_number': claim['prNumber'], 'base_branch': 'master', 'branch': branch,
+            'base_sha': 'e' * 40 if wrong_base else claim['baseSha'], 'candidate_sha': candidate}
+        epoch_status = {'run': {'number': 95, 'state': epoch}, 'epoch': {
+            'state': epoch_state, 'github_state': 'OPEN', 'pr_base_ref_name': 'master',
+            'pr_base_sha': claim['baseSha'], 'pr_head_ref_name': branch,
+            'pr_head_sha': candidate, 'pr_is_draft': False}}
+        real_run = subprocess.run
+        def verify_signature(args, **kwargs):
+            self.assertEqual(Path(args[1]).name, 'validate-c07-render-comparison-offline-agent-mcp-report.mjs')
+            return real_run(['node', str(self.originals[0] / 'scripts/acceptance' / Path(args[1]).name)],
+                **{**kwargs, 'cwd': self.originals[0]})
+        def snapshot_binding(actual_report, actual_epoch, actual_profile):
+            return GENERATOR.codex_c07_render_comparison_offline_profile_candidate_binding_is_valid(
+                actual_report, actual_epoch, {profile['reportPath']}, claim['bundleSha256'], actual_profile)
+        with (
+            patch.object(GENERATOR, 'codex_c07_render_comparison_offline_profile_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value=claim['bundleSha256']),
+            patch.object(GENERATOR, 'codex_c07_render_comparison_offline_profile_report_candidate_binding_is_current', side_effect=snapshot_binding),
+            patch.object(GENERATOR.subprocess, 'run', side_effect=verify_signature),
+        ):
+            return GENERATOR.codex_c07_render_comparison_offline_profile_report_is_valid(
+                report, harness_status=status, report_path=report_path, epoch_status=epoch_status)
+
+    def test_v4_registration_uses_the_current_exact_profile(self):
+        profile_id = 'c07-render-comparison-offline-agent-mcp-matrix-v4'
+        expected = next(p for p in GENERATOR.CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles'] if p['id'] == profile_id)
+        self.assertEqual(GENERATOR.codex_c07_render_comparison_offline_profile_spec(profile_id), expected)
+
+    def test_v4_real_signed_report_crosses_python_and_js_with_exact_snapshot_bindings(self):
+        for reviewer_id in ('/root/pr271_review', 'opaque://reviewer handle#10'):
+            report, claim, profile = self.signed_v4_fixture(reviewer_id)
+            self.assertTrue(self.validate_signed_v4_fixture(report, claim, profile))
+            self.assertFalse(self.validate_signed_v4_fixture(report, claim, profile, wrong_reviewer=True))
+            self.assertFalse(self.validate_signed_v4_fixture(report, claim, profile, wrong_base=True))
+            for key, value in (('requestCount', 2), ('searchRequestCount', 1), ('subjectDetailRequestCount', 1)):
+                changed = json.loads(json.dumps(report))
+                changed['offlineFixture'][key] = value
+                with self.subTest(reviewer=reviewer_id, wrong_counter=key):
+                    self.assertFalse(self.validate_signed_v4_fixture(changed, claim, profile))
+            changed = json.loads(json.dumps(report))
+            changed['answerChecks'].pop('fourExpectedLocalResponses', None)
+            changed['answerChecks']['twoExpectedLocalResponses'] = True
+            self.assertFalse(self.validate_signed_v4_fixture(changed, claim, profile))
+            changed = json.loads(json.dumps(report))
+            changed['runnerReceipt']['signature'] = 'AA=='
+            self.assertFalse(self.validate_signed_v4_fixture(changed, claim, profile))
+
     def test_accepts_one_synthetic_matrix_report_while_C07_remains_unassessed(self):
         self.assertTrue(GENERATOR.codex_c07_render_comparison_offline_frontier_is_unassessed())
         self.assertTrue(self.validate_report(self.report))

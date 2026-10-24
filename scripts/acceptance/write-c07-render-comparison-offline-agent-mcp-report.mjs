@@ -14,6 +14,7 @@ import {
   assertC07RenderComparisonOfflineProfile,
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
+  C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
   isC07ReviewerId,
 } from '../lib/c07-render-comparison-offline-profile.mjs';
@@ -154,18 +155,22 @@ const V3_RECEIPT_CODEX_ERROR_FIELDS = new Set([
   'blockedDisabledWebSearchErrorItemCount',
   'unexpectedCodexErrorItemCount',
 ]);
-const ANSWER_CHECK_FIELDS = new Set([
+const COMMON_ANSWER_CHECK_FIELDS = new Set([
   'exactRegisteredProfile',
   'oneAllowedMcpTool',
   'fixedArguments',
   'exactCandidateBundle',
   'offlineFixtureOnly',
-  'twoExpectedLocalResponses',
   'noAssetUrls',
   'artifactReturned',
   'exactAcknowledgement',
   'privacyPreserved',
 ]);
+function localResponseCheckField(profileId) {
+  return profileId === C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID
+    ? 'fourExpectedLocalResponses'
+    : 'twoExpectedLocalResponses';
+}
 const PRIVACY_FIELDS = new Set([
   'authProfile',
   'oauthAttempted',
@@ -513,7 +518,10 @@ export function validateC07RenderComparisonOfflineProfileReport(report, claim, r
     artifact.byteLength > 5_000_000 ||
     !/^[0-9a-f]{64}$/u.test(artifact.sha256 ?? '') ||
     artifact.pngSignatureValid !== true ||
-    !exactKeys(answerChecks, ANSWER_CHECK_FIELDS) ||
+    !exactKeys(
+      answerChecks,
+      new Set([...COMMON_ANSWER_CHECK_FIELDS, localResponseCheckField(PROFILE.id)]),
+    ) ||
     Object.values(answerChecks).some((value) => value !== true) ||
     !exactKeys(report.privacy, PRIVACY_FIELDS) ||
     canonicalAgentMcpProfileJson(report.privacy) !==
@@ -699,7 +707,7 @@ export function buildC07RenderComparisonOfflineProfileReport(
       fixedArguments: true,
       exactCandidateBundle: true,
       offlineFixtureOnly: true,
-      twoExpectedLocalResponses: true,
+      [localResponseCheckField(PROFILE.id)]: true,
       noAssetUrls: true,
       artifactReturned: true,
       exactAcknowledgement: true,
