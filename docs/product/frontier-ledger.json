@@ -132,7 +132,9 @@
           "request_count": 1,
           "result_summary": {
             "state": "value",
-            "keys": ["artifact"]
+            "keys": [
+              "artifact"
+            ]
           },
           "assertions_passed": true,
           "catalog_sha256": "2e3d216a282022fd01a2d1fac0cd0e8831c21461a28d304e41b20d3d4fc39c3e",
@@ -591,19 +593,11 @@
           "report": "docs/live-probes/public-tools-2026-10-15-092632892-50913.json",
           "report_sha256": "ffd231db92b9fcc8e5b05d92523eae0a832410bec23dec49ee3fe5b19245f981",
           "tool": "bangumi.get_subject_cast",
-          "input": {
-            "subjectId": 41529,
-            "limit": 2
-          },
+          "input": { "subjectId": 41529, "limit": 2 },
           "observed_at": "2026-10-15T09:26:32.892Z",
           "mode": "read_only_public_api_smoke",
           "request_count": 1,
-          "result_summary": {
-            "subjectId": 41529,
-            "observed": 9,
-            "returned": 2,
-            "castCount": 2
-          },
+          "result_summary": { "subjectId": 41529, "observed": 9, "returned": 2, "castCount": 2 },
           "assertions_passed": true,
           "catalog_sha256": "2e8e47b37a4ebcc2511ff3fe8727abd9496edc4f5bebf4cd0ea798b4936b0c92",
           "probe_script_sha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
@@ -706,8 +700,12 @@
         },
         "g06_one_shot_merge_order": {
           "behavior": "A G06 review PASS directs the caller to run the one-shot and reconcile before merge. G06 merge revalidates the exact candidate-bound terminal disposition, permanent claim/terminal latches, reconciliation readback, and signed sanitized report when present. Other Epoch merges keep the default auto-merge path.",
-          "implementation": ["scripts/agent-harness.mjs"],
-          "tests": ["tests/harness/agent-harness-cli.test.mjs"],
+          "implementation": [
+            "scripts/agent-harness.mjs"
+          ],
+          "tests": [
+            "tests/harness/agent-harness-cli.test.mjs"
+          ],
           "offline_validation": "Harness CLI regressions cover G06 PASS next-action, pre-reconciliation merge refusal, verified terminal INCONCLUSIVE merge, and refusal of self-asserted REPORT_WRITTEN without a valid sanitized artifact.",
           "status_boundary": "G06 remains PARTIAL until current-source direct/Agent-MCP evidence is accepted. This control-plane change does not assert that a query ran or cast coverage is complete."
         },
@@ -983,18 +981,10 @@
         "direct_public_api_probe_2026_10_13": {
           "report": "docs/live-probes/public-tools-2026-10-13-100900784-55053.json",
           "tool": "bangumi.get_series_watch_order",
-          "input": {
-            "subjectId": 41529,
-            "depth": 0,
-            "maxNodes": 1
-          },
+          "input": {"subjectId": 41529, "depth": 0, "maxNodes": 1},
           "mode": "read_only_public_api_smoke",
           "request_count": 2,
-          "result_summary": {
-            "state": "complete",
-            "subjectId": 41529,
-            "warningsCount": 2
-          },
+          "result_summary": {"state": "complete", "subjectId": 41529, "warningsCount": 2},
           "assertions_passed": true,
           "catalog_sha256": "2e3d216a282022fd01a2d1fac0cd0e8831c21461a28d304e41b20d3d4fc39c3e",
           "probe_script_sha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
@@ -1003,17 +993,10 @@
         "direct_public_renderer_probe_2026_10_13": {
           "report": "docs/live-probes/public-tools-2026-10-13-103028094-43541.json",
           "tool": "bangumi.render_series_watch_order",
-          "input": {
-            "subjectId": 41529,
-            "depth": 0,
-            "maxNodes": 1
-          },
+          "input": {"subjectId": 41529, "depth": 0, "maxNodes": 1},
           "mode": "read_only_public_api_smoke",
           "request_count": 2,
-          "result_summary": {
-            "state": "value",
-            "keys": ["artifact"]
-          },
+          "result_summary": {"state": "value", "keys": ["artifact"]},
           "assertions_passed": true,
           "catalog_sha256": "2e3d216a282022fd01a2d1fac0cd0e8831c21461a28d304e41b20d3d4fc39c3e",
           "probe_script_sha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
@@ -1031,31 +1014,16 @@
           "tools": [
             {
               "tool": "bangumi.get_series_watch_order",
-              "input": {
-                "subjectId": 41529,
-                "depth": 0,
-                "maxNodes": 1
-              },
+              "input": { "subjectId": 41529, "depth": 0, "maxNodes": 1 },
               "http_requests": 2,
-              "result_summary": {
-                "state": "complete",
-                "subjectId": 41529,
-                "warningsCount": 2
-              },
+              "result_summary": { "state": "complete", "subjectId": 41529, "warningsCount": 2 },
               "assertions_passed": true
             },
             {
               "tool": "bangumi.render_series_watch_order",
-              "input": {
-                "subjectId": 41529,
-                "depth": 0,
-                "maxNodes": 1
-              },
+              "input": { "subjectId": 41529, "depth": 0, "maxNodes": 1 },
               "http_requests": 2,
-              "result_summary": {
-                "state": "value",
-                "keys": ["artifact"]
-              },
+              "result_summary": { "state": "value", "keys": ["artifact"] },
               "assertions_passed": true
             }
           ],
@@ -1123,12 +1091,7 @@
       "user_question": "过去7天讨论增长最快的动画。",
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-g11-g21-public-source-boundary-2026-10-09.md",
-        "docs/research/run95-g10-discussion-heat-contract-2026-10-09.md",
-        "docs/tool-catalog.json"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-g11-g21-public-source-boundary-2026-10-09.md", "docs/research/run95-g10-discussion-heat-contract-2026-10-09.md", "docs/tool-catalog.json"],
       "next_action": "The current official public v0 contract reviewed has no subject-level discussion route or comparable weekly activity metric. G11 requires at least two comparable windows or an explicit subject-level growth value; private /p1 or HTML community data is not an approved source. No runtime/community request or scenario query was made. Keep G11 PARTIAL; claim no discussion ranking or Agent/MCP coverage. Reopen only when a supported public source defines the activity metric, comparison windows, subject scope, and coverage. See docs/research/run95-g11-g21-public-source-boundary-2026-10-09.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
@@ -1139,14 +1102,7 @@
       "user_question": "我的在看作品本周更新计划。",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-g12-g13-account-source-boundary-2026-10-09.md",
-        "docs/tool-catalog.json",
-        "packages/tools/src/definitions/read-tools.ts",
-        "tests/semantic/collection-schedule.test.ts",
-        "tests/contract/run95-collection-auth-boundary.test.ts"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-g12-g13-account-source-boundary-2026-10-09.md", "docs/tool-catalog.json", "packages/tools/src/definitions/read-tools.ts", "tests/semantic/collection-schedule.test.ts", "tests/contract/run95-collection-auth-boundary.test.ts"],
       "next_action": "G12 remains UNASSESSED. The local contract regression verifies that get_collection_schedule requires a bound account and makes no request without one; it is not live collection or Agent/MCP evidence. Current v0 says private user collections need an access token. The tool default includes wish/doing/on_hold, so the exact “currently watching” scope requires statuses=[\"doing\"]. The legacy seven-day calendar lacks precise airing time/time-zone coverage. No account/OAuth/API query was made. Reopen only after explicitly authorized current-source Agent/MCP evidence for the bound account; retain calendar and collection coverage limits. See docs/research/run95-g12-g13-account-source-boundary-2026-10-09.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
@@ -1157,15 +1113,7 @@
       "user_question": "我收藏但已经完结且没看完的动画。",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-g12-g13-account-source-boundary-2026-10-09.md",
-        "docs/tool-catalog.json",
-        "packages/tools/src/definitions/read-tools.ts",
-        "packages/bangumi-core/src/services/collection-backlog-service.ts",
-        "tests/semantic/collection-backlog.test.ts",
-        "tests/contract/run95-collection-auth-boundary.test.ts"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-g12-g13-account-source-boundary-2026-10-09.md", "docs/tool-catalog.json", "packages/tools/src/definitions/read-tools.ts", "packages/bangumi-core/src/services/collection-backlog-service.ts", "tests/semantic/collection-backlog.test.ts", "tests/contract/run95-collection-auth-boundary.test.ts"],
       "next_action": "G13 remains UNASSESSED. The official per-episode collection route requires bearer authentication; the local regression only verifies AUTH_REQUIRED/no-request without a bound account and does not count as scenario acceptance. Backlog “finished” is a bounded inference from complete observed episode dates, not Bangumi’s official completion flag; coverage conflicts remain partial/not-computable. No account/OAuth/API query was made. Reopen only after explicitly authorized current-source Agent/MCP evidence for the bound account, preserving all formula and pagination limits. See docs/research/run95-g12-g13-account-source-boundary-2026-10-09.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
@@ -1272,7 +1220,10 @@
       "related_ids": [],
       "closure_reason": "Delivered a bounded exact-label director-role observation over current official person-subject relations and first_air_date windows, with 36-month support, raw-role evidence, and explicit unknown/exclusion/cap coverage; this is not a complete historical career result.",
       "evidence": {
-        "capabilities": ["bangumi.get_person_activity", "bangumi.render_person_activity"],
+        "capabilities": [
+          "bangumi.get_person_activity",
+          "bangumi.render_person_activity"
+        ],
         "tests": [
           "tests/unit/person-activity.test.ts",
           "tests/semantic/person-activity.test.ts",
@@ -1492,10 +1443,7 @@
       "user_question": "这个人物最近参与的作品中，哪些是原创、哪些是改编？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "docs/live-probes/public-tools-2026-10-11-103934803-2116.json"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/live-probes/public-tools-2026-10-11-103934803-2116.json"],
       "next_action": "Keep G19 PARTIAL. Only exact official subject.meta_tags value 原创 is positive explicit-original evidence; not_observed and unknown remain insufficient, not adaptation. Current relations, bounded detail/row/window caps, and absent infobox/concept/history sources cannot establish exhaustive origin classification, complete career history, or complete adaptation status. Reassess only if the official source contract or bounded origin fields materially change.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
@@ -1627,11 +1575,7 @@
       "user_question": "这部动画最近一周新增了多少主题和回复？",
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-g11-g21-public-source-boundary-2026-10-09.md",
-        "docs/tool-catalog.json"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-g11-g21-public-source-boundary-2026-10-09.md", "docs/tool-catalog.json"],
       "next_action": "The current official public v0 contract reviewed has no supported subject-topic/reply list or weekly count. A topic creation time, cumulative replyCount, or last activity alone cannot establish the number of new topics and replies in a defined week. No runtime/community request or scenario query was made. Keep G21 PARTIAL; claim no topic/reply counts or Agent/MCP coverage. Reopen when a supported public source provides subject-linked topics, per-reply timestamps or comparable deltas, a time-window definition, and verifiable pagination/completeness. See docs/research/run95-g11-g21-public-source-boundary-2026-10-09.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
@@ -1642,14 +1586,7 @@
       "user_question": "讨论最多但评分人数较少的作品有哪些？",
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-g22-discussion-rating-boundary-2026-10-09.md",
-        "docs/research/run95-g10-discussion-heat-contract-2026-10-09.md",
-        "docs/research/run95-g11-g21-public-source-boundary-2026-10-09.md",
-        "docs/tool-catalog.json",
-        "tests/contract/run95-discussion-source-boundary.test.ts"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-g22-discussion-rating-boundary-2026-10-09.md", "docs/research/run95-g10-discussion-heat-contract-2026-10-09.md", "docs/research/run95-g11-g21-public-source-boundary-2026-10-09.md", "docs/tool-catalog.json", "tests/contract/run95-discussion-source-boundary.test.ts"],
       "next_action": "G22 remains PARTIAL. Current official v0 documents rating_count as a rating-user-count filter and sort=heat as current collection count; neither measures discussion volume. The reviewed v0 contract has no subject discussion/comment route or field, and search totals are experimental/estimated. No runtime, community, account, or private /p1 request was made; no discussion ranking or Agent/MCP acceptance is claimed. Do not substitute heat or rating_count for discussion volume. Reopen when an official supported public source defines a subject-linked discussion metric and pagination/coverage. See docs/research/run95-g22-discussion-rating-boundary-2026-10-09.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
@@ -1818,10 +1755,7 @@
       "user_question": "适合喜欢《少女终末旅行》的低刺激末世旅行动画有哪些？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-a05-d02-terminal-disposition-reconciliation-2026-10-15.md"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-a05-d02-terminal-disposition-reconciliation-2026-10-15.md"],
       "next_action": "D02 remains UNASSESSED and uncredited. The closed PR #152 Harness record is terminal INCONCLUSIVE with reportWritten=false and retryAllowed=false. Do not rerun the D02 query or reopen that one-shot; no Agent/MCP answer or matrix credit was accepted. Continue Run #95 on another safe unspent frontier. Disposition: docs/research/run95-a05-d02-terminal-disposition-reconciliation-2026-10-15.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
@@ -1894,7 +1828,10 @@
       "related_ids": [],
       "evidence": {
         "source_contract": "Official POST /v0/search/subjects documents repeated tag filters as AND, air_date predicates as AND, and sort=heat as 收藏人数; the endpoint is experimental. See docs/research/run95-d05-current-season-multitag-heat-source-contract-2026-10-08.md.",
-        "capabilities": ["bangumi.query_subjects", "bangumi.render_query_subjects"],
+        "capabilities": [
+          "bangumi.query_subjects",
+          "bangumi.render_query_subjects"
+        ],
         "implementation": [
           "packages/discovery/src/query.ts: season=current resolves the invocation instant in Asia/Tokyo and normalizes to a canonical quarter and half-open range.",
           "packages/discovery/src/compiler.ts: preserves canonical season, anime type, both exact tags, air_date bounds, and descending heat in the plan/request.",
@@ -1940,7 +1877,10 @@
           "fixed_arguments": {
             "media": "anime",
             "season": "current",
-            "tags": ["校园", "恋爱"],
+            "tags": [
+              "校园",
+              "恋爱"
+            ],
             "sort": "heat",
             "order": "desc",
             "resultMode": "top",
@@ -1982,13 +1922,7 @@
       "user_question": "有中文名但没有日文名的动画条目有哪些？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-d06-title-language-source-contract-2026-10-13.md",
-        "packages/tools/src/definitions/discovery-tools.ts",
-        "packages/provider-core/src/providers.ts",
-        "tests/discovery/parity.test.ts"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-d06-title-language-source-contract-2026-10-13.md", "packages/tools/src/definitions/discovery-tools.ts", "packages/provider-core/src/providers.ts", "tests/discovery/parity.test.ts"],
       "next_action": "Source-contract assessment 2026-10-13: official v0 search requires a keyword and documents type/tag/date/rating/rating-count/rank/NSFW filters, but no missing-name or title-language filter; Subject returns `name` and `name_cn` strings without a language code. A model-facing schema regression rejects unsupported titleLanguage and missingOriginalTitle filters. This is PARTIAL capability evidence only: no D06 Agent/MCP answer was run or accepted, no query_subjects matrix credit is added, and estimated/bounded search cannot enumerate all matching works or prove absence. Any later D06 observation must be a distinct exact-gated no-retry profile and report only the observed keyword sample. See docs/research/run95-d06-title-language-source-contract-2026-10-13.md.",
       "reopen_when": "Public v0 adds structured title-language metadata or a supported complete predicate for missing Japanese/original titles; or a separately gated D06 current-source answer demonstrates a bounded usable sample.",
       "related_ids": []
@@ -2221,7 +2155,7 @@
         "tests/harness/agent-mcp-execution-replay.test.mjs",
         "docs/research/run95-mcp-failure-stage-contract-2026-10-24.md"
       ],
-      "next_action": "Keep C07 UNASSESSED and do not claim compare_subject_cohorts. C07 profiles v1-v3 remain terminal INCONCLUSIVE/no-report/retryAllowed=false and must never be retried or recreated. The distinct v4 profile targets only the render_subject_cohort_comparison Agent/MCP matrix row, is currently unclaimed and can earn no scenario credit. Preserve the scoped anime-magazine C07 baseline and existing selectable packs; a generic Goal wake must continue other work rather than restyle it. The new native pilot has40 default PNGs,2 maximum-font previews and80 measured DOM cases; the existing three-pack60-image matrix remains byte-identical to reviewed v37 output. Reference/native differences and autonomous designer acceptance are documented separately from concrete user approval. Use the active Harness Run/Epoch for exact Candidate/Base/CI, same-identity Product review, claim disposition and report-bound integration. No scenario/public/account/QQ/TIM evidence is created by these synthetic images.",
+      "next_action": "Keep C07 UNASSESSED and do not claim compare_subject_cohorts. C07 profiles v1-v3 remain terminal INCONCLUSIVE/no-report/retryAllowed=false and must never be retried or recreated. The distinct v4 profile targets only the render_subject_cohort_comparison Agent/MCP matrix row; its sole attempt is now terminal INCONCLUSIVE/no-report/retryAllowed=false and earns no matrix or scenario credit. Never retry or recreate it. Preserve the scoped anime-magazine C07 baseline and existing selectable packs; a generic Goal wake must continue other work rather than restyle it. The locked native v2 pilot has48 default PNGs,1 maximum-font preview and96 measured DOM cases; the existing three-pack60-image matrix remains byte-identical to reviewed v37 output. Reference/native differences and autonomous designer acceptance are documented separately from concrete user approval. Use the active Harness Run/Epoch for exact Candidate/Base/CI, same-identity Product review, claim disposition and report-bound integration. No scenario/public/account/QQ/TIM evidence is created by these synthetic images.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2269,42 +2203,7 @@
       "user_question": "某人物首次参与动画和最近参与动画分别是什么？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-p02-observed-animation-release-chronology-2026-10-15.md",
-        "packages/bangumi-core/src/models/person.ts",
-        "packages/bangumi-core/src/services/person-service.ts",
-        "packages/tools/src/definitions/read-tools.ts",
-        "packages/tools/src/definitions/render-presentation-tools.ts",
-        "apps/mcp/src/result-presenter.ts",
-        "packages/renderer/src/view-models/index.ts",
-        "packages/renderer/src/view-model-builders/index.ts",
-        "packages/renderer/src/templates/PersonProfileCard.tsx",
-        "docs/tool-catalog.json",
-        "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md",
-        "tests/unit/person-intelligence.test.ts",
-        "tests/integration/mcp-result-presenter.test.ts",
-        "tests/integration/mcp-schema.test.ts",
-        "tests/integration/tool-direct-execute-read.test.ts",
-        "tests/render/render-cards.test.ts",
-        "docs/live-probes/public-tools-p02-person-profile-chronology-2026-10-15.json",
-        "docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-contract-2026-10-16.md",
-        "docs/live-probes/public-tools-2026-10-16-004829462-60733.json",
-        "docs/live-probes/public-tools-2026-10-16-004904286-61569.json",
-        "docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-v2-contract-2026-10-19.md",
-        "scripts/acceptance/agent-mcp-profile-registry.json",
-        "scripts/lib/p02-person-profile-offline-fixture.mjs",
-        "apps/mcp/codex-one-tool-mcp-server.mjs",
-        "scripts/acceptance/run-p02-person-profile-agent-mcp.mjs",
-        "scripts/acceptance/write-p02-person-profile-agent-mcp-report.mjs",
-        "scripts/agent-harness.mjs",
-        "scripts/generate-tool-acceptance-tasks.py",
-        "tests/harness/p02-person-profile-offline-fixture.test.mjs",
-        "tests/harness/run-p02-person-profile-agent-mcp.test.mjs",
-        "tests/harness/write-p02-person-profile-report.test.mjs",
-        "tests/harness/agent-harness-cli.test.mjs",
-        "tests/harness/agent-mcp-profile-claims.test.mjs"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-p02-observed-animation-release-chronology-2026-10-15.md", "packages/bangumi-core/src/models/person.ts", "packages/bangumi-core/src/services/person-service.ts", "packages/tools/src/definitions/read-tools.ts", "packages/tools/src/definitions/render-presentation-tools.ts", "apps/mcp/src/result-presenter.ts", "packages/renderer/src/view-models/index.ts", "packages/renderer/src/view-model-builders/index.ts", "packages/renderer/src/templates/PersonProfileCard.tsx", "docs/tool-catalog.json", "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md", "tests/unit/person-intelligence.test.ts", "tests/integration/mcp-result-presenter.test.ts", "tests/integration/mcp-schema.test.ts", "tests/integration/tool-direct-execute-read.test.ts", "tests/render/render-cards.test.ts", "docs/live-probes/public-tools-p02-person-profile-chronology-2026-10-15.json", "docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-contract-2026-10-16.md", "docs/live-probes/public-tools-2026-10-16-004829462-60733.json", "docs/live-probes/public-tools-2026-10-16-004904286-61569.json", "docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-v2-contract-2026-10-19.md", "scripts/acceptance/agent-mcp-profile-registry.json", "scripts/lib/p02-person-profile-offline-fixture.mjs", "apps/mcp/codex-one-tool-mcp-server.mjs", "scripts/acceptance/run-p02-person-profile-agent-mcp.mjs", "scripts/acceptance/write-p02-person-profile-agent-mcp-report.mjs", "scripts/agent-harness.mjs", "scripts/generate-tool-acceptance-tasks.py", "tests/harness/p02-person-profile-offline-fixture.test.mjs", "tests/harness/run-p02-person-profile-agent-mcp.test.mjs", "tests/harness/write-p02-person-profile-report.test.mjs", "tests/harness/agent-harness-cli.test.mjs", "tests/harness/agent-mcp-profile-claims.test.mjs"],
       "next_action": "Keep P02 PARTIAL and preserve the career-wide first/latest participation boundary. Live Harness status verified on 2026-10-22: P02 v1 (PR #185) and v2 (PR #237) each have one consumed call and are terminal INCONCLUSIVE with reportWritten=false and retryAllowed=false. Never retry or recreate either profile; neither attempt earns Agent/MCP matrix or P02 scenario credit. The last clean accepted Candidate 4bb2c7e has a Run #95 acceptance snapshot of Agent/MCP 82/96, anonymous public API 65/65, no-account denial 22/22, and QQ/TIM 0/96. Do not claim career-wide first/latest participation. No account, OAuth, community, write, QQ, or TIM action.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
@@ -2325,15 +2224,7 @@
             "max_concurrency": 4,
             "max_response_bytes_each": 1048576,
             "selection": "deduplicated returned anime relations; deterministic even spacing when over budget",
-            "coverage": [
-              "selected",
-              "succeeded",
-              "failed",
-              "valid dates",
-              "missing dates",
-              "invalid dates",
-              "omitted anime relations"
-            ],
+            "coverage": ["selected", "succeeded", "failed", "valid dates", "missing dates", "invalid dates", "omitted anime relations"],
             "no_valid_date_state": "not_computable; no negative claim"
           },
           "validation": {
@@ -2363,11 +2254,7 @@
           "budget_blocked": false,
           "assertions_passed": true,
           "result_state": "partial",
-          "relation_coverage": {
-            "observed": 107,
-            "returned": 107,
-            "truncated": false
-          },
+          "relation_coverage": {"observed": 107, "returned": 107, "truncated": false},
           "chronology": {
             "state": "partial",
             "source_completeness": "undocumented",
@@ -2406,53 +2293,8 @@
           "acceptance_boundary": "These anonymous direct ToolRegistry observations support only the matching public API matrix rows. They do not establish career-wide first/latest participation, add Agent/MCP evidence, or change P02 from PARTIAL.",
           "privacy_clarification": "The fixed public query input personId=13684 is retained in the get_person_profile report. Its generic no-identifiers redaction statement applies to response-derived identifiers: no person or subject IDs from returned rows are persisted."
         },
-        "p02_synthetic_agent_mcp_matrix_v2_implementation_2026_10_19": {
-          "contract": "docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-v2-contract-2026-10-19.md",
-          "profile_id": "p02-person-profile-offline-agent-mcp-v2",
-          "acceptance_scope": "agent-mcp-matrix-only",
-          "state": "TERMINAL_INCONCLUSIVE_NO_REPORT",
-          "matrix_credit": false,
-          "scenario_credit": false,
-          "validation": {
-            "focused_node_profile_tests": "22/22 passed",
-            "harness_profile_claim_test": "1/1 passed",
-            "focused_python_report_tests": "5/5 passed",
-            "typecheck": "passed",
-            "full_acceptance_check": "267 tests passed; generated table current at Agent/MCP 83/96"
-          },
-          "one_shot_boundary": "The v2 profile was claimed and invoked once, then Harness recorded terminal INCONCLUSIVE/no-report/retryAllowed=false. Never retry or recreate it; its implementation and local validation do not confer matrix or scenario credit.",
-          "report_written": false,
-          "retry_allowed": false
-        },
-        "p02_agent_mcp_terminal_reconciliation_2026_10_22": {
-          "verified_at": "2026-10-22T05:37:33Z",
-          "source_of_truth": "Live Harness epoch:agent-mcp-profile-status; no local claim state is inferred.",
-          "profiles": [
-            {
-              "pr_number": 185,
-              "profile_id": "p02-person-profile-offline-agent-mcp-v1",
-              "state": "INCONCLUSIVE",
-              "call_count": 1,
-              "report_written": false,
-              "retry_allowed": false
-            },
-            {
-              "pr_number": 237,
-              "profile_id": "p02-person-profile-offline-agent-mcp-v2",
-              "state": "INCONCLUSIVE",
-              "call_count": 1,
-              "report_written": false,
-              "retry_allowed": false
-            }
-          ],
-          "matrix_credit": false,
-          "scenario_credit": false,
-          "acceptance_boundary": "P02 remains PARTIAL; neither terminal attempt earns Agent/MCP matrix or career-wide scenario credit.",
-          "commands": [
-            "pnpm harness epoch:agent-mcp-profile-status --run 95 --pr 185 --profile-id p02-person-profile-offline-agent-mcp-v1",
-            "pnpm harness epoch:agent-mcp-profile-status --run 95 --pr 237 --profile-id p02-person-profile-offline-agent-mcp-v2"
-          ]
-        }
+        "p02_synthetic_agent_mcp_matrix_v2_implementation_2026_10_19": {"contract": "docs/research/run95-p02-person-profile-agent-mcp-offline-matrix-v2-contract-2026-10-19.md", "profile_id": "p02-person-profile-offline-agent-mcp-v2", "acceptance_scope": "agent-mcp-matrix-only", "state": "TERMINAL_INCONCLUSIVE_NO_REPORT", "matrix_credit": false, "scenario_credit": false, "validation": {"focused_node_profile_tests": "22/22 passed", "harness_profile_claim_test": "1/1 passed", "focused_python_report_tests": "5/5 passed", "typecheck": "passed", "full_acceptance_check": "267 tests passed; generated table current at Agent/MCP 83/96"}, "one_shot_boundary": "The v2 profile was claimed and invoked once, then Harness recorded terminal INCONCLUSIVE/no-report/retryAllowed=false. Never retry or recreate it; its implementation and local validation do not confer matrix or scenario credit.", "report_written": false, "retry_allowed": false},
+        "p02_agent_mcp_terminal_reconciliation_2026_10_22": {"verified_at": "2026-10-22T05:37:33Z", "source_of_truth": "Live Harness epoch:agent-mcp-profile-status; no local claim state is inferred.", "profiles": [{"pr_number": 185, "profile_id": "p02-person-profile-offline-agent-mcp-v1", "state": "INCONCLUSIVE", "call_count": 1, "report_written": false, "retry_allowed": false}, {"pr_number": 237, "profile_id": "p02-person-profile-offline-agent-mcp-v2", "state": "INCONCLUSIVE", "call_count": 1, "report_written": false, "retry_allowed": false}], "matrix_credit": false, "scenario_credit": false, "acceptance_boundary": "P02 remains PARTIAL; neither terminal attempt earns Agent/MCP matrix or career-wide scenario credit.", "commands": ["pnpm harness epoch:agent-mcp-profile-status --run 95 --pr 185 --profile-id p02-person-profile-offline-agent-mcp-v1", "pnpm harness epoch:agent-mcp-profile-status --run 95 --pr 237 --profile-id p02-person-profile-offline-agent-mcp-v2"]}
       }
     },
     {
@@ -2461,44 +2303,7 @@
       "user_question": "某人物参与的作品里，哪些拥有中文译名？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-p03-person-chinese-title-current-contract-2026-10-15.md",
-        "packages/bangumi-core/src/services/person-service.ts",
-        "packages/tools/src/definitions/read-tools.ts",
-        "apps/mcp/src/result-presenter.ts",
-        "packages/renderer/src/templates/PersonProfileCard.tsx",
-        "tests/unit/person-intelligence.test.ts",
-        "tests/semantic/semantic-tools.test.ts",
-        "tests/integration/mcp-result-presenter.test.ts",
-        "tests/render/render-cards.test.ts",
-        "scripts/acceptance/agent-mcp-profile-registry.json",
-        "scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs",
-        "scripts/acceptance/write-p03-person-name-cn-report.mjs",
-        "scripts/lib/p03-person-name-cn-evidence.mjs",
-        "scripts/agent-harness.mjs",
-        "docs/product/g26-mcp-bundle-attestation.json",
-        "tests/harness/p03-person-name-cn-evidence.test.mjs",
-        "tests/harness/codex-one-tool-mcp-server-p03-profile.test.mjs",
-        "tests/harness/run-p03-person-name-cn-agent-mcp.test.mjs",
-        "tests/harness/write-p03-person-name-cn-report.test.mjs",
-        "docs/research/run95-p03-person-name-cn-fresh-profile-v2-selection-2026-10-22.md",
-        "scripts/acceptance/write-p03-person-name-cn-v2-report.mjs",
-        "scripts/acceptance/validate-p03-person-name-cn-v2-report.mjs",
-        "tests/harness/write-p03-person-name-cn-v2-report.test.mjs",
-        "scripts/generate-tool-acceptance-tasks.py",
-        "apps/mcp/codex-one-tool-mcp-server.mjs",
-        "scripts/lib/codex-profile-tool-summary.mjs",
-        "docs/research/run95-p03-person-name-cn-fresh-profile-v3-selection-2026-10-22.md",
-        "docs/research/run95-p03-structured-readback-gate-review-2026-10-22.md",
-        "docs/research/run95-p03-person-name-cn-fresh-profile-v4-selection-2026-10-22.md",
-        "docs/research/run95-p03-g26-mcp-bundle-attestation-refresh-2026-10-22.md",
-        "docs/live-probes/p03-person-name-cn-public-v4-agent-mcp-run95.json",
-        "scripts/test_acceptance_evidence.py",
-        "tests/harness/agent-harness-cli.test.mjs",
-        "tests/integration/tool-e2e-acceptance.test.ts",
-        "scripts/check-tool-acceptance-table.py"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md","docs/research/run95-p03-person-chinese-title-current-contract-2026-10-15.md","packages/bangumi-core/src/services/person-service.ts","packages/tools/src/definitions/read-tools.ts","apps/mcp/src/result-presenter.ts","packages/renderer/src/templates/PersonProfileCard.tsx","tests/unit/person-intelligence.test.ts","tests/semantic/semantic-tools.test.ts","tests/integration/mcp-result-presenter.test.ts","tests/render/render-cards.test.ts","scripts/acceptance/agent-mcp-profile-registry.json","scripts/acceptance/run-p03-person-name-cn-agent-mcp.mjs","scripts/acceptance/write-p03-person-name-cn-report.mjs","scripts/lib/p03-person-name-cn-evidence.mjs","scripts/agent-harness.mjs","docs/product/g26-mcp-bundle-attestation.json","tests/harness/p03-person-name-cn-evidence.test.mjs","tests/harness/codex-one-tool-mcp-server-p03-profile.test.mjs","tests/harness/run-p03-person-name-cn-agent-mcp.test.mjs","tests/harness/write-p03-person-name-cn-report.test.mjs","docs/research/run95-p03-person-name-cn-fresh-profile-v2-selection-2026-10-22.md","scripts/acceptance/write-p03-person-name-cn-v2-report.mjs","scripts/acceptance/validate-p03-person-name-cn-v2-report.mjs","tests/harness/write-p03-person-name-cn-v2-report.test.mjs","scripts/generate-tool-acceptance-tasks.py","apps/mcp/codex-one-tool-mcp-server.mjs","scripts/lib/codex-profile-tool-summary.mjs","docs/research/run95-p03-person-name-cn-fresh-profile-v3-selection-2026-10-22.md","docs/research/run95-p03-structured-readback-gate-review-2026-10-22.md","docs/research/run95-p03-person-name-cn-fresh-profile-v4-selection-2026-10-22.md","docs/research/run95-p03-g26-mcp-bundle-attestation-refresh-2026-10-22.md","docs/live-probes/p03-person-name-cn-public-v4-agent-mcp-run95.json","scripts/test_acceptance_evidence.py","tests/harness/agent-harness-cli.test.mjs","tests/integration/tool-e2e-acceptance.test.ts","scripts/check-tool-acceptance-table.py"],
       "next_action": "Keep P03 PARTIAL and uncredited as a career-wide scenario; this bounded public profile does not answer the career-wide scenario. P03 v1/v2/v3 are terminal INCONCLUSIVE/no-report with retryAllowed=false. P03 v2 retains its strict zero-error gate. Never retry or recreate them. P03 v4 has a validated REPORT_WRITTEN result with retryAllowed=false; never invoke it again. Its signed report supports only one bangumi.get_person_profile Agent/MCP matrix cell after validation against the exact reviewed source Candidate and durable report disposition; the report-bearing Candidate still requires its own seven-check CI, same-identity review, and Harness integration before merge. The observation covers 18 source subjects, returns five with truncation disclosed, and includes five positive name_cn rows; it does not establish translation correctness, completeness, ordering, or absence of unreturned works. Report: docs/live-probes/p03-person-name-cn-public-v4-agent-mcp-run95.json; SHA-256 b135cfa255ca63f77b782f83922a2172f202c025fb27b161f63d66d6e2c69f77. The original source Candidate b89285a29a43248d279ef8c571ab7b7c050188bc on Base 447e5e24b862f14282dedab07d5813bf68b0c541 had 7/7 CI and same-identity GPT-6 Luna Max PASS; the report-only refresh keeps the MCP bundle unchanged. No account, OAuth, community, write, QQ, or TIM activity occurred.",
       "reopen_when": "A passing separate profile may close only the get_person_profile Agent/MCP matrix cell; keep P03 PARTIAL until a bounded scenario answer is source-verified. Reassess completeness only if official v0 documents pagination or a total for person-work relations.",
       "evidence": {
@@ -2506,12 +2311,7 @@
           "epoch_id": "run95-p03-person-chinese-title-agent-mcp-20261015",
           "profile_id": "p03-person-name-cn-agent-mcp-v1",
           "tool": "bangumi.get_person_profile",
-          "arguments": {
-            "personId": 4765,
-            "includeCredits": true,
-            "maxSubjects": 500,
-            "maxCharacters": 1
-          },
+          "arguments": {"personId": 4765, "includeCredits": true, "maxSubjects": 500, "maxCharacters": 1},
           "calls": 1,
           "auth": "none",
           "claim_state": "UNCLAIMED",
@@ -2617,33 +2417,7 @@
           },
           "credit": "none; P03 remains PARTIAL; no profile was invoked by this correction"
         },
-        "p03_agent_mcp_profile_result_v4_2026_10_22": {
-          "epoch_id": "run95-p03-person-name-cn-fresh-profile-v4-20261022",
-          "profile_id": "p03-person-name-cn-agent-mcp-v4",
-          "claim_state": "REPORT_WRITTEN",
-          "calls": 1,
-          "source_completeness": "undocumented",
-          "report_written": true,
-          "report_path": "docs/live-probes/p03-person-name-cn-public-v4-agent-mcp-run95.json",
-          "report_sha256": "b135cfa255ca63f77b782f83922a2172f202c025fb27b161f63d66d6e2c69f77",
-          "runner_receipt_sha256": "b3afda8d629ce6b02fb5f66617afe742bf01bd323ec04fdad8750fb86086c4bf",
-          "retry_allowed": false,
-          "source_candidate_sha": "b89285a29a43248d279ef8c571ab7b7c050188bc",
-          "base_sha": "447e5e24b862f14282dedab07d5813bf68b0c541",
-          "ci_run": "39770705682",
-          "ci_status": "SUCCESS",
-          "reviewer_id": "gpt-6-luna-max-run95-pr261-round1",
-          "bundle_sha256": "d7fcae785c151687e674dd29cb721cb11df011ab1dba5e49111847e01a1732db",
-          "sanitized_observations": {
-            "subjects_observed": 18,
-            "subjects_returned": 5,
-            "subjects_truncated": true,
-            "positive_name_cn_rows_observed": 5
-          },
-          "sanitized_assertions_passed": true,
-          "structured_content_compatible": true,
-          "credit_scope": "One bangumi.get_person_profile Agent/MCP matrix cell from this validated signed report; does not close P03 or establish full career completeness."
-        }
+        "p03_agent_mcp_profile_result_v4_2026_10_22": {"epoch_id":"run95-p03-person-name-cn-fresh-profile-v4-20261022","profile_id":"p03-person-name-cn-agent-mcp-v4","claim_state":"REPORT_WRITTEN","calls":1,"source_completeness":"undocumented","report_written":true,"report_path":"docs/live-probes/p03-person-name-cn-public-v4-agent-mcp-run95.json","report_sha256":"b135cfa255ca63f77b782f83922a2172f202c025fb27b161f63d66d6e2c69f77","runner_receipt_sha256":"b3afda8d629ce6b02fb5f66617afe742bf01bd323ec04fdad8750fb86086c4bf","retry_allowed":false,"source_candidate_sha":"b89285a29a43248d279ef8c571ab7b7c050188bc","base_sha":"447e5e24b862f14282dedab07d5813bf68b0c541","ci_run":"39770705682","ci_status":"SUCCESS","reviewer_id":"gpt-6-luna-max-run95-pr261-round1","bundle_sha256":"d7fcae785c151687e674dd29cb721cb11df011ab1dba5e49111847e01a1732db","sanitized_observations":{"subjects_observed":18,"subjects_returned":5,"subjects_truncated":true,"positive_name_cn_rows_observed":5},"sanitized_assertions_passed":true,"structured_content_compatible":true,"credit_scope":"One bangumi.get_person_profile Agent/MCP matrix cell from this validated signed report; does not close P03 or establish full career completeness."}
       },
       "related_ids": []
     },
@@ -2727,16 +2501,8 @@
             "source_completeness": "undocumented",
             "unique_subjects": 370,
             "subject_media": {
-              "anime": {
-                "relation_rows": 401,
-                "unique_subjects": 369,
-                "raw_codes": [2]
-              },
-              "game": {
-                "relation_rows": 1,
-                "unique_subjects": 1,
-                "raw_codes": [4]
-              }
+              "anime": { "relation_rows": 401, "unique_subjects": 369, "raw_codes": [2] },
+              "game": { "relation_rows": 1, "unique_subjects": 1, "raw_codes": [4] }
             },
             "claim_limit": "Returned relation rows only; upstream completeness is undocumented."
           },
@@ -2801,10 +2567,7 @@
             "redirect_hops_counted": true,
             "api_retry_attempts_included": true
           },
-          "result_summary": {
-            "state": "value",
-            "keys": ["artifact"]
-          },
+          "result_summary": { "state": "value", "keys": ["artifact"] },
           "report": "docs/live-probes/public-tools-2026-10-15-154413213-10706.json",
           "report_sha256": "a8df54997370c724c0a3e252e2455b6c02064bf51caf50aa4af71a0dfe9281bf",
           "claim_boundary": "One current-catalog anonymous ToolRegistry renderer observation only; no raw relation rows, image bytes, scenario acceptance, Agent/MCP, recency, ongoing-status, or upstream-completeness claim."
@@ -3272,11 +3035,7 @@
       "user_question": "最近更新的用户目录里有哪些高质量专题？",
       "lane": "recorded_product_opportunities",
       "status": "UNASSESSED",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "tests/unit/manage-index-actions.test.ts",
-        "docs/research/run95-m07-manage-index-agent-mcp-no-account-source-contract-2026-10-16.md"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "tests/unit/manage-index-actions.test.ts", "docs/research/run95-m07-manage-index-agent-mcp-no-account-source-contract-2026-10-16.md"],
       "next_action": "Keep M07 UNASSESSED. The selected matrix-only Agent/MCP manage_index profile checks the no-account AUTH_REQUIRED boundary with zero HTTP requests and no account binding; it does not answer the M07 scenario or access a user index. Continue only under the active Harness Run/Epoch and assess a bounded read-only source without binding an account. never retry a consumed claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
@@ -3711,13 +3470,7 @@
       "user_question": "某用户收藏最多的标签是什么？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-oauth-personalization-user-collection-contract-2026-10-13.md",
-        "docs/research/run95-l04-collection-intelligence-agent-mcp-synthetic-2026-10-13-natural-v3.json",
-        "tests/unit/collection-intelligence.test.ts",
-        "tests/unit/l04-collection-intelligence-answer-check.test.ts"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-oauth-personalization-user-collection-contract-2026-10-13.md", "docs/research/run95-l04-collection-intelligence-agent-mcp-synthetic-2026-10-13-natural-v3.json", "tests/unit/collection-intelligence.test.ts", "tests/unit/l04-collection-intelligence-answer-check.test.ts"],
       "next_action": "Keep PARTIAL: an uncoached GPT-6 Luna Max Agent/MCP answer is grounded in a randomized synthetic account-bound collection fixture and passes current provenance, top-tag/count, positive coverage, partial-scope, and no-inference checks. The earlier v8 prompt supplied the expected answer and is not credited. Real OAuth, current-user collection read, and a real personalized reply remain unverified; resume those only after owner-local credentials and official consent.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
@@ -3863,50 +3616,7 @@
       "user_question": "某作品的所有前传、续作和外传是什么？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "docs/live-probes/public-tools-2026-10-12-102328403-99452.json",
-        "docs/tool-catalog.json",
-        "scripts/smoke-public-tools-online.ts",
-        "scripts/acceptance/run-r01-codex-agent-mcp.mjs",
-        "scripts/acceptance/r01-direct-relations-answer-check.mjs",
-        "scripts/acceptance/write-r01-agent-mcp-report.mjs",
-        "tests/unit/r01-codex-agent-mcp-runner.test.ts",
-        "tests/unit/r01-direct-relations-answer-check.test.ts",
-        "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md",
-        "scripts/acceptance/run-r01-codex-agent-mcp.d.mts",
-        "scripts/generate-tool-acceptance-tasks.py",
-        "scripts/test_acceptance_evidence.py",
-        "tests/harness/agent-harness-cli.test.mjs",
-        "tests/harness/frontier-ledger-data.test.mjs",
-        "docs/research/run95-r01-subject-relations-offline-agent-mcp-matrix-2026-10-16.md",
-        "scripts/acceptance/agent-mcp-profile-registry.json",
-        "scripts/lib/r01-relations-offline-profile.mjs",
-        "scripts/lib/r01-relations-offline-fixture.mjs",
-        "scripts/lib/codex-mcp-approval-config.mjs",
-        "scripts/acceptance/run-r01-relations-offline-agent-mcp.mjs",
-        "scripts/acceptance/write-r01-relations-offline-agent-mcp-report.mjs",
-        "scripts/acceptance/validate-r01-relations-offline-agent-mcp-report.mjs",
-        "tests/harness/r01-relations-offline-fixture.test.mjs",
-        "tests/harness/run-r01-relations-offline-agent-mcp.test.mjs",
-        "tests/harness/write-r01-relations-offline-agent-mcp-report.test.mjs",
-        "apps/mcp/codex-one-tool-mcp-server.mjs",
-        "scripts/lib/codex-one-tool-mcp-arguments.mjs",
-        "scripts/lib/codex-profile-tool-summary.mjs",
-        "scripts/agent-harness.mjs",
-        "tests/harness/agent-mcp-profile-claims.test.mjs",
-        "tests/harness/codex-mcp-approval-config.test.mjs",
-        "docs/research/run95-r01-relations-text-projection-offline-matrix-v2-contract-2026-10-23.md",
-        "scripts/lib/r01-relations-text-projection-offline-profile.mjs",
-        "scripts/lib/r01-relations-text-projection-offline-fixture.mjs",
-        "scripts/acceptance/r01-relations-text-projection-answer-check.mjs",
-        "scripts/acceptance/write-r01-relations-text-projection-offline-agent-mcp-v2-report.mjs",
-        "scripts/acceptance/validate-r01-relations-text-projection-offline-agent-mcp-v2-report.mjs",
-        "tests/harness/r01-relations-text-projection-answer-check.test.mjs",
-        "tests/harness/r01-relations-text-projection-offline-fixture.test.mjs",
-        "tests/harness/write-r01-relations-text-projection-offline-agent-mcp-v2-report.test.mjs",
-        "tests/integration/mcp-result-presenter.test.ts"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/live-probes/public-tools-2026-10-12-102328403-99452.json", "docs/tool-catalog.json", "scripts/smoke-public-tools-online.ts", "scripts/acceptance/run-r01-codex-agent-mcp.mjs", "scripts/acceptance/r01-direct-relations-answer-check.mjs", "scripts/acceptance/write-r01-agent-mcp-report.mjs", "tests/unit/r01-codex-agent-mcp-runner.test.ts", "tests/unit/r01-direct-relations-answer-check.test.ts", "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md", "scripts/acceptance/run-r01-codex-agent-mcp.d.mts", "scripts/generate-tool-acceptance-tasks.py", "scripts/test_acceptance_evidence.py", "tests/harness/agent-harness-cli.test.mjs", "tests/harness/frontier-ledger-data.test.mjs", "docs/research/run95-r01-subject-relations-offline-agent-mcp-matrix-2026-10-16.md", "scripts/acceptance/agent-mcp-profile-registry.json", "scripts/lib/r01-relations-offline-profile.mjs", "scripts/lib/r01-relations-offline-fixture.mjs", "scripts/lib/codex-mcp-approval-config.mjs", "scripts/acceptance/run-r01-relations-offline-agent-mcp.mjs", "scripts/acceptance/write-r01-relations-offline-agent-mcp-report.mjs", "scripts/acceptance/validate-r01-relations-offline-agent-mcp-report.mjs", "tests/harness/r01-relations-offline-fixture.test.mjs", "tests/harness/run-r01-relations-offline-agent-mcp.test.mjs", "tests/harness/write-r01-relations-offline-agent-mcp-report.test.mjs", "apps/mcp/codex-one-tool-mcp-server.mjs", "scripts/lib/codex-one-tool-mcp-arguments.mjs", "scripts/lib/codex-profile-tool-summary.mjs", "scripts/agent-harness.mjs", "tests/harness/agent-mcp-profile-claims.test.mjs", "tests/harness/codex-mcp-approval-config.test.mjs", "docs/research/run95-r01-relations-text-projection-offline-matrix-v2-contract-2026-10-23.md", "scripts/lib/r01-relations-text-projection-offline-profile.mjs", "scripts/lib/r01-relations-text-projection-offline-fixture.mjs", "scripts/acceptance/r01-relations-text-projection-answer-check.mjs", "scripts/acceptance/write-r01-relations-text-projection-offline-agent-mcp-v2-report.mjs", "scripts/acceptance/validate-r01-relations-text-projection-offline-agent-mcp-v2-report.mjs", "tests/harness/r01-relations-text-projection-answer-check.test.mjs", "tests/harness/r01-relations-text-projection-offline-fixture.test.mjs", "tests/harness/write-r01-relations-text-projection-offline-agent-mcp-v2-report.test.mjs", "tests/integration/mcp-result-presenter.test.ts"],
       "next_action": "R01 remains PARTIAL. The synthetic offline profile may add only one Agent/MCP matrix cell through the active Harness Run/Epoch and exact Candidate/Base/CI/review gates; never retry a consumed claim or terminal R01 v1, and do not call the live API. It does not establish complete relations, reverse/transitive edges, or official viewing order.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
@@ -4042,7 +3752,9 @@
         "docs/research/run95-r02-r04-c07-terminal-profile-reconciliation-2026-10-21.json",
         "scripts/lib/agent-mcp-execution.mjs",
         "tests/harness/agent-mcp-execution-replay.test.mjs",
-        "docs/research/run95-mcp-failure-stage-contract-2026-10-24.md"
+        "docs/research/run95-mcp-failure-stage-contract-2026-10-24.md",
+        "scripts/lib/harness-terminal-recovery.mjs",
+        "tests/harness/terminal-epoch-recovery.test.mjs"
       ],
       "next_action": "R04 remains UNASSESSED. `get_series_watch_order` v1/v2 and `render_series_watch_order` v1 are terminal INCONCLUSIVE/no-report/no-retry. The historical label “distinct matrix-only render_series_watch_order profile” identifies only the renderer v1 matrix attempt. The earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry. `render_series_watch_order` v2 is REPORT_WRITTEN; it is the separately keyed R04 renderer v2 profile, has retryAllowed=false and remains only its existing Agent/MCP matrix row. It may credit only this Agent/MCP matrix cell, which is already counted; it does not prove visual quality or the theatrical-film scenario. Keep R04 UNASSESSED as a scenario. Historical v2 marker: “keep the R04 theatrical-film scenario UNASSESSED”. Current action: Keep the R04 theatrical-film scenario UNASSESSED; do not claim canonical order or visual quality. Never invoke any terminal profile; continue on another safe, unspent frontier. Future R04 scenario work requires a separate current-source contract. See docs/research/run95-r02-r04-c07-terminal-profile-reconciliation-2026-10-21.json.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
@@ -4062,12 +3774,7 @@
       "user_question": "两个作品之间是否通过系列或人物相连？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": [
-        "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-r05-preflight-no-shared-voice-actor-2026-10-15.md",
-        "docs/research/run95-r05-k-on-season-shared-person-preflight-2026-10-15.json",
-        "docs/research/run95-r05-profile-terminal-disposition-2026-10-15.md"
-      ],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-r05-preflight-no-shared-voice-actor-2026-10-15.md", "docs/research/run95-r05-k-on-season-shared-person-preflight-2026-10-15.json", "docs/research/run95-r05-profile-terminal-disposition-2026-10-15.md"],
       "next_action": "Run #95's fixed R05 profile was claimed on PR #170 and terminated INCONCLUSIVE without a report (retryAllowed=false; see docs/research/run95-r05-profile-terminal-disposition-2026-10-15.md). PR #169's earlier no-claim preflight predates this terminal disposition. Keep R05 UNASSESSED and uncredited; a missing report does not restore eligibility. Never rerun the consumed fixed R05 profile. Continue Run #95 on another safe unspent frontier; any future R05 method requires a separately reviewed, unspent claim and fresh evidence.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
@@ -4451,19 +4158,13 @@
       "user_question": "Can BangumiAgentKit deliver the bounded user value described by Community Discussion Spike?",
       "lane": "recorded_product_opportunities",
       "status": "CLOSED_NO_SAFE_SOURCE",
-      "source_refs": [
-        "docs/product/opportunity-log.md",
-        "docs/research/run95-op003-community-source-contract-2026-10-15.md"
-      ],
+      "source_refs": ["docs/product/opportunity-log.md", "docs/research/run95-op003-community-source-contract-2026-10-15.md"],
       "next_action": "Reopen only when Bangumi publishes a third-party-supported, versioned public discussion API with subject-linked activity and explicit comparable-window semantics, or a specifically selected HTML source receives a current terms/robots, attribution, privacy/deletion, retention, rate, and coverage review and explicit allowlisting.",
       "reopen_when": "A third-party-supported, versioned public discussion API documents subject-linked activity and comparable windows, or a specific HTML source passes a current capability-specific terms/robots, attribution, privacy/deletion, retention, rate, and coverage review and is explicitly allowlisted.",
       "related_ids": [],
       "research_closure": {
         "completed_at": "2026-10-15T03:06:06Z",
-        "evidence_refs": [
-          "docs/research/run95-op003-community-source-contract-2026-10-15.md",
-          "docs/research/run95-community-public-source-contract-2026-10-13.md"
-        ],
+        "evidence_refs": ["docs/research/run95-op003-community-source-contract-2026-10-15.md", "docs/research/run95-community-public-source-contract-2026-10-13.md"],
         "conclusion": "No current source contract safely supports the OP-003 claim. The official v0 schema has no subject discussion event/history route; the unversioned legacy API is documented as accessible for compatibility but stopped and undocumented, so its community capability cannot be verified; the new /p1 discussion schema is explicitly private and has no sudden-growth window/delta contract; and no specific HTML source has a current allowlist and complete terms/coverage review. No runtime request or community data collection occurred. This does not assert that the legacy API has no such capability or that all HTML use is prohibited. G10, G11, and G21 remain PARTIAL."
       },
       "closure_reason": "Closed for the current evidence set: no verifiable public community source satisfies OP-003; v0 does not document the required subject-linked discussion activity, legacy API documentation is hidden and its capabilities are unknown, /p1 is a private frontend API, and no specific HTML route has a current explicit allowlist plus terms and coverage review. This does not claim the legacy API lacks all community features or that HTML is universally unusable."
@@ -4595,7 +4296,10 @@
       "related_ids": [],
       "closure_reason": "Delivered the bounded day-level official /calendar experience frozen in PR-7E, with weekday/first-air-date semantics, explicit coverage and partial/unavailable states, and bounded rendering. Exact episode airing times, timezone, personal collection state, and exhaustive source coverage remain unsupported.",
       "evidence": {
-        "capabilities": ["bangumi.get_calendar_intelligence", "bangumi.render_calendar"],
+        "capabilities": [
+          "bangumi.get_calendar_intelligence",
+          "bangumi.render_calendar"
+        ],
         "tests": [
           "tests/unit/services.test.ts",
           "tests/semantic/semantic-tools.test.ts",
@@ -4720,27 +4424,7 @@
       "user_question": "Can BangumiAgentKit deliver the bounded user value described by Collection Intelligence?",
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
-      "source_refs": [
-        "docs/product/opportunity-log.md",
-        "docs/research/run95-oauth-personalization-user-collection-contract-2026-10-13.md",
-        "docs/research/run95-l04-collection-intelligence-agent-mcp-synthetic-2026-10-13-natural-v3.json",
-        "docs/research/run95-dependency-security-remediation-2026-10-13.md",
-        "tests/unit/writes.test.ts",
-        "tests/unit/capability-policy.test.ts",
-        "tests/unit/manage-index-actions.test.ts",
-        "packages/tools/src/definitions/write-tools.ts",
-        "packages/tools/src/registry.ts",
-        "tests/unit/write-confirmation-preview.test.ts",
-        "docs/research/run95-ux001-auth-status-and-render-visual-review-2026-10-18.md",
-        "docs/research/run95-auth-start-offline-agent-mcp-contract-2026-10-18.md",
-        "docs/research/run95-auth-start-mcp-bundle-attestation-refresh-2026-10-18.md",
-        "packages/renderer/src/templates/CollectionBacklogCard.tsx",
-        "packages/renderer/src/view-model-builders/index.ts",
-        "packages/renderer/src/view-models/index.ts",
-        "tests/render/collection-backlog.test.ts",
-        "tests/render/collection-backlog-visual-qa.test.ts",
-        "docs/research/run95-op009-collection-backlog-visual-qa-2026-10-19.md"
-      ],
+      "source_refs": ["docs/product/opportunity-log.md", "docs/research/run95-oauth-personalization-user-collection-contract-2026-10-13.md", "docs/research/run95-l04-collection-intelligence-agent-mcp-synthetic-2026-10-13-natural-v3.json", "docs/research/run95-dependency-security-remediation-2026-10-13.md", "tests/unit/writes.test.ts", "tests/unit/capability-policy.test.ts", "tests/unit/manage-index-actions.test.ts", "packages/tools/src/definitions/write-tools.ts", "packages/tools/src/registry.ts", "tests/unit/write-confirmation-preview.test.ts", "docs/research/run95-ux001-auth-status-and-render-visual-review-2026-10-18.md", "docs/research/run95-auth-start-offline-agent-mcp-contract-2026-10-18.md", "docs/research/run95-auth-start-mcp-bundle-attestation-refresh-2026-10-18.md", "packages/renderer/src/templates/CollectionBacklogCard.tsx", "packages/renderer/src/view-model-builders/index.ts", "packages/renderer/src/view-models/index.ts", "tests/render/collection-backlog.test.ts", "tests/render/collection-backlog-visual-qa.test.ts", "docs/research/run95-op009-collection-backlog-visual-qa-2026-10-19.md"],
       "next_action": "The Run #95 OP-009 candidate has synthetic callback/auth_status presentation and 65 individually reviewed PNGs (docs/research/run95-ux001-auth-status-and-render-visual-review-2026-10-18.md). The one synthetic offline auth_start Agent/MCP profile call under Harness Epoch run95-auth-start-offline-agent-mcp-20261018 is terminal INCONCLUSIVE/no-report with retryAllowed=false and earns no matrix credit; the sanitized result is docs/research/run95-auth-start-mcp-bundle-attestation-refresh-2026-10-18.md. Never retry it. Keep OP-009 PARTIAL: synthetic URL construction does not establish real OAuth consent, current-user collection behavior, personalized replies, or QQ/TIM delivery. Preserve write confirmation safeguards and keep client/account paths passive while independent work remains. The 2026-10-19 backlog-renderer follow-up adds separate complete-empty/partial-empty states, concise auth/permission/rate-limit/upstream messages, and a deterministic base-vs-candidate receipt: 45 synthetic state/width PNG pairs were individually inspected at base c809dc810df6fc20c1cb1959ec8d2d163eeb3cd2 and renderer commit 9f960a2; report: docs/research/run95-op009-collection-backlog-visual-qa-2026-10-19.md. It changes no OAuth/account/service/write semantics and adds no real account, QQ/TIM, Agent/MCP, or acceptance-matrix evidence. Keep OP-009 PARTIAL.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
@@ -4841,7 +4525,9 @@
       "reopen_when": "An official public API documents subject-linked topic/reply events, or a separate current terms/robots and coverage review approves a specific public HTML source.",
       "research_closure": {
         "completed_at": "2026-10-13T11:40:32Z",
-        "evidence_refs": ["docs/research/run95-community-public-source-contract-2026-10-13.md"],
+        "evidence_refs": [
+          "docs/research/run95-community-public-source-contract-2026-10-13.md"
+        ],
         "conclusion": "The official public v0 OpenAPI has no subject-topic/reply/discussion route; search heat is collection count; /p1 is private frontend API. Earlier HTML candidates are not allowlisted because this Run did not perform a current terms/robots and coverage review. No runtime request or content collection occurred."
       },
       "closure_reason": "Closed for the current evidence set: no supported public structured discussion source is documented, private /p1 is out of scope, and the explored HTML candidates do not have a current explicit allowlist or terms/robots/coverage review. This does not declare HTML universally unusable.",
@@ -4972,7 +4658,10 @@
       ],
       "next_action": "Keep PARTIAL. The 0.75 default remains configurable per render, with body/display stacks and trusted operator-provided font files. The 1,770-image/59-sheet synthetic matrix is visual evidence only. Theme-pack preference, production-font delivery, and real QQ/TIM display remain separate acceptance evidence. Before selecting a renderer profile, read the active Harness Run/Epoch; the Harness PR/Run is authoritative for claim availability and terminal results. Never retry or recreate a consumed profile. No QQ/TIM display credit is established.",
       "reopen_when": "The user requests additional theme packs/settings surfaces, Renderer templates or image output behavior changes, or real QQ/TIM image display is explicitly selected for offline-to-live acceptance.",
-      "related_ids": ["OP-008", "DIM-RENDERER-STANDALONE"]
+      "related_ids": [
+        "OP-008",
+        "DIM-RENDERER-STANDALONE"
+      ]
     }
   ]
 }

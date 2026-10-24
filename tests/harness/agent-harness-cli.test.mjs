@@ -1,3 +1,5 @@
+import { terminalRecoveryFixture } from './fixtures/terminal-recovery.mjs';
+import { LEGACY_R04_TERMINAL_RECOVERY } from '../../scripts/lib/harness-terminal-recovery.mjs';
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import fs from 'node:fs';
@@ -10262,5 +10264,150 @@ test('v5 subject-card result routes its report through the registered validator 
   } finally {
     environment.cleanup();
     fs.rmSync(harnessRoot, { recursive: true, force: true });
+  }
+});
+
+function terminalRecoveryEnvironment(extra = {}) {
+  const { run, epoch, proof, claim } = terminalRecoveryFixture();
+  return {
+    claim,
+    run,
+    epoch,
+    environment: createMockEnvironment({
+      runIssueNumber: 95,
+      runBody: renderRunBody(run),
+      prBody: renderEpochBody(epoch),
+      branch: 'master',
+      featureBranch: epoch.branch,
+      featureHeadSha: proof.pr.headRefOid,
+      draft: false,
+      candidateIsAncestor: true,
+      gitObjects: {
+        [`${LEGACY_R04_TERMINAL_RECOVERY.sourceSha}:scripts/acceptance/agent-mcp-profile-registry.json`]:
+          Buffer.from(
+            JSON.stringify({ schemaVersion: 1, profiles: [proof.sourceProfile] }),
+          ).toString('base64'),
+      },
+      repositoryLabels: Object.fromEntries(proof.labels.map((label) => [label.name, label])),
+      workflowRuns: {
+        [claim.ciRunId]: {
+          headSha: claim.sourceCandidateSha,
+          status: 'completed',
+          conclusion: 'success',
+          jobs: claim.ciChecks.map((check) => ({
+            name: check.name,
+            status: 'completed',
+            conclusion: 'success',
+          })),
+        },
+      },
+      ...extra,
+    }),
+  };
+}
+const terminalRecoveryArgs = (claim) => [
+  'epoch:resume-terminal-failure',
+  '--run',
+  '95',
+  '--pr',
+  '267',
+  '--expected-claim-sha256',
+  canonicalHash(claim),
+];
+
+test('terminal recovery CLI verifies historical proof and preserves the exact claim without query/merge authority', () => {
+  const { environment, claim, epoch, run } = terminalRecoveryEnvironment();
+  try {
+    const result = environment.execute(terminalRecoveryArgs(claim));
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).state, 'TERMINAL_RECOVERY_RESUMED');
+    const state = environment.readState();
+    const savedRun = parseControlBlock(state.runBody, RUN_MARKER);
+    const savedEpoch = parseControlBlock(state.prBody, EPOCH_MARKER);
+    assert.equal(savedRun.active_epoch_pr, 267);
+    assert.equal(savedEpoch.state, 'CORRECTIVE_REQUIRED');
+    assert.equal(savedEpoch.candidate_sha, null);
+    assert.deepEqual(
+      savedEpoch.adversarial_preflight.agent_mcp_profile_dispositions[claim.profileId],
+      claim,
+    );
+    assert.deepEqual(savedEpoch.review, epoch.review);
+    assert.deepEqual(savedRun.outer_sol, run.outer_sol);
+    assert.equal(
+      state.calls.some((call) => call.args[0] === 'pr' && call.args[1] === 'merge'),
+      false,
+    );
+    const patchCount = state.calls.filter((call) => call.args.includes('PATCH')).length;
+    assert.equal(patchCount, 3);
+    const replay = environment.execute(terminalRecoveryArgs(claim));
+    assert.equal(replay.status, 0, replay.stderr);
+    assert.equal(JSON.parse(replay.stdout).state, 'TERMINAL_RECOVERY_ALREADY_RESUMED');
+    assert.equal(
+      environment.readState().calls.filter((call) => call.args.includes('PATCH')).length,
+      patchCount,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('terminal recovery CLI resumes either partial control write without duplicate history or consumption', () => {
+  for (const failure of [{ failNextPullRequestPatch: true }, { failIssuePatchAt: 2 }]) {
+    const { environment, claim, run } = terminalRecoveryEnvironment(failure);
+    try {
+      const interrupted = environment.execute(terminalRecoveryArgs(claim));
+      assert.notEqual(interrupted.status, 0);
+      const pending = parseControlBlock(environment.readState().runBody, RUN_MARKER);
+      assert.equal(pending.state, 'TERMINAL_RECOVERY_PENDING');
+      assert.equal(pending.active_epoch_pr, null);
+      const brief = environment.execute([
+        'continuation:show',
+        '--run',
+        '95',
+        '--goal-state',
+        'active',
+      ]);
+      assert.equal(brief.status, 0, brief.stderr);
+      assert.equal(JSON.parse(brief.stdout).next_action, 'RESUME_TERMINAL_RECOVERY');
+      const resumed = environment.execute(terminalRecoveryArgs(claim));
+      assert.equal(resumed.status, 0, resumed.stderr);
+      const savedRun = parseControlBlock(environment.readState().runBody, RUN_MARKER);
+      const savedEpoch = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+      assert.equal(savedRun.terminal_recovery_history.length, 1);
+      assert.equal(savedEpoch.terminal_recovery_history.length, 1);
+      assert.deepEqual(savedRun.outer_sol, run.outer_sol);
+    } finally {
+      environment.cleanup();
+    }
+  }
+});
+
+test('terminal recovery CLI refuses another active Epoch, changed claim, missing CI or orphan report before any control mutation', () => {
+  for (const kind of ['active', 'claim', 'ci', 'report']) {
+    const fixture = terminalRecoveryEnvironment();
+    const { environment, claim } = fixture;
+    try {
+      const state = environment.readState();
+      if (kind === 'active') {
+        const run = parseControlBlock(state.runBody, RUN_MARKER);
+        run.active_epoch_pr = 274;
+        run.state = 'EPOCH_ACTIVE';
+        state.runBody = renderRunBody(run);
+      }
+      if (kind === 'claim') claim.finishedAt = 'changed after inspection';
+      if (kind === 'ci') state.workflowRuns[claim.ciRunId].conclusion = 'failure';
+      if (kind === 'report')
+        state.treePaths = ['docs/live-probes/synthetic-terminal-recovery.json'];
+      fs.writeFileSync(environment.statePath, JSON.stringify(state));
+      const result = environment.execute(terminalRecoveryArgs(claim));
+      assert.notEqual(result.status, 0, kind);
+      assert.equal(
+        environment.readState().calls.some((call) => call.args.includes('PATCH')),
+        false,
+        kind,
+      );
+    } finally {
+      environment.cleanup();
+    }
   }
 });

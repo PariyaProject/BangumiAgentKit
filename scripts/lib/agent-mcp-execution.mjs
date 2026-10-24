@@ -108,6 +108,7 @@ export function firstAgentMcpExecutionFailure(context) {
     checks.exactCallSequence !== true ||
     checks.exactToolEvents !== true ||
     checks.mcpToolErrorResultCountZero !== true ||
+    (Object.hasOwn(checks, 'codexErrorCountsMatch') && checks.codexErrorCountsMatch !== true) ||
     checks.safeWebSearchErrorClassification !== true
   ) {
     reasonCode = 'AGENT_MCP_TOOL_RESULT_INVALID';

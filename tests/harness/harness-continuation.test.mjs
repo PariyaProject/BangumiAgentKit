@@ -283,3 +283,23 @@ test('blocked app Goals route to the app control without fabricating a repositor
   assert.equal(brief.next_action, 'RESUME_CODEX_GOAL_IN_APP');
   assert.equal(brief.run_state, 'EPOCH_ACTIVE');
 });
+
+test('interrupted terminal recovery routes to its same intent below current human and app controls', () => {
+  let state = {
+    ...run(),
+    state: 'TERMINAL_RECOVERY_PENDING',
+    active_epoch_pr: null,
+    pending_terminal_recovery: { pr: 267 },
+  };
+  const brief = (goalState = 'active') => buildContinuationBrief({ run: state, goalState });
+  assert.equal(brief().next_action, 'RESUME_TERMINAL_RECOVERY');
+  assert.equal(brief('paused').next_action, 'RESUME_CODEX_GOAL_IN_APP');
+  state = appendContinuationEvent(state, null, directive('pause'), 0);
+  assert.equal(brief().next_action, 'WAIT_FOR_EXPLICIT_CONTINUE');
+  assert.throws(() => assertContinuationMayAdvance(state, null), errorCode('HUMAN_PAUSE_ACTIVE'));
+  state = appendContinuationEvent(state, null, directive('continue'), 1);
+  assertContinuationMayAdvance(state, null);
+  assert.equal(brief().next_action, 'RESUME_TERMINAL_RECOVERY');
+  state = appendContinuationEvent(state, null, directive('replan'), 2);
+  assert.equal(brief().next_action, 'COMPLETE_REQUESTED_REPLAN');
+});

@@ -287,6 +287,19 @@ test('diagnostics fail closed on payload-shaped additions and keep unknown count
   assert.equal(diagnostic.counters.codexStderrBytes, null);
 });
 
+test('shared classification preserves the C07 error-count agreement gate before artifact/report work', () => {
+  const { observations } = replayFixture();
+  const replay = evaluateC07RenderComparisonOfflineExecution({
+    ...observations,
+    candidateBundleCurrent: () => true,
+    captureArtifact: () => ({ sha256: 'a'.repeat(64) }),
+  });
+  assert.equal(replay.passed, true);
+  const context = structuredClone(replay.diagnosticContext);
+  context.checks.codexErrorCountsMatch = false;
+  assert.equal(firstAgentMcpExecutionFailure(context).reasonCode, 'AGENT_MCP_TOOL_RESULT_INVALID');
+});
+
 test('C07 rejects contradictory MCP aliases, foreign calls and incomplete event streams before capture', () => {
   for (const variant of [
     'conflicting-error',

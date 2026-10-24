@@ -82,9 +82,18 @@ and a later report-validator fix; Candidate evidence must carry the **complete**
 prior disposition unchanged. An immutability rejection alone does not establish
 that Candidate refresh is impossible.
 
-A governed recovery route must verify same PR/branch, exact historical evidence,
-terminal latches, no accepted/orphan report and absence of active/reserved work.
-Genuine Human/protected findings remain ineligible. Resumption cannot grant PASS,
-query or merge authority. Any no-credit scope amendment must be explicit and
-reviewed. Canonical mechanics belong in `docs/agent/HARNESS.md`; this contract
-itself neither resumes the parked PR nor implements such an override.
+The pinned `epoch:resume-terminal-failure` route verifies same PR/branch, exact
+historical evidence, terminal latches, no accepted/orphan report and absence of
+active/reserved work. Genuine Human/protected findings remain ineligible.
+Its write-ahead intent makes interrupted control writes resumable without
+changing the claim, review history or consumed budget. It clears stale review
+authority and appends an explicit no-credit scope amendment; fresh ordinary
+Candidate/Base/CI/review gates remain mandatory. Unit tests and actual CLI
+simulations cover the successful pairing, both interrupted-write boundaries,
+idempotent replay, unsafe inputs and current pause/continue routing. These are
+synthetic control observations, not an actual resumption of PR #267.
+
+Canonical mechanics are in `docs/agent/HARNESS.md` §10. While this change's own
+Epoch is active, PR #267 remains parked. The route grants no PASS, query,
+replacement-reviewer or merge authority and does not permit a spent-profile
+retry.

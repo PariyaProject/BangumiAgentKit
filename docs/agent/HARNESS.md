@@ -872,6 +872,49 @@ integration. The legacy `PARKED_REVIEW_LIMIT` / `QUALITY_CIRCUIT_BREAKER`
 combination may be migrated in place with
 `epoch:resume-final-corrective`; it is not produced by the normal lifecycle.
 
+### Pinned legacy technical-terminal migration
+
+One reviewed migration corrects Run #95 PR #267's technical no-report park:
+
+    pnpm harness epoch:resume-terminal-failure --run 95 --pr 267 \
+      --expected-claim-sha256 <canonical-sha256-of-the-observed-original-disposition>
+
+This is limited to the exact R04 v3 Epoch, original source Candidate
+`a93e1e5c06954a1b195f6603f81d47498d7a6eda`, parked head
+`5b0bcc646773cdab61228c1b0a9e052e3f05e539` and recorded technical park-reason
+digest. It is not a general resume command for `PARKED_FOR_HUMAN`.
+Any Human verdict, unresolved finding, different park, active/pending Epoch,
+review reservation or non-completed reviewer runtime is ineligible. Complete
+the current Epoch before using it. Preserve the deliverable existing reviewer
+identity under §2/§9; this migration grants no replacement context.
+
+The command verifies the same open PR/branch and source/head/Base ancestry,
+reads the immutable source registry, matches the caller-observed claim digest,
+source PASS/reviewer, registry/arguments/receipt-key bindings and historical
+seven-check CI run, and reads both permanent latches. Accepted, unaccepted or
+orphan reports prevent the migration. Every original disposition field, review
+record and consumed budget remains unchanged; no query or Codex execution is
+performed.
+
+Three sequential control writes use pre-write reread and post-write readback:
+Run write-ahead intent → prepared Epoch → paired active Run. The intermediate
+`TERMINAL_RECOVERY_PENDING` state blocks new Epochs and routes continuation to
+the same intent. An interrupted write can resume only with the same claim,
+head and exact prepared scope; a completed paired invocation is read-only.
+Current human pause/replan and app Goal controls retain priority. GitHub has
+no atomic multi-body compare-and-swap; use one writer and reinspect after an
+uncertain response.
+
+Preparation clears stale Candidate/PASS/CI authority and preflight completion,
+leaves Scope Closure open, and appends an explicit no-credit amendment to the
+original acceptance criteria/history. That amendment permits integration of
+freshly reviewed implementation with the original `INCONCLUSIVE` disposition;
+it does not accept a report or credit any matrix/scenario row. Synchronize the
+same branch with current master, establish fresh Candidate/Base/exact-SHA CI
+and complete preflight including the **entire unchanged** prior disposition,
+then obtain the next normal same-reviewer PASS and ordinary integration gates.
+The original no-report/no-retry result stays terminal throughout.
+
 Only an Outer Run in `ACTIVE` state with no active or pending Epoch may start a
 new Epoch. An Epoch in final corrective remains active. Legacy circuit-breaker,
 stopped, completed, and integration-blocked states reject Epoch creation
