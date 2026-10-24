@@ -5,6 +5,11 @@ const V2_PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v2';
 const V3_PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v3';
 const V4_PROFILE_ID = 'c07-render-comparison-offline-agent-mcp-matrix-v4';
 
+// Identity comes from the exact trusted Harness review/claim, not model-looking spelling.
+export function isC07ReviewerId(reviewerId) {
+  return typeof reviewerId === 'string' && reviewerId.trim().length > 0;
+}
+
 function createConfig({
   id,
   epochId,
@@ -26,9 +31,7 @@ function createConfig({
   const cohorts = configuredCohorts ?? [
     { keyword, subjectId, cohortLabel, subjectName, subjectNameCn },
   ];
-  const frozenCohorts = Object.freeze(
-    cohorts.map((cohort) => Object.freeze({ ...cohort })),
-  );
+  const frozenCohorts = Object.freeze(cohorts.map((cohort) => Object.freeze({ ...cohort })));
   const primary = frozenCohorts[0];
   const expectedArguments = Object.freeze({
     cohorts: Object.freeze(
@@ -63,7 +66,8 @@ function createConfig({
     cohorts: frozenCohorts,
     expectedArguments,
     subjectName:
-      primary.subjectName ?? `Synthetic Cohort ${primary.cohortLabel.at(-1)} Work ${primary.subjectId}`,
+      primary.subjectName ??
+      `Synthetic Cohort ${primary.cohortLabel.at(-1)} Work ${primary.subjectId}`,
     subjectNameCn: primary.subjectNameCn ?? `${primary.cohortLabel} 作品 ${primary.subjectId}`,
     receiptKind: `c07-render-comparison-offline-runner-receipt-${
       id.endsWith('-v4') ? 'v4' : id.endsWith('-v3') ? 'v3' : id.endsWith('-v2') ? 'v2' : 'v1'
@@ -141,8 +145,7 @@ const CONFIGS = new Map([
       argumentProfile: 'fixed-c07-synthetic-cohorts-f-g-render-comparison-matrix-v4',
       profile: 'run95-c07-render-comparison-offline-fixture-matrix-v4',
       reportPath: 'docs/live-probes/c07-render-comparison-offline-agent-mcp-matrix-v4-run95.json',
-      selectionEvidencePath:
-        'docs/research/run95-c07-two-cohort-v4-selection-2026-10-23.md',
+      selectionEvidencePath: 'docs/research/run95-c07-two-cohort-v4-selection-2026-10-23.md',
       claimLabelName: 'harness-r95-c07-render-v4-claimed',
       evidenceKind: 'codex_cli_c07_render_comparison_offline_agent_mcp_matrix_v4',
       answerCheckMethod: 'c07-exact-synthetic-two-cohort-render-comparison-execution-only-v4',

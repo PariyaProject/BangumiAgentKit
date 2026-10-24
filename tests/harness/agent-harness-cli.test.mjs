@@ -3713,6 +3713,58 @@ test('C07 v4 Harness profile claim persists the exact successful CI run and chec
   }
 });
 
+test('C07 opaque identities survive the actual claim and terminal result without weakening exact identity binding', () => {
+  const profile = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
+  const { environment, epoch } = agentMcpProfileReviewReadyEnvironment(profile);
+  const reviewerId = 'opaque://reviewer handle#9';
+  epoch.review_history[0].reviewer_id = reviewerId;
+  const state = environment.readState();
+  state.prBody = renderEpochBody(epoch);
+  fs.writeFileSync(environment.statePath, JSON.stringify(state));
+  const keys = generateG04RunnerReceiptKeyPair();
+  const common = ['--run', '95', '--pr', '42', '--profile-id', profile.id];
+  const claim = (id) =>
+    environment.execute([
+      'epoch:agent-mcp-profile-claim',
+      ...common,
+      '--bundle-sha256',
+      'c'.repeat(64),
+      '--reviewer-id',
+      id,
+      '--runner-public-key',
+      keys.publicKeyBase64,
+    ]);
+  try {
+    assert.equal(claim('different opaque identity').status, 2);
+    const claimed = claim(reviewerId);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claimId = JSON.parse(claimed.stdout).claimId;
+    const terminal = environment.execute([
+      'epoch:agent-mcp-profile-result',
+      ...common,
+      '--claim-id',
+      claimId,
+      '--state',
+      'INCONCLUSIVE',
+    ]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    const saved = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.agent_mcp_profile_dispositions[profile.id];
+    assert.equal(saved.reviewerId, reviewerId);
+    assert.equal(saved.retryAllowed, false);
+    assert.equal(saved.state, 'INCONCLUSIVE');
+    assert.equal(claim(reviewerId).status, 2);
+    const unchanged = environment.readState();
+    unchanged.candidateRefreshRange = `${sha('b')}...HEAD`;
+    unchanged.candidateRefreshPaths = [];
+    fs.writeFileSync(environment.statePath, JSON.stringify(unchanged));
+    const merged = environment.execute(['epoch:merge', '--run', '95', '--pr', '42']);
+    assert.equal(merged.status, 0, merged.stderr);
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('C07 v4 profile result reaches the sanitized report validator', () => {
   const profile = getAgentMcpProfileById(C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID);
   assert.ok(profile);

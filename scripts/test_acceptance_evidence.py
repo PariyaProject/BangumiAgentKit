@@ -10962,6 +10962,15 @@ class C07RenderComparisonOfflineProfileReportValidationTests(unittest.TestCase):
         self.assertTrue(GENERATOR.codex_c07_render_comparison_offline_frontier_is_unassessed())
         self.assertTrue(self.validate_report(self.report))
 
+    def test_c07_opaque_reviewer_spelling_does_not_replace_claim_identity_authority(self):
+        for reviewer_id in ('/root/pr271_review', 'opaque://reviewer handle#9'):
+            report = json.loads(json.dumps(self.report))
+            report['reviewerId'] = reviewer_id
+            report['runnerReceipt']['payload']['reviewerId'] = reviewer_id
+            self.assertTrue(self.validate_report(report))
+        report['reviewerId'] = '   '
+        self.assertFalse(self.validate_report(report))
+
     def test_v3_report_accepts_only_bounded_safe_web_search_error_counts(self):
         profile = GENERATOR.CODEX_C07_RENDER_COMPARISON_OFFLINE_PROFILE_V3
         report = self.build_v3_report()

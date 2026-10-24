@@ -170,21 +170,27 @@ async function main() {
   long.cohorts[0]!.subjects[0]!.name =
     'A Very Long Original Title: Across the Summer Sky and the Distant Harbor';
   const large = structuredClone(complete);
+  const longOriginal = structuredClone(complete);
+  longOriginal.cohorts[0]!.subjects[0]!.name = '長い原題'.repeat(45);
+  longOriginal.cohorts[0]!.subjects[0]!.displayName = '原題境界';
   const heat = large.metrics.find((metric) => metric.key === 'heat')!;
   heat.averages = [2150000, 9600000];
   heat.delta = 7450000;
-  const cases = matrix
-    ? ([
-        ['complete', complete],
-        ['partial', partial],
-        ['missing-covers', missing],
-        ['long-titles', long],
-        ['large-counts', large],
-      ] as const)
-    : ([
-        ['complete', complete],
-        ['partial', partial],
-      ] as const);
+  const cases = process.argv.includes('--long-original-only')
+    ? ([['long-original', longOriginal]] as const)
+    : matrix
+      ? ([
+          ['complete', complete],
+          ['partial', partial],
+          ['missing-covers', missing],
+          ['long-titles', long],
+          ['long-original', longOriginal],
+          ['large-counts', large],
+        ] as const)
+      : ([
+          ['complete', complete],
+          ['partial', partial],
+        ] as const);
   if (process.argv.includes('--export-fixtures')) {
     await writeFile(
       path.join(output, 'fixtures.json'),

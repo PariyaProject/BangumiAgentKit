@@ -15,6 +15,7 @@ import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
+  isC07ReviewerId,
 } from '../lib/c07-render-comparison-offline-profile.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -457,7 +458,7 @@ export function validateC07RenderComparisonOfflineProfileReport(report, claim, r
     report.profile !== 'codex-luna-max-offline-agent-mcp-matrix-v1' ||
     report.model !== PROFILE.model ||
     report.reasoningEffort !== PROFILE.reasoningEffort ||
-    !/^gpt-6-luna-max-run95-pr\d+-round[1-9]\d*$/u.test(report.reviewerId ?? '') ||
+    !isC07ReviewerId(report.reviewerId) ||
     !/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/u.test(report.codexCliVersion ?? '') ||
     !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(report.observedAt ?? '') ||
     report.registrySha256 !== profileRegistrySha256 ||

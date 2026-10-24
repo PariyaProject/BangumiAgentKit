@@ -211,6 +211,7 @@ import {
   C07_RENDER_COMPARISON_OFFLINE_V3_PROFILE_ID,
   C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
   getC07RenderComparisonOfflineConfig,
+  isC07ReviewerId,
 } from './lib/c07-render-comparison-offline-profile.mjs';
 import {
   G01_RENDER_QUERY_OFFLINE_PROFILE_ID,
@@ -4086,6 +4087,12 @@ function readAgentMcpProfileLabels() {
   return labels;
 }
 
+function isAgentMcpProfileReviewerId(profile, reviewerId, prNumber) {
+  return getC07RenderComparisonOfflineConfig(profile?.id)
+    ? isC07ReviewerId(reviewerId)
+    : isG16LunaMaxReviewerId(reviewerId, prNumber);
+}
+
 function assertAgentMcpProfileReviewReadiness(
   { runNumber, prNumber, profile, runnerReceiptPublicKey },
   { checkRunnerReceiptKey = true, checkBundle = true } = {},
@@ -4147,7 +4154,7 @@ function assertAgentMcpProfileReviewReadiness(
     latestReview?.candidate_sha !== candidateSha ||
     latestReview.reviewed_base_sha !== baseSha ||
     latestReview.verdict !== 'PASS' ||
-    !isG16LunaMaxReviewerId(latestReview.reviewer_id, Number(prNumber)) ||
+    !isAgentMcpProfileReviewerId(profile, latestReview.reviewer_id, Number(prNumber)) ||
     (profile.id === 'c02-cardcaptor-tv-movie-v1' &&
       latestReview.reviewer_id !== epoch.review_history?.[0]?.reviewer_id) ||
     (runnerReceiptPublicKey?.reviewerId !== undefined &&
@@ -4161,7 +4168,7 @@ function assertAgentMcpProfileReviewReadiness(
   ) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_CLAIM_GATE_FAILED',
-      'A profile one-shot claim requires the clean active exact Candidate, unchanged Base, seven-check CI, and exact Luna Max PASS.',
+      'A profile one-shot claim requires the clean active exact Candidate, unchanged Base, seven-check CI, and exact trusted Product PASS; execution retains its pinned model and effort.',
       { runNumber, prNumber, candidateSha, baseSha, profileId: profile.id },
     );
   }
@@ -5095,7 +5102,7 @@ function commandEpochAgentMcpProfileResult(options) {
     current.sourceCandidateSha === current.ciSha &&
     current.ciStatus === 'SUCCESS' &&
     current.reviewerId &&
-    isG16LunaMaxReviewerId(current.reviewerId, Number(prNumber)) &&
+    isAgentMcpProfileReviewerId(profile, current.reviewerId, Number(prNumber)) &&
     current.bundleSha256 &&
     current.runnerReceiptPublicKeySha256 &&
     current.retryAllowed === false &&
@@ -8809,7 +8816,7 @@ function assertC07RenderComparisonOfflineProfileReconciledBeforeMerge(
     latestReview?.reviewed_base_sha !== epoch.base_sha ||
     latestReview?.verdict !== 'PASS' ||
     epoch.review_pass_sha !== epoch.candidate_sha ||
-    !isG16LunaMaxReviewerId(latestReview?.reviewer_id, Number(prNumber)) ||
+    !isC07ReviewerId(latestReview?.reviewer_id) ||
     !epoch.advances_frontier_ids?.includes('C07')
   ) {
     throw new HarnessInvariantError(

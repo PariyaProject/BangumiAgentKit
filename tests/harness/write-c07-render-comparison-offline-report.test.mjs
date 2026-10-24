@@ -201,6 +201,34 @@ test('C07 report builder signs only sanitized matrix evidence with no scenario c
   assert.equal(Object.hasOwn(built.report.artifact, 'id'), false);
 });
 
+test('C07 signed reports preserve opaque reviewer identities and reject a mismatching claim', () => {
+  for (const reviewerId of ['/root/pr271_review', 'opaque://reviewer handle#9']) {
+    const { input, keyPair } = fixtureInput(PROFILE_V4);
+    input.claim.reviewerId = reviewerId;
+    const built = buildC07RenderComparisonOfflineProfileReport(input, {
+      privateKey: keyPair.privateKey,
+    });
+    assert.equal(built.passed, true, JSON.stringify(built));
+    assert.equal(
+      validateC07RenderComparisonOfflineProfileReport(built.report, input.claim).passed,
+      true,
+    );
+    assert.equal(
+      validateC07RenderComparisonOfflineProfileReport(built.report, {
+        ...input.claim,
+        reviewerId: 'other identity',
+      }).passed,
+      false,
+    );
+    const modified = structuredClone(built.report);
+    modified.reviewerId = 'other identity';
+    assert.equal(
+      validateC07RenderComparisonOfflineProfileReport(modified, input.claim).passed,
+      false,
+    );
+  }
+});
+
 test('C07 report validator rejects changed fixture counters and any modified signed evidence', () => {
   const { input, keyPair } = fixtureInput();
   const built = buildC07RenderComparisonOfflineProfileReport(input, {

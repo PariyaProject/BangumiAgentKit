@@ -15020,7 +15020,7 @@ def codex_c07_render_comparison_offline_profile_report_is_valid(
         or report.get('model') != 'gpt-6-luna'
         or report.get('reasoningEffort') != 'max'
         or not isinstance(report.get('reviewerId'), str)
-        or re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', report['reviewerId']) is None
+        or not report['reviewerId'].strip()
         or not isinstance(report.get('codexCliVersion'), str)
         or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
         or not isinstance(observed_at, str)

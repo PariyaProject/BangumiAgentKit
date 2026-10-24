@@ -11,6 +11,7 @@ import type { SubjectCohortComparisonViewModel } from '../view-models/index.js';
 
 const TYPE = { title: 30, subject: 18, score: 44, value: 20, body: 16, small: 16 };
 const SPACE = { xs: 4, sm: 8, md: 16, lg: 24 };
+const INLINE_ORIGINAL_NAME_LIMIT = 40;
 type Metric = SubjectCohortComparisonViewModel['metrics'][number];
 type Cohort = SubjectCohortComparisonViewModel['cohorts'][number];
 
@@ -134,7 +135,7 @@ export const AnimeMagazineComparisonCard: React.FC<{
       data-render-root
       data-render-pack="anime-magazine"
       data-render-theme={theme.name}
-      data-design-baseline="c07-anime-magazine-v1"
+      data-design-baseline="c07-anime-magazine-v2"
       style={css}
     >
       <style>{`
@@ -192,11 +193,9 @@ export const AnimeMagazineComparisonCard: React.FC<{
               <div
                 data-layout="magazine-cover"
                 style={{
-                  height: image ? coverHeight - (paired && index === 0 ? SPACE.md : 0) : undefined,
                   minHeight: coverHeight - (paired && index === 0 ? SPACE.md : 0),
                   display: 'flex',
                   flexDirection: 'column',
-                  overflow: 'clip',
                   borderRadius:
                     index === 0
                       ? '56% 44% 20px 20px / 12% 9% 20px 20px'
@@ -205,12 +204,24 @@ export const AnimeMagazineComparisonCard: React.FC<{
                   position: 'relative',
                 }}
               >
+                {/* Clip artwork itself; original names remain in normal flow at any supported font scale. */}
                 {image ? (
-                  <img
-                    src={image}
-                    alt={subject?.displayName || '群体样本封面'}
-                    style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+                  <>
+                    <img
+                      src={image}
+                      alt={subject?.displayName || '群体样本封面'}
+                      style={{
+                        display: 'block',
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: 'inherit',
+                      }}
+                    />
+                    <div aria-hidden style={{ minHeight: 64, flexGrow: 1 }} />
+                  </>
                 ) : (
                   <div
                     data-cover-state="missing"
@@ -231,12 +242,14 @@ export const AnimeMagazineComparisonCard: React.FC<{
                     <span>{subject ? '封面暂缺' : '暂无可展示作品'}</span>
                   </div>
                 )}
-                {subject?.name ? (
+                {subject?.name && subject.name.length <= INLINE_ORIGINAL_NAME_LIMIT ? (
                   <figcaption
+                    data-original-title
                     style={{
-                      position: image ? 'absolute' : 'static',
-                      insetInline: 0,
-                      bottom: 0,
+                      position: 'relative',
+                      zIndex: 1,
+                      marginTop: image ? 'auto' : undefined,
+                      borderRadius: '0 0 20px 20px',
                       padding: SPACE.sm,
                       fontSize: TYPE.small,
                       lineHeight: 1.4,
@@ -253,6 +266,26 @@ export const AnimeMagazineComparisonCard: React.FC<{
           );
         })}
       </section>
+
+      {cohorts.some(
+        (cohort) => (cohort.subjects[0]?.name.length ?? 0) > INLINE_ORIGINAL_NAME_LIMIT,
+      ) ? (
+        <section
+          aria-label="较长原文标题"
+          style={{ marginTop: SPACE.sm, fontSize: TYPE.small, color: 'var(--mag-muted)' }}
+        >
+          {cohorts.map((cohort, index) => {
+            const name = cohort.subjects[0]?.name;
+            if (!name || name.length <= INLINE_ORIGINAL_NAME_LIMIT) return null;
+            return (
+              <p key={index} style={{ marginTop: SPACE.xs, overflowWrap: 'anywhere' }}>
+                <span>{index === 0 ? 'A' : 'B'} 原文标题 · </span>
+                <span data-original-title>{name}</span>
+              </p>
+            );
+          })}
+        </section>
+      ) : null}
 
       {cohorts.length === 0 ? (
         <p style={{ marginBlock: SPACE.lg }}>尚未取得群体样本，无法计算比较结果。</p>
@@ -403,7 +436,11 @@ export const AnimeMagazineComparisonCard: React.FC<{
               {index === 0 ? 'A' : 'B'}
             </span>
           ))}
-          {paired ? <span style={{ textAlign: 'right' }}>差值 B − A</span> : null}
+          {paired ? (
+            <span style={{ textAlign: 'right' }}>
+              差值 <span style={{ display: 'inline-block', whiteSpace: 'nowrap' }}>B − A</span>
+            </span>
+          ) : null}
         </div>
         {metrics.map((metric) => {
           const label =
@@ -523,7 +560,12 @@ export const AnimeMagazineComparisonCard: React.FC<{
             gap: SPACE.sm,
           }}
         >
-          <span>Bangumi 公共条目 · {dateLabel(viewModel.source.official.retrievedAt)}</span>
+          <span>
+            Bangumi 公共条目 ·{' '}
+            <span data-render-date style={{ display: 'inline-block', whiteSpace: 'nowrap' }}>
+              {dateLabel(viewModel.source.official.retrievedAt)}
+            </span>
+          </span>
           <span>
             {viewModel.formulaVersion === 'subject-cohort-comparison-v1'
               ? '群体均值与差值 v1'

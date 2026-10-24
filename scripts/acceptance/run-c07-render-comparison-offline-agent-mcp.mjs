@@ -31,6 +31,7 @@ import {
   C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
   assertC07RenderComparisonOfflineProfile,
   getC07RenderComparisonOfflineConfig,
+  isC07ReviewerId,
 } from '../lib/c07-render-comparison-offline-profile.mjs';
 import { summarizeCodexErrorItems } from '../lib/codex-mcp-approval-config.mjs';
 import { persistC07OfflineVisualArtifactForInspection } from '../lib/c07-offline-visual-artifact-capture.mjs';
@@ -55,7 +56,7 @@ const BUILD_TIMEOUT_MS = 5 * 60 * 1000;
 const C07_V3_VISUAL_QA_MANIFEST_SHA256 =
   'ce15f94b457a62a795a2ff26748e721be4e1ee9bd36bece1671f8d8246240c42';
 const C07_V4_VISUAL_QA_MANIFEST_SHA256 =
-  'b817bfd13ff9b68007cee5b24f5cfb2241deafa836aaf76526a42cd74dbb0a11';
+  '96907b36ccec1c12ea0ec826ba08d846c6c76e546208a6a122f6d7a33bc873b6';
 let CONFIG = getC07RenderComparisonOfflineConfig(C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID);
 let PROFILE = getAgentMcpProfileById(CONFIG.id);
 let ACKNOWLEDGEMENT = CONFIG.acknowledgement;
@@ -246,10 +247,7 @@ export function assertC07RenderComparisonCandidateReviewGate(
   const latestReview = epoch?.review_history?.at(-1);
   const reviewerId = latestReview?.reviewer_id;
   const ciEvidence = deriveProfileCiRunEvidence(epoch?.ci?.url, pr?.statusCheckRollup);
-  const reviewIdMatches =
-    Number.isSafeInteger(epochView?.number) &&
-    typeof reviewerId === 'string' &&
-    reviewerId.trim().length > 0;
+  const reviewIdMatches = Number.isSafeInteger(epochView?.number) && isC07ReviewerId(reviewerId);
   const valid = [
     status?.git?.status === '',
     status?.git?.head === sourceRevision,

@@ -39,3 +39,4 @@ export function getC07RenderComparisonOfflineConfig(profileId?: string): {
     totalEpisodes?: number;
   }>;
 } | null;
+export function isC07ReviewerId(reviewerId: unknown): boolean;
