@@ -100,12 +100,13 @@ Preserve two continuity exceptions when adopting this policy:
   their original contracts. They are acceptance workloads, not ordinary worker
   defaults. A new project default neither reruns nor revalidates them. A future
   contract migration needs its own reviewed scope; renaming is not a retry.
-- Keep a launched Product reviewer's durable identity and actual runtime model.
-  Prefer a supported in-place model/effort change on that same task; if the
-  runtime cannot change it, continue that existing reviewer as a documented
-  legacy exception. Never relabel its prior verdicts as Sol, declare it
-  unavailable merely to replace its model, or spend a replacement slot for
-  this migration. All new reviewer tasks use Sol xhigh.
+- Keep a launched Product reviewer's durable identity and historical model
+  provenance. If that same task supports an in-place model/effort change, use
+  Sol xhigh for future dispatches and record the actual model used each time.
+  Otherwise continue its existing runtime as a documented legacy exception.
+  Never relabel prior verdicts as Sol, declare a task unavailable merely to
+  replace its model, or spend a replacement slot for this migration. All new
+  reviewer tasks use Sol xhigh.
 
 Serialized legacy action tokens such as `LUNA_STABLE`, `LUNA_FIX_ALL_P0_P1`
 and the `outer_sol` budget field keep their existing meanings and spelling;
