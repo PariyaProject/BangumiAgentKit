@@ -6568,12 +6568,12 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID',
         'delta: undefined',
         'deviceScaleFactor: 2',
-        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v34',
+        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v35',
     ),
     'scripts/lib/c07-render-comparison-v4-visual-qa.mjs': (
         'C07_V4_VISUAL_QA_MANIFEST_PATH',
         'manifest.deviceScaleFactor !== 2',
-        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v34',
+        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v35',
         'export function validateC07V4VisualQaEvidence(',
     ),
     'scripts/agent-harness.mjs': (
@@ -6590,6 +6590,7 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'distinct v4 profile targets only the render_subject_cohort_comparison Agent/MCP matrix row',
         'docs/research/run95-c07-two-cohort-v4-selection-2026-10-23.md',
         'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json',
+        'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v35.json',
     ),
     'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-contract-2026-10-17.md': (
         'The new closed fetch fixture will allow exactly one POST search and one GET subject detail response',
@@ -6619,11 +6620,11 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'never renders a numeric delta for a partial metric with a stale value',
     ),
     'packages/renderer/src/components/TitleBlock.tsx': (
-        "titleStyle?: 'standard' | 'cohort-report' | 'cohort-gallery-open' | 'cohort-zine-poster'",
+        "titleStyle?: 'standard' | 'cohort-report' | 'cohort-gallery-open'",
         "titleStyle === 'cohort-report'",
     ),
     'packages/renderer/src/templates/SubjectCohortComparisonCard.tsx': (
-        "isZine ? 'cohort-zine-poster' : 'cohort-report'",
+        "titleStyle={isGallery ? 'cohort-gallery-open' : 'cohort-report'}",
         'data-layout="cohort-query-summary"',
         'data-layout="zine-waterfront-illustration"',
         'data-layout="cohort-metric-bar"',

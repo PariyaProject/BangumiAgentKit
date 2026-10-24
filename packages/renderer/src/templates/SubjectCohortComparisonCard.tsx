@@ -995,13 +995,14 @@ const CohortZineMasthead: React.FC<{
             title={cohort.querySummary}
             style={{
               color: theme.textMuted,
-              fontSize: width <= 400 ? '9px' : '10px',
+              fontSize: width <= 400 ? '12px' : '10px',
               lineHeight: 1.25,
               marginTop: '3px',
               overflowWrap: 'anywhere',
-              whiteSpace: 'nowrap',
+              display: '-webkit-box',
+              WebkitBoxOrient: 'vertical',
+              WebkitLineClamp: 2,
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
             }}
           >
             {querySummary}
@@ -1010,7 +1011,7 @@ const CohortZineMasthead: React.FC<{
             data-layout="cohort-meta-compact"
             style={{
               color: theme.textMuted,
-              fontSize: width <= 400 ? '9px' : '10px',
+              fontSize: width <= 400 ? '12px' : '10px',
               lineHeight: 1.25,
               marginTop: '3px',
               overflowWrap: 'anywhere',
@@ -1284,7 +1285,7 @@ const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
               <div
                 style={{
                   color: theme.textMuted,
-                  fontSize: width <= 400 ? '9px' : '9px',
+                  fontSize: width <= 400 ? '12px' : '10px',
                   lineHeight: 1.15,
                   whiteSpace: 'nowrap',
                 }}
@@ -1320,7 +1321,7 @@ const GraphicZineMetricBoard: React.FC<CohortMetricBoardProps> = ({
               <div
                 style={{
                   color: theme.warning,
-                  fontSize: width <= 400 ? '9px' : '9px',
+                  fontSize: width <= 400 ? '12px' : '10px',
                   lineHeight: 1.2,
                 }}
               >
@@ -1506,7 +1507,7 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
             titleFontSize={viewportWidth <= 400 ? '18px' : '22px'}
             subtitleFontSize={viewportWidth <= 320 ? '9px' : viewportWidth <= 400 ? '10px' : '12px'}
             eyebrowFontSize="12px"
-            titleStyle={isGallery ? 'cohort-gallery-open' : isZine ? 'cohort-zine-poster' : 'cohort-report'}
+            titleStyle={isGallery ? 'cohort-gallery-open' : 'cohort-report'}
             showIconEyebrow={!isZine}
           />
         )}
