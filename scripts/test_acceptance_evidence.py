@@ -12350,7 +12350,7 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def test_v2_profile_is_distinct_and_keeps_consumed_v1_arguments_unchanged(self):
+    def test_v3_profile_is_distinct_and_keeps_consumed_v1_v2_arguments_unchanged(self):
         self.assertEqual(
             GENERATOR.CODEX_R04_TERMINAL_V1_PROFILE['id'],
             'r04-series-watch-order-offline-agent-mcp-v1',
@@ -12359,14 +12359,19 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
             GENERATOR.CODEX_R04_TERMINAL_V1_PROFILE['calls'][0]['arguments']['subjectId'],
             990801,
         )
-        self.assertEqual(GENERATOR.CODEX_R04_PROFILE_ID, 'r04-series-watch-order-offline-agent-mcp-v2')
-        self.assertNotEqual(GENERATOR.CODEX_R04_PROFILE_ID, GENERATOR.CODEX_R04_TERMINAL_V1_PROFILE['id'])
         self.assertEqual(
-            GENERATOR.CODEX_R04_EXPECTED_CALLS[0]['arguments'],
+            GENERATOR.CODEX_R04_TERMINAL_V2_PROFILE['calls'][0]['arguments'],
             {'subjectId': 990817, 'depth': 1, 'maxNodes': 1, 'media': 'anime'},
         )
+        self.assertEqual(GENERATOR.CODEX_R04_PROFILE_ID, 'r04-series-watch-order-offline-agent-mcp-v3')
+        self.assertNotEqual(GENERATOR.CODEX_R04_PROFILE_ID, GENERATOR.CODEX_R04_TERMINAL_V1_PROFILE['id'])
+        self.assertNotEqual(GENERATOR.CODEX_R04_PROFILE_ID, GENERATOR.CODEX_R04_TERMINAL_V2_PROFILE['id'])
+        self.assertEqual(
+            GENERATOR.CODEX_R04_EXPECTED_CALLS[0]['arguments'],
+            {'subjectId': 991404, 'depth': 1, 'maxNodes': 2, 'media': 'anime'},
+        )
 
-    def test_v2_implementation_markers_match_the_exact_candidate_without_mocking(self):
+    def test_v3_implementation_markers_match_the_exact_candidate_without_mocking(self):
         revision = GENERATOR._run_repository_git(
             GENERATOR.ROOT, 'rev-parse', 'HEAD',
         ).stdout.strip()
@@ -12389,7 +12394,7 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
             'scenarioId': None,
             'epochId': GENERATOR.CODEX_R04_EPOCH_ID,
             'profileId': GENERATOR.CODEX_R04_PROFILE_ID,
-            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v2',
+            'profile': 'codex-luna-max-offline-agent-mcp-matrix-v3',
             'model': 'gpt-6-luna',
             'reasoningEffort': 'max',
             'reviewerId': 'gpt-6-luna-max-run95-pr222-round1',
@@ -12418,7 +12423,7 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
             'serverToolNames': [GENERATOR.CODEX_R04_TOOL_NAME],
             'serverToolCount': 1,
             'networkMode': GENERATOR.CODEX_R04_NETWORK_MODE,
-            'mcpServerNames': ['bgk_r04_watch_order_v2'],
+            'mcpServerNames': [GENERATOR.CODEX_R04_SERVER_ID],
             'processExitCode': 0,
             'resultStatus': 'SUCCESS',
             'eventStreamParsed': True,
@@ -12431,23 +12436,24 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
             'allowedCallCount': 1,
             'deniedCallCount': 0,
             'answerCheckMethod': GENERATOR.CODEX_R04_ANSWER_CHECK_METHOD,
-            'answerSha256': hashlib.sha256(b'R04_SYNTHETIC_WATCH_ORDER_PREQUEL_CHAIN_READ').hexdigest(),
-            'answerUtf8Bytes': len(b'R04_SYNTHETIC_WATCH_ORDER_PREQUEL_CHAIN_READ'),
+            'answerSha256': hashlib.sha256(GENERATOR.CODEX_R04_ACKNOWLEDGEMENT.encode('utf-8')).hexdigest(),
+            'answerUtf8Bytes': len(GENERATOR.CODEX_R04_ACKNOWLEDGEMENT.encode('utf-8')),
             'answerChecks': {key: True for key in GENERATOR.CODEX_R04_ANSWER_CHECK_FIELDS},
             'resultSummary': {
-                'state': 'complete', 'subjectId': 990817, 'watchOrderCount': 2,
+                'state': 'complete', 'subjectId': 991404, 'watchOrderCount': 3,
                 'watchOrder': [
-                    {'id': 990818, 'isRoot': False, 'placement': 'before_root'},
-                    {'id': 990817, 'isRoot': True, 'placement': 'root'},
+                    {'id': 991405, 'isRoot': False, 'placement': 'before_root'},
+                    {'id': 991404, 'isRoot': True, 'placement': 'root'},
+                    {'id': 991406, 'isRoot': False, 'placement': 'after_root'},
                 ],
-                'relatedCount': 1, 'relatedIds': [990818], 'relationRequests': 2,
-                'relationRowsObserved': 1, 'detailsAttempted': 1,
+                'relatedCount': 2, 'relatedIds': [991405, 991406], 'relationRequests': 3,
+                'relationRowsObserved': 2, 'detailsAttempted': 2,
             },
             'offlineFixture': {
                 'profile': GENERATOR.CODEX_R04_NETWORK_MODE,
-                'requestCount': 4,
-                'subjectRequestCount': 2,
-                'relationsRequestCount': 2,
+                'requestCount': 6,
+                'subjectRequestCount': 3,
+                'relationsRequestCount': 3,
                 'duplicateRequestCount': 0,
                 'unexpectedRequestCount': 0,
                 'authorizationHeaderCount': 0,
@@ -12467,7 +12473,7 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
             },
             'runnerReceipt': {
                 'schemaVersion': 1,
-                'kind': 'r04-series-watch-order-offline-v2-runner-receipt-v1',
+                'kind': 'r04-series-watch-order-offline-v3-runner-receipt-v1',
                 'publicKeyBase64': 'AQ==',
                 'publicKeySha256': 'd' * 64,
                 'payload': receipt_payload,
@@ -12508,6 +12514,73 @@ class R04OfflineProfileReportValidationTests(unittest.TestCase):
     def test_accepts_matrix_report_while_R04_remains_unassessed(self):
         self.assertTrue(GENERATOR.codex_r04_frontier_is_unassessed())
         self.assertTrue(self.validate_report(self.report))
+
+    def test_real_signed_v3_report_preserves_local_reviewer_identity_across_python_and_js(self):
+        original_root = GENERATOR.ROOT
+        profile = GENERATOR.CODEX_R04_PROFILE
+        self.catalog_path.write_bytes((original_root / 'docs/tool-catalog.json').read_bytes())
+        selection = self.root / profile['selectionEvidencePath']
+        selection.write_bytes((original_root / profile['selectionEvidencePath']).read_bytes())
+        helper = original_root / 'tests/harness/fixtures/r04-signed-report.mjs'
+        real_run = subprocess.run
+
+        def validate(report, claim, *, wrong_reviewer=False, wrong_base=False):
+            self.report_path.write_text(json.dumps(report), encoding='utf-8')
+            disposition = {**claim, 'state': 'REPORT_WRITTEN', 'reportWritten': True,
+                'reportPath': profile['reportPath'],
+                'reportSha256': hashlib.sha256(self.report_path.read_bytes()).hexdigest(),
+                'runnerReceiptSha256': GENERATOR._canonical_json_sha256(report['runnerReceipt'])}
+            if wrong_reviewer:
+                disposition['reviewerId'] = '/root/unassigned_reviewer'
+            status = {'state': 'REPORT_WRITTEN', 'profile_id': profile['id'], 'pr': claim['prNumber'],
+                'tool_name': profile['toolName'], 'argument_profile': profile['argumentProfile'],
+                'registry_sha256': claim['registrySha256'],
+                'expected_arguments_sha256': claim['expectedArgumentsSha256'],
+                'claim_label_present': True, 'terminal_label_present': True, 'disposition': disposition}
+            candidate, branch = 'f' * 40, 'codex/synthetic-r04-v3-report'
+            epoch_status = {'run': {'number': 95, 'state': {'state': 'EPOCH_ACTIVE', 'active_epoch_pr': claim['prNumber']}},
+                'epoch': {'state': {'state': 'REVIEW_PASSED', 'epoch_id': profile['epochId'],
+                    'pr_number': claim['prNumber'], 'base_branch': 'master', 'branch': branch,
+                    'base_sha': 'e' * 40 if wrong_base else claim['baseSha'], 'candidate_sha': candidate},
+                    'github_state': 'OPEN', 'pr_base_ref_name': 'master', 'pr_base_sha': claim['baseSha'],
+                    'pr_head_ref_name': branch, 'pr_head_sha': candidate, 'pr_is_draft': False}}
+            def signature_check(args, **kwargs):
+                self.assertEqual(Path(args[1]).name, 'validate-r04-series-watch-order-offline-agent-mcp-v3-report.mjs')
+                return real_run(['node', str(original_root / 'scripts/acceptance' / Path(args[1]).name)],
+                    **{**kwargs, 'cwd': original_root})
+            def snapshot_binding(actual_report, actual_epoch):
+                return GENERATOR.codex_r04_profile_candidate_binding_is_valid(
+                    actual_report, actual_epoch, {profile['reportPath']}, claim['bundleSha256'])
+            # Only external Git/control observations are synthetic; report shape,
+            # exact disposition/snapshot binding and Ed25519 checks run for real.
+            with (
+                patch.object(GENERATOR, 'ROOT', self.root),
+                patch.object(GENERATOR, 'CATALOG', self.catalog_path),
+                patch.object(GENERATOR, 'codex_r04_profile_revision_has_implementation', return_value=True),
+                patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value=claim['bundleSha256']),
+                patch.object(GENERATOR, 'codex_r04_profile_report_candidate_binding_is_current', side_effect=snapshot_binding),
+                patch.object(GENERATOR.subprocess, 'run', side_effect=signature_check),
+            ):
+                return GENERATOR.codex_r04_profile_report_is_valid(
+                    report, harness_status=status, report_path=self.report_path, epoch_status=epoch_status)
+
+        for reviewer_id in ('/root/run95_pr267_review', 'gpt-6-luna-max-run95-pr186-round1'):
+            program = ('import {createSignedR04Report} from ' + json.dumps(helper.as_uri()) + ';'
+                'process.stdout.write(JSON.stringify(createSignedR04Report('
+                + json.dumps(profile['id']) + ',' + json.dumps(reviewer_id) + ')));')
+            built = json.loads(real_run(['node', '--input-type=module', '-e', program],
+                cwd=original_root, check=True, capture_output=True, text=True).stdout)
+            report, claim = built['report'], built['claim']
+            with self.subTest(reviewer=reviewer_id):
+                self.assertTrue(validate(report, claim))
+                self.assertFalse(validate(report, claim, wrong_reviewer=True))
+                self.assertFalse(validate(report, claim, wrong_base=True))
+                changed = json.loads(json.dumps(report))
+                changed['runnerReceipt']['signature'] = 'AA=='
+                self.assertFalse(validate(changed, claim))
+                changed = json.loads(json.dumps(report))
+                changed['offlineFixture']['requestCount'] = 4
+                self.assertFalse(validate(changed, claim))
 
     def test_rejects_scenario_credit_expanded_fixture_and_raw_fields(self):
         scenario_credit = json.loads(json.dumps(self.report))

@@ -612,23 +612,28 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
   assert.equal(r04RenderV2.retry_allowed, false);
   assert.match(
     r04.next_action,
-    /get_series_watch_order` v1\/v2 and `render_series_watch_order` v1 are terminal/u,
+    /get_series_watch_order` v1\/v2 and renderer profiles v1 are terminal INCONCLUSIVE\/no-report\/no-retry; never retry them/u,
   );
   assert.match(
     r04.next_action,
-    /render_series_watch_order` v2 is REPORT_WRITTEN/u,
+    /separately keyed R04 renderer v2 profile remains only its existing Agent\/MCP matrix row/u,
   );
   assert.match(r04.next_action, /^R04 remains UNASSESSED\./u);
-  assert.match(r04.next_action, /Keep R04 UNASSESSED.*theatrical-film scenario/u);
-  assert.match(r04.next_action, /does not prove visual quality or the theatrical-film scenario/u);
-  assert.ok(r04.next_action.includes('earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry'));
-  assert.ok(r04.next_action.includes('separately keyed R04 renderer v2 profile'));
+  assert.match(r04.next_action, /v3 is also terminal INCONCLUSIVE\/no-report\/no-retry/u);
+  assert.match(r04.next_action, /earns no matrix or scenario credit/u);
+  assert.match(r04.next_action, /fresh Candidate\/current Base\/exact CI and the same reviewer/u);
+  assert.doesNotMatch(r04.next_action, /v3 multi-node offline profile is selected/u);
+  assert.ok(
+    r04.next_action.includes(
+      'earlier renderer v1 profile is also terminal INCONCLUSIVE/no-report/no-retry',
+    ),
+  );
+  assert.ok(r04.next_action.includes('do not claim canonical order or visual quality'));
   assert.ok(r04.next_action.includes('distinct matrix-only render_series_watch_order profile'));
-  assert.ok(r04.next_action.includes('It may credit only this Agent/MCP matrix cell'));
   assert.ok(r04.next_action.includes('Keep the R04 theatrical-film scenario UNASSESSED'));
   assert.ok(r04.next_action.includes('keep the R04 theatrical-film scenario UNASSESSED'));
-  assert.ok(r04.next_action.includes('do not claim canonical order or visual quality'));
-  assert.ok(r04.next_action.includes('Never invoke any terminal profile'));
+  assert.ok(r04.next_action.includes('never retry them'));
+  assert.ok(r04.next_action.includes('separately keyed R04 renderer v2 profile'));
   assert.doesNotMatch(r04.next_action, /UNCLAIMED|unclaimed|selected.*get_series_watch_order v2/u);
   for (const source of [
     'scripts/lib/r04-render-series-watch-order-offline-fixture.mjs',
@@ -645,16 +650,29 @@ test('Run 95 public matrix rows remain hash-bound and separate from scenario evi
     'tests/harness/run-r04-render-series-watch-order-offline-agent-mcp-v2.test.mjs',
     'tests/harness/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.test.mjs',
     'scripts/lib/r04-series-watch-order-offline-v2-fixture.mjs',
+    'scripts/lib/r04-series-watch-order-offline-v3-fixture.mjs',
+    'scripts/lib/r04-series-watch-order-offline-profile-config.mjs',
+    'scripts/lib/agent-mcp-profile-ci-evidence.mjs',
     'scripts/acceptance/run-r04-series-watch-order-offline-agent-mcp-v2.mjs',
+    'scripts/acceptance/run-r04-series-watch-order-offline-agent-mcp-v3.mjs',
     'scripts/acceptance/write-r04-series-watch-order-offline-agent-mcp-v2-report.mjs',
+    'scripts/acceptance/validate-r04-series-watch-order-offline-agent-mcp-v3-report.mjs',
     'scripts/acceptance/validate-r04-series-watch-order-offline-agent-mcp-v2-report.mjs',
     'docs/research/run95-r04-series-watch-order-offline-matrix-v2-contract-2026-10-18.md',
+    'docs/research/run95-r04-series-watch-order-offline-matrix-v3-contract-2026-10-23.md',
     'tests/harness/r04-series-watch-order-offline-v2-fixture.test.mjs',
+    'tests/harness/r04-series-watch-order-offline-v3-fixture.test.mjs',
     'tests/harness/run-r04-series-watch-order-offline-agent-mcp-v2.test.mjs',
+    'tests/harness/run-r04-series-watch-order-offline-agent-mcp-v3.test.mjs',
     'tests/harness/write-r04-series-watch-order-offline-agent-mcp-v2-report.test.mjs',
   ]) {
     assert.ok(r04.source_refs.includes(source), `R04 source reference missing: ${source}`);
   }
+  assert.equal(
+    r04.source_refs.includes('docs/live-probes/r04-series-watch-order-offline-agent-mcp-v3-run95.json'),
+    false,
+    'the v3 report source reference appears only after a validated report exists',
+  );
 
   const r02 = ledger.records.find(({ id }) => id === 'R02');
   assert.ok(r02, 'R02 must remain in the canonical frontier');

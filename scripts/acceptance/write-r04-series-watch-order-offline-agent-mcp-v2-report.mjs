@@ -9,22 +9,37 @@ import {
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
+import { isG16LunaMaxReviewerId } from '../lib/g16-reviewer-id.mjs';
 import { isValidP06CiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
-import {
-  assertR04SeriesWatchOrderOfflineV2Profile,
-  R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE,
-  R04_SERIES_WATCH_ORDER_V2_PROFILE_ID,
-  R04_SERIES_WATCH_ORDER_V2_ROOT_ID,
-} from '../lib/r04-series-watch-order-offline-v2-fixture.mjs';
+import { R04_SERIES_WATCH_ORDER_V2_PROFILE_ID } from '../lib/r04-series-watch-order-offline-v2-fixture.mjs';
+import { R04_SERIES_WATCH_ORDER_V3_PROFILE_ID } from '../lib/r04-series-watch-order-offline-v3-fixture.mjs';
+import { getR04SeriesWatchOrderOfflineProfileConfig } from '../lib/r04-series-watch-order-offline-profile-config.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const PROFILE = getAgentMcpProfileById(R04_SERIES_WATCH_ORDER_V2_PROFILE_ID);
-const REPORT_RELATIVE_PATH = PROFILE?.reportPath;
-const ACKNOWLEDGEMENT = 'R04_SYNTHETIC_WATCH_ORDER_PREQUEL_CHAIN_READ';
-const SERVER_ID = 'bgk_r04_watch_order_v2';
-const RECEIPT_KIND = 'r04-series-watch-order-offline-v2-runner-receipt-v1';
+let ACTIVE_PROFILE_ID = R04_SERIES_WATCH_ORDER_V2_PROFILE_ID;
+let PROFILE = getAgentMcpProfileById(ACTIVE_PROFILE_ID);
+let CONFIG = getR04SeriesWatchOrderOfflineProfileConfig(ACTIVE_PROFILE_ID);
+let REPORT_RELATIVE_PATH = PROFILE?.reportPath;
+let ACKNOWLEDGEMENT = CONFIG?.acknowledgement;
+let SERVER_ID = CONFIG?.serverId;
+let RECEIPT_KIND = CONFIG?.receiptKind;
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const canonicalSha256 = (value) => sha256(canonicalAgentMcpProfileJson(value));
+
+export function configureR04SeriesWatchOrderOfflineReportProfile(profileId) {
+  const config = getR04SeriesWatchOrderOfflineProfileConfig(profileId);
+  const profile = getAgentMcpProfileById(profileId);
+  if (!config || !profile || !config.assertProfile(profile)) {
+    throw new Error('R04 report writer requires an exact registered offline matrix profile.');
+  }
+  ACTIVE_PROFILE_ID = profileId;
+  PROFILE = profile;
+  CONFIG = config;
+  REPORT_RELATIVE_PATH = profile.reportPath;
+  ACKNOWLEDGEMENT = config.acknowledgement;
+  SERVER_ID = config.serverId;
+  RECEIPT_KIND = config.receiptKind;
+}
 
 const REPORT_FIELDS = new Set([
   'schemaVersion',
@@ -160,18 +175,6 @@ const PRIVACY_FIELDS = new Set([
   'artifactImageBytesStored',
   'credentialsStored',
 ]);
-const ANSWER_CHECK_FIELDS = new Set([
-  'exactRegisteredProfile',
-  'oneAllowedMcpTool',
-  'fixedArguments',
-  'exactCandidateBundle',
-  'offlineFixtureOnly',
-  'fourExpectedLocalResponses',
-  'noAssetRequests',
-  'exactAcknowledgement',
-  'privacyPreserved',
-]);
-
 function exactKeys(value, fields) {
   return (
     value &&
@@ -182,16 +185,7 @@ function exactKeys(value, fields) {
 }
 
 function expectedFixture() {
-  return {
-    profile: R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE,
-    requestCount: 4,
-    subjectRequestCount: 2,
-    relationsRequestCount: 2,
-    duplicateRequestCount: 0,
-    unexpectedRequestCount: 0,
-    authorizationHeaderCount: 0,
-    expectedOperationsComplete: true,
-  };
+  return CONFIG.expectedFixture;
 }
 
 function expectedNetworkBoundary() {
@@ -221,34 +215,11 @@ function expectedPrivacy() {
 }
 
 function expectedResultSummary() {
-  return {
-    state: 'complete',
-    subjectId: R04_SERIES_WATCH_ORDER_V2_ROOT_ID,
-    watchOrderCount: 2,
-    watchOrder: [
-      { id: 990818, isRoot: false, placement: 'before_root' },
-      { id: 990817, isRoot: true, placement: 'root' },
-    ],
-    relatedCount: 1,
-    relatedIds: [990818],
-    relationRequests: 2,
-    relationRowsObserved: 1,
-    detailsAttempted: 1,
-  };
+  return CONFIG.expectedResultSummary;
 }
 
 function expectedAnswerChecks() {
-  return {
-    exactRegisteredProfile: true,
-    oneAllowedMcpTool: true,
-    fixedArguments: true,
-    exactCandidateBundle: true,
-    offlineFixtureOnly: true,
-    fourExpectedLocalResponses: true,
-    noAssetRequests: true,
-    exactAcknowledgement: true,
-    privacyPreserved: true,
-  };
+  return CONFIG.expectedAnswerChecks;
 }
 
 function matchesClaim(report, claim) {
@@ -276,6 +247,7 @@ function matchesClaim(report, claim) {
 }
 
 export function buildR04RunnerReceiptPayload(report, { eventStreamSha256, serverSummarySha256 }) {
+  if (report?.profileId) configureR04SeriesWatchOrderOfflineReportProfile(report.profileId);
   if (
     !report ||
     typeof report !== 'object' ||
@@ -362,6 +334,11 @@ function catalogEvidenceMatches(report) {
 }
 
 export function validateR04ProfileReport(report, claim, reportBytes = null) {
+  try {
+    configureR04SeriesWatchOrderOfflineReportProfile(report?.profileId ?? claim?.profileId);
+  } catch {
+    return { passed: false, reason: 'R04_PROFILE_INVALID' };
+  }
   const claimStateValid =
     (claim?.state === 'CLAIMED' && claim.reportWritten === false) ||
     (claim?.state === 'REPORT_WRITTEN' &&
@@ -370,7 +347,7 @@ export function validateR04ProfileReport(report, claim, reportBytes = null) {
       claim.reportSha256 === sha256(reportBytes));
   if (
     !PROFILE ||
-    !assertR04SeriesWatchOrderOfflineV2Profile(PROFILE) ||
+    !CONFIG.assertProfile(PROFILE) ||
     !exactKeys(report, REPORT_FIELDS) ||
     !claim ||
     claim.profileId !== PROFILE.id ||
@@ -391,12 +368,10 @@ export function validateR04ProfileReport(report, claim, reportBytes = null) {
     report.scenarioId === null &&
     report.epochId === PROFILE.epochId &&
     report.profileId === PROFILE.id &&
-    report.profile === 'codex-luna-max-offline-agent-mcp-matrix-v2' &&
+    report.profile === CONFIG.reportProfile &&
     report.model === PROFILE.model &&
     report.reasoningEffort === PROFILE.reasoningEffort &&
-    new RegExp(`^gpt-6-luna-max-run95-pr${report.prNumber}-round[1-9]\\d*$`, 'u').test(
-      report.reviewerId ?? '',
-    ) &&
+    isG16LunaMaxReviewerId(report.reviewerId, report.prNumber) &&
     /^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/u.test(report.codexCliVersion ?? '') &&
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(report.observedAt ?? '') &&
     /^[0-9a-f]{40}$/u.test(report.sourceRevision ?? '') &&
@@ -417,7 +392,7 @@ export function validateR04ProfileReport(report, claim, reportBytes = null) {
     report.toolName === PROFILE.toolName &&
     report.argumentProfile === PROFILE.argumentProfile &&
     report.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(PROFILE) &&
-    report.networkMode === R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE &&
+    report.networkMode === CONFIG.networkMode &&
     canonicalAgentMcpProfileJson(report.serverToolNames) ===
       canonicalAgentMcpProfileJson([PROFILE.toolName]) &&
     report.serverToolCount === 1 &&
@@ -450,7 +425,7 @@ export function validateR04ProfileReport(report, claim, reportBytes = null) {
     exactKeys(report.privacy, PRIVACY_FIELDS) &&
     canonicalAgentMcpProfileJson(report.privacy) ===
       canonicalAgentMcpProfileJson(expectedPrivacy()) &&
-    exactKeys(report.answerChecks, ANSWER_CHECK_FIELDS) &&
+    exactKeys(report.answerChecks, new Set(Object.keys(CONFIG.expectedAnswerChecks))) &&
     canonicalAgentMcpProfileJson(report.answerChecks) ===
       canonicalAgentMcpProfileJson(expectedAnswerChecks()) &&
     exactKeys(receipt, RECEIPT_FIELDS) &&
@@ -496,9 +471,14 @@ export function buildR04ProfileReport(
   { claim, serverSummary, events, answer, codexCliVersion, eventStreamSha256, serverSummarySha256 },
   { privateKey, root = ROOT, reportPath = null } = {},
 ) {
+  try {
+    configureR04SeriesWatchOrderOfflineReportProfile(claim?.profileId);
+  } catch {
+    return { passed: false, reason: 'R04_PROFILE_INVALID' };
+  }
   if (
     !PROFILE ||
-    !assertR04SeriesWatchOrderOfflineV2Profile(PROFILE) ||
+    !CONFIG.assertProfile(PROFILE) ||
     claim?.profileId !== PROFILE.id ||
     claim.state !== 'CLAIMED' ||
     claim.retryAllowed !== false ||
@@ -537,7 +517,7 @@ export function buildR04ProfileReport(
     scenarioId: null,
     epochId: PROFILE.epochId,
     profileId: PROFILE.id,
-    profile: 'codex-luna-max-offline-agent-mcp-matrix-v2',
+    profile: CONFIG.reportProfile,
     model: PROFILE.model,
     reasoningEffort: PROFILE.reasoningEffort,
     reviewerId: claim.reviewerId,
@@ -562,7 +542,7 @@ export function buildR04ProfileReport(
     inputSchemaSha256: serverSummary.inputSchemaSha256,
     serverToolNames: serverSummary.serverToolNames,
     serverToolCount: serverSummary.serverToolCount,
-    networkMode: R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE,
+    networkMode: CONFIG.networkMode,
     mcpServerNames: events.mcpServerNames,
     processExitCode: events.processExitCode,
     resultStatus: events.processExitCode === 0 ? 'SUCCESS' : 'FAILED',
@@ -612,12 +592,18 @@ export function buildR04ProfileReport(
   }
 }
 
-export function validateR04SeriesWatchOrderOfflineV2SanitizedReportFile(
+function validateR04SeriesWatchOrderOfflineSanitizedReportFileForProfile(
+  profileId,
   claim,
   root = ROOT,
   reportPath = null,
 ) {
-  if (!PROFILE || !assertR04SeriesWatchOrderOfflineV2Profile(PROFILE))
+  try {
+    configureR04SeriesWatchOrderOfflineReportProfile(profileId);
+  } catch {
+    return { passed: false, reason: 'R04_PROFILE_INVALID' };
+  }
+  if (!PROFILE || !CONFIG.assertProfile(PROFILE))
     return { passed: false, reason: 'R04_PROFILE_INVALID' };
   const target = reportPath ?? path.join(root, REPORT_RELATIVE_PATH);
   try {
@@ -631,4 +617,30 @@ export function validateR04SeriesWatchOrderOfflineV2SanitizedReportFile(
   } catch {
     return { passed: false, reason: 'R04_REPORT_UNAVAILABLE' };
   }
+}
+
+export function validateR04SeriesWatchOrderOfflineV2SanitizedReportFile(
+  claim,
+  root = ROOT,
+  reportPath = null,
+) {
+  return validateR04SeriesWatchOrderOfflineSanitizedReportFileForProfile(
+    R04_SERIES_WATCH_ORDER_V2_PROFILE_ID,
+    claim,
+    root,
+    reportPath,
+  );
+}
+
+export function validateR04SeriesWatchOrderOfflineV3SanitizedReportFile(
+  claim,
+  root = ROOT,
+  reportPath = null,
+) {
+  return validateR04SeriesWatchOrderOfflineSanitizedReportFileForProfile(
+    R04_SERIES_WATCH_ORDER_V3_PROFILE_ID,
+    claim,
+    root,
+    reportPath,
+  );
 }
