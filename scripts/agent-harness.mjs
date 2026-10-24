@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { gzipSync, gunzipSync } from 'node:zlib';
+import { readProductCommitSubjects } from './lib/product-commit-subjects.mjs';
 import {
   DISCOVERY_POLICY_VERSION,
   DEFAULT_EPOCH_REVIEW_SLOTS,
@@ -733,8 +734,7 @@ function changedPaths(base, head = 'HEAD') {
 }
 
 function commitSubjects(base, head = 'HEAD') {
-  const output = git('log', '--format=%s', `${base}..${head}`);
-  return output.split('\n').filter(Boolean);
+  return readProductCommitSubjects(root, base, head);
 }
 
 function eventPrBody() {
