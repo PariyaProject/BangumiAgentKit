@@ -77,6 +77,9 @@ describe('subject cohort comparison renderer', () => {
     expect(zineHtml).toContain('data-layout="zine-title-paper"');
     expect(zineHtml).toContain('data-layout-variant="cohort-zine-headline-pair"');
     expect(zineHtml).toContain('data-layout-variant="zine-cohort-paper"');
+    expect(zineHtml).toMatch(/data-layout="cohort-source-title"[^>]*>Spring One<\/div>/u);
+    expect(zineHtml).toMatch(/data-layout="cohort-source-title"[^>]*>Summer One<\/div>/u);
+    expect(galleryHtml).not.toContain('data-layout="cohort-source-title"');
     expect(zineHtml).toContain('Georgia');
     expect(zineHtml).toContain('data-layout="cohort-query-summary"');
     expect(zineHtml).toContain('媒介=anime');

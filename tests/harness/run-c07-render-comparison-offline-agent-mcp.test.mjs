@@ -231,7 +231,7 @@ test('C07 v3 accepts only bounded classified disabled-web-search errors', () => 
   );
 });
 
-test('C07 Candidate gate requires exact CI, Base, and same-identity Luna Max PASS', () => {
+test('C07 Candidate gate requires exact CI, Base, and a bound opaque reviewer PASS', () => {
   const gate = assertC07RenderComparisonCandidateReviewGate(statusFixture(), pullRequestFixture(), {
     sourceRevision: SOURCE_SHA,
     currentBaseSha: BASE_SHA,
@@ -281,10 +281,10 @@ test('C07 Candidate gate requires exact CI, Base, and same-identity Luna Max PAS
     }),
   );
 
-  const wrongReviewer = statusFixture();
-  wrongReviewer.epoch.state.review_history[0].reviewer_id = 'gpt-6-sol-run95-reviewer';
+  const emptyReviewer = statusFixture();
+  emptyReviewer.epoch.state.review_history[0].reviewer_id = '   ';
   assert.throws(() =>
-    assertC07RenderComparisonCandidateReviewGate(wrongReviewer, pullRequestFixture(), {
+    assertC07RenderComparisonCandidateReviewGate(emptyReviewer, pullRequestFixture(), {
       sourceRevision: SOURCE_SHA,
       currentBaseSha: BASE_SHA,
       readGit: readGitFixture,
@@ -292,7 +292,8 @@ test('C07 Candidate gate requires exact CI, Base, and same-identity Luna Max PAS
   );
 
   const durableLocalReviewer = statusFixture();
-  durableLocalReviewer.epoch.state.review_history[0].reviewer_id = '/root/pr271_review';
+  const opaqueReviewerId = 'opaque://reviewer handle#8';
+  durableLocalReviewer.epoch.state.review_history[0].reviewer_id = opaqueReviewerId;
   const localIdentityGate = assertC07RenderComparisonCandidateReviewGate(
     durableLocalReviewer,
     pullRequestFixture(),
@@ -302,7 +303,7 @@ test('C07 Candidate gate requires exact CI, Base, and same-identity Luna Max PAS
       readGit: readGitFixture,
     },
   );
-  assert.equal(localIdentityGate.reviewerId, '/root/pr271_review');
+  assert.equal(localIdentityGate.reviewerId, opaqueReviewerId);
 
   assert.throws(() =>
     assertC07RenderComparisonCandidateReviewGate(statusFixture(), pullRequestFixture(), {

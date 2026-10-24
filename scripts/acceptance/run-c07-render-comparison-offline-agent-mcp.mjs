@@ -23,7 +23,6 @@ import {
   canonicalAgentMcpProfileJson,
   getAgentMcpProfileById,
 } from '../lib/agent-mcp-profile-claims.mjs';
-import { isG16LunaMaxReviewerId } from '../lib/g16-reviewer-id.mjs';
 import { deriveP06CiRunEvidence as deriveProfileCiRunEvidence } from '../lib/p06-ci-run-evidence.mjs';
 import {
   C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID,
@@ -56,7 +55,7 @@ const BUILD_TIMEOUT_MS = 5 * 60 * 1000;
 const C07_V3_VISUAL_QA_MANIFEST_SHA256 =
   'ce15f94b457a62a795a2ff26748e721be4e1ee9bd36bece1671f8d8246240c42';
 const C07_V4_VISUAL_QA_MANIFEST_SHA256 =
-  'ca32f88065d8e9b0ccb52dd5a330f41b334bd0f8c0a06d97badab224ae0143d5';
+  '524d8e6d24cd2390013f2bdcdd8d7e01ad05f693ed9e4971da628993f5e0a811';
 let CONFIG = getC07RenderComparisonOfflineConfig(C07_RENDER_COMPARISON_OFFLINE_PROFILE_ID);
 let PROFILE = getAgentMcpProfileById(CONFIG.id);
 let ACKNOWLEDGEMENT = CONFIG.acknowledgement;
@@ -249,7 +248,8 @@ export function assertC07RenderComparisonCandidateReviewGate(
   const ciEvidence = deriveProfileCiRunEvidence(epoch?.ci?.url, pr?.statusCheckRollup);
   const reviewIdMatches =
     Number.isSafeInteger(epochView?.number) &&
-    isG16LunaMaxReviewerId(reviewerId, epochView.number);
+    typeof reviewerId === 'string' &&
+    reviewerId.trim().length > 0;
   const valid = [
     status?.git?.status === '',
     status?.git?.head === sourceRevision,

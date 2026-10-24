@@ -6568,12 +6568,12 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID',
         'delta: undefined',
         'deviceScaleFactor: 2',
-        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v36',
+        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v37',
     ),
     'scripts/lib/c07-render-comparison-v4-visual-qa.mjs': (
         'C07_V4_VISUAL_QA_MANIFEST_PATH',
         'manifest.deviceScaleFactor !== 2',
-        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v36',
+        'c07-cohort-comparison-v4-visual-qa-candidate-bound-20261024-v37',
         'export function validateC07V4VisualQaEvidence(',
     ),
     'scripts/agent-harness.mjs': (
@@ -6591,7 +6591,7 @@ CODEX_C07_RENDER_COMPARISON_OFFLINE_PROBE_IMPLEMENTATION_MARKERS = {
         'docs/research/run95-c07-two-cohort-v4-selection-2026-10-23.md',
         'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24.json',
         'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v35.json',
-        'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v36.json',
+        'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-v4-visual-qa-2026-10-24-v37.json',
     ),
     'docs/research/run95-c07-render-comparison-offline-agent-mcp-matrix-contract-2026-10-17.md': (
         'The new closed fetch fixture will allow exactly one POST search and one GET subject detail response',

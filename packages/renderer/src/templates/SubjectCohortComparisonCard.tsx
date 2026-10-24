@@ -873,6 +873,9 @@ const CohortZineMasthead: React.FC<{
         /\p{Script=Latin}/u.test(titleParts.slice(1).join(' / '))
           ? titleParts[0]!.trim()
           : fullTitle;
+      const sourceTitle = subject?.name?.trim() && subject.name.trim() !== title
+        ? subject.name.trim()
+        : null;
       const querySummary = cohort.querySummary.startsWith(cohort.label)
         ? cohort.querySummary.slice(cohort.label.length).replace(/^[\s·•:：]+/u, '') ||
           cohort.querySummary
@@ -950,6 +953,22 @@ const CohortZineMasthead: React.FC<{
           >
             {title}
           </div>
+          {sourceTitle ? (
+            <div
+              data-layout="cohort-source-title"
+              style={{
+                color: theme.textMuted,
+                fontFamily: COHORT_ZINE_DISPLAY_FONT,
+                fontSize: width <= 400 ? '12px' : '13px',
+                fontWeight: 500,
+                lineHeight: 1.25,
+                marginTop: '1px',
+                overflowWrap: 'anywhere',
+              }}
+            >
+              {sourceTitle}
+            </div>
+          ) : null}
           <div
             data-layout="zine-score-caption"
             style={{
