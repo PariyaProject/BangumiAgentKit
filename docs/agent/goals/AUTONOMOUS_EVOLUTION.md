@@ -3,6 +3,13 @@
 Read [`../PRODUCT_CHARTER.md`](../PRODUCT_CHARTER.md) and
 [`../HARNESS.md`](../HARNESS.md), then execute this profile.
 
+For Run #95, also read [the delivery recovery plan](../RUN95_RECOVERY_PLAN.md)
+and obtain the compact continuation brief per HARNESS.md §2a before working.
+Its latest structured human directive supersedes old chat instructions.
+Observe the app Goal state separately; never infer pause from historical text.
+The user-authorized advanced-model strategy review is supplementary to the
+ordinary Luna roles below and does not replace the same Product reviewer.
+
 - Mode: `AUTONOMOUS_EVOLUTION`
 - All configured model roles: GPT-6 Luna `max`
 - Generic subagents: `0`

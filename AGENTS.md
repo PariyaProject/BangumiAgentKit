@@ -14,9 +14,21 @@ GitHub control plane references an opportunity record, read
 [`docs/product/opportunity-log.md`](docs/product/opportunity-log.md) as product
 context, not runtime authority.
 
+For the ongoing Run #95, also read
+[RUN95_RECOVERY_PLAN.md](docs/agent/RUN95_RECOVERY_PLAN.md) and begin every
+continuation or model handoff with the read-only command:
+
+    pnpm harness continuation:show --run 95 --goal-state <observed-Codex-Goal-state>
+
+Observe the app Goal separately. The latest structured human directive in
+the Run Issue supersedes older pause/continue messages. Read §2a of HARNESS.md
+before recording a new directive or checkpoint; never replay old chat text.
+
 ## Standing defaults
 
-- All configured implementation and reviewer roles use GPT-6 Luna at `max`.
+- Ordinary implementation and Product review use GPT-6 Luna at `max`.
+  The user's authorized advanced-model strategy recovery is supplementary;
+  follow HARNESS.md §2a without changing the existing Product reviewer identity.
 - Generic implementation/research subagents: `0` unless the user explicitly
   authorizes a specific use or an applicable skill requires it.
 - Normal reviewed Epoch: one comprehensive Luna Max reviewer expected, six
