@@ -13,7 +13,8 @@ Read AGENTS.md, PRODUCT_CHARTER.md, HARNESS.md §2a and
    A completed replan stays completed across Epochs; only explicit human
    continue cancels an outstanding execution pause.
 3. Work the next recovery package from the brief and checkpoint. Ordinary
-   implementation and independent Product review use Luna Max. Honour the
+   implementation and new independent Product review use GPT-6.1 Sol `xhigh`.
+   Apply HARNESS.md §2's frozen-contract and existing-task exceptions. Honour the
    user-authorized advanced strategy checkpoints; they do not replace formal
    review, claim, or merge authority.
 4. Preserve terminal one-shot latches. Reproduce common infrastructure
