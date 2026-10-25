@@ -232,4 +232,100 @@ describe('Series / Watch-Order semantic contracts', () => {
     expect(requests).toHaveLength(4);
     expect(new Set(requests)).toEqual(new Set(fixture.keys()));
   });
+
+  it('places two bounded direct synthetic nodes around a root using one-hop relations', async () => {
+    const requests: string[] = [];
+    const fixture = new Map<string, unknown>([
+      [
+        'https://api.bgm.tv/v0/subjects/991404',
+        {
+          id: 991404,
+          type: 2,
+          name: 'Synthetic Multi-Node Watch-Order Root 991404',
+          name_cn: '合成多节点观看顺序起点 991404',
+          date: '2020-01-01',
+          platform: 'TV',
+        },
+      ],
+      [
+        'https://api.bgm.tv/v0/subjects/991404/subjects',
+        [
+          {
+            id: 991405,
+            type: 2,
+            name: 'Synthetic Multi-Node Prequel 991405',
+            name_cn: '合成前传 991405',
+            relation: '前传',
+          },
+          {
+            id: 991406,
+            type: 2,
+            name: 'Synthetic Multi-Node Sequel 991406',
+            name_cn: '合成续集 991406',
+            relation: '续集',
+          },
+        ],
+      ],
+      ['https://api.bgm.tv/v0/subjects/991405/subjects', []],
+      ['https://api.bgm.tv/v0/subjects/991406/subjects', []],
+      [
+        'https://api.bgm.tv/v0/subjects/991405',
+        {
+          id: 991405,
+          type: 2,
+          name: 'Synthetic Multi-Node Prequel 991405',
+          name_cn: '合成前传 991405',
+          date: '2019-01-01',
+          platform: 'TV',
+        },
+      ],
+      [
+        'https://api.bgm.tv/v0/subjects/991406',
+        {
+          id: 991406,
+          type: 2,
+          name: 'Synthetic Multi-Node Sequel 991406',
+          name_cn: '合成续集 991406',
+          date: '2021-01-01',
+          platform: 'TV',
+        },
+      ],
+    ]);
+    const fetchFn = vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      requests.push(url);
+      const body = fixture.get(url);
+      return body === undefined
+        ? new Response('unexpected route', { status: 599 })
+        : new Response(JSON.stringify(body), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+    });
+    const client = new HttpClient({ fetchFn: fetchFn as typeof fetch });
+    const tool = createReadTools(client)[3];
+    expect(tool?.name).toBe('bangumi.get_series_watch_order');
+    const result = await tool!.execute(
+      { subjectId: 991404, depth: 1, maxNodes: 2, media: 'anime' },
+      { principalId: 'synthetic', botInstanceId: 'synthetic', conversationId: 'synthetic' },
+      { publicHttpClient: client },
+    );
+
+    expect(result).toMatchObject({
+      state: 'complete',
+      subjectId: 991404,
+      watchOrder: [
+        { id: 991405, isRoot: false, placement: 'before_root' },
+        { id: 991404, isRoot: true, placement: 'root' },
+        { id: 991406, isRoot: false, placement: 'after_root' },
+      ],
+      related: [
+        { id: 991405, includedInWatchOrder: true },
+        { id: 991406, includedInWatchOrder: true },
+      ],
+      coverage: { relationRequests: 3, relationRowsObserved: 2, detailsAttempted: 2 },
+    });
+    expect(requests).toHaveLength(6);
+    expect(new Set(requests)).toEqual(new Set(fixture.keys()));
+  });
 });

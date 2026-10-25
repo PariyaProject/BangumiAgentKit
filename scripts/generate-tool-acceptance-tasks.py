@@ -3785,16 +3785,20 @@ CODEX_G06_CAST_OFFLINE_RECEIPT_PAYLOAD_FIELDS = {
     'networkMode', 'offlineFixtureSha256', 'networkBoundarySha256', 'answerSha256',
     'eventStreamSha256', 'serverSummarySha256',
 }
-# v1 remains a permanent terminal no-report record. Current matrix credit can
-# come only from the separately keyed v2 profile; its registry entry does not
-# mutate or revive the v1 claim.
+# All three attempts are terminal no-report records. Retain the v3 report
+# validator as its frozen evidence contract; this does not authorize a retry
+# or revive any prior claim.
 CODEX_R04_TERMINAL_V1_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'r04-series-watch-order-offline-agent-mcp-v1'
 )
-CODEX_R04_PROFILE = next(
+CODEX_R04_TERMINAL_V2_PROFILE = next(
     profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
     if profile.get('id') == 'r04-series-watch-order-offline-agent-mcp-v2'
+)
+CODEX_R04_PROFILE = next(
+    profile for profile in CODEX_AGENT_MCP_PROFILE_REGISTRY['profiles']
+    if profile.get('id') == 'r04-series-watch-order-offline-agent-mcp-v3'
 )
 CODEX_R04_PROFILE_ID = CODEX_R04_PROFILE['id']
 CODEX_R04_EPOCH_ID = CODEX_R04_PROFILE['epochId']
@@ -3818,6 +3822,8 @@ CODEX_R04_SELECTION_EVIDENCE_RELATIVE_PATH = CODEX_R04_PROFILE['selectionEvidenc
 CODEX_R04_EVIDENCE_KIND = CODEX_R04_PROFILE['evidenceKind']
 CODEX_R04_ANSWER_CHECK_METHOD = CODEX_R04_PROFILE['answerCheckMethod']
 CODEX_R04_NETWORK_MODE = CODEX_R04_PROFILE['networkMode']
+CODEX_R04_SERVER_ID = 'bgk_r04_watch_order_v3'
+CODEX_R04_ACKNOWLEDGEMENT = 'R04_SYNTHETIC_WATCH_ORDER_TWO_DIRECT_NODES_READ'
 CODEX_R04_REQUIRED_CI_CHECKS = CODEX_P06_REQUIRED_CI_CHECKS
 CODEX_R04_EVIDENCE_REFRESH_PATHS = {
     CODEX_R04_REPORT_RELATIVE_PATH,
@@ -3839,7 +3845,7 @@ CODEX_R04_REPORT_FIELDS = {
 }
 CODEX_R04_ANSWER_CHECK_FIELDS = {
     'exactRegisteredProfile', 'oneAllowedMcpTool', 'fixedArguments', 'exactCandidateBundle',
-    'offlineFixtureOnly', 'fourExpectedLocalResponses', 'noAssetRequests',
+    'offlineFixtureOnly', 'sixExpectedLocalOperations', 'noAssetRequests',
     'exactAcknowledgement', 'privacyPreserved',
 }
 CODEX_R04_PRIVACY_FIELDS = {
@@ -7343,33 +7349,54 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
         'authorizationHeaderCount',
         'duplicateRequestCount',
     ),
+    'scripts/lib/r04-series-watch-order-offline-v3-fixture.mjs': (
+        'export function assertR04SeriesWatchOrderOfflineV3Profile(',
+        'export function createR04SeriesWatchOrderOfflineV3Fetch(',
+        'R04_SERIES_WATCH_ORDER_V3_ROOT_ID = 991404',
+        'R04_SERIES_WATCH_ORDER_V3_PREQUEL_ID = 991405',
+        'R04_SERIES_WATCH_ORDER_V3_SEQUEL_ID = 991406',
+        'authorizationHeaderCount',
+        'duplicateRequestCount',
+    ),
+    'scripts/lib/r04-series-watch-order-offline-profile-config.mjs': (
+        'const V3_CONFIG = Object.freeze({',
+        'sixExpectedLocalOperations: true',
+        'expectedOperationsComplete: true',
+    ),
     'scripts/lib/codex-profile-tool-summary.mjs': (
         'profileId === R04_SERIES_WATCH_ORDER_OFFLINE_PROFILE_ID',
-        'profileId === R04_SERIES_WATCH_ORDER_V2_PROFILE_ID',
+        '[R04_SERIES_WATCH_ORDER_V2_PROFILE_ID, R04_SERIES_WATCH_ORDER_V3_PROFILE_ID].includes(profileId)',
         'watchOrderCount:',
         'relationRowsObserved:',
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
         'createR04SeriesWatchOrderOfflineFetch()',
         'createR04SeriesWatchOrderOfflineV2Fetch()',
+        'createR04SeriesWatchOrderOfflineV3Fetch()',
         'R04_SERIES_WATCH_ORDER_OFFLINE_NETWORK_MODE',
         'R04_SERIES_WATCH_ORDER_V2_NETWORK_MODE',
+        'R04_SERIES_WATCH_ORDER_V3_NETWORK_MODE',
         'assertR04SeriesWatchOrderOfflineProfile(config.profile)',
         'assertR04SeriesWatchOrderOfflineV2Profile(config.profile)',
+        'assertR04SeriesWatchOrderOfflineV3Profile(config.profile)',
     ),
     'scripts/lib/codex-one-tool-mcp-arguments.mjs': (
         'assertR04SeriesWatchOrderOfflineProfile(profile)',
         'assertR04SeriesWatchOrderOfflineV2Profile(profile)',
+        'assertR04SeriesWatchOrderOfflineV3Profile(profile)',
         'A registered profile cannot be combined with arbitrary tool, arguments, or network mode.',
     ),
     'scripts/acceptance/agent-mcp-profile-registry.json': (
         '"id": "r04-series-watch-order-offline-agent-mcp-v1"',
         '"id": "r04-series-watch-order-offline-agent-mcp-v2"',
+        '"id": "r04-series-watch-order-offline-agent-mcp-v3"',
         '"networkMode": "run95-r04-series-watch-order-offline-v1"',
         '"networkMode": "run95-r04-series-watch-order-offline-prequel-v2"',
+        '"networkMode": "run95-r04-series-watch-order-offline-multi-node-v3"',
         '"toolName": "bangumi.get_series_watch_order"',
         '"subjectId": 990801',
         '"subjectId": 990817',
+        '"subjectId": 991404',
         '"depth": 1',
     ),
     'scripts/acceptance/run-r04-series-watch-order-offline-agent-mcp.mjs': (
@@ -7389,8 +7416,14 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function assertR04CandidateReviewGate(',
         'export function buildR04CodexExecArgs(',
         'export function validateR04ServerSummary(',
-        'fixture.expectedOperationsComplete === true',
-        'function runR04(',
+        'PROFILE_CONFIG.expectedResultSummary',
+        'promptForCurrentProfile()',
+        'PROFILE_CONFIG.expectedFixture',
+        'export function runR04(',
+    ),
+    'scripts/acceptance/run-r04-series-watch-order-offline-agent-mcp-v3.mjs': (
+        'R04_SERIES_WATCH_ORDER_V3_PROFILE_ID',
+        'main(process.argv.slice(2)',
     ),
     'scripts/acceptance/write-r04-series-watch-order-offline-agent-mcp-report.mjs': (
         'export function buildR04RunnerReceiptPayload(',
@@ -7402,7 +7435,8 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
         'export function buildR04RunnerReceiptPayload(',
         'export function validateR04ProfileReport(',
         'export function validateR04SeriesWatchOrderOfflineV2SanitizedReportFile(',
-        'fourExpectedLocalResponses',
+        'export function validateR04SeriesWatchOrderOfflineV3SanitizedReportFile(',
+        'CONFIG.expectedAnswerChecks',
         "openSync(target, 'wx', 0o600)",
     ),
     'scripts/acceptance/validate-r04-series-watch-order-offline-agent-mcp-report.mjs': (
@@ -7411,11 +7445,17 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/validate-r04-series-watch-order-offline-agent-mcp-v2-report.mjs': (
         'validateR04ProfileReport(',
     ),
+    'scripts/acceptance/validate-r04-series-watch-order-offline-agent-mcp-v3-report.mjs': (
+        'validateR04ProfileReport(',
+        'R04_V3_REPORT_INPUT_INVALID',
+    ),
     'scripts/agent-harness.mjs': (
         "case 'r04-series-watch-order-offline-agent-mcp-v1'",
         "case 'r04-series-watch-order-offline-agent-mcp-v2'",
+        "case 'r04-series-watch-order-offline-agent-mcp-v3'",
         'validateR04SanitizedReportFile(',
         'validateR04SeriesWatchOrderOfflineV2SanitizedReportFile(',
+        'validateR04SeriesWatchOrderOfflineV3SanitizedReportFile(',
         'CANDIDATE_EXACT_CI_RUN_EVIDENCE_REQUIRED',
     ),
     'tests/harness/agent-harness-cli.test.mjs': (
@@ -7431,9 +7471,14 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
         'exactly four GET paths',
         'A valid signed report can credit only',
     ),
+    'docs/research/run95-r04-series-watch-order-offline-matrix-v3-contract-2026-10-23.md': (
+        'R04 remains `UNASSESSED`',
+        'exactly six local GET operations',
+        'cannot establish canonical order or completeness',
+    ),
     'docs/product/frontier-ledger.json': (
         'R04 remains UNASSESSED.',
-        'It may credit only this Agent/MCP matrix cell',
+        'do not claim canonical order or visual quality',
     ),
     'tests/harness/r04-series-watch-order-offline-fixture.test.mjs': (
         'R04 profile binds one exact synthetic offline watch-order matrix call',
@@ -7454,6 +7499,14 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
         'R04 v2 fixture serves a non-empty prequel path through exactly four local GETs',
         'R04 v2 fixture rejects requests outside its exact four routes',
     ),
+    'tests/harness/r04-series-watch-order-offline-v3-fixture.test.mjs': (
+        'R04 v3 binds a fresh immutable two-node offline watch-order profile',
+        'R04 v3 fixture serves two ordered neighbors through exactly six local GETs',
+    ),
+    'tests/harness/run-r04-series-watch-order-offline-agent-mcp-v3.test.mjs': (
+        'R04 v3 runner binds the exact profile arguments and six-operation summary',
+        'R04 v3 wrapper rejects a different profile before any claim',
+    ),
     'tests/harness/run-r04-series-watch-order-offline-agent-mcp-v2.test.mjs': (
         'R04 server summary accepts exactly four local fixture responses',
         'R04 Codex errors before the MCP call are classified safely and keep the claim terminal',
@@ -7461,13 +7514,15 @@ CODEX_R04_PROFILE_IMPLEMENTATION_MARKERS = {
     'tests/harness/write-r04-series-watch-order-offline-agent-mcp-v2-report.test.mjs': (
         'R04 report builder signs only sanitized matrix evidence without scenario credit',
         'R04 report validator rejects modified signatures and local request counters',
+        'R04 v3 report builder signs only the exact multi-node matrix result and rejects altered order',
     ),
     'tests/semantic/series-watch-order.test.ts': (
         'places a bounded synthetic prequel before its root using one-hop relations',
+        'places two bounded direct synthetic nodes around a root using one-hop relations',
     ),
     'scripts/test_acceptance_evidence.py': (
-        'def test_v2_profile_is_distinct_and_keeps_consumed_v1_arguments_unchanged(',
-        'def test_v2_implementation_markers_match_the_exact_candidate_without_mocking(',
+        'def test_v3_profile_is_distinct_and_keeps_consumed_v1_v2_arguments_unchanged(',
+        'def test_v3_implementation_markers_match_the_exact_candidate_without_mocking(',
         'R04OfflineProfileReportValidationTests',
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
@@ -19297,11 +19352,11 @@ def codex_r04_profile_report_is_valid(
         or report.get('scenarioId') is not None
         or report.get('epochId') != CODEX_R04_EPOCH_ID
         or report.get('profileId') != CODEX_R04_PROFILE_ID
-        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v2'
+        or report.get('profile') != 'codex-luna-max-offline-agent-mcp-matrix-v3'
         or report.get('model') != 'gpt-6-luna'
         or report.get('reasoningEffort') != 'max'
         or not isinstance(report.get('reviewerId'), str)
-        or re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', report['reviewerId']) is None
+        or not codex_g16_reviewer_id_is_valid(report['reviewerId'], pr_number)
         or not isinstance(report.get('codexCliVersion'), str)
         or re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion']) is None
         or not isinstance(observed_at, str)
@@ -19352,10 +19407,10 @@ def codex_r04_profile_report_is_valid(
         or report.get('serverToolNames') != [CODEX_R04_TOOL_NAME]
         or type(report.get('serverToolCount')) is not int
         or report.get('serverToolCount') != 1
-        or report.get('mcpServerNames') != ['bgk_r04_watch_order_v2']
+        or report.get('mcpServerNames') != [CODEX_R04_SERVER_ID]
         or report.get('answerCheckMethod') != CODEX_R04_ANSWER_CHECK_METHOD
-        or report.get('answerSha256') != hashlib.sha256(b'R04_SYNTHETIC_WATCH_ORDER_PREQUEL_CHAIN_READ').hexdigest()
-        or report.get('answerUtf8Bytes') != len(b'R04_SYNTHETIC_WATCH_ORDER_PREQUEL_CHAIN_READ')
+        or report.get('answerSha256') != hashlib.sha256(CODEX_R04_ACKNOWLEDGEMENT.encode('utf-8')).hexdigest()
+        or report.get('answerUtf8Bytes') != len(CODEX_R04_ACKNOWLEDGEMENT.encode('utf-8'))
     ):
         return False
 
@@ -19370,22 +19425,23 @@ def codex_r04_profile_report_is_valid(
         or set(fixture) != CODEX_R04_OFFLINE_FIXTURE_FIELDS
         or fixture != {
             'profile': CODEX_R04_NETWORK_MODE,
-            'requestCount': 4,
-            'subjectRequestCount': 2,
-            'relationsRequestCount': 2,
+            'requestCount': 6,
+            'subjectRequestCount': 3,
+            'relationsRequestCount': 3,
             'duplicateRequestCount': 0,
             'unexpectedRequestCount': 0,
             'authorizationHeaderCount': 0,
             'expectedOperationsComplete': True,
         }
         or report.get('resultSummary') != {
-            'state': 'complete', 'subjectId': 990817, 'watchOrderCount': 2,
+            'state': 'complete', 'subjectId': 991404, 'watchOrderCount': 3,
             'watchOrder': [
-                {'id': 990818, 'isRoot': False, 'placement': 'before_root'},
-                {'id': 990817, 'isRoot': True, 'placement': 'root'},
+                {'id': 991405, 'isRoot': False, 'placement': 'before_root'},
+                {'id': 991404, 'isRoot': True, 'placement': 'root'},
+                {'id': 991406, 'isRoot': False, 'placement': 'after_root'},
             ],
-            'relatedCount': 1, 'relatedIds': [990818], 'relationRequests': 2,
-            'relationRowsObserved': 1, 'detailsAttempted': 1,
+            'relatedCount': 2, 'relatedIds': [991405, 991406], 'relationRequests': 3,
+            'relationRowsObserved': 2, 'detailsAttempted': 2,
         }
         or not isinstance(network_boundary, dict)
         or set(network_boundary) != CODEX_R04_NETWORK_BOUNDARY_FIELDS
@@ -19438,7 +19494,7 @@ def codex_r04_profile_report_is_valid(
     disposition = codex_r04_profile_disposition_matches_report(report, status, report_sha256)
     if disposition is None:
         return False
-    validator = ROOT / 'scripts/acceptance/validate-r04-series-watch-order-offline-agent-mcp-v2-report.mjs'
+    validator = ROOT / 'scripts/acceptance/validate-r04-series-watch-order-offline-agent-mcp-v3-report.mjs'
     validation = subprocess.run(
         ['node', str(validator)],
         cwd=ROOT,

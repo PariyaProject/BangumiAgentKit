@@ -184,7 +184,10 @@ import {
 import { validateP02SanitizedReportFile } from './acceptance/write-p02-person-profile-agent-mcp-report.mjs';
 import { validateG06SubjectCastOfflineSanitizedReportFile } from './acceptance/write-g06-subject-cast-offline-agent-mcp-report.mjs';
 import { validateR04SanitizedReportFile } from './acceptance/write-r04-series-watch-order-offline-agent-mcp-report.mjs';
-import { validateR04SeriesWatchOrderOfflineV2SanitizedReportFile } from './acceptance/write-r04-series-watch-order-offline-agent-mcp-v2-report.mjs';
+import {
+  validateR04SeriesWatchOrderOfflineV2SanitizedReportFile,
+  validateR04SeriesWatchOrderOfflineV3SanitizedReportFile,
+} from './acceptance/write-r04-series-watch-order-offline-agent-mcp-v2-report.mjs';
 import { validateR04RenderSanitizedReportFile } from './acceptance/write-r04-render-series-watch-order-offline-agent-mcp-report.mjs';
 import { validateR04RenderV2SanitizedReportFile } from './acceptance/write-r04-render-series-watch-order-offline-agent-mcp-v2-report.mjs';
 import { validateR01RelationsOfflineSanitizedReportFile } from './acceptance/write-r01-relations-offline-agent-mcp-report.mjs';
@@ -4986,6 +4989,8 @@ function validateAgentMcpProfileReport(profile, claim, reportPath) {
       return validateR04SanitizedReportFile(claim, root, reportPath);
     case 'r04-series-watch-order-offline-agent-mcp-v2':
       return validateR04SeriesWatchOrderOfflineV2SanitizedReportFile(claim, root, reportPath);
+    case 'r04-series-watch-order-offline-agent-mcp-v3':
+      return validateR04SeriesWatchOrderOfflineV3SanitizedReportFile(claim, root, reportPath);
     case 'r04-render-series-watch-order-offline-agent-mcp-v1':
       return validateR04RenderSanitizedReportFile(claim, root, reportPath);
     case 'r04-render-series-watch-order-offline-agent-mcp-matrix-v2':
