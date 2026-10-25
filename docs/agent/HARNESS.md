@@ -56,7 +56,9 @@ state and closes the Issue. Closed Issues remain durable history; they are not
 active control planes.
 
 Machine state is stored in one marked JSON block in each body and edited in
-place. Significant terminal events may receive one concise comment when it adds
+place. Small states retain their existing compact JSON; large states use the
+lossless, bounded [whole-state codec](CONTROL_BLOCK_CODEC.md). The envelope is
+storage encoding, not a new logical state schema or authority. Significant terminal events may receive one concise comment when it adds
 audit value. Heartbeat and polling comments are prohibited.
 
 GitHub is the durable runtime source. If authentication, API access, or required
@@ -219,8 +221,10 @@ compressed with digest/count checks once the JSON exceeds 4 KiB. Appends
 require the observed sequence, pre-write reread and post-write readback. Use
 one writer; GitHub PATCH has no atomic compare-and-swap guarantee. A readback
 failure demands reinspection, not blind replay. No events are silently
-trimmed. The existing control-body size gate applies; if full, stop writes
-and implement an explicit archive migration before adding more history.
+trimmed. The whole-state codec preserves the entire Run/Epoch independently of
+the continuation archive. The existing control-body size gate still applies;
+if compression cannot fit the complete body, stop writes and implement an
+explicit archive migration before adding more history.
 No raw chat, credentials, account identifiers, QR/media, or mutable tracked
 runtime-log fallback belongs here.
 

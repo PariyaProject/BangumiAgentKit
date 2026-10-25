@@ -1,4 +1,5 @@
 import { canonicalHash, inspectFrontierClosure } from './frontier-ledger.mjs';
+import { encodeControlState, decodeControlState, ControlCodecError } from './harness-control-codec.mjs';
 
 export const SCHEMA = 'bangumi-harness/v3';
 export const RUN_MARKER = 'bangumi-harness:v3:outer-run';
@@ -2397,9 +2398,12 @@ export function recordIntegrationBlocked(run, epoch, reason) {
 }
 
 export function renderControlBlock(marker, state) {
-  // Keep the canonical machine state compact so complete frontier evidence fits
-  // GitHub's control-body limit without lossy summaries or silent truncation.
-  return `<!-- ${marker}:start -->\n\`\`\`json\n${JSON.stringify(state)}\n\`\`\`\n<!-- ${marker}:end -->`;
+  try {
+    return `<!-- ${marker}:start -->\n\`\`\`json\n${encodeControlState(state, marker)}\n\`\`\`\n<!-- ${marker}:end -->`;
+  } catch (error) {
+    if (error instanceof ControlCodecError) throw new HarnessInvariantError(error.code, error.message);
+    throw error;
+  }
 }
 
 export function parseControlBlock(body, marker) {
@@ -2412,8 +2416,14 @@ export function parseControlBlock(body, marker) {
   }
   const content = body.slice(startIndex + start.length, endIndex).trim();
   const json = content.replace(/^```json\s*/u, '').replace(/\s*```$/u, '');
-  const state = JSON.parse(json);
-  if (state.schema !== SCHEMA) {
+  let state;
+  try {
+    state = decodeControlState(json, marker);
+  } catch (error) {
+    if (error instanceof ControlCodecError) throw new HarnessInvariantError(error.code, error.message);
+    throw error;
+  }
+  if (!state || typeof state !== 'object' || Array.isArray(state) || state.schema !== SCHEMA) {
     throw new HarnessInvariantError('CONTROL_SCHEMA_MISMATCH', `Expected ${SCHEMA}`);
   }
   if (marker === RUN_MARKER && state.outer_sol) {
