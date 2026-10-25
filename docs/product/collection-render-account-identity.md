@@ -21,7 +21,7 @@ another binding lookup. A client, non-empty principal and non-empty string
 username without surrounding whitespace are required before any subject or
 collection request. The username is consumed unchanged; no nickname, ID or
 alias is guessed. Missing identity raises `AUTH_REQUIRED` before rendering or
-storage. The internal session is trusted input, not a new model-facing account
+artifact storage. The internal session is trusted input, not a new model-facing account
 parameter or independent credential/account-pair verification mechanism.
 
 Existing presentation behavior is preserved:

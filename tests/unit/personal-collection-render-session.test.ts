@@ -42,14 +42,14 @@ async function fixture(username = 'fixture-alice', bound = true) {
   });
   for (const [index, account] of accounts.entries()) {
     await storage.upsertBangumiAccount({
-      id: account.username,
+      id: 'account-' + account.username,
       bangumiUserId: index + 100,
       username: account.username,
       nickname: 'Synthetic account',
     });
     await storage.upsertCredential({
       id: 'credential-' + account.username,
-      bangumiAccountId: account.username,
+      bangumiAccountId: 'account-' + account.username,
       encryptedAccessToken: encryptToken(account.token, secretKey),
       expiresAt: new Date(Date.now() + 3600_000),
       requestedCapabilities: ['read:collection'],
@@ -60,7 +60,7 @@ async function fixture(username = 'fixture-alice', bound = true) {
       updatedAt: new Date(),
     });
   }
-  if (bound) await storage.replaceActiveBinding(principal.id, username);
+  if (bound) await storage.replaceActiveBinding(principal.id, 'account-' + username);
   const requests: { path: string; authorization: string | null; method: string }[] = [];
   let collectionStatus = 200;
   const fetchFn = vi.fn<typeof fetch>(async (input, init) => {
@@ -191,7 +191,7 @@ for (const tool of tools) {
             const session = await resolve(...args);
             await f.storage.replaceActiveBinding(
               f.context.principalId,
-              username === 'fixture-alice' ? 'fixture-bob' : 'fixture-alice',
+              username === 'fixture-alice' ? 'account-fixture-bob' : 'account-fixture-alice',
             );
             return session;
           });
@@ -208,7 +208,7 @@ for (const tool of tools) {
         .spyOn(f.deps.clientProvider, 'requireAuthenticatedClient')
         .mockImplementation(async (...args) => {
           const session = await resolve(...args);
-          await f.storage.replaceActiveBinding(f.context.principalId, 'fixture-bob');
+          await f.storage.replaceActiveBinding(f.context.principalId, 'account-fixture-bob');
           return session;
         });
       await f.registry.getTool(tool.name)!.execute(tool.input, f.context, f.deps);
