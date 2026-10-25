@@ -374,6 +374,36 @@ test('continuation CLI records a strategy checkpoint and rejects stale replay', 
   }
 });
 
+test('continuation CLI archives a near-full legacy Run losslessly before adding a checkpoint', () => {
+  const { run, epoch } = controlFixture();
+  run.retained_legacy_history = '原始历史-do-not-trim;'.repeat(2450);
+  const initial = `<!-- ${RUN_MARKER}:start -->\n\`\`\`json\n${JSON.stringify(run)}\n\`\`\`\n<!-- ${RUN_MARKER}:end -->`;
+  assert.ok(Buffer.byteLength(initial) > 60_000 && Buffer.byteLength(initial) < 65_536);
+  const environment = createMockEnvironment({ runBody: initial, prBody: renderEpochBody(epoch) });
+  try {
+    const evidence = path.join(environment.directory, 'capacity-checkpoint.json');
+    fs.writeFileSync(evidence, JSON.stringify({ kind: 'progress', epoch_pr: 42, problem: 'capacity',
+      input_sha256: 'f'.repeat(64), outcome: 'Meaningful completed work.'.repeat(20),
+      next_action: 'Continue the next bounded package.', evidence_refs: ['https://example.invalid/merged-pr'] }));
+    const recorded = environment.execute(['run:checkpoint', '--run', '1', '--expected-sequence', '0', '--evidence', evidence]);
+    assert.equal(recorded.status, 0, recorded.stderr);
+    const stored = environment.readState();
+    assert.ok(Buffer.byteLength(stored.runBody) < 32_768);
+    const next = parseControlBlock(stored.runBody, RUN_MARKER);
+    const { continuation, ...unchanged } = next;
+    assert.ok(continuation);
+    assert.deepEqual(unchanged, run);
+    assert.equal(stored.prBody, renderEpochBody(epoch));
+    const brief = environment.execute(['continuation:show', '--run', '1', '--goal-state', 'active']);
+    assert.equal(brief.status, 0, brief.stderr);
+    assert.equal(JSON.parse(brief.stdout).sequence, 1);
+    const before = stored.runBody;
+    const replay = environment.execute(['run:checkpoint', '--run', '1', '--expected-sequence', '0', '--evidence', evidence]);
+    assert.equal(replay.status, 2); assert.match(replay.stderr, /^STALE_CONTINUATION_SEQUENCE:/u);
+    assert.equal(environment.readState().runBody, before);
+  } finally { environment.cleanup(); }
+});
+
 function controlFixture() {
   const run = createRunState({ runId: 'run-cli' });
   run.state = 'EPOCH_ACTIVE';
