@@ -17,6 +17,7 @@ import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from client_evidence import tool_client_e2e_sources
+from harness_control_codec import decode_control_state
 from acceptance.c03_person_activity_offline_v2_acceptance import (
     c03_person_activity_offline_v2_harness_status,
     c03_person_activity_offline_v2_signed_report_matches,
@@ -24772,8 +24773,8 @@ def codex_p01_harness_control_record_trusts_report(
     content = body[start + len(start_marker):end].strip()
     content = re.sub(r'^\x60{3}json\s*|\s*\x60{3}$', '', content)
     try:
-        epoch = json.loads(content)
-    except json.JSONDecodeError:
+        epoch = decode_control_state(content, 'bangumi-harness:v3:epoch')
+    except ValueError:
         return False
     preflight = epoch.get('adversarial_preflight') if isinstance(epoch, dict) else None
     reviews = epoch.get('review_history') if isinstance(epoch, dict) else None
@@ -25420,8 +25421,8 @@ def codex_s03_harness_control_record_trusts_attestation(
     content = body[start + len(start_marker):end].strip()
     content = re.sub(r'^\x60{3}json\s*|\s*\x60{3}$', '', content)
     try:
-        epoch = json.loads(content)
-    except json.JSONDecodeError:
+        epoch = decode_control_state(content, 'bangumi-harness:v3:epoch')
+    except ValueError:
         return False
     preflight = epoch.get('adversarial_preflight') if isinstance(epoch, dict) else None
     review_history = epoch.get('review_history') if isinstance(epoch, dict) else None

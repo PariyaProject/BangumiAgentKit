@@ -2,6 +2,7 @@
 """Negative tests for catalog-bound public API acceptance evidence."""
 
 import base64
+import gzip
 import hashlib
 import importlib.util
 import json
@@ -2840,7 +2841,23 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.p01_pr_state = 'open'
         self.p01_pr_merged = False
         self.p01_pr_head_sha = None
+        self.control_archive_enabled = False
+        self.control_archive_invalid_digest = False
         GENERATOR.urllib.request.urlopen = self._fake_s03_control_urlopen
+
+    def _encode_epoch_control_fixture(self, epoch):
+        content = json.dumps(epoch, ensure_ascii=False)
+        if not self.control_archive_enabled:
+            return content
+        raw = content.encode('utf-8')
+        return json.dumps({
+            'schema': 'bangumi-harness-control/gzip-v1',
+            'codec': 'gzip+base64',
+            'marker': 'bangumi-harness:v3:epoch',
+            'bytes': len(raw),
+            'sha256': '0' * 64 if self.control_archive_invalid_digest else hashlib.sha256(raw).hexdigest(),
+            'data': base64.b64encode(gzip.compress(raw)).decode('ascii'),
+        })
 
     def _fake_s03_control_urlopen(self, request, timeout=10):
         if (
@@ -2895,7 +2912,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             '<!-- bangumi-harness:v3:epoch:start -->\n'
             + fence
             + 'json\n'
-            + json.dumps(epoch)
+            + self._encode_epoch_control_fixture(epoch)
             + '\n'
             + fence
             + '\n<!-- bangumi-harness:v3:epoch:end -->'
@@ -2993,7 +3010,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.p01_control_body = (
             '<!-- bangumi-harness:v3:epoch:start -->\n'
             + fence + 'json\n'
-            + json.dumps(epoch)
+            + self._encode_epoch_control_fixture(epoch)
             + '\n' + fence
             + '\n<!-- bangumi-harness:v3:epoch:end -->'
         )
@@ -6587,6 +6604,28 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             ),
         )
 
+    def test_p01_archived_epoch_preserves_acceptance_and_rejects_digest_or_review_mismatch(self):
+        self.control_archive_enabled = True
+        report = self._p01_report_fixture()
+        report_bytes = json.dumps(report).encode('utf-8')
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_P01_REPORT_RELATIVE_PATH).name
+        report_path.write_bytes(report_bytes)
+        self._set_p01_control_record(report, report_bytes)
+        self.assertIn('bangumi-harness-control/gzip-v1', self.p01_control_body)
+        self.assertTrue(GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision))
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_person_activity'],
+            {GENERATOR.CODEX_P01_REPORT_RELATIVE_PATH},
+        )
+        self._set_p01_control_record(report, report_bytes, review_history=[{
+            'candidate_sha': self.source_revision, 'reviewed_base_sha': report['baseSha'],
+            'reviewer_id': 'different-reviewer', 'verdict': 'PASS',
+        }])
+        self.assertFalse(GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision))
+        self.control_archive_invalid_digest = True
+        self._set_p01_control_record(report, report_bytes)
+        self.assertFalse(GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision))
+
     def test_accepts_only_exact_candidate_bound_sanitized_p01_report(self):
         report_path = self.live_probe_dir / Path(GENERATOR.CODEX_P01_REPORT_RELATIVE_PATH).name
         report = self._p01_report_fixture()
@@ -7501,6 +7540,24 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 report_path, self.stale_candidate_source_revision,
             ),
         )
+
+    def test_s03_archived_epoch_preserves_attestation_and_rejects_digest_or_candidate_mismatch(self):
+        self.control_archive_enabled = True
+        report = self._s03_report_fixture()
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_S03_REPORT_RELATIVE_PATH).name
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertTrue(GENERATOR.codex_s03_report_is_valid(report))
+        self.assertTrue(GENERATOR.codex_s03_report_matches_candidate_revision(report_path, self.source_revision))
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_series_watch_order'],
+            {GENERATOR.CODEX_S03_REPORT_RELATIVE_PATH},
+        )
+        self.s03_control_candidate_revision = '0' * 40
+        self.assertFalse(GENERATOR.codex_s03_report_is_valid(report))
+        self.s03_control_candidate_revision = self.source_revision
+        self.control_archive_invalid_digest = True
+        self.assertFalse(GENERATOR.codex_s03_report_is_valid(report))
+        self.assertNotIn('bangumi.get_series_watch_order', GENERATOR.model_mcp_e2e_sources(self.catalog))
 
     def test_accepts_exact_candidate_bound_s03_positive_agent_mcp_report(self):
         report_path = self.live_probe_dir / Path(GENERATOR.CODEX_S03_REPORT_RELATIVE_PATH).name
