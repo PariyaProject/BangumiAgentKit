@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { defineTool, type ResolvedToolPolicy } from '../define-tool.js';
+import {
+  defineTool,
+  type ResolvedToolPolicy,
+  type ToolContext,
+  type ToolExecutionDependencies,
+} from '../define-tool.js';
 import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { compareSubjectCohorts, DiscoveryEngine } from '@bangumi-agent-kit/discovery';
 import {
@@ -117,6 +122,36 @@ const PRIVATE_COLLECTION_RENDER_TEMPLATES = new Set([
   'collection-series',
   'collection-entity-consistency',
 ]);
+
+async function requireCollectionRenderSession(
+  context: ToolContext,
+  deps?: ToolExecutionDependencies,
+) {
+  const authRequired = () =>
+    new BangumiError('AUTH_REQUIRED', '读取收藏需要已绑定账号及有效用户名', false, 401);
+  if (typeof context?.principalId !== 'string' || !context.principalId.trim()) {
+    throw authRequired();
+  }
+  let session = deps?.executionSession;
+  // A supplied session is the registry's captured identity. Never replace an
+  // incomplete one with a later binding, which may belong to another account.
+  if (session === undefined) {
+    if (!deps?.clientProvider) throw authRequired();
+    session = await deps.clientProvider.requireAuthenticatedClient(context.principalId, [
+      'read:collection',
+    ]);
+  }
+  const username = session?.account?.username;
+  if (
+    !session?.client ||
+    typeof username !== 'string' ||
+    !username ||
+    username !== username.trim()
+  ) {
+    throw authRequired();
+  }
+  return { client: session.client, username };
+}
 
 function getArtifactStore(): ArtifactStore {
   if (!globalArtifactStore) {
@@ -280,21 +315,13 @@ export function createRenderPresentationTools(
     execute: async (input, _context, deps) => {
       const clientProvider = deps?.clientProvider;
       const executionSession = deps?.executionSession;
-      if (!clientProvider && !executionSession?.client) {
-        throw new BangumiError('INTERNAL_ERROR', 'ClientProvider unavailable', false);
-      }
 
       let client: ConstructorParameters<typeof SubjectService>[0] | undefined;
+      let collectionUsername: string | undefined;
       if (input.includeCollection) {
-        if (executionSession?.account) {
-          client = executionSession.client;
-        } else if (clientProvider && _context?.principalId) {
-          ({ client } = await clientProvider.requireAuthenticatedClient(_context.principalId, [
-            'read:collection',
-          ]));
-        } else {
-          throw new BangumiError('AUTH_REQUIRED', '读取收藏进度需要已授权账号', false, 401);
-        }
+        const session = await requireCollectionRenderSession(_context, deps);
+        client = session.client;
+        collectionUsername = session.username;
       } else if (executionSession?.client) {
         client = executionSession.client;
       } else if (clientProvider) {
@@ -307,10 +334,13 @@ export function createRenderPresentationTools(
       const subjectData = await subjectService.getSubjectById(input.subjectId);
 
       let collectionData: any = undefined;
-      if (input.includeCollection && _context?.principalId) {
+      if (collectionUsername !== undefined) {
         try {
           const userService = new UserService(client);
-          const userCol = await userService.getUserSubjectCollection('me', input.subjectId);
+          const userCol = await userService.getUserSubjectCollection(
+            collectionUsername,
+            input.subjectId,
+          );
           if (userCol.found && userCol.collection) {
             collectionData = {
               status: userCol.collection.status,
@@ -441,19 +471,12 @@ export function createRenderPresentationTools(
     scopes: ['read:collection'],
     risk: 'read',
     execute: async (input, _context, deps) => {
-      const clientProvider = deps?.clientProvider;
-      if (!clientProvider) {
-        throw new BangumiError('INTERNAL_ERROR', 'ClientProvider unavailable', false);
-      }
-
-      const { client } = await clientProvider.requireAuthenticatedClient(_context?.principalId, [
-        'read:collection',
-      ]);
+      const { client, username } = await requireCollectionRenderSession(_context, deps);
       const subjectService = new SubjectService(client);
       const userService = new UserService(client);
 
       const subjectData = await subjectService.getSubjectById(input.subjectId);
-      const userCol = await userService.getUserSubjectCollection('me', input.subjectId);
+      const userCol = await userService.getUserSubjectCollection(username, input.subjectId);
 
       if (!userCol.found || !userCol.collection) {
         throw new BangumiError(

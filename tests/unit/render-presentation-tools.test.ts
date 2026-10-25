@@ -203,7 +203,7 @@ describe('private render artifact scope', () => {
     ]);
     expect(clientProvider.getOptionalAuthenticatedClient).not.toHaveBeenCalled();
     expect(subjectLookup).toHaveBeenCalledWith(123);
-    expect(collectionLookup).toHaveBeenCalledWith('me', 123);
+    expect(collectionLookup).toHaveBeenCalledWith('synthetic-user', 123);
     expect(artifactStore.saveArtifact).not.toHaveBeenCalled();
     expect(artifactStore.saveArtifactForPrincipal).toHaveBeenCalledWith(
       'qq:bot-1:sender-alice',
