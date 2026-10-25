@@ -37,12 +37,16 @@ beyond the output bound. P01/S03 synthetic signed-report predicates still
 accept matching archived authority and reject corrupted authority or an
 incorrect exact review/candidate. These fixtures do not run any Product claim.
 
-Validation: `pnpm harness:test` passed 957 tests; `pnpm acceptance:check` passed
+Initial validation: `pnpm harness:test` passed 957 tests; `pnpm acceptance:check` passed
 316 Python tests and both generated-matrix checks; `pnpm lint` and
 `pnpm typecheck` passed. The focused near-full mock CLI test invokes checkpoint
 and continuation commands, confirms all old fields and the Epoch survive,
 and rejects a stale sequence without another mutation. GitHub exact-head CI
 and review evidence belong to the maintenance PR rather than this report.
+Independent Spec review then found Python's permissive nonstandard JSON
+constants. A regression reproduced acceptance of `NaN` against the initial
+candidate. Both outer and decompressed Python parses now reject `NaN`,
+`Infinity` and `-Infinity`; all 19 focused cross-language codec tests passed.
 The read-only proof performed zero GitHub writes, Product claims, account,
 OAuth, model or client calls. First real mutation requires reviewed integration
 and supported-command readback per the [codec contract](../agent/CONTROL_BLOCK_CODEC.md).

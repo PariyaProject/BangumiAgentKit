@@ -108,6 +108,19 @@ test('decompression bomb is bounded even with forged small declared length', () 
   assert.notEqual(python(json).status, 0);
 });
 
+test('nonstandard JSON constants are rejected in plain state and archived payload in both languages', () => {
+  for (const value of ['NaN', 'Infinity', '-Infinity']) {
+    const raw = `{"schema":"bangumi-harness/v3","unknown":${value}}`;
+    for (const json of [raw, JSON.stringify(archive(Buffer.from(raw)))]) {
+      assert.throws(() => decodeControlState(json, RUN_MARKER));
+      assert.notEqual(python(json).status, 0, `Python must reject ${value}`);
+    }
+    const envelope = JSON.stringify(archive(Buffer.from('{}'))).replace(/"bytes":2/u, `"bytes":${value}`);
+    assert.throws(() => decodeControlState(envelope, RUN_MARKER));
+    assert.notEqual(python(envelope).status, 0);
+  }
+});
+
 test('nested archive, invalid UTF8, nonobject JSON and wrong schema are not control states', () => {
   for (const bytes of [Buffer.from(JSON.stringify({ schema: CONTROL_ARCHIVE_SCHEMA })), Buffer.from([0xff]),
     Buffer.from('[]'), Buffer.from('{"schema":"wrong"}')]) {
