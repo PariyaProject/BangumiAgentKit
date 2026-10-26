@@ -1,0 +1,19 @@
+{
+  "schema": "pariya-a1-host-result/v1",
+  "scope": "a1-two-bound-account-reads-v1",
+  "executionKind": "live",
+  "sourceRevision": "e0810dad9e57f35cbeca63de35cf7a97d745d712",
+  "imageId": "sha256:37614bfe1397066898245f50636504840b1c645e4a94ca1dda67b7ce15065875",
+  "planSha256": "a7986e178a57ad6aaf84e5ac03449c94f549889f7dcb23ef34acc2635ae013ec",
+  "passed": true,
+  "code": "OK",
+  "startAttempted": true,
+  "containerRemoved": true,
+  "toolCallsAttempted": 2,
+  "toolCallsSucceeded": 2,
+  "httpRequests": 2,
+  "collectionRows": 2,
+  "modelCalls": 0,
+  "clientActions": 0,
+  "privatePayloadSaved": false
+}

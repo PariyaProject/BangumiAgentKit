@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "report_status": "DEFERRED_EXTERNAL",
+  "flow": [
+    {
+      "id": "auth_start",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "The operator called the compiled OAuthService directly, not the MCP auth_start tool."
+      ]
+    },
+    {
+      "id": "browser_authorization",
+      "status": "PASS",
+      "evidence": [
+        "Human confirmation completed in the existing application; successful callback and success heading observed."
+      ]
+    },
+    {
+      "id": "oauth_callback",
+      "status": "PASS",
+      "evidence": [
+        "One code exchange and one identity request succeeded; current-instance encrypted credential and trusted binding persisted."
+      ]
+    },
+    {
+      "id": "auth_status",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "No auth_status tool call was made. Local metadata and A1 success are separately recorded."
+      ]
+    },
+    {
+      "id": "list_accounts",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "Not executed in this scope."
+      ]
+    },
+    {
+      "id": "switch_account",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "Not executed in this scope."
+      ]
+    },
+    {
+      "id": "private_read",
+      "status": "PASS",
+      "evidence": [
+        "Actual compiled MCP get_my_profile and list_collections each succeeded once, two API requests, two anime/doing rows."
+      ]
+    },
+    {
+      "id": "write_confirmation",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "No collection, rating, index or other remote write performed."
+      ]
+    },
+    {
+      "id": "destructive_safety",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "No disconnect, removal or destructive operation performed."
+      ]
+    }
+  ],
+  "notes": [
+    "This partial report is not a full nine-step authentication PASS.",
+    "Only the two named real account reads earn new observed tool evidence.",
+    "No account identifiers, credentials, callback links, private collection rows or images are exported."
+  ]
+}
