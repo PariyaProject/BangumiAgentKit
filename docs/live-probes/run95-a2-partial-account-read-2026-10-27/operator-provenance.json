@@ -1,0 +1,85 @@
+{
+  "schema": "bgk-a2-operator-provenance/v1",
+  "repository": "PariyaProject/PariyaAgent",
+  "applicationCommit": "70aec3e43de403c118a603081ada323c88949f71",
+  "sourceFiles": {
+    "config/agent/bangumi-profile.json": {
+      "gitBlob": "2ff74ccc566f7b6472f90a6477a3e0ac15793cb9",
+      "sha256": "7d5c78488c2b80616426086fcc446dce95d46b9c4e2082283106274ab5909b6e"
+    },
+    "config/agent/mcp_config.standard-full.json": {
+      "gitBlob": "39ed3cfec7b6786a4f52afa9a34f9bd3c9829c5a",
+      "sha256": "c7ed6f123ecdfa46a8a10df2ab43fc2b61a6c2d1f2ca5a17d62d7de15764ad10"
+    },
+    "config/agent/settings.standard-full.json": {
+      "gitBlob": "0daa346cea842b1ca17a20337625b0746f355432",
+      "sha256": "19fe7b64b96fd37cebeaa97002c6a9ef7db1d9ef82fc2d91d431bfcdf7bad6c4"
+    },
+    "config/bangumi-poc/standard-full-mcp.lock.json": {
+      "gitBlob": "291a2b4ba473974dff132405fb626121eaa86998",
+      "sha256": "3a8eef1bfb8febc2f95bf5fef499e429ac7b22fe16e326fe34a5d0dbabf5a7f5"
+    },
+    "config/bangumi-poc/standard-full-profile.json": {
+      "gitBlob": "60ed385bfffc9e933d2e59b6179a850be84a5127",
+      "sha256": "3da7474904a620caa8969df7f14ad5dbdd507820dae44937e27261d717d04063"
+    },
+    "pariya_runtime/acceptance_supervisor.py": {
+      "gitBlob": "6e9ec037a919bc7d8fc0819ef0bcf8bc4363d95f",
+      "sha256": "d1c9c1d8292aaef32ddb3c2c6174141ddaa02551916d24d3b607437d685f863e"
+    },
+    "pariya_runtime/bangumi_source.py": {
+      "gitBlob": "e233c9ff7efedd38bc29d9665b2b08d2d2a4a43d",
+      "sha256": "7af992f02d36d042e78aa5e73085b6610db20c1e8750bf5a6045cace70844f0f"
+    },
+    "pariya_runtime/bound_account_read.py": {
+      "gitBlob": "453fce20bce4257e4aa1ba6d4094ecb0d98fb42c",
+      "sha256": "b750c66bd4be45f4884b8038bee98fde0fce6894a75068ce1c34cc532a826e06"
+    },
+    "pariya_runtime/collection_progress_claim.py": {
+      "gitBlob": "3ec52af2d444a65f7c7f599f0713071eed29d580",
+      "sha256": "958c00d54f1ca7218dd87f095719569833107bfacc9882f2dec9e52c270f1247"
+    },
+    "pariya_runtime/collection_progress_host.py": {
+      "gitBlob": "65ffd1b162a9ac7db2d816948e0a2d32da79dae0",
+      "sha256": "6ce34f69e531fd64e8df99da4b76abcf61767d0c065101c8a3cc23789f4a9940"
+    },
+    "pariya_runtime/docker.py": {
+      "gitBlob": "9ac0ae031100937094740f9cea03a065901f0a85",
+      "sha256": "c0e6e237aff23a66c5d7662c194218c2a04e14244eba53b82b7cf5dd706cc723"
+    },
+    "pariya_runtime/process.py": {
+      "gitBlob": "70580bde47d7d1a476ec4d2998c7d60fead25187",
+      "sha256": "8f465f48a67aabf5541ed29f6f9f9820b736c2517854c3a5a18a092c297a0b9d"
+    },
+    "plugins/astrbot_plugin_pariya/qq_policy.py": {
+      "gitBlob": "33ecc88ccbef6ead5c0038d230342467eaf00bf4",
+      "sha256": "bee39874616e9229733be75b87be95e72b925b688e7a8d1244557e85e9e417b0"
+    },
+    "scripts/acceptance/collection-progress-batch-guard.cjs": {
+      "gitBlob": "432ae8e5690a8ca75d9e4f5128b3bc0f6cb012c3",
+      "sha256": "5072adfb3ad3d4991a566cff2c15d1d91f19a5c808cc214ffac3efd4f9671202"
+    },
+    "scripts/acceptance/collection-progress-entry.cjs": {
+      "gitBlob": "9ce29e6191784999dce9a3d15419e0a3bd41f57b",
+      "sha256": "332579a94b015b2420defb6eabcc405a12965268b2ddc0363d0ef6c220114762"
+    },
+    "scripts/acceptance/collection-progress-isolation.cjs": {
+      "gitBlob": "51dd0e21a9e19ab243d3b2c856acfff78d0c1faf",
+      "sha256": "990d24ae17f7a4ebbd1aed27ded965ba538ea659b791195ed7791b84432b4c1e"
+    },
+    "scripts/acceptance/private-progress-consumer.cjs": {
+      "gitBlob": "bcb3713a7695f9b28c6f76121d7891a9eea46588",
+      "sha256": "0518fc3377b728d92a19fb7de506823169598177c442fcd37e876a9bce1ced4a"
+    },
+    "scripts/collection-progress.py": {
+      "gitBlob": "bca43986da27c3e25c019c01a94f5283dd232838",
+      "sha256": "8b0a3d561d2866987bf7a21a13558039b24752fc99f719a27af8d0c581a342bc"
+    },
+    "scripts/verify-standard-full-image.py": {
+      "gitBlob": "7cf3ee654cd8b8517d89e2d07231c03a4aef4e14",
+      "sha256": "c5758317236dc42cf5e026fdc850b161133741b26e5d9a18207ed6fc7c65c828"
+    }
+  },
+  "orderedEntry": "scripts/acceptance/collection-progress-entry.cjs",
+  "interpretation": "The pinned entry increments successful selection only after the mapped list payload passes validation, and attempts render only after one selected row. Thus two attempts and one success prove selection success; render/PNG success is not established. This is source interpretation of the original operator receipt, not a new observation or signature."
+}

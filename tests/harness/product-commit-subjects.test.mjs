@@ -74,3 +74,23 @@ test('runtime-only commits remain rejected when hidden behind a real branch merg
     repo.cleanup();
   }
 });
+
+test('durable evidence documentation may distinguish historical contribution from current totals', () => {
+  assertProductCommitHygiene([
+    'docs: distinguish historical A1 contribution from current account total',
+  ]);
+});
+
+test('distinguish does not disguise runtime transitions as durable documentation', () => {
+  for (const subject of [
+    'docs: distinguish candidate review readiness',
+    'docs: distinguish the run state to ACTIVE',
+    'docs: distinguish review runtime state from ACTIVE to COMPLETED',
+    'docs: distinguish a2 claim as INCONCLUSIVE',
+    'docs: distinguish a02 claim as INCONCLUSIVE',
+  ]) {
+    assert.throws(() => assertProductCommitHygiene([subject]), {
+      code: 'RUNTIME_ONLY_COMMIT_REJECTED',
+    });
+  }
+});

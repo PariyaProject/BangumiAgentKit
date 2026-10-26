@@ -57,9 +57,13 @@ also equal the validated catalog on disk.
 The generator maps the accepted receipt only to the account-auth cells for
 these two names when compatible. PR277 integrated **2/33, 31 pending** for the
 unchanged executed graph. The 2026-10-26 security dependency patch changes that
-graph, so this checkout now has **0/33 current-source cells, 33 pending**. The
-two historical successes remain valid facts about e081 and its deployed image;
-they are not an execution of the upgraded dependencies. See the
+graph, so immediately after that update the aggregate matrix had
+**0/33 current-source cells, 33 pending**. This A1 import still contributes
+zero compatible current-source cells. The separately reviewed
+[A2 selection receipt](real-account-a2-selection-evidence.md) now contributes
+only `list_collections`, bringing the aggregate matrix to **1/33, 32 pending**.
+The two historical A1 successes remain valid facts about e081 and its deployed
+image; they are not an execution of the upgraded dependencies. See the
 [security report](../research/run95-dependency-security-remediation-2026-10-26.md).
 Do not relax the pins or replay the completed A1 batch to preserve a counter.
 The table checker separately requires those exact cells and references to agree with the receipt consumer;

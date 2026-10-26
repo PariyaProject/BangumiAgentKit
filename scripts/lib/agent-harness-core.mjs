@@ -1,5 +1,9 @@
 import { canonicalHash, inspectFrontierClosure } from './frontier-ledger.mjs';
-import { encodeControlState, decodeControlState, ControlCodecError } from './harness-control-codec.mjs';
+import {
+  encodeControlState,
+  decodeControlState,
+  ControlCodecError,
+} from './harness-control-codec.mjs';
 
 export const SCHEMA = 'bangumi-harness/v3';
 export const RUN_MARKER = 'bangumi-harness:v3:outer-run';
@@ -496,10 +500,10 @@ export function assertNoLegacyRuntimeChanges(paths) {
 
 export function assertProductCommitHygiene(subjects) {
   const runtimeTransition =
-    /^(?:(?:record|write|set|mark|update|report|confirm|declare|announce|publish|complete|finish|add|keep|clarify|describe|document|explain|improve|maintain|outline|preserve|specify|summarize|teach)\s+(?:the\s+)?)*(?:plan activation|validation complete|review readiness|ci green|candidate(?:\s+(?:review readiness|readiness|ready|checked|accepted|active|selected|frozen|passed|state|status))?|review (?:authorization|start|wait|poll|verdict|result)|freeze|park(?:ed)?(?: state)?|merge state|cleanup state|outer ledger|review ledger|run state|epoch state)(?:\s+(?:for|to|is|as)\s+(?:review|merge|integration|complete(?:d)?|pass(?:ed)?|ready|active|closed|open|merged|stopped)|\s+(?:complete(?:d)?|pass(?:ed)?|ready|active|closed|open|merged|stopped))?(?:\s+(?:for|on)\s+(?:run|epoch|pr)\s*#?\d+|\s+#?\d+)?$/iu;
+    /^(?:(?:record|write|set|mark|update|report|confirm|declare|announce|publish|complete|finish|add|keep|clarify|describe|distinguish|document|explain|improve|maintain|outline|preserve|specify|summarize|teach)\s+(?:the\s+)?)*(?:plan activation|validation complete|review readiness|ci green|candidate(?:\s+(?:review readiness|readiness|ready|checked|accepted|active|selected|frozen|passed|state|status))?|review (?:authorization|start|wait|poll|verdict|result)|freeze|park(?:ed)?(?: state)?|merge state|cleanup state|outer ledger|review ledger|run state|epoch state)(?:\s+(?:for|to|is|as)\s+(?:review|merge|integration|complete(?:d)?|pass(?:ed)?|ready|active|closed|open|merged|stopped)|\s+(?:complete(?:d)?|pass(?:ed)?|ready|active|closed|open|merged|stopped))?(?:\s+(?:for|on)\s+(?:run|epoch|pr)\s*#?\d+|\s+#?\d+)?$/iu;
   // Keep nested control-plane state paths and future enum values in this boundary.
   const runtimeStateVerb =
-    '(?:record|write|set|mark|update|report|confirm|declare|announce|publish|complete|finish|advance|transition|move|enter|exit|begin|start|stop|open|close|resume|interrupt|recover|reconcile|restore|reserve|release|approve|reject|consume|cancel|clear|reset|add|keep|clarify|describe|document|explain|maintain|preserve|summarize|specify|teach|outline|improve)';
+    '(?:record|write|set|mark|update|report|confirm|declare|announce|publish|complete|finish|advance|transition|move|enter|exit|begin|start|stop|open|close|resume|interrupt|recover|reconcile|restore|reserve|release|approve|reject|consume|cancel|clear|reset|add|keep|clarify|describe|distinguish|document|explain|maintain|preserve|summarize|specify|teach|outline|improve)';
   const runtimeStatePath =
     '(?:frontier(?:[\\s._-]+(?:closure|review))?(?:[\\s._-]+runtime(?:[\\s._-]+history)?)?|epoch(?:[\\s._-]+review)?(?:[\\s._-]+runtime(?:[\\s._-]+history)?)?|review(?:[\\s._-]+runtime(?:[\\s._-]+history)?)?|runtime[\\s._-]+(?:recovery|history)|run(?:[\\s._-]+runtime(?:[\\s._-]+history)?)?|candidate|ci|merge|cleanup|outer(?:[\\s._-]+run)?)';
   const runtimeStateValue = '[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*';
@@ -510,10 +514,10 @@ export function assertProductCommitHygiene(subjects) {
     'iu',
   );
   const oneShotRuntimeStateTransition = new RegExp(
-    `^(?:(?:${runtimeStateVerb})\\s+(?:the\\s+)?)*(?:[a-z]\\d{2}\\s+)?(?:(?:one|single)[\\s._-]*shot\\s+)?(?:claim|disposition|attempt|retry|result|report)(?:[\\s._-]+(?:state|status|outcome|verdict))?\\s+(?:(?:to|as|is)\\s+)?(?:claimed|unclaimed|inconclusive|report_written(?:_ack_pending)?|consumed|spent|retry_allowed|retry_prohibited|allowed|prohibited|terminal)(?:\\s+(?:for|on)\\s+(?:run|epoch|pr|issue)\\s*#?\\d+|\\s+#?\\d+)?$`,
+    `^(?:(?:${runtimeStateVerb})\\s+(?:the\\s+)?)*(?:[a-z]\\d{1,2}\\s+)?(?:(?:one|single)[\\s._-]*shot\\s+)?(?:claim|disposition|attempt|retry|result|report)(?:[\\s._-]+(?:state|status|outcome|verdict))?\\s+(?:(?:to|as|is)\\s+)?(?:claimed|unclaimed|inconclusive|report_written(?:_ack_pending)?|consumed|spent|retry_allowed|retry_prohibited|allowed|prohibited|terminal)(?:\\s+(?:for|on)\\s+(?:run|epoch|pr|issue)\\s*#?\\d+|\\s+#?\\d+)?$`,
   );
   const durableEngineering =
-    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+\S|^docs\((?:product|frontier|acceptance|capability|api|renderer|standalone|agent-ux)\):\s+\S|^docs:\s+(?:add|clarify|describe|document|explain|improve|keep|maintain|outline|preserve|specify|summarize|teach)\s+\S/iu;
+    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+\S|^docs\((?:product|frontier|acceptance|capability|api|renderer|standalone|agent-ux)\):\s+\S|^docs:\s+(?:add|clarify|describe|distinguish|document|explain|improve|keep|maintain|outline|preserve|specify|summarize|teach)\s+\S/iu;
   const engineeringPrefix =
     /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+|^docs(?:\([^)]*\))?:\s+/iu;
   const runtimeOnly = subjects.filter((subject) => {
@@ -2401,7 +2405,8 @@ export function renderControlBlock(marker, state) {
   try {
     return `<!-- ${marker}:start -->\n\`\`\`json\n${encodeControlState(state, marker)}\n\`\`\`\n<!-- ${marker}:end -->`;
   } catch (error) {
-    if (error instanceof ControlCodecError) throw new HarnessInvariantError(error.code, error.message);
+    if (error instanceof ControlCodecError)
+      throw new HarnessInvariantError(error.code, error.message);
     throw error;
   }
 }
@@ -2420,7 +2425,8 @@ export function parseControlBlock(body, marker) {
   try {
     state = decodeControlState(json, marker);
   } catch (error) {
-    if (error instanceof ControlCodecError) throw new HarnessInvariantError(error.code, error.message);
+    if (error instanceof ControlCodecError)
+      throw new HarnessInvariantError(error.code, error.message);
     throw error;
   }
   if (!state || typeof state !== 'object' || Array.isArray(state) || state.schema !== SCHEMA) {

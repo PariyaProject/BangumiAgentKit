@@ -1,0 +1,33 @@
+{
+  "schema": "run95-a2-maintenance-result/v1",
+  "passed": false,
+  "phase": "FAILED_SERVICES_RESTORED",
+  "code": "A2_BATCH_FAILED",
+  "servicesRestored": true,
+  "batch": {
+    "apiRequests": 2,
+    "claimFinalized": true,
+    "cleanupConfirmed": true,
+    "clientActions": 0,
+    "code": "A2_BATCH_FAILED",
+    "coverRequests": 0,
+    "executionKind": "live",
+    "imageId": "sha256:cbd0f4c2b5b28c70295cf35211474c8898cbf33b143be8e8351554e91f010083",
+    "modelCalls": 0,
+    "passed": false,
+    "planSha256": "75afbdd0a52daa0bef2f570d53b6b76df571cba88e06c4734dcb289f7038ca31",
+    "pngValidated": false,
+    "privatePayloadExported": false,
+    "schema": "pariya-a2-host-result/v1",
+    "scope": "a2-bound-collection-selection-and-progress-v1",
+    "sourceRevision": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+    "startAttempted": true,
+    "toolCallsAttempted": 2,
+    "toolCallsSucceeded": 1
+  },
+  "modelRunsBefore": 945,
+  "modelRunsAfter": 945,
+  "operatorModelPrompts": 0,
+  "operatorClientActions": 0,
+  "privatePayloadExported": false
+}

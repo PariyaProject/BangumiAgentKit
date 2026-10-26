@@ -1,0 +1,1 @@
+{"observation":{"apiRequests":2,"cleanupConfirmed":true,"coverRequests":0,"pngValidated":false,"toolCallsAttempted":2,"toolCallsSucceeded":1},"planSha256":"75afbdd0a52daa0bef2f570d53b6b76df571cba88e06c4734dcb289f7038ca31","schema":"pariya-a2-claim/v1","scope":"a2-bound-collection-selection-and-progress-v1","state":"FAILED_OR_UNCERTAIN"}
