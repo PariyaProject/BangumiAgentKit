@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { z } from 'zod';
+import { preserveCatalogUnionNotation } from './lib/catalog-json-schema.js';
 import { createRuntimeDependencies, ToolRegistry } from '../packages/tools/dist/index.js';
 import { MemoryStorage } from '../packages/db/dist/index.js';
 import { HttpClient } from '../packages/bangumi-transport/dist/index.js';
@@ -25,7 +26,10 @@ async function main() {
   const tools = registry.getTools();
 
   const catalog = tools.map((t: any) => {
-    const inputSchema = z.toJSONSchema(t.input) as Record<string, unknown>;
+    const inputSchema = preserveCatalogUnionNotation(z.toJSONSchema(t.input)) as Record<
+      string,
+      unknown
+    >;
     delete inputSchema.$schema;
 
     const isDynamic = Boolean(t.resolvePolicy);

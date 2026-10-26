@@ -93,13 +93,20 @@ The official post-resolution audit returned zero advisories at this snapshot:
 No advisories were muted or dismissed. This is not a perpetual security guarantee
 or proof of production rollout. Local validation passed: `pnpm typecheck`, `pnpm lint`, unit/render **144 files /
 1077 tests** (existing one file/two tests skipped), acceptance **317 existing +
-20 A1 tests**, and final focused integration **23/23**. The first full SQLite
+20 A1 tests**, and final serializer/catalog/matrix focused integration **27/27**. The first full SQLite
 integration pass had 122 passes, one existing skip and four failures: three
 read the old generated table before generation completed, and the fourth was
 the Zod primitive-union notation change. After generation, the 18 matrix tests
-passed; a narrow recursive equivalence in the catalog test then passed all 96
-schemas with a regression that retains constraints and nontrivial branches.
-No production schema converter or frozen catalog was changed. The other 22
+passed; a narrow recursive equivalence in the catalog test initially passed all 96
+schemas. The first exact CI then passed six jobs but failed the OpenAPI output
+guard: the real catalog generator also emitted the new primitive-union notation.
+The correction is a catalog-only stable serializer shared by the generator and
+its parity test. It rewrites only schema-valued keywords, preserving constraints,
+nontrivial branches and literal const/enum/default/examples data. Five regression
+cases and all 96 frozen-schema comparisons pass. `pnpm openapi:verify` now
+regenerates the entire pinned OpenAPI outputs and catalog with no diff. The helper is used only for catalog output; MCP runtime keeps Zod's equivalent
+schema representation. The frozen on-disk catalog is byte-identical. This does
+not change auth or validation semantics. The other 22
 integration files passed unchanged. Exact-head CI and normal comprehensive
 Product review remain required before integration;
 GitHub default-branch alerts require a fresh post-merge read before task closure.
