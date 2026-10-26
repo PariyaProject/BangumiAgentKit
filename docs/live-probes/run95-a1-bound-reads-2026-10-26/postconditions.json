@@ -1,0 +1,11 @@
+{
+  "durableA1ClaimComplete": true,
+  "durableClaimMatchesOperatorResult": true,
+  "currentTrustedBindingCount": 1,
+  "credentialReadyForMoreThan10Minutes": true,
+  "credentialKeyVersionMatchesExistingRuntime": true,
+  "callbackListenerClosed": true,
+  "temporaryBrowserHandoffRemoved": true,
+  "a1ContainersRemaining": 0,
+  "fenceExists": false
+}

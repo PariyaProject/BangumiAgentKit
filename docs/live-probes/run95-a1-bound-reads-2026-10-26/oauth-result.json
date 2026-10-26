@@ -1,0 +1,15 @@
+{
+  "schema": "pariya-approved-oauth-result/v1",
+  "passed": true,
+  "reason": null,
+  "phase": "IDENTITY_VALIDATED",
+  "callbackAttempted": true,
+  "tokenRequests": 1,
+  "identityRequests": 1,
+  "deniedRequests": 0,
+  "identityValidated": true,
+  "refreshRequests": 0,
+  "modelCalls": 0,
+  "clientActions": 0,
+  "rawTokensOrProfileExported": false
+}

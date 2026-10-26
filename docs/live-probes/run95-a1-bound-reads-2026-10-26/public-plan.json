@@ -1,0 +1,33 @@
+{
+  "schema": "pariya-a1-host-plan/v1",
+  "scope": "a1-two-bound-account-reads-v1",
+  "executionKind": "live",
+  "identityRoute": "qq-owner",
+  "applicationCommit": "7eac647af079a3d895c12da9720f5ef131c0efa8",
+  "worktreeClean": true,
+  "sourceRevision": "e0810dad9e57f35cbeca63de35cf7a97d745d712",
+  "imageTag": "pariya-agent/agy-bangumi-standard-full:m1",
+  "imageId": "sha256:37614bfe1397066898245f50636504840b1c645e4a94ca1dda67b7ce15065875",
+  "inputSha256": {
+    "scripts/acceptance/bound-account-read-guard.cjs": "83d170cf6a23ec487c263a236e539782487615a7e099d3c8bd33168114435fdf",
+    "scripts/acceptance/bound-account-read-batch.cjs": "d26970ecdc9aca36a47b597fbfc6730e9015983bf6a74105a6185b3e176ee515",
+    "scripts/acceptance/bound-account-read-entry.cjs": "c213db86bfd544dc8dd8b4926df1244481cd5ea8cc19449d40bf102ddd9c8c76",
+    "pariya_runtime/bound_account_read.py": "b750c66bd4be45f4884b8038bee98fde0fce6894a75068ce1c34cc532a826e06",
+    "pariya_runtime/docker.py": "c0e6e237aff23a66c5d7662c194218c2a04e14244eba53b82b7cf5dd706cc723",
+    "scripts/bound-account-read.py": "83e613dcdf6baeacc368511516478befec26c857ba72c57856b8f760f76e04e7",
+    "scripts/verify-standard-full-image.py": "b1d2067ce8e7386e812b51e6032a413ed18f47485d914e3268fa91e9e121c371",
+    "plugins/astrbot_plugin_pariya/qq_policy.py": "bee39874616e9229733be75b87be95e72b925b688e7a8d1244557e85e9e417b0",
+    "config/agent/bangumi-profile.json": "7d5c78488c2b80616426086fcc446dce95d46b9c4e2082283106274ab5909b6e",
+    "config/agent/settings.standard-full.json": "19fe7b64b96fd37cebeaa97002c6a9ef7db1d9ef82fc2d91d431bfcdf7bad6c4",
+    "config/agent/mcp_config.standard-full.json": "c7ed6f123ecdfa46a8a10df2ab43fc2b61a6c2d1f2ca5a17d62d7de15764ad10",
+    "config/bangumi-poc/standard-full-profile.json": "41841028c139e7b48071a519aa245b2ee691c7091e80e4de1d088adc318cf95e",
+    "config/bangumi-poc/standard-full-mcp.lock.json": "a4081e4607723b2cd3c9131842be12cf7facc9767aa14052308ae504b382bfd5"
+  },
+  "maxToolCalls": 2,
+  "maxCollectionRows": 2,
+  "liveIntegrationGate": "Run95 intent clear; PR267 merged by Harness/GitHub and included in locked source",
+  "runtimeStateInspected": false,
+  "modelCalls": 0,
+  "clientActions": 0,
+  "planSha256": "a7986e178a57ad6aaf84e5ac03449c94f549889f7dcb23ef34acc2635ae013ec"
+}

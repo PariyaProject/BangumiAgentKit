@@ -58,6 +58,7 @@ P03_V4_AGENT_MCP_PROFILE = next(
     and profile.get('id') == 'p03-person-name-cn-agent-mcp-v4'
 )
 sys.path.insert(0, str(ROOT / 'scripts'))
+from acceptance.real_account_a1_evidence import real_account_read_sources
 from acceptance.c03_person_activity_offline_v2_acceptance import (
     c03_person_activity_offline_v2_signed_report_matches,
 )
@@ -1057,6 +1058,18 @@ def status_mark(cell: str) -> str:
     return cell.split('<br>', 1)[0]
 
 
+def account_auth_reference_error(tool: dict, cell: str, sources: dict) -> str | None:
+    """Reject manual marks, unrelated rows and stale or substituted references."""
+    name = tool['name']
+    refs = sources.get(name, set())
+    expected = '—' if tool.get('auth') == 'none' else '⬜'
+    if expected != '—' and refs:
+        expected = '✅<br>' + '<br>'.join(f'`{ref}`' for ref in sorted(refs))
+    if cell != expected:
+        return f'{name}: account-auth cell must match the bounded live receipt'
+    return None
+
+
 def r01_offline_agent_mcp_matches(name: str, relative_path: str, report: object) -> bool:
     """Accept only the matrix-only R01 report for its single fixed tool.
 
@@ -1752,7 +1765,13 @@ def main() -> int:
     if missing or extra:
         raise SystemExit(f'acceptance table mismatch: missing={missing}, extra={extra}')
 
+    account_sources = real_account_read_sources(ROOT, catalog)
     for name, fields in rows.items():
+        account_error = account_auth_reference_error(
+            catalog[catalog_index[name]], fields[8], account_sources,
+        )
+        if account_error:
+            raise SystemExit(account_error)
         catalog_error = catalog_schema_reference_error(name, fields[3], catalog_index[name])
         if catalog_error:
             raise SystemExit(catalog_error)
@@ -1789,6 +1808,7 @@ def main() -> int:
         'public_pending': sum(status_mark(fields[6]) == '⬜' for fields in rows.values()),
         'auth_gate_denial': sum(status_mark(fields[7]) == '✅' for fields in rows.values()),
         'auth_gate_pending': sum(status_mark(fields[7]) == '⬜' for fields in rows.values()),
+        'auth_evidence': sum(status_mark(fields[8]) == '✅' for fields in rows.values()),
         'auth_pending': sum(status_mark(fields[8]) == '⬜' for fields in rows.values()),
         'agent_mcp_e2e': sum(status_mark(fields[9]) == '✅' for fields in rows.values()),
         'qq_pipeline_e2e': sum(status_mark(fields[10]) == '✅' for fields in rows.values()),

@@ -1,0 +1,43 @@
+{
+  "schema": "bgk-historical-a1-receipt-import/v1",
+  "kind": "imported-completed-live-receipt",
+  "executedSourceRevision": "e0810dad9e57f35cbeca63de35cf7a97d745d712",
+  "executedApplicationCommit": "7eac647af079a3d895c12da9720f5ef131c0efa8",
+  "originCheckpoint": {
+    "run": 95,
+    "sequence": 39,
+    "sha256": "1d500c7a921736daefb5487eb822654af39bdeb9ae49208271f4089b4cccd0a7",
+    "url": "https://github.com/PariyaProject/BangumiAgentKit/issues/95"
+  },
+  "tools": [
+    {
+      "name": "bangumi.get_my_profile",
+      "input": {}
+    },
+    {
+      "name": "bangumi.list_collections",
+      "input": {
+        "subjectType": "anime",
+        "status": "doing",
+        "limit": 2,
+        "offset": 0
+      }
+    }
+  ],
+  "evidenceFiles": {
+    "a1-result.json": "81a669da957ae5519fe24f839ffc192a347b54af835499442af823f3d15e7a7a",
+    "public-plan.json": "f8b111ae19e905eaad3bac0b46a05fb1997976cd9a72e6d14003fd0c36dc3186",
+    "postconditions.json": "fdfa5c36b363699b65536ca4ad2d8274ece150741095beddf852f53a78d659fa",
+    "runtime-restoration.json": "b15a7e92096349d94a98c066054246c4262acc54cb09c5e442affb0aab82e81e",
+    "oauth-result.json": "f64394931e99e8e9a98a157c5bf528e5389e93ae44de6e03b46d82dc44799427",
+    "auth-flow-partial.json": "33e962c9afb46cdc2919f36ce32813ad7c2df67fabc4363e6c0f36eb0c8d9a56",
+    "source-files.json": "d110894e25ec2a0fe4d51a7b3aa1fac7327d0e17be17f32d212dfd413a97ce65"
+  },
+  "limits": [
+    "Only these two direct compiled MCP account reads, not Agent/model or QQ/TIM acceptance",
+    "The A1 durable claim is complete and must never be replayed",
+    "No further account access or credential/identity changes are authorized by importing this receipt",
+    "Other31account tools and the complete9stepOAuthflow remain unverified"
+  ],
+  "provenance": "Imported byte-for-byte from the completed operator-sanitized receipt. SHA binding detects changes; it is not a new signed runner report or an independent attestation."
+}

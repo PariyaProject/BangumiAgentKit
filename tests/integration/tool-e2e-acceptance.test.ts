@@ -7,6 +7,8 @@ import { spawnSync } from 'node:child_process';
 import catalog from '../../docs/tool-catalog.json';
 
 const ROOT = process.cwd();
+const REAL_A1_REPORT_PATH = 'docs/live-probes/run95-a1-bound-reads-2026-10-26/a1-result.json';
+const REAL_A1_TOOLS = new Set(['bangumi.get_my_profile', 'bangumi.list_collections']);
 const CATALOG_TEXT = readFileSync(join(ROOT, 'docs/tool-catalog.json'), 'utf8');
 const TABLE = readFileSync(join(ROOT, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
 const FRONTIER = JSON.parse(readFileSync(join(ROOT, 'docs/product/frontier-ledger.json'), 'utf8'));
@@ -102,6 +104,12 @@ function reportReferencesInMatrixCell(cell: unknown): string[] {
 function hasExactMatrixReportReference(cell: unknown, expectedPath: string): boolean {
   const paths = reportReferencesInMatrixCell(cell);
   return paths.length === 1 && paths[0] === expectedPath;
+}
+
+function expectAccountAuthCell(name: string, cell: unknown): void {
+  // A synthetic/denial report still earns no account credit. Only these two
+  // rows have a separate, completed live receipt; require that exact reference.
+  expect(cell).toBe(REAL_A1_TOOLS.has(name) ? `✅<br>\`${REAL_A1_REPORT_PATH}\`` : '⬜');
 }
 
 const FULL_OPERATION_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
@@ -203,7 +211,8 @@ function toolContractMatchesCurrent(report: any, name: string): boolean {
   const currentTool = catalog.find((item) => item.name === name);
   if (
     name === 'bangumi.render_subject_card' &&
-    report.results?.find((result: any) => result.tool === name)?.input?.includeCollection === false &&
+    report.results?.find((result: any) => result.tool === name)?.input?.includeCollection ===
+      false &&
     currentTool?.policyMode === 'dynamic'
   ) {
     // Historical public evidence remains valid only for an explicit public invocation.
@@ -722,7 +731,7 @@ function isCurrentP01DirectorAgentMcpReport(report: any): boolean {
     toolContractMatchesCurrent(report, 'bangumi.get_person_activity') &&
     row?.length === 13 &&
     statusMark(row[9]) === '✅' &&
-    hasExactMatrixReportReference(row[9], P01_DIRECTOR_AGENT_MCP_REPORT_PATH)
+    hasExactMatrixReportReference(row[9], P01_DIRECTOR_AGENT_MCP_REPORT_PATH),
   );
 }
 
@@ -785,9 +794,7 @@ function isCurrentP03V4AgentMcpReport(report: any): boolean {
   );
 }
 
-const CURRENT_P03_V4_AGENT_MCP_REPORT = isCurrentP03V4AgentMcpReport(
-  P03_V4_AGENT_MCP_REPORT,
-)
+const CURRENT_P03_V4_AGENT_MCP_REPORT = isCurrentP03V4AgentMcpReport(P03_V4_AGENT_MCP_REPORT)
   ? P03_V4_AGENT_MCP_REPORT
   : null;
 
@@ -1611,7 +1618,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(scenario).not.toHaveProperty('prompt');
       expect(scenario).not.toHaveProperty('arguments');
       expect(statusMark(rows.get(scenario.id)?.[7])).toBe('✅');
-      expect(rows.get(scenario.id)?.[8]).toBe('⬜');
+      expectAccountAuthCell(scenario.id, rows.get(scenario.id)?.[8]);
       expect(statusMark(rows.get(scenario.id)?.[9])).toBe('✅');
     }
   });
@@ -1691,6 +1698,36 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     }
   });
 
+  it('credits exactly two completed live A1 account reads without changing other planes', () => {
+    const report = JSON.parse(readFileSync(join(ROOT, REAL_A1_REPORT_PATH), 'utf8'));
+    expect(report).toMatchObject({
+      executionKind: 'live',
+      passed: true,
+      code: 'OK',
+      startAttempted: true,
+      containerRemoved: true,
+      toolCallsAttempted: 2,
+      toolCallsSucceeded: 2,
+      httpRequests: 2,
+      collectionRows: 2,
+      modelCalls: 0,
+      clientActions: 0,
+      privatePayloadSaved: false,
+    });
+    const credited = [...rowsByTool()].filter(([, cells]) => statusMark(cells[8]) === '✅');
+    expect(credited.map(([name]) => name).sort()).toEqual([...REAL_A1_TOOLS].sort());
+    for (const [name, cells] of credited) {
+      expectAccountAuthCell(name, cells[8]);
+      expect(hasExactMatrixReportReference(cells[8], REAL_A1_REPORT_PATH)).toBe(true);
+      for (const index of [6, 7, 9, 10, 11]) {
+        expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A1_REPORT_PATH);
+      }
+      expect(cells[10]).toBe('⬜');
+      expect(cells[11]).toBe('⬜');
+    }
+    expect(TABLE).toContain('2/33；待补 31');
+  });
+
   it('accepts synthetic authenticated-read and render evidence without implying real account auth', () => {
     const expectedTools = [
       'bangumi.get_collection_backlog',
@@ -1753,7 +1790,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
       expect(scenario).not.toHaveProperty('prompt');
       expect(scenario).not.toHaveProperty('arguments');
-      expect(rowsByTool().get(scenario.id)?.[8]).toBe('⬜');
+      expectAccountAuthCell(scenario.id, rowsByTool().get(scenario.id)?.[8]);
       expect(statusMark(rowsByTool().get(scenario.id)?.[9])).toBe('✅');
     }
   });

@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-26T04:44:07.324072+00:00",
+  "phase": "COMPLETE",
+  "restoration": {
+    "runnerLoaded": true,
+    "astrbotStarted": true,
+    "com.pariyaagent.qq-login-watch": true,
+    "com.pariyaagent.soak": true,
+    "runnerRunning": true,
+    "runnerHasPid": true,
+    "loadedStatesRestored": true,
+    "plistsUnchanged": true,
+    "napcatSameContainerAndProcess": true,
+    "containersHealthy": true
+  },
+  "modelRunsBefore": 945,
+  "modelRunsAfter": 945,
+  "modelRunsDelta": 0,
+  "fenceExists": false,
+  "remainingA1Containers": 0,
+  "browserSuccessHeadingObserved": true,
+  "testMessagesSent": 0
+}

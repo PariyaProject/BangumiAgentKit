@@ -18,6 +18,7 @@ import urllib.request
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from client_evidence import tool_client_e2e_sources
 from harness_control_codec import decode_control_state
+from acceptance.real_account_a1_evidence import real_account_read_sources
 from acceptance.c03_person_activity_offline_v2_acceptance import (
     c03_person_activity_offline_v2_harness_status,
     c03_person_activity_offline_v2_signed_report_matches,
@@ -28239,6 +28240,7 @@ def status(
     model_mcp_e2e_sources: dict[str, set[str]],
     qq_pipeline_sources: dict[str, set[str]],
     tim_client_sources: dict[str, set[str]],
+    account_auth_sources: dict[str, set[str]] | None = None,
 ) -> tuple[str, ...]:
     def with_sources(mark: str, sources: set[str]) -> str:
         if not sources:
@@ -28264,6 +28266,8 @@ def status(
     else:
         auth_gate = '⬜'
     auth = '—' if tool.get('auth') == 'none' else '⬜'
+    if auth != '—' and account_auth_sources and name in account_auth_sources:
+        auth = with_sources('✅', account_auth_sources[name])
     agent_mcp = (
         with_sources('✅', model_mcp_e2e_sources[name])
         if name in model_mcp_e2e_sources else '⬜'
@@ -28319,6 +28323,8 @@ def main() -> None:
     direct_count = sum(item['name'] in direct for item in catalog)
     live_count = sum(item['name'] in public_api_evidence for item in catalog)
     auth_count = sum(item.get('auth') != 'none' for item in catalog)
+    account_auth_sources = real_account_read_sources(ROOT, catalog)
+    account_auth_count = len(account_auth_sources)
     model_mcp_count = sum(item['name'] in model_mcp_e2e for item in catalog)
     public_not_applicable_count = sum(
         item.get('auth') == 'required' or item['name'] in NON_PUBLIC_API_TOOLS
@@ -28341,7 +28347,7 @@ def main() -> None:
         f'- [{"x" if direct_count == len(catalog) else " "}] 每个工具都有直接 `execute` 夹具：{direct_count}/{len(catalog)}。',
         f'- [{"x" if public_pending_count == 0 else " "}] 匿名可用的公开 API 工具有逐项实测：{live_count}/{public_candidate_count}；待补 {public_pending_count}。',
         f'- [{"x" if public_not_applicable_count + public_candidate_count == len(catalog) else " "}] 匿名公开 API 不适用项已单独分类：{public_not_applicable_count}/{len(catalog)}；这些工具由账号验收或本地状态验收覆盖。',
-        f'- [ ] 需要账号的工具完成真实 OAuth/账号验收：{auth_count} 项目前不能用本地 mock 代替。',
+        f'- [{"x" if account_auth_count == auth_count else " "}] 需要账号的工具有真实账号限定路径证据：{account_auth_count}/{auth_count}；待补 {auth_count - account_auth_count}。仅计实际输入范围，不代表完整 OAuth 流程或全部输入组合。',
         f'- [{"x" if auth_gate_count == auth_gate_total else " "}] 无账号认证门禁拒绝路径已验证：{auth_gate_count}/{auth_gate_total} 项；门禁通过不代表真实账号功能通过。',
         f'- [{"x" if model_mcp_count == len(catalog) else " "}] 每个工具都有实际 Agent→MCP 模型调用证据：{model_mcp_count}/{len(catalog)}。',
         f'- [{"x" if len(qq_pipeline_e2e) == len(catalog) else " "}] 每个工具都有 QQ 消息管线端到端证据：当前 {len(qq_pipeline_e2e)}/{len(catalog)}。',
@@ -28352,12 +28358,13 @@ def main() -> None:
         '| 工具 | Auth | Risk | 注册/Schema目录引用 | 直接 execute 测试引用 | 直接 execute 夹具 | 真实公开 API | 无账号认证门禁 | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |',
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
         '无账号认证门禁列覆盖所有 auth=required 的读取、写入与破坏性工具，只记录缺少账号且零网络请求时的安全拒绝；真实 OAuth 与账号授权仍由“账号认证”列单独跟踪。',
+        '账号认证列只接收固定的历史真实 A1 回执：本人资料一次、anime/doing 收藏最多两行一次；摘要和执行源码兼容性校验通过才计分。它不是模型/QQ/TIM 证据，也不授权重放、扩展读取或写入。',
     ]
     for catalog_index, item in enumerate(catalog):
         schema, source_ref, execute, live, auth_gate, auth, agent_mcp, qq_pipeline, tim_client = status(
             item, catalog_index, direct_source_refs, public_api_sources,
             auth_gate_denial_sources_by_name, model_mcp_sources_by_name,
-            qq_pipeline_sources_by_name, tim_client_sources_by_name,
+            qq_pipeline_sources_by_name, tim_client_sources_by_name, account_auth_sources,
         )
         next_step = []
         if execute == '⬜':
