@@ -39,7 +39,11 @@ class RealAccountA1EvidenceTests(unittest.TestCase):
         if args[:2] == ('merge-base', '--is-ancestor'):
             return ''
         if args[:2] == ('ls-tree', '-r'):
-            return self.tree
+            requested = args[4:]
+            return ''.join(line for line in self.tree.splitlines(keepends=True)
+                           if any(line.split('\t')[1].strip() == name
+                                  or line.split('\t')[1].startswith(name + '/')
+                                  for name in requested))
         raise AssertionError('Unexpected Git command')
 
     def result(self):
@@ -151,6 +155,33 @@ class RealAccountA1EvidenceTests(unittest.TestCase):
         self.tree = original.replace(entry['gitBlob'], '0' * 40, 1)
         self.assertEqual(self.result(), {})
         self.tree = ''.join(line for line in original.splitlines(keepends=True) if '\t' + name + '\n' not in line)
+        self.assertEqual(self.result(), {})
+
+    def test_package_runtime_export_mutation_removes_both_credits(self):
+        for name in ('packages/bangumi-core/src/index.ts',
+                     'packages/tools/src/index.ts', 'packages/db/src/index.ts'):
+            with self.subTest(path=name):
+                path = self.root / name
+                original = (ROOT / name).read_bytes()
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(original + b'\nthrow Error("incompatible runtime export");\n')
+                self.assertEqual(self.result(), {})
+                path.write_bytes(original)
+                original_tree = self.tree
+                self.tree = self.tree.replace(self.sources[name]['gitBlob'], '0' * 40, 1)
+                self.assertEqual(self.result(), {})
+                self.tree = original_tree
+
+    def test_untracked_sqlite_migration_addition_removes_both_credits(self):
+        path = self.root / 'packages/db/src/drizzle/sqlite/migrations/9999_drop_binding.sql'
+        path.write_text('DROP TABLE account_bindings;')
+        self.assertEqual(self.result(), {})
+
+    def test_committed_sqlite_migration_addition_removes_both_credits(self):
+        # The tracked-tree check must also reject a new migration even when a
+        # local checkout happens to omit it; checking known file bytes cannot.
+        name = 'packages/db/src/drizzle/sqlite/migrations/9999_drop_binding.sql'
+        self.tree += f"100644 blob {'0' * 40}\t{name}\n"
         self.assertEqual(self.result(), {})
 
     def test_unknown_or_unrelated_ancestry_fails_closed(self):

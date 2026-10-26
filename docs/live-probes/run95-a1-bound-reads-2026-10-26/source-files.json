@@ -79,6 +79,10 @@
     "sha256": "0f72338a2e22be38f4884ba7b3b815aab05df2dd8fee91f7caa6df1974f6bff7",
     "gitBlob": "1585a7e4c6aff29d1fc5d6aca257b485475dae43"
   },
+  "packages/bangumi-core/src/index.ts": {
+    "sha256": "15ea8acdd308131b81718cb40ccb679687c7c34965b7052a9ddbf70e0dcbccad",
+    "gitBlob": "fee6d2af98507b8158b308145a74c47cea935abe"
+  },
   "packages/bangumi-core/src/models/user.ts": {
     "sha256": "336edb59d5c098a5fb69a233d51bd69b1fce40f526070420716e2a585bcc0fb2",
     "gitBlob": "6bd9d480735cf0a868d768c2d5486ea87dc3b376"
@@ -187,6 +191,10 @@
     "sha256": "fa77a3375bcbcdb95004eb305ea517ce4f1bdbc50786f7473e0a599effb5cde0",
     "gitBlob": "930dc378a180093a794abf448a7519f03cb47a08"
   },
+  "packages/db/src/index.ts": {
+    "sha256": "f241b6fc6554b8d1da96fc4bdc4e6abae40bf6dbaad8e61373c7763d75ab6d76",
+    "gitBlob": "18408003380fb1494a0fb0b6ffee1103d29eec51"
+  },
   "packages/db/src/migrator.ts": {
     "sha256": "a0ab6b97ed04b71b8ae3587ade71eead37e4d8f296d3e509007e12ec48d98039",
     "gitBlob": "a65e831978ac2e02edc65a45db65173fbf6f538d"
@@ -218,6 +226,10 @@
   "packages/tools/src/definitions/read-tools.ts": {
     "sha256": "a87a9752134e0f93dc501ba67715f39cbeab8e4bb3ba82a9608c40b08abc81f1",
     "gitBlob": "be62bd3477a0ee523bf0cd86c190ed133894613b"
+  },
+  "packages/tools/src/index.ts": {
+    "sha256": "1e0ffd1eb2c2d9e56d4da89361966d18ff9b780e701ef382498dbf38b133e86c",
+    "gitBlob": "fec9e4bd43e78c3856d472c7754c935fd933464e"
   },
   "packages/tools/src/policy.ts": {
     "sha256": "11dad39227b01c3dd612c09e487d8c9cf43b7fcf89776b60dafab1f80182d19a",

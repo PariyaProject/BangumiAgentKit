@@ -46,7 +46,10 @@ The executed BGK revision must remain an ancestor of HEAD. A fixed source-file
 inventory binds the actual catalog, selected MCP identity/entry/registry,
 account/token, SQLite schema/storage, generated request client, transport and
 data-mapping code. Current tracked blobs **and** on-disk bytes must match that
-inventory. This conservative rule may remove credit after a relevant edit;
+inventory. Runtime package entry modules are included, and SQLite migration
+membership must match in both HEAD and the working tree; an added migration
+(including an untracked one) also removes credit. This conservative rule may
+remove credit after a relevant edit;
 review the changed contract rather than carrying old proof forward implicitly.
 Unrelated commits do not invalidate the observation. The caller's catalog must
 also equal the validated catalog on disk.
@@ -63,7 +66,8 @@ are unchanged. OP-009 remains PARTIAL.
 
 `python3 scripts/test_real_account_a1_evidence.py` exercises the actual import and
 source tree plus isolated tamper, synthetic, incomplete, path, file-type,
-catalog/source drift and matrix-plane isolation cases. `pnpm acceptance:check`
+catalog/source drift, package export mutations, committed/untracked migration
+additions and matrix-plane isolation cases. `pnpm acceptance:check`
 includes this suite, the existing evidence tests, generated-table comparison and
 independent table checker. Tests never access runtime credentials, execute MCP
 or call an account/provider. They do not authorize another A1 invocation.

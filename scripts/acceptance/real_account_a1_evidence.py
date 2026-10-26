@@ -14,10 +14,11 @@ import subprocess
 
 
 BUNDLE = 'docs/live-probes/run95-a1-bound-reads-2026-10-26'
-IMPORT_SHA256 = '77d2f7481feffc9f57646e7fbc5abe2ef1f18da6da2811807eeac83fd152a8ed'
+IMPORT_SHA256 = '36520755f9ab480bf36721306c6550687118824b61d8b6930573ab677b1b5c20'
 SOURCE_REVISION = 'e0810dad9e57f35cbeca63de35cf7a97d745d712'
 TOOLS = ('bangumi.get_my_profile', 'bangumi.list_collections')
 REFERENCE = BUNDLE + '/a1-result.json'
+SQLITE_MIGRATIONS = 'packages/db/src/drizzle/sqlite/migrations'
 
 
 def _read_regular(root: Path, relative: str, limit: int = 64 * 1024) -> bytes:
@@ -57,7 +58,19 @@ def _current_sources_match(root: Path, sources: dict) -> bool:
     # Historical evidence remains useful across unrelated commits, but neither
     # committed nor uncommitted changes to the executed contracts inherit it.
     _git(root, 'merge-base', '--is-ancestor', SOURCE_REVISION, 'HEAD')
-    tree = _git(root, 'ls-tree', '-r', 'HEAD', '--', *sources)
+    # The migrator discovers .sql files dynamically. Query the whole tracked
+    # directory as well as known files, and compare the on-disk membership, so
+    # an added committed or untracked migration cannot inherit old evidence.
+    directory = root / SQLITE_MIGRATIONS
+    if directory.is_symlink() or not directory.is_dir():
+        return False
+    expected_sql = {name for name in sources
+                    if name.startswith(SQLITE_MIGRATIONS + '/') and name.endswith('.sql')}
+    current_sql = {str(path.relative_to(root)) for path in directory.iterdir()
+                   if path.name.endswith('.sql')}
+    if current_sql != expected_sql:
+        return False
+    tree = _git(root, 'ls-tree', '-r', 'HEAD', '--', *sources, SQLITE_MIGRATIONS)
     blobs = {}
     for line in tree.splitlines():
         mode_kind_blob, name = line.split('\t', 1)

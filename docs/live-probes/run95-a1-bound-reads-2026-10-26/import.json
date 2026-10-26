@@ -31,7 +31,7 @@
     "runtime-restoration.json": "b15a7e92096349d94a98c066054246c4262acc54cb09c5e442affb0aab82e81e",
     "oauth-result.json": "f64394931e99e8e9a98a157c5bf528e5389e93ae44de6e03b46d82dc44799427",
     "auth-flow-partial.json": "33e962c9afb46cdc2919f36ce32813ad7c2df67fabc4363e6c0f36eb0c8d9a56",
-    "source-files.json": "1af27953687d406cced054b6ac19152b7eb03cb478876a36ff6bad21635e4979"
+    "source-files.json": "d110894e25ec2a0fe4d51a7b3aa1fac7327d0e17be17f32d212dfd413a97ce65"
   },
   "limits": [
     "Only these two direct compiled MCP account reads, not Agent/model or QQ/TIM acceptance",
