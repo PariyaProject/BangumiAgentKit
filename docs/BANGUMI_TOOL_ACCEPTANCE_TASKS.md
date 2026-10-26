@@ -7,7 +7,7 @@
 - [x] 每个工具都有直接 `execute` 夹具：96/96。
 - [x] 匿名可用的公开 API 工具有逐项实测：65/65；待补 0。
 - [x] 匿名公开 API 不适用项已单独分类：31/96；这些工具由账号验收或本地状态验收覆盖。
-- [ ] 需要账号的工具有真实账号限定路径证据：0/33；待补 33。仅计实际输入范围，不代表完整 OAuth 流程或全部输入组合。
+- [ ] 需要账号的工具有真实账号限定路径证据：1/33；待补 32。仅计实际输入范围，不代表完整 OAuth 流程或全部输入组合。
 - [x] 无账号认证门禁拒绝路径已验证：22/22 项；门禁通过不代表真实账号功能通过。
 - [ ] 每个工具都有实际 Agent→MCP 模型调用证据：86/96。
 - [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/96。
@@ -71,7 +71,7 @@
 | `bangumi.get_subject_stats_intelligence` | `none` | `read` | `docs/tool-catalog.json#/49` | `tests/integration/tool-direct-execute-read.test.ts:232` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-10-06-004828186-74416.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-codex-luna-e2e-G23-stats.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_user` | `none` | `read` | `docs/tool-catalog.json#/50` | `tests/integration/tool-catalog-completeness.test.ts:287` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-user-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.list_character_collections` | `optional` | `read` | `docs/tool-catalog.json#/51` | `tests/semantic/collection-read-parity.test.ts:269` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-list-character-collections-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.list_collections` | `optional` | `read` | `docs/tool-catalog.json#/52` | `tests/semantic/semantic-tools.test.ts:1382` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-list-collections-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.list_collections` | `optional` | `read` | `docs/tool-catalog.json#/52` | `tests/semantic/semantic-tools.test.ts:1382` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | ✅<br>`docs/live-probes/run95-a2-partial-account-read-2026-10-27/a2-result.json` | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-list-collections-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.list_operations` | `none` | `read` | `docs/tool-catalog.json#/53` | `tests/integration/mcp-tools.test.ts:245` | ✅ | — | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-list-operations-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.list_person_collections` | `optional` | `read` | `docs/tool-catalog.json#/54` | `tests/integration/tool-direct-execute-account.test.ts:170` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-list-person-collections-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.list_revisions` | `none` | `read` | `docs/tool-catalog.json#/55` | `tests/integration/tool-catalog-completeness.test.ts:306` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-list-revisions-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |

@@ -58,7 +58,7 @@ P03_V4_AGENT_MCP_PROFILE = next(
     and profile.get('id') == 'p03-person-name-cn-agent-mcp-v4'
 )
 sys.path.insert(0, str(ROOT / 'scripts'))
-from acceptance.real_account_a1_evidence import real_account_read_sources
+from acceptance.real_account_read_evidence import real_account_read_sources
 from acceptance.c03_person_activity_offline_v2_acceptance import (
     c03_person_activity_offline_v2_signed_report_matches,
 )

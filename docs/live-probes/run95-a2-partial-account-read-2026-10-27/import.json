@@ -1,0 +1,42 @@
+{
+  "schema": "bgk-a2-partial-receipt-import/v1",
+  "kind": "imported-partial-live-receipt",
+  "executedSourceRevision": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+  "executedApplicationCommit": "70aec3e43de403c118a603081ada323c88949f71",
+  "originCheckpoint": {
+    "run": 95,
+    "sequence": 54,
+    "sha256": "d711fc6ba7824b0bb195c2fd767ff595b1465726f4d302b25074139660a64f61",
+    "url": "https://github.com/PariyaProject/BangumiAgentKit/issues/95"
+  },
+  "admittedTools": [
+    {
+      "name": "bangumi.list_collections",
+      "input": {
+        "subjectType": "anime",
+        "status": "doing",
+        "limit": 1,
+        "offset": 0
+      }
+    }
+  ],
+  "failedTools": [
+    "bangumi.render_collection_progress"
+  ],
+  "evidenceFiles": {
+    "a2-result.json": "440a6f92b7e06f8df69a7b208dcb2f9444efe565e86cb0f2e74edc5a04146eb0",
+    "public-plan.json": "77428b1846de28b550ccd92a03528d19ece10a0fe7e59d0980fee3520a5e9a7a",
+    "postconditions.json": "b631afb1d5d7d0bd10db2b60458c09b5031cc8bf6ba9ad02835f85d9f8ce9608",
+    "durable-a2-claim.json": "e7c1f63f6c1421d0ff0a269908a4e7af15fdca690118a760560bed895496cd09",
+    "source-files.json": "0139785f96fc56ad595dc771553e2efb2960b6be47cb69d7d5b15e0fdbe1eaea",
+    "operator-provenance.json": "328b1741080cac85bb9e4a235ffdda682bdb6202492e5dfd01fc832fd327af30"
+  },
+  "limits": [
+    "The overall A2 batch and fixed claim remain FAILED_OR_UNCERTAIN, permanently spent; no retry or new alias.",
+    "Only the successful compiled selection path gains account-column evidence, never render/PNG, profile, OAuth flow, model/Agent, writes, QQ or TIM.",
+    "Exact render cause is UNKNOWN; later diagnostic fixes do not reconstruct it.",
+    "Source compatibility binds recorded BGK2ec selected contracts/dependencies; unrelated commits may retain only this bounded credit.",
+    "Consumers read only fixed sanitized files and Git metadata; never runtime DB/config/credentials or provider."
+  ],
+  "provenance": "An explicit reviewed operator-evidence trust anchor binds original sanitized report bytes. It is not a runner signature, cryptographic attestation of execution or fresh API evidence."
+}

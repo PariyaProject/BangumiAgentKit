@@ -9,6 +9,8 @@ import catalog from '../../docs/tool-catalog.json';
 const ROOT = process.cwd();
 const REAL_A1_REPORT_PATH = 'docs/live-probes/run95-a1-bound-reads-2026-10-26/a1-result.json';
 const REAL_A1_TOOLS = new Set(['bangumi.get_my_profile', 'bangumi.list_collections']);
+const REAL_A2_REPORT_PATH =
+  'docs/live-probes/run95-a2-partial-account-read-2026-10-27/a2-result.json';
 const CATALOG_TEXT = readFileSync(join(ROOT, 'docs/tool-catalog.json'), 'utf8');
 const TABLE = readFileSync(join(ROOT, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
 const FRONTIER = JSON.parse(readFileSync(join(ROOT, 'docs/product/frontier-ledger.json'), 'utf8'));
@@ -1736,16 +1738,68 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       [...REAL_A1_TOOLS].sort(),
     );
     const credited = [...rowsByTool()].filter(([, cells]) => statusMark(cells[8]) === '✅');
-    expect(credited).toEqual([]);
+    expect(credited.map(([name]) => name)).toEqual(['bangumi.list_collections']);
     for (const [name, cells] of rowsByTool()) {
-      if (REAL_A1_TOOLS.has(name)) expectAccountAuthPending(cells[8]);
+      if (REAL_A1_TOOLS.has(name)) {
+        expect(reportReferencesInMatrixCell(cells[8])).not.toContain(REAL_A1_REPORT_PATH);
+        if (name !== 'bangumi.list_collections') expectAccountAuthPending(cells[8]);
+      }
       for (const index of [6, 7, 9, 10, 11]) {
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A1_REPORT_PATH);
       }
       expect(cells[10]).toBe('⬜');
       expect(cells[11]).toBe('⬜');
     }
-    expect(TABLE).toContain('0/33；待补 33');
+    expect(TABLE).toContain('1/33；待补 32');
+  });
+
+  it('credits only the successful collection selection from the failed and spent A2 batch', () => {
+    const report = JSON.parse(readFileSync(join(ROOT, REAL_A2_REPORT_PATH), 'utf8'));
+    expect(report).toMatchObject({
+      passed: false,
+      phase: 'FAILED_SERVICES_RESTORED',
+      servicesRestored: true,
+      batch: {
+        executionKind: 'live',
+        passed: false,
+        code: 'A2_BATCH_FAILED',
+        toolCallsAttempted: 2,
+        toolCallsSucceeded: 1,
+        apiRequests: 2,
+        coverRequests: 0,
+        pngValidated: false,
+        cleanupConfirmed: true,
+        claimFinalized: true,
+        modelCalls: 0,
+        clientActions: 0,
+        privatePayloadExported: false,
+      },
+    });
+    const imported = JSON.parse(
+      readFileSync(
+        join(ROOT, 'docs/live-probes/run95-a2-partial-account-read-2026-10-27/import.json'),
+        'utf8',
+      ),
+    );
+    expect(imported.admittedTools).toEqual([
+      {
+        name: 'bangumi.list_collections',
+        input: { subjectType: 'anime', status: 'doing', limit: 1, offset: 0 },
+      },
+    ]);
+    const credited = [...rowsByTool()].filter(([, cells]) => statusMark(cells[8]) === '✅');
+    expect(credited.map(([name]) => name)).toEqual(['bangumi.list_collections']);
+    expect(reportReferencesInMatrixCell(rowsByTool().get('bangumi.list_collections')?.[8])).toEqual(
+      [REAL_A2_REPORT_PATH],
+    );
+    expectAccountAuthPending(rowsByTool().get('bangumi.render_collection_progress')?.[8]);
+    expectAccountAuthPending(rowsByTool().get('bangumi.get_my_profile')?.[8]);
+    for (const [, cells] of rowsByTool()) {
+      for (const index of [6, 7, 9, 10, 11]) {
+        expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A2_REPORT_PATH);
+      }
+    }
+    expect(TABLE).toContain('1/33；待补 32');
   });
 
   it('accepts synthetic authenticated-read and render evidence without implying real account auth', () => {
