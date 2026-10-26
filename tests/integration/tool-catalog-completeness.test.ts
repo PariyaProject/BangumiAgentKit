@@ -60,6 +60,49 @@ function readTestSources(root: string): string {
   return source;
 }
 
+// Zod 4.6 emits primitive unions as type arrays where 4.4 emitted anyOf.
+// Canonicalize only that JSON Schema equivalence; retain every constraint and
+// every nontrivial branch so the frozen catalog remains a meaningful contract.
+function canonicalTypeUnions(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalTypeUnions);
+  if (!value || typeof value !== 'object') return value;
+  const result = Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [key, canonicalTypeUnions(child)]),
+  );
+  const primitiveTypes = new Set([
+    'null',
+    'boolean',
+    'object',
+    'array',
+    'number',
+    'integer',
+    'string',
+  ]);
+  if (
+    Array.isArray(result.type) &&
+    result.type.length > 1 &&
+    result.type.every((type) => typeof type === 'string' && primitiveTypes.has(type)) &&
+    !('anyOf' in result)
+  ) {
+    result.anyOf = result.type.map((type) => ({ type }));
+    delete result.type;
+  }
+  if (
+    Array.isArray(result.anyOf) &&
+    result.anyOf.every(
+      (branch) =>
+        branch &&
+        typeof branch === 'object' &&
+        Object.keys(branch).length === 1 &&
+        typeof branch.type === 'string' &&
+        primitiveTypes.has(branch.type),
+    )
+  ) {
+    result.anyOf.sort((left, right) => left.type.localeCompare(right.type));
+  }
+  return result;
+}
+
 function jsonSchemaOf(tool: { input: z.ZodType }): Record<string, unknown> {
   const schema = z.toJSONSchema(tool.input) as Record<string, unknown>;
   delete schema.$schema;
@@ -69,6 +112,25 @@ function jsonSchemaOf(tool: { input: z.ZodType }): Record<string, unknown> {
 describe('complete Bangumi tool surface', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('recognizes only the primitive-union notation change without losing constraints', () => {
+    expect(canonicalTypeUnions({ additionalProperties: { type: ['string', 'number'] } })).toEqual(
+      canonicalTypeUnions({
+        additionalProperties: {
+          anyOf: [{ type: 'number' }, { type: 'string' }],
+        },
+      }),
+    );
+    expect(canonicalTypeUnions({ type: ['string', 'number'], maximum: 2 })).not.toEqual(
+      canonicalTypeUnions({ anyOf: [{ type: 'string' }, { type: 'number' }] }),
+    );
+    expect(
+      canonicalTypeUnions({ anyOf: [{ type: 'string', minLength: 2 }, { type: 'number' }] }),
+    ).not.toEqual(canonicalTypeUnions({ type: ['string', 'number'] }));
+    expect(canonicalTypeUnions({ type: ['string', 'number'], anyOf: [{ const: 1 }] })).not.toEqual(
+      canonicalTypeUnions({ type: ['string', 'number'] }),
+    );
   });
 
   it('keeps the 96-tool catalog in policy and schema parity with the registry', () => {
@@ -91,7 +153,9 @@ describe('complete Bangumi tool surface', () => {
         scopes: entry.scopes,
       });
       expect(typeof tool!.execute, entry.name).toBe('function');
-      expect(jsonSchemaOf(tool!), entry.name).toEqual(entry.inputSchema);
+      expect(canonicalTypeUnions(jsonSchemaOf(tool!)), entry.name).toEqual(
+        canonicalTypeUnions(entry.inputSchema),
+      );
     }
     expect([...COMPACT_MCP_TOOL_NAMES]).toEqual([
       'bangumi.search_subjects',
@@ -116,9 +180,9 @@ describe('complete Bangumi tool surface', () => {
         explain: 'full',
       }).success,
     ).toBe(true);
-    expect(discoverySchema.safeParse({ collectionCompletionRate: { min: 0, max: 1 } }).success).toBe(
-      true,
-    );
+    expect(
+      discoverySchema.safeParse({ collectionCompletionRate: { min: 0, max: 1 } }).success,
+    ).toBe(true);
     expect(discoverySchema.safeParse({ collectionCompletionRate: { min: -0.01 } }).success).toBe(
       false,
     );

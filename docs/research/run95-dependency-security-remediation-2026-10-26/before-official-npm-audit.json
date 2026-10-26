@@ -1,0 +1,211 @@
+{
+  "exitCode": 1,
+  "errorCode": null,
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 6,
+      "moderate": 13,
+      "high": 5,
+      "critical": 0
+    },
+    "dependencies": 539,
+    "devDependencies": 0,
+    "optionalDependencies": 0,
+    "totalDependencies": 539
+  },
+  "advisories": [
+    {
+      "id": 1242595,
+      "module": "hono",
+      "severity": "moderate",
+      "title": "Hono: `serveStatic` decodes the request path a second time, leading to bypass of middleware on static paths",
+      "patchedVersions": ">=4.13.11",
+      "url": "https://github.com/advisories/GHSA-5r4p-p66f-jhc7"
+    },
+    {
+      "id": 1242623,
+      "module": "vite",
+      "severity": "moderate",
+      "title": "launch-editor: escapeCmdArgs() omits % escaping on Windows",
+      "patchedVersions": ">=7.3.7",
+      "url": "https://github.com/advisories/GHSA-698v-4r3x-3vcv"
+    },
+    {
+      "id": 1242628,
+      "module": "@modelcontextprotocol/sdk",
+      "severity": "high",
+      "title": "MCP TypeScript SDK: Experimental tasks were not tied to the session that created them",
+      "patchedVersions": ">=1.32.0",
+      "url": "https://github.com/advisories/GHSA-22jm-h49p-29qw"
+    },
+    {
+      "id": 1242630,
+      "module": "@modelcontextprotocol/sdk",
+      "severity": "moderate",
+      "title": "MCP TypeScript client SDK: HTTP client transports and OAuth requests followed cross-origin redirects and re-sent custom headers and request bodies",
+      "patchedVersions": ">=1.32.0",
+      "url": "https://github.com/advisories/GHSA-6prh-2h8m-c8cw"
+    },
+    {
+      "id": 1242649,
+      "module": "@modelcontextprotocol/sdk",
+      "severity": "high",
+      "title": "MCP TypeScript SDK: One HTTP request within the default size limit could exhaust server memory during validation",
+      "patchedVersions": ">=1.32.0",
+      "url": "https://github.com/advisories/GHSA-46jr-4wx8-v453"
+    },
+    {
+      "id": 1242652,
+      "module": "vite",
+      "severity": "moderate",
+      "title": "launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors",
+      "patchedVersions": ">=7.3.7",
+      "url": "https://github.com/advisories/GHSA-r825-w8mm-5pxw"
+    },
+    {
+      "id": 1242659,
+      "module": "vite",
+      "severity": "high",
+      "title": "launch-editor: `fs.existsSync()` existence check can be bypassed on Windows",
+      "patchedVersions": ">=7.3.7",
+      "url": "https://github.com/advisories/GHSA-587h-7wmj-h5pm"
+    },
+    {
+      "id": 1242667,
+      "module": "@modelcontextprotocol/sdk",
+      "severity": "moderate",
+      "title": "MCP TypeScript SDK: Server bearer authentication accepted tokens issued for another service",
+      "patchedVersions": ">=1.32.0",
+      "url": "https://github.com/advisories/GHSA-rvq5-wwqv-78pq"
+    },
+    {
+      "id": 1242725,
+      "module": "vite",
+      "severity": "low",
+      "title": "Vite: Cross origin script execution through Vite custom middleware",
+      "patchedVersions": ">=7.3.7",
+      "url": "https://github.com/advisories/GHSA-9jrq-w75r-8gcw"
+    },
+    {
+      "id": 1242731,
+      "module": "vite",
+      "severity": "moderate",
+      "title": "Vite: Files outside `server.fs.allow` could be served when project paths match system paths on non-Windows machine",
+      "patchedVersions": ">=7.3.7",
+      "url": "https://github.com/advisories/GHSA-rq7h-c2jc-7f22"
+    },
+    {
+      "id": 1242767,
+      "module": "@vitest/mocker",
+      "severity": "moderate",
+      "title": "Vitest: Code injection via unauthenticated manual mock registration",
+      "patchedVersions": ">=4.1.12",
+      "url": "https://github.com/advisories/GHSA-qxg6-89mg-rqv8"
+    },
+    {
+      "id": 1242769,
+      "module": "@vitest/mocker",
+      "severity": "moderate",
+      "title": "Vitest: Windows backslash traversal bypasses the @vitest/mocker redirect allowlist fix",
+      "patchedVersions": ">=4.1.12",
+      "url": "https://github.com/advisories/GHSA-xp26-3454-mjgp"
+    },
+    {
+      "id": 1242860,
+      "module": "fastify",
+      "severity": "low",
+      "title": "fastify is vulnerable to header validation bypass via case-sensitive propertyNames",
+      "patchedVersions": ">=5.12.6",
+      "url": "https://github.com/advisories/GHSA-389g-gv7q-r4x8"
+    },
+    {
+      "id": 1242883,
+      "module": "ip-address",
+      "severity": "moderate",
+      "title": "ip-address: Address6 matches a zone identifier in quadratic time ahead of its length limit, allowing a single long string to stall the process",
+      "patchedVersions": ">=10.7.4",
+      "url": "https://github.com/advisories/GHSA-rxp7-6hxx-x8q5"
+    },
+    {
+      "id": 1243066,
+      "module": "zod",
+      "severity": "high",
+      "title": "Zod can exhaust memory while validating oversized constrained collections",
+      "patchedVersions": ">=4.6.6",
+      "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5"
+    },
+    {
+      "id": 1243074,
+      "module": "body-parser",
+      "severity": "high",
+      "title": "body-parser vulnerable to Denial of Service via trailing bytes after a compressed request body",
+      "patchedVersions": ">=2.4.0",
+      "url": "https://github.com/advisories/GHSA-27r3-jxmh-p828"
+    },
+    {
+      "id": 1243097,
+      "module": "fast-uri",
+      "severity": "moderate",
+      "title": "fast-uri vulnerable to URI scheme spoofing via percent-encoded scheme decoding",
+      "patchedVersions": ">=4.2.3",
+      "url": "https://github.com/advisories/GHSA-w74x-v6f9-j3xg"
+    },
+    {
+      "id": 1243098,
+      "module": "fast-uri",
+      "severity": "moderate",
+      "title": "fast-uri vulnerable to URI scheme spoofing via percent-encoded scheme decoding",
+      "patchedVersions": ">=3.1.9",
+      "url": "https://github.com/advisories/GHSA-w74x-v6f9-j3xg"
+    },
+    {
+      "id": 1243100,
+      "module": "fast-uri",
+      "severity": "low",
+      "title": "fast-uri vulnerable to improper path equivalence in relative reference normalization",
+      "patchedVersions": ">=4.2.3",
+      "url": "https://github.com/advisories/GHSA-xhq7-xmqj-769h"
+    },
+    {
+      "id": 1243101,
+      "module": "fast-uri",
+      "severity": "low",
+      "title": "fast-uri vulnerable to improper path equivalence in relative reference normalization",
+      "patchedVersions": ">=3.1.9",
+      "url": "https://github.com/advisories/GHSA-xhq7-xmqj-769h"
+    },
+    {
+      "id": 1243103,
+      "module": "fast-uri",
+      "severity": "moderate",
+      "title": "fast-uri vulnerable to host confusion via unchecked WHATWG host canonicalization",
+      "patchedVersions": ">=4.2.3",
+      "url": "https://github.com/advisories/GHSA-wjr9-j795-jxcr"
+    },
+    {
+      "id": 1243104,
+      "module": "fast-uri",
+      "severity": "moderate",
+      "title": "fast-uri vulnerable to host confusion via unchecked WHATWG host canonicalization",
+      "patchedVersions": ">=3.1.9",
+      "url": "https://github.com/advisories/GHSA-wjr9-j795-jxcr"
+    },
+    {
+      "id": 1243106,
+      "module": "fast-uri",
+      "severity": "low",
+      "title": "fast-uri vulnerable to scheme injection via an unescaped first-segment colon in suffix references",
+      "patchedVersions": ">=4.2.3",
+      "url": "https://github.com/advisories/GHSA-333x-w4r6-6crp"
+    },
+    {
+      "id": 1243107,
+      "module": "fast-uri",
+      "severity": "low",
+      "title": "fast-uri vulnerable to scheme injection via an unescaped first-segment colon in suffix references",
+      "patchedVersions": ">=3.1.9",
+      "url": "https://github.com/advisories/GHSA-333x-w4r6-6crp"
+    }
+  ]
+}

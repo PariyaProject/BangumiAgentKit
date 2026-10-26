@@ -1,6 +1,6 @@
 # Bounded real-account A1 evidence
 
-The account-auth matrix now has a receipt path for the two real reads completed
+The account-auth matrix has a fixed receipt path for the two real reads completed
 on 2026-10-26: `bangumi.get_my_profile {}` and
 `bangumi.list_collections {subjectType:"anime",status:"doing",limit:2,offset:0}`.
 Both compiled MCP calls succeeded, made two API requests in total, and observed
@@ -55,8 +55,14 @@ Unrelated commits do not invalidate the observation. The caller's catalog must
 also equal the validated catalog on disk.
 
 The generator maps the accepted receipt only to the account-auth cells for
-these two names. Its summary is **2/33, 31 pending**. The table checker separately
-requires those exact cells and references to agree with the receipt consumer;
+these two names when compatible. PR277 integrated **2/33, 31 pending** for the
+unchanged executed graph. The 2026-10-26 security dependency patch changes that
+graph, so this checkout now has **0/33 current-source cells, 33 pending**. The
+two historical successes remain valid facts about e081 and its deployed image;
+they are not an execution of the upgraded dependencies. See the
+[security report](../research/run95-dependency-security-remediation-2026-10-26.md).
+Do not relax the pins or replay the completed A1 batch to preserve a counter.
+The table checker separately requires those exact cells and references to agree with the receipt consumer;
 manual checkmarks or references cannot substitute for evidence. Other columns
 and the other 94 tool rows retain their original evidence. Public 65/65 bounded,
 Agent/MCP 86/96, QQ/TIM 0/96 each, terminal profiles and locked renderer baselines
@@ -65,7 +71,8 @@ are unchanged. OP-009 remains PARTIAL.
 ## Verification and next work
 
 `python3 scripts/test_real_account_a1_evidence.py` exercises the actual import and
-source tree plus isolated tamper, synthetic, incomplete, path, file-type,
+pinned historical Git source blobs plus actual current-source rejection and
+isolated tamper, synthetic, incomplete, path, file-type,
 catalog/source drift, package export mutations, committed/untracked migration
 additions and matrix-plane isolation cases. `pnpm acceptance:check`
 includes this suite, the existing evidence tests, generated-table comparison and

@@ -1,5 +1,6 @@
 """Offline adversarial coverage for the historical, non-replayable A1 import."""
 import importlib.util
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -13,6 +14,12 @@ from acceptance import real_account_a1_evidence as evidence
 
 
 ROOT = Path(__file__).resolve().parents[1]
+HISTORICAL_SOURCES = json.loads((ROOT / evidence.BUNDLE / "source-files.json").read_text())
+# Read pinned, already committed source blobs once. Never substitute the newer
+# checkout for the execution fixture or modify the historical import.
+HISTORICAL_BYTES = {name: subprocess.check_output(
+    ["git", "-C", str(ROOT), "cat-file", "blob", entry["gitBlob"]], timeout=10)
+    for name, entry in HISTORICAL_SOURCES.items()}
 
 
 class RealAccountA1EvidenceTests(unittest.TestCase):
@@ -26,10 +33,10 @@ class RealAccountA1EvidenceTests(unittest.TestCase):
         for name in self.sources:
             target = self.root / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, target)
+            target.write_bytes(HISTORICAL_BYTES[name])
         self.catalog = json.loads((self.root / 'docs/tool-catalog.json').read_text())
-        # Only repository ancestry/tree metadata is synthetic. Every source and
-        # receipt byte is the actual imported input, independently tamperable.
+        # Only repository ancestry/tree metadata is synthetic. Source bytes are
+        # pinned execution blobs; receipt bytes remain the actual imported input.
         self.tree = ''.join(f"100644 blob {v['gitBlob']}\t{k}\n"
                             for k, v in self.sources.items())
         self.git = patch.object(evidence, '_git', side_effect=self.git_result).start()
@@ -58,10 +65,28 @@ class RealAccountA1EvidenceTests(unittest.TestCase):
     def test_accepts_only_two_observed_account_reads(self):
         self.assertEqual(self.result(), {name: {evidence.REFERENCE} for name in evidence.TOOLS})
 
-    def test_actual_repository_ancestry_and_source_tree(self):
-        expected = self.result()
+    def test_updated_repository_does_not_inherit_historical_account_credit(self):
+        # The security patch changes the dependency graph. Keep the old live
+        # success, while refusing to claim that the new binary was exercised.
+        self.assertNotEqual(hashlib.sha256((ROOT / 'pnpm-lock.yaml').read_bytes()).hexdigest(),
+                            self.sources['pnpm-lock.yaml']['sha256'])
+        self.assertEqual(set(self.result()), set(evidence.TOOLS))
         with patch.object(evidence, '_git', wraps=self.git_original):
-            self.assertEqual(evidence.real_account_read_sources(ROOT, self.catalog), expected)
+            self.assertEqual(evidence.real_account_read_sources(ROOT, self.catalog), {})
+
+    def test_dependency_drift_in_head_or_disk_removes_current_credit(self):
+        for name in ('pnpm-lock.yaml', 'apps/mcp/package.json', 'packages/tools/package.json'):
+            with self.subTest(path=name):
+                path = self.root / name
+                original = path.read_bytes()
+                path.write_bytes(original + b'\n')
+                self.assertEqual(self.result(), {})
+                path.write_bytes(original)
+                original_tree = self.tree
+                self.tree = self.tree.replace(self.sources[name]['gitBlob'], '0' * 40, 1)
+                self.assertEqual(self.result(), {})
+                self.tree = original_tree
+                self.assertEqual(set(self.result()), set(evidence.TOOLS))
 
     git_original = staticmethod(evidence._git)
 
@@ -162,7 +187,7 @@ class RealAccountA1EvidenceTests(unittest.TestCase):
                      'packages/tools/src/index.ts', 'packages/db/src/index.ts'):
             with self.subTest(path=name):
                 path = self.root / name
-                original = (ROOT / name).read_bytes()
+                original = path.read_bytes()
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(original + b'\nthrow Error("incompatible runtime export");\n')
                 self.assertEqual(self.result(), {})
