@@ -1,3 +1,4 @@
+import { preserveCatalogUnionNotation } from '../../scripts/lib/catalog-json-schema.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -91,7 +92,9 @@ describe('complete Bangumi tool surface', () => {
         scopes: entry.scopes,
       });
       expect(typeof tool!.execute, entry.name).toBe('function');
-      expect(jsonSchemaOf(tool!), entry.name).toEqual(entry.inputSchema);
+      expect(preserveCatalogUnionNotation(jsonSchemaOf(tool!)), entry.name).toEqual(
+        entry.inputSchema,
+      );
     }
     expect([...COMPACT_MCP_TOOL_NAMES]).toEqual([
       'bangumi.search_subjects',
@@ -116,9 +119,9 @@ describe('complete Bangumi tool surface', () => {
         explain: 'full',
       }).success,
     ).toBe(true);
-    expect(discoverySchema.safeParse({ collectionCompletionRate: { min: 0, max: 1 } }).success).toBe(
-      true,
-    );
+    expect(
+      discoverySchema.safeParse({ collectionCompletionRate: { min: 0, max: 1 } }).success,
+    ).toBe(true);
     expect(discoverySchema.safeParse({ collectionCompletionRate: { min: -0.01 } }).success).toBe(
       false,
     );

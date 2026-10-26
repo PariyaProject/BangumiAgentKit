@@ -106,10 +106,10 @@ function hasExactMatrixReportReference(cell: unknown, expectedPath: string): boo
   return paths.length === 1 && paths[0] === expectedPath;
 }
 
-function expectAccountAuthCell(name: string, cell: unknown): void {
-  // A synthetic/denial report still earns no account credit. Only these two
-  // rows have a separate, completed live receipt; require that exact reference.
-  expect(cell).toBe(REAL_A1_TOOLS.has(name) ? `✅<br>\`${REAL_A1_REPORT_PATH}\`` : '⬜');
+function expectAccountAuthPending(cell: unknown): void {
+  // Historical e081 live success remains preserved, but the upgraded dependency
+  // graph was never exercised by that batch. No synthetic/denial report earns it.
+  expect(cell).toBe('⬜');
 }
 
 const FULL_OPERATION_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
@@ -1618,7 +1618,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(scenario).not.toHaveProperty('prompt');
       expect(scenario).not.toHaveProperty('arguments');
       expect(statusMark(rows.get(scenario.id)?.[7])).toBe('✅');
-      expectAccountAuthCell(scenario.id, rows.get(scenario.id)?.[8]);
+      expectAccountAuthPending(rows.get(scenario.id)?.[8]);
       expect(statusMark(rows.get(scenario.id)?.[9])).toBe('✅');
     }
   });
@@ -1698,7 +1698,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     }
   });
 
-  it('credits exactly two completed live A1 account reads without changing other planes', () => {
+  it('preserves the historical two live A1 reads without crediting the updated dependency graph', () => {
     const report = JSON.parse(readFileSync(join(ROOT, REAL_A1_REPORT_PATH), 'utf8'));
     expect(report).toMatchObject({
       executionKind: 'live',
@@ -1714,18 +1714,38 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       clientActions: 0,
       privatePayloadSaved: false,
     });
+    expect(report.sourceRevision).toBe('e0810dad9e57f35cbeca63de35cf7a97d745d712');
+    const inventory = JSON.parse(
+      readFileSync(
+        join(ROOT, 'docs/live-probes/run95-a1-bound-reads-2026-10-26/source-files.json'),
+        'utf8',
+      ),
+    );
+    expect(
+      createHash('sha256')
+        .update(readFileSync(join(ROOT, 'pnpm-lock.yaml')))
+        .digest('hex'),
+    ).not.toBe(inventory['pnpm-lock.yaml'].sha256);
+    const imported = JSON.parse(
+      readFileSync(
+        join(ROOT, 'docs/live-probes/run95-a1-bound-reads-2026-10-26/import.json'),
+        'utf8',
+      ),
+    );
+    expect(imported.tools.map((tool: { name: string }) => tool.name).sort()).toEqual(
+      [...REAL_A1_TOOLS].sort(),
+    );
     const credited = [...rowsByTool()].filter(([, cells]) => statusMark(cells[8]) === '✅');
-    expect(credited.map(([name]) => name).sort()).toEqual([...REAL_A1_TOOLS].sort());
-    for (const [name, cells] of credited) {
-      expectAccountAuthCell(name, cells[8]);
-      expect(hasExactMatrixReportReference(cells[8], REAL_A1_REPORT_PATH)).toBe(true);
+    expect(credited).toEqual([]);
+    for (const [name, cells] of rowsByTool()) {
+      if (REAL_A1_TOOLS.has(name)) expectAccountAuthPending(cells[8]);
       for (const index of [6, 7, 9, 10, 11]) {
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A1_REPORT_PATH);
       }
       expect(cells[10]).toBe('⬜');
       expect(cells[11]).toBe('⬜');
     }
-    expect(TABLE).toContain('2/33；待补 31');
+    expect(TABLE).toContain('0/33；待补 33');
   });
 
   it('accepts synthetic authenticated-read and render evidence without implying real account auth', () => {
@@ -1790,7 +1810,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
       expect(scenario).not.toHaveProperty('prompt');
       expect(scenario).not.toHaveProperty('arguments');
-      expectAccountAuthCell(scenario.id, rowsByTool().get(scenario.id)?.[8]);
+      expectAccountAuthPending(rowsByTool().get(scenario.id)?.[8]);
       expect(statusMark(rowsByTool().get(scenario.id)?.[9])).toBe('✅');
     }
   });
