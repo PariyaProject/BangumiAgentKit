@@ -55,7 +55,7 @@
     "smoke:public:matrix-five:post-v2:fresh": "ts-node -P tsconfig.base.json scripts/smoke-fresh-public-api-matrix-five-post-v2-20261016.ts --live",
     "smoke:public:query-subjects:origin-guard-v3:fresh": "ts-node -P tsconfig.base.json scripts/smoke-fresh-query-subjects-origin-guard-v3-20261016.ts --live",
     "auth:check": "python3 scripts/validate-auth-acceptance.py",
-    "acceptance:check": "python3 scripts/test_acceptance_evidence.py && python3 scripts/test_real_account_a1_evidence.py && python3 scripts/test_real_account_a2_evidence.py && python3 scripts/test_real_account_a3_evidence.py && python3 scripts/generate-tool-acceptance-tasks.py --check && python3 scripts/check-tool-acceptance-table.py",
+    "acceptance:check": "python3 scripts/test_acceptance_evidence.py && python3 scripts/test_real_account_a1_evidence.py && python3 scripts/test_real_account_a2_evidence.py && python3 scripts/test_real_account_a3_evidence.py && python3 scripts/test_real_account_a4_evidence.py && python3 scripts/generate-tool-acceptance-tasks.py --check && python3 scripts/check-tool-acceptance-table.py",
     "renderer:install": "npx playwright install chromium",
     "start:api": "pnpm --filter @bangumi-agent-kit/app-api start",
     "start:mcp": "pnpm --filter @bangumi-agent-kit/app-mcp start",

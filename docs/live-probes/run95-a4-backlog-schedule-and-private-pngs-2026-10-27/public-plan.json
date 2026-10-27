@@ -1,0 +1,116 @@
+{
+  "schema": "pariya-a4-host-plan/v1",
+  "scope": "a4-bound-backlog-and-schedule-v1",
+  "executionKind": "live",
+  "identityRoute": "qq-owner",
+  "applicationCommit": "152cb77013a663feca46369b915ed65daeb0e078",
+  "worktreeClean": true,
+  "sourceRevision": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+  "harnessCommit": "58fc213079e4d4c46a8d72969214f6f676e08a94",
+  "runtimeTreeSha256": "a7e43944ade5cc9360748531dbea60e7373c8cc3f0b9d525660109faff122cf4",
+  "imageTag": "pariya-agent/agy-bangumi-standard-full:2ec9b165-security-qa",
+  "imageId": "sha256:cbd0f4c2b5b28c70295cf35211474c8898cbf33b143be8e8351554e91f010083",
+  "inputSha256": {
+    "scripts/acceptance/backlog-schedule-guard.cjs": "dfd723a9a11eda0c8c3473c59010461c9ebe58f67dd39d78430e721eb7feca9b",
+    "scripts/acceptance/private-progress-consumer.cjs": "4d0165f2bd4b1eec92675fd3fffafd4744cc28387d3a2b9deecf861c6633b74a",
+    "scripts/acceptance/backlog-schedule-entry.cjs": "a2609215df44424f3538aa811fa211ae988aa856881b3b15227e1c9b68bc0fb8",
+    "pariya_runtime/backlog_schedule_host.py": "2d7bd23a65213fd87a8144f706be961ee98a2ee1a27f0188dba5ce3319e9d5a4",
+    "pariya_runtime/backlog_schedule_claim.py": "f2b58c6f2dd1d194702b6e3f17526c6b671a1222eaf4fa10160d8a9e90c160d1",
+    "pariya_runtime/private_batch_claim.py": "982d80a8ae9d0c3ba338ceb8d7601426bc601ef5cf326c765372ba3fa9050587",
+    "pariya_runtime/private_batch_workload.py": "b4d59afb64c3a5786578a6ef7ae8515c541a49af4215fb8ec03cfc1ef87fda09",
+    "pariya_runtime/private_batch_governance.py": "bd5f01cd8195754753553a8f3a5b8023ac79cc702f977e3045ca4b01728dc6ff",
+    "pariya_runtime/acceptance_supervisor.py": "d1c9c1d8292aaef32ddb3c2c6174141ddaa02551916d24d3b607437d685f863e",
+    "pariya_runtime/bound_account_read.py": "b750c66bd4be45f4884b8038bee98fde0fce6894a75068ce1c34cc532a826e06",
+    "pariya_runtime/docker.py": "c0e6e237aff23a66c5d7662c194218c2a04e14244eba53b82b7cf5dd706cc723",
+    "pariya_runtime/process.py": "8f465f48a67aabf5541ed29f6f9f9820b736c2517854c3a5a18a092c297a0b9d",
+    "pariya_runtime/bangumi_source.py": "7af992f02d36d042e78aa5e73085b6610db20c1e8750bf5a6045cace70844f0f",
+    "plugins/astrbot_plugin_pariya/qq_policy.py": "bee39874616e9229733be75b87be95e72b925b688e7a8d1244557e85e9e417b0",
+    "scripts/backlog-schedule.py": "59e230288784be9034e6194f7c41ca1439801783b850d535776c8c4aeb4a0b4a",
+    "scripts/verify-standard-full-image.py": "c5758317236dc42cf5e026fdc850b161133741b26e5d9a18207ed6fc7c65c828",
+    "config/agent/bangumi-profile.json": "7d5c78488c2b80616426086fcc446dce95d46b9c4e2082283106274ab5909b6e",
+    "config/agent/settings.standard-full.json": "19fe7b64b96fd37cebeaa97002c6a9ef7db1d9ef82fc2d91d431bfcdf7bad6c4",
+    "config/agent/mcp_config.standard-full.json": "c7ed6f123ecdfa46a8a10df2ab43fc2b61a6c2d1f2ca5a17d62d7de15764ad10",
+    "config/bangumi-poc/standard-full-profile.json": "3da7474904a620caa8969df7f14ad5dbdd507820dae44937e27261d717d04063",
+    "config/bangumi-poc/standard-full-mcp.lock.json": "3a8eef1bfb8febc2f95bf5fef499e429ac7b22fe16e326fe34a5d0dbabf5a7f5"
+  },
+  "tools": [
+    {
+      "name": "bangumi.get_collection_backlog",
+      "arguments": {
+        "maxItems": 1,
+        "maxSubjects": 1,
+        "maxEpisodesPerSubject": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ],
+        "sortBy": "source"
+      }
+    },
+    {
+      "name": "bangumi.render_collection_backlog",
+      "arguments": {
+        "maxItems": 1,
+        "maxSubjects": 1,
+        "maxEpisodesPerSubject": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ],
+        "sortBy": "source"
+      }
+    },
+    {
+      "name": "bangumi.get_collection_schedule",
+      "arguments": {
+        "maxCollectionItems": 1,
+        "maxRows": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      }
+    },
+    {
+      "name": "bangumi.render_collection_schedule",
+      "arguments": {
+        "maxCollectionItems": 1,
+        "maxRows": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      }
+    }
+  ],
+  "maxToolCalls": 4,
+  "maxApiGets": 10,
+  "maxAccountCollectionGets": 4,
+  "maxAccountEpisodeGets": 2,
+  "maxPublicCalendarGets": 4,
+  "maxRowsPerCollection": 1,
+  "maxRowsPerEpisode": 1,
+  "maxCalendarSourceItems": 512,
+  "maxCalendarResponseBytes": 1048576,
+  "maxPrivateResponseBytes": 262144,
+  "perRequestDeadlineMs": 5000,
+  "maxCoverGets": 0,
+  "maxPrivatePngs": 2,
+  "maxPngBytesEach": 5242880,
+  "runtimeStateInspected": false,
+  "modelCalls": 0,
+  "clientActions": 0,
+  "planSha256": "53a1cefa2160f32487edf1ef2925e3243b4dc7de8b75033f469724e9ad9eb242"
+}

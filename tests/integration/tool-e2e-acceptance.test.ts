@@ -11,10 +11,22 @@ const REAL_A1_REPORT_PATH = 'docs/live-probes/run95-a1-bound-reads-2026-10-26/a1
 const REAL_A1_TOOLS = new Set(['bangumi.get_my_profile', 'bangumi.list_collections']);
 const REAL_A3_REPORT_PATH =
   'docs/live-probes/run95-a3-bound-overview-and-private-png-2026-10-27/a3-result.json';
+const REAL_A4_BUNDLE = 'docs/live-probes/run95-a4-backlog-schedule-and-private-pngs-2026-10-27';
+const REAL_A4_REPORT_PATH = REAL_A4_BUNDLE + '/a4-result.json';
+const REAL_A4_TOOLS = [
+  'bangumi.get_collection_backlog',
+  'bangumi.render_collection_backlog',
+  'bangumi.get_collection_schedule',
+  'bangumi.render_collection_schedule',
+];
 const REAL_CURRENT_ACCOUNT_TOOLS = [
+  'bangumi.get_collection_backlog',
   'bangumi.get_collection_intelligence',
+  'bangumi.get_collection_schedule',
   'bangumi.list_collections',
+  'bangumi.render_collection_backlog',
   'bangumi.render_collection_intelligence',
+  'bangumi.render_collection_schedule',
 ];
 const REAL_A2_REPORT_PATH =
   'docs/live-probes/run95-a2-partial-account-read-2026-10-27/a2-result.json';
@@ -123,7 +135,9 @@ function expectAccountAuthCell(toolName: string, cell: unknown): void {
             toolName,
           )
         ? REAL_A3_REPORT_PATH
-        : undefined;
+        : REAL_A4_TOOLS.includes(toolName)
+          ? REAL_A4_REPORT_PATH
+          : undefined;
   if (liveReference !== undefined) expect(cell).toBe(`✅<br>\`${liveReference}\``);
   else expectAccountAuthPending(cell);
 }
@@ -1770,7 +1784,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(cells[10]).toBe('⬜');
       expect(cells[11]).toBe('⬜');
     }
-    expect(TABLE).toContain('3/33；待补 30');
+    expect(TABLE).toContain('7/33；待补 26');
   });
 
   it('credits only the successful collection selection from the failed and spent A2 batch', () => {
@@ -1819,7 +1833,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A2_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('3/33；待补 30');
+    expect(TABLE).toContain('7/33；待补 26');
   });
 
   it('credits only the completed bounded A3 overview and private PNG with partial sample limits', () => {
@@ -1899,7 +1913,89 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A3_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('3/33；待补 30');
+    expect(TABLE).toContain('7/33；待补 26');
+  });
+
+  it('admits only four actual A4 backlog/schedule tools with conflict and partial limits', () => {
+    const report = JSON.parse(readFileSync(join(ROOT, REAL_A4_REPORT_PATH), 'utf8'));
+    expect(report).toMatchObject({
+      passed: true,
+      phase: 'COMPLETE',
+      servicesRestored: true,
+      protectedClaimsPreserved: true,
+      operatorModelPrompts: 0,
+      operatorClientActions: 0,
+      privatePayloadExported: false,
+      batch: {
+        executionKind: 'live',
+        passed: true,
+        code: 'OK',
+        toolCallsAttempted: 4,
+        toolCallsSucceeded: 4,
+        apiRequests: 10,
+        coverRequests: 0,
+        pngValidated: true,
+        cleanupConfirmed: true,
+        claimFinalized: true,
+        modelCalls: 0,
+        clientActions: 0,
+        privatePayloadExported: false,
+        diagnostic: {
+          guardPhase: 'complete',
+          guardReason: null,
+          semanticFailure: null,
+          failureStage: null,
+          pngsValidated: 2,
+          collectionRequests: 4,
+          episodeRequests: 2,
+          calendarRequests: 4,
+          backlogReadState: 'conflict',
+          backlogReadRows: 1,
+          backlogRenderState: 'conflict',
+          backlogRenderRows: 1,
+          scheduleReadState: 'partial',
+          scheduleReadRows: 1,
+          scheduleRenderState: 'partial',
+          scheduleRenderRows: 1,
+        },
+      },
+    });
+    const manifest = JSON.parse(readFileSync(join(ROOT, REAL_A4_BUNDLE, 'import.json'), 'utf8'));
+    const statuses = ['wish', 'doing', 'done', 'on_hold', 'dropped'];
+    expect(manifest.admittedTools).toEqual(
+      REAL_A4_TOOLS.map((name, index) => ({
+        name,
+        input:
+          index < 2
+            ? { maxItems: 1, maxSubjects: 1, maxEpisodesPerSubject: 1, statuses, sortBy: 'source' }
+            : { maxCollectionItems: 1, maxRows: 1, statuses },
+      })),
+    );
+    const rawClaim = readFileSync(join(ROOT, REAL_A4_BUNDLE, 'durable-a4-claim.json'));
+    expect(createHash('sha256').update(rawClaim).digest('hex')).toBe(
+      'b2693e31c6a44cf43b0d1457a1980ba2e966158707b618afaeb9282fd3bb7e51',
+    );
+    expect(JSON.parse(rawClaim.toString())).toMatchObject({
+      state: 'COMPLETE',
+      scope: 'a4-bound-backlog-and-schedule-v1',
+      observation: {
+        toolCallsAttempted: 4,
+        toolCallsSucceeded: 4,
+        apiRequests: 10,
+        coverRequests: 0,
+        pngValidated: true,
+        cleanupConfirmed: true,
+      },
+    });
+    for (const [name, cells] of rowsByTool()) {
+      expect(reportReferencesInMatrixCell(cells[8]).includes(REAL_A4_REPORT_PATH)).toBe(
+        REAL_A4_TOOLS.includes(name),
+      );
+      for (const index of [6, 7, 9, 10, 11]) {
+        expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A4_REPORT_PATH);
+      }
+    }
+    expect(TABLE).toContain('7/33；待补 26');
   });
 
   it('accepts synthetic authenticated-read and render evidence without implying real account auth', () => {
