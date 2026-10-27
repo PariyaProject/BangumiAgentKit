@@ -4473,9 +4473,13 @@
         "scripts/acceptance/real_account_a3_evidence.py",
         "scripts/test_real_account_a3_evidence.py",
         "docs/live-probes/run95-a3-bound-overview-and-private-png-2026-10-27/import.json",
-        "docs/product/real-account-a3-overview-evidence.md"
+        "docs/product/real-account-a3-overview-evidence.md",
+        "scripts/acceptance/real_account_a4_evidence.py",
+        "scripts/test_real_account_a4_evidence.py",
+        "docs/live-probes/run95-a4-backlog-schedule-and-private-pngs-2026-10-27/import.json",
+        "docs/product/real-account-a4-backlog-schedule-evidence.md"
       ],
-      "next_action": "Current-source account evidence is3/33 (30pending): original A2 list selection plus the completed A3 get/render_collection_intelligence maxItems2. A3 used exactly2GET/0assets, two rows per independent partial sample; private PNG principal scope/native Sharp pixels/cleanup and original services restoration passed. Fixed A3 COMPLETE, A1 COMPLETE and A2 FAILED are permanently spent, no replay or alias. Strict fixed receipt anchor pins285 runtime files including fonts/assets,20 operator files, dependency/exports/config and dynamic membership; no new account/provider/model/client action during import. Preserve historical A1 incompatibility and actual failed A2/UNKNOWNcause. Keep OP009 PARTIAL; remaining30account tools, QQ/TIM, full OAuth, writes, whole-account distribution and user aesthetic acceptance remain unproven. No new private operation is authorized by this source-evidence admission.",
+      "next_action": "Current-source account evidence is7/33 (26pending): prior A2list+A3overview2 plus four completed A4backlog/scheduleread+render tools. A4actual10GET(4collection2episode4calendar)/0assets/one collection and episode row per bounded request/two privatePNGsSharpdecodedandcleaned. Backlog both conflict; schedule both partial; preserve independent snapshots and unknown full duration/calendar semantics. A1/A2/A3/A4 claims permanently spent, old three rawbytes preserved; no retry/alias. Fixed reviewed operator anchor pins285 runtimefiles and21executedhostfiles; all old consumers/bundles unchanged. Import opens no runtime/key/provider/model/client. Keep OP009 PARTIAL; OAuth/write/client/stability/aesthetic/full-account evidence remains unproven, original96Goal unfinished.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },

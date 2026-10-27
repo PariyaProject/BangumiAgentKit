@@ -1,0 +1,100 @@
+{
+  "schema": "run95-a4-reviewed-operator-provenance/v1",
+  "executedApplicationCommit": "152cb77013a663feca46369b915ed65daeb0e078",
+  "executedRuntimeRevision": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+  "governanceCommit": "58fc213079e4d4c46a8d72969214f6f676e08a94",
+  "applicationFiles": {
+    "scripts/acceptance/backlog-schedule-guard.cjs": {
+      "gitBlob": "1092cac992ded7d1227c11026120de17ebd35df7",
+      "sha256": "dfd723a9a11eda0c8c3473c59010461c9ebe58f67dd39d78430e721eb7feca9b"
+    },
+    "scripts/acceptance/private-progress-consumer.cjs": {
+      "gitBlob": "fe613af9a886a941f66e81f4e0ab5b28c3199805",
+      "sha256": "4d0165f2bd4b1eec92675fd3fffafd4744cc28387d3a2b9deecf861c6633b74a"
+    },
+    "scripts/acceptance/backlog-schedule-entry.cjs": {
+      "gitBlob": "e49fd0a53a92ee3ee23c82d169cb6019760ff556",
+      "sha256": "a2609215df44424f3538aa811fa211ae988aa856881b3b15227e1c9b68bc0fb8"
+    },
+    "pariya_runtime/backlog_schedule_host.py": {
+      "gitBlob": "ab9289208a09b8b91fa552c8555fd326177d2f2f",
+      "sha256": "2d7bd23a65213fd87a8144f706be961ee98a2ee1a27f0188dba5ce3319e9d5a4"
+    },
+    "pariya_runtime/backlog_schedule_claim.py": {
+      "gitBlob": "dc012ff754ede4eeeb5f3672f832a7bf9312fd20",
+      "sha256": "f2b58c6f2dd1d194702b6e3f17526c6b671a1222eaf4fa10160d8a9e90c160d1"
+    },
+    "pariya_runtime/private_batch_claim.py": {
+      "gitBlob": "7de9a82e56c177dfc07f6fbb469ca193553bad5d",
+      "sha256": "982d80a8ae9d0c3ba338ceb8d7601426bc601ef5cf326c765372ba3fa9050587"
+    },
+    "pariya_runtime/private_batch_workload.py": {
+      "gitBlob": "f9b1f34d94c40cc475519b9ce34bc3bdee8299bd",
+      "sha256": "b4d59afb64c3a5786578a6ef7ae8515c541a49af4215fb8ec03cfc1ef87fda09"
+    },
+    "pariya_runtime/private_batch_governance.py": {
+      "gitBlob": "41907b9051e544d7410e1c3287b8b284941410c8",
+      "sha256": "bd5f01cd8195754753553a8f3a5b8023ac79cc702f977e3045ca4b01728dc6ff"
+    },
+    "pariya_runtime/acceptance_supervisor.py": {
+      "gitBlob": "6e9ec037a919bc7d8fc0819ef0bcf8bc4363d95f",
+      "sha256": "d1c9c1d8292aaef32ddb3c2c6174141ddaa02551916d24d3b607437d685f863e"
+    },
+    "pariya_runtime/bound_account_read.py": {
+      "gitBlob": "453fce20bce4257e4aa1ba6d4094ecb0d98fb42c",
+      "sha256": "b750c66bd4be45f4884b8038bee98fde0fce6894a75068ce1c34cc532a826e06"
+    },
+    "pariya_runtime/docker.py": {
+      "gitBlob": "9ac0ae031100937094740f9cea03a065901f0a85",
+      "sha256": "c0e6e237aff23a66c5d7662c194218c2a04e14244eba53b82b7cf5dd706cc723"
+    },
+    "pariya_runtime/process.py": {
+      "gitBlob": "70580bde47d7d1a476ec4d2998c7d60fead25187",
+      "sha256": "8f465f48a67aabf5541ed29f6f9f9820b736c2517854c3a5a18a092c297a0b9d"
+    },
+    "pariya_runtime/bangumi_source.py": {
+      "gitBlob": "e233c9ff7efedd38bc29d9665b2b08d2d2a4a43d",
+      "sha256": "7af992f02d36d042e78aa5e73085b6610db20c1e8750bf5a6045cace70844f0f"
+    },
+    "plugins/astrbot_plugin_pariya/qq_policy.py": {
+      "gitBlob": "33ecc88ccbef6ead5c0038d230342467eaf00bf4",
+      "sha256": "bee39874616e9229733be75b87be95e72b925b688e7a8d1244557e85e9e417b0"
+    },
+    "scripts/backlog-schedule.py": {
+      "gitBlob": "c75a61714eea2a85e6d91ae6b30094c9639e84de",
+      "sha256": "59e230288784be9034e6194f7c41ca1439801783b850d535776c8c4aeb4a0b4a"
+    },
+    "scripts/verify-standard-full-image.py": {
+      "gitBlob": "7cf3ee654cd8b8517d89e2d07231c03a4aef4e14",
+      "sha256": "c5758317236dc42cf5e026fdc850b161133741b26e5d9a18207ed6fc7c65c828"
+    },
+    "config/agent/bangumi-profile.json": {
+      "gitBlob": "2ff74ccc566f7b6472f90a6477a3e0ac15793cb9",
+      "sha256": "7d5c78488c2b80616426086fcc446dce95d46b9c4e2082283106274ab5909b6e"
+    },
+    "config/agent/settings.standard-full.json": {
+      "gitBlob": "0daa346cea842b1ca17a20337625b0746f355432",
+      "sha256": "19fe7b64b96fd37cebeaa97002c6a9ef7db1d9ef82fc2d91d431bfcdf7bad6c4"
+    },
+    "config/agent/mcp_config.standard-full.json": {
+      "gitBlob": "39ed3cfec7b6786a4f52afa9a34f9bd3c9829c5a",
+      "sha256": "c7ed6f123ecdfa46a8a10df2ab43fc2b61a6c2d1f2ca5a17d62d7de15764ad10"
+    },
+    "config/bangumi-poc/standard-full-profile.json": {
+      "gitBlob": "60ed385bfffc9e933d2e59b6179a850be84a5127",
+      "sha256": "3da7474904a620caa8969df7f14ad5dbdd507820dae44937e27261d717d04063"
+    },
+    "config/bangumi-poc/standard-full-mcp.lock.json": {
+      "gitBlob": "291a2b4ba473974dff132405fb626121eaa86998",
+      "sha256": "3a8eef1bfb8febc2f95bf5fef499e429ac7b22fe16e326fe34a5d0dbabf5a7f5"
+    }
+  },
+  "privateMaintenanceOperatorSha256": "5efa6b78636a814bd4c428f26070c0da09c72f1f702d38853ffec849def83d95",
+  "privateMaintenancePlanSha256": "4dcc28eb7fd02d5f33d5736575c40bcb3c5bf28f6e53ceb9378d307c401cd548",
+  "operatorTests": 24,
+  "standardsFindings": 0,
+  "specFindings": 0,
+  "closedOperatorFinding": "launchctl observation absence ambiguity and unchecked bootout;24faulttests after6RED assertions",
+  "provenanceKind": "explicit-reviewed-operator-anchor-not-signature",
+  "privatePayloadIncluded": false
+}

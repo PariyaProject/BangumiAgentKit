@@ -1,0 +1,94 @@
+{
+  "schema": "bgk-a4-bounded-backlog-schedule-private-pngs-import/v1",
+  "kind": "imported-successful-live-receipt",
+  "executedSourceRevision": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+  "executedApplicationCommit": "152cb77013a663feca46369b915ed65daeb0e078",
+  "originCheckpoint": {
+    "run": 95,
+    "sequence": 67,
+    "sha256": "8be04958fd0414a3ef9f35dc336e96ebf95e9b50b7459f533523290114aea2fe",
+    "url": "https://github.com/PariyaProject/BangumiAgentKit/issues/95"
+  },
+  "admittedTools": [
+    {
+      "name": "bangumi.get_collection_backlog",
+      "input": {
+        "maxItems": 1,
+        "maxSubjects": 1,
+        "maxEpisodesPerSubject": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ],
+        "sortBy": "source"
+      }
+    },
+    {
+      "name": "bangumi.render_collection_backlog",
+      "input": {
+        "maxItems": 1,
+        "maxSubjects": 1,
+        "maxEpisodesPerSubject": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ],
+        "sortBy": "source"
+      }
+    },
+    {
+      "name": "bangumi.get_collection_schedule",
+      "input": {
+        "maxCollectionItems": 1,
+        "maxRows": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      }
+    },
+    {
+      "name": "bangumi.render_collection_schedule",
+      "input": {
+        "maxCollectionItems": 1,
+        "maxRows": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      }
+    }
+  ],
+  "runtimeTreeSha256": "a7e43944ade5cc9360748531dbea60e7373c8cc3f0b9d525660109faff122cf4",
+  "evidenceFiles": {
+    "a4-result.json": "85fe99fd647f0266c9e16ad4d18302deb991682427d555900dcf81098a60cf16",
+    "durable-a4-claim.json": "b2693e31c6a44cf43b0d1457a1980ba2e966158707b618afaeb9282fd3bb7e51",
+    "operator-provenance.json": "b5a36130acd5c2c2e1d55cd0714ae54c39815e6d553318d5b84362181b0fbdf2",
+    "postconditions.json": "e58ffdcbbe83e0bd7a2222e054af896f1d1340c96d90c2aa36601ced73f93bfb",
+    "public-plan.json": "27805246c01f247879e047ef5f4c516c28d26685d9b46e7427135b0f0b54a91c",
+    "root-package-runtime.json": "3d0bfb5984e0b2ab06111929af92574fb8671063eca405b3932b6a310b7c41b4",
+    "source-files.json": "4194f73bdcdbe3f39dc16f2b446e71e0b0173d5d17535e9d7abc73e55f234dda"
+  },
+  "limits": [
+    "Only four completed compiled backlog/schedule tools:10GET(4collection2episode4publiccalendar),0assets,1collection/episode row per request.",
+    "Backlogread/render conflict and scheduleread/render partial; independent snapshots, not full progress duration, complete calendar or exact broadcast timestamps.",
+    "Two principal-scoped privatePNGs/Sharpdecode/cleanup passed; no media or privatepayload retained/exported, no aesthetic approval.",
+    "A4COMPLETE permanently spent; original A1COMPLETE/A2FAILED/A3COMPLETE byte-preserved/no replay or alias.",
+    "No Agent/model/OAuth-flow/write/QQ/TIM/stability credit; original96goal incomplete.",
+    "Full runtime285source/blob/disk/dynamicmigration/assets/rootmetadata compatibility required, scripts-only exception;receipt64KiB/source8MiB.",
+    "Consumer uses only fixed sanitized tracked bundle and Git/source;no runtime/key/provider access."
+  ],
+  "provenance": "A fixed reviewed operator-evidence trust anchor, not a runner signature, cryptographic execution attestation or new API observation."
+}

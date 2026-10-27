@@ -45,8 +45,10 @@ field except scripts must match both HEAD and disk. Test/governance script
 changes can preserve credit; runtime/dependency/asset changes cannot inherit it.
 
 The existing frozen A1 and A2 consumers and their bundles remain unchanged.
-The union admits A2's single list selection plus these two A3 tools: **3/33
-current account cells,30 pending**. Historical e081 A1 remains incompatible with
+At A3 admission, the union admitted A2's single list selection plus these two
+A3 tools: **3/33 account cells,30 pending**. The later
+[A4 import](real-account-a4-backlog-schedule-evidence.md) extends the current
+union with four separately evidenced tools. Historical e081 A1 remains incompatible with
 the upgraded graph and contributes zero current-source cells. Direct/public,
 Agent/MCP, denial, QQ/TIM, writes and OAuth-flow evidence planes retain their
 previous limits. Keep OP-009 PARTIAL and the full96-tool Goal incomplete.
@@ -54,7 +56,8 @@ previous limits. Keep OP-009 PARTIAL and the full96-tool Goal incomplete.
 ## Verification
 
 Sixteen offline adversarial tests cover original partial/native-PNG facts,
-actual current-source admission and three-tool union, every receipt byte pin,
+actual current-source admission and exact independently evidenced union, every
+receipt byte pin,
 manifest expansion, private fields, synthetic/failed/changed scope, committed
 and disk source drift across runtime domains, large font bounds, dynamic
 membership, root metadata/scripts, catalog/ancestry, symlinks/directories/FIFOs,

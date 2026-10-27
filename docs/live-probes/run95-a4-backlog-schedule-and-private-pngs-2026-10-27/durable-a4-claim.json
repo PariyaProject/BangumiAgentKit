@@ -1,0 +1,1 @@
+{"observation":{"apiRequests":10,"cleanupConfirmed":true,"coverRequests":0,"pngValidated":true,"toolCallsAttempted":4,"toolCallsSucceeded":4},"planSha256":"53a1cefa2160f32487edf1ef2925e3243b4dc7de8b75033f469724e9ad9eb242","schema":"pariya-a4-claim/v1","scope":"a4-bound-backlog-and-schedule-v1","state":"COMPLETE"}
