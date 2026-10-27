@@ -1,0 +1,33 @@
+{
+  "schema": "run95-a3-independent-postconditions/v1",
+  "originalJobBytesMatch": true,
+  "originalJobHashesMatch": true,
+  "originalLoadedStatesMatch": true,
+  "napcatSameProcess": true,
+  "astrbotSameContainer": true,
+  "napcatHealthyUnpaused": true,
+  "astrbotHealthyUnpaused": true,
+  "localGatewayReady": true,
+  "noOrphansOrFence": true,
+  "protectedA1A2ClaimsByteIdentical": true,
+  "a3ClaimState": "COMPLETE",
+  "a3ClaimSha256": "30856ce79ae076b99cc178c4e66c71b9244cf26acc653f9ce2c01485629b8d86",
+  "a3ClaimObservation": {
+    "apiRequests": 2,
+    "cleanupConfirmed": true,
+    "coverRequests": 0,
+    "pngValidated": true,
+    "toolCallsAttempted": 2,
+    "toolCallsSucceeded": 2
+  },
+  "modelRunsBefore": 945,
+  "modelRunsAfter": 945,
+  "runningModels": 0,
+  "pendingMessages": 0,
+  "accountApiRequestsByReadback": 0,
+  "privatePayloadExported": false,
+  "datedImmediateObservationOnly": true,
+  "bangumiKeyReadsByReadback": 0,
+  "bangumiTokenReadsByReadback": 0,
+  "localGatewayTokenConsumedInProcess": true
+}

@@ -1,11 +1,12 @@
 """Union only explicitly reviewed, compatible fixed account-read receipts."""
 from .real_account_a1_evidence import real_account_read_sources as a1_sources
 from .real_account_a2_evidence import real_account_collection_sources as a2_sources
+from .real_account_a3_evidence import real_account_overview_sources as a3_sources
 
 
 def real_account_read_sources(root, catalog):
     result = {}
-    for source in (a1_sources, a2_sources):
+    for source in (a1_sources, a2_sources, a3_sources):
         for name, references in source(root, catalog).items():
             result.setdefault(name, set()).update(references)
     return result

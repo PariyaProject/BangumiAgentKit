@@ -1,0 +1,45 @@
+{
+  "schema": "bgk-a3-bounded-private-png-receipt-import/v1",
+  "kind": "imported-successful-live-receipt",
+  "executedSourceRevision": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+  "executedApplicationCommit": "caa71d8a9b0edacc888fa4f12f99a277204e22d3",
+  "originCheckpoint": {
+    "run": 95,
+    "sequence": 62,
+    "sha256": "9fac2c3a03d558689d86a6a0ea6efb573e58e93b155ccabfd2b29aa6c8bee4d0",
+    "url": "https://github.com/PariyaProject/BangumiAgentKit/issues/95"
+  },
+  "admittedTools": [
+    {
+      "name": "bangumi.get_collection_intelligence",
+      "input": {
+        "maxItems": 2
+      }
+    },
+    {
+      "name": "bangumi.render_collection_intelligence",
+      "input": {
+        "maxItems": 2
+      }
+    }
+  ],
+  "runtimeTreeSha256": "a7e43944ade5cc9360748531dbea60e7373c8cc3f0b9d525660109faff122cf4",
+  "evidenceFiles": {
+    "a3-result.json": "1eb274dbe09b8fc4dfc27ed40c8dc6875801f803754b6eec6e9e3874814c0b7e",
+    "durable-a3-claim.json": "30856ce79ae076b99cc178c4e66c71b9244cf26acc653f9ce2c01485629b8d86",
+    "operator-provenance.json": "40e8467ba73671b823ed7256c2f2f1584246b86bd806c674007b86ce9ab0dd33",
+    "postconditions.json": "6d74eb0f9149e4e5caa8ba437faafa33158d11854d5be34c4e4a12446d3325a8",
+    "public-plan.json": "7adf0098afde693f60de8028fca57c9db9de33008d319601cc3fdf2313c0eb60",
+    "root-package-runtime.json": "3d0bfb5984e0b2ab06111929af92574fb8671063eca405b3932b6a310b7c41b4",
+    "source-files.json": "4194f73bdcdbe3f39dc16f2b446e71e0b0173d5d17535e9d7abc73e55f234dda"
+  },
+  "limits": [
+    "Exactly the two completed compiled tools; two API GETs, zero assets, two rows per independent response, both partial.",
+    "Private PNG principal scope, bounded Sharp pixels and cleanup passed; media/private payload are not retained or exported.",
+    "Fixed A3 COMPLETE permanently spent; original A1 COMPLETE and A2 FAILED byte-identical. No retry or alias.",
+    "No Agent/model, OAuth-flow, writes, QQ/TIM, aesthetic, full-account distribution, atomic snapshot or long-term stability credit.",
+    "Relevant current tracked blobs/on-disk files, exports, dependency and bounded render font/asset graph must remain compatible. Root package scripts alone may change.",
+    "Consumer reads only this fixed sanitized bundle and repository/Git metadata; no runtime, key, account or provider access."
+  ],
+  "provenance": "A fixed reviewed operator-evidence trust anchor, not a runner signature, cryptographic execution attestation or new API observation."
+}
