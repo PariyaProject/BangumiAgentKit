@@ -9,6 +9,13 @@ import catalog from '../../docs/tool-catalog.json';
 const ROOT = process.cwd();
 const REAL_A1_REPORT_PATH = 'docs/live-probes/run95-a1-bound-reads-2026-10-26/a1-result.json';
 const REAL_A1_TOOLS = new Set(['bangumi.get_my_profile', 'bangumi.list_collections']);
+const REAL_A3_REPORT_PATH =
+  'docs/live-probes/run95-a3-bound-overview-and-private-png-2026-10-27/a3-result.json';
+const REAL_CURRENT_ACCOUNT_TOOLS = [
+  'bangumi.get_collection_intelligence',
+  'bangumi.list_collections',
+  'bangumi.render_collection_intelligence',
+];
 const REAL_A2_REPORT_PATH =
   'docs/live-probes/run95-a2-partial-account-read-2026-10-27/a2-result.json';
 const CATALOG_TEXT = readFileSync(join(ROOT, 'docs/tool-catalog.json'), 'utf8');
@@ -106,6 +113,19 @@ function reportReferencesInMatrixCell(cell: unknown): string[] {
 function hasExactMatrixReportReference(cell: unknown, expectedPath: string): boolean {
   const paths = reportReferencesInMatrixCell(cell);
   return paths.length === 1 && paths[0] === expectedPath;
+}
+
+function expectAccountAuthCell(toolName: string, cell: unknown): void {
+  const liveReference =
+    toolName === 'bangumi.list_collections'
+      ? REAL_A2_REPORT_PATH
+      : ['bangumi.get_collection_intelligence', 'bangumi.render_collection_intelligence'].includes(
+            toolName,
+          )
+        ? REAL_A3_REPORT_PATH
+        : undefined;
+  if (liveReference !== undefined) expect(cell).toBe(`✅<br>\`${liveReference}\``);
+  else expectAccountAuthPending(cell);
 }
 
 function expectAccountAuthPending(cell: unknown): void {
@@ -1620,7 +1640,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(scenario).not.toHaveProperty('prompt');
       expect(scenario).not.toHaveProperty('arguments');
       expect(statusMark(rows.get(scenario.id)?.[7])).toBe('✅');
-      expectAccountAuthPending(rows.get(scenario.id)?.[8]);
+      expectAccountAuthCell(scenario.id, rows.get(scenario.id)?.[8]);
       expect(statusMark(rows.get(scenario.id)?.[9])).toBe('✅');
     }
   });
@@ -1738,7 +1758,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       [...REAL_A1_TOOLS].sort(),
     );
     const credited = [...rowsByTool()].filter(([, cells]) => statusMark(cells[8]) === '✅');
-    expect(credited.map(([name]) => name)).toEqual(['bangumi.list_collections']);
+    expect(credited.map(([name]) => name).sort()).toEqual(REAL_CURRENT_ACCOUNT_TOOLS);
     for (const [name, cells] of rowsByTool()) {
       if (REAL_A1_TOOLS.has(name)) {
         expect(reportReferencesInMatrixCell(cells[8])).not.toContain(REAL_A1_REPORT_PATH);
@@ -1750,7 +1770,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(cells[10]).toBe('⬜');
       expect(cells[11]).toBe('⬜');
     }
-    expect(TABLE).toContain('1/33；待补 32');
+    expect(TABLE).toContain('3/33；待补 30');
   });
 
   it('credits only the successful collection selection from the failed and spent A2 batch', () => {
@@ -1788,7 +1808,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       },
     ]);
     const credited = [...rowsByTool()].filter(([, cells]) => statusMark(cells[8]) === '✅');
-    expect(credited.map(([name]) => name)).toEqual(['bangumi.list_collections']);
+    expect(credited.map(([name]) => name).sort()).toEqual(REAL_CURRENT_ACCOUNT_TOOLS);
     expect(reportReferencesInMatrixCell(rowsByTool().get('bangumi.list_collections')?.[8])).toEqual(
       [REAL_A2_REPORT_PATH],
     );
@@ -1799,7 +1819,87 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A2_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('1/33；待补 32');
+    expect(TABLE).toContain('3/33；待补 30');
+  });
+
+  it('credits only the completed bounded A3 overview and private PNG with partial sample limits', () => {
+    const report = JSON.parse(readFileSync(join(ROOT, REAL_A3_REPORT_PATH), 'utf8'));
+    expect(report).toMatchObject({
+      passed: true,
+      phase: 'COMPLETE',
+      servicesRestored: true,
+      protectedClaimsPreserved: true,
+      operatorModelPrompts: 0,
+      operatorClientActions: 0,
+      privatePayloadExported: false,
+      batch: {
+        executionKind: 'live',
+        passed: true,
+        code: 'OK',
+        toolCallsAttempted: 2,
+        toolCallsSucceeded: 2,
+        apiRequests: 2,
+        coverRequests: 0,
+        pngValidated: true,
+        cleanupConfirmed: true,
+        claimFinalized: true,
+        modelCalls: 0,
+        clientActions: 0,
+        privatePayloadExported: false,
+        diagnostic: {
+          phase: 'complete',
+          reason: null,
+          readState: 'partial',
+          renderState: 'partial',
+          readRows: 2,
+          renderRows: 2,
+          failureStage: null,
+        },
+      },
+    });
+    const manifest = JSON.parse(
+      readFileSync(
+        join(
+          ROOT,
+          'docs/live-probes/run95-a3-bound-overview-and-private-png-2026-10-27/import.json',
+        ),
+        'utf8',
+      ),
+    );
+    expect(manifest.admittedTools).toEqual([
+      { name: 'bangumi.get_collection_intelligence', input: { maxItems: 2 } },
+      { name: 'bangumi.render_collection_intelligence', input: { maxItems: 2 } },
+    ]);
+    const claim = JSON.parse(
+      readFileSync(
+        join(
+          ROOT,
+          'docs/live-probes/run95-a3-bound-overview-and-private-png-2026-10-27/durable-a3-claim.json',
+        ),
+        'utf8',
+      ),
+    );
+    expect(claim).toMatchObject({
+      state: 'COMPLETE',
+      scope: 'a3-bound-collection-intelligence-v1',
+      observation: {
+        toolCallsAttempted: 2,
+        toolCallsSucceeded: 2,
+        apiRequests: 2,
+        coverRequests: 0,
+        pngValidated: true,
+        cleanupConfirmed: true,
+      },
+    });
+    for (const [name, cells] of rowsByTool()) {
+      expect(reportReferencesInMatrixCell(cells[8]).includes(REAL_A3_REPORT_PATH)).toBe(
+        manifest.admittedTools.some((tool: { name: string }) => tool.name === name),
+      );
+      for (const index of [6, 7, 9, 10, 11]) {
+        expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A3_REPORT_PATH);
+      }
+    }
+    expect(TABLE).toContain('3/33；待补 30');
   });
 
   it('accepts synthetic authenticated-read and render evidence without implying real account auth', () => {
@@ -1864,7 +1964,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
       expect(scenario).not.toHaveProperty('prompt');
       expect(scenario).not.toHaveProperty('arguments');
-      expectAccountAuthPending(rowsByTool().get(scenario.id)?.[8]);
+      expectAccountAuthCell(scenario.id, rowsByTool().get(scenario.id)?.[8]);
       expect(statusMark(rowsByTool().get(scenario.id)?.[9])).toBe('✅');
     }
   });

@@ -1,6 +1,6 @@
 # One successful account read from the spent partial A2 batch
 
-The current-source account column admits only the successful compiled
+This A2 receipt admits only the successful compiled
 `bangumi.list_collections {subjectType:"anime",status:"doing",limit:1,offset:0}`
 selection from the actual 2026-10-27 A2 execution. The overall batch **failed**:
 two tool attempts, one accepted success, two API GETs, no cover GET and no
@@ -54,10 +54,12 @@ Unrelated commits may preserve this one bounded success; relevant drift removes
 it rather than carrying the observation forward implicitly. The import never
 reads runtime state, credentials or provider APIs.
 
-The generator and independent checker union only the two fixed receipt
+The generator and independent checker union explicitly fixed receipt
 consumers. Historical e081 A1 still has two valid observations but remains
 incompatible with upgraded dependencies and contributes no current-source
-cells. The new A2 selection maps **one account cell:1/33,32 pending**. It adds
+cells. A2 maps **one account cell**; immediately after its import the aggregate
+was **1/33,32 pending**. The later [A3 overview/private-PNG import](real-account-a3-overview-evidence.md)
+adds two separate compatible tools, making the aggregate **3/33,30 pending**. A2 adds
 no profile, private-render, write, Agent/MCP, public-API, QQ/TIM or complete OAuth
 acceptance. Other matrix planes and locked design baselines remain unchanged.
 
@@ -68,10 +70,11 @@ failed total/claim retention, every receipt byte pin, manifest tool/path/digest
 expansion, private fields, changed inputs/counts/mode/cleanup, all62 tracked and
 disk source pins, runtime exports, added tracked/untracked migrations, catalog
 and ancestry drift, missing/symlink/directory/FIFO/oversized evidence. Matrix
-integration independently checks exactly one account success and reference
+integration independently checks exactly one A2 account success and reference
 isolation from every other plane. Neither test path calls the account.
 
-Keep OP-009 PARTIAL. Other32 account tools, the private progress render, real
+Keep OP-009 PARTIAL. After the distinct A3 import, other30 account tools, the
+private progress render, real
 QQ/TIM and complete OAuth acceptance remain unverified. Preserve the actual
 failed A2 and original A1 claims; continue distinct remaining acceptance work.
 The separate public-thumbnail grammar and readonly SQLite metadata hypotheses

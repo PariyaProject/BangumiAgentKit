@@ -61,7 +61,10 @@ graph, so immediately after that update the aggregate matrix had
 **0/33 current-source cells, 33 pending**. This A1 import still contributes
 zero compatible current-source cells. The separately reviewed
 [A2 selection receipt](real-account-a2-selection-evidence.md) now contributes
-only `list_collections`, bringing the aggregate matrix to **1/33, 32 pending**.
+only `list_collections`, which brought that aggregate to **1/33, 32 pending**.
+The later [A3 bounded overview/private-PNG receipt](real-account-a3-overview-evidence.md)
+adds two compatible tools; the aggregate is now **3/33, 30 pending**. This
+historical A1 receipt still contributes zero current-source cells.
 The two historical A1 successes remain valid facts about e081 and its deployed
 image; they are not an execution of the upgraded dependencies. See the
 [security report](../research/run95-dependency-security-remediation-2026-10-26.md).

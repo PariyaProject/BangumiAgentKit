@@ -1,0 +1,95 @@
+{
+  "schema": "run95-a3-reviewed-operator-provenance/v1",
+  "executedApplicationCommit": "caa71d8a9b0edacc888fa4f12f99a277204e22d3",
+  "executedRuntimeRevision": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+  "governanceCommit": "9a7efd7975816bdbba2716b5e8573c64c69ae2d1",
+  "applicationFiles": {
+    "scripts/acceptance/collection-intelligence-guard.cjs": {
+      "gitBlob": "c15ae5aced4fb8207c4fd89ffd8c20a0e22d07b0",
+      "sha256": "0dfe88708035d938e0818d0e83e3391aa1d52157a77598e7654678c6d0cf41ee"
+    },
+    "scripts/acceptance/private-progress-consumer.cjs": {
+      "gitBlob": "bcb3713a7695f9b28c6f76121d7891a9eea46588",
+      "sha256": "0518fc3377b728d92a19fb7de506823169598177c442fcd37e876a9bce1ced4a"
+    },
+    "scripts/acceptance/collection-intelligence-entry.cjs": {
+      "gitBlob": "8250f685a42800c5b362d2131c4158321d5452af",
+      "sha256": "a699f8345f16474ebe2bd152693ecb229edc31e80f620520eddaaeab4830d8f0"
+    },
+    "pariya_runtime/collection_intelligence_host.py": {
+      "gitBlob": "edae804a721dab1b540d408a762d783197b61b53",
+      "sha256": "efda1715dd789027b61a3fb90da62bb004680ad96378d6ca7bf1f7d3728b96e7"
+    },
+    "pariya_runtime/collection_intelligence_claim.py": {
+      "gitBlob": "ffc39fa1a1edca477c189fe35547266f72bd216c",
+      "sha256": "c9d6118506dcdf659ee4c2952af30963dc4d977cb2eb7d4dcc0261eafd5da861"
+    },
+    "pariya_runtime/private_batch_claim.py": {
+      "gitBlob": "7de9a82e56c177dfc07f6fbb469ca193553bad5d",
+      "sha256": "982d80a8ae9d0c3ba338ceb8d7601426bc601ef5cf326c765372ba3fa9050587"
+    },
+    "pariya_runtime/private_batch_workload.py": {
+      "gitBlob": "3c4a0bd0f7b7de53c29cf02acd230b83c54df81a",
+      "sha256": "7caa007b35b86947c7e83dd7f7e1efb5576d1b63a2be5e5996809ae2eb5af730"
+    },
+    "pariya_runtime/acceptance_supervisor.py": {
+      "gitBlob": "6e9ec037a919bc7d8fc0819ef0bcf8bc4363d95f",
+      "sha256": "d1c9c1d8292aaef32ddb3c2c6174141ddaa02551916d24d3b607437d685f863e"
+    },
+    "pariya_runtime/bound_account_read.py": {
+      "gitBlob": "453fce20bce4257e4aa1ba6d4094ecb0d98fb42c",
+      "sha256": "b750c66bd4be45f4884b8038bee98fde0fce6894a75068ce1c34cc532a826e06"
+    },
+    "pariya_runtime/docker.py": {
+      "gitBlob": "9ac0ae031100937094740f9cea03a065901f0a85",
+      "sha256": "c0e6e237aff23a66c5d7662c194218c2a04e14244eba53b82b7cf5dd706cc723"
+    },
+    "pariya_runtime/process.py": {
+      "gitBlob": "70580bde47d7d1a476ec4d2998c7d60fead25187",
+      "sha256": "8f465f48a67aabf5541ed29f6f9f9820b736c2517854c3a5a18a092c297a0b9d"
+    },
+    "pariya_runtime/bangumi_source.py": {
+      "gitBlob": "e233c9ff7efedd38bc29d9665b2b08d2d2a4a43d",
+      "sha256": "7af992f02d36d042e78aa5e73085b6610db20c1e8750bf5a6045cace70844f0f"
+    },
+    "plugins/astrbot_plugin_pariya/qq_policy.py": {
+      "gitBlob": "33ecc88ccbef6ead5c0038d230342467eaf00bf4",
+      "sha256": "bee39874616e9229733be75b87be95e72b925b688e7a8d1244557e85e9e417b0"
+    },
+    "scripts/collection-intelligence.py": {
+      "gitBlob": "c5d195de23b01b524ee8a1db3dbec94afe015af3",
+      "sha256": "dad632c14f310efb286a01cc3e1c849f65292593ffc6e9851d597da5e92b5101"
+    },
+    "scripts/verify-standard-full-image.py": {
+      "gitBlob": "7cf3ee654cd8b8517d89e2d07231c03a4aef4e14",
+      "sha256": "c5758317236dc42cf5e026fdc850b161133741b26e5d9a18207ed6fc7c65c828"
+    },
+    "config/agent/bangumi-profile.json": {
+      "gitBlob": "2ff74ccc566f7b6472f90a6477a3e0ac15793cb9",
+      "sha256": "7d5c78488c2b80616426086fcc446dce95d46b9c4e2082283106274ab5909b6e"
+    },
+    "config/agent/settings.standard-full.json": {
+      "gitBlob": "0daa346cea842b1ca17a20337625b0746f355432",
+      "sha256": "19fe7b64b96fd37cebeaa97002c6a9ef7db1d9ef82fc2d91d431bfcdf7bad6c4"
+    },
+    "config/agent/mcp_config.standard-full.json": {
+      "gitBlob": "39ed3cfec7b6786a4f52afa9a34f9bd3c9829c5a",
+      "sha256": "c7ed6f123ecdfa46a8a10df2ab43fc2b61a6c2d1f2ca5a17d62d7de15764ad10"
+    },
+    "config/bangumi-poc/standard-full-profile.json": {
+      "gitBlob": "60ed385bfffc9e933d2e59b6179a850be84a5127",
+      "sha256": "3da7474904a620caa8969df7f14ad5dbdd507820dae44937e27261d717d04063"
+    },
+    "config/bangumi-poc/standard-full-mcp.lock.json": {
+      "gitBlob": "291a2b4ba473974dff132405fb626121eaa86998",
+      "sha256": "3a8eef1bfb8febc2f95bf5fef499e429ac7b22fe16e326fe34a5d0dbabf5a7f5"
+    }
+  },
+  "privateMaintenanceOperatorSha256": "08012911f546204f5c3485f80c10316a9909e3a0fe9b444130b17dc625c3780b",
+  "privateMaintenancePlanSha256": "285f8deabc1f19419613553d437a8a78b412ab9dc30c3f1e1a168285209b049d",
+  "operatorTests": 17,
+  "standardsFindings": 0,
+  "specFindings": 0,
+  "provenanceKind": "explicit-reviewed-operator-anchor-not-signature",
+  "privatePayloadIncluded": false
+}

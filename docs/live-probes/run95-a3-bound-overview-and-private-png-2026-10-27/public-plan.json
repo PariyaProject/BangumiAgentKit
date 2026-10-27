@@ -1,0 +1,57 @@
+{
+  "schema": "pariya-a3-host-plan/v1",
+  "scope": "a3-bound-collection-intelligence-v1",
+  "executionKind": "live",
+  "identityRoute": "qq-owner",
+  "applicationCommit": "caa71d8a9b0edacc888fa4f12f99a277204e22d3",
+  "worktreeClean": true,
+  "sourceRevision": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+  "harnessCommit": "9a7efd7975816bdbba2716b5e8573c64c69ae2d1",
+  "runtimeTreeSha256": "a7e43944ade5cc9360748531dbea60e7373c8cc3f0b9d525660109faff122cf4",
+  "imageTag": "pariya-agent/agy-bangumi-standard-full:2ec9b165-security-qa",
+  "imageId": "sha256:cbd0f4c2b5b28c70295cf35211474c8898cbf33b143be8e8351554e91f010083",
+  "inputSha256": {
+    "scripts/acceptance/collection-intelligence-guard.cjs": "0dfe88708035d938e0818d0e83e3391aa1d52157a77598e7654678c6d0cf41ee",
+    "scripts/acceptance/private-progress-consumer.cjs": "0518fc3377b728d92a19fb7de506823169598177c442fcd37e876a9bce1ced4a",
+    "scripts/acceptance/collection-intelligence-entry.cjs": "a699f8345f16474ebe2bd152693ecb229edc31e80f620520eddaaeab4830d8f0",
+    "pariya_runtime/collection_intelligence_host.py": "efda1715dd789027b61a3fb90da62bb004680ad96378d6ca7bf1f7d3728b96e7",
+    "pariya_runtime/collection_intelligence_claim.py": "c9d6118506dcdf659ee4c2952af30963dc4d977cb2eb7d4dcc0261eafd5da861",
+    "pariya_runtime/private_batch_claim.py": "982d80a8ae9d0c3ba338ceb8d7601426bc601ef5cf326c765372ba3fa9050587",
+    "pariya_runtime/private_batch_workload.py": "7caa007b35b86947c7e83dd7f7e1efb5576d1b63a2be5e5996809ae2eb5af730",
+    "pariya_runtime/acceptance_supervisor.py": "d1c9c1d8292aaef32ddb3c2c6174141ddaa02551916d24d3b607437d685f863e",
+    "pariya_runtime/bound_account_read.py": "b750c66bd4be45f4884b8038bee98fde0fce6894a75068ce1c34cc532a826e06",
+    "pariya_runtime/docker.py": "c0e6e237aff23a66c5d7662c194218c2a04e14244eba53b82b7cf5dd706cc723",
+    "pariya_runtime/process.py": "8f465f48a67aabf5541ed29f6f9f9820b736c2517854c3a5a18a092c297a0b9d",
+    "pariya_runtime/bangumi_source.py": "7af992f02d36d042e78aa5e73085b6610db20c1e8750bf5a6045cace70844f0f",
+    "plugins/astrbot_plugin_pariya/qq_policy.py": "bee39874616e9229733be75b87be95e72b925b688e7a8d1244557e85e9e417b0",
+    "scripts/collection-intelligence.py": "dad632c14f310efb286a01cc3e1c849f65292593ffc6e9851d597da5e92b5101",
+    "scripts/verify-standard-full-image.py": "c5758317236dc42cf5e026fdc850b161133741b26e5d9a18207ed6fc7c65c828",
+    "config/agent/bangumi-profile.json": "7d5c78488c2b80616426086fcc446dce95d46b9c4e2082283106274ab5909b6e",
+    "config/agent/settings.standard-full.json": "19fe7b64b96fd37cebeaa97002c6a9ef7db1d9ef82fc2d91d431bfcdf7bad6c4",
+    "config/agent/mcp_config.standard-full.json": "c7ed6f123ecdfa46a8a10df2ab43fc2b61a6c2d1f2ca5a17d62d7de15764ad10",
+    "config/bangumi-poc/standard-full-profile.json": "3da7474904a620caa8969df7f14ad5dbdd507820dae44937e27261d717d04063",
+    "config/bangumi-poc/standard-full-mcp.lock.json": "3a8eef1bfb8febc2f95bf5fef499e429ac7b22fe16e326fe34a5d0dbabf5a7f5"
+  },
+  "tools": [
+    {
+      "name": "bangumi.get_collection_intelligence",
+      "arguments": {
+        "maxItems": 2
+      }
+    },
+    {
+      "name": "bangumi.render_collection_intelligence",
+      "arguments": {
+        "maxItems": 2
+      }
+    }
+  ],
+  "maxToolCalls": 2,
+  "maxApiGets": 2,
+  "maxCoverGets": 0,
+  "maxPngBytes": 5242880,
+  "runtimeStateInspected": false,
+  "modelCalls": 0,
+  "clientActions": 0,
+  "planSha256": "0993b83e148d4043fc8511b984e05b17cf680b6d54569757020276e6a900eb97"
+}
