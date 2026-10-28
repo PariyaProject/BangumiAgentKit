@@ -71,6 +71,7 @@ import {
   assertContinuationMayAdvance,
   buildContinuationBrief,
   continuationEvents,
+  repackContinuationHistory,
 } from './lib/harness-continuation.mjs';
 import {
   acquireG06OneShotGitHubLatch,
@@ -848,6 +849,7 @@ Usage: pnpm harness <command> [options]
 
   status --run <issue> [--pr <number>]
   continuation:show --run <issue> [--goal-state active|paused|blocked|complete]
+  continuation:repack --run <issue> --expected-sequence <n> --expected-state-sha256 <sha256>
   renderer:baseline-check [--base <ref>]
   run:directive --run <issue> --expected-sequence <n> --action continue|pause|replan --source-ref <ref> --reason <text>
   run:checkpoint --run <issue> --expected-sequence <n> --evidence <json>
@@ -1014,6 +1016,58 @@ function commandRendererBaselineCheck(options) {
   print({ state: 'RENDERER_DESIGN_BASELINES_VALID', ...requireRendererBaselines(options.base) });
 }
 
+function commandContinuationRepack(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const observed = issueState(runNumber);
+  if (observed.view.state !== 'OPEN' || isTerminalRunState(observed.state.state)) {
+    throw new HarnessInvariantError(
+      'CONTINUATION_RUN_NOT_ACTIVE',
+      'Repack an open nonterminal Run',
+    );
+  }
+  const expected = required(options, 'expected-state-sha256');
+  if (!/^[a-f0-9]{64}$/u.test(expected) || canonicalHash(observed.state) !== expected) {
+    throw new HarnessInvariantError(
+      'CONTINUATION_STATE_DRIFT',
+      'Read the current full Run before repacking',
+    );
+  }
+  const next = repackContinuationHistory(
+    observed.state,
+    Number(required(options, 'expected-sequence')),
+  );
+  if (canonicalHash(next) === expected) {
+    print({
+      state: 'CONTINUATION_HISTORY_ALREADY_CURRENT',
+      sequence: continuationEvents(next).length,
+    });
+    return;
+  }
+  const latest = issueState(runNumber);
+  if (canonicalHash(latest.state) !== expected) {
+    throw new HarnessInvariantError(
+      'CONTINUATION_CONCURRENT_WRITE',
+      'Run changed before repacking',
+    );
+  }
+  const body = updateIssue(runNumber, next);
+  const saved = issueState(runNumber);
+  if (canonicalHash(saved.state) !== canonicalHash(next)) {
+    throw new HarnessInvariantError(
+      'CONTINUATION_READBACK_MISMATCH',
+      'Inspect the Run before retrying repacking',
+    );
+  }
+  print({
+    state: 'CONTINUATION_HISTORY_REPACKED',
+    sequence: continuationEvents(next).length,
+    previous_state_sha256: expected,
+    state_sha256: canonicalHash(saved.state),
+    body_bytes: Buffer.byteLength(body),
+  });
+}
+
 function commandContinuationRecord(options, type) {
   ensureControlPlane();
   const runNumber = required(options, 'run');
@@ -1069,6 +1123,7 @@ function guardContinuationCommand(command, options) {
     'help',
     'status',
     'continuation:show',
+    'continuation:repack',
     'renderer:baseline-check',
     'run:directive',
     'run:checkpoint',
@@ -9791,6 +9846,7 @@ const commands = {
   help: commandHelp,
   status: commandStatus,
   'continuation:show': commandContinuationShow,
+  'continuation:repack': commandContinuationRepack,
   'renderer:baseline-check': commandRendererBaselineCheck,
   'run:directive': (options) => commandContinuationRecord(options, 'directive'),
   'run:checkpoint': (options) => commandContinuationRecord(options, 'checkpoint'),

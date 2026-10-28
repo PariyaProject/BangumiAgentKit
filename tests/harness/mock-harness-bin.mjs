@@ -130,6 +130,10 @@ if (tool === 'gh') {
     state.runIssueNumber ??= 2;
     output(`https://example.test/issues/${state.runIssueNumber}`);
   } else if (group === 'issue' && action === 'view') {
+    if (state.runBodiesByView) {
+      state.issueViewCount = (state.issueViewCount ?? 0) + 1;
+      state.runBody = state.runBodiesByView[state.issueViewCount] ?? state.runBody;
+    }
     output({
       number: Number(args[2]),
       title: state.runIssueTitle ?? 'Mock run',

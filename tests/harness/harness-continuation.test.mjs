@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createHash } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
 import {
   appendContinuationEvent,
   assertContinuationMayAdvance,
@@ -7,6 +9,7 @@ import {
   continuationEvents,
   continuationRisk,
   currentDirective,
+  repackContinuationHistory,
 } from '../../scripts/lib/harness-continuation.mjs';
 
 const epoch = () => ({
@@ -195,11 +198,20 @@ test('checkpoint schema prevents an empty handoff, wrong Epoch, or inferred mode
   );
 });
 
-test('lossless compression preserves old directives, every event and the failure signal', () => {
+test('legacy compressed journals preserve old directives, every event and the failure signal', () => {
   let state = append(run(), directive('pause'));
   state = append(state, directive('continue'));
   for (let i = 0; i < 20; i += 1) state = append(state, checkpoint());
-  assert.equal(state.continuation.archive.encoding, 'gzip+base64');
+  const bytes = Buffer.from(JSON.stringify(continuationEvents(state)));
+  state.continuation = {
+    schema: 1,
+    archive: {
+      encoding: 'gzip+base64',
+      count: 22,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+      data: gzipSync(bytes).toString('base64'),
+    },
+  };
   const saved = JSON.parse(JSON.stringify(state));
   assert.equal(continuationEvents(saved).length, 22);
   assert.equal(continuationEvents(saved)[0].data.action, 'pause');
@@ -302,4 +314,100 @@ test('interrupted terminal recovery routes to its same intent below current huma
   assert.equal(brief().next_action, 'RESUME_TERMINAL_RECOVERY');
   state = appendContinuationEvent(state, null, directive('replan'), 2);
   assert.equal(brief().next_action, 'COMPLETE_REQUESTED_REPLAN');
+});
+
+test('new checkpoints leave compression to the whole control envelope', () => {
+  let state = append(run(), directive('continue'));
+  for (let i = 0; i < 20; i += 1) state = append(state, checkpoint());
+  assert.equal('archive' in state.continuation, false);
+  assert.equal(state.continuation.events.length, 21);
+});
+
+function archivedJournal(state) {
+  const events = continuationEvents(state),
+    bytes = Buffer.from(JSON.stringify(events));
+  return {
+    ...structuredClone(state),
+    continuation: {
+      schema: 1,
+      extra: { retained: true },
+      archive: {
+        encoding: 'gzip+base64',
+        count: events.length,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+        data: gzipSync(bytes).toString('base64'),
+      },
+    },
+  };
+}
+
+test('explicit repacking preserves every event hash, budget, claim, unknown field and input', () => {
+  let state = append(run(), directive('pause'));
+  state = append(state, directive('continue'));
+  state.retained_claim = { state: 'INCONCLUSIVE', retryAllowed: false };
+  state.unknown = { historical: ['retained'] };
+  state = archivedJournal(state);
+  const before = structuredClone(state),
+    events = continuationEvents(state);
+  const next = repackContinuationHistory(state, 2);
+  assert.deepEqual(state, before);
+  assert.deepEqual(continuationEvents(next), events);
+  assert.deepEqual(next.continuation.extra, state.continuation.extra);
+  const priorOther = structuredClone(before),
+    nextOther = structuredClone(next);
+  delete priorOther.continuation;
+  delete nextOther.continuation;
+  assert.deepEqual(priorOther, nextOther);
+  assert.deepEqual(repackContinuationHistory(next, 2), next);
+  assert.equal(currentDirective(next).data.action, 'continue');
+  assertContinuationMayAdvance(next, epoch());
+});
+
+test('repacking rejects stale sequences, missing history, corruption and unknown archive fields', () => {
+  const state = archivedJournal(append(run(), directive('continue')));
+  assert.throws(
+    () => repackContinuationHistory(state, 0),
+    errorCode('STALE_CONTINUATION_SEQUENCE'),
+  );
+  assert.throws(
+    () => repackContinuationHistory(run(), 0),
+    errorCode('CONTINUATION_HISTORY_MISSING'),
+  );
+  for (const change of [
+    (a) => {
+      a.sha256 = '0'.repeat(64);
+    },
+    (a) => {
+      a.count += 1;
+    },
+  ]) {
+    const bad = structuredClone(state);
+    change(bad.continuation.archive);
+    assert.throws(
+      () => repackContinuationHistory(bad, 1),
+      errorCode('INVALID_CONTINUATION_HISTORY'),
+    );
+  }
+  const extra = structuredClone(state);
+  extra.continuation.archive.unknown = 'must survive or refuse';
+  assert.throws(
+    () => repackContinuationHistory(extra, 1),
+    errorCode('CONTINUATION_ARCHIVE_EXTRA_FIELDS'),
+  );
+  assert.throws(() => append(extra, checkpoint()), errorCode('CONTINUATION_ARCHIVE_EXTRA_FIELDS'));
+});
+
+test('storage migration cannot resolve a human pause or a pending strategy review', () => {
+  const state = repackContinuationHistory(archivedJournal(append(run(), directive('pause'))), 1);
+  assert.throws(
+    () => assertContinuationMayAdvance(state, epoch()),
+    errorCode('HUMAN_PAUSE_ACTIVE'),
+  );
+  let repeated = append(run(), directive('continue'));
+  repeated = append(append(repeated, checkpoint()), checkpoint());
+  const migrated = repackContinuationHistory(archivedJournal(repeated), 3);
+  assert.throws(
+    () => assertContinuationMayAdvance(migrated, epoch()),
+    errorCode('STRATEGY_REVIEW_REQUIRED'),
+  );
 });
