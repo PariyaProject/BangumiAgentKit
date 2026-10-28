@@ -19,12 +19,17 @@ const REAL_A4_TOOLS = [
   'bangumi.get_collection_schedule',
   'bangumi.render_collection_schedule',
 ];
+const REAL_A5_BUNDLE = 'docs/live-probes/run95-a5-dashboard-and-private-png-2026-10-28';
+const REAL_A5_REPORT_PATH = REAL_A5_BUNDLE + '/a5-result.json';
+const REAL_A5_TOOLS = ['bangumi.get_collection_dashboard', 'bangumi.render_collection_dashboard'];
 const REAL_CURRENT_ACCOUNT_TOOLS = [
   'bangumi.get_collection_backlog',
+  'bangumi.get_collection_dashboard',
   'bangumi.get_collection_intelligence',
   'bangumi.get_collection_schedule',
   'bangumi.list_collections',
   'bangumi.render_collection_backlog',
+  'bangumi.render_collection_dashboard',
   'bangumi.render_collection_intelligence',
   'bangumi.render_collection_schedule',
 ];
@@ -137,7 +142,9 @@ function expectAccountAuthCell(toolName: string, cell: unknown): void {
         ? REAL_A3_REPORT_PATH
         : REAL_A4_TOOLS.includes(toolName)
           ? REAL_A4_REPORT_PATH
-          : undefined;
+          : REAL_A5_TOOLS.includes(toolName)
+            ? REAL_A5_REPORT_PATH
+            : undefined;
   if (liveReference !== undefined) expect(cell).toBe(`✅<br>\`${liveReference}\``);
   else expectAccountAuthPending(cell);
 }
@@ -1784,7 +1791,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(cells[10]).toBe('⬜');
       expect(cells[11]).toBe('⬜');
     }
-    expect(TABLE).toContain('7/33；待补 26');
+    expect(TABLE).toContain('9/33；待补 24');
   });
 
   it('credits only the successful collection selection from the failed and spent A2 batch', () => {
@@ -1833,7 +1840,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A2_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('7/33；待补 26');
+    expect(TABLE).toContain('9/33；待补 24');
   });
 
   it('credits only the completed bounded A3 overview and private PNG with partial sample limits', () => {
@@ -1913,7 +1920,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A3_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('7/33；待补 26');
+    expect(TABLE).toContain('9/33；待补 24');
   });
 
   it('admits only four actual A4 backlog/schedule tools with conflict and partial limits', () => {
@@ -1995,7 +2002,102 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A4_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('7/33；待补 26');
+    expect(TABLE).toContain('9/33；待补 24');
+  });
+
+  it('admits only the completed A5 pair while preserving composite partial and conflict exclusion', () => {
+    const report = JSON.parse(readFileSync(join(ROOT, REAL_A5_REPORT_PATH), 'utf8'));
+    expect(report).toMatchObject({
+      passed: true,
+      phase: 'COMPLETE',
+      servicesRestored: true,
+      protectedClaimsPreserved: true,
+      modelRunsBefore: 945,
+      modelRunsAfter: 945,
+      operatorModelPrompts: 0,
+      operatorClientActions: 0,
+      privatePayloadExported: false,
+      batch: {
+        executionKind: 'live',
+        passed: true,
+        code: 'OK',
+        toolCallsAttempted: 2,
+        toolCallsSucceeded: 2,
+        apiRequests: 10,
+        coverRequests: 0,
+        pngValidated: true,
+        cleanupConfirmed: true,
+        claimFinalized: true,
+        modelCalls: 0,
+        clientActions: 0,
+        privatePayloadExported: false,
+      },
+    });
+    const diagnostic = report.batch.diagnostic;
+    expect(diagnostic).toMatchObject({
+      guardPhase: 'complete',
+      guardReason: null,
+      failureStage: null,
+      semanticFailure: null,
+      pixelDecodeValidated: true,
+      collectionRequests: 6,
+      episodeRequests: 2,
+      calendarRequests: 2,
+    });
+    for (const role of ['read', 'render']) {
+      expect(diagnostic[role + 'State']).toBe('partial');
+      expect(diagnostic[role + 'SucceededSections']).toBe(2);
+      expect(diagnostic[role + 'ObservedRows']).toBe(2);
+      expect(diagnostic[role + 'TimedOutSections']).toBe(0);
+      expect(diagnostic[role + 'SkippedSections']).toBe(0);
+      for (const [section, state] of [
+        ['Intelligence', 'partial'],
+        ['Backlog', 'conflict'],
+        ['Schedule', 'partial'],
+      ]) {
+        expect(diagnostic[role + section + 'State']).toBe(state);
+        expect(diagnostic[role + section + 'Rows']).toBe(1);
+      }
+    }
+    const manifest = JSON.parse(readFileSync(join(ROOT, REAL_A5_BUNDLE, 'import.json'), 'utf8'));
+    expect(manifest.admittedTools).toEqual(
+      REAL_A5_TOOLS.map((name) => ({
+        name,
+        input: {
+          maxCollectionItems: 1,
+          maxSubjects: 1,
+          maxEpisodesPerSubject: 1,
+          maxRows: 1,
+          maxDurationMs: 30000,
+          statuses: ['wish', 'doing', 'done', 'on_hold', 'dropped'],
+        },
+      })),
+    );
+    const rawClaim = readFileSync(join(ROOT, REAL_A5_BUNDLE, 'durable-a5-claim.json'));
+    expect(createHash('sha256').update(rawClaim).digest('hex')).toBe(
+      '007538a80c41291163a735e15a4623f807f919d57230cadd1eb153f695e9d863',
+    );
+    expect(JSON.parse(rawClaim.toString())).toMatchObject({
+      state: 'COMPLETE',
+      scope: 'a5-bound-collection-dashboard-v1',
+      observation: {
+        toolCallsAttempted: 2,
+        toolCallsSucceeded: 2,
+        apiRequests: 10,
+        coverRequests: 0,
+        pngValidated: true,
+        cleanupConfirmed: true,
+      },
+    });
+    for (const [name, cells] of rowsByTool()) {
+      expect(reportReferencesInMatrixCell(cells[8]).includes(REAL_A5_REPORT_PATH)).toBe(
+        REAL_A5_TOOLS.includes(name),
+      );
+      for (const index of [6, 7, 9, 10, 11]) {
+        expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A5_REPORT_PATH);
+      }
+    }
+    expect(TABLE).toContain('9/33；待补 24');
   });
 
   it('accepts synthetic authenticated-read and render evidence without implying real account auth', () => {

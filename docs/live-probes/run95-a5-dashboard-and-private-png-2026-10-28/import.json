@@ -1,0 +1,68 @@
+{
+  "schema": "bgk-a5-bounded-dashboard-private-png-import/v1",
+  "kind": "imported-successful-live-receipt",
+  "executedSourceRevision": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+  "executedApplicationCommit": "6e37065d47b323ad0c90e98ab80e45d92e9d1a7c",
+  "originCheckpoint": {
+    "run": 95,
+    "sequence": 73,
+    "sha256": "368d1f850817a6949de3343ce522d78c5d8f0e8be042b95afbcba2ec8146860b",
+    "url": "https://github.com/PariyaProject/BangumiAgentKit/issues/95"
+  },
+  "admittedTools": [
+    {
+      "name": "bangumi.get_collection_dashboard",
+      "input": {
+        "maxCollectionItems": 1,
+        "maxSubjects": 1,
+        "maxEpisodesPerSubject": 1,
+        "maxRows": 1,
+        "maxDurationMs": 30000,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      }
+    },
+    {
+      "name": "bangumi.render_collection_dashboard",
+      "input": {
+        "maxCollectionItems": 1,
+        "maxSubjects": 1,
+        "maxEpisodesPerSubject": 1,
+        "maxRows": 1,
+        "maxDurationMs": 30000,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      }
+    }
+  ],
+  "runtimeTreeSha256": "a7e43944ade5cc9360748531dbea60e7373c8cc3f0b9d525660109faff122cf4",
+  "evidenceFiles": {
+    "a5-result.json": "8389d5fb86bc324b02ed3411c5a7973df280061480341eb653e2536c6ce40145",
+    "durable-a5-claim.json": "007538a80c41291163a735e15a4623f807f919d57230cadd1eb153f695e9d863",
+    "operator-provenance.json": "63131c1c9096d0c003456891dc542bb4d48c4793d7ef86bf66ccc7af818deb01",
+    "postconditions.json": "2b49cdeac6d39d21765472d0a5defb92b557a7fd18fab56248c0207f77bc7bd6",
+    "public-plan.json": "ea58dd923f5d2aa273ed5ddce53a138f234396de9f98949d65dc1f80a0c0880a",
+    "root-package-runtime.json": "3d0bfb5984e0b2ab06111929af92574fb8671063eca405b3932b6a310b7c41b4",
+    "source-files.json": "4194f73bdcdbe3f39dc16f2b446e71e0b0173d5d17535e9d7abc73e55f234dda"
+  },
+  "limits": [
+    "Only the two completed compiled Dashboard tools;10GET(6collection2episode2calendar),0assets,1collection/episode row per request.",
+    "Both root partial; intelligence partial, backlog conflict, schedule partial; original root excludes conflict rows:2successful sections/2aggregate rows,0timeouts/skips. No full duration, complete calendar or atomic snapshot.",
+    "One principal-scoped privatePNG/Sharpdecode/cleanup passed; no media/privatepayload retained/exported; no aesthetic acceptance.",
+    "A5COMPLETE permanently spent; original A1COMPLETE/A2FAILED/A3COMPLETE/A4COMPLETE raw bytes preserved. No retry, replay or alias.",
+    "No Agent/model/OAuth-flow/write/QQ/TIM/stability credit; original96goal incomplete.",
+    "Exact285runtime/blob/disk/dynamicSQL/assets/rootmetadata compatibility;root scripts-only exception;receipt64KiB/source8MiB.",
+    "Pure fixed sanitized tracked-bundle/Git/source consumer; no runtime/key/provider or new account access."
+  ],
+  "provenance": "Fixed reviewed operator-evidence trust anchor, not runner signature, cryptographic execution attestation or new API observation."
+}
