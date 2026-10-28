@@ -1,0 +1,7 @@
+# A5 existing-receipt import
+
+Run95 checkpoint73 (368d1f850817a6949de3343ce522d78c5d8f0e8be042b95afbcba2ec8146860b) records the sole actual A5 pair and independent original-service restoration. This change imports only its already completed sanitized evidence. No account/API/asset action, OAuth refresh, write, model/client call, deployment or claim replay occurs.
+
+The [behavior and limits](../product/real-account-a5-dashboard-evidence.md) and [fixed manifest](../live-probes/run95-a5-dashboard-and-private-png-2026-10-28/import.json) bind two tools, actual composite partial/conflict semantics,10GET, zero assets and one decoded then removed private PNG. All21 public host hashes match exact6e37065 and285 runtime source records retain the unchanged executed2ec graph. Original compact COMPLETE claim bytes are retained. It is reviewed operator evidence, not cryptographic execution attestation.
+
+A5 reuses A3's unchanged pure compatibility function; frozen A1–A4 consumer/bundle bytes stay unchanged. The exact union grows only from7/33 to9/33. The old seven-tool union assertion failed against the two new names before explicitly extending its expectation. General direct/public/denial/Agent/client/write/OAuth planes and terminal claim restrictions remain independent. User standing authorization for similar bounded reviewed read-only batches is recorded without expanding that envelope or replaying spent claims. Product runtime review/history remains solely in the GitHub Run/Epoch control plane.

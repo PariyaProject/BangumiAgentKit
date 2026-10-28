@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-25T09:05:27Z",
+  "updated_at": "2026-10-28T00:24:13.965561+00:00",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -4477,9 +4477,13 @@
         "scripts/acceptance/real_account_a4_evidence.py",
         "scripts/test_real_account_a4_evidence.py",
         "docs/live-probes/run95-a4-backlog-schedule-and-private-pngs-2026-10-27/import.json",
-        "docs/product/real-account-a4-backlog-schedule-evidence.md"
+        "docs/product/real-account-a4-backlog-schedule-evidence.md",
+        "scripts/acceptance/real_account_a5_evidence.py",
+        "scripts/test_real_account_a5_evidence.py",
+        "docs/live-probes/run95-a5-dashboard-and-private-png-2026-10-28/import.json",
+        "docs/product/real-account-a5-dashboard-evidence.md"
       ],
-      "next_action": "Current-source account evidence is7/33 (26pending): prior A2list+A3overview2 plus four completed A4backlog/scheduleread+render tools. A4actual10GET(4collection2episode4calendar)/0assets/one collection and episode row per bounded request/two privatePNGsSharpdecodedandcleaned. Backlog both conflict; schedule both partial; preserve independent snapshots and unknown full duration/calendar semantics. A1/A2/A3/A4 claims permanently spent, old three rawbytes preserved; no retry/alias. Fixed reviewed operator anchor pins285 runtimefiles and21executedhostfiles; all old consumers/bundles unchanged. Import opens no runtime/key/provider/model/client. Keep OP009 PARTIAL; OAuth/write/client/stability/aesthetic/full-account evidence remains unproven, original96Goal unfinished.",
+      "next_action": "Current-source account evidence is9/33 (24pending): prior A2list1+A3overview2+A4backlog/schedule4 plus completed A5Dashboard get/render. A5actual10GET(6collection2episode2calendar)/0assets/one collection and episode row per response/one privatePNGSharpdecodedandcleaned. Bothrootpartial/intelligencepartial/backlogconflict/schedulepartial; original root only2successfulsections2aggregaterows/excludesconflictrow/0timeouts0skips. Preserve bounded independent snapshots and unknown full duration/calendar/atomic semantics. A1–A5 claims permanently spent; four predecessor rawbytes preserved, no retry/alias. Fixed reviewed operator anchor pins285runtimefiles/21hostfiles; old A1–A4 consumers and bundles byteunchanged. Import reads only fixed sanitized tracked receipts and Git/source metadata; no runtime/key/provider/model/client access. User explicitly permits future similar reviewed bounded read-only batches within approved envelope; expanded scope still needs confirmation. Keep OP009 PARTIAL; other24account/OAuth/write/client/stability/aesthetic observations remain unproven; original96Goal unfinished.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },
