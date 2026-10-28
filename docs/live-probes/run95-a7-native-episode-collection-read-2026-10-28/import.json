@@ -1,0 +1,50 @@
+{
+  "schema": "bgk-a7-bounded-native-episode-read-import/v1",
+  "kind": "imported-successful-live-receipt",
+  "executedSourceRevision": "bfe1229d03edac0c7e218f442b2d746254cb4c4c",
+  "executedApplicationCommit": "47ac6566d9fedba248ec10681c0fc1422f57db9f",
+  "originCheckpoint": {
+    "run": 95,
+    "sequence": 93,
+    "sha256": "446ff74ae09841bec80130858d08b4c0bf0bfc354da453993c148bfd1be70837",
+    "url": "https://github.com/PariyaProject/BangumiAgentKit/issues/95"
+  },
+  "admittedTools": [
+    {
+      "name": "bangumi.get_episode_collections",
+      "input": {
+        "subjectId": "sole-validated-selection-in-memory",
+        "episodeType": 0,
+        "limit": 1,
+        "offset": 0
+      }
+    }
+  ],
+  "selectionOnly": {
+    "name": "bangumi.list_collections",
+    "input": {
+      "subjectType": "anime",
+      "status": "doing",
+      "limit": 1,
+      "offset": 0
+    },
+    "additionalCredit": false
+  },
+  "runtimeTreeSha256": "64ac0ffd093f003e0f0332c6a57b65038a1462b1bbc34cde73533c38996116b2",
+  "evidenceFiles": {
+    "a7-result.json": "cc65d7bc42daac1d758220207d14e8caa9e95bd42361c05ef078246d50503f3a",
+    "durable-a7-claim.json": "416391e8b1127602562bccfe8a0b803f898b5856fa98926055e13728400b627a",
+    "operator-provenance.json": "23628a942ae7a493c3f2495283899c5e0f8b00a96cf98d8a7bd5e65554f0cc7b",
+    "postconditions.json": "cc76f554bf6852ac66ab318c5bb97c4e0f98d530ef9d931d25fb879e1cf3f9de",
+    "public-plan.json": "b8fbd43ed9dc8821a86a6d08a1b6a94d9ef1ce7f7e7f49cda5b25cc3b833756b",
+    "root-package-runtime.json": "dd077a6140adfeb77f75575f4f20aa0b89617225477f66c0ed5655585cec38da",
+    "source-files.json": "cf4472d0d12e8093668116d455ea94a2c252447a79c8d2cc4f6a78df282ca59a"
+  },
+  "limits": [
+    "One native authenticated get_episode_collections page only:two native GETs total,one selection andone episode row,known1unknown0/rawsubjectbindingtrue/partial. No whole-subject or account progress,negative-status inference,or retry for a richer sample.",
+    "Selection list_collections gets no additional credit. Request episodeType0 means main,distinct from returned collectiontype0 uncollected. IDs and raw statuspayload remain private.",
+    "A7COMPLETE and all six predecessors permanently spent;independent immediate restoration verified original three jobs/same NapCat/AstrBot/Runner7e3/model945unchanged. No long-term stability,QQ/TIM,Agent/model,write/fullOAuth,aesthetic orPNGcredit.",
+    "Fixed reviewed operator evidence anchor,not runner signature or cryptographic execution attestation. Seven bounded sanitized files;exact285runtimeGitblob/mode+disk/dynamicSQL/assets/rootmetadata-scriptsonly compatibility andcatalog/ancestry.",
+    "Consumer reads fixed trackedfiles andGit/source only;no runtime/key/provider/new account access. Old53frozenfiles andeleven compatible account cells remain exact."
+  ]
+}
