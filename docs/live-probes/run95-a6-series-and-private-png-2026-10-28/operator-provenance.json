@@ -1,0 +1,103 @@
+{
+  "schema": "run95-a6-reviewed-operator-provenance/v1",
+  "executedApplicationCommit": "02ee144a64a35f41553102ae48f70dd130158d04",
+  "executedRuntimeRevision": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+  "governanceCommit": "a70cbb2e470f0c0cdc83d7e1f10c2bf077db1bc1",
+  "applicationFiles": {
+    "config/agent/bangumi-profile.json": {
+      "gitBlob": "2ff74ccc566f7b6472f90a6477a3e0ac15793cb9",
+      "sha256": "7d5c78488c2b80616426086fcc446dce95d46b9c4e2082283106274ab5909b6e"
+    },
+    "config/agent/mcp_config.standard-full.json": {
+      "gitBlob": "39ed3cfec7b6786a4f52afa9a34f9bd3c9829c5a",
+      "sha256": "c7ed6f123ecdfa46a8a10df2ab43fc2b61a6c2d1f2ca5a17d62d7de15764ad10"
+    },
+    "config/agent/settings.standard-full.json": {
+      "gitBlob": "0daa346cea842b1ca17a20337625b0746f355432",
+      "sha256": "19fe7b64b96fd37cebeaa97002c6a9ef7db1d9ef82fc2d91d431bfcdf7bad6c4"
+    },
+    "config/bangumi-poc/standard-full-mcp.lock.json": {
+      "gitBlob": "291a2b4ba473974dff132405fb626121eaa86998",
+      "sha256": "3a8eef1bfb8febc2f95bf5fef499e429ac7b22fe16e326fe34a5d0dbabf5a7f5"
+    },
+    "config/bangumi-poc/standard-full-profile.json": {
+      "gitBlob": "60ed385bfffc9e933d2e59b6179a850be84a5127",
+      "sha256": "3da7474904a620caa8969df7f14ad5dbdd507820dae44937e27261d717d04063"
+    },
+    "pariya_runtime/acceptance_supervisor.py": {
+      "gitBlob": "6e9ec037a919bc7d8fc0819ef0bcf8bc4363d95f",
+      "sha256": "d1c9c1d8292aaef32ddb3c2c6174141ddaa02551916d24d3b607437d685f863e"
+    },
+    "pariya_runtime/bangumi_source.py": {
+      "gitBlob": "e233c9ff7efedd38bc29d9665b2b08d2d2a4a43d",
+      "sha256": "7af992f02d36d042e78aa5e73085b6610db20c1e8750bf5a6045cace70844f0f"
+    },
+    "pariya_runtime/bound_account_read.py": {
+      "gitBlob": "453fce20bce4257e4aa1ba6d4094ecb0d98fb42c",
+      "sha256": "b750c66bd4be45f4884b8038bee98fde0fce6894a75068ce1c34cc532a826e06"
+    },
+    "pariya_runtime/collection_series_claim.py": {
+      "gitBlob": "aa18c18a2a68cbf00971c849b4a6b07b60a432b5",
+      "sha256": "ce609c944181f97169afd48fbe09e82b04057a6011d4711f0dd979c1b3e08964"
+    },
+    "pariya_runtime/collection_series_host.py": {
+      "gitBlob": "79e70ac9ac45a4255fc0d95ecd9706701ce764fc",
+      "sha256": "cca3c22a8a96b8555c9063fcbc0d33e6b8c752f01f04628c5b5d569260e3ac67"
+    },
+    "pariya_runtime/docker.py": {
+      "gitBlob": "9ac0ae031100937094740f9cea03a065901f0a85",
+      "sha256": "c0e6e237aff23a66c5d7662c194218c2a04e14244eba53b82b7cf5dd706cc723"
+    },
+    "pariya_runtime/private_batch_claim.py": {
+      "gitBlob": "7de9a82e56c177dfc07f6fbb469ca193553bad5d",
+      "sha256": "982d80a8ae9d0c3ba338ceb8d7601426bc601ef5cf326c765372ba3fa9050587"
+    },
+    "pariya_runtime/private_batch_governance.py": {
+      "gitBlob": "ff0049f897dd29f1489cd69f1de35c5ab3437ccb",
+      "sha256": "e0ccf368b9c0e9c3dcc7aaa69e658263dd4cf08b78697a8259abba0a192a0717"
+    },
+    "pariya_runtime/private_batch_workload.py": {
+      "gitBlob": "96fcf81e8c6389390697c19906ae47bcdaa70195",
+      "sha256": "7d256fb6a5db43474d5a8e65a11f4096a9c8195dad4f6fb5aa9cfcb0202c5702"
+    },
+    "pariya_runtime/process.py": {
+      "gitBlob": "70580bde47d7d1a476ec4d2998c7d60fead25187",
+      "sha256": "8f465f48a67aabf5541ed29f6f9f9820b736c2517854c3a5a18a092c297a0b9d"
+    },
+    "plugins/astrbot_plugin_pariya/qq_policy.py": {
+      "gitBlob": "33ecc88ccbef6ead5c0038d230342467eaf00bf4",
+      "sha256": "bee39874616e9229733be75b87be95e72b925b688e7a8d1244557e85e9e417b0"
+    },
+    "scripts/acceptance/private-progress-consumer.cjs": {
+      "gitBlob": "fe613af9a886a941f66e81f4e0ab5b28c3199805",
+      "sha256": "4d0165f2bd4b1eec92675fd3fffafd4744cc28387d3a2b9deecf861c6633b74a"
+    },
+    "scripts/acceptance/series-entry.cjs": {
+      "gitBlob": "b944c56cfc6fecc7bfd472e00a8b76c6e4687e2f",
+      "sha256": "dc76e147dfea7762d3041695905effa6f1ce3e194140330017f5f1bbfebfb5b6"
+    },
+    "scripts/acceptance/series-guard.cjs": {
+      "gitBlob": "d6fa5ff9d9742de72730c7107e4dfccd4e9017ee",
+      "sha256": "10890d6bbca9a0e68dad228f2dd0c9655126187655a683544507a39b91c2e032"
+    },
+    "scripts/collection-series.py": {
+      "gitBlob": "21ab3df832ea919a45f6b44ab49f54a5729677af",
+      "sha256": "c5e487f5fcf6c3f7c35bfb140a1b85191fd43387e14436946ddac84dc13d9921"
+    },
+    "scripts/verify-standard-full-image.py": {
+      "gitBlob": "7cf3ee654cd8b8517d89e2d07231c03a4aef4e14",
+      "sha256": "c5758317236dc42cf5e026fdc850b161133741b26e5d9a18207ed6fc7c65c828"
+    }
+  },
+  "privateMaintenanceOperatorSha256": "34be2af65e47442f9aaeeeaef02df5a4513fd9611f446b1d4c590205845e794a",
+  "privateMaintenancePlanSha256": "995893b05cfaf124f047d73d17eba05b8d31f7c65d2c2973b329dcc511ee7a5a",
+  "readbackSha256": "fb22054fd496bb8605fdff39868f88df176a35966e0957cc7a0a6ce7b54893e9",
+  "operatorTests": 34,
+  "standardsFindings": 0,
+  "specFindings": 0,
+  "executionInterpreter": "original-release-venv-python3.14.6",
+  "sqliteVersion": "3.53.2",
+  "closedOperatorFinding": "Environment-specific readonly WAL CANTOPEN repro and exact interpreter/version source guard; no data repair.",
+  "provenanceKind": "explicit-reviewed-operator-anchor-not-signature",
+  "privatePayloadIncluded": false
+}
