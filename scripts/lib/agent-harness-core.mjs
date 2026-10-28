@@ -4,6 +4,7 @@ import {
   decodeControlState,
   ControlCodecError,
 } from './harness-control-codec.mjs';
+import { hydrateRunHistory, persistRunHistory } from './harness-history-segments.mjs';
 
 export const SCHEMA = 'bangumi-harness/v3';
 export const RUN_MARKER = 'bangumi-harness:v3:outer-run';
@@ -2403,7 +2404,8 @@ export function recordIntegrationBlocked(run, epoch, reason) {
 
 export function renderControlBlock(marker, state) {
   try {
-    return `<!-- ${marker}:start -->\n\`\`\`json\n${encodeControlState(state, marker)}\n\`\`\`\n<!-- ${marker}:end -->`;
+    const wire = marker === RUN_MARKER ? persistRunHistory(state) : state;
+    return `<!-- ${marker}:start -->\n\`\`\`json\n${encodeControlState(wire, marker)}\n\`\`\`\n<!-- ${marker}:end -->`;
   } catch (error) {
     if (error instanceof ControlCodecError)
       throw new HarnessInvariantError(error.code, error.message);
@@ -2411,7 +2413,7 @@ export function renderControlBlock(marker, state) {
   }
 }
 
-export function parseControlBlock(body, marker) {
+export function parseControlBlock(body, marker, historyOptions) {
   const start = `<!-- ${marker}:start -->`;
   const end = `<!-- ${marker}:end -->`;
   const startIndex = body.indexOf(start);
@@ -2424,6 +2426,7 @@ export function parseControlBlock(body, marker) {
   let state;
   try {
     state = decodeControlState(json, marker);
+    if (marker === RUN_MARKER) state = hydrateRunHistory(state, historyOptions);
   } catch (error) {
     if (error instanceof ControlCodecError)
       throw new HarnessInvariantError(error.code, error.message);

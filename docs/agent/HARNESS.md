@@ -61,6 +61,13 @@ lossless, bounded [whole-state codec](CONTROL_BLOCK_CODEC.md). The envelope is
 storage encoding, not a new logical state schema or authority. Significant terminal events may receive one concise comment when it adds
 audit value. Heartbeat and polling comments are prohibited.
 
+The explicit reviewed `continuation:archive` extension can seal an old event
+prefix in machine-only comments on that same Run Issue. Only body-pinned,
+identity/digest/chain-verified segments participate in its complete history;
+comments alone grant no authority. All Run reads hydrate the full journal or
+refuse, before any policy check. See [the exact protocol and recovery
+procedure](CONTROL_BLOCK_CODEC.md#same-issue-continuation-segments).
+
 GitHub is the durable runtime source. If authentication, API access, or required
 permissions are unavailable, stop as `CONTROL_PLANE_UNAVAILABLE`. Never fall
 back to tracked loop status, Cycle plans, Review files, temporary ledgers, or
@@ -230,6 +237,12 @@ trimmed. The whole-state codec preserves the entire Run/Epoch independently of
 the continuation archive. The existing control-body size gate still applies;
 if compression cannot fit the complete body, stop writes and implement an
 explicit archive migration before adding more history.
+The supported `continuation:archive` migration uses expected full state/sequence,
+bounded same-Issue segments, orphan reconciliation, pre-write metadata rereads
+and complete readback. It changes storage only; prior directives, checkpoints,
+claims and budgets survive exactly. Pure readers without a trusted resolver
+must refuse segmented Run input. Old Harness versions cannot be used after
+this migration, including for apparently read-only tail interpretation.
 No raw chat, credentials, account identifiers, QR/media, or mutable tracked
 runtime-log fallback belongs here.
 
