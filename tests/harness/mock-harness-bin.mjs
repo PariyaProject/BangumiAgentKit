@@ -40,7 +40,7 @@ function mockIssue() {
     title: state.runIssueTitle ?? 'Mock run',
     body: state.runBody,
     state: state.runIssueState ?? 'OPEN',
-    url: 'https://example.test/issues/1',
+    url: state.runIssueUrl ?? 'https://example.test/issues/1',
     createdAt: state.runIssueCreatedAt ?? '2026-08-01T00:00:00.000Z',
     updatedAt: state.runIssueUpdatedAt ?? '2026-08-01T00:00:00.000Z',
     closedAt:
@@ -55,6 +55,25 @@ if (tool === 'gh') {
   if (group === '--version') output('gh version mock');
   else if (group === 'auth' && action === 'status') output('authenticated');
   else if (group === 'repo' && action === 'view') output({ nameWithOwner: 'mock/repo' });
+  else if (group === 'api' && action === 'user') output({ login: 'fixture-operator' });
+  else if (group === 'api' && /^repos\/\{owner\}\/\{repo\}\/issues\/comments\/\d+$/u.test(action)) {
+    const comment = state.historyComments?.find(value => value.id === Number(action.split('/').at(-1)));
+    if (comment) output(comment); else fail('HTTP 404 Not Found');
+  } else if (group === 'api' && /^repos\/\{owner\}\/\{repo\}\/issues\/\d+\/comments(?:\?|$)/u.test(action)) {
+    state.historyComments ??= [];
+    if (flagValue('--method') === 'POST') {
+      const { body } = JSON.parse(stdin());
+      const comment = { id: state.historyComments.length + 1, body,
+        user: { login: 'fixture-operator' }, issue_url: state.historyIssueApiUrl };
+      state.historyComments.push(comment);
+      if (state.loseHistoryPostResponse) {
+        delete state.loseHistoryPostResponse; fail('lost POST response');
+      } else output(comment);
+    } else {
+      const page = Number(new URL('https://mock/' + action).searchParams.get('page') ?? 1);
+      output(state.historyComments.slice((page - 1) * 100, page * 100));
+    }
+  }
   else if (group === 'run' && action === 'view') {
     const run = state.workflowRuns?.[args[2]];
     if (run) output(run);
@@ -140,7 +159,7 @@ if (tool === 'gh') {
       title: state.runIssueTitle ?? 'Mock run',
       body: state.runBody,
       state: state.runIssueState ?? 'OPEN',
-      url: 'https://example.test/issues/1',
+      url: state.runIssueUrl ?? 'https://example.test/issues/1',
     });
   } else if (group === 'issue' && action === 'edit') {
     state.runBody = stdin();

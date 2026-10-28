@@ -14,12 +14,24 @@ def _reject_non_json_constant(_value):
     raise ValueError('CONTROL_ARCHIVE_INVALID')
 
 
+def _complete_state(state, marker):
+    # Current Python acceptance consumers read Epochs only. An offline Run
+    # reader must never treat a segmented tail as its complete policy history.
+    # Resolve Run history with the view-bound JS Harness, not a caller-supplied
+    # unverified tail or a second independent hydration implementation.
+    if marker == 'bangumi-harness:v3:outer-run' and isinstance(state, dict):
+        journal = state.get('continuation')
+        if isinstance(journal, dict) and ('archived_prefix' in journal or 'storage' in journal):
+            raise ValueError('HISTORY_RESOLVER_REQUIRED')
+    return state
+
+
 def decode_control_state(content, marker):
     if not isinstance(content, str) or len(content.encode('utf-8')) > MAX_STATE_BYTES:
         raise ValueError('CONTROL_STATE_TOO_LARGE')
     state = json.loads(content, parse_constant=_reject_non_json_constant)
     if not isinstance(state, dict) or state.get('schema') != ARCHIVE_SCHEMA:
-        return state
+        return _complete_state(state, marker)
     if (len(content.encode('utf-8')) > MAX_ARCHIVE_BYTES or
             set(state) != {'schema', 'codec', 'marker', 'bytes', 'sha256', 'data'} or
             state['codec'] != 'gzip+base64' or state['marker'] != marker or
@@ -51,6 +63,6 @@ def decode_control_state(content, marker):
         decoded = json.loads(raw.decode('utf-8'), parse_constant=_reject_non_json_constant)
         if not isinstance(decoded, dict) or decoded.get('schema') == ARCHIVE_SCHEMA:
             raise ValueError('nested archive')
-        return decoded
     except (ValueError, UnicodeError, zlib.error):
         raise ValueError('CONTROL_ARCHIVE_INVALID') from None
+    return _complete_state(decoded, marker)

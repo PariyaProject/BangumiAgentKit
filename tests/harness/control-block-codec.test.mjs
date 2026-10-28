@@ -15,6 +15,8 @@ import {
   parseControlBlock, renderControlBlock, renderRunBody, replaceControlBlock,
 } from '../../scripts/lib/agent-harness-core.mjs';
 import { appendContinuationEvent, continuationEvents } from '../../scripts/lib/harness-continuation.mjs';
+import { historyFixture } from './fixtures/history-segments.mjs';
+import { attachHistorySegment, historyContext, makeHistorySegment, persistRunHistory } from '../../scripts/lib/harness-history-segments.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -152,4 +154,22 @@ test('writer retains a visible bound and never silently drops incompressible evi
   assert.ok(Buffer.byteLength(encoded) > 65536);
   assert.deepEqual(decodeControlState(encoded, RUN_MARKER), state);
   assert.throws(() => encodeControlState({ x: 'x'.repeat(MAX_CONTROL_STATE_BYTES) }, RUN_MARKER), error('CONTROL_STATE_TOO_LARGE'));
+});
+
+test('Python refuses segmented Run tails in both formats while Epoch acceptance decoding is unchanged', () => {
+  const run = historyFixture();
+  const context = historyContext({ number: 95, url: 'https://github.com/mock/repo/issues/95' });
+  const segment = makeHistorySegment(run.continuation.events.slice(0, 64), context, 'a'.repeat(64));
+  const comment = { id: 1, user: { login: 'fixture' }, body: segment.body, issue_url: context.apiIssueUrl };
+  const stored = persistRunHistory(attachHistorySegment(run, context, segment, comment));
+  for (const json of [JSON.stringify(stored), JSON.stringify(archive(Buffer.from(JSON.stringify(stored))))]) {
+    const denied = python(json);
+    assert.notEqual(denied.status, 0);
+    assert.match(denied.stderr, /HISTORY_RESOLVER_REQUIRED/u);
+  }
+  // Python's current P01/S03 readers consume Epochs, never the Run hot tail.
+  const epoch = { schema: 'bangumi-harness/v3', continuation: stored.continuation };
+  const decoded = python(encodeControlState(epoch, EPOCH_MARKER), EPOCH_MARKER);
+  assert.equal(decoded.status, 0, decoded.stderr);
+  assert.deepEqual(JSON.parse(decoded.stdout), epoch);
 });

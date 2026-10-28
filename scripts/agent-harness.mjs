@@ -73,6 +73,8 @@ import {
   continuationEvents,
   repackContinuationHistory,
 } from './lib/harness-continuation.mjs';
+import { historyContext } from './lib/harness-history-segments.mjs';
+import { archiveContinuationHistory } from './lib/harness-history-migration.mjs';
 import {
   acquireG06OneShotGitHubLatch,
   acquireG06OneShotTerminalGitHubLatch,
@@ -516,6 +518,8 @@ function run(command, args, options = {}) {
     stdio: options.capture === false ? 'inherit' : ['pipe', 'pipe', 'pipe'],
     input: options.input,
     env: { ...process.env, ...options.env },
+    maxBuffer: options.maxBuffer,
+    timeout: options.timeout,
   });
   return preserveLeadingWhitespace ? output.replace(/\r?\n$/u, '') : output.trim();
 }
@@ -678,7 +682,40 @@ function prView(number) {
 
 function issueState(number) {
   const view = issueView(number);
-  return { view, state: parseControlBlock(view.body, RUN_MARKER) };
+  return { view, state: runStateFromView(view) };
+}
+
+function readHistoryComment(id) {
+  return JSON.parse(gh('api', `repos/{owner}/{repo}/issues/comments/${id}`, {
+    maxBuffer: 512 * 1024, timeout: 20_000,
+  }));
+}
+
+function runStateFromView(view) {
+  return parseControlBlock(view.body, RUN_MARKER, {
+    context: () => historyContext(view), resolve: readHistoryComment,
+  });
+}
+
+function historyComments(number) {
+  const comments = [];
+  let bytes = 0;
+  for (let page = 1; page <= 32; page += 1) {
+    const raw = gh('api', `repos/{owner}/{repo}/issues/${number}/comments?per_page=100&page=${page}`, {
+      maxBuffer: 8 * 1024 * 1024, timeout: 20_000,
+    });
+    bytes += Buffer.byteLength(raw);
+    if (bytes > 16 * 1024 * 1024) {
+      throw new HarnessInvariantError('HISTORY_INVENTORY_TOO_LARGE', 'Inspect the Run before another archive write');
+    }
+    const batch = JSON.parse(raw);
+    if (!Array.isArray(batch) || batch.length > 100) {
+      throw new HarnessInvariantError('HISTORY_INVENTORY_INVALID', 'Unexpected comment inventory');
+    }
+    comments.push(...batch);
+    if (batch.length < 100) return comments;
+  }
+  throw new HarnessInvariantError('HISTORY_INVENTORY_TOO_LARGE', 'Archive inventory exceeds 3200 comments');
 }
 
 function epochState(number) {
@@ -850,6 +887,7 @@ Usage: pnpm harness <command> [options]
   status --run <issue> [--pr <number>]
   continuation:show --run <issue> [--goal-state active|paused|blocked|complete]
   continuation:repack --run <issue> --expected-sequence <n> --expected-state-sha256 <sha256>
+  continuation:archive --run <issue> --expected-sequence <n> --expected-state-sha256 <sha256> [--plan]
   renderer:baseline-check [--base <ref>]
   run:directive --run <issue> --expected-sequence <n> --action continue|pause|replan --source-ref <ref> --reason <text>
   run:checkpoint --run <issue> --expected-sequence <n> --evidence <json>
@@ -984,6 +1022,7 @@ function commandContinuationShow(options) {
       goalState: options['goal-state'] ?? 'unobserved',
     }),
     renderer_design_baselines: inspectRendererDesignBaselines(rendererBaselineRoot),
+    run_state_sha256: canonicalHash(runResult.state),
   });
 }
 
@@ -1075,6 +1114,28 @@ function commandContinuationRepack(options) {
   });
 }
 
+function commandContinuationArchive(options) {
+  ensureControlPlane();
+  if (options.plan !== undefined && options.plan !== true) {
+    throw new HarnessInvariantError('INVALID_ARGUMENT', 'Use --plan without a value for read-only preparation');
+  }
+  const number = required(options, 'run');
+  print(archiveContinuationHistory({
+    readRun: () => issueState(number),
+    currentActor: () => JSON.parse(gh('api', 'user')).login,
+    listComments: () => historyComments(number),
+    createComment: body => JSON.parse(gh('api', `repos/{owner}/{repo}/issues/${number}/comments`,
+      '--method', 'POST', '--input', '-', { input: JSON.stringify({ body }),
+        maxBuffer: 512 * 1024, timeout: 20_000 })),
+    readComment: readHistoryComment,
+    writeRun: state => updateIssue(number, state),
+  }, {
+    expected: required(options, 'expected-state-sha256'),
+    sequence: Number(required(options, 'expected-sequence')),
+    planOnly: options.plan === true,
+  }));
+}
+
 function commandContinuationRecord(options, type) {
   ensureControlPlane();
   const runNumber = required(options, 'run');
@@ -1134,6 +1195,7 @@ function guardContinuationCommand(command, options) {
     'status',
     'continuation:show',
     'continuation:repack',
+    'continuation:archive',
     'renderer:baseline-check',
     'run:directive',
     'run:checkpoint',
@@ -1165,10 +1227,10 @@ function guardContinuationCommand(command, options) {
   let runNumber = options.run;
   if (!runNumber && command === 'candidate:check') {
     const matchingRuns = JSON.parse(
-      gh('issue', 'list', '--state', 'open', '--limit', '100', '--json', 'number,body'),
+      gh('issue', 'list', '--state', 'open', '--limit', '100', '--json', 'number,body,url'),
     ).filter((view) => {
       if (!view.body?.includes('<!-- ' + RUN_MARKER + ':start -->')) return false;
-      return parseControlBlock(view.body, RUN_MARKER).active_epoch_pr === Number(options.pr);
+      return runStateFromView(view).active_epoch_pr === Number(options.pr);
     });
     if (matchingRuns.length > 1) {
       throw new HarnessInvariantError(
@@ -1267,7 +1329,7 @@ function inspectDiscoveryCheck(options) {
   }
   const frontier = frontierContext();
   let latestRunState = latestClosedRun
-    ? parseControlBlock(latestClosedRun.body, RUN_MARKER)
+    ? runStateFromView(latestClosedRun)
     : undefined;
   if (latestRunState?.discovery_exhaustion?.evidence_archive) {
     latestRunState = structuredClone(latestRunState);
@@ -1323,7 +1385,7 @@ function commandRunStart(options) {
     ),
   )
     .filter((issue) => issue.body?.includes(`<!-- ${RUN_MARKER}:start -->`))
-    .map((issue) => ({ ...issue, run: parseControlBlock(issue.body, RUN_MARKER) }));
+    .map((issue) => ({ ...issue, run: runStateFromView(issue) }));
   const terminalRuns = openRuns.filter((issue) => isTerminalRunState(issue.run.state));
   const resumableRuns = openRuns.filter((issue) => !isTerminalRunState(issue.run.state));
   if (resumableRuns.length > 1) {
@@ -9857,6 +9919,7 @@ const commands = {
   status: commandStatus,
   'continuation:show': commandContinuationShow,
   'continuation:repack': commandContinuationRepack,
+  'continuation:archive': commandContinuationArchive,
   'renderer:baseline-check': commandRendererBaselineCheck,
   'run:directive': (options) => commandContinuationRecord(options, 'directive'),
   'run:checkpoint': (options) => commandContinuationRecord(options, 'checkpoint'),

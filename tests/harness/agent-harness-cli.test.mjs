@@ -1,4 +1,6 @@
 import { terminalRecoveryFixture } from './fixtures/terminal-recovery.mjs';
+import { historyFixture } from './fixtures/history-segments.mjs';
+import { historyContext } from '../../scripts/lib/harness-history-segments.mjs';
 import { LEGACY_R04_TERMINAL_RECOVERY } from '../../scripts/lib/harness-terminal-recovery.mjs';
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync } from 'node:crypto';
@@ -264,6 +266,86 @@ function buildP02V2ReportForClaim(claim, keyPair) {
     { privateKey: keyPair.privateKey },
   );
 }
+
+test('segmented near-full Run migrates through actual CLI, appends88 once and resolves all history for policy', () => {
+  const run = historyFixture();
+  // Incompressible synthetic evidence gets close to the actual body limit.
+  const noise = Array.from({ length: 2500 }, (_, i) => createHash('sha256').update('synthetic:' + i).digest('hex'));
+  let lo = 0, hi = noise.length;
+  while (lo + 1 < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    run.retainedEvidence = noise.slice(0, mid);
+    if (Buffer.byteLength(renderRunBody(run)) < 64_500) lo = mid; else hi = mid;
+  }
+  run.retainedEvidence = noise.slice(0, lo);
+  const body = renderRunBody(run);
+  assert.ok(Buffer.byteLength(body) > 64_000 && Buffer.byteLength(body) < 65_536);
+  const url = 'https://github.com/mock/repo/issues/1';
+  const context = historyContext({ number: 1, url });
+  const environment = createMockEnvironment({ runBody: body, runIssueUrl: url, historyIssueApiUrl: context.apiIssueUrl });
+  try {
+    const args = ['continuation:archive', '--run', '1', '--expected-sequence', '87',
+      '--expected-state-sha256', canonicalHash(run)];
+    const plan = environment.execute([...args, '--plan']);
+    assert.equal(plan.status, 0, plan.stderr);
+    assert.equal(environment.readState().historyComments, undefined);
+    const migration = environment.execute(args);
+    assert.equal(migration.status, 0, migration.stderr);
+    const stored = environment.readState();
+    assert.equal(stored.historyComments.length, 1);
+    assert.ok(Buffer.byteLength(stored.runBody) < Buffer.byteLength(body) - 1024);
+    const decode = state => parseControlBlock(state.runBody, RUN_MARKER, { context,
+      resolve: id => state.historyComments.find(comment => comment.id === id) });
+    const hydrated = decode(stored);
+    const withoutStorage = structuredClone(hydrated); delete withoutStorage.continuation.storage;
+    assert.deepEqual(withoutStorage, run);
+    assert.throws(() => parseControlBlock(stored.runBody, RUN_MARKER), /HISTORY_RESOLVER_REQUIRED/u);
+    assert.equal(environment.execute(args).status, 2);
+    const brief = environment.execute(['continuation:show', '--run', '1', '--goal-state', 'active']);
+    assert.equal(brief.status, 0, brief.stderr);
+    assert.equal(JSON.parse(brief.stdout).sequence, 87);
+    assert.equal(JSON.parse(brief.stdout).latest_human_directive.sequence, 83);
+    assert.equal(JSON.parse(brief.stdout).human_execution_pause_active, false);
+    const checkpoint = path.join(environment.directory, 'checkpoint88.json');
+    fs.writeFileSync(checkpoint, JSON.stringify({ kind: 'progress', epoch_pr: null,
+      problem: 'already-completed-runtime', input_sha256: 'a'.repeat(64),
+      outcome: 'An already completed operation is recorded; nothing is replayed.',
+      next_action: 'Implement the next genuinely new acceptance.', evidence_refs: ['docs/agent/HARNESS.md'] }));
+    const appendArgs = ['run:checkpoint', '--run', '1', '--expected-sequence', '87', '--evidence', checkpoint];
+    const append = environment.execute(appendArgs);
+    assert.equal(append.status, 0, append.stderr);
+    const final = decode(environment.readState());
+    assert.deepEqual(final.continuation.events.slice(0, 87), run.continuation.events);
+    assert.deepEqual(final.outer_sol, run.outer_sol);
+    assert.deepEqual(final.immutableClaims, run.immutableClaims);
+    assert.equal(final.continuation.events.length, 88);
+    assert.equal(environment.execute(appendArgs).status, 2);
+    const tampered = environment.readState(); tampered.historyComments[0].body += '\n';
+    fs.writeFileSync(environment.statePath, JSON.stringify(tampered));
+    const denied = environment.execute(['continuation:show', '--run', '1']);
+    assert.equal(denied.status, 2);
+    assert.match(denied.stderr, /HISTORY_COMMENT_MISMATCH/u);
+  } finally { environment.cleanup(); }
+});
+
+test('actual CLI recovers an uncertain comment POST by reusing one pinned orphan without a second POST', () => {
+  const run = historyFixture();
+  const context = historyContext({ number: 1, url: 'https://github.com/mock/repo/issues/1' });
+  const environment = createMockEnvironment({ runBody: renderRunBody(run), runIssueUrl: 'https://github.com/mock/repo/issues/1',
+    historyIssueApiUrl: context.apiIssueUrl, loseHistoryPostResponse: true });
+  try {
+    const args = ['continuation:archive', '--run', '1', '--expected-sequence', '87', '--expected-state-sha256', canonicalHash(run)];
+    const first = environment.execute(args);
+    assert.equal(first.status, 2);
+    assert.match(first.stderr, /HISTORY_COMMENT_WRITE_UNCERTAIN/u);
+    assert.equal(environment.readState().runBody, renderRunBody(run));
+    const recovered = environment.execute(args);
+    assert.equal(recovered.status, 0, recovered.stderr);
+    const saved = environment.readState();
+    assert.equal(saved.historyComments.length, 1);
+    assert.equal(saved.calls.filter(c => c.tool === 'gh' && c.args.includes('POST')).length, 1);
+  } finally { environment.cleanup(); }
+});
 
 test('continuation CLI persists latest human intent without changing budgets or Epoch claims', () => {
   const environment = createMockEnvironment();

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
 import { HarnessInvariantError } from './agent-harness-core.mjs';
+import { verifyHistoryEvents } from './harness-history-segments.mjs';
 
 const hash = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const fail = (code, message) => {
@@ -20,6 +21,9 @@ export function continuationEvents(run) {
   const journal = run.continuation;
   if (journal?.schema !== 1) {
     fail('INVALID_CONTINUATION_HISTORY', 'Unsupported continuation journal');
+  }
+  if (journal.archived_prefix !== undefined) {
+    fail('HISTORY_NOT_HYDRATED', 'Resolve and verify the complete history before any policy checks');
   }
   let events = journal.events;
   if (journal.archive !== undefined) {
@@ -44,22 +48,8 @@ export function continuationEvents(run) {
       fail('INVALID_CONTINUATION_HISTORY', 'History archive is unreadable or changed');
     }
   }
-  if (!Array.isArray(events))
-    fail('INVALID_CONTINUATION_HISTORY', 'History events must be an array');
-  let previous = null;
-  events.forEach((event, index) => {
-    const { sha256, ...payload } = event;
-    if (
-      event.sequence !== index + 1 ||
-      event.previous_sha256 !== previous ||
-      sha256 !== hash(payload) ||
-      !['directive', 'checkpoint'].includes(event.type)
-    ) {
-      fail('INVALID_CONTINUATION_HISTORY', 'Continuation history changed or lost an event');
-    }
-    previous = sha256;
-  });
-  return events;
+  try { return verifyHistoryEvents(events); }
+  catch (error) { fail(error.code ?? 'INVALID_CONTINUATION_HISTORY', 'Continuation history changed or lost an event'); }
 }
 
 export function currentDirective(run) {
