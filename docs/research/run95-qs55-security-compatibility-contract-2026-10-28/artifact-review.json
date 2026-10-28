@@ -1,0 +1,53 @@
+{
+  "schema": "run95-qs55-artifact-review/v1",
+  "registry": "https://registry.npmjs.org",
+  "advisory": "https://github.com/advisories/GHSA-6pq8-jhm2-2vcw",
+  "artifactIntegrityVerified": true,
+  "installedPublishedFilesVerified": 20,
+  "changedPublishedFiles": [
+    ".github/THREAT_MODEL.md",
+    "CHANGELOG.md",
+    "README.md",
+    "dist/qs.js",
+    "lib/parse.js",
+    "lib/stringify.js",
+    "lib/utils.js",
+    "package.json",
+    "test/parse.js",
+    "test/stringify.js",
+    "test/utils.js"
+  ],
+  "unchangedRuntimeDependencies": {
+    "es-define-property": "^1.0.1",
+    "side-channel": "^1.1.1"
+  },
+  "runtimeDeltaReview": {
+    "lib/parse.js": "Copy caller arrays/plain objects before mutation; preserve cyclic/shared copies through side-channel; split empty-bracket keys at the actual equals sign; preserve literal dots within brackets.",
+    "lib/stringify.js": "Pass complete encoder arguments, safely coerce comma-array values, remove duplicate dotted-prefix encoding, require own array-format keys.",
+    "lib/utils.js": "Bound and track strict-merge conflicts/overflow indices, fast-path escape-free decoding, safely coerce nested/cyclic arrays and objects, percent-encode plus in ISO-8859-1.",
+    "dist/qs.js": "Browser bundle changes included in full published delta; stdio QA does not claim browser/HTTP behavior.",
+    "package.json": "Version and development-tool updates only; runtime dependencies and engine constraint unchanged."
+  },
+  "regression": {
+    "before": {
+      "version": "6.16.0",
+      "failed": 10,
+      "passed": 2
+    },
+    "after": {
+      "version": "6.16.1",
+      "failed": 0,
+      "passed": 12
+    },
+    "command": "pnpm exec vitest run tests/unit/qs-serialization-security.test.ts"
+  },
+  "lockfileDelta": "Byte-for-byte original lock with qs version and official integrity substitutions only; no other package resolution or metadata changes.",
+  "officialAudit": {
+    "critical": 0,
+    "high": 0,
+    "moderate": 0,
+    "low": 0,
+    "info": 0
+  },
+  "scope": "Source dependency patch only. No production deployment or real-account/API/model/client action. Account receipt compatibility requires a separate sealed proof."
+}

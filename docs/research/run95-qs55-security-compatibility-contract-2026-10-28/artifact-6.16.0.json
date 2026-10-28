@@ -1,0 +1,27 @@
+{
+  "version": "6.16.0",
+  "integrity": "sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==",
+  "sha256": "f7a1bfc96c3a0c1172f1f3ef3c280f5ce8054841922e715f0d686da62d7beba4",
+  "files": {
+    ".editorconfig": "ef991316be3cde9167226a96646b5646378cce9bee1dee200644faa45563888a",
+    ".github/FUNDING.yml": "367b5d545d7a66684895ee7efd987130e83018491a7b2f72f25c0b062157ad90",
+    ".github/SECURITY.md": "51e490f9a23ac20c626337b0ef991884f12effb95353c67e56af3a6135fbfbf6",
+    ".github/THREAT_MODEL.md": "6a666b5d4079260b6f0d14ee4780116e058833ec56f2c79f22870372741f116c",
+    ".nycrc": "7e1e3a52df079fc764989d75b3aaf5228228c841978e0c9201d1f394c1fd2655",
+    "CHANGELOG.md": "64175dd893c83c3d8656a57fdf23222b420fac264f64b0bbbbd4d2a52d006b94",
+    "LICENSE.md": "e7dc37bf662d7f786efcb46c545615e70c1daf458a38385521c63cf6607cdfe1",
+    "README.md": "05659085ecff60808f4b4fa169bc2f4f453e81bd7e1aa3cf27148b1c407030f0",
+    "dist/qs.js": "e5e356d2dfa7a6ffddd7250efc69bcb84b191fe23e14b50e4896f823ab7a7fd7",
+    "eslint.config.mjs": "7ca89b01855fcce5cdcf46d38d5b1e2a2c43d5596f74e7a185b84c01946dfa36",
+    "lib/formats.js": "d4e3de8b5a4c94865d8acd6f1c7538144732d466769661160bc0bf6ec9db3f4f",
+    "lib/index.js": "8f4e02eef6ccc43f2b7448c18ae209281c8e9af9807cad491df67450e3817a95",
+    "lib/parse.js": "e78105814d5f66b4ce1d874b4d7bbb3a4c8c2b4cd7bcc8df3d761b4ab076673c",
+    "lib/stringify.js": "96d17e8ad2c6fdf124f6a3a2a50b43412acbc67f0343b4ea782623cbf4de3253",
+    "lib/utils.js": "d1d1d5c915493d399388b8ea340a412e87c8421514c6a0d5b45dc07fcebe86ef",
+    "package.json": "69d58ca5abcff9be3f6becc70940caa76d8ec1b72ef7d2d735305c16cb877dca",
+    "test/empty-keys-cases.js": "14d3091bdde249668f5d88d61a045185a0d5c2ea376a3211b791a58148475224",
+    "test/parse.js": "98560014c592ee7275ab04caba2f41e6c63e9ffdbe7c56a124046bdf706da707",
+    "test/stringify.js": "6f39992b3491fbeeaee9a457cd844b6934ebeca3a2c42f4acdc33aab508a0d16",
+    "test/utils.js": "23c1091d0b56b5928792d56e1f9a9b3b8045a7db1ef2b03b6a865dca9c029376"
+  }
+}

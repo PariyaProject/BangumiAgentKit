@@ -1,0 +1,27 @@
+{
+  "version": "6.16.1",
+  "integrity": "sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==",
+  "sha256": "bdb0e06e5cde7b4d7e0117faa678416bbc2c9287b0672c35c04da2b9de1d3cbf",
+  "files": {
+    ".editorconfig": "ef991316be3cde9167226a96646b5646378cce9bee1dee200644faa45563888a",
+    ".github/FUNDING.yml": "367b5d545d7a66684895ee7efd987130e83018491a7b2f72f25c0b062157ad90",
+    ".github/SECURITY.md": "51e490f9a23ac20c626337b0ef991884f12effb95353c67e56af3a6135fbfbf6",
+    ".github/THREAT_MODEL.md": "30096370728308e0b709f0b95757a875ff25dba6fbb21a9b473c0c4d687a1e61",
+    ".nycrc": "7e1e3a52df079fc764989d75b3aaf5228228c841978e0c9201d1f394c1fd2655",
+    "CHANGELOG.md": "deb4b2bbca3807012f95d72ed55215a0f54876641ee78e393fa0e7540e4b173f",
+    "LICENSE.md": "e7dc37bf662d7f786efcb46c545615e70c1daf458a38385521c63cf6607cdfe1",
+    "README.md": "b7664e57027e6672ea217ce50ade87ce42fb9f9556a883758332132263f640fe",
+    "dist/qs.js": "55bff48a2b2f124093e9c8ffad2c5e1fce56451063f8b2a4eb47dbf4a3f1bcbd",
+    "eslint.config.mjs": "7ca89b01855fcce5cdcf46d38d5b1e2a2c43d5596f74e7a185b84c01946dfa36",
+    "lib/formats.js": "d4e3de8b5a4c94865d8acd6f1c7538144732d466769661160bc0bf6ec9db3f4f",
+    "lib/index.js": "8f4e02eef6ccc43f2b7448c18ae209281c8e9af9807cad491df67450e3817a95",
+    "lib/parse.js": "bf113b9fc38501af1f3cc030da6acd25ceced148bae74d3bfc7bdea5dc58fc21",
+    "lib/stringify.js": "684bc3d973bb44b77977814cc1d274bf2be728c8f75f829714723b16a9181016",
+    "lib/utils.js": "9d02ca45a159ca3794dc518d49fc37df1e3c4e2cdb454347cc32cb93b5a0ce7b",
+    "package.json": "cf56c0fdeb9588f3708f93c3a91004c6726f67ed7b5123f460a26f49cda79125",
+    "test/empty-keys-cases.js": "14d3091bdde249668f5d88d61a045185a0d5c2ea376a3211b791a58148475224",
+    "test/parse.js": "463315c484d5926f0cb4c3f41785f69169c8482f50c0b643915bbf43de7d16ec",
+    "test/stringify.js": "67f8a9e8f84e866778e7f8f34d265eaa1454ec5498f22e17d0d2b466baa9f77c",
+    "test/utils.js": "e231cdc48dbf59fb223f3e0eedcfe15e8d4198590e59b02ba982dd2e79d59ee4"
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "schema": "run95-qs55-source-contract/v1",
+  "advisory": "GHSA-6pq8-jhm2-2vcw",
+  "alert": 55,
+  "currentSource": "efd974a557dd0c68f800bf7162744ff8081025a0",
+  "executedRuntime": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+  "oldVersion": "6.16.0",
+  "fixedVersion": "6.16.1",
+  "oldLockSha256": "6023c4a9e1f38278937d88d297687eae735dd8e97cd69a22638d2cb4bd0d09a6",
+  "registryIntegrity": "sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==",
+  "upstreamBase": "bb9379e01fad04c601478acd6152143cb20c984b",
+  "upstreamHead": "2471b66ae696a8a10915c01453ae2c0f139a5adc",
+  "upstreamCommitCount": 25,
+  "changedUpstreamFiles": [
+    {
+      "path": ".github/THREAT_MODEL.md",
+      "changes": 6
+    },
+    {
+      "path": ".github/workflows/require-allow-edits.yml",
+      "changes": 2
+    },
+    {
+      "path": "CHANGELOG.md",
+      "changes": 52
+    },
+    {
+      "path": "README.md",
+      "changes": 34
+    },
+    {
+      "path": "dist/qs.js",
+      "changes": 40
+    },
+    {
+      "path": "lib/parse.js",
+      "changes": 98
+    },
+    {
+      "path": "lib/stringify.js",
+      "changes": 8
+    },
+    {
+      "path": "lib/utils.js",
+      "changes": 136
+    },
+    {
+      "path": "package.json",
+      "changes": 8
+    },
+    {
+      "path": "test/parse.js",
+      "changes": 174
+    },
+    {
+      "path": "test/stringify.js",
+      "changes": 296
+    },
+    {
+      "path": "test/utils.js",
+      "changes": 184
+    }
+  ],
+  "productionDependency": "app-mcp -> SDK1.32.2 -> express5.3.0/body-parser2.4.0 -> qs6.16.0",
+  "preliminaryImportOnlyTrace": {
+    "sdkServerAndStdioAndToolModuleImports": true,
+    "qsLoadAttempts": 0,
+    "qsCacheEntries": 0,
+    "fullToolOrProtocolExecutionProven": false
+  },
+  "legacyPrivateEvidence": {
+    "compatibleCellsBeforePatch": 11,
+    "pending": 22,
+    "frozenFiles": 53,
+    "frozenFileDigest": "c57ed77dd5f52a7addc2634e44d5864b27ac9828fb28c748ed1ec2d9edc866a4",
+    "oldClaimsReplayAllowed": false
+  },
+  "approvedPreparation": "No actual account/API/model/client operations. Only fresh fake/network-none QA; production deployment remains separate.",
+  "proposedCompatibilityGate": "Additive fixed reviewed source-compatibility consumer only after full isolated compiled MCP trace proves qs unexecuted for exactly the existing11 scoped tool inputs in both controller and actual server child; preserve all53legacyconsumer/receiptbytes and show both old receipt and new compatibility reference. No A1 or new account cell credit.",
+  "knownRisks": [
+    "Upstream25commits change parse/stringify/utils, not stringifier-only.",
+    "MCP server is a child process via --import; parent-only trace is insufficient.",
+    "Current strict source predicates must reject changed lock; do not silently loosen, monkeypatch, fake a root/commit/image revision or mark old receipts as fresh.",
+    "Guard load-before-trap, direct require, dynamic import, source/lock/root metadata/dependency graph drift and missing server trace.",
+    "A3 full285source graph and A2 subset62both need truthful compatibility treatment; historical A1 oldlock stays excluded."
+  ]
+}
