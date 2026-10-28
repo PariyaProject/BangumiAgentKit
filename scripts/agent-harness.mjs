@@ -887,7 +887,7 @@ Usage: pnpm harness <command> [options]
   status --run <issue> [--pr <number>]
   continuation:show --run <issue> [--goal-state active|paused|blocked|complete]
   continuation:repack --run <issue> --expected-sequence <n> --expected-state-sha256 <sha256>
-  continuation:archive --run <issue> --expected-sequence <n> --expected-state-sha256 <sha256> [--plan]
+  continuation:archive --run <issue> --expected-sequence <n> --expected-state-sha256 <sha256> [--plan | --expected-inventory-sha256 <sha256>]
   renderer:baseline-check [--base <ref>]
   run:directive --run <issue> --expected-sequence <n> --action continue|pause|replan --source-ref <ref> --reason <text>
   run:checkpoint --run <issue> --expected-sequence <n> --evidence <json>
@@ -1132,6 +1132,7 @@ function commandContinuationArchive(options) {
   }, {
     expected: required(options, 'expected-state-sha256'),
     sequence: Number(required(options, 'expected-sequence')),
+    expectedInventory: options.plan === true ? undefined : required(options, 'expected-inventory-sha256'),
     planOnly: options.plan === true,
   }));
 }
@@ -1287,7 +1288,8 @@ function inspectDiscoveryCheck(options) {
       '--json',
       'number,title,body,state,url,createdAt,updatedAt,closedAt',
     ),
-  ).filter((issue) => issue.body?.includes(`<!-- ${RUN_MARKER}:start -->`));
+  ).filter((issue) => issue.body?.includes(`<!-- ${RUN_MARKER}:start -->`))
+    .map(issue => ({ ...issue, run: runStateFromView(issue) }));
   const openEpochPrs = JSON.parse(
     gh(
       'pr',

@@ -117,8 +117,14 @@ one writer, and prepare without mutations first:
       --expected-state-sha256 <run_state_sha256-from-show> --plan
 
 The observed app Goal state belongs in `continuation:show`; the example assumes
-it is active. `--plan` is a valueless flag. Omitting it executes the explicit
-migration with the same freshly observed sequence and complete state digest.
+it is active. `--plan` is a valueless flag. Its read-only result also returns
+`expected_inventory_sha256`, binding the inspected comments. Execute with that
+original plan digest in addition to the same fresh sequence/full state digest:
+
+    pnpm harness continuation:archive --run 95 --expected-sequence 87 \
+      --expected-state-sha256 <run_state_sha256-from-show> \
+      --expected-inventory-sha256 <expected_inventory_sha256-from-plan>
+
 The digest includes all unknown fields and existing segment metadata.
 
 The migration moves the earliest unarchived 16–64 events to one machine-only
@@ -158,7 +164,14 @@ engineering again.
 
 Before POST, the command inventories at most 32 pages of 100 comments with a
 shared 16 MiB response bound; oversized, malformed or unavailable inventory
-refuses. The transaction and complete body are deterministic for the exact
+refuses. A plan hashes every comment's id, author, Issue URL and exact body
+digest in stable id order. Apply requires that original inventory digest.
+The only permitted addition is its unique exact verified orphan: removing
+that comment must reproduce the inspected baseline. Any edited/replaced/new
+comment, even an orphan whose marker was entirely removed, refuses before
+another POST. An unreferenced nonmatching segment marker also prevents a new
+plan from silently treating an edited segment as an unrelated old comment.
+The transaction and complete body are deterministic for the exact
 input state and prefix. A unique identical verified orphan is reused, never
 posted twice; ambiguous or foreign matches refuse. State/Issue metadata are
 reread before comment creation and again before body PATCH. The new comment
@@ -171,7 +184,9 @@ inspect; never automatically retry or delete comments. Read `continuation:show`
 and inspect the same Issue's comment inventory. If PATCH already succeeded,
 the old expected digest refuses and the live full history is authoritative.
 If the old body remains and one exact orphan exists, an explicitly reconciled
-invocation with the original digest reuses it. Preserve an unresolved or edited
+invocation with the original state and inventory digests reuses it. Do not
+discard an uncertain attempt's original inventory digest or automatically
+refresh the plan to accept changed comments. Preserve an unresolved or edited
 orphan for investigation; do not treat it as a reason to create another Run or
 replay a Product/account operation.
 

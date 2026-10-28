@@ -288,8 +288,9 @@ test('segmented near-full Run migrates through actual CLI, appends88 once and re
       '--expected-state-sha256', canonicalHash(run)];
     const plan = environment.execute([...args, '--plan']);
     assert.equal(plan.status, 0, plan.stderr);
-    assert.equal(environment.readState().historyComments, undefined);
-    const migration = environment.execute(args);
+    assert.deepEqual(environment.readState().historyComments, []);
+    const applyArgs = [...args, '--expected-inventory-sha256', JSON.parse(plan.stdout).expected_inventory_sha256];
+    const migration = environment.execute(applyArgs);
     assert.equal(migration.status, 0, migration.stderr);
     const stored = environment.readState();
     assert.equal(stored.historyComments.length, 1);
@@ -300,7 +301,7 @@ test('segmented near-full Run migrates through actual CLI, appends88 once and re
     const withoutStorage = structuredClone(hydrated); delete withoutStorage.continuation.storage;
     assert.deepEqual(withoutStorage, run);
     assert.throws(() => parseControlBlock(stored.runBody, RUN_MARKER), /HISTORY_RESOLVER_REQUIRED/u);
-    assert.equal(environment.execute(args).status, 2);
+    assert.equal(environment.execute(applyArgs).status, 2);
     const brief = environment.execute(['continuation:show', '--run', '1', '--goal-state', 'active']);
     assert.equal(brief.status, 0, brief.stderr);
     assert.equal(JSON.parse(brief.stdout).sequence, 87);
@@ -325,6 +326,12 @@ test('segmented near-full Run migrates through actual CLI, appends88 once and re
     const denied = environment.execute(['continuation:show', '--run', '1']);
     assert.equal(denied.status, 2);
     assert.match(denied.stderr, /HISTORY_COMMENT_MISMATCH/u);
+    tampered.historyComments = [];
+    tampered.branch = 'master';
+    fs.writeFileSync(environment.statePath, JSON.stringify(tampered));
+    const discovery = environment.execute(['discovery:check']);
+    assert.notEqual(discovery.status, 0, 'discovery must hydrate open Run history before routing');
+    assert.match(discovery.stderr, /404 Not Found/u);
   } finally { environment.cleanup(); }
 });
 
@@ -334,7 +341,8 @@ test('actual CLI recovers an uncertain comment POST by reusing one pinned orphan
   const environment = createMockEnvironment({ runBody: renderRunBody(run), runIssueUrl: 'https://github.com/mock/repo/issues/1',
     historyIssueApiUrl: context.apiIssueUrl, loseHistoryPostResponse: true });
   try {
-    const args = ['continuation:archive', '--run', '1', '--expected-sequence', '87', '--expected-state-sha256', canonicalHash(run)];
+    const args = ['continuation:archive', '--run', '1', '--expected-sequence', '87', '--expected-state-sha256', canonicalHash(run),
+      '--expected-inventory-sha256', canonicalHash([])];
     const first = environment.execute(args);
     assert.equal(first.status, 2);
     assert.match(first.stderr, /HISTORY_COMMENT_WRITE_UNCERTAIN/u);

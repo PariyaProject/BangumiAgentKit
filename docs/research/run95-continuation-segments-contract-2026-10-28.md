@@ -43,7 +43,11 @@ using an old Harness or resetting review history are prohibited.
    the prefix and prove body fit before POST. Failed/uncertain writes stop;
    no automatic retry, deletion or rollback. A deterministic unique orphan
    can be explicitly reconciled and reused; ambiguous or foreign matches
-   refuse. Completed-but-uncertain PATCH refuses the stale input digest.
+   refuse. Bind apply to the plan's complete comment-inventory digest; only
+   removal of that unique exact orphan may reproduce the baseline. Edited
+   or unexpected inventory, including an orphan whose marker was removed,
+   refuses before POST. Preserve original plan digests across uncertainty.
+   Completed-but-uncertain PATCH refuses the stale input digest.
 6. Prove full logical equality, budgets/claims/latest continue, append after
    cold-prefix hydration, old formats, near-full actual mocked CLI and abuse/
    concurrency/uncertain-write paths. Independent Standards and Spec reviewers

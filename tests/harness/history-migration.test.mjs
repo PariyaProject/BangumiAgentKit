@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { archiveContinuationHistory } from '../../scripts/lib/harness-history-migration.mjs';
+import { archiveContinuationHistory, historyInventorySha } from '../../scripts/lib/harness-history-migration.mjs';
 import { canonicalHash } from '../../scripts/lib/frontier-ledger.mjs';
 import { parseControlBlock, renderRunBody, RUN_MARKER } from '../../scripts/lib/agent-harness-core.mjs';
 import { historyContext } from '../../scripts/lib/harness-history-segments.mjs';
@@ -29,7 +29,8 @@ function fixture(count = 87) {
     readComment: id => comments.find(comment => comment.id === id),
     writeRun: next => { calls.patch++; body = renderRunBody(next); },
   };
-  return { run, view, comments, calls, io, options: { expected: canonicalHash(run), sequence: count } };
+  return { run, view, comments, calls, io, options: { expected: canonicalHash(run), sequence: count,
+    expectedInventory: canonicalHash([]) } };
 }
 const code = expected => error => error.code === expected;
 
@@ -37,7 +38,8 @@ test('plan is read-only; migration preserves all87 events, directive83, claims, 
   const f = fixture();
   const plan = archiveContinuationHistory(f.io, { ...f.options, planOnly: true });
   assert.equal(plan.count, 64);
-  assert.deepEqual([f.calls.post, f.calls.patch, f.calls.inventory], [0, 0, 0]);
+  assert.deepEqual([f.calls.post, f.calls.patch, f.calls.inventory], [0, 0, 1]);
+  assert.equal(plan.expected_inventory_sha256, canonicalHash([]));
   const result = archiveContinuationHistory(f.io, f.options);
   assert.equal(result.state, 'CONTINUATION_HISTORY_ARCHIVED');
   const saved = f.io.readRun().state;
@@ -135,5 +137,37 @@ test('inventory errors and lost readback stop at the observed boundary with no a
   const f = fixture(); const read = f.io.readRun;
   f.io.readRun = () => { if (f.calls.reads === 3) throw Error('readback unavailable'); return read(); };
   assert.throws(() => archiveContinuationHistory(f.io, f.options), /readback unavailable/u);
+  assert.deepEqual([f.calls.post, f.calls.patch], [1, 1]);
+});
+
+test('edited orphan, even with its entire marker removed, refuses a second POST under the original plan', () => {
+  for (const body of ['newline', 'marker-removed']) {
+    const f = fixture(); const post = f.io.createComment;
+    f.io.createComment = content => { post(content); throw Error('lost response'); };
+    assert.throws(() => archiveContinuationHistory(f.io, f.options), code('HISTORY_COMMENT_WRITE_UNCERTAIN'));
+    f.io.createComment = post;
+    f.comments[0].body = body === 'newline' ? f.comments[0].body + '\n' : 'edited orphan';
+    assert.throws(() => archiveContinuationHistory(f.io, f.options),
+      code(body === 'newline' ? 'HISTORY_ORPHAN_UNRESOLVED' : 'HISTORY_INVENTORY_DRIFT'));
+    assert.deepEqual([f.calls.post, f.calls.patch], [1, 0]);
+  }
+});
+
+test('inventory digest pins existing comments, bounds identities and rejects unsolicited changes before POST', () => {
+  const f = fixture();
+  const comment = { id: 9, body: 'existing ordinary comment', user: { login: 'fixture-operator' },
+    issue_url: 'https://api.github.com/repos/example/repo/issues/95' };
+  f.comments.push(comment);
+  const plan = archiveContinuationHistory(f.io, { ...f.options, planOnly: true });
+  assert.notEqual(plan.expected_inventory_sha256, f.options.expectedInventory);
+  f.options.expectedInventory = plan.expected_inventory_sha256;
+  f.comments[0].body += ' edited';
+  assert.throws(() => archiveContinuationHistory(f.io, f.options), code('HISTORY_INVENTORY_DRIFT'));
+  assert.deepEqual([f.calls.post, f.calls.patch], [0, 0]);
+  const context = historyContext(f.view);
+  assert.throws(() => historyInventorySha([comment, comment], context), code('HISTORY_INVENTORY_INVALID'));
+  assert.throws(() => historyInventorySha([{ ...comment, issue_url: 'foreign' }], context), code('HISTORY_INVENTORY_INVALID'));
+  f.comments[0].body = 'existing ordinary comment';
+  archiveContinuationHistory(f.io, f.options);
   assert.deepEqual([f.calls.post, f.calls.patch], [1, 1]);
 });
