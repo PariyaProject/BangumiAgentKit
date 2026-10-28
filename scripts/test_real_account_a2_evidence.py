@@ -60,8 +60,7 @@ class RealAccountA2EvidenceTests(unittest.TestCase):
     def test_current_actual_checkout_accepts_only_the_compatible_list_call(self):
         with patch.object(legacy, '_git', wraps=self.original_git):
             catalog = json.loads((ROOT / 'docs/tool-catalog.json').read_text())
-            self.assertEqual(evidence.real_account_collection_sources(ROOT, catalog),
-                             {'bangumi.list_collections': {evidence.REFERENCE}})
+            self.assertEqual(evidence.real_account_collection_sources(ROOT, catalog), {})  # qs patch requires the separate sealed compatibility consumer
             self.assertEqual(legacy.real_account_read_sources(ROOT, catalog), {})
 
     original_git = staticmethod(legacy._git)

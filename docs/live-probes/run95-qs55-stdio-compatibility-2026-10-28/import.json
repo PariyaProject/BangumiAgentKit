@@ -1,0 +1,22 @@
+{
+  "evidenceFiles": {
+    "frozen-files.json": "c57ed77dd5f52a7addc2634e44d5864b27ac9828fb28c748ed1ec2d9edc866a4",
+    "native-proof.json": "7618c620e476fdbadb39c4a6d3624c376817ca51c04d1361b511ca90b638f7fb",
+    "root-package-runtime.json": "dd077a6140adfeb77f75575f4f20aa0b89617225477f66c0ed5655585cec38da",
+    "source-files.json": "cf4472d0d12e8093668116d455ea94a2c252447a79c8d2cc4f6a78df282ca59a"
+  },
+  "executedSourceRevision": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+  "kind": "old-execution-with-reviewed-source-compatibility",
+  "limits": [
+    "Eleven exact prior A2-A6 inputs only. Every account cell retains its old execution receipt and this compatibility reference.",
+    "Original53consumer/receiptbytes unchanged. Old strict consumers correctly reject the changed lock. HistoricalA1/get_my_profile/render_collection_progress remain excluded.",
+    "Fresh fake SQLite/fixture fetch/compiled MCP stdio/native VM+PNG only; controller AND server module hooks plus require/import/preloaded-child negatives. No real account/API/model/client action or spent-claim replay.",
+    "All285runtime files and modes, catalog, discovered SQL/assets and rootmetadata exact except the sealed qs-only lock and override; all7producer programmes byte-pinned in HEAD and on disk.",
+    "QA parent/patch-image inventory8667 entries only official qs payload plus3resolution symlinks differ. Original production2ec/cbd0 unchanged; QA overlay is not deployment.",
+    "No fresh execution, full HTTP/browser/OAuth/all-inputs/QQ/TIM/aesthetic/stability claim. All original partial/non-anime/unknown-cause limits remain."
+  ],
+  "patchedSourceBasisRevision": "c463fe62d1eee2bc87f99080bab2f7bc3579cc06",
+  "runtimeTreeSha256": "64ac0ffd093f003e0f0332c6a57b65038a1462b1bbc34cde73533c38996116b2",
+  "schema": "bgk-qs55-closed-stdio-source-compatibility/v1",
+  "trust": "Fixed reviewed operator observation, not cryptographic attestation or generic future dependency compatibility."
+}

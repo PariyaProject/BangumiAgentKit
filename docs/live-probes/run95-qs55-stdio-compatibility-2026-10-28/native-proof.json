@@ -1,0 +1,1014 @@
+{
+  "actualAccountActions": 0,
+  "clientMessages": 0,
+  "compiledParentRevision": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+  "containerNetwork": "none",
+  "containerRemoved": true,
+  "dockerfileSha256": "ee85411c5c07881d187ee70fcf99f58d64288029a41ba7d2df4dcc5cb1012cc0",
+  "fixtureRowsPerResponse": 1,
+  "generatedPrograms": {
+    "controller.mjs": "e2f19ff74e7721d16919200e8aeaf7daadb0581067046dc60647f7c08e8fe638",
+    "driver.mjs": "cc84d0b911acb05ae70a4c0a6c1aa3aea91d0e02dca770f7cc1004b0f6151d11",
+    "fixture.mjs": "a425e1ea399fbd7cbb456dbb037fc6da1be24c42f599c3acfddfd5051a4bfdb8",
+    "inputs.json": "ed0e95a7f551c9839a3dedfdce8a3c407f37a9028396c8cb25b7e499aba72c81",
+    "preloaded.cjs": "ca65cbe25f5ce02cc8a6624d90524f3119a5e97db766a51c018743437843a72e",
+    "trace.mjs": "18048b15f48082e53aed40830f5d376af0434e1188e6ae8b08f42d484efdadb4"
+  },
+  "imageDelta": {
+    "afterEntries": 8667,
+    "afterInventorySha256": "043fe59ceb9673890be4e088f1293823d27c3e2a423d95c251e6e4ba716cb48b",
+    "beforeEntries": 8667,
+    "beforeInventorySha256": "d217a59d8fb25efef6287ba4cd652be06fc54b448bec5a09a065d8472151f312",
+    "linksChanged": 3,
+    "onlyQsArtifactAndResolutionLinksChanged": true,
+    "publishedFiles": 20,
+    "runtimeDependenciesUnchanged": true,
+    "schema": "qs55-image-delta/v1"
+  },
+  "modelCalls": 0,
+  "originalParentPreserved": true,
+  "parentImageId": "sha256:cbd0f4c2b5b28c70295cf35211474c8898cbf33b143be8e8351554e91f010083",
+  "passed": true,
+  "patchedImageId": "sha256:7719288a95321047f10ed3b52b238b50368f006b295e9e75a94b07b2cd211b26",
+  "producerFiles": {
+    "scripts/acceptance/qs55-controller.mjs": "e2f19ff74e7721d16919200e8aeaf7daadb0581067046dc60647f7c08e8fe638",
+    "scripts/acceptance/qs55-driver.mjs": "cc84d0b911acb05ae70a4c0a6c1aa3aea91d0e02dca770f7cc1004b0f6151d11",
+    "scripts/acceptance/qs55-fixture.mjs": "a425e1ea399fbd7cbb456dbb037fc6da1be24c42f599c3acfddfd5051a4bfdb8",
+    "scripts/acceptance/qs55-image-overlay.mjs": "e6552cc89c03a999ebaa824c839c0dd10816fd3300f5e56822aeff04f5b67618",
+    "scripts/acceptance/qs55-preloaded.cjs": "ca65cbe25f5ce02cc8a6624d90524f3119a5e97db766a51c018743437843a72e",
+    "scripts/acceptance/qs55-trace.mjs": "18048b15f48082e53aed40830f5d376af0434e1188e6ae8b08f42d484efdadb4",
+    "scripts/acceptance/run-qs55-isolated-proof.py": "92d0a22b26d69001256308c20ca8201376d4e6a31b9f00adb9a0159c7009c75d"
+  },
+  "realDataMounts": 0,
+  "runs": [
+    {
+      "controller": {
+        "attempts": 0,
+        "cleanExit": true,
+        "finalCached": 0,
+        "finalized": true,
+        "hooksReady": true,
+        "initialCached": 0,
+        "role": "controller",
+        "schema": "qs55-module-trace/v1",
+        "started": true
+      },
+      "exitStatus": 0,
+      "mode": "normal",
+      "native": {
+        "clientMessages": 0,
+        "exactInputs": [
+          {
+            "input": {
+              "limit": 1,
+              "offset": 0,
+              "status": "doing",
+              "subjectType": "anime"
+            },
+            "name": "bangumi.list_collections"
+          },
+          {
+            "input": {
+              "maxItems": 2
+            },
+            "name": "bangumi.get_collection_intelligence"
+          },
+          {
+            "input": {
+              "maxItems": 2
+            },
+            "name": "bangumi.render_collection_intelligence"
+          },
+          {
+            "input": {
+              "maxEpisodesPerSubject": 1,
+              "maxItems": 1,
+              "maxSubjects": 1,
+              "sortBy": "source",
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_backlog"
+          },
+          {
+            "input": {
+              "maxEpisodesPerSubject": 1,
+              "maxItems": 1,
+              "maxSubjects": 1,
+              "sortBy": "source",
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_backlog"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxRows": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_schedule"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxRows": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_schedule"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxDurationMs": 30000,
+              "maxEpisodesPerSubject": 1,
+              "maxRows": 1,
+              "maxSubjects": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_dashboard"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxDurationMs": 30000,
+              "maxEpisodesPerSubject": 1,
+              "maxRows": 1,
+              "maxSubjects": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_dashboard"
+          },
+          {
+            "input": {
+              "maxEdges": 1,
+              "maxGroups": 1,
+              "maxItems": 1,
+              "maxRelationSubjects": 1,
+              "maxRelationsPerSubject": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_series_groups"
+          },
+          {
+            "input": {
+              "maxEdges": 1,
+              "maxGroups": 1,
+              "maxItems": 1,
+              "maxRelationSubjects": 1,
+              "maxRelationsPerSubject": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_series_groups"
+          }
+        ],
+        "failureStage": null,
+        "fakeStorage": true,
+        "mcpClosed": true,
+        "modelCalls": 0,
+        "passed": true,
+        "realAccountActions": 0,
+        "results": [
+          {
+            "name": "bangumi.list_collections",
+            "nativePngDecoded": false,
+            "ok": true
+          },
+          {
+            "name": "bangumi.get_collection_intelligence",
+            "nativePngDecoded": false,
+            "ok": true
+          },
+          {
+            "name": "bangumi.render_collection_intelligence",
+            "nativePngDecoded": true,
+            "ok": true
+          },
+          {
+            "name": "bangumi.get_collection_backlog",
+            "nativePngDecoded": false,
+            "ok": true
+          },
+          {
+            "name": "bangumi.render_collection_backlog",
+            "nativePngDecoded": true,
+            "ok": true
+          },
+          {
+            "name": "bangumi.get_collection_schedule",
+            "nativePngDecoded": false,
+            "ok": true
+          },
+          {
+            "name": "bangumi.render_collection_schedule",
+            "nativePngDecoded": true,
+            "ok": true
+          },
+          {
+            "name": "bangumi.get_collection_dashboard",
+            "nativePngDecoded": false,
+            "ok": true
+          },
+          {
+            "name": "bangumi.render_collection_dashboard",
+            "nativePngDecoded": true,
+            "ok": true
+          },
+          {
+            "name": "bangumi.get_collection_series_groups",
+            "nativePngDecoded": false,
+            "ok": true
+          },
+          {
+            "name": "bangumi.render_collection_series_groups",
+            "nativePngDecoded": true,
+            "ok": true
+          }
+        ],
+        "schema": "qs55-compiled-mcp/v1",
+        "workspaceRemoved": true
+      },
+      "passed": true,
+      "provider": {
+        "assetAttempts": 0,
+        "cacheWrites": 0,
+        "calls": [
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 0
+          },
+          {
+            "kind": "collections",
+            "limit": 2,
+            "step": 1
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 1
+          },
+          {
+            "kind": "collections",
+            "limit": 2,
+            "step": 2
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 2
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 3
+          },
+          {
+            "kind": "episodes",
+            "limit": 1,
+            "step": 3
+          },
+          {
+            "kind": "calendar",
+            "step": 3
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 4
+          },
+          {
+            "kind": "episodes",
+            "limit": 1,
+            "step": 4
+          },
+          {
+            "kind": "calendar",
+            "step": 4
+          },
+          {
+            "kind": "calendar",
+            "step": 5
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 5
+          },
+          {
+            "kind": "calendar",
+            "step": 6
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 6
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 7
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 7
+          },
+          {
+            "kind": "episodes",
+            "limit": 1,
+            "step": 7
+          },
+          {
+            "kind": "calendar",
+            "step": 7
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 7
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 8
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 8
+          },
+          {
+            "kind": "episodes",
+            "limit": 1,
+            "step": 8
+          },
+          {
+            "kind": "calendar",
+            "step": 8
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 8
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 9
+          },
+          {
+            "kind": "collections",
+            "limit": 1,
+            "step": 10
+          }
+        ],
+        "denied": 0,
+        "privateCacheDisabled": true,
+        "renderCalls": 5,
+        "schema": "qs55-fake-provider/v1"
+      },
+      "server": {
+        "attempts": 0,
+        "cleanExit": true,
+        "finalCached": 0,
+        "finalized": true,
+        "hooksReady": true,
+        "initialCached": 0,
+        "role": "server",
+        "schema": "qs55-module-trace/v1",
+        "started": true,
+        "termination": "SIGTERM"
+      },
+      "signal": null
+    },
+    {
+      "controller": {
+        "attempts": 0,
+        "cleanExit": false,
+        "finalCached": 0,
+        "finalized": true,
+        "hooksReady": true,
+        "initialCached": 0,
+        "role": "controller",
+        "schema": "qs55-module-trace/v1",
+        "started": true
+      },
+      "exitStatus": 1,
+      "mode": "require",
+      "native": {
+        "clientMessages": 0,
+        "exactInputs": [
+          {
+            "input": {
+              "limit": 1,
+              "offset": 0,
+              "status": "doing",
+              "subjectType": "anime"
+            },
+            "name": "bangumi.list_collections"
+          },
+          {
+            "input": {
+              "maxItems": 2
+            },
+            "name": "bangumi.get_collection_intelligence"
+          },
+          {
+            "input": {
+              "maxItems": 2
+            },
+            "name": "bangumi.render_collection_intelligence"
+          },
+          {
+            "input": {
+              "maxEpisodesPerSubject": 1,
+              "maxItems": 1,
+              "maxSubjects": 1,
+              "sortBy": "source",
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_backlog"
+          },
+          {
+            "input": {
+              "maxEpisodesPerSubject": 1,
+              "maxItems": 1,
+              "maxSubjects": 1,
+              "sortBy": "source",
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_backlog"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxRows": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_schedule"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxRows": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_schedule"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxDurationMs": 30000,
+              "maxEpisodesPerSubject": 1,
+              "maxRows": 1,
+              "maxSubjects": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_dashboard"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxDurationMs": 30000,
+              "maxEpisodesPerSubject": 1,
+              "maxRows": 1,
+              "maxSubjects": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_dashboard"
+          },
+          {
+            "input": {
+              "maxEdges": 1,
+              "maxGroups": 1,
+              "maxItems": 1,
+              "maxRelationSubjects": 1,
+              "maxRelationsPerSubject": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_series_groups"
+          },
+          {
+            "input": {
+              "maxEdges": 1,
+              "maxGroups": 1,
+              "maxItems": 1,
+              "maxRelationSubjects": 1,
+              "maxRelationsPerSubject": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_series_groups"
+          }
+        ],
+        "failureCode": "MCP_OR_RUNTIME",
+        "failureStage": "connect",
+        "fakeStorage": true,
+        "mcpClosed": true,
+        "modelCalls": 0,
+        "passed": false,
+        "realAccountActions": 0,
+        "results": [],
+        "schema": "qs55-compiled-mcp/v1",
+        "workspaceRemoved": true
+      },
+      "passed": true,
+      "provider": null,
+      "server": {
+        "attempts": 1,
+        "cleanExit": false,
+        "finalCached": 0,
+        "finalized": true,
+        "hooksReady": true,
+        "initialCached": 0,
+        "role": "server",
+        "schema": "qs55-module-trace/v1",
+        "started": true
+      },
+      "signal": null
+    },
+    {
+      "controller": {
+        "attempts": 0,
+        "cleanExit": false,
+        "finalCached": 0,
+        "finalized": true,
+        "hooksReady": true,
+        "initialCached": 0,
+        "role": "controller",
+        "schema": "qs55-module-trace/v1",
+        "started": true
+      },
+      "exitStatus": 1,
+      "mode": "import",
+      "native": {
+        "clientMessages": 0,
+        "exactInputs": [
+          {
+            "input": {
+              "limit": 1,
+              "offset": 0,
+              "status": "doing",
+              "subjectType": "anime"
+            },
+            "name": "bangumi.list_collections"
+          },
+          {
+            "input": {
+              "maxItems": 2
+            },
+            "name": "bangumi.get_collection_intelligence"
+          },
+          {
+            "input": {
+              "maxItems": 2
+            },
+            "name": "bangumi.render_collection_intelligence"
+          },
+          {
+            "input": {
+              "maxEpisodesPerSubject": 1,
+              "maxItems": 1,
+              "maxSubjects": 1,
+              "sortBy": "source",
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_backlog"
+          },
+          {
+            "input": {
+              "maxEpisodesPerSubject": 1,
+              "maxItems": 1,
+              "maxSubjects": 1,
+              "sortBy": "source",
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_backlog"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxRows": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_schedule"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxRows": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_schedule"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxDurationMs": 30000,
+              "maxEpisodesPerSubject": 1,
+              "maxRows": 1,
+              "maxSubjects": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_dashboard"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxDurationMs": 30000,
+              "maxEpisodesPerSubject": 1,
+              "maxRows": 1,
+              "maxSubjects": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_dashboard"
+          },
+          {
+            "input": {
+              "maxEdges": 1,
+              "maxGroups": 1,
+              "maxItems": 1,
+              "maxRelationSubjects": 1,
+              "maxRelationsPerSubject": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_series_groups"
+          },
+          {
+            "input": {
+              "maxEdges": 1,
+              "maxGroups": 1,
+              "maxItems": 1,
+              "maxRelationSubjects": 1,
+              "maxRelationsPerSubject": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_series_groups"
+          }
+        ],
+        "failureCode": "MCP_OR_RUNTIME",
+        "failureStage": "connect",
+        "fakeStorage": true,
+        "mcpClosed": true,
+        "modelCalls": 0,
+        "passed": false,
+        "realAccountActions": 0,
+        "results": [],
+        "schema": "qs55-compiled-mcp/v1",
+        "workspaceRemoved": true
+      },
+      "passed": true,
+      "provider": null,
+      "server": {
+        "attempts": 1,
+        "cleanExit": false,
+        "finalCached": 0,
+        "finalized": true,
+        "hooksReady": true,
+        "initialCached": 0,
+        "role": "server",
+        "schema": "qs55-module-trace/v1",
+        "started": true
+      },
+      "signal": null
+    },
+    {
+      "controller": {
+        "attempts": 0,
+        "cleanExit": false,
+        "finalCached": 0,
+        "finalized": true,
+        "hooksReady": true,
+        "initialCached": 0,
+        "role": "controller",
+        "schema": "qs55-module-trace/v1",
+        "started": true
+      },
+      "exitStatus": 1,
+      "mode": "preloaded",
+      "native": {
+        "clientMessages": 0,
+        "exactInputs": [
+          {
+            "input": {
+              "limit": 1,
+              "offset": 0,
+              "status": "doing",
+              "subjectType": "anime"
+            },
+            "name": "bangumi.list_collections"
+          },
+          {
+            "input": {
+              "maxItems": 2
+            },
+            "name": "bangumi.get_collection_intelligence"
+          },
+          {
+            "input": {
+              "maxItems": 2
+            },
+            "name": "bangumi.render_collection_intelligence"
+          },
+          {
+            "input": {
+              "maxEpisodesPerSubject": 1,
+              "maxItems": 1,
+              "maxSubjects": 1,
+              "sortBy": "source",
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_backlog"
+          },
+          {
+            "input": {
+              "maxEpisodesPerSubject": 1,
+              "maxItems": 1,
+              "maxSubjects": 1,
+              "sortBy": "source",
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_backlog"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxRows": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_schedule"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxRows": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_schedule"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxDurationMs": 30000,
+              "maxEpisodesPerSubject": 1,
+              "maxRows": 1,
+              "maxSubjects": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_dashboard"
+          },
+          {
+            "input": {
+              "maxCollectionItems": 1,
+              "maxDurationMs": 30000,
+              "maxEpisodesPerSubject": 1,
+              "maxRows": 1,
+              "maxSubjects": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_dashboard"
+          },
+          {
+            "input": {
+              "maxEdges": 1,
+              "maxGroups": 1,
+              "maxItems": 1,
+              "maxRelationSubjects": 1,
+              "maxRelationsPerSubject": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.get_collection_series_groups"
+          },
+          {
+            "input": {
+              "maxEdges": 1,
+              "maxGroups": 1,
+              "maxItems": 1,
+              "maxRelationSubjects": 1,
+              "maxRelationsPerSubject": 1,
+              "statuses": [
+                "wish",
+                "doing",
+                "done",
+                "on_hold",
+                "dropped"
+              ]
+            },
+            "name": "bangumi.render_collection_series_groups"
+          }
+        ],
+        "failureCode": "MCP_OR_RUNTIME",
+        "failureStage": "connect",
+        "fakeStorage": true,
+        "mcpClosed": true,
+        "modelCalls": 0,
+        "passed": false,
+        "realAccountActions": 0,
+        "results": [],
+        "schema": "qs55-compiled-mcp/v1",
+        "workspaceRemoved": true
+      },
+      "passed": true,
+      "provider": null,
+      "server": {
+        "attempts": 0,
+        "cleanExit": false,
+        "finalCached": null,
+        "finalized": false,
+        "hooksReady": false,
+        "initialCached": 5,
+        "role": "server",
+        "schema": "qs55-module-trace/v1",
+        "started": true
+      },
+      "signal": null
+    }
+  ],
+  "schema": "qs55-isolated-compiled-proof/v1",
+  "sourceBasisRevision": "c463fe62d1eee2bc87f99080bab2f7bc3579cc06",
+  "version": "6.16.1"
+}
