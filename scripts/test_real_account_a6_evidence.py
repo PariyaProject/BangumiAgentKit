@@ -15,6 +15,7 @@ from acceptance import real_account_a6_evidence as evidence
 from acceptance import real_account_a3_evidence as a3
 from acceptance import real_account_a4_evidence as a4
 from acceptance import real_account_a5_evidence as a5
+from acceptance import real_account_a7_evidence as a7
 from acceptance import real_account_read_evidence as union
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -91,7 +92,7 @@ class RealAccountA6EvidenceTests(unittest.TestCase):
     def test_actual_current_checkout_union_preserves_existing_list_and_old_a1_limits(self):
         with patch.object(legacy, '_git', wraps=ORIGINAL_GIT):
             catalog = json.loads((ROOT / 'docs/tool-catalog.json').read_text())
-            self.assertEqual(set(union.real_account_read_sources(ROOT, catalog)), {*evidence.TOOLS, *a3.TOOLS, *a4.TOOLS, *a5.TOOLS, a2.TOOL})
+            self.assertEqual(set(union.real_account_read_sources(ROOT, catalog)), {*evidence.TOOLS, *a3.TOOLS, *a4.TOOLS, *a5.TOOLS, a2.TOOL, a7.TOOL})
             self.assertEqual(legacy.real_account_read_sources(ROOT, catalog), {})
             self.assertEqual(a2.real_account_collection_sources(ROOT, catalog), {})  # strict old lock; additive union checked above
 

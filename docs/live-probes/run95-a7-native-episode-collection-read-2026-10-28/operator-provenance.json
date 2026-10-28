@@ -1,0 +1,115 @@
+{
+  "applicationFiles": {
+    "config/agent/bangumi-profile.json": {
+      "gitBlob": "2ff74ccc566f7b6472f90a6477a3e0ac15793cb9",
+      "sha256": "7d5c78488c2b80616426086fcc446dce95d46b9c4e2082283106274ab5909b6e"
+    },
+    "config/agent/mcp_config.standard-full.json": {
+      "gitBlob": "39ed3cfec7b6786a4f52afa9a34f9bd3c9829c5a",
+      "sha256": "c7ed6f123ecdfa46a8a10df2ab43fc2b61a6c2d1f2ca5a17d62d7de15764ad10"
+    },
+    "config/agent/settings.standard-full.json": {
+      "gitBlob": "0daa346cea842b1ca17a20337625b0746f355432",
+      "sha256": "19fe7b64b96fd37cebeaa97002c6a9ef7db1d9ef82fc2d91d431bfcdf7bad6c4"
+    },
+    "config/bangumi-poc/standard-full-mcp.lock.json": {
+      "gitBlob": "cecbd6c5d390f66236a29bba0d9bcde57dc40656",
+      "sha256": "b0770bc09a091a5d0c5d72ff3955ddecfd24365304d51c0639718130ce805ef5"
+    },
+    "config/bangumi-poc/standard-full-profile.json": {
+      "gitBlob": "18b1692c2aec364faa3acb6b91507faadfc36b20",
+      "sha256": "d6343fa41174025ec6651d8a39cb206b390335e7386d4915085c506bef918390"
+    },
+    "pariya_runtime/acceptance_supervisor.py": {
+      "gitBlob": "6e9ec037a919bc7d8fc0819ef0bcf8bc4363d95f",
+      "sha256": "d1c9c1d8292aaef32ddb3c2c6174141ddaa02551916d24d3b607437d685f863e"
+    },
+    "pariya_runtime/bangumi_source.py": {
+      "gitBlob": "e233c9ff7efedd38bc29d9665b2b08d2d2a4a43d",
+      "sha256": "7af992f02d36d042e78aa5e73085b6610db20c1e8750bf5a6045cace70844f0f"
+    },
+    "pariya_runtime/bound_account_read.py": {
+      "gitBlob": "453fce20bce4257e4aa1ba6d4094ecb0d98fb42c",
+      "sha256": "b750c66bd4be45f4884b8038bee98fde0fce6894a75068ce1c34cc532a826e06"
+    },
+    "pariya_runtime/docker.py": {
+      "gitBlob": "9ac0ae031100937094740f9cea03a065901f0a85",
+      "sha256": "c0e6e237aff23a66c5d7662c194218c2a04e14244eba53b82b7cf5dd706cc723"
+    },
+    "pariya_runtime/episode_collections_claim.py": {
+      "gitBlob": "24c2ea4371296cc8445eee5d2e7e227fda77860f",
+      "sha256": "aef7a484790a1590976139a81de51124857d664c6388a68d67e7be48c80e3bfb"
+    },
+    "pariya_runtime/episode_collections_governance.py": {
+      "gitBlob": "edf1c2d935bc1ccb97713a52d537e9ce3a5f52df",
+      "sha256": "72ea641bee783cf7f8e3488b844f795463f4d76dbf7d648077f625e81143b075"
+    },
+    "pariya_runtime/episode_collections_host.py": {
+      "gitBlob": "24a178ef1a4729da8154fb16f0d3d6455a5ac99a",
+      "sha256": "98af9a22e2561bf253851777cc22881bcbb46068c23aecf0aef508f74b34783f"
+    },
+    "pariya_runtime/private_batch_claim.py": {
+      "gitBlob": "7de9a82e56c177dfc07f6fbb469ca193553bad5d",
+      "sha256": "982d80a8ae9d0c3ba338ceb8d7601426bc601ef5cf326c765372ba3fa9050587"
+    },
+    "pariya_runtime/private_batch_workload.py": {
+      "gitBlob": "96fcf81e8c6389390697c19906ae47bcdaa70195",
+      "sha256": "7d256fb6a5db43474d5a8e65a11f4096a9c8195dad4f6fb5aa9cfcb0202c5702"
+    },
+    "pariya_runtime/process.py": {
+      "gitBlob": "70580bde47d7d1a476ec4d2998c7d60fead25187",
+      "sha256": "8f465f48a67aabf5541ed29f6f9f9820b736c2517854c3a5a18a092c297a0b9d"
+    },
+    "plugins/astrbot_plugin_pariya/qq_policy.py": {
+      "gitBlob": "33ecc88ccbef6ead5c0038d230342467eaf00bf4",
+      "sha256": "bee39874616e9229733be75b87be95e72b925b688e7a8d1244557e85e9e417b0"
+    },
+    "scripts/acceptance/episode-collections-entry.cjs": {
+      "gitBlob": "eb78758d7f749f7a866a954e12d5a5d05aefab2f",
+      "sha256": "012f126c5bd371a362b402f44ae2c30dc68558d78294f6e37e4ca1945e42faad"
+    },
+    "scripts/acceptance/episode-collections-guard.cjs": {
+      "gitBlob": "1ce5a70b66df2eafbf335ef30839ccb5851690d5",
+      "sha256": "5e46ed743ef9fb1c6d9e62a77eee7329fdf8771af5fc70b718470565e447828a"
+    },
+    "scripts/episode-collections.py": {
+      "gitBlob": "7591b292814269105dfa6e80a0ddef9e704b61ef",
+      "sha256": "88f8b6e3eea9fd1b95159435786bfdb0e8b19ef238586f5b3003fbc537168fca"
+    },
+    "scripts/verify-episode-collections-host.py": {
+      "gitBlob": "ad2139b33dee17017f4e1f9fedcf225081450893",
+      "sha256": "58f6a181489e591abbad4f07b25a2a90101b11ea740c68b34925bd51669decba"
+    },
+    "scripts/verify-standard-full-image.py": {
+      "gitBlob": "7cf3ee654cd8b8517d89e2d07231c03a4aef4e14",
+      "sha256": "c5758317236dc42cf5e026fdc850b161133741b26e5d9a18207ed6fc7c65c828"
+    }
+  },
+  "configuredEffort": "xhigh",
+  "configuredModel": "gpt-6.1-sol",
+  "executedApplicationCommit": "47ac6566d9fedba248ec10681c0fc1422f57db9f",
+  "executedRuntimeRevision": "bfe1229d03edac0c7e218f442b2d746254cb4c4c",
+  "executionInterpreter": "original-release-venv-python3.14.6",
+  "finalOperationReviewRound": 3,
+  "governanceCommit": "6cd3d150719ae0e1851925330b20b15b16e57fbc",
+  "operationInputHashes": {
+    "OPERATION_SPEC.md": "d06de85b39df33c98e26eef44a06a092b5138b8ee3f98e72a7c2d74153dab01f",
+    "a7_maintenance.py": "cd789b0a3e5ddf6d15709cf0ca7b9be4292b06388e24f5e34853093c1cae864a",
+    "read_postconditions.py": "34a6c787e558b25c193045fb1144a959a1e1d31e4f8ea4a7b1e65d7d97531a16",
+    "test_a7_maintenance.py": "16108c1c79a0f3454c71414d39e614192110b578d62968dbee2b1665feda6066"
+  },
+  "operatorTests": 72,
+  "privateMaintenanceOperatorSha256": "cd789b0a3e5ddf6d15709cf0ca7b9be4292b06388e24f5e34853093c1cae864a",
+  "privateMaintenancePlanSha256": "1375a026e9ee1a49e6176aced55f80a56b9976ea0342a67233edfbf7651c545c",
+  "privatePayloadIncluded": false,
+  "provenanceKind": "explicit-reviewed-operator-anchor-not-signature",
+  "readbackSha256": "34a6c787e558b25c193045fb1144a959a1e1d31e4f8ea4a7b1e65d7d97531a16",
+  "reviewerIds": [
+    "/root/a7_source_standards",
+    "/root/a7_source_spec"
+  ],
+  "schema": "run95-a7-reviewed-operator-provenance/v1",
+  "specFindings": 0,
+  "sqliteVersion": "3.53.2",
+  "standardsFindings": 0
+}

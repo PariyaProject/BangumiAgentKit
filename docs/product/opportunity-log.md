@@ -127,7 +127,7 @@ Selection evidence:
 
 ## OP-009 Collection Intelligence
 
-The qs6.16.1 source patch preserves the existing11boundedA2–A6 account observations only through [separate sealed stdio compatibility](qs55-account-source-compatibility.md), with old execution and new compatibility references in every retained cell. All53oldreceipt/consumerbytes remain exact; freshfake/network-none QA is not new account execution. Production remains2ec/cbd0;22account cells, client/write/fullOAuth/aesthetic/stability evidence remain pending and OP009 stays PARTIAL.
+The eleven bounded A2–A6 observations retain their original execution and [sealed qs55 stdio compatibility](qs55-account-source-compatibility.md) references. The fixed [A7 native episode read](real-account-a7-episode-evidence.md) adds only get_episode_collections: two native GETs, one selected anime and one episode row, original partial state, no new selection credit. Current account evidence is12/33 with21pending; all53oldreceipt/consumerbytes remain exact. The actual runtime isbfe/9c07 with original Pariya7e3 interpreter; A7 host source is47ac. Allseven claims are permanently spent. Client/write/fullOAuth/aesthetic/stability evidence remains separate and OP009 stays PARTIAL.
 
 Status:
 SELECTED_IN_HARNESS_V3_EPOCH / COLLECTION-INTELLIGENCE-V1

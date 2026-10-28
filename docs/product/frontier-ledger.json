@@ -4490,9 +4490,13 @@
         "scripts/test_qs55_account_compatibility.py",
         "docs/live-probes/run95-qs55-stdio-compatibility-2026-10-28/import.json",
         "docs/product/qs55-account-source-compatibility.md",
-        "docs/research/run95-qs55-security-compatibility-contract-2026-10-28/artifact-review.json"
+        "docs/research/run95-qs55-security-compatibility-contract-2026-10-28/artifact-review.json",
+        "scripts/acceptance/real_account_a7_evidence.py",
+        "scripts/test_real_account_a7_evidence.py",
+        "docs/live-probes/run95-a7-native-episode-collection-read-2026-10-28/import.json",
+        "docs/product/real-account-a7-episode-evidence.md"
       ],
-      "next_action": "Current-source account evidence11/33 (22pending): previous9 plus fixed A6 get/render_collection_series_groups. A6actual2collectionGET/0relations/0assets/one collectionrow each/one privatePNGSharpdecodedandcleaned. Both sampledrows non-anime,0eligible/groups/grouped/ungrouped/unresolved/edges/conflicts; originalpartial/truncated/notexhausted. No actualanimegrouping/realrelation/fullcollectiongraph/watchorder claim or rerun for richer sample. A1-A6 claims permanentlyspent;allfive predecessorrawbytes preserved/originalservices restored/model945unchanged. Fixed reviewed operator anchor pins285runtime/21hostfiles;oldA1-A5consumers/bundlesbyteunchanged. Import fixedsanitizedtrackedreceipts+Git/source only,no runtime/key/provider/model/client. Standing similar reviewedboundedreadonly authority persists within approved envelope,expandedscopeneedsconfirmation. KeepOP009PARTIAL;other22account/write/fullOAuth/client/stability/aesthetic observations remainunproven;original96Goalunfinished. qs55sourcepatch:onlyexisting11A2-A6inputs retain oldexecution+sealedcompatibility refs afteractualcompiledMCPcontroller/servernonloading and3forced-load negatives;53oldbytesand285graph pinned,5nativefakePNGs cleaned/networknone/0realdata. No newaccountcell/replay/productionpromotion or HTTP/allinputs equivalence;nextdifferentreviewedaccountpath remains pending.",
+      "next_action": "Current-source account12/33,21pending: eleven priorA2-A6 observations retain oldexecution+sealedqs55compatibility refs; A7adds ONLYget_episode_collections through fixed completed native2GET/selection1episode1/known1unknown0/rawsubjectbindingtrue/partial/0assetsPNG-writes-refresh-model-client. Selection earns no extra list credit. Allsevenclaims permanentlyspent;originalsixrawbytes/exact3jobs/Runner7e3cwd/samehealthyNapCatAstrBot/model945 preserved by independent immediate readback. Fixed operatoranchor6391caf6 pins actualbfe/47ac/9c07/current7e3Py3.14.6SQLite3.53.2/21hostfiles/285runtime;53oldfiles andoldconsumer predicates exact. Import source/Git/fixedsanitizedreceipts only,no runtime/key/provider/newaccountcalls. KeepOP009PARTIAL;21account/write/fullOAuth/client/stability/aesthetic observations remainunproven and96Goalunfinished. Matchingfutureboundedreadonlystandingauthority persists;no spentclaimreplay.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },

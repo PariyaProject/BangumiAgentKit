@@ -24,6 +24,8 @@ const REAL_A5_REPORT_PATH = REAL_A5_BUNDLE + '/a5-result.json';
 const REAL_A5_TOOLS = ['bangumi.get_collection_dashboard', 'bangumi.render_collection_dashboard'];
 const REAL_A6_BUNDLE = 'docs/live-probes/run95-a6-series-and-private-png-2026-10-28';
 const REAL_A6_REPORT_PATH = REAL_A6_BUNDLE + '/a6-result.json';
+const REAL_A7_BUNDLE = 'docs/live-probes/run95-a7-native-episode-collection-read-2026-10-28';
+const REAL_A7_REPORT_PATH = REAL_A7_BUNDLE + '/a7-result.json';
 const QS55_COMPAT_REFERENCE =
   'docs/live-probes/run95-qs55-stdio-compatibility-2026-10-28/import.json';
 const REAL_A6_TOOLS = [
@@ -36,6 +38,7 @@ const REAL_CURRENT_ACCOUNT_TOOLS = [
   'bangumi.get_collection_intelligence',
   'bangumi.get_collection_schedule',
   'bangumi.get_collection_series_groups',
+  'bangumi.get_episode_collections',
   'bangumi.list_collections',
   'bangumi.render_collection_backlog',
   'bangumi.render_collection_dashboard',
@@ -143,6 +146,10 @@ function hasExactMatrixReportReference(cell: unknown, expectedPath: string): boo
 }
 
 function expectAccountAuthCell(toolName: string, cell: unknown): void {
+  if (toolName === 'bangumi.get_episode_collections') {
+    expect(cell).toBe(`✅<br>\`${REAL_A7_REPORT_PATH}\``);
+    return;
+  }
   const liveReference =
     toolName === 'bangumi.list_collections'
       ? REAL_A2_REPORT_PATH
@@ -1810,7 +1817,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(cells[10]).toBe('⬜');
       expect(cells[11]).toBe('⬜');
     }
-    expect(TABLE).toContain('11/33；待补 22');
+    expect(TABLE).toContain('12/33；待补 21');
   });
 
   it('credits only the successful collection selection from the failed and spent A2 batch', () => {
@@ -1859,7 +1866,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A2_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('11/33；待补 22');
+    expect(TABLE).toContain('12/33；待补 21');
   });
 
   it('credits only the completed bounded A3 overview and private PNG with partial sample limits', () => {
@@ -1939,7 +1946,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A3_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('11/33；待补 22');
+    expect(TABLE).toContain('12/33；待补 21');
   });
 
   it('admits only four actual A4 backlog/schedule tools with conflict and partial limits', () => {
@@ -2021,7 +2028,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A4_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('11/33；待补 22');
+    expect(TABLE).toContain('12/33；待补 21');
   });
 
   it('admits only the completed A5 pair while preserving composite partial and conflict exclusion', () => {
@@ -2116,7 +2123,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A5_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('11/33；待补 22');
+    expect(TABLE).toContain('12/33；待补 21');
   });
 
   it('admits only the completed A6 non-anime partial sample without real relation or grouping credit', () => {
@@ -2234,7 +2241,104 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       for (const index of [6, 7, 9, 10, 11])
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A6_REPORT_PATH);
     }
-    expect(TABLE).toContain('11/33；待补 22');
+    expect(TABLE).toContain('12/33；待补 21');
+  });
+
+  it('admits only the fixed native A7 partial episode page without recrediting selection', () => {
+    const report = JSON.parse(readFileSync(join(ROOT, REAL_A7_REPORT_PATH), 'utf8'));
+    expect(report).toMatchObject({
+      passed: true,
+      phase: 'COMPLETE',
+      servicesRestored: true,
+      hostApplication: '47ac6566d9fedba248ec10681c0fc1422f57db9f',
+      runnerRelease: '7e3d10a93192fbc986441eccc8145122e5d2a696',
+      modelRunsBefore: 945,
+      modelRunsAfter: 945,
+      runningModelsAfter: 0,
+      pendingMessagesAfter: 0,
+      batch: {
+        executionKind: 'live',
+        sourceRevision: 'bfe1229d03edac0c7e218f442b2d746254cb4c4c',
+        imageId: 'sha256:9c0784bff3ef39fa5c30639f07e3b86b4be634c2cecf854679e9920f9517014a',
+        passed: true,
+        toolCallsAttempted: 2,
+        toolCallsSucceeded: 2,
+        apiRequests: 2,
+        selectionRows: 1,
+        episodeRows: 1,
+        targetReadValidated: true,
+        coverRequests: 0,
+        imageCalls: 0,
+        modelCalls: 0,
+        clientActions: 0,
+        claimFinalized: true,
+        cleanupConfirmed: true,
+        diagnostic: {
+          guardPhase: 'complete',
+          targetState: 'partial',
+          knownStatusRows: 1,
+          unknownStatusRows: 0,
+          rowSubjectBinding: true,
+          mcpClosed: true,
+          bootstrapRemoved: true,
+        },
+      },
+    });
+    const manifest = JSON.parse(readFileSync(join(ROOT, REAL_A7_BUNDLE, 'import.json'), 'utf8'));
+    expect(manifest.admittedTools).toEqual([
+      {
+        name: 'bangumi.get_episode_collections',
+        input: {
+          subjectId: 'sole-validated-selection-in-memory',
+          episodeType: 0,
+          limit: 1,
+          offset: 0,
+        },
+      },
+    ]);
+    expect(manifest.selectionOnly).toEqual({
+      name: 'bangumi.list_collections',
+      input: { subjectType: 'anime', status: 'doing', limit: 1, offset: 0 },
+      additionalCredit: false,
+    });
+    expect(manifest.originCheckpoint).toMatchObject({
+      run: 95,
+      sequence: 93,
+      sha256: '446ff74ae09841bec80130858d08b4c0bf0bfc354da453993c148bfd1be70837',
+    });
+    const rawClaim = readFileSync(join(ROOT, REAL_A7_BUNDLE, 'durable-a7-claim.json'));
+    expect(createHash('sha256').update(rawClaim).digest('hex')).toBe(
+      '416391e8b1127602562bccfe8a0b803f898b5856fa98926055e13728400b627a',
+    );
+    expect(JSON.parse(rawClaim.toString())).toMatchObject({ state: 'COMPLETE' });
+    const post = JSON.parse(
+      readFileSync(join(ROOT, REAL_A7_BUNDLE, 'postconditions.json'), 'utf8'),
+    );
+    expect(post).toMatchObject({
+      passed: true,
+      protectedA1A2A3A4A5A6ClaimBytesPreserved: true,
+      runnerProcessCwdMatchesRelease: true,
+      napcatSameProcess: true,
+      astrbotSameContainer: true,
+      containersHealthyAndUnpaused: true,
+      gatewayReady: true,
+      noOrphanOrFence: true,
+      a7ClaimState: 'COMPLETE',
+      modelRunsBefore: 945,
+      modelRunsAfter: 945,
+      runningModels: 0,
+      pendingMessages: 0,
+      privatePngsRetained: false,
+      bangumiApiRequestsDuringReadback: 0,
+    });
+    for (const [name, cells] of rowsByTool()) {
+      expect(reportReferencesInMatrixCell(cells[8]).includes(REAL_A7_REPORT_PATH)).toBe(
+        name === 'bangumi.get_episode_collections',
+      );
+      for (const index of [6, 7, 9, 10, 11])
+        expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A7_REPORT_PATH);
+    }
+    expect(TABLE).toContain('12/33；待补 21');
   });
 
   it('accepts synthetic authenticated-read and render evidence without implying real account auth', () => {
