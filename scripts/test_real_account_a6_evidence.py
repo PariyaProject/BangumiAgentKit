@@ -32,8 +32,12 @@ class RealAccountA6EvidenceTests(unittest.TestCase):
         for name in self.sources:
             target = self.root / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, target)
-        shutil.copyfile(ROOT / 'package.json', self.root / 'package.json')
+            # Frozen consumer fixtures retain their actually executed lock.
+            if name == 'pnpm-lock.yaml':
+                target.write_bytes(subprocess.check_output(['git', '-C', str(ROOT), 'show', evidence.SOURCE_REVISION + ':' + name], timeout=10))
+            else:
+                shutil.copyfile(ROOT / name, target)
+        (self.root / 'package.json').write_bytes(subprocess.check_output(['git', '-C', str(ROOT), 'show', evidence.SOURCE_REVISION + ':package.json'], timeout=10))
         self.catalog = json.loads((self.root / 'docs/tool-catalog.json').read_text())
         self.tree = ORIGINAL_GIT(ROOT, 'ls-tree', '-r', evidence.SOURCE_REVISION, '--', *evidence.RUNTIME_PATHS)
         self.head_package = json.loads((self.root / 'package.json').read_text())
@@ -89,7 +93,7 @@ class RealAccountA6EvidenceTests(unittest.TestCase):
             catalog = json.loads((ROOT / 'docs/tool-catalog.json').read_text())
             self.assertEqual(set(union.real_account_read_sources(ROOT, catalog)), {*evidence.TOOLS, *a3.TOOLS, *a4.TOOLS, *a5.TOOLS, a2.TOOL})
             self.assertEqual(legacy.real_account_read_sources(ROOT, catalog), {})
-            self.assertEqual(a2.real_account_collection_sources(ROOT, catalog), {a2.TOOL: {a2.REFERENCE}})
+            self.assertEqual(a2.real_account_collection_sources(ROOT, catalog), {})  # strict old lock; additive union checked above
 
     def test_every_evidence_file_is_pinned(self):
         for name in json.loads((self.bundle / 'import.json').read_text())['evidenceFiles']:

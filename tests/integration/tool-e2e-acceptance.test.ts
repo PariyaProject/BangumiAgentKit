@@ -24,6 +24,8 @@ const REAL_A5_REPORT_PATH = REAL_A5_BUNDLE + '/a5-result.json';
 const REAL_A5_TOOLS = ['bangumi.get_collection_dashboard', 'bangumi.render_collection_dashboard'];
 const REAL_A6_BUNDLE = 'docs/live-probes/run95-a6-series-and-private-png-2026-10-28';
 const REAL_A6_REPORT_PATH = REAL_A6_BUNDLE + '/a6-result.json';
+const QS55_COMPAT_REFERENCE =
+  'docs/live-probes/run95-qs55-stdio-compatibility-2026-10-28/import.json';
 const REAL_A6_TOOLS = [
   'bangumi.get_collection_series_groups',
   'bangumi.render_collection_series_groups',
@@ -155,7 +157,14 @@ function expectAccountAuthCell(toolName: string, cell: unknown): void {
             : REAL_A6_TOOLS.includes(toolName)
               ? REAL_A6_REPORT_PATH
               : undefined;
-  if (liveReference !== undefined) expect(cell).toBe(`✅<br>\`${liveReference}\``);
+  if (liveReference !== undefined)
+    expect(cell).toBe(
+      '✅<br>' +
+        [liveReference, QS55_COMPAT_REFERENCE]
+          .sort()
+          .map((p) => `\`${p}\``)
+          .join('<br>'),
+    );
   else expectAccountAuthPending(cell);
 }
 
@@ -1841,7 +1850,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     const credited = [...rowsByTool()].filter(([, cells]) => statusMark(cells[8]) === '✅');
     expect(credited.map(([name]) => name).sort()).toEqual(REAL_CURRENT_ACCOUNT_TOOLS);
     expect(reportReferencesInMatrixCell(rowsByTool().get('bangumi.list_collections')?.[8])).toEqual(
-      [REAL_A2_REPORT_PATH],
+      [REAL_A2_REPORT_PATH, QS55_COMPAT_REFERENCE],
     );
     expectAccountAuthPending(rowsByTool().get('bangumi.render_collection_progress')?.[8]);
     expectAccountAuthPending(rowsByTool().get('bangumi.get_my_profile')?.[8]);

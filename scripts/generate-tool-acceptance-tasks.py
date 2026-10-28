@@ -28358,7 +28358,7 @@ def main() -> None:
         '| 工具 | Auth | Risk | 注册/Schema目录引用 | 直接 execute 测试引用 | 直接 execute 夹具 | 真实公开 API | 无账号认证门禁 | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |',
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
         '无账号认证门禁列覆盖所有 auth=required 的读取、写入与破坏性工具，只记录缺少账号且零网络请求时的安全拒绝；真实 OAuth 与账号授权仍由“账号认证”列单独跟踪。',
-        '账号认证列只接收固定的历史真实 A1 回执：本人资料一次、anime/doing 收藏最多两行一次；摘要和执行源码及依赖兼容性校验通过才计分；相关输入变化时当前版本重新待验，历史成功事实仍保留。它不是模型/QQ/TIM 证据，也不授权重放、扩展读取或写入。',
+        '账号认证列只接收逐批固定的真实回执及精确源码兼容性证据。qs55 补丁后仅 A2～A6 既有 11 个限定输入通过独立封存的编译 MCP stdio 兼容性验证，每格同时引用原执行回执和新兼容性报告；历史 A1 不计入。假数据 QA 没有产生新账号执行或新增验收项，原 partial、非动画、A2 原因未知等边界保留。相关图谱漂移时重新待验；不授权重放、扩展读取或写入，不替代模型/QQ/TIM、美感或稳定性证据。',
     ]
     for catalog_index, item in enumerate(catalog):
         schema, source_ref, execute, live, auth_gate, auth, agent_mcp, qq_pipeline, tim_client = status(

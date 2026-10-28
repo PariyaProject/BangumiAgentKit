@@ -1,0 +1,8 @@
+{
+  "schema": "run95-qs-comma-offline-repro/v1",
+  "version": "6.16.0",
+  "networkCalls": 0,
+  "runtimeDataAccess": false,
+  "default": "returned",
+  "comma": "TypeError"
+}

@@ -1,0 +1,12 @@
+{
+  "version": "6.16.1",
+  "dist.integrity": "sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==",
+  "dist.tarball": "https://registry.npmjs.org/qs/-/qs-6.16.1.tgz",
+  "dependencies": {
+    "side-channel": "^1.1.1",
+    "es-define-property": "^1.0.1"
+  },
+  "engines": {
+    "node": ">=0.6"
+  }
+}
