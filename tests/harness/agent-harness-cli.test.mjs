@@ -623,6 +623,52 @@ test('continuation repack CLI retains the full-body bound for incompressible evi
   }
 });
 
+for (const command of ['continuation:repack', 'run:checkpoint']) {
+  for (const view of [2, 3]) {
+    test(`${command} refuses closed Issue metadata on read ${view}`, () => {
+      const { run } = repackFixture();
+      const environment = createMockEnvironment({
+        runBody: renderRunBody(run),
+        runStatesByView: { [view]: 'CLOSED' },
+      });
+      try {
+        let args = [command, '--run', '1', '--expected-sequence', '30'];
+        if (command === 'continuation:repack') {
+          args.push('--expected-state-sha256', canonicalHash(run));
+        } else {
+          const file = path.join(environment.directory, 'closed-checkpoint.json');
+          fs.writeFileSync(
+            file,
+            JSON.stringify({
+              kind: 'progress',
+              epoch_pr: 42,
+              problem: 'closure-race',
+              input_sha256: 'f'.repeat(64),
+              outcome: 'Existing completed work.',
+              next_action: 'Inspect current control state.',
+              evidence_refs: ['docs/agent/HARNESS.md'],
+            }),
+          );
+          args.push('--evidence', file);
+        }
+        const result = environment.execute(args);
+        assert.equal(result.status, 2);
+        assert.match(
+          result.stderr,
+          view === 2 ? /^CONTINUATION_RUN_NOT_ACTIVE:/u : /^CONTINUATION_READBACK_MISMATCH:/u,
+        );
+        assert.equal(
+          environment.readState().calls.filter((c) => c.tool === 'gh' && c.args.includes('PATCH'))
+            .length,
+          view === 2 ? 0 : 1,
+        );
+      } finally {
+        environment.cleanup();
+      }
+    });
+  }
+}
+
 function controlFixture() {
   const run = createRunState({ runId: 'run-cli' });
   run.state = 'EPOCH_ACTIVE';

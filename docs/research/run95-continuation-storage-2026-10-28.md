@@ -38,3 +38,14 @@ unchanged incompressible-body limit. Full Harness and acceptance validation
 must pass before integration; no matrix credit is earned by this maintenance.
 
 Initial validation completed:977Harness tests PASS,37focusedcontinuation/codec tests PASS and7targetedmockedCLI tests PASS; focused ESLint and diffchecks PASS. Acceptance/matrix and typechecks are still running at this preparation snapshot. Independent maintenance review will bind the exact committed source; this document is not a verdict or control-mutation authority.
+
+Independent Standards and Spec reviewers found the same P2 metadata race: a
+Run Issue could close between reads while its JSON digest stayed unchanged.
+Four fresh-fake regressions failed on the initial Candidate: repack and
+checkpoint, each closed at prewrite or readback. Both entrypoints now recheck
+OPEN/nonterminal before PATCH and at readback. Prewrite closure gives zero
+PATCHes; readback closure explicitly fails without retry or a success claim.
+The shared predicate closes this sibling write-path class; no real Run was
+modified. All11targetedCLI cases and focusedESLint passed after correction.
+Initial full977Harness/399Python/matrix9of33 and types passed; final fullHarness
+validation and new exact-head CI follow the corrected Candidate.

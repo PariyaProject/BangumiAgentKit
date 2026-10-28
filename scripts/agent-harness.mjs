@@ -1016,11 +1016,15 @@ function commandRendererBaselineCheck(options) {
   print({ state: 'RENDERER_DESIGN_BASELINES_VALID', ...requireRendererBaselines(options.base) });
 }
 
+function isOpenNonterminalRun(result) {
+  return result.view.state === 'OPEN' && !isTerminalRunState(result.state.state);
+}
+
 function commandContinuationRepack(options) {
   ensureControlPlane();
   const runNumber = required(options, 'run');
   const observed = issueState(runNumber);
-  if (observed.view.state !== 'OPEN' || isTerminalRunState(observed.state.state)) {
+  if (!isOpenNonterminalRun(observed)) {
     throw new HarnessInvariantError(
       'CONTINUATION_RUN_NOT_ACTIVE',
       'Repack an open nonterminal Run',
@@ -1045,6 +1049,9 @@ function commandContinuationRepack(options) {
     return;
   }
   const latest = issueState(runNumber);
+  if (!isOpenNonterminalRun(latest)) {
+    throw new HarnessInvariantError('CONTINUATION_RUN_NOT_ACTIVE', 'Run closed before repacking');
+  }
   if (canonicalHash(latest.state) !== expected) {
     throw new HarnessInvariantError(
       'CONTINUATION_CONCURRENT_WRITE',
@@ -1053,7 +1060,7 @@ function commandContinuationRepack(options) {
   }
   const body = updateIssue(runNumber, next);
   const saved = issueState(runNumber);
-  if (canonicalHash(saved.state) !== canonicalHash(next)) {
+  if (!isOpenNonterminalRun(saved) || canonicalHash(saved.state) !== canonicalHash(next)) {
     throw new HarnessInvariantError(
       'CONTINUATION_READBACK_MISMATCH',
       'Inspect the Run before retrying repacking',
@@ -1072,7 +1079,7 @@ function commandContinuationRecord(options, type) {
   ensureControlPlane();
   const runNumber = required(options, 'run');
   const observed = issueState(runNumber);
-  if (observed.view.state !== 'OPEN' || isTerminalRunState(observed.state.state)) {
+  if (!isOpenNonterminalRun(observed)) {
     throw new HarnessInvariantError(
       'CONTINUATION_RUN_NOT_ACTIVE',
       'Record against an open nonterminal Run',
@@ -1099,6 +1106,9 @@ function commandContinuationRecord(options, type) {
   // GitHub body PATCH is not atomic compare-and-swap. Recheck immediately before
   // writing and read back afterwards; only one Harness writer may run at a time.
   const latest = issueState(runNumber);
+  if (!isOpenNonterminalRun(latest)) {
+    throw new HarnessInvariantError('CONTINUATION_RUN_NOT_ACTIVE', 'Run closed before recording');
+  }
   if (canonicalHash(latest.state) !== canonicalHash(observed.state)) {
     throw new HarnessInvariantError(
       'CONTINUATION_CONCURRENT_WRITE',
@@ -1107,7 +1117,7 @@ function commandContinuationRecord(options, type) {
   }
   updateIssue(runNumber, next);
   const saved = issueState(runNumber);
-  if (canonicalHash(saved.state) !== canonicalHash(next)) {
+  if (!isOpenNonterminalRun(saved) || canonicalHash(saved.state) !== canonicalHash(next)) {
     throw new HarnessInvariantError(
       'CONTINUATION_READBACK_MISMATCH',
       'Read back the Run before retrying any write',
