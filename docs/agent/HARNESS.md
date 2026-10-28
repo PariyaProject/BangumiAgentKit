@@ -216,8 +216,13 @@ appended successor; generic Goal continuation/model change does not reopen a
 finished design. Designer acceptance is separate from concrete user aesthetic
 approval and formal Product review. See [design scope and QA](../design/README.md).
 
-The Run Issue contains hash-linked append-only continuation events, losslessly
-compressed with digest/count checks once the JSON exceeds 4 KiB. Appends
+The Run Issue contains hash-linked append-only continuation events. New appends
+retain the existing `schema: 1` event array and let the whole-control envelope
+compress it once. Legacy inner gzip archives remain readable and hash/count
+validated. The explicit, reviewed `continuation:repack` migration expands only
+that storage representation without adding an event, enabling controls, changing
+intent or resetting any history. See [storage recovery](CONTROL_BLOCK_CODEC.md).
+Appends
 require the observed sequence, pre-write reread and post-write readback. Use
 one writer; GitHub PATCH has no atomic compare-and-swap guarantee. A readback
 failure demands reinspection, not blind replay. No events are silently
@@ -1209,6 +1214,8 @@ The deterministic entry point is `pnpm harness <command>`. Run `pnpm harness
 help` for exact arguments.
 
 - `status`: reconstruct runtime truth from Git, the Run Issue, and Epoch PR.
+- `continuation:repack`: explicitly consolidate a verified legacy journal using
+  the expected sequence and full Run digest; no event, policy or Epoch change.
 - `frontier:check`: validate the complete canonical ledger and print its hash.
 - `frontier:status`: report status/lane/kind counts and next actionable records.
 - `discovery:check`: cheaply classify active work, changed master/policy,

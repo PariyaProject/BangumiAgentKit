@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { gzipSync, gunzipSync } from 'node:zlib';
+import { gunzipSync } from 'node:zlib';
 import { HarnessInvariantError } from './agent-harness-core.mjs';
 
 const hash = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -64,6 +64,29 @@ export function continuationEvents(run) {
 
 export function currentDirective(run) {
   return continuationEvents(run).findLast((event) => event.type === 'directive') ?? null;
+}
+
+// The existing whole-control codec compresses this journal together with the
+// rest of the Run. Keep legacy archives readable, but never nest new gzip data.
+export function repackContinuationHistory(run, expectedSequence) {
+  const events = continuationEvents(run);
+  if (!Number.isSafeInteger(expectedSequence) || expectedSequence !== events.length) {
+    fail('STALE_CONTINUATION_SEQUENCE', 'Read continuation:show before repacking');
+  }
+  if (run.continuation === undefined) {
+    fail('CONTINUATION_HISTORY_MISSING', 'Repacking cannot enable a legacy Run');
+  }
+  const archive = run.continuation.archive;
+  if (
+    archive !== undefined &&
+    Object.keys(archive).sort().join(',') !== 'count,data,encoding,sha256'
+  ) {
+    fail('CONTINUATION_ARCHIVE_EXTRA_FIELDS', 'Unknown archive fields must not be discarded');
+  }
+  const next = structuredClone(run);
+  delete next.continuation.archive;
+  next.continuation.events = structuredClone(events);
+  return next;
 }
 
 export function reviewHistorySha(epoch) {
@@ -168,19 +191,12 @@ export function appendContinuationEvent(
   };
   const next = structuredClone(run);
   const history = [...events, { ...payload, sha256: hash(payload) }];
-  const historyBytes = Buffer.from(JSON.stringify(history));
-  next.continuation =
-    historyBytes.length <= 4096
-      ? { schema: 1, events: history }
-      : {
-          schema: 1,
-          archive: {
-            encoding: 'gzip+base64',
-            count: history.length,
-            sha256: createHash('sha256').update(historyBytes).digest('hex'),
-            data: gzipSync(historyBytes).toString('base64'),
-          },
-        };
+  if (next.continuation !== undefined) {
+    next.continuation = repackContinuationHistory(run, events.length).continuation;
+  } else {
+    next.continuation = { schema: 1 };
+  }
+  next.continuation.events = history;
   return next;
 }
 

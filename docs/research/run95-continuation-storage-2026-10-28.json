@@ -1,0 +1,22 @@
+{
+  "schema": "run95-continuation-storage-readonly-proof/v1",
+  "at": "2026-10-28T05:12:52.668Z",
+  "run": 95,
+  "sequence": 80,
+  "lastEventSha256": "20417dd8e898e0cac1e6214ba5f3c9330183e5c3d0d0e14accf63ab01570da35",
+  "originalStateSha256": "6fdc1ce5315b4eea3b9c738415c18a8cb8596712bf878927b51feebc97249ad0",
+  "repackedStateSha256": "c1ef1909b2a74e8185073da24246c53869f7cf54061f29badc967526c8b07edb",
+  "originalBodyBytes": 64031,
+  "repackedBodyBytes": 61647,
+  "simulatedA6SelectionBodyBytes": 63831,
+  "bodyLimitBytes": 65536,
+  "all80EventsExact": true,
+  "allOtherRunFieldsExact": true,
+  "jsPythonRoundtripExact": true,
+  "activeEpochUnchanged": true,
+  "controlWrites": 0,
+  "productClaims": 0,
+  "privateApiRequests": 0,
+  "oldInputPreserved": true,
+  "scope": "Finite storage consolidation only; no execution or acceptance authority, no raw state retained in this report."
+}

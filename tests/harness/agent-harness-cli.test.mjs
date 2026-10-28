@@ -7,6 +7,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { gzipSync } from 'node:zlib';
+import {
+  appendContinuationEvent,
+  continuationEvents,
+} from '../../scripts/lib/harness-continuation.mjs';
 import {
   DISCOVERY_LANES,
   DISCOVERY_POLICY_VERSION,
@@ -382,10 +387,27 @@ test('continuation CLI archives a near-full legacy Run losslessly before adding 
   const environment = createMockEnvironment({ runBody: initial, prBody: renderEpochBody(epoch) });
   try {
     const evidence = path.join(environment.directory, 'capacity-checkpoint.json');
-    fs.writeFileSync(evidence, JSON.stringify({ kind: 'progress', epoch_pr: 42, problem: 'capacity',
-      input_sha256: 'f'.repeat(64), outcome: 'Meaningful completed work.'.repeat(20),
-      next_action: 'Continue the next bounded package.', evidence_refs: ['https://example.invalid/merged-pr'] }));
-    const recorded = environment.execute(['run:checkpoint', '--run', '1', '--expected-sequence', '0', '--evidence', evidence]);
+    fs.writeFileSync(
+      evidence,
+      JSON.stringify({
+        kind: 'progress',
+        epoch_pr: 42,
+        problem: 'capacity',
+        input_sha256: 'f'.repeat(64),
+        outcome: 'Meaningful completed work.'.repeat(20),
+        next_action: 'Continue the next bounded package.',
+        evidence_refs: ['https://example.invalid/merged-pr'],
+      }),
+    );
+    const recorded = environment.execute([
+      'run:checkpoint',
+      '--run',
+      '1',
+      '--expected-sequence',
+      '0',
+      '--evidence',
+      evidence,
+    ]);
     assert.equal(recorded.status, 0, recorded.stderr);
     const stored = environment.readState();
     assert.ok(Buffer.byteLength(stored.runBody) < 32_768);
@@ -394,15 +416,258 @@ test('continuation CLI archives a near-full legacy Run losslessly before adding 
     assert.ok(continuation);
     assert.deepEqual(unchanged, run);
     assert.equal(stored.prBody, renderEpochBody(epoch));
-    const brief = environment.execute(['continuation:show', '--run', '1', '--goal-state', 'active']);
+    const brief = environment.execute([
+      'continuation:show',
+      '--run',
+      '1',
+      '--goal-state',
+      'active',
+    ]);
     assert.equal(brief.status, 0, brief.stderr);
     assert.equal(JSON.parse(brief.stdout).sequence, 1);
     const before = stored.runBody;
-    const replay = environment.execute(['run:checkpoint', '--run', '1', '--expected-sequence', '0', '--evidence', evidence]);
-    assert.equal(replay.status, 2); assert.match(replay.stderr, /^STALE_CONTINUATION_SEQUENCE:/u);
+    const replay = environment.execute([
+      'run:checkpoint',
+      '--run',
+      '1',
+      '--expected-sequence',
+      '0',
+      '--evidence',
+      evidence,
+    ]);
+    assert.equal(replay.status, 2);
+    assert.match(replay.stderr, /^STALE_CONTINUATION_SEQUENCE:/u);
     assert.equal(environment.readState().runBody, before);
-  } finally { environment.cleanup(); }
+  } finally {
+    environment.cleanup();
+  }
 });
+
+function repackFixture() {
+  const fixture = controlFixture();
+  let run = fixture.run;
+  for (let index = 0; index < 30; index += 1) {
+    run = appendContinuationEvent(
+      run,
+      fixture.epoch,
+      {
+        type: 'checkpoint',
+        kind: 'progress',
+        epoch_pr: 42,
+        problem: 'synthetic-capacity',
+        input_sha256: createHash('sha256').update(String(index)).digest('hex'),
+        outcome: 'Synthetic completed work; preserve all event hashes. ' + index,
+        next_action: 'Continue the same scoped package.',
+        evidence_refs: ['docs/agent/HARNESS.md'],
+      },
+      index,
+      '2026-10-28T00:00:00.000Z',
+    );
+  }
+  const bytes = Buffer.from(JSON.stringify(continuationEvents(run)));
+  run.continuation = {
+    schema: 1,
+    retained: { unknown: true },
+    archive: {
+      encoding: 'gzip+base64',
+      count: 30,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+      data: gzipSync(bytes).toString('base64'),
+    },
+  };
+  return { ...fixture, run };
+}
+
+test('continuation repack CLI preserves full history and Epoch, rejects stale replay and is idempotent', () => {
+  const { run, epoch } = repackFixture();
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+  });
+  try {
+    const args = [
+      'continuation:repack',
+      '--run',
+      '1',
+      '--expected-sequence',
+      '30',
+      '--expected-state-sha256',
+      canonicalHash(run),
+    ];
+    const result = environment.execute(args);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).state, 'CONTINUATION_HISTORY_REPACKED');
+    const stored = environment.readState(),
+      next = parseControlBlock(stored.runBody, RUN_MARKER);
+    assert.deepEqual(continuationEvents(next), continuationEvents(run));
+    assert.deepEqual(next.continuation.retained, run.continuation.retained);
+    const priorOther = structuredClone(run),
+      nextOther = structuredClone(next);
+    delete priorOther.continuation;
+    delete nextOther.continuation;
+    assert.deepEqual(nextOther, priorOther);
+    assert.equal(stored.prBody, renderEpochBody(epoch));
+    assert.equal(stored.calls.filter((c) => c.tool === 'gh' && c.args.includes('PATCH')).length, 1);
+    const stale = environment.execute(args);
+    assert.equal(stale.status, 2);
+    assert.match(stale.stderr, /^CONTINUATION_STATE_DRIFT:/u);
+    const noop = environment.execute([...args.slice(0, -1), canonicalHash(next)]);
+    assert.equal(noop.status, 0, noop.stderr);
+    assert.equal(JSON.parse(noop.stdout).state, 'CONTINUATION_HISTORY_ALREADY_CURRENT');
+    assert.equal(
+      environment.readState().calls.filter((c) => c.tool === 'gh' && c.args.includes('PATCH'))
+        .length,
+      1,
+    );
+    const brief = environment.execute(['continuation:show', '--run', '1']);
+    assert.equal(brief.status, 0, brief.stderr);
+    assert.equal(JSON.parse(brief.stdout).sequence, 30);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('continuation repack CLI refuses sequence drift and closed Runs without PATCH', () => {
+  for (const closed of [false, true]) {
+    const { run } = repackFixture();
+    const environment = createMockEnvironment({
+      runBody: renderRunBody(run),
+      runIssueState: closed ? 'CLOSED' : 'OPEN',
+    });
+    try {
+      const result = environment.execute([
+        'continuation:repack',
+        '--run',
+        '1',
+        '--expected-sequence',
+        '29',
+        '--expected-state-sha256',
+        canonicalHash(run),
+      ]);
+      assert.equal(result.status, 2);
+      assert.match(
+        result.stderr,
+        closed ? /^CONTINUATION_RUN_NOT_ACTIVE:/u : /^STALE_CONTINUATION_SEQUENCE:/u,
+      );
+      assert.equal(
+        environment.readState().calls.filter((c) => c.tool === 'gh' && c.args.includes('PATCH'))
+          .length,
+        0,
+      );
+    } finally {
+      environment.cleanup();
+    }
+  }
+});
+
+test('continuation repack CLI detects concurrent writes and ambiguous readback without replay', () => {
+  for (const view of [2, 3]) {
+    const { run } = repackFixture(),
+      changed = structuredClone(run);
+    changed.next_action = 'CONCURRENT_UPDATE';
+    const environment = createMockEnvironment({
+      runBody: renderRunBody(run),
+      runBodiesByView: { [view]: renderRunBody(changed) },
+    });
+    try {
+      const result = environment.execute([
+        'continuation:repack',
+        '--run',
+        '1',
+        '--expected-sequence',
+        '30',
+        '--expected-state-sha256',
+        canonicalHash(run),
+      ]);
+      assert.equal(result.status, 2);
+      assert.match(
+        result.stderr,
+        view === 2 ? /^CONTINUATION_CONCURRENT_WRITE:/u : /^CONTINUATION_READBACK_MISMATCH:/u,
+      );
+      assert.equal(
+        environment.readState().calls.filter((c) => c.tool === 'gh' && c.args.includes('PATCH'))
+          .length,
+        view === 2 ? 0 : 1,
+      );
+    } finally {
+      environment.cleanup();
+    }
+  }
+});
+
+test('continuation repack CLI retains the full-body bound for incompressible evidence', () => {
+  const { run } = repackFixture();
+  run.incompressible = Array.from({ length: 5000 }, (_, i) =>
+    createHash('sha256').update(String(i)).digest('hex'),
+  );
+  const environment = createMockEnvironment({ runBody: renderRunBody(run) });
+  try {
+    const result = environment.execute([
+      'continuation:repack',
+      '--run',
+      '1',
+      '--expected-sequence',
+      '30',
+      '--expected-state-sha256',
+      canonicalHash(run),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^CONTROL_BODY_TOO_LARGE:/u);
+    assert.equal(
+      environment.readState().calls.filter((c) => c.tool === 'gh' && c.args.includes('PATCH'))
+        .length,
+      0,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+for (const command of ['continuation:repack', 'run:checkpoint']) {
+  for (const view of [2, 3]) {
+    test(`${command} refuses closed Issue metadata on read ${view}`, () => {
+      const { run } = repackFixture();
+      const environment = createMockEnvironment({
+        runBody: renderRunBody(run),
+        runStatesByView: { [view]: 'CLOSED' },
+      });
+      try {
+        let args = [command, '--run', '1', '--expected-sequence', '30'];
+        if (command === 'continuation:repack') {
+          args.push('--expected-state-sha256', canonicalHash(run));
+        } else {
+          const file = path.join(environment.directory, 'closed-checkpoint.json');
+          fs.writeFileSync(
+            file,
+            JSON.stringify({
+              kind: 'progress',
+              epoch_pr: 42,
+              problem: 'closure-race',
+              input_sha256: 'f'.repeat(64),
+              outcome: 'Existing completed work.',
+              next_action: 'Inspect current control state.',
+              evidence_refs: ['docs/agent/HARNESS.md'],
+            }),
+          );
+          args.push('--evidence', file);
+        }
+        const result = environment.execute(args);
+        assert.equal(result.status, 2);
+        assert.match(
+          result.stderr,
+          view === 2 ? /^CONTINUATION_RUN_NOT_ACTIVE:/u : /^CONTINUATION_READBACK_MISMATCH:/u,
+        );
+        assert.equal(
+          environment.readState().calls.filter((c) => c.tool === 'gh' && c.args.includes('PATCH'))
+            .length,
+          view === 2 ? 0 : 1,
+        );
+      } finally {
+        environment.cleanup();
+      }
+    });
+  }
+}
 
 function controlFixture() {
   const run = createRunState({ runId: 'run-cli' });

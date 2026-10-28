@@ -56,3 +56,44 @@ Unicode/gzip parity, malformed archives, bounded expansion, P01/S03 trust
 checks and a near-full legacy Run updated through the actual mocked CLI.
 The dated [read-only validation](../research/run95-control-block-codec-2026-10-25.md)
 records the original capacity failure without storing raw runtime state.
+
+## Consolidating legacy continuation compression
+
+The 2026-10-28 maintenance keeps both existing wire formats and all readers.
+The continuation journal already supports `schema: 1, events: [...]`. New
+appends retain that array inside the bounded whole-control envelope instead of
+creating an inner gzip/base64 archive. The codec itself still does not normalize
+logical state. Old inner archives remain readable, with their original event
+chain, count and digest checks. No dependency, trust policy or body limit changes.
+
+After reviewed integration, an existing Run can explicitly repack its journal:
+
+    pnpm harness continuation:repack --run 95 --expected-sequence 80 \
+      --expected-state-sha256 <canonicalHash-of-current-parsed-Run>
+
+Use `canonicalHash` from `scripts/lib/frontier-ledger.mjs` on the complete
+`parseControlBlock(body, RUN_MARKER)` result from the freshly read Issue body;
+never hash the encoded envelope or omit fields. Preserve that public snapshot
+locally first. The expected sequence and full state digest are mandatory. The
+command rereads before PATCH and verifies the complete readback afterwards.
+GitHub PATCH is not atomic CAS: use one writer and inspect any uncertain result
+before retrying. An already expanded journal is a no-write success with a fresh
+matching state digest; an old digest is rejected.
+
+Only the journal's archive representation is replaced by its exact verified
+event array. Every event, sequence, timestamp, hash, directive and failure signal
+is unchanged, as are all other Run fields and the active Epoch. Unknown journal
+fields survive. Unknown fields inside the legacy archive cause refusal rather
+than silent deletion. Missing history cannot be used to opt a legacy Run into
+continuation controls. Closed/terminal Runs, sequence/state drift, concurrent
+changes and failed readback are explicit errors. Repacking grants no execution,
+review, claim or pause/resume authority and may run while a human pause remains.
+
+The existing whole-state 4 MiB expansion bound and 65,536-byte complete-body
+pre-PATCH guard still apply; incompressible history remains a visible failure.
+This consolidation reclaims finite space, not unlimited capacity. Do not trim
+history, increase limits, create a replacement Run, introduce an external
+archive or switch to an older Harness to evade a future failure. Another
+capacity migration requires explicit reviewed engineering. After repacking,
+use this integrated Harness for all subsequent mutations so new appends do not
+recreate the nested representation.
