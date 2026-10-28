@@ -22,16 +22,24 @@ const REAL_A4_TOOLS = [
 const REAL_A5_BUNDLE = 'docs/live-probes/run95-a5-dashboard-and-private-png-2026-10-28';
 const REAL_A5_REPORT_PATH = REAL_A5_BUNDLE + '/a5-result.json';
 const REAL_A5_TOOLS = ['bangumi.get_collection_dashboard', 'bangumi.render_collection_dashboard'];
+const REAL_A6_BUNDLE = 'docs/live-probes/run95-a6-series-and-private-png-2026-10-28';
+const REAL_A6_REPORT_PATH = REAL_A6_BUNDLE + '/a6-result.json';
+const REAL_A6_TOOLS = [
+  'bangumi.get_collection_series_groups',
+  'bangumi.render_collection_series_groups',
+];
 const REAL_CURRENT_ACCOUNT_TOOLS = [
   'bangumi.get_collection_backlog',
   'bangumi.get_collection_dashboard',
   'bangumi.get_collection_intelligence',
   'bangumi.get_collection_schedule',
+  'bangumi.get_collection_series_groups',
   'bangumi.list_collections',
   'bangumi.render_collection_backlog',
   'bangumi.render_collection_dashboard',
   'bangumi.render_collection_intelligence',
   'bangumi.render_collection_schedule',
+  'bangumi.render_collection_series_groups',
 ];
 const REAL_A2_REPORT_PATH =
   'docs/live-probes/run95-a2-partial-account-read-2026-10-27/a2-result.json';
@@ -144,7 +152,9 @@ function expectAccountAuthCell(toolName: string, cell: unknown): void {
           ? REAL_A4_REPORT_PATH
           : REAL_A5_TOOLS.includes(toolName)
             ? REAL_A5_REPORT_PATH
-            : undefined;
+            : REAL_A6_TOOLS.includes(toolName)
+              ? REAL_A6_REPORT_PATH
+              : undefined;
   if (liveReference !== undefined) expect(cell).toBe(`✅<br>\`${liveReference}\``);
   else expectAccountAuthPending(cell);
 }
@@ -1791,7 +1801,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(cells[10]).toBe('⬜');
       expect(cells[11]).toBe('⬜');
     }
-    expect(TABLE).toContain('9/33；待补 24');
+    expect(TABLE).toContain('11/33；待补 22');
   });
 
   it('credits only the successful collection selection from the failed and spent A2 batch', () => {
@@ -1840,7 +1850,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A2_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('9/33；待补 24');
+    expect(TABLE).toContain('11/33；待补 22');
   });
 
   it('credits only the completed bounded A3 overview and private PNG with partial sample limits', () => {
@@ -1920,7 +1930,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A3_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('9/33；待补 24');
+    expect(TABLE).toContain('11/33；待补 22');
   });
 
   it('admits only four actual A4 backlog/schedule tools with conflict and partial limits', () => {
@@ -2002,7 +2012,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A4_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('9/33；待补 24');
+    expect(TABLE).toContain('11/33；待补 22');
   });
 
   it('admits only the completed A5 pair while preserving composite partial and conflict exclusion', () => {
@@ -2097,7 +2107,125 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A5_REPORT_PATH);
       }
     }
-    expect(TABLE).toContain('9/33；待补 24');
+    expect(TABLE).toContain('11/33；待补 22');
+  });
+
+  it('admits only the completed A6 non-anime partial sample without real relation or grouping credit', () => {
+    const report = JSON.parse(readFileSync(join(ROOT, REAL_A6_REPORT_PATH), 'utf8'));
+    expect(report).toMatchObject({
+      passed: true,
+      phase: 'COMPLETE',
+      servicesRestored: true,
+      protectedClaimsPreserved: true,
+      modelRunsBefore: 945,
+      modelRunsAfter: 945,
+      operatorModelPrompts: 0,
+      operatorClientActions: 0,
+      privatePayloadExported: false,
+      batch: {
+        executionKind: 'live',
+        passed: true,
+        code: 'OK',
+        toolCallsAttempted: 2,
+        toolCallsSucceeded: 2,
+        apiRequests: 2,
+        coverRequests: 0,
+        pngValidated: true,
+        cleanupConfirmed: true,
+        claimFinalized: true,
+        modelCalls: 0,
+        clientActions: 0,
+        privatePayloadExported: false,
+      },
+    });
+    const diagnostic = report.batch.diagnostic;
+    expect(diagnostic).toMatchObject({
+      guardPhase: 'complete',
+      guardReason: null,
+      failureStage: null,
+      semanticFailure: null,
+      pixelDecodeValidated: true,
+      collectionRequests: 2,
+      relationRequests: 0,
+    });
+    for (const role of ['read', 'render']) {
+      expect(diagnostic[role + 'Rows']).toBe(1);
+      expect(diagnostic[role + 'State']).toBe('partial');
+      expect(diagnostic[role + 'CollectionTruncated']).toBe(true);
+      expect(diagnostic[role + 'SourceExhausted']).toBe(false);
+      for (const key of [
+        'EligibleAnimeRows',
+        'RelationRows',
+        'RelationRowsReturned',
+        'RelationTruncatedSubjects',
+        'GroupCount',
+        'GroupedItems',
+        'UngroupedItems',
+        'UnresolvedItems',
+        'EdgeCount',
+        'ConflictEdges',
+      ]) {
+        expect(diagnostic[role + key]).toBe(0);
+      }
+    }
+    const manifest = JSON.parse(readFileSync(join(ROOT, REAL_A6_BUNDLE, 'import.json'), 'utf8'));
+    expect(manifest.admittedTools).toEqual(
+      REAL_A6_TOOLS.map((name) => ({
+        name,
+        input: {
+          maxItems: 1,
+          maxRelationSubjects: 1,
+          maxRelationsPerSubject: 1,
+          maxGroups: 1,
+          maxEdges: 1,
+          statuses: ['wish', 'doing', 'done', 'on_hold', 'dropped'],
+        },
+      })),
+    );
+    const rawClaim = readFileSync(join(ROOT, REAL_A6_BUNDLE, 'durable-a6-claim.json'));
+    expect(createHash('sha256').update(rawClaim).digest('hex')).toBe(
+      '842360a8dd1ec8aa6946051ecaacbd610082fd3c3558c1ee05add60538b445d4',
+    );
+    expect(JSON.parse(rawClaim.toString())).toMatchObject({
+      state: 'COMPLETE',
+      scope: 'a6-bound-collection-series-v1',
+      observation: {
+        toolCallsAttempted: 2,
+        toolCallsSucceeded: 2,
+        apiRequests: 2,
+        coverRequests: 0,
+        pngValidated: true,
+        cleanupConfirmed: true,
+      },
+    });
+    const post = JSON.parse(
+      readFileSync(join(ROOT, REAL_A6_BUNDLE, 'postconditions.json'), 'utf8'),
+    );
+    expect(post).toMatchObject({
+      passed: true,
+      protectedA1A2A3A4A5ClaimBytesPreserved: true,
+      runnerProcessCwdMatchesRelease: true,
+      napcatSameProcess: true,
+      astrbotSameContainer: true,
+      containersHealthyAndUnpaused: true,
+      gatewayReady: true,
+      noOrphanOrFence: true,
+      a6ClaimState: 'COMPLETE',
+      modelRunsBefore: 945,
+      modelRunsAfter: 945,
+      runningModels: 0,
+      pendingMessages: 0,
+      privatePngsRetained: false,
+      bangumiApiRequestsDuringReadback: 0,
+    });
+    for (const [name, cells] of rowsByTool()) {
+      expect(reportReferencesInMatrixCell(cells[8]).includes(REAL_A6_REPORT_PATH)).toBe(
+        REAL_A6_TOOLS.includes(name),
+      );
+      for (const index of [6, 7, 9, 10, 11])
+        expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A6_REPORT_PATH);
+    }
+    expect(TABLE).toContain('11/33；待补 22');
   });
 
   it('accepts synthetic authenticated-read and render evidence without implying real account auth', () => {

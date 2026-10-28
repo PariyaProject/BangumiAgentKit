@@ -1,0 +1,68 @@
+{
+  "schema": "bgk-a6-bounded-series-private-png-import/v1",
+  "kind": "imported-successful-live-receipt",
+  "executedSourceRevision": "2ec9b165900f538aeafd3ce897528b58d759f31b",
+  "executedApplicationCommit": "02ee144a64a35f41553102ae48f70dd130158d04",
+  "originCheckpoint": {
+    "run": 95,
+    "sequence": 80,
+    "sha256": "20417dd8e898e0cac1e6214ba5f3c9330183e5c3d0d0e14accf63ab01570da35",
+    "url": "https://github.com/PariyaProject/BangumiAgentKit/issues/95"
+  },
+  "admittedTools": [
+    {
+      "name": "bangumi.get_collection_series_groups",
+      "input": {
+        "maxEdges": 1,
+        "maxGroups": 1,
+        "maxItems": 1,
+        "maxRelationSubjects": 1,
+        "maxRelationsPerSubject": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      }
+    },
+    {
+      "name": "bangumi.render_collection_series_groups",
+      "input": {
+        "maxEdges": 1,
+        "maxGroups": 1,
+        "maxItems": 1,
+        "maxRelationSubjects": 1,
+        "maxRelationsPerSubject": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      }
+    }
+  ],
+  "runtimeTreeSha256": "a7e43944ade5cc9360748531dbea60e7373c8cc3f0b9d525660109faff122cf4",
+  "evidenceFiles": {
+    "a6-result.json": "1406259b614fe70530375b4a2f84d2d4b3790afe1201f7d9a53e212aacd1c214",
+    "durable-a6-claim.json": "842360a8dd1ec8aa6946051ecaacbd610082fd3c3558c1ee05add60538b445d4",
+    "operator-provenance.json": "78a1879612ebb4ff08f5187d464f92366dd75772dfc5c6ac518d16534c2c3495",
+    "postconditions.json": "26f9951dda9aef6cb324d8126a7b05e8745d1b968a0f25f5ab54fe55ea0d9a93",
+    "public-plan.json": "dfa2ecc1751a38bf431642305cadb6cb3512fc1227271ea07ac959a25fa3cbac",
+    "root-package-runtime.json": "3d0bfb5984e0b2ab06111929af92574fb8671063eca405b3932b6a310b7c41b4",
+    "source-files.json": "4194f73bdcdbe3f39dc16f2b446e71e0b0173d5d17535e9d7abc73e55f234dda"
+  },
+  "limits": [
+    "Only completed get/render_collection_series_groups:2nativecollectionGET/0relations/0assets/1collection row per response.",
+    "Each one-row sample non-anime,0eligibleanime/groups/grouped/ungrouped/unresolved/edges/conflicts. Both original partial/truncated/notexhausted. No actual anime grouping, real relation transport or complete collection/watch-order coverage.",
+    "One principal-privatePNG/Sharpdecode/cleanup passed; no media/privatepayload retained/exported or aesthetic acceptance.",
+    "A6COMPLETE permanently spent; allfive A1-A5 raw predecessor bytes preserved. No retry/replay/alias to obtain a richer sample.",
+    "No Agent/model/fullOAuth/write/QQ/TIM/stability credit; original96Goal incomplete.",
+    "Exact285runtime/blob/disk/dynamicSQL/assets/rootmetadata compatibility;root scripts-only exception;receipts64KiB/source8MiB.",
+    "Fixed sanitized tracked bundle and Git/source consumer only; no runtime/key/provider or new account access."
+  ],
+  "provenance": "Fixed reviewed operator-evidence trust anchor, not runner signature or cryptographic execution attestation. Native relation and anime grouping remain unobserved in this real batch."
+}
