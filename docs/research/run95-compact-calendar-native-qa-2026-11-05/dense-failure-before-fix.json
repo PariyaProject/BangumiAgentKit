@@ -1,0 +1,22 @@
+{
+  "schema": "calendar-native-qa-aborted/v1",
+  "completedCasesObserved": 60,
+  "terminalState": "RENDER_BROWSER_ERROR",
+  "failedNextState": "bounded-large",
+  "reason": "page.setContent: Target page, context or browser has been closed",
+  "receiptWasWritten": false,
+  "existingSelectedPreviewsRetained": 18,
+  "coldRaw56": {
+    "htmlBytes": 185230345,
+    "elapsedMs": 875,
+    "ok": false
+  },
+  "raw28": {
+    "htmlBytes": 97653881,
+    "elapsedMs": 5983,
+    "ok": true,
+    "height": 3664
+  },
+  "limits": "Partial failed batch. No104casePASS, no runtime root cause beyond large raw fixture payload demonstrated.",
+  "privateOrLiveActions": 0
+}

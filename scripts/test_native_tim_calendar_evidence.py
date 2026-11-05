@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from source_snapshot_fixture import read_source_snapshot
+
 from acceptance import native_tim_calendar_evidence as evidence
 from acceptance import real_account_a1_evidence as receipts
 from acceptance import real_account_a3_evidence as shared
@@ -30,10 +32,10 @@ class NativeTimCalendarEvidenceTests(unittest.TestCase):
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, target)
         self.sources = json.loads((ROOT / evidence.SOURCE_BUNDLE / 'source-files.json').read_bytes())
-        for name in self.sources:
+        for name, data in read_source_snapshot(ROOT, self.sources).items():
             target = self.root / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, target)
+            target.write_bytes(data)
         self.package = json.loads(ORIGINAL_GIT(ROOT, 'show', evidence.SOURCE_REVISION + ':package.json'))
         self.executed_package = copy.deepcopy(self.package)
         (self.root / 'package.json').write_text(json.dumps(self.package))
@@ -72,14 +74,13 @@ class NativeTimCalendarEvidenceTests(unittest.TestCase):
         self.assertEqual(native['productionSource']['gateway'], '7e3d10a93192fbc986441eccc8145122e5d2a696')
         self.assertEqual(native['productionSource']['plugin'], '7eac647af079a3d895c12da9720f5ef131c0efa8')
 
-    def test_actual_checkout_agrees_without_model_api_or_client_access(self):
+    def test_actual_checkout_rejects_old_calendar_pixels_after_the_compact_source_change(self):
         with patch.object(receipts, '_git', wraps=ORIGINAL_GIT):
             catalog = json.loads((ROOT / 'docs/tool-catalog.json').read_bytes())
-            expected = {evidence.TOOL: {evidence.REFERENCE}}
             self.assertEqual(tool_client_e2e_sources(
                 catalog, catalog_path=ROOT / 'docs/tool-catalog.json',
                 report_dir=ROOT / 'docs/live-probes', root=ROOT,
-            ), (expected, expected))
+            ), ({}, {}))
 
     def test_legacy_reader_does_not_admit_or_relabel_native_report(self):
         current = {t['name']: t for t in self.catalog}

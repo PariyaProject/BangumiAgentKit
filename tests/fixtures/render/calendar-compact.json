@@ -1,0 +1,1396 @@
+{
+  "schema": "calendar-magazine-synthetic-fixtures/v1",
+  "source": "Anonymous synthetic data only; no API/account/client operation",
+  "cases": [
+    {
+      "id": "partial-three",
+      "viewModel": {
+        "template": "calendar",
+        "version": 1,
+        "state": "partial",
+        "days": [
+          {
+            "weekdayCn": "星期一",
+            "observed": 14,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期二",
+            "observed": 15,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期三",
+            "observed": 16,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期四",
+            "observed": 18,
+            "returned": 3,
+            "items": [
+              {
+                "id": 900001,
+                "name": "Synthetic Work 1",
+                "nameCn": "星港随笔",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png"
+              },
+              {
+                "id": 900002,
+                "name": "Synthetic Work 2",
+                "nameCn": "海岸线日志",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png"
+              },
+              {
+                "id": 900003,
+                "name": "Synthetic Work 3",
+                "nameCn": "风与晴空",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png"
+              }
+            ]
+          },
+          {
+            "weekdayCn": "星期五",
+            "observed": 17,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期六",
+            "observed": 17,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期日",
+            "observed": 17,
+            "returned": 0,
+            "items": []
+          }
+        ],
+        "coverage": {
+          "state": "partial",
+          "observed": 114,
+          "returned": 3,
+          "rendered": 3,
+          "selectedDays": 7,
+          "maxPerDay": 3,
+          "maxTotal": 3,
+          "expectedDays": 7,
+          "sourceDayCount": 7,
+          "missingWeekdays": [],
+          "dateSemantics": "first_air_date"
+        },
+        "source": {
+          "label": "合成示例 · 非实时",
+          "retrievedAt": "2026-11-05T00:00:00.000Z"
+        },
+        "limitations": ["合成示例，仅用于离线排版；本次展示上限 3 部，不代表完整播出清单。"]
+      }
+    },
+    {
+      "id": "full-week",
+      "viewModel": {
+        "template": "calendar",
+        "version": 1,
+        "state": "complete",
+        "days": [
+          {
+            "weekdayCn": "星期一",
+            "observed": 1,
+            "returned": 1,
+            "items": [
+              {
+                "id": 910000,
+                "name": "Synthetic Day 1",
+                "nameCn": "星港笔记 1",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ]
+          },
+          {
+            "weekdayCn": "星期二",
+            "observed": 1,
+            "returned": 1,
+            "items": [
+              {
+                "id": 910001,
+                "name": "Synthetic Day 2",
+                "nameCn": "星港笔记 2",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ]
+          },
+          {
+            "weekdayCn": "星期三",
+            "observed": 1,
+            "returned": 1,
+            "items": [
+              {
+                "id": 910002,
+                "name": "Synthetic Day 3",
+                "nameCn": "星港笔记 3",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ]
+          },
+          {
+            "weekdayCn": "星期四",
+            "observed": 1,
+            "returned": 1,
+            "items": [
+              {
+                "id": 910003,
+                "name": "Synthetic Day 4",
+                "nameCn": "星港笔记 4",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ]
+          },
+          {
+            "weekdayCn": "星期五",
+            "observed": 1,
+            "returned": 1,
+            "items": [
+              {
+                "id": 910004,
+                "name": "Synthetic Day 5",
+                "nameCn": "星港笔记 5",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ]
+          },
+          {
+            "weekdayCn": "星期六",
+            "observed": 1,
+            "returned": 1,
+            "items": [
+              {
+                "id": 910005,
+                "name": "Synthetic Day 6",
+                "nameCn": "星港笔记 6",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ]
+          },
+          {
+            "weekdayCn": "星期日",
+            "observed": 1,
+            "returned": 1,
+            "items": [
+              {
+                "id": 910006,
+                "name": "Synthetic Day 7",
+                "nameCn": "星港笔记 7",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ]
+          }
+        ],
+        "coverage": {
+          "state": "complete",
+          "observed": 7,
+          "returned": 7,
+          "rendered": 7,
+          "selectedDays": 7,
+          "maxPerDay": 8,
+          "maxTotal": 56,
+          "expectedDays": 7,
+          "sourceDayCount": 7,
+          "missingWeekdays": [],
+          "dateSemantics": "first_air_date"
+        },
+        "source": {
+          "label": "合成示例 · 非实时",
+          "retrievedAt": "2026-11-05T00:00:00.000Z"
+        },
+        "limitations": ["合成示例；首播日期不是下一集播出时间。"]
+      }
+    },
+    {
+      "id": "known-empty",
+      "viewModel": {
+        "template": "calendar",
+        "version": 1,
+        "state": "complete",
+        "days": [
+          {
+            "weekdayCn": "星期一",
+            "observed": 0,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期二",
+            "observed": 0,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期三",
+            "observed": 0,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期四",
+            "observed": 0,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期五",
+            "observed": 0,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期六",
+            "observed": 0,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期日",
+            "observed": 0,
+            "returned": 0,
+            "items": []
+          }
+        ],
+        "coverage": {
+          "state": "complete",
+          "observed": 0,
+          "returned": 0,
+          "rendered": 0,
+          "selectedDays": 7,
+          "maxPerDay": 8,
+          "maxTotal": 56,
+          "expectedDays": 7,
+          "sourceDayCount": 7,
+          "missingWeekdays": [],
+          "dateSemantics": "first_air_date"
+        },
+        "source": {
+          "label": "合成示例 · 非实时",
+          "retrievedAt": "2026-11-05T00:00:00.000Z"
+        },
+        "limitations": ["合成示例；首播日期不是下一集播出时间。"]
+      }
+    },
+    {
+      "id": "partial-empty",
+      "viewModel": {
+        "template": "calendar",
+        "version": 1,
+        "state": "partial",
+        "days": [
+          {
+            "weekdayCn": "星期一",
+            "observed": 14,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期二",
+            "observed": 15,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期三",
+            "observed": 16,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期四",
+            "observed": 18,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期五",
+            "observed": 17,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期六",
+            "observed": 17,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期日",
+            "observed": 17,
+            "returned": 0,
+            "items": []
+          }
+        ],
+        "coverage": {
+          "state": "partial",
+          "observed": 114,
+          "returned": 0,
+          "rendered": 0,
+          "selectedDays": 7,
+          "maxPerDay": 3,
+          "maxTotal": 3,
+          "expectedDays": 7,
+          "sourceDayCount": 7,
+          "missingWeekdays": [],
+          "dateSemantics": "first_air_date"
+        },
+        "source": {
+          "label": "合成示例 · 非实时",
+          "retrievedAt": "2026-11-05T00:00:00.000Z"
+        },
+        "limitations": ["合成示例，仅用于离线排版；本次展示上限 3 部，不代表完整播出清单。"]
+      }
+    },
+    {
+      "id": "unavailable",
+      "viewModel": {
+        "template": "calendar",
+        "version": 1,
+        "state": "unavailable",
+        "days": [],
+        "coverage": {
+          "state": "unavailable",
+          "observed": 0,
+          "returned": 0,
+          "rendered": 0,
+          "selectedDays": 7,
+          "maxPerDay": 3,
+          "maxTotal": 3,
+          "expectedDays": 7,
+          "sourceDayCount": 0,
+          "missingWeekdays": [1, 2, 3, 4, 5, 6, 7],
+          "dateSemantics": "first_air_date"
+        },
+        "source": {
+          "label": "合成示例 · 非实时",
+          "retrievedAt": "2026-11-05T00:00:00.000Z"
+        },
+        "limitations": ["合成示例，仅用于离线排版；本次展示上限 3 部，不代表完整播出清单。"],
+        "warnings": [
+          {
+            "code": "SYNTHETIC_UNAVAILABLE",
+            "state": "unavailable",
+            "message": "离线合成示例：日历来源暂时不可用。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "weekday-conflict",
+      "viewModel": {
+        "template": "calendar",
+        "version": 1,
+        "state": "partial",
+        "days": [
+          {
+            "weekdayCn": "星期一",
+            "observed": 1,
+            "returned": 1,
+            "items": [
+              {
+                "id": 910000,
+                "name": "Synthetic Day 1",
+                "nameCn": "星港笔记 1",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ]
+          },
+          {
+            "weekdayCn": "星期三",
+            "observed": 1,
+            "returned": 1,
+            "items": [
+              {
+                "id": 910002,
+                "name": "Synthetic Day 3",
+                "nameCn": "星港笔记 3",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ]
+          },
+          {
+            "weekdayCn": "星期四",
+            "observed": 1,
+            "returned": 1,
+            "items": [
+              {
+                "id": 910003,
+                "name": "Synthetic Day 4",
+                "nameCn": "星港笔记 4",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ]
+          },
+          {
+            "weekdayCn": "星期六",
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期日",
+            "returned": 0,
+            "items": []
+          }
+        ],
+        "coverage": {
+          "state": "partial",
+          "observed": 3,
+          "returned": 3,
+          "rendered": 3,
+          "selectedDays": 7,
+          "maxPerDay": 8,
+          "maxTotal": 56,
+          "expectedDays": 7,
+          "sourceDayCount": 5,
+          "missingWeekdays": [2, 5],
+          "dateSemantics": "first_air_date",
+          "duplicateWeekdays": [3],
+          "invalidWeekdayCount": 1,
+          "invalidItemWeekdayCount": 2,
+          "weekdayConflictCount": 2,
+          "extraDayEnvelopes": 1
+        },
+        "source": {
+          "label": "合成示例 · 非实时",
+          "retrievedAt": "2026-11-05T00:00:00.000Z"
+        },
+        "limitations": ["合成示例；首播日期不是下一集播出时间。"],
+        "warnings": [
+          {
+            "code": "SYNTHETIC_WEEKDAY_CONFLICT",
+            "state": "partial",
+            "message": "来源星期存在冲突，分组仅按本次资料展示。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bounded-large",
+      "viewModel": {
+        "template": "calendar",
+        "version": 1,
+        "state": "partial",
+        "days": [
+          {
+            "weekdayCn": "星期一",
+            "observed": 18,
+            "returned": 8,
+            "items": [
+              {
+                "id": 920000,
+                "name": "Synthetic 1-1",
+                "nameCn": "星港笔记 1-1",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920001,
+                "name": "Synthetic 1-2",
+                "nameCn": "星港笔记 1-2",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920002,
+                "name": "Synthetic 1-3",
+                "nameCn": "星港笔记 1-3",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920003,
+                "name": "Synthetic 1-4",
+                "nameCn": "星港笔记 1-4",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920004,
+                "name": "Synthetic 1-5",
+                "nameCn": "星港笔记 1-5",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920005,
+                "name": "Synthetic 1-6",
+                "nameCn": "星港笔记 1-6",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920006,
+                "name": "Synthetic 1-7",
+                "nameCn": "星港笔记 1-7",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920007,
+                "name": "Synthetic 1-8",
+                "nameCn": "星港笔记 1-8",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ],
+            "overflowCount": 10
+          },
+          {
+            "weekdayCn": "星期二",
+            "observed": 18,
+            "returned": 8,
+            "items": [
+              {
+                "id": 920008,
+                "name": "Synthetic 2-1",
+                "nameCn": "星港笔记 2-1",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920009,
+                "name": "Synthetic 2-2",
+                "nameCn": "星港笔记 2-2",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920010,
+                "name": "Synthetic 2-3",
+                "nameCn": "星港笔记 2-3",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920011,
+                "name": "Synthetic 2-4",
+                "nameCn": "星港笔记 2-4",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920012,
+                "name": "Synthetic 2-5",
+                "nameCn": "星港笔记 2-5",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920013,
+                "name": "Synthetic 2-6",
+                "nameCn": "星港笔记 2-6",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920014,
+                "name": "Synthetic 2-7",
+                "nameCn": "星港笔记 2-7",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920015,
+                "name": "Synthetic 2-8",
+                "nameCn": "星港笔记 2-8",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ],
+            "overflowCount": 10
+          },
+          {
+            "weekdayCn": "星期三",
+            "observed": 18,
+            "returned": 8,
+            "items": [
+              {
+                "id": 920016,
+                "name": "Synthetic 3-1",
+                "nameCn": "星港笔记 3-1",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920017,
+                "name": "Synthetic 3-2",
+                "nameCn": "星港笔记 3-2",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920018,
+                "name": "Synthetic 3-3",
+                "nameCn": "星港笔记 3-3",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920019,
+                "name": "Synthetic 3-4",
+                "nameCn": "星港笔记 3-4",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920020,
+                "name": "Synthetic 3-5",
+                "nameCn": "星港笔记 3-5",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920021,
+                "name": "Synthetic 3-6",
+                "nameCn": "星港笔记 3-6",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920022,
+                "name": "Synthetic 3-7",
+                "nameCn": "星港笔记 3-7",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920023,
+                "name": "Synthetic 3-8",
+                "nameCn": "星港笔记 3-8",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ],
+            "overflowCount": 10
+          },
+          {
+            "weekdayCn": "星期四",
+            "observed": 18,
+            "returned": 8,
+            "items": [
+              {
+                "id": 920024,
+                "name": "Synthetic 4-1",
+                "nameCn": "星港笔记 4-1",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920025,
+                "name": "Synthetic 4-2",
+                "nameCn": "星港笔记 4-2",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920026,
+                "name": "Synthetic 4-3",
+                "nameCn": "星港笔记 4-3",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920027,
+                "name": "Synthetic 4-4",
+                "nameCn": "星港笔记 4-4",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920028,
+                "name": "Synthetic 4-5",
+                "nameCn": "星港笔记 4-5",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920029,
+                "name": "Synthetic 4-6",
+                "nameCn": "星港笔记 4-6",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920030,
+                "name": "Synthetic 4-7",
+                "nameCn": "星港笔记 4-7",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920031,
+                "name": "Synthetic 4-8",
+                "nameCn": "星港笔记 4-8",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ],
+            "overflowCount": 10
+          },
+          {
+            "weekdayCn": "星期五",
+            "observed": 18,
+            "returned": 8,
+            "items": [
+              {
+                "id": 920032,
+                "name": "Synthetic 5-1",
+                "nameCn": "星港笔记 5-1",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920033,
+                "name": "Synthetic 5-2",
+                "nameCn": "星港笔记 5-2",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920034,
+                "name": "Synthetic 5-3",
+                "nameCn": "星港笔记 5-3",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920035,
+                "name": "Synthetic 5-4",
+                "nameCn": "星港笔记 5-4",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920036,
+                "name": "Synthetic 5-5",
+                "nameCn": "星港笔记 5-5",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920037,
+                "name": "Synthetic 5-6",
+                "nameCn": "星港笔记 5-6",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920038,
+                "name": "Synthetic 5-7",
+                "nameCn": "星港笔记 5-7",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920039,
+                "name": "Synthetic 5-8",
+                "nameCn": "星港笔记 5-8",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/b.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ],
+            "overflowCount": 10
+          },
+          {
+            "weekdayCn": "星期六",
+            "observed": 18,
+            "returned": 8,
+            "items": [
+              {
+                "id": 920040,
+                "name": "Synthetic 6-1",
+                "nameCn": "星港笔记 6-1",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920041,
+                "name": "Synthetic 6-2",
+                "nameCn": "星港笔记 6-2",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920042,
+                "name": "Synthetic 6-3",
+                "nameCn": "星港笔记 6-3",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920043,
+                "name": "Synthetic 6-4",
+                "nameCn": "星港笔记 6-4",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920044,
+                "name": "Synthetic 6-5",
+                "nameCn": "星港笔记 6-5",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920045,
+                "name": "Synthetic 6-6",
+                "nameCn": "星港笔记 6-6",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920046,
+                "name": "Synthetic 6-7",
+                "nameCn": "星港笔记 6-7",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920047,
+                "name": "Synthetic 6-8",
+                "nameCn": "星港笔记 6-8",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ],
+            "overflowCount": 10
+          },
+          {
+            "weekdayCn": "星期日",
+            "observed": 18,
+            "returned": 8,
+            "items": [
+              {
+                "id": 920048,
+                "name": "Synthetic 7-1",
+                "nameCn": "星港笔记 7-1",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920049,
+                "name": "Synthetic 7-2",
+                "nameCn": "星港笔记 7-2",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920050,
+                "name": "Synthetic 7-3",
+                "nameCn": "星港笔记 7-3",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920051,
+                "name": "Synthetic 7-4",
+                "nameCn": "星港笔记 7-4",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920052,
+                "name": "Synthetic 7-5",
+                "nameCn": "星港笔记 7-5",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920053,
+                "name": "Synthetic 7-6",
+                "nameCn": "星港笔记 7-6",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920054,
+                "name": "Synthetic 7-7",
+                "nameCn": "星港笔记 7-7",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              },
+              {
+                "id": 920055,
+                "name": "Synthetic 7-8",
+                "nameCn": "星港笔记 7-8",
+                "nameCnProvided": true,
+                "image": "https://calendar-fixture.invalid/a.png",
+                "airDate": "2026-07-01",
+                "typeLabel": "anime",
+                "score": 7.8,
+                "rank": 42,
+                "collectionDoing": 123
+              }
+            ],
+            "overflowCount": 10
+          }
+        ],
+        "coverage": {
+          "state": "partial",
+          "observed": 126,
+          "returned": 56,
+          "rendered": 56,
+          "selectedDays": 7,
+          "maxPerDay": 8,
+          "maxTotal": 56,
+          "expectedDays": 7,
+          "sourceDayCount": 7,
+          "missingWeekdays": [],
+          "dateSemantics": "first_air_date"
+        },
+        "source": {
+          "label": "合成示例 · 非实时",
+          "retrievedAt": "2026-11-05T00:00:00.000Z"
+        },
+        "limitations": ["合成示例；首播日期不是下一集播出时间。"]
+      }
+    },
+    {
+      "id": "long-missing-covers",
+      "viewModel": {
+        "template": "calendar",
+        "version": 1,
+        "state": "partial",
+        "days": [
+          {
+            "weekdayCn": "星期一",
+            "observed": 14,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期二",
+            "observed": 15,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期三",
+            "observed": 16,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期四",
+            "observed": 18,
+            "returned": 3,
+            "items": [
+              {
+                "id": 900001,
+                "name": "海辺の街で出会った私たちの物語とても長い作品名とても長い作品名とても長い作品名",
+                "nameCn": "在海岸线与星空之间继续旅行的我们与夏日的回忆相遇与夏日的回忆相遇与夏日的回忆相遇",
+                "nameCnProvided": true,
+                "score": 0,
+                "rank": 0,
+                "collectionDoing": 0,
+                "airDate": "2026-07-01",
+                "typeLabel": "anime"
+              },
+              {
+                "id": 900002,
+                "name": "海辺の街で出会った私たちの物語とても長い作品名とても長い作品名とても長い作品名",
+                "nameCn": "在海岸线与星空之间继续旅行的我们与夏日的回忆相遇与夏日的回忆相遇与夏日的回忆相遇",
+                "nameCnProvided": true
+              },
+              {
+                "id": 900003,
+                "name": "海辺の街で出会った私たちの物語とても長い作品名とても長い作品名とても長い作品名",
+                "nameCn": "在海岸线与星空之间继续旅行的我们与夏日的回忆相遇与夏日的回忆相遇与夏日的回忆相遇",
+                "nameCnProvided": true
+              }
+            ]
+          },
+          {
+            "weekdayCn": "星期五",
+            "observed": 17,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期六",
+            "observed": 17,
+            "returned": 0,
+            "items": []
+          },
+          {
+            "weekdayCn": "星期日",
+            "observed": 17,
+            "returned": 0,
+            "items": []
+          }
+        ],
+        "coverage": {
+          "state": "partial",
+          "observed": 114,
+          "returned": 3,
+          "rendered": 3,
+          "selectedDays": 7,
+          "maxPerDay": 3,
+          "maxTotal": 3,
+          "expectedDays": 7,
+          "sourceDayCount": 7,
+          "missingWeekdays": [],
+          "dateSemantics": "first_air_date",
+          "missingFields": {
+            "item.air_date": 2,
+            "item.rating.score": 2,
+            "item.rank": 2,
+            "item.collection.doing": 2
+          }
+        },
+        "source": {
+          "label": "合成示例 · 非实时",
+          "retrievedAt": "2026-11-05T00:00:00.000Z"
+        },
+        "limitations": ["合成示例，仅用于离线排版；本次展示上限 3 部，不代表完整播出清单。"]
+      }
+    }
+  ]
+}

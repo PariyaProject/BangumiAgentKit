@@ -28,6 +28,8 @@ const REAL_A7_BUNDLE = 'docs/live-probes/run95-a7-native-episode-collection-read
 const REAL_A7_REPORT_PATH = REAL_A7_BUNDLE + '/a7-result.json';
 const QS55_COMPAT_REFERENCE =
   'docs/live-probes/run95-qs55-stdio-compatibility-2026-10-28/import.json';
+const CALENDAR_COMPAT_REFERENCE =
+  'docs/live-probes/run95-calendar-account-source-compatibility-2026-11-05/import.json';
 const REAL_A6_TOOLS = [
   'bangumi.get_collection_series_groups',
   'bangumi.render_collection_series_groups',
@@ -147,7 +149,9 @@ function hasExactMatrixReportReference(cell: unknown, expectedPath: string): boo
 
 function expectAccountAuthCell(toolName: string, cell: unknown): void {
   if (toolName === 'bangumi.get_episode_collections') {
-    expect(cell).toBe(`✅<br>\`${REAL_A7_REPORT_PATH}\``);
+    expect(reportReferencesInMatrixCell(cell)).toEqual(
+      [REAL_A7_REPORT_PATH, CALENDAR_COMPAT_REFERENCE].sort(),
+    );
     return;
   }
   const liveReference =
@@ -167,7 +171,7 @@ function expectAccountAuthCell(toolName: string, cell: unknown): void {
   if (liveReference !== undefined)
     expect(cell).toBe(
       '✅<br>' +
-        [liveReference, QS55_COMPAT_REFERENCE]
+        [liveReference, CALENDAR_COMPAT_REFERENCE, QS55_COMPAT_REFERENCE]
           .sort()
           .map((p) => `\`${p}\``)
           .join('<br>'),
@@ -879,17 +883,19 @@ function expectClientEvidenceCell(cell: string | undefined, label: string): void
 }
 
 describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
-  it('credits only the observed native calendar QQ pipeline and real TIM display', () => {
+  it('preserves the historical TIM observation without crediting the new compact calendar pixels', () => {
     const reference =
       'docs/live-probes/pariya-agent-production-client-e2e-2026-11-05-native-tim-calendar.json';
+    expect(existsSync(join(ROOT, reference))).toBe(true);
     const rows = rowsByTool();
     for (const column of [10, 11]) {
       expect(
         [...rows].filter(([, fields]) => statusMark(fields[column]) === '✅').map(([name]) => name),
-      ).toEqual(['bangumi.render_calendar']);
-      expect(
-        hasExactMatrixReportReference(rows.get('bangumi.render_calendar')?.[column], reference),
-      ).toBe(true);
+      ).toEqual([]);
+      expect(rows.get('bangumi.render_calendar')?.[column]).toBe('⬜');
+      for (const [, fields] of rows) {
+        expect(reportReferencesInMatrixCell(fields[column])).not.toContain(reference);
+      }
     }
   });
 
@@ -1871,7 +1877,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     const credited = [...rowsByTool()].filter(([, cells]) => statusMark(cells[8]) === '✅');
     expect(credited.map(([name]) => name).sort()).toEqual(REAL_CURRENT_ACCOUNT_TOOLS);
     expect(reportReferencesInMatrixCell(rowsByTool().get('bangumi.list_collections')?.[8])).toEqual(
-      [REAL_A2_REPORT_PATH, QS55_COMPAT_REFERENCE],
+      [REAL_A2_REPORT_PATH, CALENDAR_COMPAT_REFERENCE, QS55_COMPAT_REFERENCE].sort(),
     );
     expectAccountAuthPending(rowsByTool().get('bangumi.render_collection_progress')?.[8]);
     expectAccountAuthPending(rowsByTool().get('bangumi.get_my_profile')?.[8]);
