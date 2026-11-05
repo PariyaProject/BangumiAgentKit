@@ -143,6 +143,10 @@ def tool_client_e2e_sources(
             continue
         try:
             relative = path.resolve().relative_to(Path(root).resolve()).as_posix()
+            if isinstance(report, dict) and report.get('schemaVersion') == 2:
+                native_relative = path.absolute().relative_to(Path(root).absolute()).as_posix()
+                if native_relative != relative:
+                    continue
         except (OSError, ValueError):
             continue
         if isinstance(report, dict) and report.get('schemaVersion') == 2:

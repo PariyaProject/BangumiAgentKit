@@ -13,7 +13,7 @@ from pathlib import Path
 import subprocess
 
 from . import real_account_a1_evidence as receipts
-from .real_account_a3_evidence import _current_sources_match
+from .real_account_a3_evidence import _current_sources_match, RUNTIME_PATHS
 
 REFERENCE = 'docs/live-probes/pariya-agent-production-client-e2e-2026-11-05-native-tim-calendar.json'
 IMPORT_SHA256 = 'ca9c6ca24a5e3bed9c26fa3dc921ff4c379248fa76dd6b89eeeaf49790cd01ca'
@@ -42,8 +42,19 @@ def native_tim_calendar_status(root: Path, catalog: list[dict], relative: str) -
                 return False, False
             loaded[name] = json.loads(raw)
         receipts._git(root, 'merge-base', '--is-ancestor', SOURCE_REVISION, 'HEAD')
+        sources = loaded[SOURCE_BUNDLE + '/source-files.json']
+        # Optional selected files absent at execution must stay absent on disk.
+        # Git's tree cannot detect a newly added untracked .npmrc (or a link,
+        # directory, FIFO, etc.). The two source-directory roots are different:
+        # their manifested entries are checked by the shared matcher below.
+        for relative_path in RUNTIME_PATHS:
+            if relative_path in ('apps', 'packages') or relative_path in sources:
+                continue
+            path = root / relative_path
+            if path.exists() or path.is_symlink():
+                return False, False
         if not _current_sources_match(
-            root, report, loaded[SOURCE_BUNDLE + '/source-files.json'],
+            root, report, sources,
             loaded[SOURCE_BUNDLE + '/root-package-runtime.json'],
         ):
             return False, False

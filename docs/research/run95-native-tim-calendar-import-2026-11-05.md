@@ -49,6 +49,13 @@ shared historical checker's root-metadata projection. The source checker verifie
 and the actual executed ancestor; a future runtime change removes this credit
 until independently justified. No frozen account consumer or receipt changed.
 
+Selected optional runtime files absent from the executed manifest must also
+remain absent on disk. In particular a new `.npmrc`, including a dangling link,
+directory or FIFO, removes both credits until removed. Native v2 dispatch
+rejects lexical report aliases before the fixed reader; an isolated report
+directory cannot borrow a canonical report through a symlink. These local
+guards supplement the frozen historical helper without changing it.
+
 The report contains no account identity, message/reply body, screenshot, media,
 credential or session identifier. The import reads fixed repository files and
 bounded Git metadata only. It makes no API/model/client call and introduces no

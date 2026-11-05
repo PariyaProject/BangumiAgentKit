@@ -2,6 +2,7 @@
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -162,6 +163,45 @@ class NativeTimCalendarEvidenceTests(unittest.TestCase):
             path.write_bytes(b'synthetic')
             self.assertEqual(self.result(), ({}, {}))
             path.unlink()
+
+    def test_absent_root_runtime_config_stays_absent_for_all_file_types(self):
+        path = self.root / '.npmrc'
+        self.assertNotIn('.npmrc', self.sources)
+        expected = self.result()
+        self.assertIn(evidence.TOOL, expected[0])
+        outside = self.root / 'synthetic-config'
+        outside.write_text('ignore-scripts=true\n')
+        for kind in ('regular', 'symlink', 'dangling-symlink', 'directory', 'fifo'):
+            with self.subTest(kind=kind):
+                if kind == 'regular':
+                    path.write_text('ignore-scripts=true\n')
+                elif kind == 'symlink':
+                    path.symlink_to(outside)
+                elif kind == 'dangling-symlink':
+                    path.symlink_to(self.root / 'missing-config')
+                elif kind == 'directory':
+                    path.mkdir()
+                else:
+                    os.mkfifo(path)
+                try:
+                    self.assertEqual(self.result(), ({}, {}))
+                finally:
+                    if kind == 'directory':
+                        path.rmdir()
+                    else:
+                        path.unlink()
+                self.assertEqual(self.result(), expected)
+
+    def test_symlink_report_alias_cannot_escape_report_directory_isolation(self):
+        elsewhere = self.root / 'isolated-probes'
+        elsewhere.mkdir()
+        (elsewhere / 'pariya-agent-production-client-e2e-alias.json').symlink_to(
+            self.root / evidence.REFERENCE,
+        )
+        self.assertEqual(tool_client_e2e_sources(
+            self.catalog, catalog_path=self.root / 'docs/tool-catalog.json',
+            report_dir=elsewhere, root=self.root,
+        ), ({}, {}))
 
     def test_only_acceptance_check_may_evolve_in_head_and_disk_root_package(self):
         self.package['scripts']['acceptance:check'] += ' && true'
