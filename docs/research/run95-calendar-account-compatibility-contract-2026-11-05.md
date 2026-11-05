@@ -41,6 +41,8 @@ Five private images must decode completely and preserve file permissions,
 private cache exclusion and cleanup. The episode read must preserve account
 scope, bound subject identity, main episode request type, known returned status
 and the one-row partial page; it must not infer full progress.
+The normalized episode uses `rawType: 0` and `category: main`; the containing
+collection row's `type: 1` and `status: wish` describe a separate status enum.
 
 The provider admits only GET collections, GET episodes and the bounded public
 calendar needed by the original inputs. At most64 fixture requests, one row per

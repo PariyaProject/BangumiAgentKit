@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import net from 'node:net';
+import { validSelectedEpisodePage } from './calendar-account-closed-contract.mjs';
 
 const require = createRequire('/opt/bangumi/package.json');
 const toolsRequire = createRequire(require.resolve('@bangumi-agent-kit/tools'));
@@ -180,19 +181,7 @@ try {
         throw Error('C12_LIST');
       selectedSubject = body.items[0].subjectId;
     } else if (input.name === 'bangumi.get_episode_collections') {
-      if (
-        body.items?.length !== 1 ||
-        body.items[0].episode?.subjectId !== selectedSubject ||
-        body.items[0].type !== 1 ||
-        body.items[0].status !== 'wish' ||
-        body.items[0].episode?.type !== 0 ||
-        body.coverage?.observed !== 1 ||
-        body.coverage?.returned !== 1 ||
-        body.coverage?.requestedLimit !== 1 ||
-        body.coverage?.truncated !== true ||
-        body.source?.authScope !== 'account'
-      )
-        throw Error('C12_EPISODE');
+      if (!validSelectedEpisodePage(body, selectedSubject)) throw Error('C12_EPISODE');
       facts.episodeSelectionValidated = true;
     } else if (!['complete', 'partial', 'conflict'].includes(body.state))
       throw Error('C12_SEMANTIC');

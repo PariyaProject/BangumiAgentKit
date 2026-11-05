@@ -25,6 +25,7 @@ PARENT = 'sha256:9c0784bff3ef39fa5c30639f07e3b86b4be634c2cecf854679e9920f9517014
 BASE = a7.SOURCE_REVISION
 SOURCES = {'packages/renderer/src/render-service.ts', 'packages/renderer/src/templates/CalendarCard.tsx'}
 PROGRAMS = [
+    'calendar-account-closed-contract.mjs',
     'calendar-account-closed-controller.mjs', 'calendar-account-closed-driver.mjs',
     'calendar-account-closed-fixture.mjs', 'calendar-account-closed-guard.mjs',
     'calendar-account-closed-preloaded.cjs', 'prepare-calendar-account-compiled.mjs',
