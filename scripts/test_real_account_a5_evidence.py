@@ -9,6 +9,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from source_snapshot_fixture import read_source_snapshot
+
 from acceptance import real_account_a1_evidence as legacy
 from acceptance import real_account_a2_evidence as a2
 from acceptance import real_account_a5_evidence as evidence
@@ -30,14 +32,10 @@ class RealAccountA5EvidenceTests(unittest.TestCase):
         self.bundle = self.root / evidence.BUNDLE
         shutil.copytree(ROOT / evidence.BUNDLE, self.bundle)
         self.sources = json.loads((self.bundle / 'source-files.json').read_text())
-        for name in self.sources:
+        for name, data in read_source_snapshot(ROOT, self.sources).items():
             target = self.root / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            # Frozen consumer fixtures retain their actually executed lock.
-            if name == 'pnpm-lock.yaml':
-                target.write_bytes(subprocess.check_output(['git', '-C', str(ROOT), 'show', evidence.SOURCE_REVISION + ':' + name], timeout=10))
-            else:
-                shutil.copyfile(ROOT / name, target)
+            target.write_bytes(data)
         (self.root / 'package.json').write_bytes(subprocess.check_output(['git', '-C', str(ROOT), 'show', evidence.SOURCE_REVISION + ':package.json'], timeout=10))
         self.catalog = json.loads((self.root / 'docs/tool-catalog.json').read_text())
         self.tree = ORIGINAL_GIT(ROOT, 'ls-tree', '-r', evidence.SOURCE_REVISION, '--', *evidence.RUNTIME_PATHS)

@@ -11,6 +11,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from source_snapshot_fixture import read_source_snapshot
+
 from acceptance import real_account_a1_evidence as receipts
 from acceptance import real_account_a3_evidence as shared
 from acceptance import real_account_a7_evidence as evidence
@@ -29,10 +31,10 @@ class RealAccountA7EvidenceTests(unittest.TestCase):
         self.bundle = self.root / evidence.BUNDLE
         shutil.copytree(ROOT / evidence.BUNDLE, self.bundle)
         self.sources = json.loads((self.bundle / 'source-files.json').read_bytes())
-        for name in self.sources:
+        for name, data in read_source_snapshot(ROOT, self.sources).items():
             target = self.root / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, target)
+            target.write_bytes(data)
         self.package = json.loads(subprocess.check_output([
             'git', '-C', str(ROOT), 'show', evidence.SOURCE_REVISION + ':package.json'], timeout=10))
         (self.root / 'package.json').write_text(json.dumps(self.package))

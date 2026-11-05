@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from source_snapshot_fixture import read_source_snapshot
+
 from acceptance import real_account_a1_evidence as legacy
 from acceptance import real_account_a2_evidence as a2
 from acceptance import real_account_a3_evidence as a3
@@ -32,15 +34,21 @@ class Qs55CompatibilityTests(unittest.TestCase):
         self.sources = json.loads((self.bundle / 'source-files.json').read_text())
         self.frozen = json.loads((self.bundle / 'frozen-files.json').read_text())
         self.fixed = {**self.frozen, **self.proof['producerFiles']}
-        for name in {*self.sources, *self.fixed, 'package.json'}:
+        for name in self.fixed:
             target = self.root / name; target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, target)
+        for name, data in read_source_snapshot(ROOT, self.sources).items():
+            target = self.root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+        self.basis_revision = json.loads((self.bundle / 'import.json').read_bytes())['patchedSourceBasisRevision']
+        (self.root / 'package.json').write_text(REAL_GIT(ROOT, 'show', self.basis_revision + ':package.json'))
         self.fixed_tree = {}
         for name in self.fixed:
             raw = (self.root / name).read_bytes()
             blob = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
             self.fixed_tree[name] = f'100644 blob {blob}\t{name}\n'
-        self.tree = REAL_GIT(ROOT, 'ls-tree', '-r', 'HEAD', '--', *a3.RUNTIME_PATHS)
+        self.tree = REAL_GIT(ROOT, 'ls-tree', '-r', self.basis_revision, '--', *a3.RUNTIME_PATHS)
         self.head_package = (self.root / 'package.json').read_text()
         self.catalog = json.loads((self.root / 'docs/tool-catalog.json').read_text())
         self.git_patch = patch.object(legacy, '_git', side_effect=self.git_result)

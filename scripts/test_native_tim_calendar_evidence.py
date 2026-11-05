@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from source_snapshot_fixture import read_source_snapshot
+
 from acceptance import native_tim_calendar_evidence as evidence
 from acceptance import real_account_a1_evidence as receipts
 from acceptance import real_account_a3_evidence as shared
@@ -30,10 +32,10 @@ class NativeTimCalendarEvidenceTests(unittest.TestCase):
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, target)
         self.sources = json.loads((ROOT / evidence.SOURCE_BUNDLE / 'source-files.json').read_bytes())
-        for name in self.sources:
+        for name, data in read_source_snapshot(ROOT, self.sources).items():
             target = self.root / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, target)
+            target.write_bytes(data)
         self.package = json.loads(ORIGINAL_GIT(ROOT, 'show', evidence.SOURCE_REVISION + ':package.json'))
         self.executed_package = copy.deepcopy(self.package)
         (self.root / 'package.json').write_text(json.dumps(self.package))
