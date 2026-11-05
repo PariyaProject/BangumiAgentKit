@@ -879,6 +879,20 @@ function expectClientEvidenceCell(cell: string | undefined, label: string): void
 }
 
 describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
+  it('credits only the observed native calendar QQ pipeline and real TIM display', () => {
+    const reference =
+      'docs/live-probes/pariya-agent-production-client-e2e-2026-11-05-native-tim-calendar.json';
+    const rows = rowsByTool();
+    for (const column of [10, 11]) {
+      expect(
+        [...rows].filter(([, fields]) => statusMark(fields[column]) === '✅').map(([name]) => name),
+      ).toEqual(['bangumi.render_calendar']);
+      expect(
+        hasExactMatrixReportReference(rows.get('bangumi.render_calendar')?.[column], reference),
+      ).toBe(true);
+    }
+  });
+
   it('does not count Agent/MCP reports from failed or incomplete CLI runs', () => {
     const liveDir = mkdtempSync(join(tmpdir(), 'bangumi-e2e-evidence-'));
     try {
@@ -1814,8 +1828,8 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       for (const index of [6, 7, 9, 10, 11]) {
         expect(reportReferencesInMatrixCell(cells[index])).not.toContain(REAL_A1_REPORT_PATH);
       }
-      expect(cells[10]).toBe('⬜');
-      expect(cells[11]).toBe('⬜');
+      expectClientEvidenceCell(cells[10], `${name} independent QQ evidence`);
+      expectClientEvidenceCell(cells[11], `${name} independent TIM evidence`);
     }
     expect(TABLE).toContain('12/33；待补 21');
   });

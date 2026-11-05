@@ -4725,9 +4725,13 @@
         "docs/research/run95-ux002-default-075-render-matrix-visual-qa-2026-10-22.md",
         "docs/research/assets/run95-ux002-default075-exact-matrix-ed45febb-summary.json",
         "docs/research/run95-ux002-render-subject-card-compact-typography-v2-source-contract-2026-10-22.md",
-        "docs/research/run95-ux002-render-subject-card-compact-typography-v3-source-contract-2026-10-22.md"
+        "docs/research/run95-ux002-render-subject-card-compact-typography-v3-source-contract-2026-10-22.md",
+        "scripts/acceptance/native_tim_calendar_evidence.py",
+        "scripts/test_native_tim_calendar_evidence.py",
+        "docs/live-probes/pariya-agent-production-client-e2e-2026-11-05-native-tim-calendar.json",
+        "docs/research/run95-native-tim-calendar-import-2026-11-05.md"
       ],
-      "next_action": "Keep PARTIAL. The 0.75 default remains configurable per render, with body/display stacks and trusted operator-provided font files. The 1,770-image/59-sheet synthetic matrix is visual evidence only. Theme-pack preference, production-font delivery, and real QQ/TIM display remain separate acceptance evidence. Before selecting a renderer profile, read the active Harness Run/Epoch; the Harness PR/Run is authoritative for claim availability and terminal results. Never retry or recreate a consumed profile. No QQ/TIM display credit is established.",
+      "next_action": "Keep PARTIAL. November 5 actual authorized TIM input, theme acknowledgement and opened native calendar image earn exactly the calendar QQ/TIM cells via a sealed current-runtime import. Other packs, fonts, renderers and aesthetic acceptance remain distinct. Preserve configurable typography, four packs, full-week option and locked C07; the compact calendar variant is separate follow-up. Do not replay completed client actions or spent profiles.",
       "reopen_when": "The user requests additional theme packs/settings surfaces, Renderer templates or image output behavior changes, or real QQ/TIM image display is explicitly selected for offline-to-live acceptance.",
       "related_ids": [
         "OP-008",

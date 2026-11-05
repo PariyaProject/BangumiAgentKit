@@ -66,6 +66,27 @@ the original acceptance target.
 
 ## Daily execution and handoff
 
+### Authorized real-client operation
+
+The user explicitly delegated operation of the existing TIM bot conversation
+to the agent. Sending through the actual desktop client and observing the
+outgoing bubble, bot reply and opened image is real client ingress; it does not
+require the user to physically press Send. Keep the authorized recipient and
+scope, inspect the unsent draft, send once, and record only sanitized evidence.
+Backend event injection and an old spent sender are not substitutes. Preserve
+terminal claims and do not replay a completed journey merely to regenerate a
+report. Account writes, community actions and new credentials retain their
+separate authorization bounds.
+
+The November 5 calendar journey is already observed. Its fixed native import
+is documented in
+[the evidence report](../research/run95-native-tim-calendar-import-2026-11-05.md).
+Functional image display, theme acknowledgement, layout quality and user
+aesthetic acceptance are distinct claims. Continue other work after the
+scoped evidence gate; do not redesign accepted packs in an import Epoch.
+
+### Continuation loop
+
 1. Read AGENTS.md, PRODUCT_CHARTER.md, HARNESS.md and this plan.
 2. Observe the Codex Goal through its tool. Run continuation:show with the
    observed goal-state. Read the exact active PR and profile disposition when
