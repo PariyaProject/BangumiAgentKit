@@ -43,7 +43,9 @@ runtime and are reused only as byte witnesses. No account receipt is imported
 by this consumer. All 285 runtime files, Git blobs/modes, dependency lock,
 catalog, dynamically discovered SQL/assets, and root package metadata match
 the current compatibility basis `6e4512f53fee6d0f3a6157bd85725d6a6dced3cd`.
-Root scripts alone may evolve. The source checker verifies both HEAD and disk
+Only the root `acceptance:check` command may evolve. Build/start and all other
+scripts are additionally checked against the executed bfe source, beyond the
+shared historical checker's root-metadata projection. The source checker verifies both HEAD and disk
 and the actual executed ancestor; a future runtime change removes this credit
 until independently justified. No frozen account consumer or receipt changed.
 

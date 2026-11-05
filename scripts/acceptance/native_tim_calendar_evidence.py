@@ -47,6 +47,18 @@ def native_tim_calendar_status(root: Path, catalog: list[dict], relative: str) -
             loaded[SOURCE_BUNDLE + '/root-package-runtime.json'],
         ):
             return False, False
+        # The shared historical checker excludes root scripts. For this import
+        # permit only the acceptance command added to exercise this consumer;
+        # build/start and every other script remain bound to the executed source.
+        executed_package = json.loads(receipts._git(root, 'show', SOURCE_REVISION + ':package.json'))
+        expected_scripts = executed_package['scripts']
+        expected_scripts.pop('acceptance:check', None)
+        for package in (json.loads(receipts._git(root, 'show', 'HEAD:package.json')),
+                        json.loads(receipts._read_regular(root, 'package.json'))):
+            scripts = package['scripts']
+            scripts.pop('acceptance:check', None)
+            if scripts != expected_scripts:
+                return False, False
         raw_catalog = receipts._read_regular(root, 'docs/tool-catalog.json', 4 * 1024 * 1024)
         if (hashlib.sha256(raw_catalog).hexdigest() != report['catalogSha256']
                 or catalog != json.loads(raw_catalog)

@@ -34,6 +34,7 @@ class NativeTimCalendarEvidenceTests(unittest.TestCase):
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, target)
         self.package = json.loads(ORIGINAL_GIT(ROOT, 'show', evidence.SOURCE_REVISION + ':package.json'))
+        self.executed_package = copy.deepcopy(self.package)
         (self.root / 'package.json').write_text(json.dumps(self.package))
         self.catalog = json.loads((self.root / 'docs/tool-catalog.json').read_bytes())
         self.tree = ORIGINAL_GIT(ROOT, 'ls-tree', '-r', evidence.SOURCE_REVISION, '--', *shared.RUNTIME_PATHS)
@@ -50,6 +51,8 @@ class NativeTimCalendarEvidenceTests(unittest.TestCase):
             return self.tree
         if args == ('show', 'HEAD:package.json'):
             return json.dumps(self.package)
+        if args == ('show', evidence.SOURCE_REVISION + ':package.json'):
+            return json.dumps(self.executed_package)
         raise AssertionError('Only bounded source inspection is permitted')
 
     def result(self):
@@ -160,8 +163,8 @@ class NativeTimCalendarEvidenceTests(unittest.TestCase):
             self.assertEqual(self.result(), ({}, {}))
             path.unlink()
 
-    def test_only_governance_scripts_may_evolve_in_head_and_disk_root_package(self):
-        self.package['scripts']['test:synthetic'] = 'true'
+    def test_only_acceptance_check_may_evolve_in_head_and_disk_root_package(self):
+        self.package['scripts']['acceptance:check'] += ' && true'
         path = self.root / 'package.json'
         path.write_text(json.dumps(self.package))
         self.assertIn(evidence.TOOL, self.result()[0])
@@ -172,6 +175,20 @@ class NativeTimCalendarEvidenceTests(unittest.TestCase):
         path.write_text(json.dumps(self.package))
         self.package['version'] = 'changed-in-head'
         self.assertEqual(self.result(), ({}, {}))
+
+    def test_build_start_and_unknown_scripts_drift_fail_in_head_and_on_disk(self):
+        path = self.root / 'package.json'
+        for name in ('build', 'start:mcp', 'new-script'):
+            with self.subTest(script=name):
+                disk = copy.deepcopy(self.package)
+                disk['scripts'][name] = 'changed'
+                path.write_text(json.dumps(disk))
+                self.assertEqual(self.result(), ({}, {}))
+                path.write_text(json.dumps(self.package))
+                previous = copy.deepcopy(self.package)
+                self.package['scripts'][name] = 'changed'
+                self.assertEqual(self.result(), ({}, {}))
+                self.package = previous
 
     def test_catalog_drift_or_private_write_catalog_cannot_earn_public_credit(self):
         self.catalog[0]['description'] = 'changed'
