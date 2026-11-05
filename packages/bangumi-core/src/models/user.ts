@@ -48,7 +48,8 @@ export interface UserPersonCollectionItem {
   id: number;
   name: string;
   type: number;
-  career: string[];
+  /** Omitted when the collection source does not supply career metadata. */
+  career?: string[];
   images?: Record<string, string>;
   createdAt: string;
 }

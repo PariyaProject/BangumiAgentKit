@@ -1,4 +1,4 @@
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import {
   GeneratedBangumiOpenApiClient,
   OperationQuery,
@@ -111,7 +111,7 @@ type RawUserPersonCollection = {
   id: number;
   name: string;
   type: number;
-  career: string[];
+  career?: string[];
   images?: Record<string, string> | null;
   created_at: string;
 };
@@ -124,8 +124,9 @@ function isRawUserPersonCollection(value: unknown): value is RawUserPersonCollec
     typeof value.type === 'number' &&
     Number.isInteger(value.type) &&
     value.type > 0 &&
-    Array.isArray(value.career) &&
-    value.career.every((career) => typeof career === 'string') &&
+    (value.career === undefined ||
+      (Array.isArray(value.career) &&
+        value.career.every((career) => typeof career === 'string'))) &&
     typeof value.created_at === 'string' &&
     (value.images === undefined || value.images === null || isRecord(value.images))
   );
@@ -136,7 +137,7 @@ function mapUserPersonCollection(raw: RawUserPersonCollection): UserPersonCollec
     id: raw.id,
     name: raw.name,
     type: raw.type,
-    career: [...raw.career],
+    ...(raw.career === undefined ? {} : { career: [...raw.career] }),
     images: mapCollectionImages(raw.images),
     createdAt: raw.created_at,
   };
@@ -499,6 +500,9 @@ export class UserService {
   ): Promise<{ found: boolean; item?: UserPersonCollectionItem }> {
     try {
       const raw = await this.api.getUserPersonCollection(username, personId);
+      if (!isRawUserPersonCollection(raw) || raw.id !== personId) {
+        throw new BangumiError('PARSER_ERROR', '人物收藏响应字段或身份无效。', false);
+      }
       return { found: true, item: mapUserPersonCollection(raw) };
     } catch (err: unknown) {
       const errorObj = err as { status?: number; code?: string; statusCode?: number };

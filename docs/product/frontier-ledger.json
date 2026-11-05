@@ -4494,11 +4494,34 @@
         "scripts/acceptance/real_account_a7_evidence.py",
         "scripts/test_real_account_a7_evidence.py",
         "docs/live-probes/run95-a7-native-episode-collection-read-2026-10-28/import.json",
-        "docs/product/real-account-a7-episode-evidence.md"
+        "docs/product/real-account-a7-episode-evidence.md",
+        "docs/research/run95-person-collection-career-source-contract-2026-11-05.md",
+        "packages/bangumi-core/src/models/user.ts",
+        "packages/bangumi-core/src/services/user-service.ts",
+        "packages/bangumi-core/src/services/collection-entity-consistency-service.ts",
+        "tests/unit/person-collection-wire.test.ts",
+        "tests/integration/person-collection-wire.test.ts",
+        "tests/unit/collection-entity-consistency.test.ts"
       ],
-      "next_action": "Current-source account12/33,21pending: eleven priorA2-A6 observations retain oldexecution+sealedqs55compatibility refs; A7adds ONLYget_episode_collections through fixed completed native2GET/selection1episode1/known1unknown0/rawsubjectbindingtrue/partial/0assetsPNG-writes-refresh-model-client. Selection earns no extra list credit. Allsevenclaims permanentlyspent;originalsixrawbytes/exact3jobs/Runner7e3cwd/samehealthyNapCatAstrBot/model945 preserved by independent immediate readback. Fixed operatoranchor6391caf6 pins actualbfe/47ac/9c07/current7e3Py3.14.6SQLite3.53.2/21hostfiles/285runtime;53oldfiles andoldconsumer predicates exact. Import source/Git/fixedsanitizedreceipts only,no runtime/key/provider/newaccountcalls. KeepOP009PARTIAL;21account/write/fullOAuth/client/stability/aesthetic observations remainunproven and96Goalunfinished. Matchingfutureboundedreadonlystandingauthority persists;no spentclaimreplay.",
+      "next_action": "Keep PARTIAL. The pinned official person-collection serializer omits career while the current generated API requires it. Service single/list paths and consistency joins now retain unknown metadata without inventing empty roles or adding detail calls; supplied raw labels and known conflicts remain distinct. Initial deterministic diagnostic RED2/GREEN1, focused regression RED then67 related checks GREEN and package/test typechecks establish only offline development evidence. The same active Epoch still owes compiled-MCP proof and strict fresh source compatibility for the unchanged12 historical A2-A7 inputs before current-graph import/review/integration. Preserve all frozen producers/receipts/claims and the completed calendar/design baseline; no new actual account/model/QQ/TIM credit. The newly inspected server list handler accepts page queries; current generated client/frozen contract does not expose them. Any future bounded native-pagination selector needs its own exact source/schema/request contract, never a request rewrite or old-claim retry.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
-      "related_ids": []
+      "related_ids": [],
+      "prior_next_action_before_person_collection_wire_repair": "Current-source account12/33,21pending: eleven priorA2-A6 observations retain oldexecution+sealedqs55compatibility refs; A7adds ONLYget_episode_collections through fixed completed native2GET/selection1episode1/known1unknown0/rawsubjectbindingtrue/partial/0assetsPNG-writes-refresh-model-client. Selection earns no extra list credit. Allsevenclaims permanentlyspent;originalsixrawbytes/exact3jobs/Runner7e3cwd/samehealthyNapCatAstrBot/model945 preserved by independent immediate readback. Fixed operatoranchor6391caf6 pins actualbfe/47ac/9c07/current7e3Py3.14.6SQLite3.53.2/21hostfiles/285runtime;53oldfiles andoldconsumer predicates exact. Import source/Git/fixedsanitizedreceipts only,no runtime/key/provider/newaccountcalls. KeepOP009PARTIAL;21account/write/fullOAuth/client/stability/aesthetic observations remainunproven and96Goalunfinished. Matchingfutureboundedreadonlystandingauthority persists;no spentclaimreplay.",
+      "person_collection_wire_repair_2026_11_05": {
+        "upstream_repository": "bangumi/server",
+        "upstream_revision": "243e2cd5dd22995fb2340d77b48bc851a12ea5b6",
+        "serializer": "web/res/collection.go",
+        "serializer_sha256": "42b6de71d1f3c7c5a763229cbcc585647a5ce13673bee2229fdfd87a2071620e",
+        "source_contract": "docs/research/run95-person-collection-career-source-contract-2026-11-05.md",
+        "state": "implemented-core-and-registry-fixtures-compiled-compatibility-pending",
+        "boundaries": [
+          "unknown career is not a known empty array",
+          "no deployed upstream revision inferred",
+          "no live account/model/client execution",
+          "current source-graph compatibility still pending",
+          "all old spent profiles and design baselines preserved"
+        ]
+      }
     },
     {
       "id": "OP-010",
