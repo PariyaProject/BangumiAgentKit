@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CalendarViewModel, RenderService } from '@bangumi-agent-kit/renderer';
 import { renderHtmlTemplate } from '../../packages/renderer/src/template-engine.js';
 import type { BrowserPool } from '../../packages/renderer/src/browser-pool.js';
 
 const fixtures = JSON.parse(
-  readFileSync(new URL('../fixtures/render/calendar-compact.json', import.meta.url), 'utf8'),
+  readFileSync(join(process.cwd(), 'tests/fixtures/render/calendar-compact.json'), 'utf8'),
 ).cases as Array<{ id: string; viewModel: CalendarViewModel }>;
 const fixture = (id: string) => structuredClone(fixtures.find((item) => item.id === id)!.viewModel);
 const html = (vm: CalendarViewModel) =>
@@ -75,7 +76,7 @@ describe('compact magazine calendar semantic contract', () => {
 
   it('bounds actual browser-input artwork at chat display resolution while retaining all56 entries', async () => {
     const cover = readFileSync(
-      new URL('../fixtures/render/anime-magazine-cover-f.png', import.meta.url),
+      join(process.cwd(), 'tests/fixtures/render/anime-magazine-cover-f.png'),
     );
     const dataUrl = 'data:image/png;base64,' + cover.toString('base64');
     let htmlBytes = 0;
