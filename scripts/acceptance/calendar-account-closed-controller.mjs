@@ -1,0 +1,223 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
+import net from 'node:net';
+
+const require = createRequire('/opt/bangumi/package.json');
+const toolsRequire = createRequire(require.resolve('@bangumi-agent-kit/tools'));
+const { Client } = await import(
+  pathToFileURL(require.resolve('@modelcontextprotocol/sdk/client/index.js'))
+);
+const { StdioClientTransport } = await import(
+  pathToFileURL(require.resolve('@modelcontextprotocol/sdk/client/stdio.js'))
+);
+const { SQLiteStorage, resolveSqlitePath } = await import(
+  pathToFileURL(toolsRequire.resolve('@bangumi-agent-kit/db'))
+);
+const { encryptToken } = await import(
+  pathToFileURL(toolsRequire.resolve('@bangumi-agent-kit/auth'))
+);
+const rendererEntry = toolsRequire.resolve('@bangumi-agent-kit/renderer');
+const sharp = createRequire(rendererEntry)('sharp');
+const output = '/tmp/c12-output';
+const workspace = fs.mkdtempSync('/tmp/c12-workspace-');
+const dataDir = path.join(workspace, 'data'),
+  artifacts = path.join(workspace, 'artifacts');
+const key = 'c12-fake-only-encryption-key-01234567890';
+let storage, client;
+let selectedSubject;
+const facts = {
+  schema: 'calendar-account-closed-compiled/v1',
+  passed: false,
+  exactInputs: [],
+  results: [],
+  mcpClosed: false,
+  workspaceRemoved: false,
+  fakeStorage: true,
+  realAccountActions: 0,
+  modelCalls: 0,
+  clientMessages: 0,
+  failureStage: null,
+  episodeSelectionValidated: false,
+};
+let stage = 'seed';
+try {
+  storage = await SQLiteStorage.create({ dbPath: resolveSqlitePath(undefined, dataDir) });
+  const principal = await storage.findOrCreatePrincipal({
+    provider: 'qq',
+    botInstanceId: 'c12-fake-bot',
+    externalUserId: 'c12-fake-external',
+  });
+  const account = await storage.upsertBangumiAccount({
+    id: 'c12-fake-account',
+    bangumiUserId: 991001,
+    username: 'c12-fake-user',
+    nickname: 'Synthetic',
+  });
+  await storage.bindAccount(principal.id, account.id, true);
+  const now = new Date();
+  await storage.upsertCredential({
+    id: 'c12-fake-credential',
+    bangumiAccountId: account.id,
+    encryptedAccessToken: encryptToken('c12-fake-access', key),
+    expiresAt: new Date(now.getTime() + 3600000),
+    requestedCapabilities: [],
+    reportedScopes: null,
+    scopeEvidence: 'unknown',
+    keyVersion: 'v1',
+    createdAt: now,
+    updatedAt: now,
+  });
+  await storage.close();
+  storage = null;
+  const inputs = JSON.parse(fs.readFileSync('/qa/inputs.json', 'utf8'));
+  facts.exactInputs = inputs;
+  const childEnv = {
+    PATH: process.env.PATH,
+    HOME: workspace,
+    NODE_ENV: 'test',
+    C12_ROLE: 'server',
+    C12_FORCE: process.env.C12_FORCE || '',
+    BANGUMI_DATA_DIR: dataDir,
+    BANGUMI_DB_DRIVER: 'sqlite',
+    BANGUMI_TOKEN_ENCRYPTION_KEY: key,
+    BANGUMI_MCP_IDENTITY_PROVIDER: 'qq',
+    BANGUMI_MCP_EXTERNAL_USER_ID: 'c12-fake-external',
+    BANGUMI_MCP_BOT_INSTANCE_ID: 'c12-fake-bot',
+    BANGUMI_MCP_CONVERSATION_ID: 'c12-fake-conversation',
+    BANGUMI_ARTIFACT_DIR: artifacts,
+    RENDERER_DISABLE_CHROMIUM_SANDBOX: 'true',
+    PLAYWRIGHT_BROWSERS_PATH: '/opt/ms-playwright',
+  };
+  const args =
+    process.env.C12_FORCE === 'preloaded'
+      ? ['--require', '/qa/calendar-account-closed-preloaded.cjs']
+      : [];
+  args.push(
+    '--import',
+    '/qa/calendar-account-closed-guard.mjs',
+    '--import',
+    '/qa/calendar-account-closed-fixture.mjs',
+    '/opt/bangumi/dist/main.js',
+  );
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args,
+    env: childEnv,
+    stderr: 'pipe',
+  });
+  // Drain only; no native error strings/private payloads are exported.
+  transport.stderr?.on('data', () => {});
+  client = new Client({ name: 'c12-fresh-fake-compatibility', version: '1.0.0' });
+  stage = 'connect';
+  if (process.env.C12_FORCE === 'network-controller') net.connect(443, 'calendar-fixture.invalid');
+  await client.connect(transport);
+  for (const [index, input] of inputs.entries()) {
+    stage = 'tool-' + index;
+    fs.writeFileSync(path.join(output, 'step.json'), JSON.stringify({ index, name: input.name }));
+    const argumentsForCall = { ...input.input };
+    if (input.name === 'bangumi.get_episode_collections') {
+      if (argumentsForCall.subjectId !== 'sole-validated-selection-in-memory' || !selectedSubject)
+        throw Error('C12_SELECTION');
+      argumentsForCall.subjectId = selectedSubject;
+    }
+    const result = await client.callTool(
+      { name: input.name, arguments: argumentsForCall },
+      undefined,
+      {
+        timeout: 50000,
+      },
+    );
+    if (result.isError || result.content?.length !== 1 || result.content[0]?.type !== 'text')
+      throw Error('C12_TOOL');
+    const body = JSON.parse(result.content[0].text);
+    if (
+      result.structuredContent !== undefined &&
+      !isDeepStrictEqual(body, result.structuredContent)
+    )
+      throw Error('C12_WIRE');
+    const observation = { name: input.name, ok: true, nativePngDecoded: false };
+    if (input.name.includes('.render_')) {
+      const a = body.artifact;
+      if (!a || !/^art_p_[a-f0-9]{24}_[a-f0-9]{32}$/u.test(a.id) || a.mimeType !== 'image/png')
+        throw Error('C12_ARTIFACT');
+      const file = path.join(artifacts, 'private', a.id.split('_')[2], a.id + '.png');
+      const fd = fs.openSync(
+        file,
+        fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK,
+      );
+      let buffer;
+      try {
+        const stat = fs.fstatSync(fd);
+        if (!stat.isFile() || stat.mode & 0o077 || stat.size > 5242880) throw Error('C12_FILE');
+        buffer = fs.readFileSync(fd);
+      } finally {
+        fs.closeSync(fd);
+      }
+      const decoded = await sharp(buffer, { limitInputPixels: 28800000 })
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      if (
+        decoded.info.width !== a.width ||
+        decoded.info.height !== a.height ||
+        decoded.data.length !== a.width * a.height * decoded.info.channels
+      )
+        throw Error('C12_PIXELS');
+      observation.nativePngDecoded = true;
+      fs.rmSync(artifacts, { recursive: true });
+    } else if (input.name === 'bangumi.list_collections') {
+      if (
+        !Array.isArray(body.items) ||
+        body.items.length !== 1 ||
+        body.limit !== 1 ||
+        body.offset !== 0 ||
+        !Number.isSafeInteger(body.items[0]?.subjectId) ||
+        body.items[0].subjectId <= 0 ||
+        body.items[0].subjectType !== 'anime'
+      )
+        throw Error('C12_LIST');
+      selectedSubject = body.items[0].subjectId;
+    } else if (input.name === 'bangumi.get_episode_collections') {
+      if (
+        body.items?.length !== 1 ||
+        body.items[0].episode?.subjectId !== selectedSubject ||
+        body.items[0].type !== 1 ||
+        body.items[0].status !== 'wish' ||
+        body.items[0].episode?.type !== 0 ||
+        body.coverage?.observed !== 1 ||
+        body.coverage?.returned !== 1 ||
+        body.coverage?.requestedLimit !== 1 ||
+        body.coverage?.truncated !== true ||
+        body.source?.authScope !== 'account'
+      )
+        throw Error('C12_EPISODE');
+      facts.episodeSelectionValidated = true;
+    } else if (!['complete', 'partial', 'conflict'].includes(body.state))
+      throw Error('C12_SEMANTIC');
+    facts.results.push(observation);
+  }
+  facts.passed =
+    facts.results.length === 12 &&
+    facts.episodeSelectionValidated &&
+    facts.results.filter((r) => r.nativePngDecoded).length === 5;
+} catch (error) {
+  facts.failureStage = stage;
+  facts.failureCode = /^C12_[A-Z_]+$/u.test(error?.message) ? error.message : 'MCP_OR_RUNTIME';
+} finally {
+  if (storage) await storage.close();
+  if (client) {
+    try {
+      await client.close();
+      facts.mcpClosed = true;
+    } catch {
+      facts.passed = false;
+    }
+  }
+  fs.rmSync(workspace, { recursive: true, force: true });
+  facts.workspaceRemoved = !fs.existsSync(workspace);
+  facts.passed &&= facts.mcpClosed && facts.workspaceRemoved;
+  fs.writeFileSync(path.join(output, 'compiled-mcp.json'), JSON.stringify(facts), { mode: 0o600 });
+}
+process.exitCode = facts.passed ? 0 : 1;
