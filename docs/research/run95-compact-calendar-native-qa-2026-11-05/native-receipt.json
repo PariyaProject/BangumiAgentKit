@@ -1,0 +1,4550 @@
+{
+  "schema": "run95-calendar-magazine-native-synthetic-qa/v1",
+  "sourceHead": "ec350dd78b775d7327b7e2e5bfae3a30b6294138",
+  "sourceFiles": {
+    "packages/renderer/src/templates/CalendarCard.tsx": "f9f221df12d3ca1c8ff2a5672c05e467fba3885b60d7f3d88b0f6b33ba2f59e7",
+    "packages/renderer/src/render-service.ts": "5b7b99b471ae0677eae74e20d940ee8c839937e52a0849cac74edaa4ab8884a8",
+    "scripts/acceptance/render-calendar-magazine-qa.mjs": "925f769812a4250805f407160286dd822e8ab0cb6277b672b2dfc84aa110615d",
+    "tests/fixtures/render/calendar-compact.json": "efe91990008f1857dd1bdf1625cb7d9103fa355bed907e310b410cabec54bb6e"
+  },
+  "fixturesSha256": "efe91990008f1857dd1bdf1625cb7d9103fa355bed907e310b410cabec54bb6e",
+  "baselineSha256": "8cc6a4176a492842f2ace8414168d88d9026d63e34ac62f8736f76942b387ccd",
+  "results": [
+    {
+      "key": "anime-magazine-partial-three-bangumi-light-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 650,
+      "bytes": 94922,
+      "htmlBytes": 10161911,
+      "pngSha256": "3265a5b75de12ebf3b5422d3e933120eb35b52d9af48650d12bfe4c13f693868",
+      "htmlSha256": "f6789c478410b0aa1644e43bf1b0ee98706377728541efa8881ffc685ae7c140",
+      "cacheKey": "94c874e7e447887ad1dbd631ade5033c4575778ca45e931d8895c30f1d83ba54",
+      "dom": {
+        "width": 320,
+        "height": 649.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 4
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "oldCacheRejected": true
+    },
+    {
+      "key": "anime-magazine-partial-three-bangumi-light-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 888,
+      "bytes": 133369,
+      "htmlBytes": 10161939,
+      "pngSha256": "44cc468bfe14362e3c2919296dc618ef541ecdd93010154b0a51bacd17811cfd",
+      "htmlSha256": "d71ecdc3b3e97cf36885aff80671e20e02861bfc04201b2ddd9e7354b5773776",
+      "cacheKey": "b9235b2c18ed484fab321b774b092564d12981d81bf98a2881ddc09a39e16170",
+      "dom": {
+        "width": 320,
+        "height": 887.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 4
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-partial-three-bangumi-light-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 636,
+      "bytes": 94510,
+      "htmlBytes": 10161911,
+      "pngSha256": "7ff22304c018ba8a7db0c0eaa5352e101fb86f0a1e9b0f6f8632487060867251",
+      "htmlSha256": "9dc408ab4012c3cafa8fbee6d711f05ff9f19d32d9e6e575329d46c38e44b0e7",
+      "cacheKey": "245c65b35ad711f647059fded6019b4a698201717b8eca1bb48c150086858498",
+      "dom": {
+        "width": 375,
+        "height": 635.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 4
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-partial-three-bangumi-light-375-0.75.png",
+      "oldCacheRejected": true
+    },
+    {
+      "key": "anime-magazine-partial-three-bangumi-light-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 636,
+      "bytes": 95325,
+      "htmlBytes": 10161911,
+      "pngSha256": "ffe0ce737473b195b3b22bfeba846014adc05c34732b742e599d98625812db54",
+      "htmlSha256": "7d33fedfb56f716538b306cd22c5b1804e4dda473d0d9e9c75a10db149dbb715",
+      "cacheKey": "e802ab1c213afe4724a1a34dbc60e99348fcf307e58280facdbc71a05cc9be57",
+      "dom": {
+        "width": 414,
+        "height": 635.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 4
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "oldCacheRejected": true
+    },
+    {
+      "key": "anime-magazine-partial-three-bangumi-light-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 732,
+      "bytes": 136973,
+      "htmlBytes": 10220266,
+      "pngSha256": "5d3dc446ec586cca40bdb2898a011ab48068f4b05a425a4eca48c7a28d08135d",
+      "htmlSha256": "eb86a7abb0f3ecf87add44c8f4b60fd2a203b530f8406ee40169d5ee4ad54751",
+      "cacheKey": "93b505d0061ae4009a30089949ad61f6cfb9ac29a9b91de6f72cd3ef4dfaf9b9",
+      "dom": {
+        "width": 768,
+        "height": 731.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 4
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "oldCacheRejected": true
+    },
+    {
+      "key": "anime-magazine-partial-three-bangumi-dark-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 650,
+      "bytes": 95591,
+      "htmlBytes": 10161903,
+      "pngSha256": "ea9f8a9897c934868eb1b64dc8e1c84ef29c3f2d04741ed0f77b3458b6a6af6a",
+      "htmlSha256": "29370c2616690bca1b08e8a358996bd6cf0f9a56401f10673f4d76de35653c9f",
+      "cacheKey": "19d37295d45d1a9e46d549f906c6147b20eacb2aa6f71a649ea64b10e67b5c9d",
+      "dom": {
+        "width": 320,
+        "height": 649.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 4
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-partial-three-bangumi-dark-320-0.75.png",
+      "oldCacheRejected": true
+    },
+    {
+      "key": "anime-magazine-partial-three-bangumi-dark-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 888,
+      "bytes": 133797,
+      "htmlBytes": 10161931,
+      "pngSha256": "8d45b36d3f8af659661d4a5979681d043171792f5c55ded4fc44d00fa2762bfb",
+      "htmlSha256": "a4954c5b0b5bce52f7f2dd0527fd9f428d334724445d40143588df0074cdf7ed",
+      "cacheKey": "f546462821a8729a8ddd6a8442fc38a2158284f0c9dd894a5920641370919f57",
+      "dom": {
+        "width": 320,
+        "height": 887.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 4
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-partial-three-bangumi-dark-320-1.25.png"
+    },
+    {
+      "key": "anime-magazine-partial-three-bangumi-dark-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 636,
+      "bytes": 95401,
+      "htmlBytes": 10161903,
+      "pngSha256": "1f1d7894d3808b8259d4cb4cc598da822f129373adcb0a2c56c5c54ee57f913a",
+      "htmlSha256": "eda93e10bc281cda810c70cc71ed81929f7c6c6d8c01116a7a9f5f279a82307e",
+      "cacheKey": "4af92f759d1dd33bc2fa54b6df94fed8f37840a2ab2910b0566e402bd2d56683",
+      "dom": {
+        "width": 375,
+        "height": 635.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 4
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "oldCacheRejected": true
+    },
+    {
+      "key": "anime-magazine-partial-three-bangumi-dark-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 636,
+      "bytes": 96152,
+      "htmlBytes": 10161903,
+      "pngSha256": "470f78a0aad849ab92909eabb531fb6cb2b05d9efcbf79560c8ae8bed0cd6062",
+      "htmlSha256": "9cbe3a835c59412e1508341dd682705806cebe059a4b56a6600d4bc8f7061fa0",
+      "cacheKey": "c17b2b807e5064ffdd061b883b73dc0923f998b22e718535b9cb508a787536b7",
+      "dom": {
+        "width": 414,
+        "height": 635.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 4
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "oldCacheRejected": true
+    },
+    {
+      "key": "anime-magazine-partial-three-bangumi-dark-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 732,
+      "bytes": 137427,
+      "htmlBytes": 10220258,
+      "pngSha256": "7812cc24649860fe634ebaa7e36399b1c10cf744163e2f308bfcc378d8509827",
+      "htmlSha256": "82a09716304af6f858a8b3cea46d1b3cbe372b8bc26d89220d2441049dbb8379",
+      "cacheKey": "ca9d12ac29a383733dbdd5aafd9f2dbc51962f3065895f2c657a55892037b932",
+      "dom": {
+        "width": 768,
+        "height": 731.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 4
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "oldCacheRejected": true
+    },
+    {
+      "key": "anime-magazine-full-week-bangumi-light-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "full-week",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 1336,
+      "bytes": 195397,
+      "htmlBytes": 10277745,
+      "pngSha256": "c1dc68b24864984218770f14feda151e17ab0851bd6859271e4ffa8c13ac3df5",
+      "htmlSha256": "ee16562a2d26e2556fe3d3b53368859cb58d192c99d74f1060c44f00f9d7200b",
+      "cacheKey": "8b954d85c3a56649d06f7f700767703d9c9af9949cf6db55f751d34e77c5c4aa",
+      "dom": {
+        "width": 320,
+        "height": 1335.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 7,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-full-week-bangumi-light-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "full-week",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 1914,
+      "bytes": 262600,
+      "htmlBytes": 10277791,
+      "pngSha256": "a0a585c8d8eaa28a175bad0ff518e7f9d257071b6909534587f8e58adc2fab38",
+      "htmlSha256": "5e1a4d425d9835e3fc239f20550f3e8a64571e61eb2c2f51897f0784412be0ef",
+      "cacheKey": "2b923e55fad02aece425afafb552aca916e1ede21de5d3fa4ca97d155f453dd9",
+      "dom": {
+        "width": 320,
+        "height": 1913.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 7,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-full-week-bangumi-light-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "full-week",
+      "theme": "bangumi-light",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 1336,
+      "bytes": 196328,
+      "htmlBytes": 10277745,
+      "pngSha256": "5bbbdbaf5ff66459a75fd28e5ba6c73a73e61a06e1c26b5ee24d0d38a2f0240f",
+      "htmlSha256": "ac6a2d61b556a3ed9a0b9ebd534174b766c6474e1d5dfad5ae1f71b62cbc04ad",
+      "cacheKey": "9962c51e36e2bbee0d3b8586cdd991595ca2709356c5222f259c7efae3b05865",
+      "dom": {
+        "width": 375,
+        "height": 1335.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 7,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-full-week-bangumi-light-375-0.75.png"
+    },
+    {
+      "key": "anime-magazine-full-week-bangumi-light-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "full-week",
+      "theme": "bangumi-light",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 1336,
+      "bytes": 197742,
+      "htmlBytes": 10277745,
+      "pngSha256": "b7356b927cea4d538608ccd4bfc03ee3cc423e10f20a1eb2391da2a821661a5b",
+      "htmlSha256": "4a3c6e6e4dc8047f078a1f7a3f0368c080823b8d569f1866f3c6587c4b3c3100",
+      "cacheKey": "a8831336b14b0594969e09ea313936d8540389b0157226b20fd214186e32ebe3",
+      "dom": {
+        "width": 414,
+        "height": 1335.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 7,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-full-week-bangumi-light-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "full-week",
+      "theme": "bangumi-light",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 1560,
+      "bytes": 289870,
+      "htmlBytes": 10413676,
+      "pngSha256": "e61bd1726b39c036d23d54ac09c2492a39a9b2e289a16b0937996526a06e610b",
+      "htmlSha256": "ae179d21b56912c232549a5ba94309139b205e087114ea645aaf4a5927baed2f",
+      "cacheKey": "47a979199fcf22692c44439bc08802d419dca89959fffb514e5fc41b9b9b36ca",
+      "dom": {
+        "width": 768,
+        "height": 1559.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 7,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-full-week-bangumi-dark-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "full-week",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 1336,
+      "bytes": 196083,
+      "htmlBytes": 10277726,
+      "pngSha256": "63a01e8d640ca6e84a9120de913d58bfc825e06a92bf4b0fde85ac2c28ae6c0c",
+      "htmlSha256": "240a3153cf60c6cb4d8b51a85a21d6406a7a228537d204fb910bd75bc243ea19",
+      "cacheKey": "076612db4537bec75a087f108b0efa7df175a26a9551fa740e6481f3b1cd509d",
+      "dom": {
+        "width": 320,
+        "height": 1335.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 7,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-full-week-bangumi-dark-320-0.75.png"
+    },
+    {
+      "key": "anime-magazine-full-week-bangumi-dark-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "full-week",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 1914,
+      "bytes": 263677,
+      "htmlBytes": 10277772,
+      "pngSha256": "92d36947bca0051c135a54e5d85c4eb24bd99e61e1e854751c0044725daa5ef7",
+      "htmlSha256": "c79c110e320e91ac6bbf7cfce72dee2ef0e20b478bfd1a9616e007907242ca84",
+      "cacheKey": "852a65dbadeb07b79434390adc05abc796af3d0bfc86599add0746bf6f7a4ca5",
+      "dom": {
+        "width": 320,
+        "height": 1913.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 7,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-full-week-bangumi-dark-320-1.25.png"
+    },
+    {
+      "key": "anime-magazine-full-week-bangumi-dark-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "full-week",
+      "theme": "bangumi-dark",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 1336,
+      "bytes": 196835,
+      "htmlBytes": 10277726,
+      "pngSha256": "409102093d9ab480fecf98dd3a9e245c2b827c5e62c561dd4eeae9eeed5548d0",
+      "htmlSha256": "8327252911d060dff26d052073779d24ad8ae8355a59569c65c3a61538722801",
+      "cacheKey": "423eff18b5b6a718a34f7f407537c50f354cd2d0de1a84bfb83379da4143c54f",
+      "dom": {
+        "width": 375,
+        "height": 1335.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 7,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-full-week-bangumi-dark-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "full-week",
+      "theme": "bangumi-dark",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 1336,
+      "bytes": 198283,
+      "htmlBytes": 10277726,
+      "pngSha256": "b0792d7ff0c377c25136085aec67ceb2cad3bf2447f3b1b56c72918e0af9eb0d",
+      "htmlSha256": "1ec133c0085545a0ad4aaa5187409e6f450a3d9c99a86ed86030ee2d4d582b14",
+      "cacheKey": "7e8cefa36d8560d3082e94e83e49e1612d7867e8753fc040d24086044a1671a7",
+      "dom": {
+        "width": 414,
+        "height": 1335.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 7,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-full-week-bangumi-dark-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "full-week",
+      "theme": "bangumi-dark",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 1560,
+      "bytes": 289944,
+      "htmlBytes": 10413657,
+      "pngSha256": "23145f7ef4a28546c54cdb7ba6d173c2ced422ff916faa7799abfa1b1ae47d51",
+      "htmlSha256": "5fd5a49ba21330e5393694e35460c61309a93966ffc5340d9ce94e67de505088",
+      "cacheKey": "6ca2168dd2e571102345d9c6815ee7d7aea5638910d660ab990f77152c8947e1",
+      "dom": {
+        "width": 768,
+        "height": 1559.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 7,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-known-empty-bangumi-light-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "known-empty",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 338,
+      "bytes": 25486,
+      "htmlBytes": 10077125,
+      "pngSha256": "189b9e7b555c39bb2347e8becc0eba3968e61eb5791c0f6fe5d45040524b0050",
+      "htmlSha256": "a8b23e97c1f289753f5fd7f42b37d4220c6b1a255d8f5ed8afee3e93d530605e",
+      "cacheKey": "1c3f460e71f7e4265b85aa88260ad6d50f765b6548ce023ac676e70cd52a2555",
+      "dom": {
+        "width": 320,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-known-empty-bangumi-light-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "known-empty",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 568,
+      "bytes": 47633,
+      "htmlBytes": 10077144,
+      "pngSha256": "30a9c1c46e23aad52a6c494e282b2d9cdb3770d9a549cf2745f54c6c48977d77",
+      "htmlSha256": "661ec153eb67bc1813cdd8da667f0aea9b4fd1be03df269685fd6475c900f331",
+      "cacheKey": "7b86d2f1c34800fac417bfab72d7ba3aac51bcc44a76af430da99a18daff0dbf",
+      "dom": {
+        "width": 320,
+        "height": 567.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-known-empty-bangumi-light-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "known-empty",
+      "theme": "bangumi-light",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 338,
+      "bytes": 24901,
+      "htmlBytes": 10077125,
+      "pngSha256": "7495a028c3f05334d8d07a99abad913d252deed198d7c8562f8d5aab1c512f14",
+      "htmlSha256": "68b2435589e129d9d852b005cb11b5808033362dff7d35ec98e84c5c0b0be102",
+      "cacheKey": "4032211d45bd4dd039af16f6a658e6fbb5edcecc9d09020dc7244e733b2af86a",
+      "dom": {
+        "width": 375,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-known-empty-bangumi-light-375-0.75.png"
+    },
+    {
+      "key": "anime-magazine-known-empty-bangumi-light-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "known-empty",
+      "theme": "bangumi-light",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 338,
+      "bytes": 25929,
+      "htmlBytes": 10077125,
+      "pngSha256": "1008b229efc533f2338d94e0f0f068f50ac87e9715045ff271d9b865633465d2",
+      "htmlSha256": "d880f71a1559d0f2507728ce8d6be9550e0819055076fc145098cc2b864ffcf0",
+      "cacheKey": "883aa805830cce1c15adf9248c09508337c21152092f036f4d3f14e89c8fb4b6",
+      "dom": {
+        "width": 414,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-known-empty-bangumi-light-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "known-empty",
+      "theme": "bangumi-light",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 338,
+      "bytes": 28308,
+      "htmlBytes": 10077125,
+      "pngSha256": "74f6a626ce1af7e263aaf7a6063072964bb02b8c75f1f19b41d0bb8d1d396b05",
+      "htmlSha256": "759689286183b3b77ad9ce9edcffe1439a7feebe37a3306d3c7eedb5994b4167",
+      "cacheKey": "92625a68ada9d54554e9fd6721e85f80e300193b64530c6e46a6a749f8f21d12",
+      "dom": {
+        "width": 768,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-known-empty-bangumi-dark-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "known-empty",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 338,
+      "bytes": 26114,
+      "htmlBytes": 10077117,
+      "pngSha256": "af9924cf5385bce73997e720a35d368b0f3b60e6c638482bcfc7935e0c027205",
+      "htmlSha256": "61f3b8e33608b8dd978b4f27c7460871683f51c5d4b40c691caba4d3f11fdc81",
+      "cacheKey": "688042bb63e47ca3f109f6b301978748048c974a1fcb0e6db197e1446b8b771f",
+      "dom": {
+        "width": 320,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-known-empty-bangumi-dark-320-0.75.png"
+    },
+    {
+      "key": "anime-magazine-known-empty-bangumi-dark-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "known-empty",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 568,
+      "bytes": 48195,
+      "htmlBytes": 10077136,
+      "pngSha256": "3ec2bfcb759ce0cf1229764bd84cd503d9d4cc719190e43eaa4cabc10926f421",
+      "htmlSha256": "60fb1b91eedb9462d684b7ff749fda03793463b923b9605ce1899ec4cf6a6374",
+      "cacheKey": "ef67890d4849cefa1c0b5c8094079410648c378b7787655a9c36196416360dc1",
+      "dom": {
+        "width": 320,
+        "height": 567.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-known-empty-bangumi-dark-320-1.25.png"
+    },
+    {
+      "key": "anime-magazine-known-empty-bangumi-dark-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "known-empty",
+      "theme": "bangumi-dark",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 338,
+      "bytes": 25544,
+      "htmlBytes": 10077117,
+      "pngSha256": "c333f2ede31dd972895726e1149862121c8461fcb7d5c46f15065953f5b2a196",
+      "htmlSha256": "00a49d8badf985bdc2f7e08485fad005e9c4850e4b13f20cdecdd94686127d8c",
+      "cacheKey": "94b4aad7b5bfb6239eb5af234b87477d6df18879fef016146f3321f255a920e5",
+      "dom": {
+        "width": 375,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-known-empty-bangumi-dark-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "known-empty",
+      "theme": "bangumi-dark",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 338,
+      "bytes": 26574,
+      "htmlBytes": 10077117,
+      "pngSha256": "cfee579cf76b6b8b2aa884e1be3b7f35aa16254f6f8fbb3bde2522ab29a0fc47",
+      "htmlSha256": "df6635f8f192de4082b7397cbff9495096b2f1db274d56caf1ea5c50131417c5",
+      "cacheKey": "fcf4e2454ba79cfdf1e4a4e04b85fe9de990608f2576fcdebae019762318f014",
+      "dom": {
+        "width": 414,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-known-empty-bangumi-dark-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "known-empty",
+      "theme": "bangumi-dark",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 338,
+      "bytes": 28660,
+      "htmlBytes": 10077117,
+      "pngSha256": "6b65049826d4879d7682cb1d6f38ee7164757141b1644abe92b85465c3aec5e9",
+      "htmlSha256": "2ac737a8a2f81c2800640c86df82dcdb9074baa9dbd949e15ea03b2cdbbc13fa",
+      "cacheKey": "e87ec234fc75ca570cd2a1784a1d6da096c7179b8d47ddbb9a23a913c7fca171",
+      "dom": {
+        "width": 768,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-partial-empty-bangumi-light-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-empty",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 352,
+      "bytes": 28926,
+      "htmlBytes": 10077222,
+      "pngSha256": "c0a98d92122992724a1d1434ffe8ea08b78beb18078d452f1f3c4a2594feda5c",
+      "htmlSha256": "f454de8fe9d4ad16ce6d394556597380216fde7417ae0dfe8aa0ce38fdce41b1",
+      "cacheKey": "301f2d08fadb984d691113baa9b9735e27391d2413ac40d5f64822382c58125f",
+      "dom": {
+        "width": 320,
+        "height": 351.375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-partial-empty-bangumi-light-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "partial-empty",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 568,
+      "bytes": 55223,
+      "htmlBytes": 10077241,
+      "pngSha256": "c511f44b5b18d5f210a5cff6563bd029188f1de2b2de6659e3808c749438a25d",
+      "htmlSha256": "c8b17ba9b004bfbf03a5bf09ae8ae127f9c7d75abc961d60eff1a338d1bf2188",
+      "cacheKey": "5d99e093d064923e0cf1e4b3d874781fb0ad302739653c11a4d50b0f0dfc10af",
+      "dom": {
+        "width": 320,
+        "height": 567.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-partial-empty-bangumi-light-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-empty",
+      "theme": "bangumi-light",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 338,
+      "bytes": 27965,
+      "htmlBytes": 10077222,
+      "pngSha256": "1f1bf44c4e3d38fdd0891d249fb89589c1e541c63e95d4e2fc37a4cab8063de8",
+      "htmlSha256": "93d076d971a4cacf8e2327deb7992edd89b8e264e8e3af09fe6a03493b7a59ec",
+      "cacheKey": "a894bbe302e33359e44f0495ae8719afc5c91d669c7450d225ef709912bc01d1",
+      "dom": {
+        "width": 375,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-partial-empty-bangumi-light-375-0.75.png"
+    },
+    {
+      "key": "anime-magazine-partial-empty-bangumi-light-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-empty",
+      "theme": "bangumi-light",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 338,
+      "bytes": 28722,
+      "htmlBytes": 10077222,
+      "pngSha256": "053ac5fcb24b6438c1ed9c03b5a45b1853aec18b87aba67ffbc29a6ba1942cb7",
+      "htmlSha256": "80d339c9bc51b2223cd12d0dbb15cc875ce4cf5cf86cf94319fa9f1fbced95e4",
+      "cacheKey": "1139b0303fca05c1e64fc836e47b2108cfaca37332c0e3459b43227eb1397fb6",
+      "dom": {
+        "width": 414,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-partial-empty-bangumi-light-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-empty",
+      "theme": "bangumi-light",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 338,
+      "bytes": 32061,
+      "htmlBytes": 10077222,
+      "pngSha256": "0a26b7112bdcfe760b78c974db0fd5c5938a050c981b73ddb4f5ee8b08e80504",
+      "htmlSha256": "98dcf5d1afd88d933bd659a72d1cb87de961e57473a6d85e6ef49f3e78f53287",
+      "cacheKey": "8a630e07b8deca488891b664b253aff720d4d9315f3b89058a2fcab39eaa95ff",
+      "dom": {
+        "width": 768,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-partial-empty-bangumi-dark-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-empty",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 352,
+      "bytes": 29586,
+      "htmlBytes": 10077215,
+      "pngSha256": "0fd6be4ee434b8eedd00f071602e18df44eab6860839f0b7d58d60663f09553f",
+      "htmlSha256": "cf5979cc29f07b494cea7c33481c2d5df408661c78d99dc6813d97a3d0975b6c",
+      "cacheKey": "dd6f15f6d9a6049592ac59117dab333f5f716d805f4c07ec2e8e8f59288dff0f",
+      "dom": {
+        "width": 320,
+        "height": 351.375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-partial-empty-bangumi-dark-320-0.75.png"
+    },
+    {
+      "key": "anime-magazine-partial-empty-bangumi-dark-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "partial-empty",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 568,
+      "bytes": 55624,
+      "htmlBytes": 10077234,
+      "pngSha256": "7c219b009d264489f367f8afa957c41aba7369616caae7eb29cde2f2c7911579",
+      "htmlSha256": "0d8cedbc690bfe6051407d75a450d3b1680a946f3fead5f26b607515b581a489",
+      "cacheKey": "48673f9a163cfeecda6f616e52df409d62d9f30b7abc48f984e7904d15e4f6a4",
+      "dom": {
+        "width": 320,
+        "height": 567.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-partial-empty-bangumi-dark-320-1.25.png"
+    },
+    {
+      "key": "anime-magazine-partial-empty-bangumi-dark-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-empty",
+      "theme": "bangumi-dark",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 338,
+      "bytes": 28850,
+      "htmlBytes": 10077215,
+      "pngSha256": "db163399118a319bc80c7b3c9b26a4c20906815c2972b2fdc0b63e5ac15559c6",
+      "htmlSha256": "61c3909bf4091ecb700d3f5685a9ee48c5d040db30a8ae8a5f0ffdabe7f541d9",
+      "cacheKey": "5c0b68e1605bbdbb66cfa2ddbd3c3a38d0c55f114f146db451cb4ef946277784",
+      "dom": {
+        "width": 375,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-partial-empty-bangumi-dark-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-empty",
+      "theme": "bangumi-dark",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 338,
+      "bytes": 29582,
+      "htmlBytes": 10077215,
+      "pngSha256": "fe60370ea5b3f546a5ca1acf7a28e1359df0d2b139e9abeda67c0e594e354a77",
+      "htmlSha256": "121509f02ea829c576b31ccca33bb47ab4c074121d9083eefd5520d55f0a4334",
+      "cacheKey": "f809435b702901fefc69b9fd1b3f21d7a4e1e0d92ea949734a3e4e59f18554ae",
+      "dom": {
+        "width": 414,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-partial-empty-bangumi-dark-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "partial-empty",
+      "theme": "bangumi-dark",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 338,
+      "bytes": 32466,
+      "htmlBytes": 10077215,
+      "pngSha256": "db2f5d243ec17db87574835f4d0b16da061186ba08897b10ff0815732c3a09ef",
+      "htmlSha256": "70b0d712bd8c248379e3246d78e05e42bd2ad8bc3a9d21bcd532a194408c3b6e",
+      "cacheKey": "54f90487780d739392c59741e78fab0681037bb6873a16634e7f156123e8596e",
+      "dom": {
+        "width": 768,
+        "height": 337.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-unavailable-bangumi-light-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "unavailable",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 293,
+      "bytes": 25123,
+      "htmlBytes": 10074762,
+      "pngSha256": "b1c8c14c02f31a2e479a2332d9023d1d278a3d1fd9df4f365216ce261e0073bd",
+      "htmlSha256": "6bcf8376a3c3e0d9293031d39baf530c38abbe33c0044b2fc643837bfbf5b9eb",
+      "cacheKey": "1d9717f949bad392e1ec7e77404608c0076ed1fe945df69559ebce888d7bdfe5",
+      "dom": {
+        "width": 320,
+        "height": 292.375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-unavailable-bangumi-light-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "unavailable",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 446,
+      "bytes": 45682,
+      "htmlBytes": 10074767,
+      "pngSha256": "97031c1259e15b2493b67bd0c497518853f054481968dd28f1db9f1e41c41ac2",
+      "htmlSha256": "da17d5a45c28d59bb4d60a98e7513d5d64deb9580f48dc9a6344d7820a78d1ae",
+      "cacheKey": "ba42007f429638e0d9d7167341d4426c4fac0ccb97b2047df9115c3aec846da2",
+      "dom": {
+        "width": 320,
+        "height": 445.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-unavailable-bangumi-light-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "unavailable",
+      "theme": "bangumi-light",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 279,
+      "bytes": 24683,
+      "htmlBytes": 10074762,
+      "pngSha256": "857cff245ef66ec1e592851f84f90447b4497c3a7ba2a1221a3dc81a60dadfb9",
+      "htmlSha256": "c61f44b653b138919adb96c8194746f2127b03c328335781c839837abd160965",
+      "cacheKey": "2eaa326de42525cb4cf16f5fde06376f4973705c8b0ad43c3b548b6677947ea7",
+      "dom": {
+        "width": 375,
+        "height": 278.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-unavailable-bangumi-light-375-0.75.png"
+    },
+    {
+      "key": "anime-magazine-unavailable-bangumi-light-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "unavailable",
+      "theme": "bangumi-light",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 279,
+      "bytes": 24835,
+      "htmlBytes": 10074762,
+      "pngSha256": "16f69d4510092d711dae4116634e99b231a10cfe4475f918926b088f38cd0f04",
+      "htmlSha256": "e97c6ccb0bb4fc1dc47a34a9754b19c9cc6b779016a8a397f5ac0cc502e15048",
+      "cacheKey": "45ca49ac64247eb0ea7f3719f6267484cac1ce226b57c3b2826ae8aabc207157",
+      "dom": {
+        "width": 414,
+        "height": 278.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-unavailable-bangumi-light-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "unavailable",
+      "theme": "bangumi-light",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 279,
+      "bytes": 26710,
+      "htmlBytes": 10074762,
+      "pngSha256": "2e80ea4c8397b7c64a80c77d205df6b240efea398237e988fd95acd274610a37",
+      "htmlSha256": "4c72ea70477b4424508fb9ab062c54209377660394034e5d826c111195680a87",
+      "cacheKey": "ef4c4624341c4bb8b942fc75fae532c5a73fa052954e16d045650f5bf093fe61",
+      "dom": {
+        "width": 768,
+        "height": 278.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-unavailable-bangumi-dark-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "unavailable",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 293,
+      "bytes": 25279,
+      "htmlBytes": 10074756,
+      "pngSha256": "f9e40690b2a3b24273fb6dee6154a870babf77ed76806f915ab1a4f237db000b",
+      "htmlSha256": "4ffffe9939d47a940c9881d1f13d14ea625cbefbc05604de9bb24853fca2b65b",
+      "cacheKey": "b121eb840ed55aded90559d2fea9056072f1688621ccbcba2dc8bb81c72b62c0",
+      "dom": {
+        "width": 320,
+        "height": 292.375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-unavailable-bangumi-dark-320-0.75.png"
+    },
+    {
+      "key": "anime-magazine-unavailable-bangumi-dark-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "unavailable",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 446,
+      "bytes": 45838,
+      "htmlBytes": 10074761,
+      "pngSha256": "7974075de8d20b51c2cd0cad18540532675d6bdd17701d8f738b04118db585ae",
+      "htmlSha256": "fa8eb49de4ea003f333a4188a4e5c9c4a5ec485b43b17838f75a6a842171ae71",
+      "cacheKey": "721d0501ff216a53fcec77b197f66e87ce9fb796b3b475f63a16ab2f95540480",
+      "dom": {
+        "width": 320,
+        "height": 445.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-unavailable-bangumi-dark-320-1.25.png"
+    },
+    {
+      "key": "anime-magazine-unavailable-bangumi-dark-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "unavailable",
+      "theme": "bangumi-dark",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 279,
+      "bytes": 25025,
+      "htmlBytes": 10074756,
+      "pngSha256": "101dad21419407bc12abe3df2635d2b4fe4e1a01fbff2b755bc5b95a0bf0870b",
+      "htmlSha256": "2736f0376ee7919e2c18dfd62b6b0b2d7f9d80561d206a96a65649ddae7623dc",
+      "cacheKey": "932955d8eb7be78542d0ede2eb486b76f79b8e9782c867b59f2b78daa1abbb9f",
+      "dom": {
+        "width": 375,
+        "height": 278.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-unavailable-bangumi-dark-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "unavailable",
+      "theme": "bangumi-dark",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 279,
+      "bytes": 25147,
+      "htmlBytes": 10074756,
+      "pngSha256": "39d50979b8ff0646b9cf01e249f019eaaedbf3de674b18ac986dd9d0bda81797",
+      "htmlSha256": "7c2d7ffa0fc416b2dfd0b01b2618929f8839887e88c8c4e376685f5409b8e1cd",
+      "cacheKey": "f0eee6a20d3fde6f6fcb0af7a1795fd56e0abe3cf3f88ba7ec9861c669fd451e",
+      "dom": {
+        "width": 414,
+        "height": 278.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-unavailable-bangumi-dark-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "unavailable",
+      "theme": "bangumi-dark",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 279,
+      "bytes": 26864,
+      "htmlBytes": 10074756,
+      "pngSha256": "68a495d4bc287d180077f55c706eba058509b37846070cec3d5848006c6d205f",
+      "htmlSha256": "fed9b70bb1d885029098ca92a94774a012fa0b6382016f1b6725d215ab1121d6",
+      "cacheKey": "38d568f9d8ec43040058fdd702a1ed070a5369faa371f7f6a80ff9194a972753",
+      "dom": {
+        "width": 768,
+        "height": 278.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 14
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-weekday-conflict-bangumi-light-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "weekday-conflict",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 791,
+      "bytes": 102617,
+      "htmlBytes": 10162113,
+      "pngSha256": "52883e922e017b1344a4156ff01488a6e762ceba03ec854f98be3c94b80502a8",
+      "htmlSha256": "77f554bfa524004309d3040daab66160d8d1e05e14634ff092b8b1ae83c8d175",
+      "cacheKey": "580784d34c4284667fa225ef037253c17fe7eedd75d9239a3989f600b7c1f0d8",
+      "dom": {
+        "width": 320,
+        "height": 790.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-weekday-conflict-bangumi-light-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "weekday-conflict",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 1230,
+      "bytes": 150130,
+      "htmlBytes": 10162139,
+      "pngSha256": "dd588c1cc0e57b0e4f4b24955805b3d6a643dcc0ce1d8abd181de4c0e60f99bf",
+      "htmlSha256": "a50dffa6bab241f5893a6cee7ca57ec005384a403cfca6fc877291cc1ea54129",
+      "cacheKey": "a99e0157ec1363f3f82feefd9f97d11acc14897890cb2aacca1e92cf74c81d7d",
+      "dom": {
+        "width": 320,
+        "height": 1229.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-weekday-conflict-bangumi-light-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "weekday-conflict",
+      "theme": "bangumi-light",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 791,
+      "bytes": 103889,
+      "htmlBytes": 10162113,
+      "pngSha256": "7f3a8ad9f00db84791ae190b66659232be9273386860da2cac3655e0b4dd7977",
+      "htmlSha256": "ccc48c7349913e8ad4e57cafe17ac9ebcb97119961554c2435f2eff291e74255",
+      "cacheKey": "6bfd03b4bb5454cd92568ec4bb7af8691ef6ecc0126673fe1fa5c79ed2522464",
+      "dom": {
+        "width": 375,
+        "height": 790.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-weekday-conflict-bangumi-light-375-0.75.png"
+    },
+    {
+      "key": "anime-magazine-weekday-conflict-bangumi-light-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "weekday-conflict",
+      "theme": "bangumi-light",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 791,
+      "bytes": 104896,
+      "htmlBytes": 10162113,
+      "pngSha256": "f4811f74fdb3b62c8e948556c6b37d6a9ecd4a73b69578defd6b1bd11a2dd091",
+      "htmlSha256": "2be35a216127141d2be15b32685c9c284e047e8f7be259e653da78e49927ec63",
+      "cacheKey": "ad7f117077b2348fb9a70f30cdb8d966e02b3791212745c016b080fcfee7e9b1",
+      "dom": {
+        "width": 414,
+        "height": 790.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-weekday-conflict-bangumi-light-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "weekday-conflict",
+      "theme": "bangumi-light",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 873,
+      "bytes": 145740,
+      "htmlBytes": 10219776,
+      "pngSha256": "bb0650b808ca25a315e38729dafb3b4c605dde0978e29aa0192ca8e5fb126485",
+      "htmlSha256": "b1459173b4e1e6cf325b30e59c994e07f4f870988120ca8bff91c1b29d68b1b1",
+      "cacheKey": "16abe63c48cd930ec20fc664b250d85a1a2575c2cb5f313f959683e1a48814b2",
+      "dom": {
+        "width": 768,
+        "height": 872.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-weekday-conflict-bangumi-dark-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "weekday-conflict",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 791,
+      "bytes": 102985,
+      "htmlBytes": 10162103,
+      "pngSha256": "ffe884f9acbd587f295a8da160e4e13f2ab25bbfbc286f34c932c767c67d7cf0",
+      "htmlSha256": "40aab637fdacde10b7a532367b8cdef38d38721c6391d8b02f3f74dca9b41ee9",
+      "cacheKey": "ac4f00116e20963969204c0abb511a038c55f6d4c23090da54debbf0fa1d1f48",
+      "dom": {
+        "width": 320,
+        "height": 790.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-weekday-conflict-bangumi-dark-320-0.75.png"
+    },
+    {
+      "key": "anime-magazine-weekday-conflict-bangumi-dark-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "weekday-conflict",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 1230,
+      "bytes": 150506,
+      "htmlBytes": 10162129,
+      "pngSha256": "d4189ba2c5c55d18f8527ce31de9221257b6cdf043f473c03ce7c63127efb962",
+      "htmlSha256": "15dde0a69b37b085309f1647ff383e0feeb7e995ee12197d90b141d31e17c5bb",
+      "cacheKey": "34801e9d0174fc1fd1c76516145e668152a2078183307ee5cf455782fa629718",
+      "dom": {
+        "width": 320,
+        "height": 1229.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-weekday-conflict-bangumi-dark-320-1.25.png"
+    },
+    {
+      "key": "anime-magazine-weekday-conflict-bangumi-dark-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "weekday-conflict",
+      "theme": "bangumi-dark",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 791,
+      "bytes": 104012,
+      "htmlBytes": 10162103,
+      "pngSha256": "ec272cf21c6a6ef3dc010c757b098f5902ba83827b9fba322a136880ee007776",
+      "htmlSha256": "6e64e000852f8b29a14c0d192bfb51739e65828ffc3ecc54f01dc7c80e9f6823",
+      "cacheKey": "7ff7cd8ace5f1d85601cea688e3d06c9bfdc4064e8ef71a8e4dc57fb22689b8c",
+      "dom": {
+        "width": 375,
+        "height": 790.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-weekday-conflict-bangumi-dark-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "weekday-conflict",
+      "theme": "bangumi-dark",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 791,
+      "bytes": 105254,
+      "htmlBytes": 10162103,
+      "pngSha256": "27266987c320a8e10524e88ff8ef359b63f989de5c28d428af56e655a6337a00",
+      "htmlSha256": "b58796254dee1920896aae86e00cc863eae9884d27c6751050d501fec889c014",
+      "cacheKey": "e8f6c2ef338a0848de566505fb7b167fc8bcd9a32a8daa425bc41247d5697e80",
+      "dom": {
+        "width": 414,
+        "height": 790.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-weekday-conflict-bangumi-dark-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "weekday-conflict",
+      "theme": "bangumi-dark",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 873,
+      "bytes": 145769,
+      "htmlBytes": 10219766,
+      "pngSha256": "e8746b76d104f75bb6ffb4730d392866537595d674450a512510853bcd0da1b5",
+      "htmlSha256": "dadc2097984d66a01e37006b9e8c75d461129eefbddd20931cbfbe8e5434843b",
+      "cacheKey": "f2deb740e8daa95cc0f52d5963da2380e9f6acf74d0605baac646dfc19e9b3c5",
+      "dom": {
+        "width": 768,
+        "height": 872.625,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 6
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-bounded-large-bangumi-light-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "bounded-large",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 6996,
+      "bytes": 1395017,
+      "htmlBytes": 11660953,
+      "pngSha256": "fbc700f7df353ea6aba47c8795c77183b8ca6682aac15a4afacb8d210ca398d5",
+      "htmlSha256": "d48215b99836024277b0068e5d8c3eabb866dba9c84ff7cfb8e84d81f6461b50",
+      "cacheKey": "8c917d81e6e01a8c6cbccfefa3837904b7ce0d7bd95c988564ee5dde896e355c",
+      "dom": {
+        "width": 320,
+        "height": 6995.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 56,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 8
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-bounded-large-bangumi-light-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "bounded-large",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 11670,
+      "bytes": 1808012,
+      "htmlBytes": 11661153,
+      "pngSha256": "b43e2e477e6a6955d14cf09535dfc307bf3039627d14203f8e3b8ac98cbda265",
+      "htmlSha256": "dd372f827ccb9f2ae5f242de6ce71c6abab12d72b9ac36eee2130af5b2433752",
+      "cacheKey": "c7af668422e44a1bfd189a52ca5dcb0628df5f49041b5928e00a1da5b4d71f96",
+      "dom": {
+        "width": 320,
+        "height": 11669.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 56,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 8
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-bounded-large-bangumi-light-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "bounded-large",
+      "theme": "bangumi-light",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 6996,
+      "bytes": 1402676,
+      "htmlBytes": 11660953,
+      "pngSha256": "fe83510fab5bebe0fc0e10de97b5368ddab1e47c4a43de9efc944d6b3df8fe50",
+      "htmlSha256": "34235b5b5c0b30dc77b08d8bb184cf3729f8f16c70d09177ebda55384163e635",
+      "cacheKey": "0cb0fa645181f0c5dfa10ea7967821d2510293157a1398ebfe85a034496f8123",
+      "dom": {
+        "width": 375,
+        "height": 6995.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 56,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 8
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-bounded-large-bangumi-light-375-0.75.png"
+    },
+    {
+      "key": "anime-magazine-bounded-large-bangumi-light-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "bounded-large",
+      "theme": "bangumi-light",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 6996,
+      "bytes": 1407572,
+      "htmlBytes": 11660953,
+      "pngSha256": "d67e853b0596a03f3593478a103555c61bd8d58c128f3c13558996b9f4ef247e",
+      "htmlSha256": "07e7485cb28783745baabe536432e41e621089616fb413243b62d0f7bddd3257",
+      "cacheKey": "0bf055eeb42a414ad480599f9681e8b838c0dc2d62fa38ff3b046d6d8d288f02",
+      "dom": {
+        "width": 414,
+        "height": 6995.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 56,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 8
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-bounded-large-bangumi-light-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "bounded-large",
+      "theme": "bangumi-light",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 8788,
+      "bytes": 2126353,
+      "htmlBytes": 12748401,
+      "pngSha256": "a9b37af983c57c6ea58aa642d19c7c3e81e0aad8b7a84ee2e6a1242b31f0ddce",
+      "htmlSha256": "1db7f670e3f73eecc9c94c9aa130ed1442d0b9b1a68123cbfcb4c9d2c143f328",
+      "cacheKey": "1c84e648b7bef4f815ec3f92364ef955e579cd695812432b63ba62c9918f31a5",
+      "dom": {
+        "width": 768,
+        "height": 8787.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 56,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 8
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-bounded-large-bangumi-dark-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "bounded-large",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 6996,
+      "bytes": 1398105,
+      "htmlBytes": 11660886,
+      "pngSha256": "9302dbbc60abfa515503535da6ead7ef06661b2e1fb5b20a7fcd8d0152dc3b0d",
+      "htmlSha256": "3f59ee679c53ec14ab40548f8eb65774a0005a80e273d9bdc88bf68d03d29667",
+      "cacheKey": "4b1ae7061fc5b80b8e687c344cfe7dd658c7966468bdf15c3871b8d89c6d8d63",
+      "dom": {
+        "width": 320,
+        "height": 6995.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 56,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 8
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-bounded-large-bangumi-dark-320-0.75.png"
+    },
+    {
+      "key": "anime-magazine-bounded-large-bangumi-dark-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "bounded-large",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 11670,
+      "bytes": 1814640,
+      "htmlBytes": 11661086,
+      "pngSha256": "aac5000713493fc5a9cf1be34c1d53a5df0ce5d43eec6b585d7b5578f387aa24",
+      "htmlSha256": "39fd2e5f212b755982308f0269b2ea49b6543c60e1a8f61b24e839d930828252",
+      "cacheKey": "9095bf609af5c0eb98a2e0d8a6a6a9ae2e4e565c4a2008910eec3a54645e324b",
+      "dom": {
+        "width": 320,
+        "height": 11669.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 56,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 8
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-bounded-large-bangumi-dark-320-1.25.png"
+    },
+    {
+      "key": "anime-magazine-bounded-large-bangumi-dark-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "bounded-large",
+      "theme": "bangumi-dark",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 6996,
+      "bytes": 1404926,
+      "htmlBytes": 11660886,
+      "pngSha256": "a92802ba56bd711a9f8c8bb732c252ef21968f2e74aa6183ac3515c5e0f9f58f",
+      "htmlSha256": "a094f5f7a978f1fc59bf99ea81b0d53b04eeb7eb43a87d117352392f21cb33cc",
+      "cacheKey": "50eeb8e9a1c339b3d7258b69028935e9b8e9aaffcd1d4d0224b419ec8af10319",
+      "dom": {
+        "width": 375,
+        "height": 6995.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 56,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 8
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-bounded-large-bangumi-dark-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "bounded-large",
+      "theme": "bangumi-dark",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 6996,
+      "bytes": 1410198,
+      "htmlBytes": 11660886,
+      "pngSha256": "59871b34d6822975147ed061cd720eb21190c0cb6c0df0b16d161bede1000903",
+      "htmlSha256": "3206b08fffad1ea2c2551cfcb1a5ae5e32c2064edf238120f2c94fcd070d896a",
+      "cacheKey": "894bf7e6c814400a595f03522f8510f8a5de77046c61d0375f2145a605542536",
+      "dom": {
+        "width": 414,
+        "height": 6995.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 56,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 8
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-bounded-large-bangumi-dark-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "bounded-large",
+      "theme": "bangumi-dark",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 8788,
+      "bytes": 2125874,
+      "htmlBytes": 12748334,
+      "pngSha256": "af0aebc0b74d8a84122880148021261a69b25602fca68e2f037d53b16dc46e4e",
+      "htmlSha256": "d751b3542e542390ba9269782ecf0945b66f78cca4ca3e4288f4918859e69fd8",
+      "cacheKey": "5d1e5a0c3660a760f69d87d1231a24dce35c748a1c25e3bf20e920ff65d4d465",
+      "dom": {
+        "width": 768,
+        "height": 8787.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 56,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 8
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-long-missing-covers-bangumi-light-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "long-missing-covers",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 921,
+      "bytes": 87390,
+      "htmlBytes": 10083880,
+      "pngSha256": "e7daf0c7abb8edebabce620a467440f78d1588868aef6bef9f061fdb1ecdb066",
+      "htmlSha256": "ce2ed3594177602e69b26e82796a593b8c48405442d5f6f2643069c6dcd24f88",
+      "cacheKey": "2ccad413fb5651738504fcd282b33200af822b3d93262a075bcd2249f86f2e9e",
+      "dom": {
+        "width": 320,
+        "height": 920.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 40
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-long-missing-covers-bangumi-light-320-0.75.png"
+    },
+    {
+      "key": "anime-magazine-long-missing-covers-bangumi-light-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "long-missing-covers",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 1848,
+      "bytes": 188124,
+      "htmlBytes": 10083911,
+      "pngSha256": "e42adfa5ba1f0e81e1c736b7295d75edc6994bdba3d26a0052dacc3c7df32a59",
+      "htmlSha256": "67254dda101ac1cdbc08436fdfd0410ca8088414bebf1acc094c968df0bd5a53",
+      "cacheKey": "ddb5bc67d69c5b5afe23620da714ed90308177be4e26fb7a50ed49853e194472",
+      "dom": {
+        "width": 320,
+        "height": 1847.375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 40
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-long-missing-covers-bangumi-light-320-1.25.png"
+    },
+    {
+      "key": "anime-magazine-long-missing-covers-bangumi-light-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "long-missing-covers",
+      "theme": "bangumi-light",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 807,
+      "bytes": 86681,
+      "htmlBytes": 10083880,
+      "pngSha256": "5ea3da7d86d711d8708d17a593c596015127338b8bf21e33df44be3fd4d18d60",
+      "htmlSha256": "351862a3bf6f1c0c2826f02b55042ddc53912d5eb94debde8abf98b2e083854d",
+      "cacheKey": "aaecfa84fc894748e79f513fb88a926a4bb6f8aeeff6dab9e9eba624fb587db9",
+      "dom": {
+        "width": 375,
+        "height": 806.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 40
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-long-missing-covers-bangumi-light-375-0.75.png"
+    },
+    {
+      "key": "anime-magazine-long-missing-covers-bangumi-light-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "long-missing-covers",
+      "theme": "bangumi-light",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 746,
+      "bytes": 85789,
+      "htmlBytes": 10083880,
+      "pngSha256": "eb4b1cd94f29c6882b05afd061d130f4cca340e35bdc227b87cad68bd9bed7c8",
+      "htmlSha256": "035747eca0eeb1008d83d9db348e11a2dcf64d9ef60ce6e1eae68dfd2058d8c5",
+      "cacheKey": "b3a95cef779c7c694f29f40df18e90c63c9a26ea821098fd64cbb128c9fa6b8a",
+      "dom": {
+        "width": 414,
+        "height": 745.375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 40
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-long-missing-covers-bangumi-light-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "long-missing-covers",
+      "theme": "bangumi-light",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 750,
+      "bytes": 94287,
+      "htmlBytes": 10083883,
+      "pngSha256": "122d7da485f8aa80a583775130af81e1ad2c2e8808976787b0d92c535665c7ca",
+      "htmlSha256": "cbb06fb7792698ffd6a8ccbee6774c050de41656a804a2398e303ee7ba935c0f",
+      "cacheKey": "d6fa45ed093493708d340ba6df541b8329331d856928ddf4214c177367dc5868",
+      "dom": {
+        "width": 768,
+        "height": 749.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 40
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-long-missing-covers-bangumi-dark-320-0.75",
+      "designPack": "anime-magazine",
+      "state": "long-missing-covers",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 921,
+      "bytes": 88815,
+      "htmlBytes": 10083872,
+      "pngSha256": "d0bdc01830f5895098041fe3febfad22e0f1fdc46a38c1bba71aa47565944fec",
+      "htmlSha256": "75d2faee9d9b0317f65b3e1323b9aa1b3a78dbbe7200bd6edc15c9e7783a290c",
+      "cacheKey": "8910479532af147fc643bcb201ab43582f18d140bb96d5327f5ec007df29f8f1",
+      "dom": {
+        "width": 320,
+        "height": 920.875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 40
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-long-missing-covers-bangumi-dark-320-0.75.png"
+    },
+    {
+      "key": "anime-magazine-long-missing-covers-bangumi-dark-320-1.25",
+      "designPack": "anime-magazine",
+      "state": "long-missing-covers",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 1.25,
+      "width": 320,
+      "height": 1848,
+      "bytes": 189497,
+      "htmlBytes": 10083903,
+      "pngSha256": "9e93ccefbf8d561f5eb30c5db53523bd263ff21318830162e0d9001c3be6c4a4",
+      "htmlSha256": "a283a1aef739845c45f3744594862d12437e155aa47689cb871694b5cd0e6f7e",
+      "cacheKey": "1b31e497d00b3a1aa4cd8e95453dd6b4eb8a2a262de8011bb20b5b1fc71851fc",
+      "dom": {
+        "width": 320,
+        "height": 1847.375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 40
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 1.25,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": "anime-magazine-long-missing-covers-bangumi-dark-320-1.25.png"
+    },
+    {
+      "key": "anime-magazine-long-missing-covers-bangumi-dark-375-0.75",
+      "designPack": "anime-magazine",
+      "state": "long-missing-covers",
+      "theme": "bangumi-dark",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 807,
+      "bytes": 87712,
+      "htmlBytes": 10083872,
+      "pngSha256": "09c04eef94b8f25776aa7b3b9c4913d9b7b41b75f3cd63734b0d3d94bc40a5ed",
+      "htmlSha256": "6d816c946ac2b70292013b1cf607e219487dd294d03a7758480347eba4a099e3",
+      "cacheKey": "b294dd8b93774c91b854f6ce8706ef93d73dc6edb9cc4fe8d010b94039cf52f9",
+      "dom": {
+        "width": 375,
+        "height": 806.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 40
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-long-missing-covers-bangumi-dark-414-0.75",
+      "designPack": "anime-magazine",
+      "state": "long-missing-covers",
+      "theme": "bangumi-dark",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 746,
+      "bytes": 86878,
+      "htmlBytes": 10083872,
+      "pngSha256": "55077f9f02cdefe37730c7158a4c1ad7b023bbcc7745f555aa84f67346cec330",
+      "htmlSha256": "d83d78cfc6dac3c91113730b766f36ee291787b52d854b08046ff920dc2f9cbf",
+      "cacheKey": "5732141553bf5d20c97d25c18319d95b74d42ce8ab871b2dbb19f3601a72448c",
+      "dom": {
+        "width": 414,
+        "height": 745.375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 40
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "anime-magazine-long-missing-covers-bangumi-dark-768-0.75",
+      "designPack": "anime-magazine",
+      "state": "long-missing-covers",
+      "theme": "bangumi-dark",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 750,
+      "bytes": 94951,
+      "htmlBytes": 10083875,
+      "pngSha256": "b2fa35bf94a43acd3dd1bd596d873830c30c2f5b553c9e9a7a9fec919146e2c1",
+      "htmlSha256": "cf334922dea6a8f51a35db8dbba093bb50066c06fec221e195c72242cf8a685e",
+      "cacheKey": "5069f017685b6cb2b0f2b94a26b4ab84888307b0d10040cc55562b42ba706cd3",
+      "dom": {
+        "width": 768,
+        "height": 749.125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 3,
+        "usedFonts": [
+          {
+            "familyName": "GenSenRounded2 TW R",
+            "isCustomFont": true,
+            "glyphCount": 40
+          }
+        ]
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null
+    },
+    {
+      "key": "warm-editorial-partial-three-bangumi-light-320-0.75",
+      "designPack": "warm-editorial",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 1083,
+      "bytes": 66115,
+      "htmlBytes": 9399526,
+      "pngSha256": "cf94175f2632c277f1b8f07ab139a3c6c494a73839646fbce307f83f25c879e4",
+      "htmlSha256": "798fdcb7a5e5456f0f6faaf8bf2e7d443bf96fc6ad9063e84fa4c2ec65b85ab0",
+      "cacheKey": "91ddcf5817a9e3e94c7d829a91a6cbcfc6c67bcdc1c517955a609e8767248091",
+      "dom": {
+        "width": 320,
+        "height": 1082.21875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"PingFang SC\", \"Hiragino Sans GB\", sans-serif",
+        "displayFontFamily": "\"Songti SC\", \"Noto Serif CJK SC\", serif"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "warm-editorial-partial-three-bangumi-light-375-0.75",
+      "designPack": "warm-editorial",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 1000,
+      "bytes": 69346,
+      "htmlBytes": 9399526,
+      "pngSha256": "700514ad9221bab9a60e5611d136b8c8fc1d21c2bb3a18b2ad2ff59ab4e5ae80",
+      "htmlSha256": "2d29d372e298e792031220682b8159286c80acc50fb989bc0cfe2876b9f8d271",
+      "cacheKey": "a8a5754b8d91150578308b6914f80d0574d85eb37f1f29de108b4aa28c3e60bc",
+      "dom": {
+        "width": 375,
+        "height": 999.34375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"PingFang SC\", \"Hiragino Sans GB\", sans-serif",
+        "displayFontFamily": "\"Songti SC\", \"Noto Serif CJK SC\", serif"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "warm-editorial-partial-three-bangumi-light-414-0.75",
+      "designPack": "warm-editorial",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 983,
+      "bytes": 66543,
+      "htmlBytes": 9399526,
+      "pngSha256": "77346134b4f30046e1cc4615242b0c2df0b1280da1663a58f261e32ea41c2f56",
+      "htmlSha256": "cb30e7d7f6fdc597ab5ff627f6df56c60d54e304ad36a1080d1cca975c73ff72",
+      "cacheKey": "a057e9f4813e779595b95acabf81b6ee1aadd466ddbda7c91a6845c92e980c0f",
+      "dom": {
+        "width": 414,
+        "height": 982.34375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"PingFang SC\", \"Hiragino Sans GB\", sans-serif",
+        "displayFontFamily": "\"Songti SC\", \"Noto Serif CJK SC\", serif"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "warm-editorial-partial-three-bangumi-light-768-0.75",
+      "designPack": "warm-editorial",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 934,
+      "bytes": 69003,
+      "htmlBytes": 9399526,
+      "pngSha256": "84d1af4031b5244e30737565f68c93e4c41476290bfa909b8ed225e8c82cc28a",
+      "htmlSha256": "d4709eed2a3646884fb0a479b1a3f400a0f4e8834310a0332f9a2f80de8d8975",
+      "cacheKey": "ad915ac8f276b4b0bcdba7bbfb6ddbe112a9cf3c87686254ccd05d8d569372b3",
+      "dom": {
+        "width": 768,
+        "height": 933.84375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"PingFang SC\", \"Hiragino Sans GB\", sans-serif",
+        "displayFontFamily": "\"Songti SC\", \"Noto Serif CJK SC\", serif"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "warm-editorial-partial-three-bangumi-dark-320-0.75",
+      "designPack": "warm-editorial",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 1083,
+      "bytes": 65443,
+      "htmlBytes": 9399522,
+      "pngSha256": "f5e67d68d2e48d5deb02106f28d2ee989b730efb840a74d9080a3f09bb5428bb",
+      "htmlSha256": "a8ab0a4513790070d96d5923f2d1a32f2f25381e87e1fe008d9559e2d169028b",
+      "cacheKey": "8b4eeb35b987d793017e7f843b01e71f1b1558c98f53faf0585ffaee82fd7588",
+      "dom": {
+        "width": 320,
+        "height": 1082.21875,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"PingFang SC\", \"Hiragino Sans GB\", sans-serif",
+        "displayFontFamily": "\"Songti SC\", \"Noto Serif CJK SC\", serif"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "warm-editorial-partial-three-bangumi-dark-375-0.75",
+      "designPack": "warm-editorial",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 1000,
+      "bytes": 68753,
+      "htmlBytes": 9399522,
+      "pngSha256": "8ac7f7ecc1e8f52a96b98d1e52f55f84287627ff0e4c5d4cf8d3a60ba0bf6dca",
+      "htmlSha256": "d3704b7ec73673387d1a7e72e37548183fbe7ecafe73bdcb01ea6d0771a8f3f4",
+      "cacheKey": "91b1e763b56cdfa54aa16f0de72ce23b08ce031e0b633170eeae49e45fee9eff",
+      "dom": {
+        "width": 375,
+        "height": 999.34375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"PingFang SC\", \"Hiragino Sans GB\", sans-serif",
+        "displayFontFamily": "\"Songti SC\", \"Noto Serif CJK SC\", serif"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "warm-editorial-partial-three-bangumi-dark-414-0.75",
+      "designPack": "warm-editorial",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 983,
+      "bytes": 65949,
+      "htmlBytes": 9399522,
+      "pngSha256": "176823e45e973eec2e2957af68011cebf6cca1d13b57a7f50406e1b2dacfc204",
+      "htmlSha256": "c6b53eb4b7299d5c54a43061051643e56d0a96e45e78daef00f9915a80a1ec58",
+      "cacheKey": "9765cf0db13c2022394aa120b200b93e39382da159e51c41df06ba061d664ccd",
+      "dom": {
+        "width": 414,
+        "height": 982.34375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"PingFang SC\", \"Hiragino Sans GB\", sans-serif",
+        "displayFontFamily": "\"Songti SC\", \"Noto Serif CJK SC\", serif"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "warm-editorial-partial-three-bangumi-dark-768-0.75",
+      "designPack": "warm-editorial",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 934,
+      "bytes": 67988,
+      "htmlBytes": 9399522,
+      "pngSha256": "fb5d39b41d01e5e29a66ee1177220732846804746ced06fe4ddca7213a946c15",
+      "htmlSha256": "e61ac58de2620991f8c47a24043614cabc7fbca50e02f8b79c39e5eff503401e",
+      "cacheKey": "d60162492fcf5023800dd2a9cd89ed1e9ad785e775f9c12fce2cc3ebf41a1370",
+      "dom": {
+        "width": 768,
+        "height": 933.84375,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"PingFang SC\", \"Hiragino Sans GB\", sans-serif",
+        "displayFontFamily": "\"Songti SC\", \"Noto Serif CJK SC\", serif"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "clean-gallery-partial-three-bangumi-light-320-0.75",
+      "designPack": "clean-gallery",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 1148,
+      "bytes": 60634,
+      "htmlBytes": 19469199,
+      "pngSha256": "a05742fe9c50559b2e0955d7f1e043466febf15daba1dc18f815b768789346da",
+      "htmlSha256": "52a0e930dcf741be1771e5f5fa80273108615085fa623675d79269ad5372c025",
+      "cacheKey": "4c2db0fbcf142bdd9b6a3ab49c77350c75bf1431224bc2c95da9ae7c216313ed",
+      "dom": {
+        "width": 320,
+        "height": 1147.703125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "clean-gallery-partial-three-bangumi-light-375-0.75",
+      "designPack": "clean-gallery",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 1083,
+      "bytes": 63519,
+      "htmlBytes": 19469199,
+      "pngSha256": "103b9b1bc0b2a8c7ed6b106d8200f8751cd9e5fa3589444908b765621276aeb5",
+      "htmlSha256": "0c117bfa33c60304e8b9d8f6be65190d4cb8be3f514811a0e4e8bd74334fda6a",
+      "cacheKey": "449a1a1b6ab1f4752f42a2b3ecdd3efc32bbd97af114d7a0ae215e537b28ec60",
+      "dom": {
+        "width": 375,
+        "height": 1082.703125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "clean-gallery-partial-three-bangumi-light-414-0.75",
+      "designPack": "clean-gallery",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 1029,
+      "bytes": 59493,
+      "htmlBytes": 19469199,
+      "pngSha256": "f222983f28d3864e86d68f7896402068cee8262c8d97ea6d38db3d832874244e",
+      "htmlSha256": "8c8eb9d1b3da00bcd59bf233c95485ad435126a447c08b2af272ab7a464f1042",
+      "cacheKey": "bc8ba9cbf3bf9a5ba01d970fb3b4400f699ef5857acf0ef737dfcc0fd7f653ff",
+      "dom": {
+        "width": 414,
+        "height": 1028.453125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "clean-gallery-partial-three-bangumi-light-768-0.75",
+      "designPack": "clean-gallery",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 982,
+      "bytes": 62692,
+      "htmlBytes": 19469199,
+      "pngSha256": "65cc680465096be2ba3d58d56a03785881782da5ec9bb1c9b21d4d8a80e76c63",
+      "htmlSha256": "b7e5714cef778552fa5f0fde1b04a0329700b0a420ce6762111fe403bbadc2bb",
+      "cacheKey": "7ed7822cf1e1b6baba78d3106969ed4caf321a1a017abd1071ff32490a2071aa",
+      "dom": {
+        "width": 768,
+        "height": 981.703125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "clean-gallery-partial-three-bangumi-dark-320-0.75",
+      "designPack": "clean-gallery",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 1148,
+      "bytes": 61799,
+      "htmlBytes": 19469194,
+      "pngSha256": "b0d46e6d00a9f46abf19633d6d19ca8997dcf6069c2842bed237bbf3e3644111",
+      "htmlSha256": "e5bf417590d89425293c9785e2368bad1acf23a2f81f7c31e27236272a4f50ba",
+      "cacheKey": "1c55dc63fde1887daa17a263750449d65d0af3deb742eee6b62480a5afe4b066",
+      "dom": {
+        "width": 320,
+        "height": 1147.703125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "clean-gallery-partial-three-bangumi-dark-375-0.75",
+      "designPack": "clean-gallery",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 1083,
+      "bytes": 65120,
+      "htmlBytes": 19469194,
+      "pngSha256": "183319ba2332a5598bb6488b236389ebc2f067565a1bf75c1760e9f1c80c4b2c",
+      "htmlSha256": "1e3f17755e54e16a847d4bb1be0d5335be5670dc19d3b73649bd0ea77553072e",
+      "cacheKey": "53765cd7f3167655fd75a08939a218f5754b1130c560b202a08d6cdeb1b420b6",
+      "dom": {
+        "width": 375,
+        "height": 1082.703125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "clean-gallery-partial-three-bangumi-dark-414-0.75",
+      "designPack": "clean-gallery",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 1029,
+      "bytes": 60959,
+      "htmlBytes": 19469194,
+      "pngSha256": "372151abfcb1fe10d40541a85923c6ad58459e6c1775227551ae042e65198546",
+      "htmlSha256": "ae7d962d7d701ae9db012df942e06180387c548549a0c26578fa2e08d8b8f9d2",
+      "cacheKey": "e499b24049fb7d1268f28ad2bace9a5aee8776d90bd2d20808e4613b9d5869c5",
+      "dom": {
+        "width": 414,
+        "height": 1028.453125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "clean-gallery-partial-three-bangumi-dark-768-0.75",
+      "designPack": "clean-gallery",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 982,
+      "bytes": 64295,
+      "htmlBytes": 19469194,
+      "pngSha256": "c6a246614b53fb1784a5bd6a332511fcde0bf24b79924a490c140e5905f6e453",
+      "htmlSha256": "55e9b03b5a7af3c11b42cfc1580b2a9e8c622035fe946172b5710313ca9f2954",
+      "cacheKey": "7d4acdc856c767161c33d53331777584c6a63124c8b8c6b14d6e7fe1b32a721b",
+      "dom": {
+        "width": 768,
+        "height": 981.703125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"GenSen Rounded\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "graphic-zine-partial-three-bangumi-light-320-0.75",
+      "designPack": "graphic-zine",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 978,
+      "bytes": 63726,
+      "htmlBytes": 23806239,
+      "pngSha256": "f55b8b985156ff44af67e09e826d3b406912c819cf2716456509a6a098b98349",
+      "htmlSha256": "b7c3116cfaaf7ac3fb2d687d92bf63dbbc8121a4fea2138a715860eb034692e9",
+      "cacheKey": "0337523ccb1e63f25dc6e5260948a9f7fcee65a962acefe1d7322050a41d2832",
+      "dom": {
+        "width": 320,
+        "height": 977.078125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          },
+          {
+            "family": "Ma Shan Zheng",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"Ma Shan Zheng\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739",
+        "displayFontSha256": "c2ce27c105667f9b8544af24bb0edc718d69373975b2ee132aaa063ebe7244de"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "graphic-zine-partial-three-bangumi-light-375-0.75",
+      "designPack": "graphic-zine",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 901,
+      "bytes": 66985,
+      "htmlBytes": 23806239,
+      "pngSha256": "7d77883421fced35dcf1e8110995dc6822602740f95c8da96c6179a7ac1ab79d",
+      "htmlSha256": "5e4077ba3e499a4d462ac5d51e996217bcd3b1b8ce404bef9fa42466b56d285e",
+      "cacheKey": "d4bbffdbba74ec4090b465f728228a0c73d29245166e36cda5948f874916dd2a",
+      "dom": {
+        "width": 375,
+        "height": 900.203125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          },
+          {
+            "family": "Ma Shan Zheng",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"Ma Shan Zheng\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739",
+        "displayFontSha256": "c2ce27c105667f9b8544af24bb0edc718d69373975b2ee132aaa063ebe7244de"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "graphic-zine-partial-three-bangumi-light-414-0.75",
+      "designPack": "graphic-zine",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 888,
+      "bytes": 63507,
+      "htmlBytes": 23806239,
+      "pngSha256": "0c334fe4045ce70d7881f72b50a6b97b74e90e124724ec0d27a83576af61f453",
+      "htmlSha256": "28f29b8831f3502a251dffd04d61b408e7ce27e37f1c89f12432f9a213c39168",
+      "cacheKey": "b6e8e4c4cb1da0889e3a70b16963d114035c68da87dec6854e8d684525b7dbe4",
+      "dom": {
+        "width": 414,
+        "height": 887.203125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          },
+          {
+            "family": "Ma Shan Zheng",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"Ma Shan Zheng\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739",
+        "displayFontSha256": "c2ce27c105667f9b8544af24bb0edc718d69373975b2ee132aaa063ebe7244de"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "graphic-zine-partial-three-bangumi-light-768-0.75",
+      "designPack": "graphic-zine",
+      "state": "partial-three",
+      "theme": "bangumi-light",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 841,
+      "bytes": 66546,
+      "htmlBytes": 23806239,
+      "pngSha256": "38d909da141ef65d62612f1711807879bdb3b36161a92fa45d0a420678bb6618",
+      "htmlSha256": "6a589b98dd8c303b6a6f54346746a536986c3030dda3788e87a7393ce34b02e1",
+      "cacheKey": "4aca68b3c81bf5b0fb2eea25027f5f6e76b6e246fe1c48caea6d0b9223324fe9",
+      "dom": {
+        "width": 768,
+        "height": 840.453125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          },
+          {
+            "family": "Ma Shan Zheng",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"Ma Shan Zheng\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739",
+        "displayFontSha256": "c2ce27c105667f9b8544af24bb0edc718d69373975b2ee132aaa063ebe7244de"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "graphic-zine-partial-three-bangumi-dark-320-0.75",
+      "designPack": "graphic-zine",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 320,
+      "scale": 0.75,
+      "width": 320,
+      "height": 978,
+      "bytes": 63999,
+      "htmlBytes": 23806234,
+      "pngSha256": "ed3a1b040747a802a60c59065502da50c843d64e595405f8d6434d6e6082067b",
+      "htmlSha256": "6c02d1829e93740b8c761424ff99d84db764628fe913b388c3481721f1a6d035",
+      "cacheKey": "03f03519fd9fd9a1fd3fc54c17ab61b6b591a3827471c684c6573810d65d5031",
+      "dom": {
+        "width": 320,
+        "height": 977.078125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          },
+          {
+            "family": "Ma Shan Zheng",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"Ma Shan Zheng\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739",
+        "displayFontSha256": "c2ce27c105667f9b8544af24bb0edc718d69373975b2ee132aaa063ebe7244de"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "graphic-zine-partial-three-bangumi-dark-375-0.75",
+      "designPack": "graphic-zine",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 375,
+      "scale": 0.75,
+      "width": 375,
+      "height": 901,
+      "bytes": 67633,
+      "htmlBytes": 23806234,
+      "pngSha256": "ef46ca5c32268a68a7615c4339db2363ac969e57fa8e5f6bf05b9672114ac4eb",
+      "htmlSha256": "777701618f1db2be427f214d3bc9ff0b76372b44ba18e4d61a79e5c9ab6a4f9f",
+      "cacheKey": "8b64ea3e87037f978380020501f77a1824fc03200a799e639d325e89a2247b5a",
+      "dom": {
+        "width": 375,
+        "height": 900.203125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          },
+          {
+            "family": "Ma Shan Zheng",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"Ma Shan Zheng\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739",
+        "displayFontSha256": "c2ce27c105667f9b8544af24bb0edc718d69373975b2ee132aaa063ebe7244de"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "graphic-zine-partial-three-bangumi-dark-414-0.75",
+      "designPack": "graphic-zine",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 414,
+      "scale": 0.75,
+      "width": 414,
+      "height": 888,
+      "bytes": 64052,
+      "htmlBytes": 23806234,
+      "pngSha256": "48c491069ce02ae40292859dbfb4471b8500891a5c23f58bc3b9c94243eef8d6",
+      "htmlSha256": "8a41c046679443fd284b83621a57aefa9e0bd7682d272662f55272691e64b2fd",
+      "cacheKey": "ec1e4e6b3b07c9057dbf290091132b5f36a8e09f567dc27097abf49db8f4215d",
+      "dom": {
+        "width": 414,
+        "height": 887.203125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          },
+          {
+            "family": "Ma Shan Zheng",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"Ma Shan Zheng\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739",
+        "displayFontSha256": "c2ce27c105667f9b8544af24bb0edc718d69373975b2ee132aaa063ebe7244de"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    },
+    {
+      "key": "graphic-zine-partial-three-bangumi-dark-768-0.75",
+      "designPack": "graphic-zine",
+      "state": "partial-three",
+      "theme": "bangumi-dark",
+      "cssWidth": 768,
+      "scale": 0.75,
+      "width": 768,
+      "height": 841,
+      "bytes": 66976,
+      "htmlBytes": 23806234,
+      "pngSha256": "556c400965d1996f3aedb48b3331203f04eac93d28a8f9268b32f45ab8c66538",
+      "htmlSha256": "0fcde44eee286d1e3cae3f96ed7ea066c6be1a938849c4386d55df826fc54e37",
+      "cacheKey": "d13423fe295fc750bc0c98aeec1baf6288e6bd053330ed9c259d44c1cea3c5bc",
+      "dom": {
+        "width": 768,
+        "height": 840.453125,
+        "horizontalOverflow": false,
+        "outsideText": [],
+        "isolatedPunctuation": [],
+        "brokenImages": 0,
+        "loadedFonts": [
+          {
+            "family": "GenSen Rounded",
+            "loaded": true
+          },
+          {
+            "family": "Ma Shan Zheng",
+            "loaded": true
+          }
+        ],
+        "titleCount": 0
+      },
+      "typography": {
+        "fontSizeScale": 0.75,
+        "bodyFontFamily": "\"GenSen Rounded\"",
+        "displayFontFamily": "\"Ma Shan Zheng\"",
+        "bodyFontSha256": "cbbb8f21f1f1d18ba59579ca079bb9a4f6d03c852fd817850503a832ceb70739",
+        "displayFontSha256": "c2ce27c105667f9b8544af24bb0edc718d69373975b2ee132aaa063ebe7244de"
+      },
+      "preview": null,
+      "baseline": {
+        "htmlEqual": true,
+        "pngEqual": true,
+        "cacheEqual": true
+      }
+    }
+  ],
+  "failures": [],
+  "assetRequests": 118,
+  "externalRequests": 0,
+  "executionFailure": null,
+  "limits": [
+    "Offline synthetic host renderer only; not native VM account compatibility or actual client/aesthetic acceptance.",
+    "Only selected previews retained; all case hashes, loaded fonts and text bounds recorded."
+  ]
+}

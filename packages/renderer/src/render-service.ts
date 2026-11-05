@@ -8,6 +8,7 @@ import {
   RenderThemeName,
 } from './themes/index.js';
 import { renderHtmlTemplate } from './template-engine.js';
+import { getMagazineCalendarCoverSize } from './templates/CalendarCard.js';
 import { BrowserPool } from './browser-pool.js';
 import { AssetResolver, RenderWarning, ResolvedAsset } from './asset-resolver.js';
 import { RendererError } from './errors.js';
@@ -96,7 +97,13 @@ export function computeRenderCacheKey(
   });
 
   const rawKey = `${RENDERER_VERSION}:${viewModel.template}:${viewModel.version}:${theme}:${designPack}:${width}:${dpr}:${format}:${typographyCanonical}:${vmCanonical}:${assetCanonical}`;
-  return crypto.createHash('sha256').update(rawKey).digest('hex');
+  // Existing packs/templates keep their cache identities. Old magazine calendar
+  // pixels must not survive the composition change for the same input/options.
+  const layoutKey =
+    viewModel.template === 'calendar' && designPack === 'anime-magazine'
+      ? `${rawKey}:compact-magazine-v1`
+      : rawKey;
+  return crypto.createHash('sha256').update(layoutKey).digest('hex');
 }
 
 export function extractImageUrls(
@@ -386,7 +393,30 @@ export class RenderService {
               `Total render deadline reached before resolving assets.`,
             );
           }
-          const resolved = await this.assetResolver.resolveAsset(url, controller.signal);
+          let resolved = await this.assetResolver.resolveAsset(url, controller.signal);
+          if (
+            normalizedViewModel.template === 'calendar' &&
+            designPack === 'anime-magazine' &&
+            !resolved.warning
+          ) {
+            // A56-item page must not embed56 full-size covers. Preserve the same
+            // crop at display resolution (including DPR), inside existing asset
+            // concurrency/deadline bounds. Other templates and packs keep bytes.
+            const size = getMagazineCalendarCoverSize(width);
+            const cover = await sharp(Buffer.from(resolved.dataUrl.split(',')[1] ?? '', 'base64'))
+              .resize({
+                width: Math.ceil(size.width * dpr),
+                height: Math.ceil(size.height * dpr),
+                fit: 'cover',
+                withoutEnlargement: true,
+              })
+              .png()
+              .toBuffer();
+            resolved = {
+              ...resolved,
+              dataUrl: `data:image/png;base64,${cover.toString('base64')}`,
+            };
+          }
           return { url, resolved };
         },
       );

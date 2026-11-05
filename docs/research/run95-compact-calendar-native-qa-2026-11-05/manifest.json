@@ -1,0 +1,34 @@
+{
+  "schema": "calendar-magazine-native-design-evidence/v1",
+  "basisHead": "ec350dd78b775d7327b7e2e5bfae3a30b6294138",
+  "sourceBinding": "Exact runtime/producer source SHA256 in native/text receipts, measured before the engineering commit. Prepared HEAD is a provenance point, not an execution Candidate.",
+  "files": {
+    "native-receipt.json": "ffcea6487bab03a5ecc8ec7024973980af14523f97c85ed7ac2258cd81b65cf0",
+    "text-audit.json": "7390f7b44c7128ace1513c9514ef0496ebb65faf75beeadab4c0f18d072fbde7",
+    "text-audit-before-wrap-fix.json": "f1f3902284cca8fc58401260221dc17f17ac22ae07a1ae5bfcdd10ea073ca3c4",
+    "dense-failure-before-fix.json": "ee14514fa01b8b27e1ed4bbd1a1cb4e3c2ecb4915b6d7fa989f70072b96ff748",
+    "reference.png": "d6e8bd65979cac1f3b57b284ae69e2fa62cf1ffd941efc509c63883c73d78737",
+    "anime-magazine-partial-three-bangumi-light-375-0.75.png": "7ff22304c018ba8a7db0c0eaa5352e101fb86f0a1e9b0f6f8632487060867251",
+    "anime-magazine-partial-three-bangumi-dark-320-0.75.png": "ea9f8a9897c934868eb1b64dc8e1c84ef29c3f2d04741ed0f77b3458b6a6af6a",
+    "anime-magazine-long-missing-covers-bangumi-light-375-0.75.png": "5ea3da7d86d711d8708d17a593c596015127338b8bf21e33df44be3fd4d18d60",
+    "anime-magazine-long-missing-covers-bangumi-dark-320-1.25.png": "9e93ccefbf8d561f5eb30c5db53523bd263ff21318830162e0d9001c3be6c4a4",
+    "anime-magazine-weekday-conflict-bangumi-light-375-0.75.png": "7f3a8ad9f00db84791ae190b66659232be9273386860da2cac3655e0b4dd7977",
+    "anime-magazine-bounded-large-bangumi-light-375-0.75.png": "fe83510fab5bebe0fc0e10de97b5368ddab1e47c4a43de9efc944d6b3df8fe50",
+    "anime-magazine-known-empty-bangumi-light-375-0.75.png": "7495a028c3f05334d8d07a99abad913d252deed198d7c8562f8d5aab1c512f14",
+    "anime-magazine-unavailable-bangumi-light-375-0.75.png": "857cff245ef66ec1e592851f84f90447b4497c3a7ba2a1221a3dc81a60dadfb9"
+  },
+  "referenceStatus": "AI-generated target, not user acceptance",
+  "scope": "offline synthetic host native PNG104 and DOM text128; no account/client acceptance",
+  "designerScores": {
+    "philosophy": 4,
+    "hierarchy": 4,
+    "execution": 4,
+    "specificity": 4,
+    "restraint": 4,
+    "variety": 4
+  },
+  "userAestheticAcceptance": "unobserved",
+  "nativeVmAccountCompatibility": "pending",
+  "newOutputClientAcceptance": "pending",
+  "retention": "Original generator retains26 local previews; this repository bundle retains8 selected previews and reference. Other case hashes stay in native receipt."
+}
