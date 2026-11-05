@@ -74,14 +74,13 @@ class NativeTimCalendarEvidenceTests(unittest.TestCase):
         self.assertEqual(native['productionSource']['gateway'], '7e3d10a93192fbc986441eccc8145122e5d2a696')
         self.assertEqual(native['productionSource']['plugin'], '7eac647af079a3d895c12da9720f5ef131c0efa8')
 
-    def test_actual_checkout_agrees_without_model_api_or_client_access(self):
+    def test_actual_checkout_rejects_old_calendar_pixels_after_the_compact_source_change(self):
         with patch.object(receipts, '_git', wraps=ORIGINAL_GIT):
             catalog = json.loads((ROOT / 'docs/tool-catalog.json').read_bytes())
-            expected = {evidence.TOOL: {evidence.REFERENCE}}
             self.assertEqual(tool_client_e2e_sources(
                 catalog, catalog_path=ROOT / 'docs/tool-catalog.json',
                 report_dir=ROOT / 'docs/live-probes', root=ROOT,
-            ), (expected, expected))
+            ), ({}, {}))
 
     def test_legacy_reader_does_not_admit_or_relabel_native_report(self):
         current = {t['name']: t for t in self.catalog}

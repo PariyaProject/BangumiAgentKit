@@ -1,0 +1,195 @@
+{
+  "schema": "bgk-calendar-closed-account-source-compatibility/v1",
+  "kind": "old-execution-with-closed-compiled-source-compatibility",
+  "sourceBasisRevision": "99c863d17f21d314de7f4357fdcfd8e808fb323e",
+  "executedBaselineRevision": "bfe1229d03edac0c7e218f442b2d746254cb4c4c",
+  "parentImageId": "sha256:9c0784bff3ef39fa5c30639f07e3b86b4be634c2cecf854679e9920f9517014a",
+  "runtimeTreeSha256": "e02db7fafd564aeae437b5c3be108e2e6ae1e290d8a2b7655e6308c5a939d80a",
+  "evidenceFiles": {
+    "native-proof.json": "c97c99fa754a8c9d01787ee4e9153664e66a478a101615788202d280cd28e798",
+    "failed-first-native-proof.json": "2611812ae104f66a0304856fd8f823657157f119ee6d8a619eae99b25d8e6c16"
+  },
+  "admittedTools": [
+    {
+      "input": {
+        "limit": 1,
+        "offset": 0,
+        "status": "doing",
+        "subjectType": "anime"
+      },
+      "name": "bangumi.list_collections"
+    },
+    {
+      "input": {
+        "maxItems": 2
+      },
+      "name": "bangumi.get_collection_intelligence"
+    },
+    {
+      "input": {
+        "maxItems": 2
+      },
+      "name": "bangumi.render_collection_intelligence"
+    },
+    {
+      "input": {
+        "maxEpisodesPerSubject": 1,
+        "maxItems": 1,
+        "maxSubjects": 1,
+        "sortBy": "source",
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.get_collection_backlog"
+    },
+    {
+      "input": {
+        "maxEpisodesPerSubject": 1,
+        "maxItems": 1,
+        "maxSubjects": 1,
+        "sortBy": "source",
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.render_collection_backlog"
+    },
+    {
+      "input": {
+        "maxCollectionItems": 1,
+        "maxRows": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.get_collection_schedule"
+    },
+    {
+      "input": {
+        "maxCollectionItems": 1,
+        "maxRows": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.render_collection_schedule"
+    },
+    {
+      "input": {
+        "maxCollectionItems": 1,
+        "maxDurationMs": 30000,
+        "maxEpisodesPerSubject": 1,
+        "maxRows": 1,
+        "maxSubjects": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.get_collection_dashboard"
+    },
+    {
+      "input": {
+        "maxCollectionItems": 1,
+        "maxDurationMs": 30000,
+        "maxEpisodesPerSubject": 1,
+        "maxRows": 1,
+        "maxSubjects": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.render_collection_dashboard"
+    },
+    {
+      "input": {
+        "maxEdges": 1,
+        "maxGroups": 1,
+        "maxItems": 1,
+        "maxRelationSubjects": 1,
+        "maxRelationsPerSubject": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.get_collection_series_groups"
+    },
+    {
+      "input": {
+        "maxEdges": 1,
+        "maxGroups": 1,
+        "maxItems": 1,
+        "maxRelationSubjects": 1,
+        "maxRelationsPerSubject": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.render_collection_series_groups"
+    },
+    {
+      "input": {
+        "episodeType": 0,
+        "limit": 1,
+        "offset": 0,
+        "subjectId": "sole-validated-selection-in-memory"
+      },
+      "name": "bangumi.get_episode_collections"
+    }
+  ],
+  "originalReferences": {
+    "bangumi.get_collection_backlog": "docs/live-probes/run95-a4-backlog-schedule-and-private-pngs-2026-10-27/a4-result.json",
+    "bangumi.get_collection_dashboard": "docs/live-probes/run95-a5-dashboard-and-private-png-2026-10-28/a5-result.json",
+    "bangumi.get_collection_intelligence": "docs/live-probes/run95-a3-bound-overview-and-private-png-2026-10-27/a3-result.json",
+    "bangumi.get_collection_schedule": "docs/live-probes/run95-a4-backlog-schedule-and-private-pngs-2026-10-27/a4-result.json",
+    "bangumi.get_collection_series_groups": "docs/live-probes/run95-a6-series-and-private-png-2026-10-28/a6-result.json",
+    "bangumi.get_episode_collections": "docs/live-probes/run95-a7-native-episode-collection-read-2026-10-28/a7-result.json",
+    "bangumi.list_collections": "docs/live-probes/run95-a2-partial-account-read-2026-10-27/a2-result.json",
+    "bangumi.render_collection_backlog": "docs/live-probes/run95-a4-backlog-schedule-and-private-pngs-2026-10-27/a4-result.json",
+    "bangumi.render_collection_dashboard": "docs/live-probes/run95-a5-dashboard-and-private-png-2026-10-28/a5-result.json",
+    "bangumi.render_collection_intelligence": "docs/live-probes/run95-a3-bound-overview-and-private-png-2026-10-27/a3-result.json",
+    "bangumi.render_collection_schedule": "docs/live-probes/run95-a4-backlog-schedule-and-private-pngs-2026-10-27/a4-result.json",
+    "bangumi.render_collection_series_groups": "docs/live-probes/run95-a6-series-and-private-png-2026-10-28/a6-result.json"
+  },
+  "limits": [
+    "Exactly twelve bounded historical A2-A7 account-read inputs; original partial observations and prior applicable qs dependency reference remain. No A1/profile/progress-image or broader-input credit.",
+    "A fresh fake SQLite/credential state, compiled native MCP stdio, five decoded private PNGs and six closed guard modes only. No real account/API/model/client action or spent-profile/producer replay.",
+    "Full285 source Git/disk/modes, root metadata/scripts except acceptance:check, dynamic SQL/assets, absent configuration, original76 evidence/producer/helper files and current8 producers remain pinned. Only two renderer source files differ from the A7 baseline.",
+    "Full typechecked compiler projections reproduce original parent JavaScript exactly and current dist exactly; server hooks observe actual new module bytes. Parent image is unchanged; two read-only code mounts are isolated QA, not deployment.",
+    "The initial DTO-assertion failure is retained as failed. Only the corrected twelve-call run can support compatibility.",
+    "Old calendar TIM/QQ pixels do not accept the new composition. No fresh credential/OAuth, full account, new client, user aesthetic, stability or cryptographic attestation claim."
+  ],
+  "trust": "Fixed reviewed operator witness with closed source/input binding; not general future compatibility or a runner signature."
+}

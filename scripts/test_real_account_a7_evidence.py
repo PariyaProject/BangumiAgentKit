@@ -18,6 +18,7 @@ from acceptance import real_account_a3_evidence as shared
 from acceptance import real_account_a7_evidence as evidence
 from acceptance import real_account_read_evidence as union
 from acceptance import qs55_account_compatibility as compatibility
+from acceptance import calendar_account_compatibility as calendar_compatibility
 
 ROOT = Path(__file__).resolve().parents[1]
 ORIGINAL_GIT = receipts._git
@@ -84,15 +85,15 @@ class RealAccountA7EvidenceTests(unittest.TestCase):
         self.assertTrue(post['protectedA1A2A3A4A5A6ClaimBytesPreserved'])
         self.assertEqual(post['a7ClaimSha256'], hashlib.sha256((self.bundle / 'durable-a7-claim.json').read_bytes()).hexdigest())
 
-    def test_actual_union_adds_one_to_the_exact_eleven_compatible_cells(self):
+    def test_actual_union_uses_the_new_twelve_input_bridge_while_old_source_gate_stays_strict(self):
         with patch.object(receipts, '_git', wraps=ORIGINAL_GIT):
             catalog = json.loads((ROOT / 'docs/tool-catalog.json').read_bytes())
             before = compatibility.qs55_compatible_account_sources(ROOT, catalog)
+            current = calendar_compatibility.calendar_compatible_account_sources(ROOT, catalog)
             after = union.real_account_read_sources(ROOT, catalog)
-            self.assertEqual(len(before), 11); self.assertEqual(len(after), 12)
-            self.assertEqual(set(after) - set(before), {evidence.TOOL})
-            self.assertEqual({k: after[k] for k in before}, before)
-            self.assertEqual(after[evidence.TOOL], {evidence.REFERENCE})
+            self.assertEqual(before, {})
+            self.assertEqual(len(current), 12); self.assertEqual(after, current)
+            self.assertEqual(after[evidence.TOOL], {evidence.REFERENCE, calendar_compatibility.REFERENCE})
             self.assertNotIn('bangumi.get_my_profile', after)
             self.assertNotIn('bangumi.render_collection_progress', after)
 
