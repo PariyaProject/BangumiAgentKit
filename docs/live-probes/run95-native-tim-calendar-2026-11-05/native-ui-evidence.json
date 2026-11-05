@@ -1,0 +1,67 @@
+{
+  "schema": "run95-tim-calendar-native-ui-evidence-package/v1",
+  "tool": "bangumi.render_calendar",
+  "client": "TIM",
+  "observedAt": "2026-11-05T01:32:43.712545+00:00",
+  "gatewayStatus": "OK",
+  "toolCalls": [
+    {
+      "server": "bangumi",
+      "name": "bangumi.render_calendar",
+      "state": "DONE"
+    }
+  ],
+  "toolErrors": 0,
+  "modelsDelta": 1,
+  "durationMs": 23033,
+  "qqPipeline": {
+    "eventId": "3978d80f43432cee",
+    "phases": [
+      "candidate",
+      "received",
+      "submitted",
+      "result",
+      "rendering",
+      "sending",
+      "sent"
+    ],
+    "receivedAt": "2026-11-05T01:19:10.744000+00:00",
+    "modelFinishedAt": "2026-11-05T01:19:34.372000+00:00",
+    "sentAt": "2026-11-05T01:19:35.898000+00:00",
+    "duplicates": false,
+    "uncertain": false,
+    "orderingViolations": 0
+  },
+  "computerUse": {
+    "inputObserved": true,
+    "inputMethod": "paste+Return",
+    "textDisplayed": true,
+    "imageDisplayed": true,
+    "imageOpened": true,
+    "topAndBottomInspected": true,
+    "recipientIsOriginalBot": true,
+    "onlyAuthorizedConversation": true
+  },
+  "renderedItemsObserved": 3,
+  "coverageObserved": "partial",
+  "productionSource": {
+    "gateway": "7e3d10a93192fbc986441eccc8145122e5d2a696",
+    "plugin": "7eac647af079a3d895c12da9720f5ef131c0efa8",
+    "runtimeMountRepair": "11fca7336cb8eabff8157a751dfe419244c42d85",
+    "nativeImage": "sha256:9c0784bff3ef39fa5c30639f07e3b86b4be634c2cecf854679e9920f9517014a",
+    "nativeUpstream": "bfe1229d03edac0c7e218f442b2d746254cb4c4c",
+    "currentBgk": "6e4512f53fee6d0f3a6157bd85725d6a6dced3cd",
+    "packagesAndToolCatalogIdentical": true
+  },
+  "privacy": {
+    "messageBodyStored": false,
+    "replyBodyStored": false,
+    "qqIdStored": false,
+    "screenshotStored": false,
+    "credentialsStored": false,
+    "sessionIdentityStored": false
+  },
+  "formalMatrixImport": "PENDING_CURRENT_PROFILE_REPORT_CONTRACT",
+  "readerGap": "scripts/client_evidence.py only accepts profile public-render/image pariya-agent/agy-bangumi-poc:m1; do not relabel this standard-full native run as legacy m1",
+  "oldClaimsAndPrivateWindowResultsUnchanged": true
+}

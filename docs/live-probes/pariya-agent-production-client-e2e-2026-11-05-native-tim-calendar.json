@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 2,
+  "evidenceKind": "pariya_agent_tool_client_e2e",
+  "kind": "fixed-observed-native-client-import",
+  "tool": "bangumi.render_calendar",
+  "profile": "standard-full",
+  "catalogSha256": "1f5b17d76a30ebd2c76e8c9a2317ab9f03640be466e02b5e48b1cbefd97728c7",
+  "executedSourceRevision": "bfe1229d03edac0c7e218f442b2d746254cb4c4c",
+  "compatibilityBasisRevision": "6e4512f53fee6d0f3a6157bd85725d6a6dced3cd",
+  "runtimeTreeSha256": "64ac0ffd093f003e0f0332c6a57b65038a1462b1bbc34cde73533c38996116b2",
+  "evidenceFiles": {
+    "docs/live-probes/run95-native-tim-calendar-2026-11-05/native-ui-evidence.json": "3edfcc8f8edc1a30ef95d89680c1b274fba29c2286a528b8866bd79abc5aca6d",
+    "docs/live-probes/run95-a7-native-episode-collection-read-2026-10-28/source-files.json": "cf4472d0d12e8093668116d455ea94a2c252447a79c8d2cc4f6a78df282ca59a",
+    "docs/live-probes/run95-a7-native-episode-collection-read-2026-10-28/root-package-runtime.json": "dd077a6140adfeb77f75575f4f20aa0b89617225477f66c0ed5655585cec38da"
+  },
+  "originCheckpoint": {
+    "run": 95,
+    "sequence": 150,
+    "sha256": "89191376591e25b7edfed2e96709fe5dfaeac3dc2172011b43de154bc2f47ab9",
+    "url": "https://github.com/PariyaProject/BangumiAgentKit/issues/95"
+  },
+  "trust": "Fixed reviewed operator observation, not cryptographic execution attestation. CUA operated the authorized real TIM client; no synthetic ingress.",
+  "limits": [
+    "One successful calendar invocation, one ordered QQ event and one real TIM image observation only. Style confirmation is journey context, not an additional tool cell.",
+    "Actual production Gateway 7e3d10a / plugin 7eac647 with ordinary runtime mount repair 11fca733; native image 9c0784bf / upstream bfe1229. This is not legacy public-render/m1.",
+    "Reuse the exact A7 runtime-file and root-metadata snapshots solely as source equality witnesses; no account execution or account receipt imported here. Current runtime tree, disk bytes, dynamic assets/SQL and root metadata except scripts must match.",
+    "Three displayed entries and partial coverage. No all-calendar/all-client/all-tool, visual-fidelity, aesthetic approval, concurrency or stability claim.",
+    "Offline import only. Old failed private windows and all terminal claim bytes remain unchanged; no new profile, authorization, deployment, API, model or message action."
+  ]
+}

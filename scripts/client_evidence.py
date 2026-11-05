@@ -7,6 +7,8 @@ import json
 import re
 from pathlib import Path
 
+from acceptance.native_tim_calendar_evidence import native_tim_calendar_status
+
 
 REPORT_GLOB = 'pariya-agent-production-client-e2e-*.json'
 EVIDENCE_KIND = 'pariya_agent_tool_client_e2e'
@@ -139,12 +141,19 @@ def tool_client_e2e_sources(
         tool = current.get(name)
         if tool is None:
             continue
-        qq_passed, tim_passed = report_status(report, tool, catalog_sha256, current)
-        if not qq_passed:
-            continue
         try:
             relative = path.resolve().relative_to(Path(root).resolve()).as_posix()
+            if isinstance(report, dict) and report.get('schemaVersion') == 2:
+                native_relative = path.absolute().relative_to(Path(root).absolute()).as_posix()
+                if native_relative != relative:
+                    continue
         except (OSError, ValueError):
+            continue
+        if isinstance(report, dict) and report.get('schemaVersion') == 2:
+            qq_passed, tim_passed = native_tim_calendar_status(root, catalog, relative)
+        else:
+            qq_passed, tim_passed = report_status(report, tool, catalog_sha256, current)
+        if not qq_passed:
             continue
         qq_sources.setdefault(name, set()).add(relative)
         if tim_passed:
