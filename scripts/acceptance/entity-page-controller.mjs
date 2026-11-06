@@ -1,4 +1,4 @@
-/** Nine fixed compiled-MCP calls using fake SQLite identity and a finite provider. */
+/** Eleven fixed compiled-MCP calls using fake SQLite identity and a finite provider. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -55,13 +55,25 @@ const cases = [
     expected: 'oversized-body',
     error: 'RESPONSE_TOO_LARGE',
   },
+  {
+    name: personTool,
+    input: { maxItems: 1, offset: 0 },
+    expected: 'declared-oversized-body',
+    error: 'RESPONSE_TOO_LARGE',
+  },
+  {
+    name: characterTool,
+    input: { maxItems: 1, offset: 0 },
+    expected: 'rejecting-stream-cancel',
+    error: 'RESPONSE_TOO_LARGE',
+  },
 ];
 let selected;
 let storage,
   client,
   stage = 'seed';
 const facts = {
-  schema: 'entity-page-compiled-mcp/v1',
+  schema: 'entity-page-compiled-mcp/v2',
   passed: false,
   results: [],
   mcpClosed: false,

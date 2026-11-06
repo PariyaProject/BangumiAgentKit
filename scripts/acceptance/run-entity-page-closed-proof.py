@@ -25,7 +25,7 @@ BASE = a7.SOURCE_REVISION
 SOURCES = prior.CHANGED_SOURCES | {
     'packages/bangumi-openapi/src/index.ts', 'packages/bangumi-openapi/src/generated/index.ts',
     'packages/bangumi-openapi/src/native-collection-page-client.ts',
-    'packages/tools/src/definitions/read-tools.ts', 'docs/tool-catalog.json'}
+    'packages/tools/src/definitions/read-tools.ts', 'packages/bangumi-transport/src/http-client.ts', 'docs/tool-catalog.json'}
 ADDED_SOURCE = 'packages/bangumi-openapi/src/native-collection-page-client.ts'
 NEW_PROGRAMS = ['prepare-entity-page-compiled.mjs', 'entity-page-source-guard.mjs',
     'entity-page-controller.mjs', 'entity-page-fixture.mjs', 'entity-page-driver.mjs',
@@ -37,7 +37,7 @@ PROGRAMS = sorted(set(NEW_PROGRAMS + frozen.PROGRAMS))
 INSPECT = r'''const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),m=require('node:module');
 const runtime=m.createRequire('/opt/bangumi/package.json'),tools=m.createRequire(runtime.resolve('@bangumi-agent-kit/tools'));
 const files=[];
-for(const [name,pkg] of [['core','@bangumi-agent-kit/bangumi-core'],['renderer','@bangumi-agent-kit/renderer'],['openapi','@bangumi-agent-kit/bangumi-openapi'],['tools','@bangumi-agent-kit/tools']]){
+for(const [name,pkg] of [['core','@bangumi-agent-kit/bangumi-core'],['renderer','@bangumi-agent-kit/renderer'],['openapi','@bangumi-agent-kit/bangumi-openapi'],['tools','@bangumi-agent-kit/tools'],['transport','@bangumi-agent-kit/bangumi-transport']]){
  const base=path.dirname(tools.resolve(pkg));
  function walk(dir){for(const d of fs.readdirSync(dir,{withFileTypes:true})){
   const p=path.join(dir,d.name);if(d.isDirectory())walk(p);else if(d.isFile()&&p.endsWith('.js')){
@@ -49,7 +49,7 @@ for(const [name,pkg] of [['core','@bangumi-agent-kit/bangumi-core'],['renderer',
 const api=files.find(f=>f.package==='openapi'&&f.relative==='index.js');
 const added=path.join(path.dirname(api.path),'native-collection-page-client.js');
 if(fs.existsSync(added))throw Error('ECP_PARENT_NEW_MODULE_EXISTS');
-console.log(JSON.stringify({schema:'entity-page-parent-runtime/v1',node:process.version,registerHooks:typeof m.registerHooks,files,absentFiles:[{package:'openapi',relative:'native-collection-page-client.js',path:added}]}));'''
+console.log(JSON.stringify({schema:'entity-page-parent-runtime/v2',node:process.version,registerHooks:typeof m.registerHooks,files,absentFiles:[{package:'openapi',relative:'native-collection-page-client.js',path:added}]}));'''
 
 
 def digest(raw):
@@ -150,7 +150,11 @@ def main():
     inputs, references, protected = prior._historical(ROOT)
     for file in prior.PROGRAMS | {'scripts/acceptance/person_account_compatibility.py', prior.REFERENCE, prior.BUNDLE + '/native-proof.json'}:
         protected[file] = digest(prior._read(ROOT, file))
-    if not qs55._fixed_files(ROOT, protected):
+    protected.update({
+        'docs/live-probes/run95-entity-page-account-source-compatibility-2026-11-06/import.json': '2343dc13c760429a77e264b1e9971a39aca2c40f2abf5097c80d1c191ce64fbe',
+        'docs/live-probes/run95-entity-page-account-source-compatibility-2026-11-06/native-proof.json': 'c67f1d71e3d43ff83ab050349f3fcec23bfbda5a9e0f839a763244bccab47fa6',
+    })
+    if len(protected) != 96 or not qs55._fixed_files(ROOT, protected):
         raise ValueError('ECP_HISTORICAL_BYTES_DRIFT')
     programs = {'scripts/acceptance/' + name: digest(receipts._read_regular(ROOT, 'scripts/acceptance/' + name)) for name in PROGRAMS}
     if command('docker', 'image', 'inspect', PARENT, '--format', '{{.Id}}').stdout.strip() != PARENT:
@@ -165,7 +169,7 @@ def main():
         command('node', str(ROOT / 'scripts/acceptance/prepare-entity-page-compiled.mjs'), str(compiled), str(parent_file), timeout=180)
         projection = json.loads((compiled / 'compiled.json').read_bytes())
         if args.prepare_only:
-            result = {'schema': 'entity-page-closed-preparation/v1', 'prepared': True,
+            result = {'schema': 'entity-page-closed-preparation/v2', 'prepared': True,
                 'nativeExecuted': False, 'source': source, 'projection': projection,
                 'inputCount': len(inputs), 'protectedFiles': len(protected)}
         else:
@@ -185,7 +189,7 @@ def main():
             try:
                 result = json.loads(native.stdout)
             except ValueError:
-                result = {'schema': 'entity-page-closed-native-proof/v1', 'passed': False,
+                result = {'schema': 'entity-page-closed-native-proof/v2', 'passed': False,
                     'failureCode': 'NATIVE_ENTRY_OR_INVALID_REPORT', 'nativeExitStatus': native.returncode,
                     'knownErrorCodes': sorted(set(re.findall(r'(?:ECP|C12)_[A-Z_]+', native.stderr)))[:8]}
             if (git('rev-parse', 'HEAD') != revision or source_snapshot() != source
@@ -198,8 +202,8 @@ def main():
                 raise ValueError('ECP_STAGED_PRODUCER_DRIFT')
             result.update(sourceRevision=revision, source=source, projection=projection,
                 exactInputs=inputs, originalReferences=references, parentImageId=PARENT,
-                originalParentPreserved=True, containerRemoved=True, containerNetwork='none',
-                containerReadOnly=True, realDataMounts=0, codeMounts=8, qaMounts=1,
+                originalParentPreserved=True, firstCandidateWitnessPreserved=True, containerRemoved=True, containerNetwork='none',
+                containerReadOnly=True, realDataMounts=0, codeMounts=9, qaMounts=1,
                 protectedFiles=protected, producerFiles=programs, stagedPrograms=staged)
             result['passed'] = result.get('passed') is True and native.returncode == 0
     args.output.parent.mkdir(parents=True, exist_ok=True)

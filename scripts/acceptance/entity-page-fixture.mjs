@@ -1,4 +1,4 @@
-/** Nine finite synthetic responses; no real transport, assets, model or account. */
+/** Eleven finite synthetic responses; no real transport, assets, model or account. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -11,13 +11,16 @@ const renderer = tools.resolve('@bangumi-agent-kit/renderer');
 const output = '/tmp/entity-page-mcp/provider.json';
 fs.mkdirSync(path.dirname(output), { recursive: true, mode: 0o700 });
 const facts = {
-  schema: 'entity-page-provider/v1',
+  schema: 'entity-page-provider/v2',
   calls: [],
   denied: 0,
   assetAttempts: 0,
   renderCalls: 0,
   offeredBytes: 0,
   bodyCancelled: false,
+  headerBodyCancelled: 0,
+  rejectingCancelAttempts: 0,
+  abortedSteps: [],
 };
 const publish = () => fs.writeFileSync(output, JSON.stringify(facts), { mode: 0o600 });
 const deny = () => {
@@ -40,12 +43,12 @@ installFixtureFetch(async (input, init) => {
     request.method !== 'GET' ||
     url.origin !== 'https://api.bgm.tv' ||
     request.headers.get('authorization') !== 'Bearer page-fake-access' ||
-    facts.calls.length >= 9
+    facts.calls.length >= 11
   )
     return deny();
   const step = JSON.parse(fs.readFileSync('/tmp/entity-page-mcp/step.json', 'utf8'));
   if (step.index !== facts.calls.length) return deny(); // No retry, pagination, fallback or hydration.
-  const character = step.index === 2 || step.index === 6;
+  const character = [2, 6, 10].includes(step.index);
   const kind = step.index === 1 ? 'single' : character ? 'characters' : 'persons';
   const route =
     '/v0/users/page-fake-user/collections/-/' + (kind === 'single' ? 'persons/20' : kind);
@@ -70,6 +73,14 @@ installFixtureFetch(async (input, init) => {
     step.name !== 'bangumi.list_' + (character ? 'character' : 'person') + '_collections'
   )
     return deny();
+  request.signal.addEventListener(
+    'abort',
+    () => {
+      facts.abortedSteps.push(step.index);
+      publish();
+    },
+    { once: true },
+  );
   facts.calls.push({ kind, step: step.index, ...query });
   publish();
   if (step.index === 1) return Response.json(row(20));
@@ -92,6 +103,29 @@ installFixtureFetch(async (input, init) => {
       }),
     );
   }
+  if (step.index === 9)
+    return new Response(
+      new ReadableStream({
+        cancel() {
+          facts.headerBodyCancelled++;
+          publish();
+        },
+      }),
+      { headers: { 'content-length': '262145' } },
+    );
+  if (step.index === 10)
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array(262145));
+        },
+        cancel() {
+          facts.rejectingCancelAttempts++;
+          publish();
+          return Promise.reject(Error('ECP_SYNTHETIC_CANCEL_REJECTED'));
+        },
+      }),
+    );
   const bodies = {
     0: { total: 4, limit: 1, offset: 0, data: [row(20)] },
     2: { total: 5, limit: 2, offset: 1, data: [row(30)] },

@@ -113,126 +113,143 @@ export class HttpClient {
 
       const fetchImpl = options.fetchFn || this.fetchFn || fetch;
 
-      let response: Response;
+      let response: Response | undefined;
       try {
-        response = await fetchImpl(url, {
-          method,
-          headers,
-          body: reqBody,
-          signal: controller.signal,
-        });
-      } catch (err: unknown) {
-        clearTimeout(timer);
-        if (isBangumiError(err)) {
-          throw err;
-        }
-        if (err instanceof Error && err.name === 'AbortError') {
+        try {
+          response = await fetchImpl(url, {
+            method,
+            headers,
+            body: reqBody,
+            signal: controller.signal,
+          });
+        } catch (err: unknown) {
+          clearTimeout(timer);
+          if (isBangumiError(err)) {
+            throw err;
+          }
+          if (err instanceof Error && err.name === 'AbortError') {
+            throw new BangumiError(
+              'NETWORK_ERROR',
+              options.signal?.aborted
+                ? 'Request cancelled by the caller.'
+                : `Request timed out after ${this.timeoutMs}ms`,
+              !options.signal?.aborted,
+            );
+          }
           throw new BangumiError(
             'NETWORK_ERROR',
-            options.signal?.aborted
-              ? 'Request cancelled by the caller.'
-              : `Request timed out after ${this.timeoutMs}ms`,
-            !options.signal?.aborted,
+            err instanceof Error ? err.message : 'Network failure',
+            true,
           );
+        } finally {
+          clearTimeout(timer);
         }
-        throw new BangumiError(
-          'NETWORK_ERROR',
-          err instanceof Error ? err.message : 'Network failure',
-          true,
-        );
-      } finally {
-        clearTimeout(timer);
-        options.signal?.removeEventListener('abort', abortRequest);
-      }
 
-      if (response.status === 302 || response.status === 301 || response.headers.get('location')) {
-        return { location: response.headers.get('location') || response.url || '' } as T;
-      }
+        if (
+          response.status === 302 ||
+          response.status === 301 ||
+          response.headers.get('location')
+        ) {
+          return { location: response.headers.get('location') || response.url || '' } as T;
+        }
 
-      assertResponseContentLength(response, maxResponseBytes);
+        assertResponseContentLength(response, maxResponseBytes);
 
-      if (!response.ok) {
-        let errorMsg = `HTTP ${response.status} ${response.statusText}`;
-        try {
-          const bodyText = await readResponseText(response, maxResponseBytes, options.signal);
-          if (bodyText) {
-            try {
-              const json = JSON.parse(bodyText);
-              errorMsg = json.message || json.description || bodyText;
-            } catch {
-              errorMsg = bodyText;
+        if (!response.ok) {
+          let errorMsg = `HTTP ${response.status} ${response.statusText}`;
+          try {
+            const bodyText = await readResponseText(response, maxResponseBytes, options.signal);
+            if (bodyText) {
+              try {
+                const json = JSON.parse(bodyText);
+                errorMsg = json.message || json.description || bodyText;
+              } catch {
+                errorMsg = bodyText;
+              }
             }
+          } catch {
+            // ignore body read error
           }
-        } catch {
-          // ignore body read error
+
+          switch (response.status) {
+            case 400:
+              throw new BangumiError('VALIDATION_ERROR', errorMsg, false, 400);
+            case 401:
+              throw new BangumiError(
+                'AUTH_REQUIRED',
+                errorMsg,
+                false,
+                401,
+                '调用 bangumi.auth_start',
+              );
+            case 403:
+              throw new BangumiError('PERMISSION_DENIED', errorMsg, false, 403);
+            case 404:
+              throw new BangumiError('NOT_FOUND', errorMsg, false, 404);
+            case 429:
+              throw new BangumiError('RATE_LIMITED', errorMsg, true, 429);
+            case 500:
+            case 502:
+            case 503:
+            case 504:
+              throw new BangumiError('UPSTREAM_UNAVAILABLE', errorMsg, true, response.status);
+            default:
+              throw new BangumiError('UNKNOWN_ERROR', errorMsg, false, response.status);
+          }
         }
 
-        switch (response.status) {
-          case 400:
-            throw new BangumiError('VALIDATION_ERROR', errorMsg, false, 400);
-          case 401:
-            throw new BangumiError(
-              'AUTH_REQUIRED',
-              errorMsg,
-              false,
-              401,
-              '调用 bangumi.auth_start',
-            );
-          case 403:
-            throw new BangumiError('PERMISSION_DENIED', errorMsg, false, 403);
-          case 404:
-            throw new BangumiError('NOT_FOUND', errorMsg, false, 404);
-          case 429:
-            throw new BangumiError('RATE_LIMITED', errorMsg, true, 429);
-          case 500:
-          case 502:
-          case 503:
-          case 504:
-            throw new BangumiError('UPSTREAM_UNAVAILABLE', errorMsg, true, response.status);
-          default:
-            throw new BangumiError('UNKNOWN_ERROR', errorMsg, false, response.status);
-        }
-      }
-
-      if (response.status === 204) {
-        return {} as T;
-      }
-
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.startsWith('image/')) {
-        return { location: response.url || response.headers.get('location') || '' } as T;
-      }
-
-      let dataText = '';
-      let responseByteLength: number | undefined;
-      try {
-        dataText = await readResponseText(
-          response,
-          maxResponseBytes,
-          options.signal,
-          (byteLength) => {
-            responseByteLength = byteLength;
-          },
-        );
-        if (!dataText) {
+        if (response.status === 204) {
           return {} as T;
         }
-        const data = JSON.parse(dataText) as T;
-        if (data && typeof data === 'object' && responseByteLength !== undefined) {
-          responseByteLengths.set(data, responseByteLength);
-        }
-        return data;
-      } catch (error) {
-        if (error instanceof BangumiError) throw error;
-        if (contentType.includes('image') || response.status === 302) {
+
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.startsWith('image/')) {
           return { location: response.url || response.headers.get('location') || '' } as T;
         }
-        throw new BangumiError(
-          'PARSER_ERROR',
-          `Invalid JSON response: ${dataText.slice(0, 100)}`,
-          false,
-          response.status,
-        );
+
+        let dataText = '';
+        let responseByteLength: number | undefined;
+        try {
+          dataText = await readResponseText(
+            response,
+            maxResponseBytes,
+            options.signal,
+            (byteLength) => {
+              responseByteLength = byteLength;
+            },
+          );
+          if (!dataText) {
+            return {} as T;
+          }
+          const data = JSON.parse(dataText) as T;
+          if (data && typeof data === 'object' && responseByteLength !== undefined) {
+            responseByteLengths.set(data, responseByteLength);
+          }
+          return data;
+        } catch (error) {
+          if (options.signal?.aborted) throw responseBodyCancelledError(response.status);
+          if (error instanceof BangumiError) throw error;
+          if (contentType.includes('image') || response.status === 302) {
+            return { location: response.url || response.headers.get('location') || '' } as T;
+          }
+          throw new BangumiError(
+            'PARSER_ERROR',
+            `Invalid JSON response: ${dataText.slice(0, 100)}`,
+            false,
+            response.status,
+          );
+        }
+      } finally {
+        // Own the fetch through every response path, including headers-only
+        // rejection and legacy Location/image shortcuts. Cleanup cannot change
+        // the result or wait indefinitely for an injected body's cancel hook.
+        clearTimeout(timer);
+        options.signal?.removeEventListener('abort', abortRequest);
+        controller.abort();
+        if (response?.body && !response.body.locked) {
+          const body = response.body;
+          cancelWithoutWaiting(() => body.cancel());
+        }
       }
     };
 
@@ -309,9 +326,7 @@ async function readResponseText(
   }
 
   const reader = response.body.getReader();
-  const cancelReader = () => {
-    void reader.cancel().catch(() => undefined);
-  };
+  const cancelReader = () => cancelWithoutWaiting(() => reader.cancel());
   if (signal?.aborted) {
     cancelReader();
     throw responseBodyCancelledError(response.status);
@@ -328,7 +343,7 @@ async function readResponseText(
       if (!value) continue;
       totalBytes += value.byteLength;
       if (totalBytes > maxResponseBytes) {
-        await reader.cancel();
+        cancelReader();
         throw new BangumiError(
           'RESPONSE_TOO_LARGE',
           `Response body exceeds the ${maxResponseBytes}-byte limit.`,
@@ -351,6 +366,14 @@ async function readResponseText(
   }
   onBytesRead?.(totalBytes);
   return new TextDecoder().decode(bytes);
+}
+
+function cancelWithoutWaiting(cancel: () => Promise<void>): void {
+  try {
+    void cancel().catch(() => undefined);
+  } catch {
+    // Preserve the request's primary result even for a nonconforming hook.
+  }
 }
 
 function responseBodyCancelledError(status: number): BangumiError {

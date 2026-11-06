@@ -1,4 +1,4 @@
-/** Four full compiler projections; no product JavaScript rewriting or provider I/O. */
+/** Five full compiler projections; no product JavaScript rewriting or provider I/O. */
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -19,6 +19,7 @@ const sources = [
   'packages/bangumi-openapi/src/generated/index.ts',
   'packages/bangumi-openapi/src/native-collection-page-client.ts',
   'packages/tools/src/definitions/read-tools.ts',
+  'packages/bangumi-transport/src/http-client.ts',
   'packages/renderer/src/render-service.ts',
   'packages/renderer/src/templates/CalendarCard.tsx',
 ];
@@ -31,6 +32,7 @@ const expectedChanged = new Set([
   'openapi:generated/index.js',
   addedJs,
   'tools:definitions/read-tools.js',
+  'transport:http-client.js',
   'renderer:render-service.js',
   'renderer:templates/CalendarCard.js',
 ]);
@@ -57,7 +59,7 @@ const delta = git(
 if (JSON.stringify(delta) !== JSON.stringify([...sources, 'docs/tool-catalog.json'].sort()))
   throw Error('ECP_RUNTIME_DELTA');
 if (
-  parent.schema !== 'entity-page-parent-runtime/v1' ||
+  parent.schema !== 'entity-page-parent-runtime/v2' ||
   !Array.isArray(parent.files) ||
   parent.registerHooks !== 'function'
 )
@@ -124,6 +126,7 @@ for (const [name, packageName] of [
   ['core', 'bangumi-core'],
   ['openapi', 'bangumi-openapi'],
   ['tools', 'tools'],
+  ['transport', 'bangumi-transport'],
   ['renderer', 'renderer'],
 ]) {
   const before = compile(packageName, true),
@@ -192,7 +195,7 @@ for (const file of files) {
   delete file.data;
 }
 const projection = {
-  schema: 'entity-page-compiled-projection/v1',
+  schema: 'entity-page-compiled-projection/v2',
   sourceRevision: git('rev-parse', 'HEAD'),
   baselineRevision: baseline,
   typescript: ts.version,
@@ -212,7 +215,7 @@ fs.writeFileSync(path.join(output, 'compiled.json'), JSON.stringify(projection, 
 process.stdout.write(
   JSON.stringify({
     prepared: true,
-    projects: 4,
+    projects: 5,
     emittedFiles: emittedFiles.length,
     overlays: files.length,
     nativeExecuted: false,

@@ -86,6 +86,8 @@ const expectedCases = [
   'unavailable',
   'too-many-rows',
   'oversized-body',
+  'declared-oversized-body',
+  'rejecting-stream-cancel',
 ];
 const pagePassed =
   pageResult.status === 0 &&
@@ -108,11 +110,17 @@ const pagePassed =
   provider.renderCalls === 0 &&
   provider.offeredBytes === 262145 &&
   provider.bodyCancelled === true &&
-  provider.calls.length === 9 &&
+  provider.headerBodyCancelled === 1 &&
+  provider.rejectingCancelAttempts === 1 &&
+  isDeepStrictEqual(
+    provider.abortedSteps,
+    Array.from({ length: 11 }, (_, i) => i),
+  ) &&
+  provider.calls.length === 11 &&
   networkTraces.server.fixtureFetchCalls === provider.calls.length;
 const passed = closedPassed && pagePassed;
 const report = {
-  schema: 'entity-page-closed-native-proof/v1',
+  schema: 'entity-page-closed-native-proof/v2',
   passed,
   closedTwelve: closed,
   closedCore,
