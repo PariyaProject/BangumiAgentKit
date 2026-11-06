@@ -1193,6 +1193,8 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         ...(CURRENT_R04_RENDER_V2_REPORT ? [] : ['bangumi.render_series_watch_order']),
         'bangumi.auth_start',
         'bangumi.manage_index',
+        'bangumi.list_character_collections',
+        'bangumi.list_person_collections',
         ...(CURRENT_RENDER_SUBJECT_CARD_V5_REPORT ? [] : ['bangumi.render_subject_card']),
         ...(currentG20Evidence ? [] : ['bangumi.get_subject_relations']),
       ].sort(),
@@ -1245,10 +1247,8 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject_stats_history',
         'bangumi.get_subject_stats_intelligence',
         'bangumi.get_user',
-        'bangumi.list_character_collections',
         'bangumi.list_collections',
         'bangumi.list_operations',
-        'bangumi.list_person_collections',
         'bangumi.list_revisions',
         'bangumi.manage_character_collection',
         'bangumi.manage_person_collection',
@@ -1405,10 +1405,8 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject_stats',
         'bangumi.get_subject_stats_history',
         'bangumi.get_user',
-        'bangumi.list_character_collections',
         'bangumi.list_collections',
         'bangumi.list_operations',
-        'bangumi.list_person_collections',
         'bangumi.list_revisions',
         'bangumi.resolve_subject_concept',
         'bangumi.search_characters',
@@ -1619,6 +1617,23 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(toolContractMatchesCurrent(report, 'bangumi.call_operation')).toBe(true);
       expect(report.scenarios[0]).not.toHaveProperty('prompt');
       expect(report.scenarios[0]).not.toHaveProperty('arguments');
+    }
+  });
+
+  it('keeps pre-pagination list reports historical until the new native contracts are verified', () => {
+    for (const name of ['bangumi.list_person_collections', 'bangumi.list_character_collections']) {
+      const historical = FULL_PUBLIC_QA_EVIDENCE.filter(
+        (report: any) => report.scenarios?.[0]?.id === name,
+      );
+      expect(historical).toHaveLength(1);
+      expect(historical[0].scenarios[0].passed).toBe(true);
+      expect(catalogForHash(historical[0].catalogSha256)).toBeDefined();
+      expect(toolContractMatchesCurrent(historical[0], name)).toBe(false);
+      expect(CURRENT_FULL_PUBLIC_QA_EVIDENCE).not.toContain(historical[0]);
+      const cells = rowsByTool().get(name);
+      expect(statusMark(cells?.[6])).toBe('⬜');
+      expect(statusMark(cells?.[8])).toBe('⬜');
+      expect(statusMark(cells?.[9])).toBe('⬜');
     }
   });
 

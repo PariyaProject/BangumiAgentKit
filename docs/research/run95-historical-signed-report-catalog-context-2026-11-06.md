@@ -9,7 +9,9 @@ The bounded successor reader supports exactly four existing signed reports:
 P01 director activity, P03 v4 person profile, P06 v3 profile rendering and
 subject-card typography v5. `signed-report-source-contexts.json` pins each exact
 report, source revision, validator import closure, original catalog, selected
-profile registry and selection document. It is not an execution profile.
+profile registry and selection document. An additive hash-addressed catalog
+snapshot preserves the exact original bytes for the existing per-tool test
+reader; it grants no authority to changed entries. It is not an execution profile.
 
 Callers retain the current real Harness status, terminal labels, exact report
 SHA, receipt public key, Candidate/Base/CI, source/path and implementation
