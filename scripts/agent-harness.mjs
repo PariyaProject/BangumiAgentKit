@@ -108,6 +108,7 @@ import { deriveP06CiRunEvidence, isValidP06CiRunEvidence } from './lib/p06-ci-ru
 import { profileRequiresExactCiRunEvidence } from './lib/agent-mcp-profile-ci-evidence.mjs';
 import { profileExecutionModelMatches, NATIVE_PAGE_PROFILE_ID } from './lib/native-entity-page-profile.mjs';
 import { validateNativePageReportFile } from './acceptance/native-entity-page-report.mjs';
+import { readNativePageBundleAttestation } from './lib/native-entity-page-gates.mjs';
 import {
   acquireG04OneShotGitHubLatch,
   claimG04OneShotAtomically,
@@ -4119,7 +4120,9 @@ function agentMcpProfileBundleMatches(
             renderSubjectCardV5ReportWithValidatorFix))) &&
       git('rev-parse', 'HEAD') === candidateSha &&
       computeMcpBundleSha256(root) === bundleSha256 &&
-      readG26McpBundleAttestation(root) === bundleSha256
+      (profile?.id === NATIVE_PAGE_PROFILE_ID
+        ? readNativePageBundleAttestation(root)
+        : readG26McpBundleAttestation(root)) === bundleSha256
     );
   } catch {
     return false;
@@ -4148,6 +4151,9 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
       profile.reportPath,
       'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
       'docs/product/frontier-ledger.json',
+      ...(profile.id === NATIVE_PAGE_PROFILE_ID
+        ? ['docs/research/run95-native-entity-page-model-result-2026-11-06.md']
+        : []),
       ...(profile.id === G06_CAST_OFFLINE_V2_PROFILE_ID
         ? G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS
         : []),
@@ -4194,7 +4200,7 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
     if (
       !changedSinceReport.includes(profile.reportPath) ||
       changedSinceReport.some((changedPath) => !allowedPaths.has(changedPath)) ||
-      !agentMcpProfileBundleMatches(candidateSha, disposition.bundleSha256)
+      !agentMcpProfileBundleMatches(candidateSha, disposition.bundleSha256, false, profile)
     ) {
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID',
@@ -4312,7 +4318,7 @@ function assertAgentMcpProfileReviewReadiness(
   }
   if (
     checkBundle &&
-    !agentMcpProfileBundleMatches(candidateSha, runnerReceiptPublicKey.bundleSha256)
+    !agentMcpProfileBundleMatches(candidateSha, runnerReceiptPublicKey.bundleSha256, false, profile)
   ) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_BUNDLE_MISMATCH',

@@ -2798,6 +2798,32 @@ test('new native signed report is accepted through actual Harness dispatch and t
       signature: report.signature, publicKey: claim.runnerReceiptPublicKey,
     })).digest('hex'));
     assert.equal(observed.retry_allowed, false);
+    const terminalState = environment.readState();
+    const terminalEpoch = parseControlBlock(terminalState.prBody, EPOCH_MARKER);
+    // Frontier advancement has its own tests. Exercise the real post-report
+    // Candidate transition here without replacing the signed disposition.
+    terminalEpoch.advances_frontier_ids = [];
+    terminalState.prBody = renderEpochBody(terminalEpoch);
+    for (const extra of ['docs/research/run95-native-entity-page-model-result-2026-11-06.md',
+      'packages/tools/src/registry.ts']) {
+      fs.writeFileSync(environment.statePath, JSON.stringify({ ...terminalState,
+        dirty: '', featureHeadSha: sha('e'), candidateRefreshRange: `${source}...${sha('e')}`,
+        candidateRefreshPaths: [NATIVE_PAGE_MODEL_PROFILE.reportPath, extra] }));
+      const refreshed = environment.execute(['candidate:check', '--pr', '42', '--evidence',
+        candidateEvidence(environment, { candidate_sha: sha('e'),
+          candidate_refresh_reason: 'Integrate the native signed report and its bounded result document.',
+          ci: { url: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}` },
+          adversarial_preflight: terminalEpoch.adversarial_preflight })]);
+      if (extra.startsWith('docs/')) {
+        assert.equal(refreshed.status, 0, refreshed.stderr);
+        const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+        assert.equal(stored.state, 'REVIEW_READY');
+        assert.deepEqual(stored.adversarial_preflight, terminalEpoch.adversarial_preflight);
+      } else {
+        assert.notEqual(refreshed.status, 0);
+        assert.match(refreshed.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+      }
+    }
   } finally {
     environment.cleanup(); fs.rmSync(harnessRoot, { recursive: true, force: true }); f.close();
   }
