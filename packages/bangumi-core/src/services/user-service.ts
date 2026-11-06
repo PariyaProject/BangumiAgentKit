@@ -4,6 +4,7 @@ import {
   OperationQuery,
   User,
   SubjectType as OpenApiSubjectType,
+  type NativeCollectionPage,
 } from '@bangumi-agent-kit/bangumi-openapi';
 import {
   DomainUser,
@@ -12,6 +13,8 @@ import {
   UserEpisodeCollectionItem,
   UserEpisodeCollectionStatus,
   UserPersonCollectionItem,
+  UserEntityCollectionPage,
+  UserEntityCollectionPageOptions,
 } from '../models/user.js';
 import { mapEpisode } from './episode-service.js';
 import { getCollectionStatusLabel, mapCollectionStatus } from './collection-service.js';
@@ -177,6 +180,62 @@ function mapUserCollectionPage<T>(
       items.length < observedCount ||
       (responseTotal !== undefined && observedCount < responseTotal),
   };
+}
+
+function mapNativeCollectionPage<Raw extends { id: number }, Item>(
+  page: NativeCollectionPage,
+  valid: (value: unknown) => value is Raw,
+  map: (value: Raw) => Item,
+): UserEntityCollectionPage<Item> {
+  const observed = page.data.length;
+  const rows = page.data.filter(
+    (value): value is Raw => valid(value) && Number.isSafeInteger(value.id),
+  );
+  const invalidRows = observed - rows.length;
+  // Count and list are separate source observations. Do not claim a total or
+  // continuation when returned rows contradict that count snapshot.
+  const remaining = Math.max(0, page.total - page.offset);
+  const totalInconsistent = observed > remaining;
+  const total = totalInconsistent ? undefined : page.total;
+  const hasMore = totalInconsistent ? undefined : remaining > page.limit;
+  return {
+    total,
+    limit: page.limit,
+    offset: page.offset,
+    items: rows.map(map),
+    observed,
+    returned: rows.length,
+    invalidRows,
+    truncated:
+      totalInconsistent ||
+      invalidRows > 0 ||
+      (page.total > 0 && page.offset > 0) ||
+      observed < page.total,
+    pagination: {
+      requestedLimit: page.limit,
+      requestedOffset: page.offset,
+      validated: true,
+      hasMore,
+      // Only add when remaining > limit, so addition stays below safe total.
+      nextOffset: hasMore ? page.offset + page.limit : undefined,
+      totalInconsistent,
+      order: 'created_time_desc',
+      stableSnapshot: false,
+      empty: observed === 0 ? (page.total === 0 ? 'collection_empty' : 'page_empty') : undefined,
+    },
+  };
+}
+
+function nativePageLimit(options: UserEntityCollectionPageOptions): number {
+  const limit = options.maxItems === undefined ? 50 : options.maxItems;
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
+    throw new BangumiError(
+      'VALIDATION_ERROR',
+      'Native collection page maxItems must be 1–50.',
+      false,
+    );
+  }
+  return limit;
 }
 
 export class UserService {
@@ -408,6 +467,30 @@ export class UserService {
       updatedAt:
         Number.isInteger(item.updated_at) && item.updated_at > 0 ? item.updated_at : undefined,
     };
+  }
+
+  async getUserCharacterCollectionsPage(
+    username: string,
+    options: UserEntityCollectionPageOptions = {},
+  ): Promise<UserEntityCollectionPage<UserCharacterCollectionItem>> {
+    const page = await this.api.getUserCharacterCollectionsPage(
+      username,
+      { limit: nativePageLimit(options), offset: options.offset },
+      { signal: options.signal, maxResponseBytes: options.maxResponseBytes },
+    );
+    return mapNativeCollectionPage(page, isRawUserCharacterCollection, mapUserCharacterCollection);
+  }
+
+  async getUserPersonCollectionsPage(
+    username: string,
+    options: UserEntityCollectionPageOptions = {},
+  ): Promise<UserEntityCollectionPage<UserPersonCollectionItem>> {
+    const page = await this.api.getUserPersonCollectionsPage(
+      username,
+      { limit: nativePageLimit(options), offset: options.offset },
+      { signal: options.signal, maxResponseBytes: options.maxResponseBytes },
+    );
+    return mapNativeCollectionPage(page, isRawUserPersonCollection, mapUserPersonCollection);
   }
 
   async getUserCharacterCollections(

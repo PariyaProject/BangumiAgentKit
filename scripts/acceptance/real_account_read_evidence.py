@@ -9,13 +9,14 @@ from .real_account_a7_evidence import real_account_episode_sources as a7_sources
 from .qs55_account_compatibility import qs55_compatible_account_sources
 from .calendar_account_compatibility import calendar_compatible_account_sources
 from .person_account_compatibility import person_compatible_account_sources
+from .entity_page_account_compatibility import entity_page_compatible_account_sources
 
 
 def real_account_read_sources(root, catalog):
     result = {}
     for source in (a1_sources, a2_sources, a3_sources, a4_sources, a5_sources, a6_sources, a7_sources,
                    qs55_compatible_account_sources, calendar_compatible_account_sources,
-                   person_compatible_account_sources):
+                   person_compatible_account_sources, entity_page_compatible_account_sources):
         for name, references in source(root, catalog).items():
             result.setdefault(name, set()).update(references)
     return result

@@ -79,7 +79,10 @@ class Qs55CompatibilityTests(unittest.TestCase):
 
     def test_actual_head_union_uses_separate_bridge_and_old_consumers_stay_strict(self):
         with patch.object(legacy, '_git', wraps=REAL_GIT):
-            self.assertEqual(set(union.real_account_read_sources(ROOT, self.catalog)), bridge.TOOLS | {'bangumi.get_episode_collections'})
+            # The fixture's old global catalog is not the current caller catalog.
+            self.assertEqual(union.real_account_read_sources(ROOT, self.catalog), {})
+            current_catalog = json.loads((ROOT / 'docs/tool-catalog.json').read_bytes())
+            self.assertEqual(set(union.real_account_read_sources(ROOT, current_catalog)), bridge.TOOLS | {'bangumi.get_episode_collections'})
             for fn in (legacy.real_account_read_sources, a2.real_account_collection_sources,
                        a3.real_account_overview_sources, a4.real_account_backlog_schedule_sources,
                        a5.real_account_dashboard_sources, a6.real_account_series_sources):

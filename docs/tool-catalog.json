@@ -2157,7 +2157,7 @@
   },
   {
     "name": "bangumi.list_character_collections",
-    "description": "读取用户收藏的角色列表。传入 username 时使用官方公开接口；省略 username 时读取当前绑定账号。官方列表接口不提供分页参数，本工具只返回 maxItems 内的观察并明确 observed/returned/truncated，不推断收藏偏好。",
+    "description": "读取用户收藏的一页角色，使用官方来源分页。maxItems 是原生请求的行数上限（默认 50），offset 默认 0；只请求这一页。传入 username 匿名读取该用户公开数据，省略则使用当前绑定账号身份。按来源收藏时间降序，不保证稳定快照或同时间顺序；明确 observed/returned/truncated 与下一页偏移。",
     "auth": "optional",
     "risk": "read",
     "scopes": [],
@@ -2173,10 +2173,16 @@
           "maxLength": 80
         },
         "maxItems": {
-          "description": "最多返回角色数，默认 50；官方列表没有分页参数",
+          "description": "本页原生请求最多角色数，1–50，默认 50",
           "type": "integer",
           "minimum": 1,
           "maximum": 50
+        },
+        "offset": {
+          "description": "原生页偏移，默认 0；不自动继续下一页",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         }
       },
       "additionalProperties": false
@@ -2243,7 +2249,7 @@
   },
   {
     "name": "bangumi.list_person_collections",
-    "description": "读取用户收藏的人物列表。传入 username 时使用官方公开接口；省略 username 时读取当前绑定账号。官方列表接口不提供分页参数，本工具只返回 maxItems 内的观察并明确 observed/returned/truncated，保留官方 career 原始标签。",
+    "description": "读取用户收藏的一页人物，使用官方来源分页。maxItems 是原生请求的行数上限（默认 50），offset 默认 0；只请求这一页。传入 username 匿名读取该用户公开数据，省略则使用当前绑定账号身份。按来源收藏时间降序，不保证稳定快照或同时间顺序；明确 observed/returned/truncated 与下一页偏移。 career 缺失保持未知，保留已提供的原始标签。",
     "auth": "optional",
     "risk": "read",
     "scopes": [],
@@ -2259,10 +2265,16 @@
           "maxLength": 80
         },
         "maxItems": {
-          "description": "最多返回人物数，默认 50；官方列表没有分页参数",
+          "description": "本页原生请求最多人物数，1–50，默认 50",
           "type": "integer",
           "minimum": 1,
           "maximum": 50
+        },
+        "offset": {
+          "description": "原生页偏移，默认 0；不自动继续下一页",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         }
       },
       "additionalProperties": false

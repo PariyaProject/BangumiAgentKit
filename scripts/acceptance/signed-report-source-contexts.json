@@ -1,0 +1,80 @@
+{
+  "contexts": [
+    {
+      "files": {
+        "docs/research/run95-p01-person-activity-director-offline-matrix-contract-2026-10-23.md": "9ca4554306dd56ca12520a40a579a6070efab1aad65f23b9f4d0504e76633c49",
+        "docs/tool-catalog.json": "1f5b17d76a30ebd2c76e8c9a2317ab9f03640be466e02b5e48b1cbefd97728c7",
+        "scripts/acceptance/agent-mcp-profile-registry.json": "5bd00ed657b3f497f746dee7dd1a1cb6023982229f906cf579f364c73b1c3aa4",
+        "scripts/acceptance/validate-p01-person-activity-director-offline-report.mjs": "78a4f06128dc2e49dd840a0cc9e15f7724f72513da9f77febcd4df1fb3e1315b",
+        "scripts/acceptance/write-p01-person-activity-director-offline-report.mjs": "e98244da47eed009c459d6f4af8921a132b2bd0ba81c0b8f22e19f9299c1097a",
+        "scripts/lib/agent-mcp-profile-claims.mjs": "aed82a89a02c67adf5f575ce3a244274a269ab67a3bfe19f0e50a0dac55c8362",
+        "scripts/lib/p01-person-activity-director-offline-profile.mjs": "b8b91f99453a02bad4a0332400d2e5cec57ef6cb337d22c74c4531b40691c96e",
+        "scripts/lib/p06-ci-run-evidence.mjs": "179db6cece6678b11bbfcfc76ace41ae2a5ec173357b2f5ec815c05ba3a5fea4"
+      },
+      "profileId": "p01-person-director-offline-matrix-v1-20261023",
+      "reportPath": "docs/live-probes/p01-person-activity-director-offline-run95-v1.json",
+      "reportSha256": "f9a6d93ad8913da8870471e48da1490dca42f26c75194d291ec56fde9f502c3b",
+      "selectionEvidencePath": "docs/research/run95-p01-person-activity-director-offline-matrix-contract-2026-10-23.md",
+      "sourceRevision": "1d434baee419c3de69ce4f1aa4b79d44a160c5be",
+      "toolName": "bangumi.get_person_activity",
+      "validatorPath": "scripts/acceptance/validate-p01-person-activity-director-offline-report.mjs"
+    },
+    {
+      "files": {
+        "docs/research/run95-p03-person-name-cn-fresh-profile-v4-selection-2026-10-22.md": "1f516ac175ca9dc1fff0e345ab05795d1dddfd0ceb8904be46749e8d99b8e9dd",
+        "docs/tool-catalog.json": "1f5b17d76a30ebd2c76e8c9a2317ab9f03640be466e02b5e48b1cbefd97728c7",
+        "scripts/acceptance/agent-mcp-profile-registry.json": "7dc9e21473b14a6e22e544ac5acd9a2e54a1f3a06f3b12ae56bded5e36965e67",
+        "scripts/acceptance/validate-p03-person-name-cn-v2-report.mjs": "61d73b2588be3c211110ff627e867c03fc3fafd00a5024edf37c4cbf62f1343b",
+        "scripts/acceptance/write-p03-person-name-cn-v2-report.mjs": "c211eac9e3a05403ac438a50e9e98391d0853a8bf78ea62aec0bf970cedd9a13",
+        "scripts/lib/agent-mcp-profile-claims.mjs": "aed82a89a02c67adf5f575ce3a244274a269ab67a3bfe19f0e50a0dac55c8362",
+        "scripts/lib/p03-person-name-cn-evidence.mjs": "bb7a2d9c901a97358d585e1562dc3452253cfffafb68df84e22f0afbbb39f161"
+      },
+      "profileId": "p03-person-name-cn-agent-mcp-v4",
+      "reportPath": "docs/live-probes/p03-person-name-cn-public-v4-agent-mcp-run95.json",
+      "reportSha256": "b135cfa255ca63f77b782f83922a2172f202c025fb27b161f63d66d6e2c69f77",
+      "selectionEvidencePath": "docs/research/run95-p03-person-name-cn-fresh-profile-v4-selection-2026-10-22.md",
+      "sourceRevision": "b89285a29a43248d279ef8c571ab7b7c050188bc",
+      "toolName": "bangumi.get_person_profile",
+      "validatorPath": "scripts/acceptance/validate-p03-person-name-cn-v2-report.mjs"
+    },
+    {
+      "files": {
+        "docs/research/run95-p06-render-person-profile-chronology-v3-source-contract-2026-10-23.md": "081687af76d4332b33996be0fbd984aa00f794325fd1d818871719aa56f60066",
+        "docs/tool-catalog.json": "1f5b17d76a30ebd2c76e8c9a2317ab9f03640be466e02b5e48b1cbefd97728c7",
+        "scripts/acceptance/agent-mcp-profile-registry.json": "d05a0a6496145a2e67fba7490bcea793eaff67109825f63278ae5c46400e6b5b",
+        "scripts/acceptance/validate-p06-render-person-profile-agent-mcp-report.mjs": "83fc0c7eb08320ddb81d87fcd0518bf6e884057770e76e70e8c2b64d5885621b",
+        "scripts/acceptance/write-p06-render-person-profile-agent-mcp-report.mjs": "31f919a70f3fad05d5802e2a277517e099723a27d8de482986a938f7591a3328",
+        "scripts/lib/agent-mcp-profile-claims.mjs": "aed82a89a02c67adf5f575ce3a244274a269ab67a3bfe19f0e50a0dac55c8362",
+        "scripts/lib/p06-ci-run-evidence.mjs": "179db6cece6678b11bbfcfc76ace41ae2a5ec173357b2f5ec815c05ba3a5fea4",
+        "scripts/lib/p06-render-person-profile-offline-fixture.mjs": "c369f03dd5a8ad42c2920ec838564e6e8acb0015fb7a42f32c4fb62a26ed5e41"
+      },
+      "profileId": "p06-render-person-profile-offline-agent-mcp-v3",
+      "reportPath": "docs/live-probes/p06-render-person-profile-agent-mcp-v3-run95.json",
+      "reportSha256": "110b39d1f6e326ed9c8bf5440c25539f009bf1a5ddd7494fb102a0d0c1871915",
+      "selectionEvidencePath": "docs/research/run95-p06-render-person-profile-chronology-v3-source-contract-2026-10-23.md",
+      "sourceRevision": "f43f6d7fc9636559deeb4bb71ef2d35acd5690ca",
+      "toolName": "bangumi.render_person_profile",
+      "validatorPath": "scripts/acceptance/validate-p06-render-person-profile-agent-mcp-report.mjs"
+    },
+    {
+      "files": {
+        "docs/research/run95-ux002-render-subject-card-compact-typography-v5-source-contract-2026-10-23.md": "7221489013fd1e37b1ba96d1c1da074e9a1c1b00fdbccd726ee541135c79a649",
+        "docs/tool-catalog.json": "1f5b17d76a30ebd2c76e8c9a2317ab9f03640be466e02b5e48b1cbefd97728c7",
+        "scripts/acceptance/agent-mcp-profile-registry.json": "8fecd3869e06a9cb73140262f8b0824c24e8c6afc2c6372fa5a91b5c373a3d31",
+        "scripts/acceptance/validate-render-subject-card-offline-agent-mcp-report.mjs": "969b023788c114f83f0eb2c8c7a18f888545fee6727599e9be61560cc1696c7b",
+        "scripts/acceptance/write-render-subject-card-offline-agent-mcp-report.mjs": "2568db538de28b4b121b73d1200bdadf22a614308b00ec7c4adfd556c3906672",
+        "scripts/lib/agent-mcp-profile-claims.mjs": "aed82a89a02c67adf5f575ce3a244274a269ab67a3bfe19f0e50a0dac55c8362",
+        "scripts/lib/p06-ci-run-evidence.mjs": "179db6cece6678b11bbfcfc76ace41ae2a5ec173357b2f5ec815c05ba3a5fea4",
+        "scripts/lib/render-subject-card-offline-profile.mjs": "8897e8accd26d0181e55dfcaeeb838858766a4cfe965d8688596180b8720922c"
+      },
+      "profileId": "render-subject-card-compact-typography-agent-mcp-v5",
+      "reportPath": "docs/live-probes/render-subject-card-compact-typography-v5-agent-mcp-run95.json",
+      "reportSha256": "00bcad9b676104ad3cfbf440d9036ef364ef76ce46d06571e24c875f1184657c",
+      "selectionEvidencePath": "docs/research/run95-ux002-render-subject-card-compact-typography-v5-source-contract-2026-10-23.md",
+      "sourceRevision": "3d13ce869ab473fc65bc556e1cf75db4cc73e100",
+      "toolName": "bangumi.render_subject_card",
+      "validatorPath": "scripts/acceptance/validate-render-subject-card-offline-agent-mcp-report.mjs"
+    }
+  ],
+  "schema": "signed-report-source-contexts/v1"
+}

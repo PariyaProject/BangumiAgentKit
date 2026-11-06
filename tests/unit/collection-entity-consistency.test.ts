@@ -416,6 +416,7 @@ describe('CollectionEntityConsistencyService', () => {
   it('passes a shared abort signal and response-byte cap to every initial source read', async () => {
     const controller = new AbortController();
     const observedSignals: AbortSignal[] = [];
+    const activeAtDispatch: boolean[] = [];
     const baseFetch = buildFetch({
       subjectRows: [subjectRow(100)],
       characterCollections: [
@@ -425,7 +426,10 @@ describe('CollectionEntityConsistencyService', () => {
     });
     const result = await runService(
       async (_input, init) => {
-        if (init?.signal) observedSignals.push(init.signal);
+        if (init?.signal) {
+          observedSignals.push(init.signal);
+          activeAtDispatch.push(!init.signal.aborted);
+        }
         return baseFetch(_input, init);
       },
       { signal: controller.signal },
@@ -433,7 +437,10 @@ describe('CollectionEntityConsistencyService', () => {
 
     expect(result.state).toBe('complete');
     expect(observedSignals.length).toBe(5);
-    expect(observedSignals.every((signal) => !signal.aborted)).toBe(true);
+    expect(activeAtDispatch).toEqual([true, true, true, true, true]);
+    expect(controller.signal.aborted).toBe(false);
+    // Completed transport requests dispose their own controllers, not the caller's.
+    expect(observedSignals.every((signal) => signal.aborted)).toBe(true);
 
     controller.abort();
     const aborted = await runService(

@@ -53,3 +53,33 @@ export interface UserPersonCollectionItem {
   images?: Record<string, string>;
   createdAt: string;
 }
+
+export interface UserEntityCollectionPageOptions {
+  maxItems?: number;
+  offset?: number;
+  signal?: AbortSignal;
+  maxResponseBytes?: number;
+}
+
+/** A bounded page observation; the source does not provide a stable snapshot. */
+export interface UserEntityCollectionPage<T> {
+  total?: number;
+  limit: number;
+  offset: number;
+  items: T[];
+  observed: number;
+  returned: number;
+  invalidRows: number;
+  truncated: boolean;
+  pagination: {
+    requestedLimit: number;
+    requestedOffset: number;
+    validated: true;
+    hasMore?: boolean;
+    nextOffset?: number;
+    totalInconsistent: boolean;
+    order: 'created_time_desc';
+    stableSnapshot: false;
+    empty?: 'collection_empty' | 'page_empty';
+  };
+}
