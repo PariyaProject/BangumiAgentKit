@@ -74,8 +74,10 @@ be silently relaxed or old receipts rehashed. The new proof must bind full
 compiler provenance, actual loaded changed modules, network/module denials,
 private image decoding and cleanup, while preserving original producers,
 claims, inputs and source-bound evidence. No new account credit is earned.
-The compiled witness and importer remain pending at the first engineering
-commit; this document does not claim their completion or authorize a live run.
+At the first engineering commit, the compiled witness and importer were pending.
+The [successor compatibility contract](run95-person-account-compiled-compatibility-contract-2026-11-06.md)
+now records their completed offline execution and sealed evidence. Formal review
+and integration remain separate; this authorizes no live run.
 
 The original public65/65, Agent86/96, account12/33 on integrated master and
 QQ/TIM0/96 counters remain scoped. The development branch must prove its new

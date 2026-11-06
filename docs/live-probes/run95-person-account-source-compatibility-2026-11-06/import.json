@@ -1,0 +1,192 @@
+{
+  "admittedTools": [
+    {
+      "input": {
+        "limit": 1,
+        "offset": 0,
+        "status": "doing",
+        "subjectType": "anime"
+      },
+      "name": "bangumi.list_collections"
+    },
+    {
+      "input": {
+        "maxItems": 2
+      },
+      "name": "bangumi.get_collection_intelligence"
+    },
+    {
+      "input": {
+        "maxItems": 2
+      },
+      "name": "bangumi.render_collection_intelligence"
+    },
+    {
+      "input": {
+        "maxEpisodesPerSubject": 1,
+        "maxItems": 1,
+        "maxSubjects": 1,
+        "sortBy": "source",
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.get_collection_backlog"
+    },
+    {
+      "input": {
+        "maxEpisodesPerSubject": 1,
+        "maxItems": 1,
+        "maxSubjects": 1,
+        "sortBy": "source",
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.render_collection_backlog"
+    },
+    {
+      "input": {
+        "maxCollectionItems": 1,
+        "maxRows": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.get_collection_schedule"
+    },
+    {
+      "input": {
+        "maxCollectionItems": 1,
+        "maxRows": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.render_collection_schedule"
+    },
+    {
+      "input": {
+        "maxCollectionItems": 1,
+        "maxDurationMs": 30000,
+        "maxEpisodesPerSubject": 1,
+        "maxRows": 1,
+        "maxSubjects": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.get_collection_dashboard"
+    },
+    {
+      "input": {
+        "maxCollectionItems": 1,
+        "maxDurationMs": 30000,
+        "maxEpisodesPerSubject": 1,
+        "maxRows": 1,
+        "maxSubjects": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.render_collection_dashboard"
+    },
+    {
+      "input": {
+        "maxEdges": 1,
+        "maxGroups": 1,
+        "maxItems": 1,
+        "maxRelationSubjects": 1,
+        "maxRelationsPerSubject": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.get_collection_series_groups"
+    },
+    {
+      "input": {
+        "maxEdges": 1,
+        "maxGroups": 1,
+        "maxItems": 1,
+        "maxRelationSubjects": 1,
+        "maxRelationsPerSubject": 1,
+        "statuses": [
+          "wish",
+          "doing",
+          "done",
+          "on_hold",
+          "dropped"
+        ]
+      },
+      "name": "bangumi.render_collection_series_groups"
+    },
+    {
+      "input": {
+        "episodeType": 0,
+        "limit": 1,
+        "offset": 0,
+        "subjectId": "sole-validated-selection-in-memory"
+      },
+      "name": "bangumi.get_episode_collections"
+    }
+  ],
+  "evidenceFiles": {
+    "native-proof.json": "85f212d12caddd46b401738a21754c5bcb446b0d7ade933a1ece7da9c01d0c90"
+  },
+  "executedBaselineRevision": "bfe1229d03edac0c7e218f442b2d746254cb4c4c",
+  "kind": "old-execution-with-closed-compiled-source-compatibility",
+  "limits": [
+    "Exactly twelve bounded historical A2-A7 inputs and their applicable dependency references; no new live account credit.",
+    "Full285 runtime source Git/disk inventory,85 protected files,14 producers,107 emitted JavaScript files and4 exact overlays; current source and executed modules remain pinned.",
+    "Frozen C12 graph retains all twelve inputs/five decoded private PNGs/six guard modes. New eight-case person graph uses fake identity/provider only and contributes no account, public API, model, client, aesthetic or stability credit.",
+    "All native containers removed and daemon absence verified; no real data, credentials, HOME or Docker socket mounts. Old receipts, producers, claims and locked design baselines unchanged."
+  ],
+  "originalReferences": {
+    "bangumi.get_collection_backlog": "docs/live-probes/run95-a4-backlog-schedule-and-private-pngs-2026-10-27/a4-result.json",
+    "bangumi.get_collection_dashboard": "docs/live-probes/run95-a5-dashboard-and-private-png-2026-10-28/a5-result.json",
+    "bangumi.get_collection_intelligence": "docs/live-probes/run95-a3-bound-overview-and-private-png-2026-10-27/a3-result.json",
+    "bangumi.get_collection_schedule": "docs/live-probes/run95-a4-backlog-schedule-and-private-pngs-2026-10-27/a4-result.json",
+    "bangumi.get_collection_series_groups": "docs/live-probes/run95-a6-series-and-private-png-2026-10-28/a6-result.json",
+    "bangumi.get_episode_collections": "docs/live-probes/run95-a7-native-episode-collection-read-2026-10-28/a7-result.json",
+    "bangumi.list_collections": "docs/live-probes/run95-a2-partial-account-read-2026-10-27/a2-result.json",
+    "bangumi.render_collection_backlog": "docs/live-probes/run95-a4-backlog-schedule-and-private-pngs-2026-10-27/a4-result.json",
+    "bangumi.render_collection_dashboard": "docs/live-probes/run95-a5-dashboard-and-private-png-2026-10-28/a5-result.json",
+    "bangumi.render_collection_intelligence": "docs/live-probes/run95-a3-bound-overview-and-private-png-2026-10-27/a3-result.json",
+    "bangumi.render_collection_schedule": "docs/live-probes/run95-a4-backlog-schedule-and-private-pngs-2026-10-27/a4-result.json",
+    "bangumi.render_collection_series_groups": "docs/live-probes/run95-a6-series-and-private-png-2026-10-28/a6-result.json"
+  },
+  "parentImageId": "sha256:9c0784bff3ef39fa5c30639f07e3b86b4be634c2cecf854679e9920f9517014a",
+  "runtimeTreeSha256": "3bc08ab020b9cb984adab2039a585b6ba4685cf99b268c21a4e1208560abdb93",
+  "schema": "bgk-person-closed-account-source-compatibility/v1",
+  "sourceBasisRevision": "d64a9dfcab577af00dde98c4c5eb93fab4a077af",
+  "trust": "Reviewed fixed operator witness, not general future compatibility or cryptographic attestation."
+}

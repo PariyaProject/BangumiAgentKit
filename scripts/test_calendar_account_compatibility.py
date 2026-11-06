@@ -202,10 +202,10 @@ class CalendarAccountCompatibilityTests(unittest.TestCase):
 
 
 class CurrentCheckoutCalendarCompatibilityTests(unittest.TestCase):
-    def test_actual_committed_checkout_has_twelve_compatible_cells_without_any_runtime_access(self):
+    def test_shared_person_source_change_requires_its_own_successor_witness(self):
         catalog = json.loads((ROOT / 'docs/tool-catalog.json').read_bytes())
         result = evidence.calendar_compatible_account_sources(ROOT, catalog)
-        self.assertEqual(set(result), evidence.TOOLS)
+        self.assertEqual(result, {})
         self.assertEqual(qs55.qs55_compatible_account_sources(ROOT, catalog), {})
 
 

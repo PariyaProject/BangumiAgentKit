@@ -72,13 +72,21 @@ are separate attempts even after failures or interruption. All workspace/MCP
 closure and source/parent/protected/staged-byte readbacks must succeed.
 Finite failure reports are retained; no automatic live retry exists.
 
-A new strict sealed importer still has to bind the fresh witness, exact inputs,
+The new strict sealed importer binds the fresh witness, exact inputs,
 original twelve references, full compiler/module/source/producer provenance and
 controls. It may return exactly those original references plus the new source
 compatibility reference. Current-graph drift, omitted guards, expanded inputs,
 native-failure/preparation reports, aliases and tampering must refuse. Old
-strict consumers must not be relaxed. Importer and final sealed evidence are
-pending until actual execution succeeds and is reviewed.
+strict consumers must not be relaxed. Actual first native execution passed at `d64a9dfcab577af00dde98c4c5eb93fab4a077af`.
+The sealed bundle is
+[`run95-person-account-source-compatibility-2026-11-06`](../live-probes/run95-person-account-source-compatibility-2026-11-06/import.json).
+It records six passing frozen modes, twelve old calls/five private images,
+eight passing person cases/one private image and sixteen finite fixture requests
+in the new graph. All107 emitted modules were checked, four overlaid modules
+were observed, MCP/workspaces closed and owned containers independently absent.
+The new synthetic PNG is720×1648 and fully decoded; it was inspected locally
+without changing the existing design. Importer adversaries check both the seal
+and semantics. Formal integration review remains pending.
 
 This proves only the fixed synthetic data/input graph. It is an operator
 evidence anchor, not external cryptographic attestation, new OAuth/account/
