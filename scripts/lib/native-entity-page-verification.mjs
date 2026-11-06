@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { setTimeout as delay } from 'node:timers/promises';
 
 // Public example from the pinned official OpenAPI User schema. This is not
 // the operator's bound account. The target never enters result projections.
@@ -74,6 +75,7 @@ export function createNativeEntityPageVerification({ fetchImpl } = {}) {
   if (typeof fetchImpl !== 'function') throw new TypeError('An explicit fetch adapter is required.');
   const state = { phase: 'READY', requestCount: 0, deniedCount: 0, results: [] };
   let active = null;
+  let lastRequestAt = null;
   const fail = (code) => {
     state.phase = 'FAILED';
     state.deniedCount++;
@@ -82,10 +84,10 @@ export function createNativeEntityPageVerification({ fetchImpl } = {}) {
   const fetchFn = async (input, init = {}) => {
     if (state.phase !== 'RUNNING' || active === null || active.requested)
       return fail('NATIVE_PAGE_REQUEST_OUT_OF_SEQUENCE');
+    if (typeof input !== 'string' && !(input instanceof URL))
+      return fail('NATIVE_PAGE_REQUEST_INVALID');
     let url, headers;
     try {
-      if (typeof input !== 'string' && !(input instanceof URL))
-        return fail('NATIVE_PAGE_REQUEST_INVALID');
       url = new URL(String(input));
       headers = new Headers(init.headers);
     } catch {
@@ -100,13 +102,21 @@ export function createNativeEntityPageVerification({ fetchImpl } = {}) {
       (init.redirect !== undefined && init.redirect !== 'error') ||
       !init.signal || init.signal.aborted
     ) return fail('NATIVE_PAGE_REQUEST_DENIED');
+    const ownCall = active;
     active.requested = true;
-    state.requestCount++;
+    const signal = AbortSignal.any([init.signal, ownCall.controller.signal]);
     try {
+      if (lastRequestAt !== null) {
+        await delay(Math.max(0, 1000 - (performance.now() - lastRequestAt)), undefined, { signal });
+      }
+      if (signal.aborted || state.phase !== 'RUNNING' || active !== ownCall)
+        return fail('NATIVE_PAGE_REQUEST_CANCELLED');
+      lastRequestAt = performance.now();
+      state.requestCount++;
       // Normalize rather than forward a Request object, preventing hidden
       // inherited bodies, headers, credentials or automatic redirects.
       return await fetchImpl(expected.href, {
-        method: 'GET', headers, credentials: 'omit', redirect: 'error', signal: init.signal,
+        method: 'GET', headers, credentials: 'omit', redirect: 'error', signal,
       });
     } catch {
       state.phase = 'FAILED';
@@ -115,16 +125,18 @@ export function createNativeEntityPageVerification({ fetchImpl } = {}) {
   };
   return {
     fetchFn,
-    async call(executeTool, name, args) {
+    async call(executeTool, name, args, { signal } = {}) {
       const index = state.results.length;
       const expected = NATIVE_PAGE_CALLS[index];
       if (
         state.phase !== 'READY' || !expected || typeof executeTool !== 'function' ||
-        name !== expected.toolName || !isDeepStrictEqual(args, expected.arguments)
+        name !== expected.toolName || !isDeepStrictEqual(args, expected.arguments) || signal?.aborted
       ) return fail('NATIVE_PAGE_TOOL_DENIED');
       state.phase = 'RUNNING';
-      const ownCall = { index, requested: false };
+      const ownCall = { index, requested: false, controller: new AbortController() };
       active = ownCall;
+      const cancel = () => { state.phase = 'FAILED'; ownCall.controller.abort(); };
+      signal?.addEventListener('abort', cancel, { once: true });
       try {
         const raw = await executeTool(name, structuredClone(expected.arguments));
         if (state.phase !== 'RUNNING' || active !== ownCall || !ownCall.requested)
@@ -137,14 +149,20 @@ export function createNativeEntityPageVerification({ fetchImpl } = {}) {
         state.phase = 'FAILED';
         throw new Error('NATIVE_PAGE_OBSERVATION_FAILED');
       } finally {
+        signal?.removeEventListener('abort', cancel);
+        ownCall.controller.abort();
         active = null;
       }
+    },
+    stop() {
+      if (state.phase !== 'COMPLETE') state.phase = 'FAILED';
+      active?.controller.abort();
     },
     snapshot() {
       return structuredClone({
         contract: NATIVE_PAGE_VERIFICATION_CONTRACT,
         ...state, maxRequests: 2, maxResponseBytes: 256 * 1024,
-        nativeCallDeadlineMs: 10_000, redirectPolicy: 'error',
+        nativeCallDeadlineMs: 10_000, minimumRequestStartIntervalMs: 1000, redirectPolicy: 'error',
         liveEvidence: false,
       });
     },

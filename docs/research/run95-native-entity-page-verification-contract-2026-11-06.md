@@ -50,8 +50,10 @@ The actual product ToolRegistry and native page client retain the reviewed
 failure, invalid echo, source-body failure, invalid semantic projection,
 concurrent/extra call or denied request permanently fails this observation
 instance. It cannot proceed to the other page after ambiguity or failure.
-Any future live host must also impose a conservative inter-request delay and
-an overall finite model/job deadline. Redirect refusal gives a fetch-level
+The kernel enforces at least1s between request starts, inside the native
+deadline, and forwards host cancellation through its own abort controller.
+Any future live host must also impose an overall finite model/job deadline.
+Redirect refusal gives a fetch-level
 HTTP ceiling; DNS/TLS/provider internal network activity is not counted as a
 separate observed API request.
 
@@ -72,7 +74,7 @@ Do not retry a valid empty result to obtain a more attractive sample.
 The observation kernel has no executable entry point, native-fetch default,
 model invocation or authority to acquire a claim. Its input boundary is shared
 by future direct and MCP hosts; ordinary tests inject a synthetic fetch adapter.
-The current19 Node tests use the actual compiled full ToolRegistry, real
+The current21 kernel tests use the actual compiled full ToolRegistry, real
 public policy resolution and native page path with an in-memory storage and
 account/OAuth/write services that refuse access. They cover exact two-call
 requests; empty, sparse, invalid-row and count-conflict states; altered or
@@ -81,15 +83,27 @@ completeness/provenance. No private database, live provider or account is used.
 Snapshots explicitly retain `liveEvidence:false`. These tests establish the
 new observation boundary only and earn no real API or Agent/MCP cell.
 
+`scripts/acceptance/native-entity-page-mcp.mjs` adds a construction-only MCP
+host using the same kernel and a public-only runtime. It instantiates no real
+OAuth/token provider, persistent storage or renderer. Two further MCP tests
+validate the actual catalog/policy through the SDK and a real child stdio
+handshake, tools/list and tools/call sequence. The child performs exactly two
+synthetic GETs; independent exit/receipt checks confirm zero forbidden service
+access and denial of an extra call. Total focused coverage is23 tests. Neither
+host construction nor these native transport tests invoke a real model or
+Bangumi API. The host has no executable main or native-fetch default; it does
+not supply the missing claim, execution or terminal-report authority.
+
 ## Remaining work before any real operation
 
 The existing generic profile registry and sequence queue support multiple
 tools and up to eight calls, but the current one-tool server admits only
 auth-none catalog entries plus an existing exact renderer exception. These
 two tools have optional catalog auth and resolve to public only for an
-explicit username. A new host must validate this exact input-dependent public
-case, provide only a public client, and reject account/optional-auth access;
-it must not relabel the entire catalog or widen the old renderer exception.
+explicit username. The construction-only host now validates this exact
+input-dependent public case, provides only a public client, and refuses
+account/optional-auth access. The future executable launch path must retain
+this boundary; do not relabel the catalog or widen the old renderer exception.
 
 The Harness's existing claim readiness check also pins historical workloads
 to Luna/max. Preserve those contracts exactly. Add only an exact registered
@@ -99,8 +113,10 @@ actual same-reviewer PASS. The ordinary reviewer and new workload use the
 current Sol xhigh decision. No new profile is registered or consumed by this
 preparation kernel. Never rename/retry a spent old list/calendar/A1–A9 case.
 
-Before one invocation, complete synthetic MCP/native lifecycle diagnostics,
-sanitized model-event/answer validation, signed report and terminal-latch
+The23 kernel/MCP checks, including native stdio, are complete. Preserve them
+and continue the missing model launch/claim/report work. Before one invocation,
+complete synthetic model-lifecycle diagnostics, sanitized model-event/answer
+validation, signed report and terminal-latch
 reconciliation, source-bound evidence import, consolidated adversarial
 preflight, exact CI and comprehensive independent review. A successful
 synthetic provider alone closes neither public nor model cells. Real API,

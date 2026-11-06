@@ -145,6 +145,7 @@ test('new verification denies extra fetches and unlisted request capabilities be
     }, NATIVE_PAGE_CALLS[0].toolName, NATIVE_PAGE_CALLS[0].arguments));
     assert.equal(f.requests.length, 0);
     assert.equal(f.verification.snapshot().phase, 'FAILED');
+    assert.equal(f.verification.snapshot().deniedCount, 1);
   }
   const f = fixture();
   await assert.rejects(f.verification.fetchFn('https://api.bgm.tv/'), /OUT_OF_SEQUENCE/u);
@@ -171,4 +172,37 @@ test('no implicit native fetch or execution authority is exposed by this prepara
   assert.throws(() => createNativeEntityPageVerification(), /explicit fetch/u);
   assert.equal(Object.isFrozen(NATIVE_PAGE_CALLS), true);
   assert.equal(Object.isFrozen(NATIVE_PAGE_CALLS[0].arguments), true);
+});
+
+test('new observation cancellation aborts its own fetch and permanently refuses continuation', async () => {
+  const controller = new AbortController();
+  let reached, fetchedSignal;
+  const ready = new Promise((resolve) => { reached = resolve; });
+  const observation = createNativeEntityPageVerification({ fetchImpl: async (_url, init) => {
+    fetchedSignal = init.signal;
+    reached();
+    await new Promise((_resolve, reject) => {
+      init.signal.addEventListener('abort', () => reject(new Error('SYNTHETIC_ABORT')), { once: true });
+    });
+  } });
+  const executing = observation.call(async () => observation.fetchFn(
+    `https://api.bgm.tv/v0/users/${NATIVE_PAGE_CALLS[0].arguments.username}/collections/-/persons?limit=1&offset=0`,
+    { signal: new AbortController().signal },
+  ), NATIVE_PAGE_CALLS[0].toolName, NATIVE_PAGE_CALLS[0].arguments, { signal: controller.signal });
+  await ready;
+  controller.abort();
+  await assert.rejects(executing, /NATIVE_PAGE_OBSERVATION_FAILED/u);
+  assert.equal(fetchedSignal.aborted, true);
+  assert.equal(observation.snapshot().phase, 'FAILED');
+  await assert.rejects(observation.call(async () => ({}), NATIVE_PAGE_CALLS[1].toolName, NATIVE_PAGE_CALLS[1].arguments));
+});
+
+test('stopped or already-cancelled observation never starts a provider request', async () => {
+  let calls = 0;
+  const observation = createNativeEntityPageVerification({ fetchImpl: async () => { calls++; } });
+  const signal = AbortSignal.abort();
+  await assert.rejects(observation.call(async () => ({}), NATIVE_PAGE_CALLS[0].toolName, NATIVE_PAGE_CALLS[0].arguments, { signal }));
+  observation.stop();
+  await assert.rejects(observation.call(async () => ({}), NATIVE_PAGE_CALLS[0].toolName, NATIVE_PAGE_CALLS[0].arguments));
+  assert.equal(calls, 0);
 });
