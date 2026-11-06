@@ -94,3 +94,21 @@ test('distinguish does not disguise runtime transitions as durable documentation
     });
   }
 });
+
+test('retain may describe durable source-bound acceptance evidence', () => {
+  assertProductCommitHygiene(['docs: retain twelve scoped reads on verified person repair source']);
+});
+
+test('retain cannot disguise runtime transitions, nested states or spent claims', () => {
+  for (const subject of [
+    'docs: retain candidate review readiness',
+    'docs: retain the run state to ACTIVE',
+    'docs: retain review runtime state from ACTIVE to COMPLETED',
+    'docs: retain a2 claim as INCONCLUSIVE',
+    'docs: retain a02 claim as INCONCLUSIVE',
+  ]) {
+    assert.throws(() => assertProductCommitHygiene([subject]), {
+      code: 'RUNTIME_ONLY_COMMIT_REJECTED',
+    });
+  }
+});

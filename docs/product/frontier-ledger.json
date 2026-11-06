@@ -4494,11 +4494,40 @@
         "scripts/acceptance/real_account_a7_evidence.py",
         "scripts/test_real_account_a7_evidence.py",
         "docs/live-probes/run95-a7-native-episode-collection-read-2026-10-28/import.json",
-        "docs/product/real-account-a7-episode-evidence.md"
+        "docs/product/real-account-a7-episode-evidence.md",
+        "docs/research/run95-person-collection-career-source-contract-2026-11-05.md",
+        "packages/bangumi-core/src/models/user.ts",
+        "packages/bangumi-core/src/services/user-service.ts",
+        "packages/bangumi-core/src/services/collection-entity-consistency-service.ts",
+        "tests/unit/person-collection-wire.test.ts",
+        "tests/integration/person-collection-wire.test.ts",
+        "tests/unit/collection-entity-consistency.test.ts",
+        "docs/research/run95-person-account-compiled-compatibility-contract-2026-11-06.md",
+        "docs/live-probes/run95-person-account-source-compatibility-2026-11-06/import.json",
+        "scripts/acceptance/person_account_compatibility.py",
+        "scripts/test_person_account_compatibility.py",
+        "scripts/test_person_account_closed_proof.py"
       ],
-      "next_action": "Current-source account12/33,21pending: eleven priorA2-A6 observations retain oldexecution+sealedqs55compatibility refs; A7adds ONLYget_episode_collections through fixed completed native2GET/selection1episode1/known1unknown0/rawsubjectbindingtrue/partial/0assetsPNG-writes-refresh-model-client. Selection earns no extra list credit. Allsevenclaims permanentlyspent;originalsixrawbytes/exact3jobs/Runner7e3cwd/samehealthyNapCatAstrBot/model945 preserved by independent immediate readback. Fixed operatoranchor6391caf6 pins actualbfe/47ac/9c07/current7e3Py3.14.6SQLite3.53.2/21hostfiles/285runtime;53oldfiles andoldconsumer predicates exact. Import source/Git/fixedsanitizedreceipts only,no runtime/key/provider/newaccountcalls. KeepOP009PARTIAL;21account/write/fullOAuth/client/stability/aesthetic observations remainunproven and96Goalunfinished. Matchingfutureboundedreadonlystandingauthority persists;no spentclaimreplay.",
+      "next_action": "Keep PARTIAL. Optional career metadata repair now has67 related checks plus actual compiled-MCP eight-case fake-person evidence and a fresh unchanged twelve-input historical source witness: full107-JavaScript compiler projection, four exact overlays, actual core/renderer module loads, original five network/module denial controls, six private PNG decodes and independent container absence. New strict successor binds285 runtime sources/85 protected files/14 producers; old consumers, receipts and spent claims remain unchanged. Only the original12 account observations may inherit scoped compatibility; fake person cases earn no new account/model/client credit. Complete exact CI, consolidated preflight and one comprehensive Product review before integration. A future native pagination selector requires a separate source/schema/request contract; never retry A8/A9 or rewrite old request bounds. Preserve completed calendar and locked designs.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
-      "related_ids": []
+      "related_ids": [],
+      "prior_next_action_before_person_collection_wire_repair": "Current-source account12/33,21pending: eleven priorA2-A6 observations retain oldexecution+sealedqs55compatibility refs; A7adds ONLYget_episode_collections through fixed completed native2GET/selection1episode1/known1unknown0/rawsubjectbindingtrue/partial/0assetsPNG-writes-refresh-model-client. Selection earns no extra list credit. Allsevenclaims permanentlyspent;originalsixrawbytes/exact3jobs/Runner7e3cwd/samehealthyNapCatAstrBot/model945 preserved by independent immediate readback. Fixed operatoranchor6391caf6 pins actualbfe/47ac/9c07/current7e3Py3.14.6SQLite3.53.2/21hostfiles/285runtime;53oldfiles andoldconsumer predicates exact. Import source/Git/fixedsanitizedreceipts only,no runtime/key/provider/newaccountcalls. KeepOP009PARTIAL;21account/write/fullOAuth/client/stability/aesthetic observations remainunproven and96Goalunfinished. Matchingfutureboundedreadonlystandingauthority persists;no spentclaimreplay.",
+      "person_collection_wire_repair_2026_11_05": {
+        "upstream_repository": "bangumi/server",
+        "upstream_revision": "243e2cd5dd22995fb2340d77b48bc851a12ea5b6",
+        "serializer": "web/res/collection.go",
+        "serializer_sha256": "42b6de71d1f3c7c5a763229cbcc585647a5ce13673bee2229fdfd87a2071620e",
+        "source_contract": "docs/research/run95-person-collection-career-source-contract-2026-11-05.md",
+        "state": "implemented-with-native-fake-MCP-and-sealed-source-witness-review-pending",
+        "boundaries": [
+          "unknown career is not a known empty array",
+          "no deployed upstream revision inferred",
+          "no live account/model/client execution",
+          "all old spent profiles and design baselines preserved",
+          "only original twelve historical inputs inherit fresh scoped compatibility; integration review pending"
+        ],
+        "compiled_compatibility": "docs/live-probes/run95-person-account-source-compatibility-2026-11-06/import.json"
+      }
     },
     {
       "id": "OP-010",

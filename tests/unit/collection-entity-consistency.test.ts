@@ -106,6 +106,74 @@ function runService(
 }
 
 describe('CollectionEntityConsistencyService', () => {
+  it('keeps valid collected persons when the official collection omits career', async () => {
+    const result = await runService(
+      buildFetch({
+        subjectRows: [subjectRow(100)],
+        personCollections: [
+          { id: 20, name: '人物20', type: 1, created_at: '2026-01-01T00:00:00Z' },
+        ],
+        personRows: [personRow(20)],
+      }),
+    );
+    expect(result.state).toBe('complete');
+    expect(result.matches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          evidenceKind: 'subject-person',
+          entity: expect.objectContaining({ id: 20 }),
+        }),
+      ]),
+    );
+    expect(result.conflicts).toEqual([]);
+  });
+
+  it('enriches initially unknown duplicate metadata and still detects later known conflicts', async () => {
+    const base = { id: 20, name: '人物20', type: 1, created_at: '2026-01-01T00:00:00Z' };
+    const result = await runService(
+      buildFetch({
+        subjectRows: [subjectRow(100)],
+        personRows: [personRow(20)],
+        personCollections: [
+          base,
+          { ...base, career: ['seiyu'] },
+          { ...base, career: ['director'] },
+        ],
+      }),
+    );
+    expect(result.state).toBe('partial');
+    expect(result.conflicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ scope: 'person-collection', id: 20, fields: ['career'] }),
+      ]),
+    );
+    expect(result.matches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ entity: expect.objectContaining({ id: 20, career: ['seiyu'] }) }),
+      ]),
+    );
+  });
+
+  it.each([
+    [undefined, ['seiyu']],
+    [['seiyu'], undefined],
+    [undefined, []],
+  ])('does not call unknown versus known career a conflict (%j, %j)', async (first, second) => {
+    const base = { id: 20, name: '人物20', type: 1, created_at: '2026-01-01T00:00:00Z' };
+    const result = await runService(
+      buildFetch({
+        subjectRows: [subjectRow(100)],
+        personRows: [personRow(20)],
+        personCollections: [
+          { ...base, ...(first === undefined ? {} : { career: first }) },
+          { ...base, ...(second === undefined ? {} : { career: second }) },
+        ],
+      }),
+    );
+    expect(result.conflicts).toEqual([]);
+    expect(result.matches).toHaveLength(1);
+  });
+
   it('joins direct character/person credits and nested character actors by stable ID', async () => {
     const result = await runService(
       buildFetch({

@@ -179,12 +179,17 @@ function mapPersonEntity(item: unknown): CollectionEntityConsistencyEntity | und
     typeof value.name !== 'string' ||
     !Number.isInteger(value.type) ||
     value.type <= 0 ||
-    !Array.isArray(value.career) ||
-    !value.career.every((career) => typeof career === 'string')
+    (value.career !== undefined &&
+      (!Array.isArray(value.career) || !value.career.every((career) => typeof career === 'string')))
   ) {
     return undefined;
   }
-  return { id: value.id, name: value.name, type: value.type, career: [...value.career] };
+  return {
+    id: value.id,
+    name: value.name,
+    type: value.type,
+    ...(value.career === undefined ? {} : { career: [...value.career] }),
+  };
 }
 
 function differingFields(left: Record<string, unknown>, right: Record<string, unknown>): string[] {
@@ -216,9 +221,10 @@ function entityConflictFields(
   left: CollectionEntityConsistencyEntity,
   right: CollectionEntityConsistencyEntity,
 ): string[] {
+  const knownCareers = left.career !== undefined && right.career !== undefined;
   return differingFields(
-    { name: left.name, type: left.type, career: left.career },
-    { name: right.name, type: right.type, career: right.career },
+    { name: left.name, type: left.type, ...(knownCareers ? { career: left.career } : {}) },
+    { name: right.name, type: right.type, ...(knownCareers ? { career: right.career } : {}) },
   );
 }
 
@@ -265,6 +271,11 @@ function deduplicateEntities(
       const first = firstById.get(item.id);
       if (first) {
         const fields = entityConflictFields(first, item);
+        // Remember the first observed career, so an initially unknown row does
+        // not hide a conflict between two later known observations.
+        if (first.career === undefined && item.career !== undefined) {
+          first.career = [...item.career];
+        }
         const existing = conflictsById.get(item.id);
         if (existing) {
           existing.observed += 1;

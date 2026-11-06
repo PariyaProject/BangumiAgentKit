@@ -19,6 +19,7 @@ from acceptance import real_account_a7_evidence as evidence
 from acceptance import real_account_read_evidence as union
 from acceptance import qs55_account_compatibility as compatibility
 from acceptance import calendar_account_compatibility as calendar_compatibility
+from acceptance import person_account_compatibility as person_compatibility
 
 ROOT = Path(__file__).resolve().parents[1]
 ORIGINAL_GIT = receipts._git
@@ -89,11 +90,12 @@ class RealAccountA7EvidenceTests(unittest.TestCase):
         with patch.object(receipts, '_git', wraps=ORIGINAL_GIT):
             catalog = json.loads((ROOT / 'docs/tool-catalog.json').read_bytes())
             before = compatibility.qs55_compatible_account_sources(ROOT, catalog)
-            current = calendar_compatibility.calendar_compatible_account_sources(ROOT, catalog)
+            self.assertEqual(calendar_compatibility.calendar_compatible_account_sources(ROOT, catalog), {})
+            current = person_compatibility.person_compatible_account_sources(ROOT, catalog)
             after = union.real_account_read_sources(ROOT, catalog)
             self.assertEqual(before, {})
             self.assertEqual(len(current), 12); self.assertEqual(after, current)
-            self.assertEqual(after[evidence.TOOL], {evidence.REFERENCE, calendar_compatibility.REFERENCE})
+            self.assertEqual(after[evidence.TOOL], {evidence.REFERENCE, person_compatibility.REFERENCE})
             self.assertNotIn('bangumi.get_my_profile', after)
             self.assertNotIn('bangumi.render_collection_progress', after)
 
