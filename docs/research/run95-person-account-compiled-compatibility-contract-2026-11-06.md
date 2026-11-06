@@ -95,3 +95,15 @@ The existing twelve account observations remain historical with scoped source
 compatibility; the eight new fake calls earn no live account credit. This
 Epoch does not rerun either completed real calendar case or change the locked
 designs, fonts, scale or C07 baseline.
+
+## Integration preflight correction
+
+The commit-subject checker initially rejected a durable generated evidence
+update solely because its documentation verb was `retain`. The existing
+policy permits meaningful product documentation; this was a lexical mismatch,
+not a new authorization. A tight7-case history/subject regression went RED on
+that exact subject. `retain` now has the same three-part treatment as `preserve`:
+engineering documentation is recognized, while runtime transitions, nested
+state enums and one-shot dispositions remain rejected. Five explicit negative
+subjects plus the existing merge/history cases cover the boundary. This changes
+no Candidate/CI/review authority, runtime source graph or frozen witness bytes.
