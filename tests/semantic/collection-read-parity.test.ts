@@ -107,11 +107,13 @@ describe('collection read parity tools', () => {
     const fetchFn: typeof fetch = async (input, init) => {
       const url = new URL(String(input));
       requests.push({ url, headers: new Headers(init?.headers) });
+      const limit = Number(url.searchParams.get('limit'));
+      const offset = Number(url.searchParams.get('offset'));
       if (url.pathname.endsWith('/characters')) {
         return jsonResponse({
           total: 2,
-          limit: 0,
-          offset: 0,
+          limit,
+          offset,
           data: [
             {
               id: 10,
@@ -126,14 +128,14 @@ describe('collection read parity tools', () => {
               type: 2,
               created_at: '2026-08-02T00:00:00Z',
             },
-          ],
+          ].slice(offset, offset + limit),
         });
       }
       if (url.pathname.endsWith('/persons')) {
         return jsonResponse({
           total: 1,
-          limit: 0,
-          offset: 0,
+          limit,
+          offset,
           data: [
             {
               id: 20,
@@ -143,7 +145,7 @@ describe('collection read parity tools', () => {
               images: { grid: 'https://img/grid' },
               created_at: '2026-08-03T00:00:00Z',
             },
-          ],
+          ].slice(offset, offset + limit),
         });
       }
       return jsonResponse({ error: 'not found' }, 404);
@@ -181,7 +183,7 @@ describe('collection read parity tools', () => {
     });
     expect(characters.coverage).toMatchObject({
       sourceTotal: 2,
-      observed: 2,
+      observed: 1,
       returned: 1,
       maxItems: 1,
       truncated: true,
@@ -203,6 +205,10 @@ describe('collection read parity tools', () => {
     expect(characters.source.authScope).toBe('public');
     expect(people.source.authScope).toBe('public');
     expect(requests.every((request) => !request.headers.has('authorization'))).toBe(true);
+    expect(requests.map((request) => Object.fromEntries(request.url.searchParams))).toEqual([
+      { limit: '1', offset: '0' },
+      { limit: '50', offset: '0' },
+    ]);
   });
 
   it('supports account-bound character reads and explicit not-found detail semantics', async () => {
