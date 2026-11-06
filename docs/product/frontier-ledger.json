@@ -4540,7 +4540,8 @@
         "tests/integration/native-entity-page-server-gate.test.mjs",
         "docs/product/native-entity-page-mcp-bundle-attestation.json",
         "docs/live-probes/native-entity-page-public-model-run95-v1.json",
-        "docs/research/run95-native-entity-page-model-result-2026-11-06.md"
+        "docs/research/run95-native-entity-page-model-result-2026-11-06.md",
+        "tests/harness/agent-harness-cli.test.mjs"
       ],
       "next_action": "Keep PARTIAL. Current admitted evidence is public65/65, Agent86/96, account12/33 and QQ0/TIM0. The genuinely new native-page public/model verification completed ONCE at81be600f with one Sol xhigh job/two native GETs; its signed report and external terminal/CI/source admission add only the two changed public/model tool cells. Next finish the evidence-only integration and same-reviewer exact-Candidate review, then prepare a concrete remaining bounded account-read milestone; do not repeat this spent profile. Historical source-only baseline was public63/65, Agent84/96, account12/33 and QQ0/TIM0; from that offline compatibility proof alone, deployed support remains unobserved. The separate new live observation now proves only the two limited deployed page windows, not a deployed revision, private access, stable snapshot or full collection. Native compatibility and PR290/291 source work remain DONE, with only12 old account observations. Preserve65/all96 targets, all spent claims, raw schema/aggregate contracts and completed calendar/design/client boundaries.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
@@ -4633,7 +4634,7 @@
           "new_claims": 1,
           "real_model_jobs": 1,
           "real_bangumi_requests": 2,
-          "external_consumer_and_table_checks": 7,
+          "external_consumer_and_table_checks": 8,
           "cold_executable_gate_checks": 2,
           "bundle_attestation": "docs/product/native-entity-page-mcp-bundle-attestation.json"
         },
@@ -4660,6 +4661,15 @@
           "exhaustive_collection": false,
           "provider_internal_http_count": null,
           "invoice_hard_cap": null
+        },
+        "acceptance_oracle_reconciliation": {
+          "cause": "pre-live-only per-tool assertions and synthetic fixtures did not account for the newly present immutable signed native report",
+          "failed_ci": "https://github.com/PariyaProject/BangumiAgentKit/actions/runs/42252599055",
+          "local_red": "two exact native public/model assertion failures reproduced in176ms",
+          "local_green": "three focused oracle checks in433ms; all27 per-tool integration checks in601ms",
+          "scope": "offline pinned report/signature/current-source oracle and exact acceptance-only refresh guards; no execution program, selection, bundle, report or claim change",
+          "external_consumer_guard_checks": 8,
+          "new_real_queries_or_models": 0
         }
       }
     },

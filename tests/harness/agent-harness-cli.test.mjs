@@ -2732,7 +2732,8 @@ function c03ReviewReadyEnvironment(overrides = {}) {
 }
 
 test('new native Sol xhigh profile uses exact CI and one permanent claim without changing legacy execution contracts', () => {
-  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(NATIVE_PAGE_MODEL_PROFILE);
+  const harnessRoot = createIsolatedHarnessRoot([NATIVE_PAGE_MODEL_PROFILE.reportPath]);
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(NATIVE_PAGE_MODEL_PROFILE, { harnessRoot });
   const keyPair = generateG04RunnerReceiptKeyPair();
   const args = ['--run', '95', '--pr', '42', '--profile-id', NATIVE_PAGE_MODEL_PROFILE.id];
   try {
@@ -2755,7 +2756,7 @@ test('new native Sol xhigh profile uses exact CI and one permanent claim without
     const finished = JSON.parse(environment.execute(['epoch:agent-mcp-profile-status', ...args]).stdout);
     assert.equal(finished.state, 'INCONCLUSIVE');
     assert.equal(finished.retry_allowed, false);
-  } finally { environment.cleanup(); }
+  } finally { environment.cleanup(); fs.rmSync(harnessRoot, { recursive: true, force: true }); }
 });
 
 test('new native signed report is accepted through actual Harness dispatch and terminal receipt binding', () => {
@@ -2805,6 +2806,8 @@ test('new native signed report is accepted through actual Harness dispatch and t
     terminalEpoch.advances_frontier_ids = [];
     terminalState.prBody = renderEpochBody(terminalEpoch);
     for (const extra of ['docs/research/run95-native-entity-page-model-result-2026-11-06.md',
+      'tests/integration/tool-e2e-acceptance.test.ts',
+      'scripts/acceptance/native_entity_page_evidence.py',
       'packages/tools/src/registry.ts']) {
       fs.writeFileSync(environment.statePath, JSON.stringify({ ...terminalState,
         dirty: '', featureHeadSha: sha('e'), candidateRefreshRange: `${source}...${sha('e')}`,
@@ -2814,7 +2817,7 @@ test('new native signed report is accepted through actual Harness dispatch and t
           candidate_refresh_reason: 'Integrate the native signed report and its bounded result document.',
           ci: { url: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}` },
           adversarial_preflight: terminalEpoch.adversarial_preflight })]);
-      if (extra.startsWith('docs/')) {
+      if (extra !== 'packages/tools/src/registry.ts') {
         assert.equal(refreshed.status, 0, refreshed.stderr);
         const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
         assert.equal(stored.state, 'REVIEW_READY');

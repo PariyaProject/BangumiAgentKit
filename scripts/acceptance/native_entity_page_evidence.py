@@ -16,6 +16,11 @@ TOOLS = ('bangumi.list_person_collections', 'bangumi.list_character_collections'
 REFRESH_PATHS = {
     REPORT, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md', 'docs/product/frontier-ledger.json',
     'docs/research/run95-native-entity-page-model-result-2026-11-06.md',
+    # Exact acceptance-oracle/guard remediation after the first signed report;
+    # no execution program, input, descriptor or compiled bundle may change.
+    'scripts/agent-harness.mjs', 'scripts/acceptance/native_entity_page_evidence.py',
+    'scripts/test_native_entity_page_evidence.py', 'tests/harness/agent-harness-cli.test.mjs',
+    'tests/integration/tool-e2e-acceptance.test.ts',
 }
 SHA = re.compile(r'[0-9a-f]{40}')
 

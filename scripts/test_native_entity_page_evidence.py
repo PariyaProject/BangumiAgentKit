@@ -100,6 +100,20 @@ process.stdout.write(JSON.stringify({root:f.root,claim:{...f.claim,state:'REPORT
         self.claim['reportSha256'] = hashlib.sha256(data).hexdigest()
         self.assertEqual(self.sources(), {})
 
+    def test_exact_oracle_remediation_paths_keep_source_guards_closed(self):
+        allowed = {REPORT, 'scripts/agent-harness.mjs',
+                   'scripts/acceptance/native_entity_page_evidence.py',
+                   'scripts/test_native_entity_page_evidence.py',
+                   'tests/harness/agent-harness-cli.test.mjs',
+                   'tests/integration/tool-e2e-acceptance.test.ts'}
+        args = (self.report, self.claim['reportSha256'], self.status, self.epoch)
+        self.assertEqual(native_page_control_matches(*args, allowed, self.ci, self.jobs), self.claim)
+        for path in ['tests/integration/unrelated.test.ts',
+                     'scripts/acceptance/run-native-entity-page-model.mjs',
+                     'scripts/lib/native-entity-page-gates.mjs',
+                     'docs/product/native-entity-page-mcp-bundle-attestation.json']:
+            self.assertIsNone(native_page_control_matches(*args, allowed | {path}, self.ci, self.jobs))
+
     def test_current_program_change_fails_without_new_model_or_source_calls(self):
         with (self.root / 'scripts/lib/native-entity-page-verification.mjs').open('a') as out:
             out.write('\n// changed semantic boundary\n')

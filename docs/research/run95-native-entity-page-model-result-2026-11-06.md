@@ -62,10 +62,28 @@ credit and does not establish an upstream deployed source revision.
 
 ## Evidence integration and remaining work
 
-The integration changes only this result note, the signed report, the generated
-matrix and OP-009 evidence. Original execution authority stays bound to81be600f;
+The integration contains this result note, the signed report, the generated
+matrix and OP-009 evidence, plus the exact acceptance-oracle/guard correction
+below. Original execution authority stays bound to81be600f;
 future integration bytes require fresh exact CI/Candidate and continuation of
 the same reviewer before Harness merge. They never authorize another workload.
+
+The first evidence-bearing CI caught two pre-live-only assertions in
+`tool-e2e-acceptance.test.ts`: both still required blank public/model cells and
+omitted the new native report format. The exact two failures reproduced locally
+in176ms. The corrected offline oracle pins the immutable report bytes and uses
+the actual signature/current-source validator, with altered-signature/semantic
+negative cases. It makes no GitHub, model or source request; the production
+generator/checker still require actual terminal labels, original PASS and CI.
+Old pre-pagination reports remain historical; account/client cells stay pending.
+The targeted loop passed3 checks in433ms after repair.
+
+Only that integration test and its exact acceptance-oracle/guard files are added
+to this profile's refresh set in both the shared Harness and external consumer.
+Regression checks admit these exact paths and reject unrelated tests, execution
+programs, gate code, bundle attestations and product runtime changes. Execution
+programs/selection/catalog/bundle, the report bytes and spent claim are unchanged.
+Fresh exact CI and the same reviewer's actual R2 must approve the correction.
 
 After integration, continue the remaining account/client and Agent acceptance
 scope from the tracked ledger. Account gaps remain21; select a concrete bounded

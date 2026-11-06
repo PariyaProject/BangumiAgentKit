@@ -4152,7 +4152,17 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
       'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
       'docs/product/frontier-ledger.json',
       ...(profile.id === NATIVE_PAGE_PROFILE_ID
-        ? ['docs/research/run95-native-entity-page-model-result-2026-11-06.md']
+        ? [
+            'docs/research/run95-native-entity-page-model-result-2026-11-06.md',
+            // The first report exposed pre-live-only integration expectations.
+            // Permit only this acceptance-oracle repair and its exact guards;
+            // the signed execution programs, input and bundle stay unchanged.
+            'scripts/agent-harness.mjs',
+            'scripts/acceptance/native_entity_page_evidence.py',
+            'scripts/test_native_entity_page_evidence.py',
+            'tests/harness/agent-harness-cli.test.mjs',
+            'tests/integration/tool-e2e-acceptance.test.ts',
+          ]
         : []),
       ...(profile.id === G06_CAST_OFFLINE_V2_PROFILE_ID
         ? G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS
@@ -4204,7 +4214,9 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
     ) {
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID',
-        profile.id === G06_CAST_OFFLINE_V2_PROFILE_ID
+        profile.id === NATIVE_PAGE_PROFILE_ID
+          ? 'A native-page refresh permits only its signed report, matrix, frontier, named result and exact acceptance-oracle/guard files; execution source, selection and MCP bundle must remain unchanged.'
+          : profile.id === G06_CAST_OFFLINE_V2_PROFILE_ID
           ? 'A G06 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact source-catalog helper and acceptance verifier files, and the documented G14 terminal-disposition report/test exception, with the MCP bundle unchanged.'
           : profile.id === R04_RENDER_V2_PROFILE_ID
             ? 'An R04 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact source-catalog MCP server/helper and acceptance verifier files, the documented G14 terminal-disposition report/test exception, and this policy file, with the MCP bundle unchanged.'
