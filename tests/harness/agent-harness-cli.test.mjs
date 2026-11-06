@@ -2806,6 +2806,7 @@ test('new native signed report is accepted through actual Harness dispatch and t
     terminalEpoch.advances_frontier_ids = [];
     terminalState.prBody = renderEpochBody(terminalEpoch);
     for (const extra of ['docs/research/run95-native-entity-page-model-result-2026-11-06.md',
+      '.github/workflows/ci.yml',
       'tests/integration/tool-e2e-acceptance.test.ts',
       'scripts/acceptance/native_entity_page_evidence.py',
       'scripts/generate-tool-acceptance-tasks.py',

@@ -16,6 +16,7 @@ TOOLS = ('bangumi.list_person_collections', 'bangumi.list_character_collections'
 REFRESH_PATHS = {
     REPORT, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md', 'docs/product/frontier-ledger.json',
     'docs/research/run95-native-entity-page-model-result-2026-11-06.md',
+    '.github/workflows/ci.yml',
     # Exact acceptance-oracle/guard remediation after the first signed report;
     # no execution program, input, descriptor or compiled bundle may change.
     'scripts/agent-harness.mjs', 'scripts/acceptance/native_entity_page_evidence.py',

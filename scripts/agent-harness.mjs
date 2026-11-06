@@ -4154,6 +4154,7 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
       ...(profile.id === NATIVE_PAGE_PROFILE_ID
         ? [
             'docs/research/run95-native-entity-page-model-result-2026-11-06.md',
+            '.github/workflows/ci.yml',
             // The first report exposed pre-live-only integration expectations.
             // Permit only this acceptance-oracle repair and its exact guards;
             // the signed execution programs, input and bundle stay unchanged.

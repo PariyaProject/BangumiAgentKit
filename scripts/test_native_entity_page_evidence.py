@@ -110,6 +110,7 @@ process.stdout.write(JSON.stringify({root:f.root,claim:{...f.claim,state:'REPORT
 
     def test_exact_oracle_remediation_paths_keep_source_guards_closed(self):
         allowed = {REPORT, 'scripts/agent-harness.mjs',
+                   '.github/workflows/ci.yml',
                    'scripts/acceptance/native_entity_page_evidence.py',
                    'scripts/generate-tool-acceptance-tasks.py',
                    'tests/harness/frontier-ledger-data.test.mjs',
@@ -121,7 +122,7 @@ process.stdout.write(JSON.stringify({root:f.root,claim:{...f.claim,state:'REPORT
                    'tests/integration/tool-e2e-acceptance.test.ts'}
         args = (self.report, self.claim['reportSha256'], self.status, self.epoch)
         self.assertEqual(native_page_control_matches(*args, allowed, self.ci, self.jobs), self.claim)
-        for path in ['tests/integration/unrelated.test.ts',
+        for path in ['tests/integration/unrelated.test.ts', '.github/workflows/unrelated.yml',
                      'scripts/acceptance/run-native-entity-page-model.mjs',
                      'scripts/lib/native-entity-page-gates.mjs',
                      'docs/product/native-entity-page-mcp-bundle-attestation.json']:

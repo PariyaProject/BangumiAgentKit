@@ -88,8 +88,16 @@ Historical G01/G06/G09 checks retain their own source/claim boundaries while
 checking the65 target and consistent totals instead of freezing the unrelated
 pre-native global count at63. Their29 focused checks pass.
 
+CI7022 then proved a separate environment prerequisite: SQLite/PostgreSQL jobs
+used depth1 checkouts, so the immutable reviewed source commit was unavailable
+to the strict offline signature/source oracle. A synthetic depth1 clone
+reproduced rejection; fetching its reviewed history made the same signed bytes
+pass, with zero model/source/GitHub requests. These two jobs now fetch full Git
+history, matching the existing Harness job. No source or signature check is
+skipped; all seven mandatory jobs remain required.
+
 Only those exact integration/fixture/global-summary tests and their
-acceptance-oracle/guard files are added
+acceptance-oracle/guard files and that exact CI history configuration are added
 to this profile's refresh set in both the shared Harness and external consumer.
 Regression checks admit these exact paths and reject unrelated tests, execution
 programs, gate code, bundle attestations and product runtime changes. Execution
