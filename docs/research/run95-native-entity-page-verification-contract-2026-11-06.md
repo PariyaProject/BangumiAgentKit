@@ -94,6 +94,14 @@ host construction nor these native transport tests invoke a real model or
 Bangumi API. The host has no executable main or native-fetch default; it does
 not supply the missing claim, execution or terminal-report authority.
 
+These built-runtime tests live under `tests/integration` and run explicitly in
+the host-integration CI job after dependency installation and workspace build.
+The separate Harness job intentionally installs and builds nothing. A new
+dependency-free boundary regression checks placement and ordering. The first
+PR292 CI run exposed the original incorrect Harness-suite placement; the
+boundary regression was observed RED before moving the tests and wiring the
+correct job. No dependency-free gate was skipped or weakened.
+
 ## Remaining work before any real operation
 
 The existing generic profile registry and sequence queue support multiple
