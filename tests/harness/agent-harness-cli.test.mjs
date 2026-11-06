@@ -98,6 +98,8 @@ import {
   p01RunnerPublicKeySha256,
 } from '../../scripts/acceptance/p01-runner-receipt.mjs';
 import { makeP01Report } from './p01-report-fixture.mjs';
+import { nativePageReportFixture } from './fixtures/native-page-report.mjs';
+import { NATIVE_PAGE_SOURCE_PATHS, buildNativePageReport, writeNativePageReport } from '../../scripts/acceptance/native-entity-page-report.mjs';
 import { makeR05ProfileReportInput } from './fixtures/r05-profile-report-input.mjs';
 import { writeR05SharedPersonOverlapReport } from '../../scripts/acceptance/write-r05-shared-person-overlap-report.mjs';
 import {
@@ -179,6 +181,7 @@ const R04_RENDER_V2_PROFILE = getAgentMcpProfileById(
 );
 const C04_PROFILE = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
 const TITLE_QUERY_RENDER_PROFILE = getAgentMcpProfileById('query-render-title-agent-mcp-v1');
+const NATIVE_PAGE_MODEL_PROFILE = getAgentMcpProfileById('native-entity-page-public-model-v1');
 const RENDER_SUBJECT_CARD_V5_PROFILE = getAgentMcpProfileById(
   'render-subject-card-compact-typography-agent-mcp-v5',
 );
@@ -2395,7 +2398,9 @@ function run95P05ClaimFixture() {
 function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
   const { run, epoch } = passedCandidateFixture();
   const branch = `codex/epoch-${profile.epochId}`;
-  const reviewerId = 'gpt-6-luna-max-run95-pr42-round1';
+  const reviewerId = profile.id === NATIVE_PAGE_MODEL_PROFILE.id
+    ? '/root/native_page_product_review'
+    : 'gpt-6-luna-max-run95-pr42-round1';
   run.state = 'EPOCH_ACTIVE';
   run.profile = 'AUTONOMOUS_EVOLUTION';
   run.active_epoch_pr = 42;
@@ -2435,6 +2440,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
   const ciRunId = '38806371672';
   const ciRunUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
   const exactCiProfileIds = [
+    NATIVE_PAGE_MODEL_PROFILE.id,
     P06_PROFILE.id,
     'render-subject-card-compact-typography-agent-mcp-v3',
     C07_RENDER_COMPARISON_OFFLINE_V4_PROFILE_ID,
@@ -2724,6 +2730,78 @@ function makeA01RatingDispersionReportInputs(harnessRoot) {
 function c03ReviewReadyEnvironment(overrides = {}) {
   return agentMcpProfileReviewReadyEnvironment(C03_PROFILE, overrides);
 }
+
+test('new native Sol xhigh profile uses exact CI and one permanent claim without changing legacy execution contracts', () => {
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(NATIVE_PAGE_MODEL_PROFILE);
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const args = ['--run', '95', '--pr', '42', '--profile-id', NATIVE_PAGE_MODEL_PROFILE.id];
+  try {
+    const initial = environment.execute(['epoch:agent-mcp-profile-status', ...args]);
+    assert.equal(initial.status, 0, initial.stderr);
+    assert.equal(JSON.parse(initial.stdout).review_gate.eligible, true);
+    const result = environment.execute(['epoch:agent-mcp-profile-claim', ...args,
+      '--bundle-sha256', 'c'.repeat(64), '--reviewer-id', reviewerId, '--runner-public-key', keyPair.publicKeyBase64]);
+    assert.equal(result.status, 0, result.stderr);
+    const claim = JSON.parse(result.stdout);
+    assert.equal(claim.state, 'AGENT_MCP_PROFILE_CLAIMED');
+    assert.equal(claim.ciRunId, '38806371672');
+    assert.equal(claim.ciChecks.length, 7);
+    const duplicate = environment.execute(['epoch:agent-mcp-profile-claim', ...args,
+      '--bundle-sha256', 'c'.repeat(64), '--reviewer-id', reviewerId, '--runner-public-key', keyPair.publicKeyBase64]);
+    assert.notEqual(duplicate.status, 0);
+    const terminal = environment.execute(['epoch:agent-mcp-profile-result', ...args,
+      '--claim-id', claim.claimId, '--state', 'INCONCLUSIVE']);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    const finished = JSON.parse(environment.execute(['epoch:agent-mcp-profile-status', ...args]).stdout);
+    assert.equal(finished.state, 'INCONCLUSIVE');
+    assert.equal(finished.retry_allowed, false);
+  } finally { environment.cleanup(); }
+});
+
+test('new native signed report is accepted through actual Harness dispatch and terminal receipt binding', () => {
+  const f = nativePageReportFixture();
+  const harnessRoot = createIsolatedHarnessRoot([NATIVE_PAGE_MODEL_PROFILE.reportPath]);
+  const seeded = agentMcpProfileReviewReadyEnvironment(NATIVE_PAGE_MODEL_PROFILE);
+  seeded.environment.cleanup();
+  const { run, epoch, branch, reviewerId } = seeded;
+  const source = f.claim.sourceCandidateSha;
+  epoch.candidate_sha = source; epoch.review_pass_sha = source; epoch.ci.sha = source;
+  epoch.review_history[0].candidate_sha = source;
+  const ciRunId = '38806371672';
+  const gitObjects = Object.fromEntries([...NATIVE_PAGE_SOURCE_PATHS, NATIVE_PAGE_MODEL_PROFILE.selectionEvidencePath,
+    'docs/tool-catalog.json'].map((relative) => [`${source}:${relative}`, fs.readFileSync(path.join(root, relative)).toString('base64')]));
+  const environment = createMockEnvironment({ harnessRoot, runIssueNumber: 95, runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch), branch, featureBranch: branch, featureHeadSha: source, baseSha: sha('a'),
+    draft: false, gitObjects, checks: mandatoryChecks.map((name, index) => ({ name, status: 'COMPLETED',
+      conclusion: 'SUCCESS', detailsUrl: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}/job/${116668186145 + index}` })) });
+  const args = ['--run', '95', '--pr', '42', '--profile-id', NATIVE_PAGE_MODEL_PROFILE.id];
+  try {
+    const claimed = environment.execute(['epoch:agent-mcp-profile-claim', ...args,
+      '--bundle-sha256', 'c'.repeat(64), '--reviewer-id', reviewerId,
+      '--runner-public-key', f.claim.runnerReceiptPublicKey]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const state = environment.readState();
+    const claim = parseControlBlock(state.prBody, EPOCH_MARKER).adversarial_preflight.agent_mcp_profile_dispositions[NATIVE_PAGE_MODEL_PROFILE.id];
+    const report = buildNativePageReport({ claim, observation: f.observation, execution: f.execution, answer: f.answer },
+      f.privateKey, { root: f.root });
+    writeNativePageReport(report, harnessRoot);
+    state.dirty = `?? ${NATIVE_PAGE_MODEL_PROFILE.reportPath}`;
+    fs.writeFileSync(environment.statePath, JSON.stringify(state));
+    const digest = createHash('sha256').update(fs.readFileSync(path.join(harnessRoot, NATIVE_PAGE_MODEL_PROFILE.reportPath))).digest('hex');
+    const terminal = environment.execute(['epoch:agent-mcp-profile-result', ...args,
+      '--claim-id', claim.claimId, '--state', 'REPORT_WRITTEN', '--report-sha256', digest]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    assert.equal(JSON.parse(terminal.stdout).reportSha256, digest);
+    const observed = JSON.parse(environment.execute(['epoch:agent-mcp-profile-status', ...args]).stdout);
+    assert.equal(observed.state, 'REPORT_WRITTEN');
+    assert.equal(observed.disposition.runnerReceiptSha256, createHash('sha256').update(canonicalAgentMcpProfileJson({
+      signature: report.signature, publicKey: claim.runnerReceiptPublicKey,
+    })).digest('hex'));
+    assert.equal(observed.retry_allowed, false);
+  } finally {
+    environment.cleanup(); fs.rmSync(harnessRoot, { recursive: true, force: true }); f.close();
+  }
+});
 
 test('C03 Harness profile status, create-once claim, and terminal result are durable and fail closed', () => {
   const { environment, reviewerId } = c03ReviewReadyEnvironment();

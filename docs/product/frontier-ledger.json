@@ -4526,9 +4526,20 @@
         "docs/research/run95-native-entity-page-verification-contract-2026-11-06.md",
         "scripts/acceptance/native-entity-page-mcp.mjs",
         "tests/integration/native-entity-page-mcp.test.mjs",
-        "tests/integration/fixtures/native-entity-page-mcp-worker.mjs"
+        "tests/integration/fixtures/native-entity-page-mcp-worker.mjs",
+        "scripts/lib/native-entity-page-profile.mjs",
+        "scripts/lib/native-entity-page-gates.mjs",
+        "scripts/acceptance/native-entity-page-report.mjs",
+        "scripts/acceptance/native-entity-page-server.mjs",
+        "scripts/acceptance/run-native-entity-page-model.mjs",
+        "tests/harness/native-page-model-report.test.mjs",
+        "scripts/acceptance/native_entity_page_evidence.py",
+        "scripts/acceptance/validate-native-entity-page-report.mjs",
+        "scripts/test_native_entity_page_evidence.py",
+        "scripts/check-tool-acceptance-table.py",
+        "tests/integration/native-entity-page-server-gate.test.mjs"
       ],
-      "next_action": "Keep PARTIAL. Native bounded person/character pages, original Registry identity semantics and sealed compiled-source compatibility are delivered offline. The corrected witness binds five compiler projects/136 JavaScript modules/nine overlays,286 sources/96 protected files, unchanged12 historical inputs/five decoded PNGs/six denial modes and11 separate native page cases. It retains ONLY12 old scoped account observations, not new live execution. Shared response ownership now disposes early returns/failures and preserves primary errors when cleanup rejects or stalls; local HTTP closure and80 focused checks passed. PR290 career repair and both first/corrected native witnesses are completed source work: do not repeat them without a concrete runtime change. Next prepare genuinely new native-page public/model verification for the two changed contracts; deployed support remains unobserved. Current evidence stays public63/65, Agent84/96, account12/33 and QQ0/TIM0. Preserve65/all96 targets, old spent claims, existing raw schema/aggregate contracts and completed calendar/design/client boundaries; no private-unlock/stable-snapshot/new account credit.",
+      "next_action": "Keep PARTIAL. Native bounded person/character pages, original Registry identity semantics and sealed compiled-source compatibility are delivered offline. The corrected witness binds five compiler projects/136 JavaScript modules/nine overlays,286 sources/96 protected files, unchanged12 historical inputs/five decoded PNGs/six denial modes and11 separate native page cases. It retains ONLY12 old scoped account observations, not new live execution. Shared response ownership now disposes early returns/failures and preserves primary errors when cleanup rejects or stalls; local HTTP closure and80 focused checks passed. PR290 career repair and both first/corrected native witnesses are completed source work: do not repeat them without a concrete runtime change. A new fixed Sol xhigh launcher, signed terminal report and external CI/source/matrix admission are implemented offline. Next finish consolidated checks, exact CI and independent review before the genuinely new native-page public/model observation; deployed support remains unobserved. Current evidence stays public63/65, Agent84/96, account12/33 and QQ0/TIM0. Preserve65/all96 targets, old spent claims, existing raw schema/aggregate contracts and completed calendar/design/client boundaries; no private-unlock/stable-snapshot/new account credit.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": [],
       "prior_next_action_before_person_collection_wire_repair": "Current-source account12/33,21pending: eleven priorA2-A6 observations retain oldexecution+sealedqs55compatibility refs; A7adds ONLYget_episode_collections through fixed completed native2GET/selection1episode1/known1unknown0/rawsubjectbindingtrue/partial/0assetsPNG-writes-refresh-model-client. Selection earns no extra list credit. Allsevenclaims permanentlyspent;originalsixrawbytes/exact3jobs/Runner7e3cwd/samehealthyNapCatAstrBot/model945 preserved by independent immediate readback. Fixed operatoranchor6391caf6 pins actualbfe/47ac/9c07/current7e3Py3.14.6SQLite3.53.2/21hostfiles/285runtime;53oldfiles andoldconsumer predicates exact. Import source/Git/fixedsanitizedreceipts only,no runtime/key/provider/newaccountcalls. KeepOP009PARTIAL;21account/write/fullOAuth/client/stability/aesthetic observations remainunproven and96Goalunfinished. Matchingfutureboundedreadonlystandingauthority persists;no spentclaimreplay.",
@@ -4595,7 +4606,7 @@
         }
       },
       "native_page_verification_preparation_2026_11_06": {
-        "state": "offline-kernel-and-native-mcp-delivered-executable-claim-binding-pending",
+        "state": "offline-model-claim-report-and-matrix-binding-implemented-live-evidence-pending",
         "contract": "docs/research/run95-native-entity-page-verification-contract-2026-11-06.md",
         "kernel": "scripts/lib/native-entity-page-verification.mjs",
         "verification": "tests/integration/native-entity-page-verification.test.mjs",
@@ -4603,11 +4614,25 @@
         "new_public_requests": 0,
         "new_model_jobs": 0,
         "new_account_actions": 0,
-        "next_action": "Kernel, construction-only public MCP host and 23 synthetic checks including child stdio are complete. Next implement the genuinely new fixed two-page Sol xhigh executable, exact claim/signed-report/consumer binding and model-lifecycle diagnostics before review or any real call. Preserve completed kernels/proofs, legacy frozen profiles and old model/design cases.",
+        "next_action": "Kernel/native MCP23, model/report9, mocked Harness transactions2, cold entry1 and strict consumer/table7 checks pass without real operations. Finish consolidated checks, exact Candidate/Base/seven-check CI and comprehensive independent Sol xhigh review; only then acquire the genuinely new fixed profile once. Keep old source proofs, profiles and designs complete; public63/65 Agent84/96 account12/33 QQ0/TIM0 remain unchanged until actual admitted evidence.",
         "native_stdio_synthetic_gets": 2,
         "mcp_host": "scripts/acceptance/native-entity-page-mcp.mjs",
         "minimum_request_start_interval_ms": 1000,
-        "caller_cancellation_forwarded": true
+        "caller_cancellation_forwarded": true,
+        "model_binding_core": {
+          "state": "launcher-signed-report-terminal-recovery-and-external-matrix-admission-implemented",
+          "profile_id": "native-entity-page-public-model-v1",
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "xhigh",
+          "signed_report_lifecycle_checks": 9,
+          "mock_harness_transaction_checks": 2,
+          "legacy_profile_definitions_preserved": 55,
+          "new_claims": 0,
+          "real_model_jobs": 0,
+          "real_bangumi_requests": 0,
+          "external_consumer_and_table_checks": 7,
+          "cold_executable_gate_checks": 1
+        }
       }
     },
     {

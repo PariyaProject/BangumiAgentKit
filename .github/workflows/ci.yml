@@ -143,7 +143,7 @@ jobs:
         run: node --test tests/integration/codex-one-tool-mcp-server-load.test.mjs
 
       - name: Verify bounded native entity pages through the built MCP runtime
-        run: node --test tests/integration/native-entity-page-verification.test.mjs tests/integration/native-entity-page-mcp.test.mjs
+        run: node --test tests/integration/native-entity-page-verification.test.mjs tests/integration/native-entity-page-mcp.test.mjs tests/integration/native-entity-page-server-gate.test.mjs
 
       - name: Run Python host tests
         run: pnpm test:host

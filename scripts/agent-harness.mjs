@@ -106,6 +106,8 @@ import {
 } from './lib/agent-mcp-profile-claims.mjs';
 import { deriveP06CiRunEvidence, isValidP06CiRunEvidence } from './lib/p06-ci-run-evidence.mjs';
 import { profileRequiresExactCiRunEvidence } from './lib/agent-mcp-profile-ci-evidence.mjs';
+import { profileExecutionModelMatches, NATIVE_PAGE_PROFILE_ID } from './lib/native-entity-page-profile.mjs';
+import { validateNativePageReportFile } from './acceptance/native-entity-page-report.mjs';
 import {
   acquireG04OneShotGitHubLatch,
   claimG04OneShotAtomically,
@@ -4296,8 +4298,7 @@ function assertAgentMcpProfileReviewReadiness(
       latestReview.reviewer_id !== epoch.review_history?.[0]?.reviewer_id) ||
     (runnerReceiptPublicKey?.reviewerId !== undefined &&
       latestReview.reviewer_id !== runnerReceiptPublicKey.reviewerId) ||
-    profile.model !== 'gpt-6-luna' ||
-    profile.reasoningEffort !== 'max' ||
+    !profileExecutionModelMatches(profile) ||
     (checkRunnerReceiptKey &&
       (!/^[0-9a-f]{64}$/u.test(runnerReceiptPublicKey?.bundleSha256 ?? '') ||
         !/^[A-Za-z0-9+/]{40,100}={0,2}$/u.test(runnerReceiptPublicKey?.publicKeyBase64 ?? '') ||
@@ -5063,6 +5064,8 @@ function assertAgentMcpProfileClaimCurrent(profile, claim) {
 
 function validateAgentMcpProfileReport(profile, claim, reportPath) {
   switch (profile.id) {
+    case NATIVE_PAGE_PROFILE_ID:
+      return validateNativePageReportFile(claim, root, reportPath);
     case 'c01-rating-count-gap-v1':
       return validateC01SanitizedReportFile(claim, root, reportPath);
     case 'c02-cardcaptor-tv-movie-v1':
@@ -5472,7 +5475,9 @@ function commandEpochAgentMcpProfileResult(options) {
       ? {
           reportPath: acceptedReport.reportPath,
           reportSha256: acceptedReport.reportSha256,
-          runnerReceiptSha256: canonicalHash(acceptedReport.report.runnerReceipt),
+          runnerReceiptSha256: profile.id === NATIVE_PAGE_PROFILE_ID
+            ? acceptedReport.runnerReceiptSha256
+            : canonicalHash(acceptedReport.report.runnerReceipt),
         }
       : boundReportSha256
         ? { unacceptedReportSha256: boundReportSha256 }

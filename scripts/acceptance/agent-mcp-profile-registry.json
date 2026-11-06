@@ -1747,6 +1747,42 @@
           }
         }
       ]
+    },
+    {
+      "id": "native-entity-page-public-model-v1",
+      "frontierId": "OP-009",
+      "epochId": "run95-native-entity-page-verification-20261106",
+      "toolName": "bangumi.list_person_collections",
+      "toolNames": ["bangumi.list_person_collections", "bangumi.list_character_collections"],
+      "argumentProfile": "native-person-character-public-limit1-offset0-v1",
+      "claimLabelName": "harness-r95-native-pages-v1-claimed",
+      "reportPath": "docs/live-probes/native-entity-page-public-model-run95-v1.json",
+      "selectionEvidencePath": "docs/research/run95-native-entity-page-verification-contract-2026-11-06.md",
+      "evidenceKind": "native_entity_page_public_agent_mcp_v1",
+      "answerCheckMethod": "native-page-counts-window-unknown-no-snapshot-v1",
+      "acceptanceScope": "public-api-and-agent-mcp-native-pages-only",
+      "networkMode": "run95-native-entity-pages-public-v1",
+      "model": "gpt-6.1-sol",
+      "reasoningEffort": "xhigh",
+      "maxAnswerBytes": 4096,
+      "calls": [
+        {
+          "toolName": "bangumi.list_person_collections",
+          "arguments": {
+            "username": "sai",
+            "maxItems": 1,
+            "offset": 0
+          }
+        },
+        {
+          "toolName": "bangumi.list_character_collections",
+          "arguments": {
+            "username": "sai",
+            "maxItems": 1,
+            "offset": 0
+          }
+        }
+      ]
     }
   ]
 }
