@@ -1,0 +1,228 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "native_entity_page_public_agent_mcp_v1",
+  "profileId": "native-entity-page-public-model-v1",
+  "gate": {
+    "claimId": "profile-run-95-pr-292-81be600f9a7e-1793981997703",
+    "runNumber": 95,
+    "prNumber": 292,
+    "frontierId": "OP-009",
+    "epochId": "run95-native-entity-page-verification-20261106",
+    "profileId": "native-entity-page-public-model-v1",
+    "toolName": "bangumi.list_person_collections",
+    "argumentProfile": "native-person-character-public-limit1-offset0-v1",
+    "expectedArgumentsSha256": "69f17e0d3309b4643b251b4fa4d9044e99b38ba9855d5c8c73fcc96ba6658bba",
+    "registrySha256": "3fa62d10b3f52740a10a8731ddcdabd667adb89bd088d82fea06bd7c02a79acf",
+    "sourceCandidateSha": "81be600f9a7ef9d0feca78717cf3d61e8567a5db",
+    "baseSha": "c8313ac51442b6d78811d0b30d49fc3c80a3896e",
+    "ciSha": "81be600f9a7ef9d0feca78717cf3d61e8567a5db",
+    "ciStatus": "SUCCESS",
+    "ciRunId": "42248529628",
+    "ciChecks": [
+      {
+        "name": "harness-control",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS"
+      },
+      {
+        "name": "sqlite-default",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS"
+      },
+      {
+        "name": "host-integration",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS"
+      },
+      {
+        "name": "standalone-release-smoke",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS"
+      },
+      {
+        "name": "postgres-compat",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS"
+      },
+      {
+        "name": "provider-foundation",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS"
+      },
+      {
+        "name": "discovery-foundation",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS"
+      }
+    ],
+    "reviewerId": "/root/native_page_product_review",
+    "bundleSha256": "aca7c35e8f35cfc8e6cf18cbb9cae72cd601152971fcc1c1b8bdd8c1e20bb792",
+    "runnerReceiptPublicKey": "MCowBQYDK2VwAyEASXizdxWlMcy2j4nX04NbTHZtdi/DG7xxF/ewsXBU0Qo="
+  },
+  "source": {
+    "catalogSha256": "d92b3d6b01dc5ef8526e9fe5d2002dbd297ca146ea506547b3f395474f6b219a",
+    "descriptors": [
+      {
+        "name": "bangumi.list_person_collections",
+        "description": "读取用户收藏的一页人物，使用官方来源分页。maxItems 是原生请求的行数上限（默认 50），offset 默认 0；只请求这一页。传入 username 匿名读取该用户公开数据，省略则使用当前绑定账号身份。按来源收藏时间降序，不保证稳定快照或同时间顺序；明确 observed/returned/truncated 与下一页偏移。 career 缺失保持未知，保留已提供的原始标签。",
+        "auth": "optional",
+        "risk": "read",
+        "scopes": [],
+        "policyMode": "dynamic",
+        "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "username": {
+              "description": "Bangumi 用户名；省略则读取当前绑定账号",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "maxItems": {
+              "description": "本页原生请求最多人物数，1–50，默认 50",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "offset": {
+              "description": "原生页偏移，默认 0；不自动继续下一页",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "bangumi.list_character_collections",
+        "description": "读取用户收藏的一页角色，使用官方来源分页。maxItems 是原生请求的行数上限（默认 50），offset 默认 0；只请求这一页。传入 username 匿名读取该用户公开数据，省略则使用当前绑定账号身份。按来源收藏时间降序，不保证稳定快照或同时间顺序；明确 observed/returned/truncated 与下一页偏移。",
+        "auth": "optional",
+        "risk": "read",
+        "scopes": [],
+        "policyMode": "dynamic",
+        "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "username": {
+              "description": "Bangumi 用户名；省略则读取当前绑定账号",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "maxItems": {
+              "description": "本页原生请求最多角色数，1–50，默认 50",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "offset": {
+              "description": "原生页偏移，默认 0；不自动继续下一页",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    ],
+    "selectionSha256": "b140b9c2f8432253578f48057ec7e0e299a2e12d789d32174fb7ca4a34c7ac70",
+    "programFiles": {
+      "docs/product/native-entity-page-mcp-bundle-attestation.json": "809b8dd8fdcf217525c591ffbf9efeb4f66cdd4c6a94d6246b4088aa33aa7c5e",
+      "scripts/lib/native-entity-page-verification.mjs": "6e03197bb66e241c2549b57ed3b4badd2c873c95a7cb6b75bfdd513b740f4703",
+      "scripts/lib/native-entity-page-profile.mjs": "ee4c393b7c7fed19aab874e6c57964f6c4d3a335c49c2bddea16b1b06f8ae170",
+      "scripts/lib/native-entity-page-gates.mjs": "6961ae91093b29cff7f977760f6e1a6c1aff97630c3b814e9ea54fc334a0274f",
+      "scripts/acceptance/native-entity-page-mcp.mjs": "3455c91a57c54b99b8e59bd4958dcbc816d887f7ea5999a77e20d9addb0d70d5",
+      "scripts/acceptance/native-entity-page-server.mjs": "4fd6be64ef95fb026075afa7745ed7e30ca8f0fa31a2e225c42e562cf5baedfc",
+      "scripts/acceptance/run-native-entity-page-model.mjs": "436bb3001b4f7a4b3fa3feb1034073ac3d802484aea4e26b920a67180783cdce",
+      "scripts/acceptance/native-entity-page-report.mjs": "3be632faae73d469997cf3831dad0e53acab7d0693452e5b0c772653c1cab490",
+      "packages/bangumi-openapi/src/native-collection-page-client.ts": "e69c5dd064fb3ddfe05ffbafc29fd60fb65c09a5de487fb58e25ba15e7fa4c7d",
+      "packages/bangumi-core/src/services/user-service.ts": "546411eff22580e6ec3427607f3458dc31b54240e006b0eb642b4cccc108cd26",
+      "packages/bangumi-transport/src/http-client.ts": "13a07a31b380eef4c60dd1a8330799b1a4c2d35f2d49b3f87ca3e39d3021a4ef",
+      "packages/tools/src/definitions/read-tools.ts": "668bfe6fdfa647d12ba50058d5754b65dfe4bb1c06b59fb31ac8027bb1fad38b",
+      "packages/tools/src/registry.ts": "294fff26ba9e73a4b56874c62a98185bc60195359d03ac0a619444bef8ffbbf4",
+      "packages/tools/src/policy.ts": "11dad39227b01c3dd612c09e487d8c9cf43b7fcf89776b60dafab1f80182d19a"
+    }
+  },
+  "observation": {
+    "contract": "native-entity-page-observation-v1",
+    "phase": "COMPLETE",
+    "requestCount": 2,
+    "deniedCount": 0,
+    "results": [
+      {
+        "kind": "person",
+        "total": 59,
+        "observed": 1,
+        "returned": 1,
+        "invalidRows": 0,
+        "limit": 1,
+        "offset": 0,
+        "hasMore": true,
+        "nextOffset": 1,
+        "totalInconsistent": false,
+        "empty": null,
+        "truncated": true,
+        "stableSnapshot": false,
+        "order": "created_time_desc",
+        "publicOnly": true
+      },
+      {
+        "kind": "character",
+        "total": 45,
+        "observed": 1,
+        "returned": 1,
+        "invalidRows": 0,
+        "limit": 1,
+        "offset": 0,
+        "hasMore": true,
+        "nextOffset": 1,
+        "totalInconsistent": false,
+        "empty": null,
+        "truncated": true,
+        "stableSnapshot": false,
+        "order": "created_time_desc",
+        "publicOnly": true
+      }
+    ],
+    "maxRequests": 2,
+    "maxResponseBytes": 262144,
+    "nativeCallDeadlineMs": 10000,
+    "minimumRequestStartIntervalMs": 1000,
+    "redirectPolicy": "error",
+    "liveEvidence": false,
+    "forbiddenServiceAttempts": 0
+  },
+  "execution": {
+    "sourceMode": "native-public-fetch",
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "xhigh",
+    "modelJobs": 1,
+    "processExitCode": 0,
+    "eventStreamParsed": true,
+    "turnCompleted": true,
+    "codexMcpToolEventCount": 2,
+    "codexErrorItemCount": 0,
+    "mcpToolErrorResultCount": 0,
+    "nonMcpToolEventCount": 0,
+    "shellToolCallCount": 0,
+    "mcpServerNames": [
+      "bgk_native_entity_pages",
+      "bgk_native_entity_pages"
+    ],
+    "eventStreamSha256": "d0342c0e45f42b573cc17a708b364e39457ec1476e2b9e46b05770fba2b882f2",
+    "serverSummarySha256": "b2cf83fb31ffe9db3a3f9b3a1a03122df26a8a738215ea3dd599d4e8787429cc",
+    "exactStructuredResults": true,
+    "providerInternalHttpCount": null,
+    "invoiceHardCap": null,
+    "codexCliVersion": "0.167.0-alpha.3.2",
+    "answerSha256": "750e67690ca1451e75e17b1869dba3166fedde9f1f9d5623a9f140aa798f3bdd",
+    "answerBytes": 552,
+    "exactAnswer": true
+  },
+  "observedAt": "2026-11-06T16:21:03.426Z",
+  "signature": "UldH3ZSgzMqBwvouuCUftF+fdDdmE37SQSqnInNSRf3T2hmN2d3IdA9VzPYJYFEzvOOOCAAvXboM8AIMf3zjCg=="
+}

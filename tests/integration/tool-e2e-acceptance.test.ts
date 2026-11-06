@@ -53,6 +53,50 @@ const REAL_A2_REPORT_PATH =
 const CATALOG_TEXT = readFileSync(join(ROOT, 'docs/tool-catalog.json'), 'utf8');
 const TABLE = readFileSync(join(ROOT, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
 const FRONTIER = JSON.parse(readFileSync(join(ROOT, 'docs/product/frontier-ledger.json'), 'utf8'));
+const NATIVE_PAGE_REPORT_PATH = 'docs/live-probes/native-entity-page-public-model-run95-v1.json';
+const NATIVE_PAGE_TOOLS = ['bangumi.list_person_collections', 'bangumi.list_character_collections'];
+
+// Offline oracle for this immutable observed fixture. The generator and table
+// checker additionally require actual terminal labels, original PASS and CI.
+// Integration jobs need no GitHub credentials and never invoke a live workload.
+function nativePageOfflineReportMatches(report: unknown): boolean {
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      `
+import fs from 'node:fs';
+import {createHash} from 'node:crypto';
+import {NATIVE_PAGE_PROFILE as P} from './scripts/lib/native-entity-page-profile.mjs';
+import {validateNativePageReport} from './scripts/acceptance/native-entity-page-report.mjs';
+try {
+  const r=JSON.parse(fs.readFileSync(0,'utf8'));
+  const claim={...r.gate,state:'REPORT_WRITTEN',retryAllowed:false,
+    expectedArguments:P.calls.map(c=>c.arguments),
+    runnerReceiptPublicKeySha256:createHash('sha256').update(Buffer.from(r.gate.runnerReceiptPublicKey,'base64')).digest('hex')};
+  const value=validateNativePageReport(r,claim);
+  process.stdout.write(JSON.stringify(value.passed===true));
+} catch { process.stdout.write('false'); }
+`,
+    ],
+    { cwd: ROOT, input: JSON.stringify(report), encoding: 'utf8', timeout: 5000, maxBuffer: 65536 },
+  );
+  return result.status === 0 && result.stdout === 'true';
+}
+
+const CURRENT_NATIVE_PAGE_REPORT = (() => {
+  const target = join(ROOT, NATIVE_PAGE_REPORT_PATH);
+  if (!existsSync(target)) return null;
+  const bytes = readFileSync(target);
+  if (
+    createHash('sha256').update(bytes).digest('hex') !==
+    'b89f77e5f4941a717b6f8826eff4dcb6a6650abd884cc47d6b4c07e8ba06fa74'
+  )
+    return null;
+  const report = JSON.parse(bytes.toString('utf8'));
+  return nativePageOfflineReportMatches(report) ? report : null;
+})();
 const P06_AGENT_MCP_REPORT_PATH =
   'docs/live-probes/p06-render-person-profile-agent-mcp-v3-run95.json';
 const RENDER_SUBJECT_CARD_V5_REPORT_PATH =
@@ -1161,6 +1205,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       ...(CURRENT_R04_RENDER_V2_REPORT ? ['bangumi.render_series_watch_order'] : []),
       ...(CURRENT_P03_V4_AGENT_MCP_REPORT ? ['bangumi.get_person_profile'] : []),
       ...(CURRENT_RENDER_SUBJECT_CARD_V5_REPORT ? ['bangumi.render_subject_card'] : []),
+      ...(CURRENT_NATIVE_PAGE_REPORT ? NATIVE_PAGE_TOOLS : []),
     ];
 
     expect(rows.size).toBe(96);
@@ -1193,8 +1238,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         ...(CURRENT_R04_RENDER_V2_REPORT ? [] : ['bangumi.render_series_watch_order']),
         'bangumi.auth_start',
         'bangumi.manage_index',
-        'bangumi.list_character_collections',
-        'bangumi.list_person_collections',
+        ...(CURRENT_NATIVE_PAGE_REPORT ? [] : NATIVE_PAGE_TOOLS),
         ...(CURRENT_RENDER_SUBJECT_CARD_V5_REPORT ? [] : ['bangumi.render_subject_card']),
         ...(currentG20Evidence ? [] : ['bangumi.get_subject_relations']),
       ].sort(),
@@ -1248,6 +1292,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject_stats_intelligence',
         'bangumi.get_user',
         'bangumi.list_collections',
+        ...(CURRENT_NATIVE_PAGE_REPORT ? NATIVE_PAGE_TOOLS : []),
         'bangumi.list_operations',
         'bangumi.list_revisions',
         'bangumi.manage_character_collection',
@@ -1620,7 +1665,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     }
   });
 
-  it('keeps pre-pagination list reports historical until the new native contracts are verified', () => {
+  it('keeps pre-pagination reports historical and credits only the separate native signed observation', () => {
     for (const name of ['bangumi.list_person_collections', 'bangumi.list_character_collections']) {
       const historical = FULL_PUBLIC_QA_EVIDENCE.filter(
         (report: any) => report.scenarios?.[0]?.id === name,
@@ -1631,9 +1676,35 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(toolContractMatchesCurrent(historical[0], name)).toBe(false);
       expect(CURRENT_FULL_PUBLIC_QA_EVIDENCE).not.toContain(historical[0]);
       const cells = rowsByTool().get(name);
-      expect(statusMark(cells?.[6])).toBe('⬜');
+      expect(statusMark(cells?.[6])).toBe(CURRENT_NATIVE_PAGE_REPORT ? '◐' : '⬜');
       expect(statusMark(cells?.[8])).toBe('⬜');
-      expect(statusMark(cells?.[9])).toBe('⬜');
+      expect(statusMark(cells?.[9])).toBe(CURRENT_NATIVE_PAGE_REPORT ? '✅' : '⬜');
+      if (CURRENT_NATIVE_PAGE_REPORT) {
+        expect(hasExactMatrixReportReference(cells?.[6] ?? '', NATIVE_PAGE_REPORT_PATH)).toBe(true);
+        expect(hasExactMatrixReportReference(cells?.[9] ?? '', NATIVE_PAGE_REPORT_PATH)).toBe(true);
+      }
+    }
+  });
+
+  it('rejects an altered native signature or semantic claim in the offline evidence oracle', () => {
+    expect(CURRENT_NATIVE_PAGE_REPORT).not.toBeNull();
+    for (const mutate of [
+      (r: any) => {
+        r.signature = 'A'.repeat(88);
+      },
+      (r: any) => {
+        r.observation.requestCount = 3;
+      },
+      (r: any) => {
+        r.observation.results[0].stableSnapshot = true;
+      },
+      (r: any) => {
+        r.execution.model = 'gpt-6-luna';
+      },
+    ]) {
+      const changed = structuredClone(CURRENT_NATIVE_PAGE_REPORT);
+      mutate(changed);
+      expect(nativePageOfflineReportMatches(changed)).toBe(false);
     }
   });
 

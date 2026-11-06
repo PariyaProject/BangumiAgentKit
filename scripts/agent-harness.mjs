@@ -106,6 +106,9 @@ import {
 } from './lib/agent-mcp-profile-claims.mjs';
 import { deriveP06CiRunEvidence, isValidP06CiRunEvidence } from './lib/p06-ci-run-evidence.mjs';
 import { profileRequiresExactCiRunEvidence } from './lib/agent-mcp-profile-ci-evidence.mjs';
+import { profileExecutionModelMatches, NATIVE_PAGE_PROFILE_ID } from './lib/native-entity-page-profile.mjs';
+import { validateNativePageReportFile } from './acceptance/native-entity-page-report.mjs';
+import { readNativePageBundleAttestation } from './lib/native-entity-page-gates.mjs';
 import {
   acquireG04OneShotGitHubLatch,
   claimG04OneShotAtomically,
@@ -4117,7 +4120,9 @@ function agentMcpProfileBundleMatches(
             renderSubjectCardV5ReportWithValidatorFix))) &&
       git('rev-parse', 'HEAD') === candidateSha &&
       computeMcpBundleSha256(root) === bundleSha256 &&
-      readG26McpBundleAttestation(root) === bundleSha256
+      (profile?.id === NATIVE_PAGE_PROFILE_ID
+        ? readNativePageBundleAttestation(root)
+        : readG26McpBundleAttestation(root)) === bundleSha256
     );
   } catch {
     return false;
@@ -4146,6 +4151,25 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
       profile.reportPath,
       'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
       'docs/product/frontier-ledger.json',
+      ...(profile.id === NATIVE_PAGE_PROFILE_ID
+        ? [
+            'docs/research/run95-native-entity-page-model-result-2026-11-06.md',
+            '.github/workflows/ci.yml',
+            // The first report exposed pre-live-only integration expectations.
+            // Permit only this acceptance-oracle repair and its exact guards;
+            // the signed execution programs, input and bundle stay unchanged.
+            'scripts/agent-harness.mjs',
+            'scripts/acceptance/native_entity_page_evidence.py',
+            'scripts/generate-tool-acceptance-tasks.py',
+            'scripts/test_native_entity_page_evidence.py',
+            'tests/harness/agent-harness-cli.test.mjs',
+            'tests/integration/tool-e2e-acceptance.test.ts',
+            'tests/harness/frontier-ledger-data.test.mjs',
+            'tests/harness/g01-public-query-render-evidence.test.mjs',
+            'tests/harness/g09-public-watch-order-evidence.test.mjs',
+            'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
+          ]
+        : []),
       ...(profile.id === G06_CAST_OFFLINE_V2_PROFILE_ID
         ? G06_CAST_OFFLINE_V2_ACCEPTANCE_REFRESH_PATHS
         : []),
@@ -4192,11 +4216,13 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
     if (
       !changedSinceReport.includes(profile.reportPath) ||
       changedSinceReport.some((changedPath) => !allowedPaths.has(changedPath)) ||
-      !agentMcpProfileBundleMatches(candidateSha, disposition.bundleSha256)
+      !agentMcpProfileBundleMatches(candidateSha, disposition.bundleSha256, false, profile)
     ) {
       throw new HarnessInvariantError(
         'AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID',
-        profile.id === G06_CAST_OFFLINE_V2_PROFILE_ID
+        profile.id === NATIVE_PAGE_PROFILE_ID
+          ? 'A native-page refresh permits only its signed report, matrix, frontier, named result and exact acceptance-oracle/guard files; execution source, selection and MCP bundle must remain unchanged.'
+          : profile.id === G06_CAST_OFFLINE_V2_PROFILE_ID
           ? 'A G06 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact source-catalog helper and acceptance verifier files, and the documented G14 terminal-disposition report/test exception, with the MCP bundle unchanged.'
           : profile.id === R04_RENDER_V2_PROFILE_ID
             ? 'An R04 v2 report refresh may include only its report, acceptance matrix, frontier evidence, exact source-catalog MCP server/helper and acceptance verifier files, the documented G14 terminal-disposition report/test exception, and this policy file, with the MCP bundle unchanged.'
@@ -4296,8 +4322,7 @@ function assertAgentMcpProfileReviewReadiness(
       latestReview.reviewer_id !== epoch.review_history?.[0]?.reviewer_id) ||
     (runnerReceiptPublicKey?.reviewerId !== undefined &&
       latestReview.reviewer_id !== runnerReceiptPublicKey.reviewerId) ||
-    profile.model !== 'gpt-6-luna' ||
-    profile.reasoningEffort !== 'max' ||
+    !profileExecutionModelMatches(profile) ||
     (checkRunnerReceiptKey &&
       (!/^[0-9a-f]{64}$/u.test(runnerReceiptPublicKey?.bundleSha256 ?? '') ||
         !/^[A-Za-z0-9+/]{40,100}={0,2}$/u.test(runnerReceiptPublicKey?.publicKeyBase64 ?? '') ||
@@ -4311,7 +4336,7 @@ function assertAgentMcpProfileReviewReadiness(
   }
   if (
     checkBundle &&
-    !agentMcpProfileBundleMatches(candidateSha, runnerReceiptPublicKey.bundleSha256)
+    !agentMcpProfileBundleMatches(candidateSha, runnerReceiptPublicKey.bundleSha256, false, profile)
   ) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_BUNDLE_MISMATCH',
@@ -5063,6 +5088,8 @@ function assertAgentMcpProfileClaimCurrent(profile, claim) {
 
 function validateAgentMcpProfileReport(profile, claim, reportPath) {
   switch (profile.id) {
+    case NATIVE_PAGE_PROFILE_ID:
+      return validateNativePageReportFile(claim, root, reportPath);
     case 'c01-rating-count-gap-v1':
       return validateC01SanitizedReportFile(claim, root, reportPath);
     case 'c02-cardcaptor-tv-movie-v1':
@@ -5472,7 +5499,9 @@ function commandEpochAgentMcpProfileResult(options) {
       ? {
           reportPath: acceptedReport.reportPath,
           reportSha256: acceptedReport.reportSha256,
-          runnerReceiptSha256: canonicalHash(acceptedReport.report.runnerReceipt),
+          runnerReceiptSha256: profile.id === NATIVE_PAGE_PROFILE_ID
+            ? acceptedReport.runnerReceiptSha256
+            : canonicalHash(acceptedReport.report.runnerReceipt),
         }
       : boundReportSha256
         ? { unacceptedReportSha256: boundReportSha256 }

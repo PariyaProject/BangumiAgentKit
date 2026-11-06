@@ -66,8 +66,9 @@ test('G01 direct-public query renderer evidence stays separate from its spent ca
     .filter((line) => line.split('|')[7]?.includes('◐')).length;
   assert.ok(publicEvidenceSummary);
   assert.equal(Number(publicEvidenceSummary[1]), publicEvidenceRows);
-  // The target stays 65; the two changed native-list contracts need fresh evidence.
-  assert.equal(Number(publicEvidenceSummary[1]), 63);
-  assert.match(acceptance, /匿名可用的公开 API 工具有逐项实测：63\/65；待补 2/u);
+  // Other tools can gain scoped evidence without changing this historical proof.
+  const coverage = acceptance.match(/匿名可用的公开 API 工具有逐项实测：(\d+)\/65；待补 (\d+)/u);
+  assert.ok(coverage);
+  assert.equal(Number(coverage[1]) + Number(coverage[2]), 65);
   assert.match(acceptance, /Agent→MCP 模型调用证据：\d+\/96/);
 });
