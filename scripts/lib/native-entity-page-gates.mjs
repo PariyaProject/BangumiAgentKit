@@ -1,9 +1,20 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { NATIVE_PAGE_PROFILE as P } from './native-entity-page-profile.mjs';
-import { sanitizeGitRepositoryEnvironment, gitRepositoryText, computeMcpBundleSha256, readG26McpBundleAttestation } from './g26-mcp-bundle.mjs';
+import { sanitizeGitRepositoryEnvironment, gitRepositoryText, computeMcpBundleSha256 } from './g26-mcp-bundle.mjs';
 import { deriveP06CiRunEvidence } from './p06-ci-run-evidence.mjs';
 import { NATIVE_PAGE_ROOT as ROOT, validNativePageClaim } from '../acceptance/native-entity-page-report.mjs';
+
+export function readNativePageBundleAttestation(root = ROOT) {
+  const value = JSON.parse(readFileSync(path.join(root, 'docs/product/native-entity-page-mcp-bundle-attestation.json'), 'utf8'));
+  if (Object.keys(value).sort().join(',') !== 'bundleSha256,kind,schemaVersion' || value.schemaVersion !== 1 ||
+    value.kind !== 'native-entity-page-mcp-runtime-bundle-attestation-v1' ||
+    typeof value.bundleSha256 !== 'string' || !/^[0-9a-f]{64}$/u.test(value.bundleSha256))
+    throw new Error('NATIVE_PAGE_BUNDLE_ATTESTATION_INVALID');
+  return value.bundleSha256;
+}
 
 export function nativePageEnvironment(source = process.env, control = false) {
   const result = sanitizeGitRepositoryEnvironment(source);
@@ -55,7 +66,7 @@ export function assertNativePageReviewGate(status, { sourceRevision, bundleSha25
   if (git('rev-parse', 'HEAD') !== sourceRevision || git('branch', '--show-current') !== epoch.branch ||
     git('rev-parse', 'origin/master') !== epoch.base_sha ||
     !(dirty === '' || (reportOnly && dirty === `?? ${P.reportPath}`)) ||
-    computeMcpBundleSha256(root) !== bundleSha256 || readG26McpBundleAttestation(root) !== bundleSha256)
+    computeMcpBundleSha256(root) !== bundleSha256 || readNativePageBundleAttestation(root) !== bundleSha256)
     throw new Error('NATIVE_PAGE_SOURCE_GATE_FAILED');
   const live = JSON.parse(execFileSync('gh', ['pr', 'view', String(view.number), '--json', 'state,isDraft,headRefName,headRefOid,baseRefName,baseRefOid,statusCheckRollup'], {
     cwd: root, env: nativePageEnvironment(process.env, true), timeout: 30000, maxBuffer: 256 * 1024,

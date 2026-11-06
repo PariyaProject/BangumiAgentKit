@@ -37,6 +37,7 @@ const REPORT_FIELDS = ['schemaVersion', 'evidenceKind', 'profileId', 'gate', 'so
 // Freeze execution programs and the native contract they exercise. An unrelated
 // catalog entry may change; these tool descriptors and these source bytes may not.
 export const NATIVE_PAGE_SOURCE_PATHS = Object.freeze([
+  'docs/product/native-entity-page-mcp-bundle-attestation.json',
   'scripts/lib/native-entity-page-verification.mjs',
   'scripts/lib/native-entity-page-profile.mjs',
   'scripts/lib/native-entity-page-gates.mjs',

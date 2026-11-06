@@ -9,7 +9,7 @@ import { canonicalAgentMcpProfileJson as canonical, listAgentMcpProfiles, getAge
   agentMcpProfileTerminalLabelDescription } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
 import { profileRequiresExactCiRunEvidence } from '../../scripts/lib/agent-mcp-profile-ci-evidence.mjs';
 import { validateNativePageReport, validateNativePageReportFile, writeNativePageReport } from '../../scripts/acceptance/native-entity-page-report.mjs';
-import { nativePageEnvironment, nativePageHarness, assertNativePageClaimReadback } from '../../scripts/lib/native-entity-page-gates.mjs';
+import { nativePageEnvironment, nativePageHarness, assertNativePageClaimReadback, readNativePageBundleAttestation } from '../../scripts/lib/native-entity-page-gates.mjs';
 import { buildNativePageCodexArgs, inspectNativePageModelResult, runNativePageProcess,
   reconcileNativePageResult } from '../../scripts/acceptance/run-native-entity-page-model.mjs';
 import { nativePageReportFixture } from './fixtures/native-page-report.mjs';
@@ -26,6 +26,19 @@ test('new closed native profile permits only Sol xhigh while preserving every le
     { calls: P.calls.slice(0, 1) }, { maxAnswerBytes: 65536 }, { networkMode: 'unbounded' }]) {
     assert.equal(profileExecutionModelMatches({ ...P, ...change }), false);
   }
+});
+
+test('new native bundle attestation is separate from the immutable historical workload attestation', () => {
+  const f = nativePageReportFixture();
+  try {
+    const target = path.join(f.root, 'docs/product/native-entity-page-mcp-bundle-attestation.json');
+    const value = JSON.parse(fs.readFileSync(target, 'utf8'));
+    assert.equal(readNativePageBundleAttestation(f.root), value.bundleSha256);
+    for (const change of [{ kind: 'g26-mcp-runtime-bundle-attestation-v1' }, { bundleSha256: 'invalid' }, { extra: true }]) {
+      fs.writeFileSync(target, JSON.stringify({ ...value, ...change }));
+      assert.throws(() => readNativePageBundleAttestation(f.root));
+    }
+  } finally { f.close(); }
 });
 
 test('new signed native report binds the exact key, source files, catalog, selection, CI and two scoped summaries', () => {

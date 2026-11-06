@@ -5,6 +5,13 @@ import path from 'node:path';
 import test from 'node:test';
 import { main, readNativePageServerGate } from '../../scripts/acceptance/native-entity-page-server.mjs';
 import { nativePageReportFixture } from '../harness/fixtures/native-page-report.mjs';
+import { computeMcpBundleSha256 } from '../../scripts/lib/g26-mcp-bundle.mjs';
+import { readNativePageBundleAttestation } from '../../scripts/lib/native-entity-page-gates.mjs';
+import { NATIVE_PAGE_ROOT } from '../../scripts/acceptance/native-entity-page-report.mjs';
+
+test('the exact native-page attestation matches the current built workspace before any one-shot', () => {
+  assert.equal(readNativePageBundleAttestation(), computeMcpBundleSha256(NATIVE_PAGE_ROOT));
+});
 
 test('native executable imports without authority and rejects unsafe gate files before any control/model/source request', async () => {
   const fixture = nativePageReportFixture();

@@ -149,6 +149,14 @@ independent deadline. Raw stderr is discarded, structured diagnostics retain
 bounded stages/counters, and the ephemeral work directory is cleaned. This
 is not a provider-internal request, inference-runtime or invoice hard cap.
 
+The compiled fingerprint is in the new dedicated
+`docs/product/native-entity-page-mcp-bundle-attestation.json`, included in the
+signed source context. The historical G26 attestation remains unchanged.
+Reusing it was rejected in preflight because its historical fingerprint
+differs from the current built runtime. The new fingerprint is checked against
+a forced workspace build locally and in the built-runtime CI job, before any
+real claim can be consumed.
+
 The report signs a closed envelope with the claim's Ed25519 key and binds its
 source/catalog/selection/program hashes, exact tool descriptors, CI and
 reviewer, sanitized native page observations and parsed model-event/answer
@@ -164,7 +172,7 @@ report when an acknowledgement is unknown, honors a competing terminal latch,
 and permits a stale claim to become inconclusive only after that exact stale
 classification. A lost acknowledgement cannot create another query.
 
-Nine focused signed-report/model-lifecycle tests plus two actual mocked
+Ten focused signed-report/model-lifecycle tests plus two actual mocked
 Harness claim/terminal transactions pass, including signed-report dispatch
 through the real Harness implementation. These include valid signatures over
 invalid semantics, extra fields, source changes, wrong models/keys/CI, unknown
@@ -201,7 +209,8 @@ the actual Node verifier with synthetic external control, including later
 unrelated work, invalid terminal/CI/review metadata and both accepted columns.
 The table-checker regression was observed failing before its missing adapter
 was added. Account, authentication-denial, QQ and TIM columns reject the same
-report. A built-runtime cold entry test checks import safety, unsafe gate
+report. Built-runtime checks prove the exact new bundle fingerprint and cold
+entry import safety, unsafe gate
 paths/modes/symlinks and refusal of mocked control before any source request.
 
 Absent an admitted real report, counters remain public63/65, Agent84/96,
