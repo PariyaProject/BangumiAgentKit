@@ -149,7 +149,7 @@ def main():
     source, revision = source_snapshot(), git('rev-parse', 'HEAD')
     inputs, references, protected = prior._historical(ROOT)
     for file in prior.PROGRAMS | {'scripts/acceptance/person_account_compatibility.py', prior.REFERENCE, prior.BUNDLE + '/native-proof.json'}:
-        protected[file] = digest(receipts._read_regular(ROOT, file))
+        protected[file] = digest(prior._read(ROOT, file))
     if not qs55._fixed_files(ROOT, protected):
         raise ValueError('ECP_HISTORICAL_BYTES_DRIFT')
     programs = {'scripts/acceptance/' + name: digest(receipts._read_regular(ROOT, 'scripts/acceptance/' + name)) for name in PROGRAMS}
