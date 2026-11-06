@@ -26,7 +26,7 @@ class EntityPageAccountCompatibilityTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.bundle = self.root / evidence.BUNDLE
         shutil.copytree(ROOT / evidence.BUNDLE, self.bundle)
-        self.proof = json.loads((self.bundle / 'native-proof.json').read_bytes())
+        self.proof = json.loads((self.bundle / evidence.PROOF_FILE).read_bytes())
         self.sources = self.proof['source']['sources']
         fixed = {**self.proof['protectedFiles'], **self.proof['producerFiles']}
         for name in fixed:
@@ -143,6 +143,10 @@ class EntityPageAccountCompatibilityTests(unittest.TestCase):
             lambda p: p['page']['native']['results'][5].update(errorCode='NOT_FOUND'),
             lambda p: p['page']['provider'].update(offeredBytes=262144),
             lambda p: p['page']['provider'].update(bodyCancelled=False),
+            lambda p: p['page']['provider'].update(headerBodyCancelled=0),
+            lambda p: p['page']['provider'].update(rejectingCancelAttempts=0),
+            lambda p: p['page']['provider']['abortedSteps'].pop(),
+            lambda p: p.update(firstCandidateWitnessPreserved=False),
             lambda p: p['page']['provider'].update(assetAttempts=1),
             lambda p: p['page']['provider'].update(renderCalls=1),
             lambda p: p['page']['provider']['calls'].pop(),
@@ -156,11 +160,12 @@ class EntityPageAccountCompatibilityTests(unittest.TestCase):
         ))
 
     def test_every_manifest_native_historical_and_producer_byte_stays_fixed(self):
-        for name in (evidence.REFERENCE, evidence.BUNDLE + '/native-proof.json', evidence.a7.REFERENCE,
+        for name in (evidence.REFERENCE, evidence.BUNDLE + '/' + evidence.PROOF_FILE, evidence.a7.REFERENCE,
                 'scripts/acceptance/calendar_account_compatibility.py',
                 'scripts/acceptance/calendar-account-closed-driver.mjs',
                 'scripts/acceptance/person-account-core-guard.mjs',
-                'scripts/acceptance/entity-page-source-guard.mjs', evidence.prior.REFERENCE,
+                'scripts/acceptance/entity-page-source-guard.mjs', evidence.BUNDLE + '/import.json',
+                evidence.BUNDLE + '/native-proof.json', evidence.prior.REFERENCE,
                 evidence.prior.BUNDLE + '/native-proof.json'):
             path = self.root / name; raw = path.read_bytes(); path.write_bytes(raw + b'\n')
             self.assertEqual(self.result(), {}); path.write_bytes(raw)

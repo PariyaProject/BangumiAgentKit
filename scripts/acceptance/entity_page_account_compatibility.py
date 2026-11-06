@@ -20,36 +20,40 @@ from . import real_account_a7_evidence as a7
 from . import qs55_account_compatibility as qs55
 
 BUNDLE = 'docs/live-probes/run95-entity-page-account-source-compatibility-2026-11-06'
-REFERENCE = BUNDLE + '/import.json'
-IMPORT_SHA256 = '2343dc13c760429a77e264b1e9971a39aca2c40f2abf5097c80d1c191ce64fbe'
-SOURCE_REVISION = 'b43d276c6568c4e30d45ad5531bbe04fb6666519'
+REFERENCE = BUNDLE + '/import-corrected.json'
+PROOF_FILE = 'native-proof-corrected.json'
+IMPORT_SHA256 = '11b4199ba3806b205b9e96ced944f19f60b947bee58fb39e2813ef0be99b0871'
+SOURCE_REVISION = '855ed639905969a5a4369a3a9aec912f45658085'
 PARENT = calendar.PARENT
 TOOLS = calendar.TOOLS
 ADDED_SOURCE = 'packages/bangumi-openapi/src/native-collection-page-client.ts'
 CHANGED_SOURCES = prior.CHANGED_SOURCES | frozenset((
     'packages/bangumi-openapi/src/index.ts', 'packages/bangumi-openapi/src/generated/index.ts',
-    ADDED_SOURCE, 'packages/tools/src/definitions/read-tools.ts', 'docs/tool-catalog.json'))
+    ADDED_SOURCE, 'packages/tools/src/definitions/read-tools.ts',
+    'packages/bangumi-transport/src/http-client.ts', 'docs/tool-catalog.json'))
 PROGRAMS = calendar.PROGRAMS | frozenset('scripts/acceptance/' + name for name in (
     'prepare-entity-page-compiled.mjs', 'entity-page-source-guard.mjs',
     'entity-page-controller.mjs', 'entity-page-fixture.mjs',
     'entity-page-driver.mjs', 'run-entity-page-closed-proof.py'))
 NATIVE = {
     'core': prior.NATIVE_CORE,
+    'transport': '/opt/bangumi/node_modules/.pnpm/@bangumi-agent-kit+bangumi-transport@file+packages+bangumi-transport/node_modules/@bangumi-agent-kit/bangumi-transport/dist/',
     'renderer': calendar.NATIVE_RENDERER,
     'openapi': '/opt/bangumi/node_modules/.pnpm/@bangumi-agent-kit+bangumi-openapi@file+packages+bangumi-openapi/node_modules/@bangumi-agent-kit/bangumi-openapi/dist/',
     'tools': '/opt/bangumi/node_modules/.pnpm/@bangumi-agent-kit+tools@file+packages+tools_@types+better-sqlite3@7.6.13_@types+node@22.20.1_@types+pg@8.20.4/node_modules/@bangumi-agent-kit/tools/dist/',
 }
 ADDED_JS = ('openapi', 'native-collection-page-client.js')
 CHANGED_JS = prior.CHANGED_JS | frozenset((('openapi', 'index.js'), ('openapi', 'generated/index.js'),
-    ADDED_JS, ('tools', 'definitions/read-tools.js')))
+    ADDED_JS, ('tools', 'definitions/read-tools.js'), ('transport', 'http-client.js')))
 PAGE_CASES = ('bounded-person', 'observed-followup', 'hydration-gap', 'empty-collection', 'empty-page',
-    'wrong-echo', 'unavailable', 'too-many-rows', 'oversized-body')
+    'wrong-echo', 'unavailable', 'too-many-rows', 'oversized-body', 'declared-oversized-body', 'rejecting-stream-cancel')
 PAGE_TOOLS = ('bangumi.list_person_collections', 'bangumi.get_person_collection',
     'bangumi.list_character_collections', 'bangumi.list_person_collections', 'bangumi.list_person_collections',
     'bangumi.list_person_collections', 'bangumi.list_character_collections',
-    'bangumi.list_person_collections', 'bangumi.list_person_collections')
+    'bangumi.list_person_collections', 'bangumi.list_person_collections',
+    'bangumi.list_person_collections', 'bangumi.list_character_collections')
 PAGE_INPUTS = ({'maxItems': 1, 'offset': 0}, {'personId': 20}, {'maxItems': 2, 'offset': 1},
-    {'maxItems': 1, 'offset': 9}, {'maxItems': 1, 'offset': 1}, *({'maxItems': 1, 'offset': 0},) * 4)
+    {'maxItems': 1, 'offset': 9}, {'maxItems': 1, 'offset': 1}, *({'maxItems': 1, 'offset': 0},) * 6)
 _same = calendar._same_json
 _integer = calendar._integer
 _read = calendar._read
@@ -61,20 +65,24 @@ def _historical(root):
     for name in prior.PROGRAMS | {'scripts/acceptance/person_account_compatibility.py',
                                  prior.REFERENCE, prior.BUNDLE + '/native-proof.json'}:
         protected[name] = hashlib.sha256(_read(root, name)).hexdigest()
-    if len(protected) != 94 or not _fixed(root, protected):
+    protected.update({
+        BUNDLE + '/import.json': '2343dc13c760429a77e264b1e9971a39aca2c40f2abf5097c80d1c191ce64fbe',
+        BUNDLE + '/native-proof.json': 'c67f1d71e3d43ff83ab050349f3fcec23bfbda5a9e0f839a763244bccab47fa6',
+    })
+    if len(protected) != 96 or not _fixed(root, protected):
         raise ValueError('Historical producer bytes changed')
     return inputs, references, protected
 
 
 def _projection(proof):
     p = proof['projection']
-    if (p['schema'] != 'entity-page-compiled-projection/v1'
+    if (p['schema'] != 'entity-page-compiled-projection/v2'
             or p['sourceRevision'] != SOURCE_REVISION or p['baselineRevision'] != a7.SOURCE_REVISION
             or p['typescript'] != '5.9.3' or any(p[k] is not True for k in (
                 'parentProjectionExact', 'currentDistExact', 'allOtherEmittedJavaScriptUnchanged', 'newParentModuleAbsent'))
             or set(p['sourceFiles']) != CHANGED_SOURCES - {'docs/tool-catalog.json'}
             or any(sha != proof['source']['sources'][name]['sha256'] for name, sha in p['sourceFiles'].items())
-            or len(p['emittedFiles']) != 131 or len(p['files']) != 8):
+            or len(p['emittedFiles']) != 136 or len(p['files']) != 9):
         raise ValueError('Incomplete full compiler projection')
     emitted, changed = {}, {}
     for f in p['emittedFiles']:
@@ -120,8 +128,8 @@ def _network(trace, role, loaded):
 
 
 def _source_trace(trace, role, mode, modules, children):
-    loaded = modules['all'] if role == 'server' else modules['openapi'] if role == 'controller' else {}
-    return (trace['schema'] == 'entity-page-source-guard/v1' and trace['role'] == role
+    loaded = modules['all'] if role == 'server' else modules['openapi'] | modules['transport'] if role == 'controller' else {}
+    return (trace['schema'] == 'entity-page-source-guard/v2' and trace['role'] == role
         and trace['mode'] == mode and trace['finalized'] is True
         and trace['verifiedFiles'] == modules['all'] and trace['loadedRuntimeFiles'] == loaded
         and _integer(trace['nodeChildrenPreloaded'], children))
@@ -185,7 +193,7 @@ def _closed(proof, inputs, modules):
 
 def _pages(proof, modules):
     page = proof['page']; native = page['native']; provider = page['provider']
-    if (native['schema'] != 'entity-page-compiled-mcp/v1'
+    if (native['schema'] != 'entity-page-compiled-mcp/v2'
             or any(native[k] is not True for k in ('passed', 'fakeStorage', 'mcpClosed', 'workspaceRemoved'))
             or 'failureStage' in native
             or not all(_integer(native[k], 0) for k in ('realAccountActions', 'modelCalls', 'clientMessages'))
@@ -197,13 +205,15 @@ def _pages(proof, modules):
                    for role, children in (('controller', 1), ('server', 0)))
             or not _network(page['networkTraces']['controller'], 'controller', {})
             or not _network(page['networkTraces']['server'], 'server', modules['renderer'])
-            or not _integer(page['networkTraces']['server']['fixtureFetchCalls'], 9)
-            or provider['schema'] != 'entity-page-provider/v1'
+            or not _integer(page['networkTraces']['server']['fixtureFetchCalls'], 11)
+            or provider['schema'] != 'entity-page-provider/v2'
             or not all(_integer(provider[k], 0) for k in ('denied', 'assetAttempts', 'renderCalls'))
-            or not _integer(provider['offeredBytes'], 262145) or provider['bodyCancelled'] is not True):
+            or not _integer(provider['offeredBytes'], 262145) or provider['bodyCancelled'] is not True
+            or not _integer(provider['headerBodyCancelled'], 1) or not _integer(provider['rejectingCancelAttempts'], 1)
+            or not _same(provider['abortedSteps'], list(range(11)))):
         return False
     expected = [{'kind': 'single', 'step': i} if i == 1 else
-        {'kind': 'characters' if i in (2, 6) else 'persons', 'step': i,
+        {'kind': 'characters' if i in (2, 6, 10) else 'persons', 'step': i,
          'limit': str(data['maxItems']), 'offset': str(data['offset'])} for i, data in enumerate(PAGE_INPUTS)]
     if not _same(provider['calls'], expected):
         return False
@@ -223,19 +233,19 @@ def _pages(proof, modules):
         if not _same(results[i]['page'], dict(total=total, limit=limit, offset=offset, ids=ids,
                 hasMore=more, nextOffset=next_offset, empty=empty, stableSnapshot=False, invalidRows=0)):
             return False
-    return [r['errorCode'] for r in results[5:]] == ['PARSER_ERROR', 'UPSTREAM_UNAVAILABLE', 'PARSER_ERROR', 'RESPONSE_TOO_LARGE']
+    return [r['errorCode'] for r in results[5:]] == ['PARSER_ERROR', 'UPSTREAM_UNAVAILABLE', 'PARSER_ERROR', 'RESPONSE_TOO_LARGE', 'RESPONSE_TOO_LARGE', 'RESPONSE_TOO_LARGE']
 
 
 def _proof_matches(proof, inputs):
     try:
-        if (proof['schema'] != 'entity-page-closed-native-proof/v1'
+        if (proof['schema'] != 'entity-page-closed-native-proof/v2'
                 or any(proof[k] is not True for k in ('passed', 'closedPassed', 'pagePassed',
-                    'originalParentPreserved', 'containerRemoved', 'containerReadOnly'))
+                    'originalParentPreserved', 'firstCandidateWitnessPreserved', 'containerRemoved', 'containerReadOnly'))
                 or proof['sourceRevision'] != SOURCE_REVISION or proof['parentImageId'] != PARENT
                 or proof['containerNetwork'] != 'none' or proof['originalInputsExpanded'] is not False
                 or not _same(proof['exactInputs'], inputs)
                 or not all(_integer(proof[k], 0) for k in ('realAccountActions', 'modelCalls', 'clientMessages', 'realDataMounts'))
-                or not _integer(proof['codeMounts'], 8) or not _integer(proof['qaMounts'], 1)
+                or not _integer(proof['codeMounts'], 9) or not _integer(proof['qaMounts'], 1)
                 or set(proof['producerFiles']) != PROGRAMS):
             return False
         staged = proof['stagedPrograms']
@@ -256,14 +266,14 @@ def entity_page_compatible_account_sources(root: Path, catalog: list[dict]) -> d
         if hashlib.sha256(raw).hexdigest() != IMPORT_SHA256:
             return {}
         manifest = json.loads(raw)
-        if (manifest['schema'] != 'bgk-entity-page-closed-account-source-compatibility/v1'
+        if (manifest['schema'] != 'bgk-entity-page-closed-account-source-compatibility/v2'
                 or manifest['kind'] != 'old-execution-with-closed-compiled-source-compatibility'
                 or manifest['sourceBasisRevision'] != SOURCE_REVISION
                 or manifest['executedBaselineRevision'] != a7.SOURCE_REVISION
-                or manifest['parentImageId'] != PARENT or set(manifest['evidenceFiles']) != {'native-proof.json'}):
+                or manifest['parentImageId'] != PARENT or set(manifest['evidenceFiles']) != {PROOF_FILE}):
             return {}
-        name = BUNDLE + '/native-proof.json'; raw = _read(root, name)
-        if hashlib.sha256(raw).hexdigest() != manifest['evidenceFiles']['native-proof.json']:
+        name = BUNDLE + '/' + PROOF_FILE; raw = _read(root, name)
+        if hashlib.sha256(raw).hexdigest() != manifest['evidenceFiles'][PROOF_FILE]:
             return {}
         if not _fixed(root, {REFERENCE: IMPORT_SHA256, name: hashlib.sha256(raw).hexdigest()}):
             return {}

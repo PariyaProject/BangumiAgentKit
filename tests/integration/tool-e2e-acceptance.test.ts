@@ -29,7 +29,7 @@ const REAL_A7_REPORT_PATH = REAL_A7_BUNDLE + '/a7-result.json';
 const QS55_COMPAT_REFERENCE =
   'docs/live-probes/run95-qs55-stdio-compatibility-2026-10-28/import.json';
 const ENTITY_PAGE_COMPAT_REFERENCE =
-  'docs/live-probes/run95-entity-page-account-source-compatibility-2026-11-06/import.json';
+  'docs/live-probes/run95-entity-page-account-source-compatibility-2026-11-06/import-corrected.json';
 const REAL_A6_TOOLS = [
   'bangumi.get_collection_series_groups',
   'bangumi.render_collection_series_groups',
