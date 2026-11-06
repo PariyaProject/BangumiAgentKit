@@ -1,0 +1,280 @@
+{
+  "claims": [
+    {
+      "argumentProfile": "fixed-p01-synthetic-person-activity-director-36m-one-person-v1-20261023",
+      "baseSha": "06384687062f44e21104fead465116e053019278",
+      "bundleSha256": "df9629afca03351a66b81aa49b5c87e3c01daa8e43991ce02c7bd9e929fc0ce5",
+      "ciChecks": [
+        {
+          "conclusion": "SUCCESS",
+          "name": "harness-control",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "sqlite-default",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "host-integration",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "standalone-release-smoke",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "postgres-compat",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "provider-foundation",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "discovery-foundation",
+          "status": "COMPLETED"
+        }
+      ],
+      "ciRunId": "39856305173",
+      "ciSha": "1d434baee419c3de69ce4f1aa4b79d44a160c5be",
+      "ciStatus": "SUCCESS",
+      "claimId": "profile-run-95-pr-265-1d434baee419-1792704888179",
+      "claimedAt": "2026-10-22T21:34:48.180Z",
+      "epochId": "run95-p01-person-activity-director-offline-agent-mcp-matrix-v1-20261023",
+      "expectedArguments": [
+        {
+          "kind": "staff",
+          "maxRelations": 3,
+          "maxRows": 1,
+          "maxSubjectDetails": 1,
+          "media": "anime",
+          "personId": 991337,
+          "staffRole": "director",
+          "windowMonths": 36
+        }
+      ],
+      "expectedArgumentsSha256": "a3d7067de60972703e882e572f92342c9c7c98a4b8126e2c889cc8f16100cbd5",
+      "finishedAt": "2026-10-22T21:40:52.512Z",
+      "frontierId": "P01",
+      "prNumber": 265,
+      "profileId": "p01-person-director-offline-matrix-v1-20261023",
+      "registrySha256": "e7cb6bd9ccb4e33ace0c8b38b81d235a795deb7c59426dfbf9fb272d3bee6e2a",
+      "reportPath": "docs/live-probes/p01-person-activity-director-offline-run95-v1.json",
+      "reportSha256": "f9a6d93ad8913da8870471e48da1490dca42f26c75194d291ec56fde9f502c3b",
+      "reportWritten": true,
+      "retryAllowed": false,
+      "reviewerId": "gpt-6-luna-max-run95-pr265-round1",
+      "runNumber": 95,
+      "runnerReceiptPublicKey": "MCowBQYDK2VwAyEAwchBHOOHbo37wHo1Xu9Tg+B4rTgrLt/5uDUGuucxVJk=",
+      "runnerReceiptPublicKeySha256": "8e114ad2ef826f6eaad8d5bb532ac993be9e281f413cfd77355148142c286408",
+      "runnerReceiptSha256": "0bd483c3b5bd4518a78858328b28b25024ccdb0b44b8e6d1481b45e8b94d1e89",
+      "schemaVersion": 1,
+      "sourceCandidateSha": "1d434baee419c3de69ce4f1aa4b79d44a160c5be",
+      "state": "REPORT_WRITTEN",
+      "terminalLabel": "harness-r95-p01-person-director-mtx-v1-terminal",
+      "terminalLabelDescription": "Run95 P01 REPORT_WRITTEN sha256=f9a6d93ad8913da8870471e48da1490dca42f26c75194d291ec56fde9f502c3b",
+      "toolName": "bangumi.get_person_activity"
+    },
+    {
+      "argumentProfile": "fixed-p03-person-name-cn-54025-5-subjects-1-character-v4",
+      "baseSha": "447e5e24b862f14282dedab07d5813bf68b0c541",
+      "bundleSha256": "d7fcae785c151687e674dd29cb721cb11df011ab1dba5e49111847e01a1732db",
+      "ciSha": "b89285a29a43248d279ef8c571ab7b7c050188bc",
+      "ciStatus": "SUCCESS",
+      "claimId": "profile-run-95-pr-261-b89285a29a43-1792669226605",
+      "claimedAt": "2026-10-22T11:40:26.605Z",
+      "epochId": "run95-p03-person-name-cn-fresh-profile-v4-20261022",
+      "expectedArguments": [
+        {
+          "includeChronology": false,
+          "includeCredits": true,
+          "maxCharacters": 1,
+          "maxSubjects": 5,
+          "personId": 54025
+        }
+      ],
+      "expectedArgumentsSha256": "fdd0616a7f8a7b044a8f438c110a4291936f168c0120459d2ad74432e22160f8",
+      "finishedAt": "2026-10-22T11:41:06.908Z",
+      "frontierId": "P03",
+      "prNumber": 261,
+      "profileId": "p03-person-name-cn-agent-mcp-v4",
+      "registrySha256": "d1ec45738578475825fbdeed000b4f3c40f0a1338192137d069328432330eafd",
+      "reportPath": "docs/live-probes/p03-person-name-cn-public-v4-agent-mcp-run95.json",
+      "reportSha256": "b135cfa255ca63f77b782f83922a2172f202c025fb27b161f63d66d6e2c69f77",
+      "reportWritten": true,
+      "retryAllowed": false,
+      "reviewerId": "gpt-6-luna-max-run95-pr261-round1",
+      "runNumber": 95,
+      "runnerReceiptPublicKey": "MCowBQYDK2VwAyEAQFhLisgk2eOsqFu79Mc3OMKRxk9qTPBpzB3AzMCDwA4=",
+      "runnerReceiptPublicKeySha256": "12dc0a51ac34c882da4755be6f392d056895066842bcda6886d23c6a9ad543e6",
+      "runnerReceiptSha256": "b3afda8d629ce6b02fb5f66617afe742bf01bd323ec04fdad8750fb86086c4bf",
+      "schemaVersion": 1,
+      "sourceCandidateSha": "b89285a29a43248d279ef8c571ab7b7c050188bc",
+      "state": "REPORT_WRITTEN",
+      "terminalLabel": "harness-r95-p03-person-name-cn-public-v4-terminal",
+      "terminalLabelDescription": "Run95 P03 REPORT_WRITTEN sha256=b135cfa255ca63f77b782f83922a2172f202c025fb27b161f63d66d6e2c69f77",
+      "toolName": "bangumi.get_person_profile"
+    },
+    {
+      "argumentProfile": "fixed-p06-synthetic-person-990606-four-subjects-chronology-three-20261023-v3",
+      "baseSha": "d8b17d10bcb9c6b4b1d6031ceffc8fc5c589d6b1",
+      "bundleSha256": "bf5a656a96ab61e20d88cec1f7adfec62e6ea76b948438919a833a1be75ddcce",
+      "ciChecks": [
+        {
+          "conclusion": "SUCCESS",
+          "name": "harness-control",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "sqlite-default",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "host-integration",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "standalone-release-smoke",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "postgres-compat",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "provider-foundation",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "discovery-foundation",
+          "status": "COMPLETED"
+        }
+      ],
+      "ciRunId": "39880360135",
+      "ciSha": "f43f6d7fc9636559deeb4bb71ef2d35acd5690ca",
+      "ciStatus": "SUCCESS",
+      "claimId": "profile-run-95-pr-266-f43f6d7fc963-1792717081382",
+      "claimedAt": "2026-10-23T00:58:01.382Z",
+      "epochId": "run95-p06-render-person-profile-chronology-v3-20261023",
+      "expectedArguments": [
+        {
+          "includeChronology": true,
+          "maxCharacters": 1,
+          "maxChronologySubjects": 3,
+          "maxCredits": 2,
+          "maxSubjects": 4,
+          "personId": 990606
+        }
+      ],
+      "expectedArgumentsSha256": "89362b243650132461a368e7c1d2da2a23f152e67738a1d8015164da3f4f63a8",
+      "finishedAt": "2026-10-23T00:58:34.956Z",
+      "frontierId": "P06",
+      "prNumber": 266,
+      "profileId": "p06-render-person-profile-offline-agent-mcp-v3",
+      "registrySha256": "9153ce883ac1ffe68011feb72c585707072f4c7534b52f1cd15277dcf220183c",
+      "reportPath": "docs/live-probes/p06-render-person-profile-agent-mcp-v3-run95.json",
+      "reportSha256": "110b39d1f6e326ed9c8bf5440c25539f009bf1a5ddd7494fb102a0d0c1871915",
+      "reportWritten": true,
+      "retryAllowed": false,
+      "reviewerId": "gpt-6-luna-max-run95-pr266-round1",
+      "runNumber": 95,
+      "runnerReceiptPublicKey": "MCowBQYDK2VwAyEAFcRy4nc6gNxBWxHQFx5RjJEEjn8w48B2tUWu69DNmAQ=",
+      "runnerReceiptPublicKeySha256": "b83fe8af0b1b35829d0a04be8afdb7722ef91f6f4e2e180d6d7edfc97221975e",
+      "runnerReceiptSha256": "0e0686f1e86b8d08b11804644f2775c144c9bd5350f74fa4888939a6243833d2",
+      "schemaVersion": 1,
+      "sourceCandidateSha": "f43f6d7fc9636559deeb4bb71ef2d35acd5690ca",
+      "state": "REPORT_WRITTEN",
+      "terminalLabel": "harness-r95-p06-person-chronology-v3-terminal",
+      "terminalLabelDescription": "Run95 P06 REPORT_WRITTEN sha256=110b39d1f6e326ed9c8bf5440c25539f009bf1a5ddd7494fb102a0d0c1871915",
+      "toolName": "bangumi.render_person_profile"
+    },
+    {
+      "argumentProfile": "fixed-ux002-subject-card-991905-no-collection-default-scale-075-v5",
+      "baseSha": "a76b39685cd52cc33b5c779b0d9123d4d1093945",
+      "bundleSha256": "bf5a656a96ab61e20d88cec1f7adfec62e6ea76b948438919a833a1be75ddcce",
+      "ciChecks": [
+        {
+          "conclusion": "SUCCESS",
+          "name": "harness-control",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "sqlite-default",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "host-integration",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "standalone-release-smoke",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "postgres-compat",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "provider-foundation",
+          "status": "COMPLETED"
+        },
+        {
+          "conclusion": "SUCCESS",
+          "name": "discovery-foundation",
+          "status": "COMPLETED"
+        }
+      ],
+      "ciRunId": "39910880930",
+      "ciSha": "3d13ce869ab473fc65bc556e1cf75db4cc73e100",
+      "ciStatus": "SUCCESS",
+      "claimId": "profile-run-95-pr-269-3d13ce869ab4-1792737393988",
+      "claimedAt": "2026-10-23T06:36:33.988Z",
+      "epochId": "run95-op008-render-card-compact-typography-v5-20261023",
+      "expectedArguments": [
+        {
+          "includeCollection": false,
+          "subjectId": 991905
+        }
+      ],
+      "expectedArgumentsSha256": "23113c150148b26489cf403c91e6706f7d5fe81a16bc6ab99f8547ea8c072122",
+      "finishedAt": "2026-10-23T06:41:00.516Z",
+      "frontierId": "OP-008",
+      "prNumber": 269,
+      "profileId": "render-subject-card-compact-typography-agent-mcp-v5",
+      "registrySha256": "daa2681d0aff69098a2183fcb7b1e33508c2b3ecba5fed90da95c462b3a37fb3",
+      "reportPath": "docs/live-probes/render-subject-card-compact-typography-v5-agent-mcp-run95.json",
+      "reportSha256": "00bcad9b676104ad3cfbf440d9036ef364ef76ce46d06571e24c875f1184657c",
+      "reportWritten": true,
+      "retryAllowed": false,
+      "reviewerId": "gpt-6-luna-max-run95-pr269-round1",
+      "runNumber": 95,
+      "runnerReceiptPublicKey": "MCowBQYDK2VwAyEAF4kInKP3NzkemlGmNCs765IjTrLM2HEtQboKGi0rqzw=",
+      "runnerReceiptPublicKeySha256": "a0e7def84aec67021e194d8f4311165d26129c82e0287530ff80ad321baec26c",
+      "runnerReceiptSha256": "7b9fb315d1abdff7d4b051204fd38a1ca32a3488c7c9da84fbf23043c6bd1b34",
+      "schemaVersion": 1,
+      "sourceCandidateSha": "3d13ce869ab473fc65bc556e1cf75db4cc73e100",
+      "state": "REPORT_WRITTEN",
+      "terminalLabel": "harness-r95-render-card-typography-v5-terminal",
+      "terminalLabelDescription": "Run95 OP-008 REPORT_WRITTEN sha256=00bcad9b676104ad3cfbf440d9036ef364ef76ce46d06571e24c875f1184657c",
+      "toolName": "bangumi.render_subject_card"
+    }
+  ],
+  "kind": "unit-test-input-no-runtime-authority"
+}

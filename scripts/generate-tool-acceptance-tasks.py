@@ -19,6 +19,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from client_evidence import tool_client_e2e_sources
 from harness_control_codec import decode_control_state
 from acceptance.real_account_read_evidence import real_account_read_sources
+from acceptance.signed_report_source_context import (
+    catalog_bytes_for_signed_report, needs_original_context, validate_in_original_context,
+)
 from acceptance.c03_person_activity_offline_v2_acceptance import (
     c03_person_activity_offline_v2_harness_status,
     c03_person_activity_offline_v2_signed_report_matches,
@@ -14397,7 +14400,7 @@ def codex_p06_profile_report_is_valid(
 
     catalog_tool = None
     try:
-        catalog_bytes = CATALOG.read_bytes()
+        catalog_bytes = catalog_bytes_for_signed_report(ROOT, report)
         catalog = json.loads(catalog_bytes)
         catalog_tool = next(
             (item for item in catalog if isinstance(item, dict) and item.get('name') == profile['toolName']),
@@ -14425,6 +14428,8 @@ def codex_p06_profile_report_is_valid(
     disposition = codex_p06_profile_disposition_matches_report(report, status, report_sha256)
     if disposition is None:
         return False
+    if needs_original_context(ROOT, report):
+        return validate_in_original_context(ROOT, report_bytes, disposition)
     validator = ROOT / 'scripts/acceptance/validate-p06-render-person-profile-agent-mcp-report.mjs'
     validation = subprocess.run(
         ['node', str(validator)],
@@ -14966,7 +14971,7 @@ def codex_render_subject_card_offline_profile_report_is_valid(
     ):
         return False
     try:
-        catalog_bytes = CATALOG.read_bytes()
+        catalog_bytes = catalog_bytes_for_signed_report(ROOT, report)
         catalog = json.loads(catalog_bytes)
         tool = next((item for item in catalog if isinstance(item, dict) and item.get('name') == profile['toolName']), None)
     except (OSError, ValueError):
@@ -14988,6 +14993,8 @@ def codex_render_subject_card_offline_profile_report_is_valid(
     disposition = codex_render_subject_card_offline_profile_disposition_matches_report(report, status, report_sha256)
     if disposition is None:
         return False
+    if needs_original_context(ROOT, report):
+        return validate_in_original_context(ROOT, report_bytes, disposition)
     validation = subprocess.run(
         ['node', str(ROOT / 'scripts/acceptance/validate-render-subject-card-offline-agent-mcp-report.mjs')],
         cwd=ROOT,
@@ -18477,7 +18484,7 @@ def codex_p03_profile_report_is_valid(
     ):
         return False
     try:
-        catalog_bytes = CATALOG.read_bytes()
+        catalog_bytes = catalog_bytes_for_signed_report(ROOT, report)
         catalog = json.loads(catalog_bytes)
         catalog_tool = next(
             (item for item in catalog if isinstance(item, dict) and item.get('name') == profile['toolName']),
@@ -18502,6 +18509,8 @@ def codex_p03_profile_report_is_valid(
     disposition = codex_p03_profile_disposition_matches_report(report, status, report_sha256)
     if disposition is None:
         return False
+    if needs_original_context(ROOT, report):
+        return validate_in_original_context(ROOT, report_bytes, disposition)
     try:
         validation = subprocess.run(
             ['node', str(ROOT / 'scripts/acceptance/validate-p03-person-name-cn-v2-report.mjs')],

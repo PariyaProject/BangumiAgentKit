@@ -9,6 +9,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from .signed_report_source_context import needs_original_context, validate_in_original_context
+
 
 ROOT = Path(__file__).resolve().parents[2]
 PROFILE_REGISTRY_PATH = ROOT / 'scripts/acceptance/agent-mcp-profile-registry.json'
@@ -152,6 +154,11 @@ def p01_person_activity_director_offline_signed_report_matches(
     report_sha256 = hashlib.sha256(report_bytes).hexdigest()
     claim = p01_person_activity_director_offline_acknowledged_claim(report, status, report_sha256)
     if claim is None:
+        return False
+    try:
+        if needs_original_context(root, report):
+            return validate_in_original_context(root, report_bytes, claim)
+    except (OSError, ValueError):
         return False
 
     try:
