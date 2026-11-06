@@ -78,6 +78,9 @@ function generateClient() {
     `import { HttpClient, HttpClientConfig, type HttpRequestOptions } from '@bangumi-agent-kit/bangumi-transport';`,
   );
   code.push(`import type { components, operations, paths } from './schema.js';\n`);
+  code.push(
+    `import { NativeCollectionPageClient, type NativeCollectionPageQuery, type NativeCollectionPageOptions, type NativeCollectionPage } from '../native-collection-page-client.js';\n`,
+  );
 
   code.push(`export type { components, operations, paths };\n`);
 
@@ -291,6 +294,22 @@ function generateClient() {
     code.push(`      method: 'GET',`);
     code.push(`      path: '/calendar',`);
     code.push(`    });`);
+    code.push(`  }\n`);
+  }
+
+  // Source-owned, additive delegates. Do not alter the pinned operation schema,
+  // old signatures or raw operation registry to manufacture query support.
+  for (const [entity, method] of [
+    ['Person', 'getPersonPage'],
+    ['Character', 'getCharacterPage'],
+  ]) {
+    code.push(`  /** Native page supplement; not a pinned OpenAPI operation. */`);
+    code.push(
+      `  async getUser${entity}CollectionsPage(username: string, query: NativeCollectionPageQuery, options?: NativeCollectionPageOptions): Promise<NativeCollectionPage> {`,
+    );
+    code.push(
+      `    return new NativeCollectionPageClient(this.transport).${method}(username, query, options);`,
+    );
     code.push(`  }\n`);
   }
 

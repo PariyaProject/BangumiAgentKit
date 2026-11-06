@@ -8,6 +8,13 @@ import {
 } from '@bangumi-agent-kit/bangumi-transport';
 import type { components, operations, paths } from './schema.js';
 
+import {
+  NativeCollectionPageClient,
+  type NativeCollectionPageQuery,
+  type NativeCollectionPageOptions,
+  type NativeCollectionPage,
+} from '../native-collection-page-client.js';
+
 export type { components, operations, paths };
 
 // Helper types to extract operation parameters and responses safely
@@ -720,5 +727,27 @@ export class GeneratedBangumiOpenApiClient {
       method: 'GET',
       path: '/calendar',
     });
+  }
+
+  /** Native page supplement; not a pinned OpenAPI operation. */
+  async getUserPersonCollectionsPage(
+    username: string,
+    query: NativeCollectionPageQuery,
+    options?: NativeCollectionPageOptions,
+  ): Promise<NativeCollectionPage> {
+    return new NativeCollectionPageClient(this.transport).getPersonPage(username, query, options);
+  }
+
+  /** Native page supplement; not a pinned OpenAPI operation. */
+  async getUserCharacterCollectionsPage(
+    username: string,
+    query: NativeCollectionPageQuery,
+    options?: NativeCollectionPageOptions,
+  ): Promise<NativeCollectionPage> {
+    return new NativeCollectionPageClient(this.transport).getCharacterPage(
+      username,
+      query,
+      options,
+    );
   }
 }

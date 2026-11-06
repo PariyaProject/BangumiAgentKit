@@ -48,13 +48,13 @@ async function fixture(bound: boolean) {
         !/^\/v0\/users\/(?:synthetic|public-user)\/collections\/-\/persons(?:\/20)?$/u.test(
           url.pathname,
         ) ||
-        url.search
+        (url.pathname.endsWith('/20') ? Boolean(url.search) : url.search !== '?limit=1&offset=0')
       ) {
         throw Error('UNEXPECTED_FIXTURE_REQUEST');
       }
       const body = url.pathname.endsWith('/20')
         ? person
-        : { total: 1, limit: 0, offset: 0, data: [person] };
+        : { total: 1, limit: 1, offset: 0, data: [person] };
       return new Response(JSON.stringify(body), {
         status: 200,
         headers: { 'content-type': 'application/json' },

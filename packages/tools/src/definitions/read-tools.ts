@@ -7,6 +7,7 @@ import {
 } from '../define-tool.js';
 import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { BangumiClientProvider } from '@bangumi-agent-kit/auth';
+import { NATIVE_COLLECTION_PAGE_CONTRACT } from '@bangumi-agent-kit/bangumi-openapi';
 import {
   SubjectService,
   SubjectRelationsAnalysisService,
@@ -1455,7 +1456,7 @@ export function createReadTools(
   const listCharacterCollections = defineTool({
     name: 'bangumi.list_character_collections',
     description:
-      '读取用户收藏的角色列表。传入 username 时使用官方公开接口；省略 username 时读取当前绑定账号。官方列表接口不提供分页参数，本工具只返回 maxItems 内的观察并明确 observed/returned/truncated，不推断收藏偏好。',
+      '读取用户收藏的一页角色，使用官方来源分页。maxItems 是原生请求的行数上限（默认 50），offset 默认 0；只请求这一页。传入 username 匿名读取该用户公开数据，省略则使用当前绑定账号身份。按来源收藏时间降序，不保证稳定快照或同时间顺序；明确 observed/returned/truncated 与下一页偏移。',
     input: z
       .object({
         username: z
@@ -1471,7 +1472,14 @@ export function createReadTools(
           .min(1)
           .max(50)
           .optional()
-          .describe('最多返回角色数，默认 50；官方列表没有分页参数'),
+          .describe('本页原生请求最多角色数，1–50，默认 50'),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .max(Number.MAX_SAFE_INTEGER)
+          .optional()
+          .describe('原生页偏移，默认 0；不自动继续下一页'),
       })
       .strict(),
     auth: 'optional',
@@ -1480,9 +1488,9 @@ export function createReadTools(
     resolvePolicy: collectionTargetPolicy,
     execute: async (input, context, deps) => {
       const target = await resolveUserCollectionTarget(input.username, context, deps);
-      const result = await new UserService(target.client).getUserCharacterCollections(
+      const result = await new UserService(target.client).getUserCharacterCollectionsPage(
         target.username,
-        { maxItems: input.maxItems ?? 50 },
+        { maxItems: input.maxItems ?? 50, offset: input.offset ?? 0 },
       );
       const retrievedAt = new Date().toISOString();
       return {
@@ -1496,6 +1504,7 @@ export function createReadTools(
         },
         source: {
           source: 'official-v0',
+          paginationContract: NATIVE_COLLECTION_PAGE_CONTRACT,
           operation: 'GET /v0/users/{username}/collections/-/characters',
           authScope: target.authScope,
           retrievedAt,
@@ -1548,7 +1557,7 @@ export function createReadTools(
   const listPersonCollections = defineTool({
     name: 'bangumi.list_person_collections',
     description:
-      '读取用户收藏的人物列表。传入 username 时使用官方公开接口；省略 username 时读取当前绑定账号。官方列表接口不提供分页参数，本工具只返回 maxItems 内的观察并明确 observed/returned/truncated，保留官方 career 原始标签。',
+      '读取用户收藏的一页人物，使用官方来源分页。maxItems 是原生请求的行数上限（默认 50），offset 默认 0；只请求这一页。传入 username 匿名读取该用户公开数据，省略则使用当前绑定账号身份。按来源收藏时间降序，不保证稳定快照或同时间顺序；明确 observed/returned/truncated 与下一页偏移。 career 缺失保持未知，保留已提供的原始标签。',
     input: z
       .object({
         username: z
@@ -1564,7 +1573,14 @@ export function createReadTools(
           .min(1)
           .max(50)
           .optional()
-          .describe('最多返回人物数，默认 50；官方列表没有分页参数'),
+          .describe('本页原生请求最多人物数，1–50，默认 50'),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .max(Number.MAX_SAFE_INTEGER)
+          .optional()
+          .describe('原生页偏移，默认 0；不自动继续下一页'),
       })
       .strict(),
     auth: 'optional',
@@ -1573,9 +1589,9 @@ export function createReadTools(
     resolvePolicy: collectionTargetPolicy,
     execute: async (input, context, deps) => {
       const target = await resolveUserCollectionTarget(input.username, context, deps);
-      const result = await new UserService(target.client).getUserPersonCollections(
+      const result = await new UserService(target.client).getUserPersonCollectionsPage(
         target.username,
-        { maxItems: input.maxItems ?? 50 },
+        { maxItems: input.maxItems ?? 50, offset: input.offset ?? 0 },
       );
       const retrievedAt = new Date().toISOString();
       return {
@@ -1589,6 +1605,7 @@ export function createReadTools(
         },
         source: {
           source: 'official-v0',
+          paginationContract: NATIVE_COLLECTION_PAGE_CONTRACT,
           operation: 'GET /v0/users/{username}/collections/-/persons',
           authScope: target.authScope,
           retrievedAt,
