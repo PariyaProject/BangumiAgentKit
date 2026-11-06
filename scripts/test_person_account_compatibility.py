@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from source_snapshot_fixture import read_source_snapshot
 from acceptance import person_account_compatibility as evidence
+from acceptance import entity_page_account_compatibility as successor
 from acceptance import real_account_a1_evidence as receipts
 from acceptance import real_account_a3_evidence as shared
 from acceptance import real_account_read_evidence as union
@@ -198,7 +199,8 @@ class PersonAccountCompatibilityTests(unittest.TestCase):
 class CurrentCheckoutPersonCompatibilityTests(unittest.TestCase):
     def test_committed_current_graph_has_only_original_twelve_without_runtime_access(self):
         catalog = json.loads((ROOT / 'docs/tool-catalog.json').read_bytes())
-        current = evidence.person_compatible_account_sources(ROOT, catalog)
+        self.assertEqual(evidence.person_compatible_account_sources(ROOT, catalog), {})
+        current = successor.entity_page_compatible_account_sources(ROOT, catalog)
         self.assertEqual(set(current), evidence.TOOLS)
         self.assertEqual(union.real_account_read_sources(ROOT, catalog), current)
         self.assertEqual(evidence.calendar.calendar_compatible_account_sources(ROOT, catalog), {})
