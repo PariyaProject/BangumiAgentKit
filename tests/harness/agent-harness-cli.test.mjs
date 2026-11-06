@@ -2808,6 +2808,8 @@ test('new native signed report is accepted through actual Harness dispatch and t
     for (const extra of ['docs/research/run95-native-entity-page-model-result-2026-11-06.md',
       'tests/integration/tool-e2e-acceptance.test.ts',
       'scripts/acceptance/native_entity_page_evidence.py',
+      'scripts/generate-tool-acceptance-tasks.py',
+      'tests/harness/g09-public-watch-order-evidence.test.mjs',
       'packages/tools/src/registry.ts']) {
       fs.writeFileSync(environment.statePath, JSON.stringify({ ...terminalState,
         dirty: '', featureHeadSha: sha('e'), candidateRefreshRange: `${source}...${sha('e')}`,

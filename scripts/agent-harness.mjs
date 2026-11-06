@@ -4159,9 +4159,14 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
             // the signed execution programs, input and bundle stay unchanged.
             'scripts/agent-harness.mjs',
             'scripts/acceptance/native_entity_page_evidence.py',
+            'scripts/generate-tool-acceptance-tasks.py',
             'scripts/test_native_entity_page_evidence.py',
             'tests/harness/agent-harness-cli.test.mjs',
             'tests/integration/tool-e2e-acceptance.test.ts',
+            'tests/harness/frontier-ledger-data.test.mjs',
+            'tests/harness/g01-public-query-render-evidence.test.mjs',
+            'tests/harness/g09-public-watch-order-evidence.test.mjs',
+            'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
           ]
         : []),
       ...(profile.id === G06_CAST_OFFLINE_V2_PROFILE_ID

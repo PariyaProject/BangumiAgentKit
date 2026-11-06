@@ -954,9 +954,6 @@ spec = importlib.util.spec_from_file_location('acceptance_generator', module_pat
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 module.LIVE_PROBE_DIR = live_dir
-# This fixture tests legacy CLI event reports only. It has no native signed
-# source/control context; do not import the real checkout's separate evidence.
-module.native_page_evidence_sources = lambda *_args: {}
 catalog = json.loads(module.CATALOG.read_text(encoding='utf-8'))
 catalog_hash = hashlib.sha256(module.CATALOG.read_bytes()).hexdigest()
 cases = [

@@ -75,6 +75,14 @@ process.stdout.write(JSON.stringify({root:f.root,claim:{...f.claim,state:'REPORT
         self.assertEqual(self.sources(), {})
         self.assertEqual(len(self.reads), 1)
 
+    def test_alternate_probe_namespace_never_borrows_real_native_evidence_or_reads_control(self):
+        self.assertEqual(native_page_evidence_sources(self.root, self.catalog,
+                         report_dir=self.root / 'synthetic-probes', read_json=self.reader), {})
+        self.assertEqual(self.reads, [])
+        self.assertEqual(native_page_evidence_sources(self.root, self.catalog,
+                         report_dir=self.root / 'docs/live-probes', read_json=self.reader),
+                         {name: {REPORT} for name in TOOLS})
+
     def test_terminal_ci_review_and_closed_refresh_predicates_reject_adversaries(self):
         original = (self.report, self.claim['reportSha256'], self.status, self.epoch, set(), self.ci, self.jobs)
         changes = [
@@ -103,6 +111,11 @@ process.stdout.write(JSON.stringify({root:f.root,claim:{...f.claim,state:'REPORT
     def test_exact_oracle_remediation_paths_keep_source_guards_closed(self):
         allowed = {REPORT, 'scripts/agent-harness.mjs',
                    'scripts/acceptance/native_entity_page_evidence.py',
+                   'scripts/generate-tool-acceptance-tasks.py',
+                   'tests/harness/frontier-ledger-data.test.mjs',
+                   'tests/harness/g01-public-query-render-evidence.test.mjs',
+                   'tests/harness/g09-public-watch-order-evidence.test.mjs',
+                   'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
                    'scripts/test_native_entity_page_evidence.py',
                    'tests/harness/agent-harness-cli.test.mjs',
                    'tests/integration/tool-e2e-acceptance.test.ts'}

@@ -4634,7 +4634,7 @@
           "new_claims": 1,
           "real_model_jobs": 1,
           "real_bangumi_requests": 2,
-          "external_consumer_and_table_checks": 8,
+          "external_consumer_and_table_checks": 9,
           "cold_executable_gate_checks": 2,
           "bundle_attestation": "docs/product/native-entity-page-mcp-bundle-attestation.json"
         },
@@ -4668,8 +4668,10 @@
           "local_red": "two exact native public/model assertion failures reproduced in176ms",
           "local_green": "three focused oracle checks in433ms; all27 per-tool integration checks in601ms",
           "scope": "offline pinned report/signature/current-source oracle and exact acceptance-only refresh guards; no execution program, selection, bundle, report or claim change",
-          "external_consumer_guard_checks": 8,
-          "new_real_queries_or_models": 0
+          "external_consumer_guard_checks": 9,
+          "new_real_queries_or_models": 0,
+          "fixture_isolation": "Explicit probe namespace prevents alternate fixtures from borrowing current native proof or reading its control;threeP03fixturechecks6msGREEN. Mock native claim owns report-free temporary root.",
+          "global_summary_checks": "29focusedhistorical G01/G06/G09 checks preserve their own proofs and original65target while allowing independent native coverage advancement;5stale global63 assertions removed."
         }
       }
     },

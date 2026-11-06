@@ -1566,7 +1566,7 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
         sources.setdefault('bangumi.compare_subject_cohorts', set()).add(
             report_source_ref(a01_path),
         )
-    for name, refs in native_page_evidence_sources(ROOT, catalog).items():
+    for name, refs in native_page_evidence_sources(ROOT, catalog, report_dir=LIVE_PROBE_DIR).items():
         sources.setdefault(name, set()).update(refs)
     return sources
 
@@ -28083,7 +28083,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
         and codex_s03_report_matches_candidate_revision(s03_path, s03_report.get('sourceRevision'))
     ):
         sources.setdefault('bangumi.get_series_watch_order', set()).add(report_source_ref(s03_path))
-    for name, refs in native_page_evidence_sources(ROOT, catalog).items():
+    for name, refs in native_page_evidence_sources(ROOT, catalog, report_dir=LIVE_PROBE_DIR).items():
         sources.setdefault(name, set()).update(refs)
     return sources
 

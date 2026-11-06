@@ -78,7 +78,18 @@ generator/checker still require actual terminal labels, original PASS and CI.
 Old pre-pagination reports remain historical; account/client cells stay pending.
 The targeted loop passed3 checks in433ms after repair.
 
-Only that integration test and its exact acceptance-oracle/guard files are added
+The expanded local suites found the same coupling in synthetic probe roots
+and unrelated global-total snapshots. The generator now supplies its actual
+probe directory to the native reader; an alternate fixture directory returns
+no native evidence before any control read. Three P03 route fixtures that had
+borrowed the real native report then passed in6ms, without a GitHub request.
+The mocked native claim uses its own report-free temporary repository.
+Historical G01/G06/G09 checks retain their own source/claim boundaries while
+checking the65 target and consistent totals instead of freezing the unrelated
+pre-native global count at63. Their29 focused checks pass.
+
+Only those exact integration/fixture/global-summary tests and their
+acceptance-oracle/guard files are added
 to this profile's refresh set in both the shared Harness and external consumer.
 Regression checks admit these exact paths and reject unrelated tests, execution
 programs, gate code, bundle attestations and product runtime changes. Execution

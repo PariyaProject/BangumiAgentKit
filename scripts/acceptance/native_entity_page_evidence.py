@@ -21,6 +21,11 @@ REFRESH_PATHS = {
     'scripts/agent-harness.mjs', 'scripts/acceptance/native_entity_page_evidence.py',
     'scripts/test_native_entity_page_evidence.py', 'tests/harness/agent-harness-cli.test.mjs',
     'tests/integration/tool-e2e-acceptance.test.ts',
+    'scripts/generate-tool-acceptance-tasks.py',
+    'tests/harness/frontier-ledger-data.test.mjs',
+    'tests/harness/g01-public-query-render-evidence.test.mjs',
+    'tests/harness/g09-public-watch-order-evidence.test.mjs',
+    'tests/harness/g09-public-watch-order-render-evidence.test.mjs',
 }
 SHA = re.compile(r'[0-9a-f]{40}')
 
@@ -116,9 +121,14 @@ def native_page_control_matches(report: dict, digest: str, status: object, epoch
 
 
 def native_page_evidence_sources(root: Path, catalog: list[dict], *,
+                                 report_dir: Path | None = None,
                                  read_json: Callable = _json_command) -> dict[str, set[str]]:
     """Read actual terminal/labels/CI and strict signature/source context, else no credit."""
     root = Path(root).resolve()
+    # The report has one canonical namespace. Synthetic/alternate probe roots
+    # must not borrow this checkout's real report or query its control plane.
+    if report_dir is not None and Path(report_dir).resolve() != (root / 'docs/live-probes').resolve():
+        return {}
     target = root / REPORT
     if not target.is_file() or target.is_symlink() or os.environ.get('HARNESS_MOCK_STATE'):
         return {}
