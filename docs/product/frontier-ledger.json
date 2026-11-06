@@ -4532,15 +4532,16 @@
         "serializer": "web/res/collection.go",
         "serializer_sha256": "42b6de71d1f3c7c5a763229cbcc585647a5ce13673bee2229fdfd87a2071620e",
         "source_contract": "docs/research/run95-person-collection-career-source-contract-2026-11-05.md",
-        "state": "implemented-with-native-fake-MCP-and-sealed-source-witness-review-pending",
+        "state": "delivered-by-PR290-historical-source-witness",
         "boundaries": [
           "unknown career is not a known empty array",
           "no deployed upstream revision inferred",
           "no live account/model/client execution",
           "all old spent profiles and design baselines preserved",
-          "only original twelve historical inputs inherit fresh scoped compatibility; integration review pending"
+          "historical PR290 source witness retained only twelve original scoped inputs; the current source successor is native_entity_pagination_2026_11_06.compiled_compatibility"
         ],
-        "compiled_compatibility": "docs/live-probes/run95-person-account-source-compatibility-2026-11-06/import.json"
+        "compiled_compatibility": "docs/live-probes/run95-person-account-source-compatibility-2026-11-06/import.json",
+        "historical_source_boundary": "PR290 is integrated. This earlier fixed-source witness remains historical and is not the latest graph or a pending task."
       },
       "native_entity_pagination_2026_11_06": {
         "upstream_revision": "243e2cd5dd22995fb2340d77b48bc851a12ea5b6",

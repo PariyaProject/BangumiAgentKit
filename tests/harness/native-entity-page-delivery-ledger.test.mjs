@@ -14,6 +14,14 @@ test('OP009 routes past completed native source compatibility without granting f
   const proofBytes = read(bundle + '/native-proof-corrected.json');
   const proof = JSON.parse(proofBytes);
   assert.equal(row.status, 'PARTIAL');
+  assert.equal(
+    row.person_collection_wire_repair_2026_11_05.state,
+    'delivered-by-PR290-historical-source-witness',
+  );
+  assert.doesNotMatch(
+    JSON.stringify(row.person_collection_wire_repair_2026_11_05),
+    /review-pending|integration review pending/iu,
+  );
   assert.equal(page.state, 'native-paging-and-sealed-compiled-source-compatibility-delivered');
   assert.equal(page.compiled_compatibility, bundle + '/import-corrected.json');
   assert.equal(page.compiled_proof, bundle + '/native-proof-corrected.json');
