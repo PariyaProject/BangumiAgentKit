@@ -4520,7 +4520,10 @@
         "packages/bangumi-transport/src/http-client.ts",
         "tests/unit/http-response-lifetime.test.ts",
         "docs/research/run95-historical-signed-report-catalog-context-2026-11-06.md",
-        "scripts/test_signed_report_source_context.py"
+        "scripts/test_signed_report_source_context.py",
+        "scripts/lib/native-entity-page-verification.mjs",
+        "tests/harness/native-entity-page-verification.test.mjs",
+        "docs/research/run95-native-entity-page-verification-contract-2026-11-06.md"
       ],
       "next_action": "Keep PARTIAL. Native bounded person/character pages, original Registry identity semantics and sealed compiled-source compatibility are delivered offline. The corrected witness binds five compiler projects/136 JavaScript modules/nine overlays,286 sources/96 protected files, unchanged12 historical inputs/five decoded PNGs/six denial modes and11 separate native page cases. It retains ONLY12 old scoped account observations, not new live execution. Shared response ownership now disposes early returns/failures and preserves primary errors when cleanup rejects or stalls; local HTTP closure and80 focused checks passed. PR290 career repair and both first/corrected native witnesses are completed source work: do not repeat them without a concrete runtime change. Next prepare genuinely new native-page public/model verification for the two changed contracts; deployed support remains unobserved. Current evidence stays public63/65, Agent84/96, account12/33 and QQ0/TIM0. Preserve65/all96 targets, old spent claims, existing raw schema/aggregate contracts and completed calendar/design/client boundaries; no private-unlock/stable-snapshot/new account credit.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
@@ -4587,6 +4590,17 @@
           "proof": "docs/live-probes/run95-entity-page-account-source-compatibility-2026-11-06/native-proof.json",
           "bytes_preserved": true
         }
+      },
+      "native_page_verification_preparation_2026_11_06": {
+        "state": "offline-kernel-delivered-live-host-and-claim-binding-pending",
+        "contract": "docs/research/run95-native-entity-page-verification-contract-2026-11-06.md",
+        "kernel": "scripts/lib/native-entity-page-verification.mjs",
+        "verification": "tests/harness/native-entity-page-verification.test.mjs",
+        "offline_tests": 19,
+        "new_public_requests": 0,
+        "new_model_jobs": 0,
+        "new_account_actions": 0,
+        "next_action": "Complete the genuinely new fixed two-page Sol xhigh MCP host, exact reviewed claim/report/consumer binding and synthetic lifecycle diagnostics before any real call. Existing frozen profiles and completed source/model/design cases remain unchanged."
       }
     },
     {
