@@ -3809,11 +3809,43 @@ function compactMinimumSeriesWatchOrder(result: SeriesWatchOrderResult): string 
     else if (options.limitationLimit > 0) options.limitationLimit -= 1;
     else if (options.includeCapabilityState) options.includeCapabilityState = false;
     else {
-      const minimalText = JSON.stringify(createBareMinimumSeriesWatchOrderProjection(result));
-      if (utf8Bytes(minimalText) > MCP_TOOL_TEXT_MAX_UTF8_BYTES) {
-        throw new Error('Unable to produce bounded MCP series watch-order text');
+      const bare = createBareMinimumSeriesWatchOrderProjection(result);
+      const minimalText = JSON.stringify(bare);
+      if (utf8Bytes(minimalText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return minimalText;
+      const voice = bare.voiceActorPresence;
+      if (voice) {
+        const textWithCompactVoice = JSON.stringify({
+          ...bare,
+          voiceActorPresence: {
+            personId: voice.personId,
+            state: voice.state,
+            matchStatus: voice.matchStatus,
+            distinctWorks: voice.distinctWorks,
+            works: voice.works.map((work) => ({
+              ...work,
+              subjectName: clippedDisplayText(work.subjectName, 12).text,
+              subjectNameCn: clippedDisplayText(work.subjectNameCn, 12).text,
+              credits: work.credits.map((credit) => ({
+                ...credit,
+                characterName: clippedDisplayText(credit.characterName, 12).text,
+                ...(credit.staff === undefined
+                  ? {}
+                  : { staff: clippedDisplayText(credit.staff, 8).text }),
+              })),
+            })),
+            worksOmittedFromText: voice.worksOmittedFromText,
+            coverageOmittedFromText: true,
+            sourceOperation: voice.sourceOperation,
+            limitationRecordsOmittedFromText:
+              voice.limitations.length + voice.limitationRecordsOmittedFromText,
+            answerScope: voice.answerScope,
+          },
+        });
+        if (utf8Bytes(textWithCompactVoice) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) {
+          return textWithCompactVoice;
+        }
       }
-      return minimalText;
+      throw new Error('Unable to produce bounded MCP series watch-order text');
     }
   }
 }

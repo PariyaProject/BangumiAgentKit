@@ -2130,7 +2130,7 @@ describe('MCP tool result presentation', () => {
     expect(parsed.mcpTextProjection.textViewScope).toContain('not one official order');
   });
 
-  it('keeps bounded voice-credit evidence, source path, and the positive-only scope in MCP text', async () => {
+  it.each([false, true])('keeps bounded voice-credit evidence with long labels = %s', async (longLabels) => {
     const original = await makeG09SeriesWatchOrderResult();
     original.voiceActorPresence = {
       personId: 20,
@@ -2194,6 +2194,13 @@ describe('MCP tool result presentation', () => {
       status: 'succeeded',
       personId: 20,
     });
+    if (longLabels) {
+      for (const work of original.voiceActorPresence.works) {
+        work.subjectName = work.subjectNameCn = '合成系列作品名称'.repeat(24);
+        work.credits[0]!.characterName = '合成角色名'.repeat(24);
+        work.credits[0]!.staff = '配音职位'.repeat(24);
+      }
+    }
 
     const presentation = presentMcpToolResult(
       'bangumi.get_series_watch_order',
@@ -2216,6 +2223,10 @@ describe('MCP tool result presentation', () => {
       ],
     });
     expect(parsed.voiceActorPresence.sourceOperation.path).toContain('/characters');
+    if (longLabels) {
+      expect(parsed.voiceActorPresence.coverageOmittedFromText).toBe(true);
+      expect(parsed.voiceActorPresence.works[1].credits[0].staff).toContain('配音');
+    }
   });
 
   it('keeps the no-match caveat in the minimal series projection', async () => {
