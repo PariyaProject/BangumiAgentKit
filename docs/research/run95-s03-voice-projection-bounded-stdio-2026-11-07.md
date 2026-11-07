@@ -27,6 +27,10 @@ applies the exact whole-source check to this one-file successor and retains
 the original twelve account observations. It adds zero account, public,
 model or client credit.
 
+The spent native-page build attestation remains bound to its original
+signed report. A separate isolated fixture verifies that its execution gate
+still rejects changed compiled presenter bytes before the live CI query.
+
 S03 remains partial. This is a synthetic wire-level result for the bounded
 voice branch, and the original S03 and R04 one-shot dispositions remain
 terminal. The fixture does not establish a complete career or series graph.
