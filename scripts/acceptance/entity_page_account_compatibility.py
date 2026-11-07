@@ -24,6 +24,9 @@ REFERENCE = BUNDLE + '/import-corrected.json'
 PROOF_FILE = 'native-proof-corrected.json'
 IMPORT_SHA256 = '11b4199ba3806b205b9e96ced944f19f60b947bee58fb39e2813ef0be99b0871'
 SOURCE_REVISION = '855ed639905969a5a4369a3a9aec912f45658085'
+SERIES_PRESENTER_REFERENCE = 'docs/live-probes/run95-series-presenter-account-compatibility-2026-11-07.json'
+SERIES_PRESENTER_RECEIPT_SHA256 = '26aeff454bbec7c0153fbab21730b051a7da940c7fe9d03bf8ba0157c335ce05'
+SERIES_PRESENTER_PATH = 'apps/mcp/src/result-presenter.ts'
 PARENT = calendar.PARENT
 TOOLS = calendar.TOOLS
 ADDED_SOURCE = 'packages/bangumi-openapi/src/native-collection-page-client.ts'
@@ -258,6 +261,39 @@ def _proof_matches(proof, inputs):
         return False
 
 
+def _series_presenter_source_matches(root, manifest, sources, runtime_package, projection):
+    """Apply the existing seal to the exact presenter-only successor tree."""
+    raw = _read(root, SERIES_PRESENTER_REFERENCE, 4096)
+    if (hashlib.sha256(raw).hexdigest() != SERIES_PRESENTER_RECEIPT_SHA256
+            or not _fixed(root, {SERIES_PRESENTER_REFERENCE: SERIES_PRESENTER_RECEIPT_SHA256})):
+        return False
+    successor = json.loads(raw)
+    modules = projection['emittedFiles']
+    inventory = json.dumps(modules, sort_keys=True, separators=(',', ':')).encode()
+    if (successor['schema'] != 'bgk-series-presenter-account-compatibility/v1'
+            or successor['presenterPath'] != SERIES_PRESENTER_PATH
+            or successor['priorProofSha256'] != manifest['evidenceFiles'][PROOF_FILE]
+            or successor['priorRuntimeTreeSha256'] != manifest['runtimeTreeSha256']
+            or successor['priorPresenter'] != sources[SERIES_PRESENTER_PATH]
+            or successor['compiledModules'] != len(modules)
+            or successor['compiledInventorySha256'] != hashlib.sha256(inventory).hexdigest()
+            or successor['accountEvidenceAdded'] != 0):
+        return False
+    base, fix = successor['baseRevision'], successor['fixRevision']
+    receipts._git(root, 'merge-base', '--is-ancestor', base, fix)
+    receipts._git(root, 'merge-base', '--is-ancestor', fix, 'HEAD')
+    if receipts._git(root, 'diff', '--name-only', base, fix, '--', *shared.RUNTIME_PATHS).splitlines() != [
+            SERIES_PRESENTER_PATH]:
+        return False
+    base_tree = receipts._git(root, 'ls-tree', '-r', base, '--', *shared.RUNTIME_PATHS).strip()
+    if hashlib.sha256(base_tree.encode()).hexdigest() != manifest['runtimeTreeSha256']:
+        return False
+    return shared._current_sources_match(
+        root, {**manifest, 'runtimeTreeSha256': successor['currentRuntimeTreeSha256']},
+        {**sources, SERIES_PRESENTER_PATH: successor['currentPresenter']}, runtime_package,
+    )
+
+
 def entity_page_compatible_account_sources(root: Path, catalog: list[dict]) -> dict[str, set[str]]:
     """Only the original twelve scoped observations, or no inherited account credit."""
     root = Path(root)
@@ -306,12 +342,16 @@ def entity_page_compatible_account_sources(root: Path, catalog: list[dict]) -> d
             if not _same(package, expected):
                 return {}
         runtime_package = copy.deepcopy(expected); runtime_package.pop('scripts')
+        compatibility = {REFERENCE}
         if not shared._current_sources_match(root, manifest, sources, runtime_package):
-            return {}
+            if not _series_presenter_source_matches(root, manifest, sources, runtime_package, proof['projection']):
+                return {}
+            compatibility.add(SERIES_PRESENTER_REFERENCE)
         if catalog != json.loads(_read(root, 'docs/tool-catalog.json')):
             return {}
         if {t['name'] for t in catalog if t['name'] in TOOLS and t.get('auth') != 'none' and t.get('risk') == 'read'} != TOOLS:
             return {}
-        return {name: {ref, REFERENCE} | ({qs55.REFERENCE} if name in qs55.TOOLS else set()) for name, ref in references.items()}
+        return {name: {ref} | compatibility | ({qs55.REFERENCE} if name in qs55.TOOLS else set())
+                for name, ref in references.items()}
     except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.SubprocessError):
         return {}

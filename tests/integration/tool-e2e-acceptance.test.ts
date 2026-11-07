@@ -28,8 +28,10 @@ const REAL_A7_BUNDLE = 'docs/live-probes/run95-a7-native-episode-collection-read
 const REAL_A7_REPORT_PATH = REAL_A7_BUNDLE + '/a7-result.json';
 const QS55_COMPAT_REFERENCE =
   'docs/live-probes/run95-qs55-stdio-compatibility-2026-10-28/import.json';
-const ENTITY_PAGE_COMPAT_REFERENCE =
-  'docs/live-probes/run95-entity-page-account-source-compatibility-2026-11-06/import-corrected.json';
+const CURRENT_ACCOUNT_COMPAT_REFERENCES = [
+  'docs/live-probes/run95-entity-page-account-source-compatibility-2026-11-06/import-corrected.json',
+  'docs/live-probes/run95-series-presenter-account-compatibility-2026-11-07.json',
+];
 const REAL_A6_TOOLS = [
   'bangumi.get_collection_series_groups',
   'bangumi.render_collection_series_groups',
@@ -194,7 +196,7 @@ function hasExactMatrixReportReference(cell: unknown, expectedPath: string): boo
 function expectAccountAuthCell(toolName: string, cell: unknown): void {
   if (toolName === 'bangumi.get_episode_collections') {
     expect(reportReferencesInMatrixCell(cell)).toEqual(
-      [REAL_A7_REPORT_PATH, ENTITY_PAGE_COMPAT_REFERENCE].sort(),
+      [REAL_A7_REPORT_PATH, ...CURRENT_ACCOUNT_COMPAT_REFERENCES].sort(),
     );
     return;
   }
@@ -215,7 +217,7 @@ function expectAccountAuthCell(toolName: string, cell: unknown): void {
   if (liveReference !== undefined)
     expect(cell).toBe(
       '✅<br>' +
-        [liveReference, ENTITY_PAGE_COMPAT_REFERENCE, QS55_COMPAT_REFERENCE]
+        [liveReference, ...CURRENT_ACCOUNT_COMPAT_REFERENCES, QS55_COMPAT_REFERENCE]
           .sort()
           .map((p) => `\`${p}\``)
           .join('<br>'),
@@ -1963,7 +1965,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     const credited = [...rowsByTool()].filter(([, cells]) => statusMark(cells[8]) === '✅');
     expect(credited.map(([name]) => name).sort()).toEqual(REAL_CURRENT_ACCOUNT_TOOLS);
     expect(reportReferencesInMatrixCell(rowsByTool().get('bangumi.list_collections')?.[8])).toEqual(
-      [REAL_A2_REPORT_PATH, ENTITY_PAGE_COMPAT_REFERENCE, QS55_COMPAT_REFERENCE].sort(),
+      [REAL_A2_REPORT_PATH, ...CURRENT_ACCOUNT_COMPAT_REFERENCES, QS55_COMPAT_REFERENCE].sort(),
     );
     expectAccountAuthPending(rowsByTool().get('bangumi.render_collection_progress')?.[8]);
     expectAccountAuthPending(rowsByTool().get('bangumi.get_my_profile')?.[8]);
