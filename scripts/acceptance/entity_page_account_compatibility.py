@@ -27,6 +27,9 @@ SOURCE_REVISION = '855ed639905969a5a4369a3a9aec912f45658085'
 SERIES_PRESENTER_REFERENCE = 'docs/live-probes/run95-series-presenter-account-compatibility-2026-11-07.json'
 SERIES_PRESENTER_RECEIPT_SHA256 = '4bc241e379363bbfece3d018fddcf059f460c974e0de7f8cd0026d33a833ea6e'
 SERIES_PRESENTER_PATH = 'apps/mcp/src/result-presenter.ts'
+DISCOVERY_DATE_REFERENCE = 'docs/live-probes/run95-discovery-date-account-compatibility-2026-11-08.json'
+DISCOVERY_DATE_RECEIPT_SHA256 = 'b81e13042064acf3ba6ead05784d1d9bac130b651f1c3610e46add09d561da1e'
+DISCOVERY_DATE_PATHS = ('packages/discovery/src/compiler.ts', 'packages/discovery/src/engine.ts')
 PARENT = calendar.PARENT
 TOOLS = calendar.TOOLS
 ADDED_SOURCE = 'packages/bangumi-openapi/src/native-collection-page-client.ts'
@@ -261,37 +264,75 @@ def _proof_matches(proof, inputs):
         return False
 
 
-def _series_presenter_source_matches(root, manifest, sources, runtime_package, projection):
-    """Apply the existing seal to the exact presenter-only successor tree."""
-    raw = _read(root, SERIES_PRESENTER_REFERENCE, 4096)
-    if (hashlib.sha256(raw).hexdigest() != SERIES_PRESENTER_RECEIPT_SHA256
-            or not _fixed(root, {SERIES_PRESENTER_REFERENCE: SERIES_PRESENTER_RECEIPT_SHA256})):
+def _discovery_date_source_matches(root, manifest, sources, runtime_package, inventory_sha):
+    raw = _read(root, DISCOVERY_DATE_REFERENCE, 4096)
+    if (hashlib.sha256(raw).hexdigest() != DISCOVERY_DATE_RECEIPT_SHA256
+            or not _fixed(root, {DISCOVERY_DATE_REFERENCE: DISCOVERY_DATE_RECEIPT_SHA256})):
         return False
     successor = json.loads(raw)
-    modules = projection['emittedFiles']
-    inventory = json.dumps(modules, sort_keys=True, separators=(',', ':')).encode()
-    if (successor['schema'] != 'bgk-series-presenter-account-compatibility/v1'
-            or successor['presenterPath'] != SERIES_PRESENTER_PATH
-            or successor['priorProofSha256'] != manifest['evidenceFiles'][PROOF_FILE]
-            or successor['priorRuntimeTreeSha256'] != manifest['runtimeTreeSha256']
-            or successor['priorPresenter'] != sources[SERIES_PRESENTER_PATH]
-            or successor['compiledModules'] != len(modules)
-            or successor['compiledInventorySha256'] != hashlib.sha256(inventory).hexdigest()
-            or successor['accountEvidenceAdded'] != 0):
-        return False
     base, fix = successor['baseRevision'], successor['fixRevision']
+    comparison = successor['compiledComparison']
+    changed = successor['changedSources']
+    if (successor['schema'] != 'bgk-discovery-date-account-compatibility/v1'
+            or successor['priorSeriesReceiptSha256'] != SERIES_PRESENTER_RECEIPT_SHA256
+            or successor['priorRuntimeTreeSha256'] != manifest['runtimeTreeSha256']
+            or successor['compiledInventorySha256'] != inventory_sha
+            or successor['compiledModules'] != 136
+            or successor['accountEvidenceAdded'] != 0
+            or set(changed) != set(DISCOVERY_DATE_PATHS)
+            or comparison['base'] != base or comparison['source'] != fix
+            or comparison['sealedUnchanged'] != 136
+            or set(comparison['changed']) != {
+                'packages/discovery/dist/compiler.js', 'packages/discovery/dist/engine.js'}):
+        return False
     receipts._git(root, 'merge-base', '--is-ancestor', base, fix)
     receipts._git(root, 'merge-base', '--is-ancestor', fix, 'HEAD')
-    if receipts._git(root, 'diff', '--name-only', base, fix, '--', *shared.RUNTIME_PATHS).splitlines() != [
-            SERIES_PRESENTER_PATH]:
+    if tuple(receipts._git(root, 'diff', '--name-only', base, fix, '--', *shared.RUNTIME_PATHS).splitlines()) != DISCOVERY_DATE_PATHS:
         return False
     base_tree = receipts._git(root, 'ls-tree', '-r', base, '--', *shared.RUNTIME_PATHS).strip()
     if hashlib.sha256(base_tree.encode()).hexdigest() != manifest['runtimeTreeSha256']:
         return False
     return shared._current_sources_match(
         root, {**manifest, 'runtimeTreeSha256': successor['currentRuntimeTreeSha256']},
-        {**sources, SERIES_PRESENTER_PATH: successor['currentPresenter']}, runtime_package,
+        {**sources, **changed}, runtime_package,
     )
+
+
+def _successor_source_references(root, manifest, sources, runtime_package, projection):
+    """Apply the existing seal through the two exact runtime successors."""
+    raw = _read(root, SERIES_PRESENTER_REFERENCE, 4096)
+    if (hashlib.sha256(raw).hexdigest() != SERIES_PRESENTER_RECEIPT_SHA256
+            or not _fixed(root, {SERIES_PRESENTER_REFERENCE: SERIES_PRESENTER_RECEIPT_SHA256})):
+        return set()
+    successor = json.loads(raw)
+    modules = projection['emittedFiles']
+    inventory = json.dumps(modules, sort_keys=True, separators=(',', ':')).encode()
+    inventory_sha = hashlib.sha256(inventory).hexdigest()
+    if (successor['schema'] != 'bgk-series-presenter-account-compatibility/v1'
+            or successor['presenterPath'] != SERIES_PRESENTER_PATH
+            or successor['priorProofSha256'] != manifest['evidenceFiles'][PROOF_FILE]
+            or successor['priorRuntimeTreeSha256'] != manifest['runtimeTreeSha256']
+            or successor['priorPresenter'] != sources[SERIES_PRESENTER_PATH]
+            or successor['compiledModules'] != len(modules)
+            or successor['compiledInventorySha256'] != inventory_sha
+            or successor['accountEvidenceAdded'] != 0):
+        return set()
+    base, fix = successor['baseRevision'], successor['fixRevision']
+    receipts._git(root, 'merge-base', '--is-ancestor', base, fix)
+    receipts._git(root, 'merge-base', '--is-ancestor', fix, 'HEAD')
+    if receipts._git(root, 'diff', '--name-only', base, fix, '--', *shared.RUNTIME_PATHS).splitlines() != [
+            SERIES_PRESENTER_PATH]:
+        return set()
+    base_tree = receipts._git(root, 'ls-tree', '-r', base, '--', *shared.RUNTIME_PATHS).strip()
+    if hashlib.sha256(base_tree.encode()).hexdigest() != manifest['runtimeTreeSha256']:
+        return set()
+    manifest = {**manifest, 'runtimeTreeSha256': successor['currentRuntimeTreeSha256']}
+    sources = {**sources, SERIES_PRESENTER_PATH: successor['currentPresenter']}
+    if shared._current_sources_match(root, manifest, sources, runtime_package):
+        return {SERIES_PRESENTER_REFERENCE}
+    if _discovery_date_source_matches(root, manifest, sources, runtime_package, inventory_sha):
+        return {SERIES_PRESENTER_REFERENCE, DISCOVERY_DATE_REFERENCE}
+    return set()
 
 
 def entity_page_compatible_account_sources(root: Path, catalog: list[dict]) -> dict[str, set[str]]:
@@ -344,9 +385,10 @@ def entity_page_compatible_account_sources(root: Path, catalog: list[dict]) -> d
         runtime_package = copy.deepcopy(expected); runtime_package.pop('scripts')
         compatibility = {REFERENCE}
         if not shared._current_sources_match(root, manifest, sources, runtime_package):
-            if not _series_presenter_source_matches(root, manifest, sources, runtime_package, proof['projection']):
+            successors = _successor_source_references(root, manifest, sources, runtime_package, proof['projection'])
+            if not successors:
                 return {}
-            compatibility.add(SERIES_PRESENTER_REFERENCE)
+            compatibility.update(successors)
         if catalog != json.loads(_read(root, 'docs/tool-catalog.json')):
             return {}
         if {t['name'] for t in catalog if t['name'] in TOOLS and t.get('auth') != 'none' and t.get('risk') == 'read'} != TOOLS:

@@ -1,0 +1,37 @@
+{
+  "accountEvidenceAdded": 0,
+  "baseRevision": "5d702059a8322d3dbfa74aac34cacc4ea4e7927e",
+  "changedSources": {
+    "packages/discovery/src/compiler.ts": {
+      "gitBlob": "1e27f64b0d8ceb75283ca73d0e05780113f7f9a5",
+      "sha256": "dec2c46d7d7992f82a8eaa3d5bc5b6a8306ea60239e64e87b3816d58df2b9ee2"
+    },
+    "packages/discovery/src/engine.ts": {
+      "gitBlob": "b621212afb81d39b33e19bee2c1af1c3970df2e5",
+      "sha256": "a5c128831873db9ad456cdfbe09d382e3fc1b3ff8bb96e1786f1e937f4be2167"
+    }
+  },
+  "compiledComparison": {
+    "base": "5d702059a8322d3dbfa74aac34cacc4ea4e7927e",
+    "builtModules": 209,
+    "changed": {
+      "packages/discovery/dist/compiler.js": {
+        "base": "41f6e581d5f6766d70db5983715a5c2223f5d81f65a6c433d4c90c7580765067",
+        "candidate": "9c39ea15cbe220d0d051b2c0daad0493b38e4e1a1f9a5b70939e8c2ee1ce0ea4"
+      },
+      "packages/discovery/dist/engine.js": {
+        "base": "7f554044f436d3b93da6781681936af2ca7210b3f432f00b39dc19a82eee3e81",
+        "candidate": "46769fe456ce0237f31f0dad23232d873b3e1e16af52e98c1a0ad14f13668468"
+      }
+    },
+    "sealedUnchanged": 136,
+    "source": "b9d1f910f961520b68d3b55ef03118c364215011"
+  },
+  "compiledInventorySha256": "6a73df9430762f6a493ce4763eb6bcb0b35457ea72397ad9ccc798356d414c7b",
+  "compiledModules": 136,
+  "currentRuntimeTreeSha256": "7d9de9b26fb4f2c0bfb64d62024509b24296795c4bedbcb821622314b3f1a3ba",
+  "fixRevision": "b9d1f910f961520b68d3b55ef03118c364215011",
+  "priorRuntimeTreeSha256": "dc9ab10bee7b72dd6cccece7d7b499c0c49bff1b7bb74d4e7a5f1ad8e8758b61",
+  "priorSeriesReceiptSha256": "4bc241e379363bbfece3d018fddcf059f460c974e0de7f8cd0026d33a833ea6e",
+  "schema": "bgk-discovery-date-account-compatibility/v1"
+}

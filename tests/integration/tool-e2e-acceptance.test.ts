@@ -31,6 +31,7 @@ const QS55_COMPAT_REFERENCE =
 const CURRENT_ACCOUNT_COMPAT_REFERENCES = [
   'docs/live-probes/run95-entity-page-account-source-compatibility-2026-11-06/import-corrected.json',
   'docs/live-probes/run95-series-presenter-account-compatibility-2026-11-07.json',
+  'docs/live-probes/run95-discovery-date-account-compatibility-2026-11-08.json',
 ];
 const REAL_A6_TOOLS = [
   'bangumi.get_collection_series_groups',
