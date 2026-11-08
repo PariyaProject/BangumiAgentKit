@@ -37,6 +37,13 @@ function fullYearRange(year: number): { from: string; to: string } {
   return { from: `${year}-01-01`, to: `${year + 1}-01-01` };
 }
 
+export function explicitDiscoveryDateRange(query: NormalizedDiscoveryQuery) {
+  if (query.season !== undefined || (query.year !== undefined && query.month !== undefined)) {
+    return undefined;
+  }
+  return query.dateRange;
+}
+
 function canBrowse(query: NormalizedDiscoveryQuery): boolean {
   return (
     query.keyword === '' &&
@@ -173,6 +180,7 @@ export function compileDiscoveryPlan(
   const searchDateRange =
     query.dateRange ??
     (query.year !== undefined && query.month === undefined ? fullYearRange(query.year) : undefined);
+  const localDateRange = operation === 'searchSubjects' ? explicitDiscoveryDateRange(query) : undefined;
 
   if (operation === 'browseSubjects') {
     if (query.media.length === 1)
@@ -197,6 +205,12 @@ export function compileDiscoveryPlan(
     }
     if (searchDateRange)
       pushdown.push(planFilter('dateRange', operation, 'range', searchDateRange));
+    if (localDateRange) {
+      postFilters.push({
+        ...planFilter('dateRange', operation, 'range', localDateRange),
+        classification: 'POST_FILTER',
+      });
+    }
     if (query.rating) {
       pushdown.push(planFilter('rating', operation, 'range', query.rating));
       requireHydration('rating_filter', ['score']);
@@ -285,6 +299,9 @@ export function compileDiscoveryPlan(
           request: request as SubjectDiscoverySearchRequest,
         };
   const limitations = [
+    ...(localDateRange === undefined
+      ? []
+      : ['起始日计入，结束日为排除上界。完整有效的日期会在本地复核，其他日期依赖上游筛选。']),
     ...(query.collectionCompletionRate === undefined
       ? []
       : [

@@ -160,6 +160,45 @@ class GoldenProvider implements SubjectDiscoveryProvider {
 }
 
 describe('PR-7C golden discovery scenarios through the public engine seam', () => {
+  it.each([false, true])('locally rejects contradictory known dates (missing date = %s)', async (missingDate) => {
+    const provider = new GoldenProvider();
+    const search = provider.searchSubjects.bind(provider);
+    provider.searchSubjects = async (request) => {
+      expect(request.filter?.airDate).toEqual(['>=2024-01-01', '<2024-05-01']);
+      const result = await search({ ...request, filter: { ...request.filter, airDate: undefined } });
+      if (missingDate && result.data) {
+        result.data.items = result.data.items.map((row) =>
+          row.id === 1 ? { ...row, date: undefined } : row,
+        );
+      }
+      return result;
+    };
+
+    const result = await new DiscoveryEngine(provider).query({
+      media: 'anime',
+      from: '2024-01-01',
+      to: '2024-05-01',
+      concepts: ['原创'],
+      rating: { min: 8 },
+      ratingCount: { min: 5001 },
+      sort: 'score',
+      resultMode: 'all',
+    });
+
+    expect(result.items.map(({ id }) => id)).toEqual(missingDate ? [3, 1, 4] : [3, 4]);
+    expect(result.coverage).toMatchObject({
+      scanned: 4,
+      postFilterCount: missingDate ? 1 : 2,
+      hydrationsAttempted: 0,
+      totalKind: 'estimated',
+    });
+    expect(result.plan.postFilters).toContainEqual(expect.objectContaining({
+      field: 'dateRange',
+      classification: 'POST_FILTER',
+      value: { from: '2024-01-01', to: '2024-05-01' },
+    }));
+  });
+
   it('executes G01-G08 with normalization, resolution, planning, pagination, filtering, ordering, coverage, and evidence', async () => {
     const cases = [
       { id: 'G01', input: { media: 'anime' as const, year: 2026, month: 7, concepts: ['后宫'], resultMode: 'all' as const }, expected: [1, 2] },

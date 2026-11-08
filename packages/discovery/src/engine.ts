@@ -16,12 +16,11 @@ import {
   type SubjectDiscoveryProvider,
   type SubjectDiscoverySearchRequest,
 } from '@bangumi-agent-kit/provider-core';
-import {
-  compileDiscoveryPlan,
-} from './compiler.js';
+import { compileDiscoveryPlan, explicitDiscoveryDateRange } from './compiler.js';
 import {
   type ConceptCandidate,
   type ConceptResolution,
+  type DateRange,
   type DiscoveryItem,
   type DiscoveryHydrationRequirement,
   type DiscoveryPlan,
@@ -356,10 +355,18 @@ function requiresHydration(
   return item.detailResult === undefined && requirements.some((requirement) => !requirementSatisfied(item, requirement));
 }
 
+function matchesKnownSearchDate(date: string | undefined, range: DateRange | undefined): boolean {
+  if (!date || !range) return true;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return true;
+  return date >= range.from && date < range.to;
+}
+
 function evaluateCandidate(
   item: CandidateWithDetail,
   query: NormalizedDiscoveryQuery,
   requirements: readonly DiscoveryHydrationRequirement[],
+  searchDateRange: DateRange | undefined,
 ): 'match' | 'non_match' | 'unresolved' {
   if (requirements.some((requirement) => !requirementSatisfied(item, requirement))) return 'unresolved';
   const collection = collectionFor(item.candidate, item.detail);
@@ -376,6 +383,7 @@ function evaluateCandidate(
     collectionCompletionRate = result.data;
   }
   const isMatch =
+    matchesKnownSearchDate(item.detail?.date ?? item.candidate.date, searchDateRange) &&
     matchesCategory(item, query.categories) &&
     matchesExcludedMetaTags(item, query.excludeMetaTags) &&
     matchesNsfw(item, query) &&
@@ -552,6 +560,8 @@ export class DiscoveryEngine {
       .filter((item) => item.state === 'exact')
       .flatMap((item) => item.candidates);
     const plan = compileDiscoveryPlan(query, conceptCandidates);
+    const searchDateRange =
+      plan.operation === 'searchSubjects' ? explicitDiscoveryDateRange(query) : undefined;
     if (conceptResolution.some((item) => item.state !== 'exact')) {
       return this.conceptFailure(query, plan, conceptResolution);
     }
@@ -704,7 +714,7 @@ export class DiscoveryEngine {
       }
       for (const item of candidates) {
         if (item.evaluation !== 'pending') continue;
-        const evaluation = evaluateCandidate(item, query, plan.hydrationRequirements);
+        const evaluation = evaluateCandidate(item, query, plan.hydrationRequirements, searchDateRange);
         item.evaluation = evaluation;
         if (evaluation === 'non_match') {
           postFilterCount += 1;
