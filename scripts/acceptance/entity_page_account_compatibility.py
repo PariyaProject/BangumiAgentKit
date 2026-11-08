@@ -28,8 +28,10 @@ SERIES_PRESENTER_REFERENCE = 'docs/live-probes/run95-series-presenter-account-co
 SERIES_PRESENTER_RECEIPT_SHA256 = '4bc241e379363bbfece3d018fddcf059f460c974e0de7f8cd0026d33a833ea6e'
 SERIES_PRESENTER_PATH = 'apps/mcp/src/result-presenter.ts'
 DISCOVERY_DATE_REFERENCE = 'docs/live-probes/run95-discovery-date-account-compatibility-2026-11-08.json'
-DISCOVERY_DATE_RECEIPT_SHA256 = 'b81e13042064acf3ba6ead05784d1d9bac130b651f1c3610e46add09d561da1e'
-DISCOVERY_DATE_PATHS = ('packages/discovery/src/compiler.ts', 'packages/discovery/src/engine.ts')
+DISCOVERY_DATE_RECEIPT_SHA256 = 'cc47be13f1e4d1a3c1f7eed1d847611db1ad51c34b7cbc951e43a737283a7310'
+DISCOVERY_DATE_PATHS = (
+    SERIES_PRESENTER_PATH, 'packages/discovery/src/compiler.ts', 'packages/discovery/src/engine.ts',
+)
 PARENT = calendar.PARENT
 TOOLS = calendar.TOOLS
 ADDED_SOURCE = 'packages/bangumi-openapi/src/native-collection-page-client.ts'
@@ -283,7 +285,8 @@ def _discovery_date_source_matches(root, manifest, sources, runtime_package, inv
             or comparison['base'] != base or comparison['source'] != fix
             or comparison['sealedUnchanged'] != 136
             or set(comparison['changed']) != {
-                'packages/discovery/dist/compiler.js', 'packages/discovery/dist/engine.js'}):
+                'apps/mcp/dist/result-presenter.js', 'packages/discovery/dist/compiler.js',
+                'packages/discovery/dist/engine.js'}):
         return False
     receipts._git(root, 'merge-base', '--is-ancestor', base, fix)
     receipts._git(root, 'merge-base', '--is-ancestor', fix, 'HEAD')

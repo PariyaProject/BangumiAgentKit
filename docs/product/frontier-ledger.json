@@ -230,7 +230,7 @@
         "tests/discovery/golden-e2e.test.ts",
         "docs/research/run95-g03-native-discovery-date-boundary-2026-11-08.md"
       ],
-      "next_action": "Run 66 verified the historical half-open five-year interval, 原创 meta-tag, score >= 8.0, ratingCount >= 5001, and descending score through direct ToolRegistry and one-tool Agent/MCP. On current source, a native SDK stdio fixture reproduced known dates outside the explicit search window entering the query path shared with rendering. The correction rechecks valid full dates locally while preserving upstream-dependent rows with missing or unusable dates. The fixed query and real PNG retain two valid rows, including the lower boundary, with the estimated and experimental scope. Keep PARTIAL; this isolated evidence adds no Agent/MCP, live, account or client matrix credit.",
+      "next_action": "Run 66 verified the historical half-open five-year interval, 原创 meta-tag, score >= 8.0, ratingCount >= 5001, and descending score through direct ToolRegistry and one-tool Agent/MCP. Current native SDK stdio reproduced contradictory known dates. The correction resolves the usable date consistently across filtering, sorting, and PNG output, and preserves the full MCP result even when long filter labels overflow the text cap. The fixed native fixtures retain the explicit half-open window, rating-count cutoff, and estimated and experimental scope. Keep PARTIAL; this isolated evidence adds no Agent/MCP, live, account or client matrix credit.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
