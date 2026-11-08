@@ -1,0 +1,20 @@
+{
+  "accountEvidenceAdded": 0,
+  "baseRevision": "dc52417708af7f624f80b3dd32212856a0058e3d",
+  "compiledInventorySha256": "6a73df9430762f6a493ce4763eb6bcb0b35457ea72397ad9ccc798356d414c7b",
+  "compiledModules": 136,
+  "currentPresenter": {
+    "gitBlob": "223a50f244498298550e4ba50d578a9b46df53cd",
+    "sha256": "cc5e8da3262d9a01a4ac7e25168b357e4606b106df0673cf46bff789629a4de0"
+  },
+  "currentRuntimeTreeSha256": "dc9ab10bee7b72dd6cccece7d7b499c0c49bff1b7bb74d4e7a5f1ad8e8758b61",
+  "fixRevision": "2668b99d29f626306ef3b3988d4f12b111ad0d8b",
+  "presenterPath": "apps/mcp/src/result-presenter.ts",
+  "priorPresenter": {
+    "gitBlob": "1acdb4280349c477352174fa28560bc057edd710",
+    "sha256": "0bee87a997749a50efcfb6d7f5ce3cd0563226f7fc7cca50ef9893ae98b9eee7"
+  },
+  "priorProofSha256": "5a5b7b91e8b58875e57ff168d9cf144e156d2da9a5b8d7529ad7979daf91d5f0",
+  "priorRuntimeTreeSha256": "fe5383cf27921f7793612928a38d6dd999568a5e01e9424c094b8486ae2eefc8",
+  "schema": "bgk-series-presenter-account-compatibility/v1"
+}

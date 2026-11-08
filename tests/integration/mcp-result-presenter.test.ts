@@ -2130,7 +2130,7 @@ describe('MCP tool result presentation', () => {
     expect(parsed.mcpTextProjection.textViewScope).toContain('not one official order');
   });
 
-  it('keeps bounded voice-credit evidence, source path, and the positive-only scope in MCP text', async () => {
+  it.each([false, true])('keeps bounded voice-credit evidence with long labels = %s', async (longLabels) => {
     const original = await makeG09SeriesWatchOrderResult();
     original.voiceActorPresence = {
       personId: 20,
@@ -2194,6 +2194,13 @@ describe('MCP tool result presentation', () => {
       status: 'succeeded',
       personId: 20,
     });
+    if (longLabels) {
+      for (const work of original.voiceActorPresence.works) {
+        work.subjectName = work.subjectNameCn = '合成系列作品名称'.repeat(24);
+        work.credits[0]!.characterName = '合成角色名'.repeat(24);
+        work.credits[0]!.staff = '配音职位'.repeat(24);
+      }
+    }
 
     const presentation = presentMcpToolResult(
       'bangumi.get_series_watch_order',
@@ -2216,6 +2223,93 @@ describe('MCP tool result presentation', () => {
       ],
     });
     expect(parsed.voiceActorPresence.sourceOperation.path).toContain('/characters');
+    if (longLabels) {
+      expect(parsed.voiceActorPresence.coverageOmittedFromText).toBe(true);
+      expect(parsed.voiceActorPresence.works[1].credits[0].staff).toContain('配音');
+    }
+  });
+
+  it('returns voice evidence when two direct works exceed the final text projection', async () => {
+    const anchor = 9_007_199_254_740_981;
+    const firstWork = anchor + 1;
+    const secondWork = anchor + 2;
+    const personId = anchor + 4;
+    const label = '\t'.repeat(16) + '续集';
+    const detail = (id: number) => ({
+      id,
+      type: 2,
+      name: '🐱'.repeat(80) + id,
+      name_cn: '🐶'.repeat(80) + id,
+      date: '2020-01-01',
+    });
+    const credit = (subjectId: number, characterId: number) => ({
+      id: characterId,
+      type: 1,
+      name: '🎭'.repeat(80) + characterId,
+      staff: '🌟'.repeat(80),
+      subject_id: subjectId,
+      subject_type: 2,
+      subject_name: detail(subjectId).name,
+      subject_name_cn: detail(subjectId).name_cn,
+    });
+    const responses = new Map<string, unknown>([
+      [`/v0/subjects/${anchor}`, detail(anchor)],
+      [
+        `/v0/subjects/${anchor}/subjects`,
+        [
+          { ...detail(firstWork), relation: label },
+          { ...detail(secondWork), relation: label },
+        ],
+      ],
+      [`/v0/subjects/${firstWork}`, detail(firstWork)],
+      [`/v0/subjects/${secondWork}`, detail(secondWork)],
+      [
+        `/v0/persons/${personId}/characters`,
+        [credit(firstWork, anchor + 5), credit(secondWork, anchor + 6)],
+      ],
+    ]);
+    const fetchFn: typeof fetch = async (input) => {
+      const route = new URL(String(input)).pathname;
+      expect(responses.has(route)).toBe(true);
+      const body = responses.get(route);
+      responses.delete(route);
+      return Response.json(body);
+    };
+    const original = await new SeriesService(new HttpClient({ fetchFn })).getSeriesWatchOrder(
+      anchor,
+      { depth: 0, maxNodes: 2, media: 'anime', voiceActorPersonId: personId },
+    );
+    expect(responses.size).toBe(0);
+    expect(original.voiceActorPresence?.works[1]?.relationEvidence[0]?.rawRelationLabel).toBe(label);
+
+    const response = await callMcpToolWithResult(
+      'bangumi.get_series_watch_order',
+      original as unknown as Record<string, unknown>,
+    );
+    expect(response.isError).not.toBe(true);
+    expect(response.structuredContent).toEqual(original);
+    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    expect(Buffer.byteLength(text, 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(JSON.parse(text)).toMatchObject({
+      voiceActorPresence: {
+        personId,
+        matchStatus: 'multi_work_found',
+        distinctWorks: 2,
+        works: [
+          { subjectId: firstWork, credits: [{ characterId: anchor + 5 }] },
+          { subjectId: secondWork, credits: [{ characterId: anchor + 6 }] },
+        ],
+        sourceOperation: { status: 'succeeded' },
+        answerScope: '多部作品只代表本次观察到的不同条目。',
+        coverageOmittedFromText: true,
+      },
+      mcpTextProjection: {
+        structuredContentHasFullResult: true,
+        voiceActorWorksIncluded: 2,
+        voiceActorWorksOmittedFromText: 0,
+        detailedOmissionCountersOmittedFromText: true,
+      },
+    });
   });
 
   it('keeps the no-match caveat in the minimal series projection', async () => {

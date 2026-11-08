@@ -95,7 +95,10 @@ class RealAccountA7EvidenceTests(unittest.TestCase):
             after = union.real_account_read_sources(ROOT, catalog)
             self.assertEqual(before, {})
             self.assertEqual(len(current), 12); self.assertEqual(after, current)
-            self.assertEqual(after[evidence.TOOL], {evidence.REFERENCE, page_compatibility.REFERENCE})
+            self.assertEqual(after[evidence.TOOL], {
+                evidence.REFERENCE, page_compatibility.REFERENCE,
+                page_compatibility.SERIES_PRESENTER_REFERENCE,
+            })
             self.assertNotIn('bangumi.get_my_profile', after)
             self.assertNotIn('bangumi.render_collection_progress', after)
 
