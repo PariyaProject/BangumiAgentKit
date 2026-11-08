@@ -98,6 +98,7 @@ class RealAccountA7EvidenceTests(unittest.TestCase):
             self.assertEqual(after[evidence.TOOL], {
                 evidence.REFERENCE, page_compatibility.REFERENCE,
                 page_compatibility.SERIES_PRESENTER_REFERENCE,
+                page_compatibility.DISCOVERY_DATE_REFERENCE,
             })
             self.assertNotIn('bangumi.get_my_profile', after)
             self.assertNotIn('bangumi.render_collection_progress', after)
