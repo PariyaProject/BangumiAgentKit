@@ -3814,7 +3814,7 @@ function compactMinimumSeriesWatchOrder(result: SeriesWatchOrderResult): string 
       if (utf8Bytes(minimalText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return minimalText;
       const voice = bare.voiceActorPresence;
       if (voice) {
-        const textWithCompactVoice = JSON.stringify({
+        const compact = {
           ...bare,
           voiceActorPresence: {
             personId: voice.personId,
@@ -3840,10 +3840,32 @@ function compactMinimumSeriesWatchOrder(result: SeriesWatchOrderResult): string 
               voice.limitations.length + voice.limitationRecordsOmittedFromText,
             answerScope: voice.answerScope,
           },
+        };
+        const compactText = JSON.stringify(compact);
+        if (utf8Bytes(compactText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return compactText;
+
+        // The bare result has at most one order row, two voice works and one
+        // clipped credit and relation per work. Reserve room for those fields
+        // by omitting the detailed diagnostic counters in the final text tier.
+        const projection = compact.mcpTextProjection;
+        return JSON.stringify({
+          ...compact,
+          mcpTextProjection: {
+            version: projection.version,
+            maxUtf8Bytes: projection.maxUtf8Bytes,
+            fullResultUtf8Bytes: projection.fullResultUtf8Bytes,
+            structuredContentHasFullResult: projection.structuredContentHasFullResult,
+            textViewScope: projection.textViewScope,
+            minimumProjectionUsed: true,
+            watchOrderRowsReturned: projection.watchOrderRowsReturned,
+            watchOrderRowsIncluded: projection.watchOrderRowsIncluded,
+            watchOrderRowsOmittedFromText: projection.watchOrderRowsOmittedFromText,
+            voiceActorWorksReturned: projection.voiceActorWorksReturned,
+            voiceActorWorksIncluded: projection.voiceActorWorksIncluded,
+            voiceActorWorksOmittedFromText: projection.voiceActorWorksOmittedFromText,
+            detailedOmissionCountersOmittedFromText: true,
+          },
         });
-        if (utf8Bytes(textWithCompactVoice) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) {
-          return textWithCompactVoice;
-        }
       }
       throw new Error('Unable to produce bounded MCP series watch-order text');
     }
