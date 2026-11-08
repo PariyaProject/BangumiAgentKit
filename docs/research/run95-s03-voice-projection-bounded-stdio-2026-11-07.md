@@ -34,3 +34,36 @@ still rejects changed compiled presenter bytes before the live CI query.
 S03 remains partial. This is a synthetic wire-level result for the bounded
 voice branch, and the original S03 and R04 one-shot dispositions remain
 terminal. The fixture does not establish a complete career or series graph.
+
+## Two direct credited works at the final text limit
+
+The first Product review of `621e7e65` found one remaining overflow. Two
+directly related anime with an uncredited anchor can carry two longer
+relation labels in the final projection. The service recognizes the
+trimmed label and preserves its original form as evidence. Escaped and
+multibyte text can push the serialized result over the byte limit even
+after character clipping. The real server returned `INTERNAL_ERROR`
+without `structuredContent`.
+
+The correction in `2668b99d29f626306ef3b3988d4f12b111ad0d8b` keeps all prior
+projections that fit. If the compact voice projection still exceeds the
+limit, the final tier omits detailed diagnostic counters and marks their
+omission. It keeps the same voice evidence, main watch-order and coverage
+fields, source status, and qualified conclusion. The full result stays in
+`structuredContent`.
+
+| Native stdio input | Text bytes | Fixture GETs |
+| --- | ---: | ---: |
+| Original two-work evidence | 3159 | 4 |
+| Original two roles on one work | 3591 | 4 |
+| Two direct credited works, long emoji labels and tab-padded relations | 2969 | 5 |
+| Two direct credited works, JSON-escaped labels and ideographic spaces | 3204 | 5 |
+
+All four responses returned the full structure. The last two preserve both
+work IDs and one observed credit per work. They used zero live requests and
+added zero acceptance credit. The presenter integration regression failed
+before the correction and passed afterward. Its 39 cases passed together.
+
+The compatibility receipt now binds the exact corrected presenter. The
+209-module comparison against the base still changes only the compiled MCP
+presenter. All 136 modules of the prior sealed account graph match.
