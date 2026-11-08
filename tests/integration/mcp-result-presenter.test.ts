@@ -13,7 +13,7 @@ import type {
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { SeriesService } from '@bangumi-agent-kit/bangumi-core';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
-import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/discovery';
+import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT, DiscoveryEngine } from '@bangumi-agent-kit/discovery';
 import type { SubjectCohortComparisonResult } from '@bangumi-agent-kit/discovery';
 import type { ToolRegistry } from '@bangumi-agent-kit/tools';
 import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
@@ -1868,6 +1868,52 @@ describe('MCP tool result presentation', () => {
     );
     expect(smallAggregationPresentation.text).toBe(smallAggregationFullText);
     expect(smallAggregationPresentation.structuredContent).toBe(smallAggregationResult);
+  });
+
+  it.each(['漢', '\u0001'])('keeps the full discovery result when filter labels overflow text (%j)', async (character) => {
+    const unexpectedRequest = async () => { throw new Error('unexpected fixture operation'); };
+    const engine = new DiscoveryEngine({
+      searchSubjects: async () => ({
+        state: 'ok',
+        data: { items: [], total: 0, totalKind: 'estimated', limit: 20, offset: 0 },
+        warnings: [{
+          code: 'EXPERIMENTAL_SOURCE',
+          message: 'Official v0 subject search is marked experimental upstream.',
+        }],
+      }),
+      browseSubjects: unexpectedRequest,
+      getSubject: unexpectedRequest,
+      getSubjectStats: unexpectedRequest,
+    });
+    const terms = (label: string) => [1, 2, 3, 4].map((n) => character.repeat(58) + label + n);
+    const original = await engine.query({
+      media: 'anime',
+      from: '2024-01-01',
+      to: '2024-05-01',
+      tags: terms('標'),
+      metaTags: terms('題'),
+      excludeMetaTags: terms('除'),
+      resultMode: 'all',
+      explain: 'full',
+    });
+    const response = await callMcpToolWithResult(
+      'bangumi.query_subjects',
+      original as unknown as Record<string, unknown>,
+    );
+    expect(response.isError).not.toBe(true);
+    expect(response.structuredContent).toEqual(original);
+    const text = (response.content as Array<{ text: string }>)[0]!.text;
+    expect(Buffer.byteLength(text, 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(JSON.parse(text)).toMatchObject({
+      plan: {
+        operation: 'searchSubjects',
+        filter: { airDate: ['>=2024-01-01', '<2024-05-01'] },
+        filterDetailsOmittedFromText: true,
+      },
+      coverage: { totalKind: 'estimated' },
+      warnings: [{ code: 'EXPERIMENTAL_SOURCE' }],
+      textProjection: { fullStructuredContentAvailable: true },
+    });
   });
 
   it('bounds large discovery text while preserving decision-critical scope and full structuredContent', () => {

@@ -37,6 +37,7 @@ import { isNormalizedDiscoveryQuery, normalizeDiscoveryQuery } from './query.js'
 
 interface CandidateWithDetail {
   candidate: SubjectDiscoveryCandidate;
+  date?: string;
   detail?: ProviderSubjectData;
   detailResult?: CapabilityResult<ProviderSubjectData>;
   collectionCompletionRateResult?: CapabilityResult<number | null>;
@@ -355,11 +356,12 @@ function requiresHydration(
   return item.detailResult === undefined && requirements.some((requirement) => !requirementSatisfied(item, requirement));
 }
 
-function matchesKnownSearchDate(date: string | undefined, range: DateRange | undefined): boolean {
-  if (!date || !range) return true;
+function usableCalendarDate(date: string | undefined): string | undefined {
+  if (!date) return undefined;
   const parsed = new Date(`${date}T00:00:00Z`);
-  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return true;
-  return date >= range.from && date < range.to;
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date
+    ? date
+    : undefined;
 }
 
 function evaluateCandidate(
@@ -369,6 +371,12 @@ function evaluateCandidate(
   searchDateRange: DateRange | undefined,
 ): 'match' | 'non_match' | 'unresolved' {
   if (requirements.some((requirement) => !requirementSatisfied(item, requirement))) return 'unresolved';
+  const detailDate = item.detail?.date;
+  item.date = searchDateRange
+    ? usableCalendarDate(detailDate) ?? usableCalendarDate(item.candidate.date)
+    : detailDate ?? item.candidate.date;
+  if (searchDateRange && item.date &&
+      (item.date < searchDateRange.from || item.date >= searchDateRange.to)) return 'non_match';
   const collection = collectionFor(item.candidate, item.detail);
   const score = numberFor(item.candidate, item.detail, 'score');
   const rank = numberFor(item.candidate, item.detail, 'rank');
@@ -383,7 +391,6 @@ function evaluateCandidate(
     collectionCompletionRate = result.data;
   }
   const isMatch =
-    matchesKnownSearchDate(item.detail?.date ?? item.candidate.date, searchDateRange) &&
     matchesCategory(item, query.categories) &&
     matchesExcludedMetaTags(item, query.excludeMetaTags) &&
     matchesNsfw(item, query) &&
@@ -401,10 +408,10 @@ function sortItems(items: CandidateWithDetail[], query: NormalizedDiscoveryQuery
   if (query.sort === 'score' || query.sort === 'rank' || query.sort === 'date') {
     ordered.sort((left, right) => {
       const leftValue = query.sort === 'date'
-        ? left.detail?.date ?? left.candidate.date
+        ? left.date
         : numberFor(left.candidate, left.detail, query.sort === 'score' ? 'score' : 'rank');
       const rightValue = query.sort === 'date'
-        ? right.detail?.date ?? right.candidate.date
+        ? right.date
         : numberFor(right.candidate, right.detail, query.sort === 'score' ? 'score' : 'rank');
       if (leftValue === undefined && rightValue === undefined) return left.order - right.order;
       if (leftValue === undefined) return 1;
@@ -943,9 +950,7 @@ export class DiscoveryEngine {
       ...(categoryForPlatform(detail?.platform ?? item.candidate.platform) === undefined
         ? {}
         : { category: categoryForPlatform(detail?.platform ?? item.candidate.platform) }),
-      ...(detail?.date ?? item.candidate.date
-        ? { date: detail?.date ?? item.candidate.date }
-        : {}),
+      ...(item.date ? { date: item.date } : {}),
       ...(numberFor(item.candidate, detail, 'score') === undefined
         ? {}
         : { score: numberFor(item.candidate, detail, 'score') }),

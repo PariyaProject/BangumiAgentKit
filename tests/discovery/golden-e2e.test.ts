@@ -160,6 +160,59 @@ class GoldenProvider implements SubjectDiscoveryProvider {
 }
 
 describe('PR-7C golden discovery scenarios through the public engine seam', () => {
+  it('uses the same usable date for explicit filtering, ordering, and returned rows', async () => {
+    const provider = new GoldenProvider();
+    const searchDates = ['2024-05-01', '2024-04-01', '2024-05-01', '2024-04-02', '2024-04-03', undefined];
+    const detailDates = ['2024-02-30', '', '2024-04-04', '2024-05-01', '2024-04', '2024-00-00'];
+    const detail = provider.getSubject.bind(provider);
+    provider.searchSubjects = async (request) => ({
+      state: 'ok',
+      data: {
+        items: SUBJECTS.slice(0, searchDates.length).map((row, index) => ({
+          ...row, date: searchDates[index], score: undefined, ratingCount: 6000,
+        })),
+        total: searchDates.length,
+        totalKind: 'estimated',
+        limit: request.limit,
+        offset: request.offset,
+      },
+    });
+    provider.getSubject = async (id) => {
+      const result = await detail(id);
+      if (!result.data) return result;
+      return {
+        ...result,
+        data: {
+          ...result.data,
+          date: detailDates[id - 1],
+          stats: { ...result.data.stats, score: 8, ratingTotal: 6000 },
+        },
+      };
+    };
+
+    const result = await new DiscoveryEngine(provider).query({
+      media: 'anime',
+      from: '2024-01-01',
+      to: '2024-05-01',
+      rating: { min: 8 },
+      ratingCount: { min: 5001 },
+      sort: 'date',
+      order: 'asc',
+    });
+
+    expect(result.items.map(({ id, date }) => [id, date])).toEqual([
+      [2, '2024-04-01'],
+      [5, '2024-04-03'],
+      [3, '2024-04-04'],
+      [6, undefined],
+    ]);
+    expect(result.coverage).toMatchObject({
+      postFilterCount: 2,
+      hydrationsAttempted: searchDates.length,
+      hydrationsSucceeded: searchDates.length,
+    });
+  });
+
   it.each([false, true])('locally rejects contradictory known dates (missing date = %s)', async (missingDate) => {
     const provider = new GoldenProvider();
     const search = provider.searchSubjects.bind(provider);
