@@ -401,7 +401,10 @@ export function observeAgentMcpFailure({
     }
     if (call.errorCodes.length) call.state = 'failed';
   }
-  const limited = inputLimited || limitReached || oversizeLines > 0;
+  const producerLimited =
+    processResult.reason === 'AGENT_MCP_PROCESS_OUTPUT_LIMIT' ||
+    (Number.isSafeInteger(processResult.stdoutBytes) && processResult.stdoutBytes > bytes);
+  const limited = inputLimited || producerLimited || limitReached || oversizeLines > 0;
   const observation = {
     schema: 'agent-mcp-failure-observation/v1',
     observationOnly: true,

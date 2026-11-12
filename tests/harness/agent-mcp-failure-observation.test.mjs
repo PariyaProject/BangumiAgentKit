@@ -459,3 +459,12 @@ test('even expected metadata cannot introduce private tool or field names into a
     /POLICY_INVALID/u,
   );
 });
+
+test('a syntactically complete captured prefix is limited when the producer reports truncation', () => {
+  for (const change of [{ reason: 'AGENT_MCP_PROCESS_OUTPUT_LIMIT' }, { stdoutBytes: 8192 }]) {
+    const processResult = { ...processFor([call()]), ...change };
+    const o = observeAgentMcpFailure({ expected, processResult });
+    assert.equal(o.stream.status, 'limited');
+    noAuthority(o);
+  }
+});

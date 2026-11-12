@@ -85,6 +85,10 @@ plus its newline. Limits produce an explicit limited/error state and never
 acceptance success. Untrusted deep alias structures cannot suppress all
 observations through a comparison stack overflow.
 
+A producer output-limit reason or reported byte count beyond the retained
+prefix also keeps the stream limited, even when that prefix ends with a valid
+`turn.completed` event. Parser success cannot erase reported capture loss.
+
 `publishAgentMcpFailure` accepts only an immutable object produced in-process
 by the observer. It writes a fixed filename, create-only and no-follow, in a
 current-owner 0700 directory, with regular-file/current-owner/single-link checks,
