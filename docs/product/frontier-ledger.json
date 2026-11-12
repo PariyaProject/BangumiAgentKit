@@ -238,9 +238,14 @@
         "scripts/acceptance/native-g03-date-png-report.mjs",
         "scripts/acceptance/native_g03_date_png_evidence.py",
         "tests/integration/native-g03-model-runtime.test.mjs",
-        "docs/research/run95-native-g03-date-png-model-result-2026-11-12.md"
+        "docs/research/run95-native-g03-date-png-model-result-2026-11-12.md",
+        "scripts/lib/agent-mcp-failure-observation.mjs",
+        "scripts/lib/agent-mcp-failure-publication.mjs",
+        "scripts/acceptance/observe-agent-mcp-failure.mjs",
+        "tests/harness/agent-mcp-failure-lifecycle.test.mjs",
+        "docs/research/run95-mcp-failure-observation-offline-2026-11-12.md"
       ],
-      "next_action": "The distinct native G03 model contract was reviewed and executed once atb2968744 after exact seven-check CI. Terminal INCONCLUSIVE: one MCP event, no signed report, no credit and no retry. Preserve both latches and executed programs; keep G03 PARTIAL. Before any genuinely distinct future model workload, use synthetic replay to improve bounded failure observations: current retained checks do not identify the exact failed call, native phase or error. Do not change names to replay this or the seven earlier spent workloads.",
+      "next_action": "The native G03 model attempt remains terminal INCONCLUSIVE atb2968744 with no report/credit/retry and unknown precise cause. An independent offline observer now distinguishes safe errors and retains bounded shape/stage facts; private create-once publication survives synthetic timeout/cancellation/cleanup/failed acknowledgement. Integrate only after exact CI and comprehensive review. A future genuinely distinct reviewed runner must explicitly adopt this seam before cleanup; do not change frozen programs, backfill old evidence or spend a new model job to test diagnostics. G03 remains PARTIAL.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
