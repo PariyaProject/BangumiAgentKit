@@ -237,9 +237,10 @@
         "scripts/acceptance/run-native-g03-date-png-model.mjs",
         "scripts/acceptance/native-g03-date-png-report.mjs",
         "scripts/acceptance/native_g03_date_png_evidence.py",
-        "tests/integration/native-g03-model-runtime.test.mjs"
+        "tests/integration/native-g03-model-runtime.test.mjs",
+        "docs/research/run95-native-g03-date-png-model-result-2026-11-12.md"
       ],
-      "next_action": "PR294 delivered usable-date hydration and bounded MCP text; PR295 delivered the finite native query/PNG verifier. The distinct Sol xhigh six-case model contract now supplies a guarded one-shot server/process, exact normal MCP/event/answer and stored-PNG checks, signed synthetic report and Agent-only consumer. Complete exact CI and comprehensive review before its sole model job, then reconcile and review any report-only refresh. Keep G03 PARTIAL: public completeness is unproven, all seven older query/render workloads stay terminal and no new model credit exists before accepted actual evidence.",
+      "next_action": "The distinct native G03 model contract was reviewed and executed once atb2968744 after exact seven-check CI. Terminal INCONCLUSIVE: one MCP event, no signed report, no credit and no retry. Preserve both latches and executed programs; keep G03 PARTIAL. Before any genuinely distinct future model workload, use synthetic replay to improve bounded failure observations: current retained checks do not identify the exact failed call, native phase or error. Do not change names to replay this or the seven earlier spent workloads.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
