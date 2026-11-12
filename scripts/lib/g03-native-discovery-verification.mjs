@@ -204,7 +204,7 @@ export function createG03NativeVerification({ readArtifact, timeoutMs = 20000 } 
     }
   };
 
-  const admitRender = (viewModel, options) => {
+  const validateRenderInput = (viewModel, options) => {
     const current = requireActive(1);
     try {
       required(current.searched && current.details.size === 6 && !image);
@@ -223,13 +223,20 @@ export function createG03NativeVerification({ readArtifact, timeoutMs = 20000 } 
       required(
         options.width === 360 && options.deviceScaleFactor === 2 && options.theme === 'light',
       );
+      return current;
     } catch {
       refuse('G03_NATIVE_RENDER_INVALID');
     }
   };
+  const admitRender = (viewModel, options) => {
+    const current = validateRenderInput(viewModel, options);
+    if (current.renderAdmitted) refuse('G03_NATIVE_RENDER_INVALID');
+    current.renderAdmitted = true;
+  };
   const observeRender = (viewModel, result, options) => {
-    admitRender(viewModel, options);
+    const current = validateRenderInput(viewModel, options);
     try {
+      required(current.renderAdmitted === true);
       required(result?.width === 720 && result.height >= 720 && result.height <= 4096);
       const facts = inspectC07PngArtifact(result.buffer, result.width, result.height);
       required(facts.decoded && facts.dimensionsMatch && facts.nonblankPixelSignalVerified);

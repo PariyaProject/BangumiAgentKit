@@ -51,7 +51,9 @@ five-year and original-work-tag scenario.
 
 The normal renderer receives the actual discovery ViewModel. Before rendering,
 the verifier admits only the four expected rows, matching coverage and caveat,
-and no remote images. Chat rendering uses 360 CSS px, DPR 2, light theme and the
+and no remote images. Admission is consumed before rendering starts: a duplicate
+start or a completion without admission permanently fails the observation.
+Chat rendering uses 360 CSS px, DPR 2, light theme and the
 existing `warm-editorial` pack. It decodes and validates the returned PNG,
 dimensions, CRC/chunk structure and bounded nonblank pixel signal. The artifact
 writer admits only that buffer once. The verifier independently reads the

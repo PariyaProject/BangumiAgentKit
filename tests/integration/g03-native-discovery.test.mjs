@@ -90,11 +90,10 @@ test('stored PNG must match the observed real render, and both calls remain cons
     await invoke(kernel, query);
     const executeRender = async () => {
       const result = await query();
-      kernel.observeRender(
-        buildDiscoveryResultsViewModel(result, G03_NATIVE_QUERY),
-        { ...imageFacts, buffer: png },
-        { width: 360, deviceScaleFactor: 2, theme: 'light' },
-      );
+      const view = buildDiscoveryResultsViewModel(result, G03_NATIVE_QUERY);
+      const options = { width: 360, deviceScaleFactor: 2, theme: 'light' };
+      kernel.admitRender(view, options);
+      kernel.observeRender(view, { ...imageFacts, buffer: png }, options);
       kernel.admitArtifactWrite(png, 'image/png', imageFacts);
       return {
         artifact: {
@@ -125,6 +124,52 @@ test('stored PNG must match the observed real render, and both calls remain cons
     assert.equal(retried, false);
   }
 });
+
+for (const mode of ['duplicate starts', 'unadmitted completion']) {
+  test(`render admission rejects ${mode}`, async () => {
+    let starts = 0,
+      artifactReads = 0;
+    const { kernel, query } = fixture({
+      readArtifact: async () => {
+        artifactReads++;
+        return png;
+      },
+    });
+    await invoke(kernel, query);
+    await assert.rejects(
+      invoke(
+        kernel,
+        async () => {
+          const result = await query();
+          const view = buildDiscoveryResultsViewModel(result, G03_NATIVE_QUERY);
+          const options = { width: 360, deviceScaleFactor: 2, theme: 'light' };
+          if (mode === 'duplicate starts') {
+            for (let attempt = 0; attempt < 3; attempt++) {
+              kernel.admitRender(view, options);
+              starts++;
+            }
+          }
+          kernel.observeRender(view, { ...imageFacts, buffer: png }, options);
+          kernel.admitArtifactWrite(png, 'image/png', imageFacts);
+          return {
+            artifact: {
+              id: 'art_' + 'b'.repeat(32),
+              mimeType: 'image/png',
+              width: imageFacts.width,
+              height: imageFacts.height,
+            },
+          };
+        },
+        renderCall,
+      ),
+      /G03_NATIVE/u,
+    );
+    assert.equal(starts, mode === 'duplicate starts' ? 1 : 0);
+    assert.equal(artifactReads, 0);
+    assert.equal(kernel.snapshot().phase, 'FAILED');
+    assert.equal(kernel.snapshot().image, null);
+  });
+}
 
 test('wrong tool, missing, expanded, and changed arguments refuse before execution', async () => {
   const invalid = [
@@ -189,6 +234,7 @@ test('unobserved, forged, or corrupted render output cannot become verified', as
           const result = { ...imageFacts, buffer: png };
           const options = { width: 360, deviceScaleFactor: 2, theme: 'light' };
           mutate(view, result, options);
+          kernel.admitRender(view, options);
           kernel.observeRender(view, result, options);
         },
         renderCall,
