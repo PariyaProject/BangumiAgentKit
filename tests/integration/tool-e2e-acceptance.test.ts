@@ -100,6 +100,52 @@ const CURRENT_NATIVE_PAGE_REPORT = (() => {
   const report = JSON.parse(bytes.toString('utf8'));
   return nativePageOfflineReportMatches(report) ? report : null;
 })();
+const NATIVE_G03_REPORT_PATH = 'docs/live-probes/native-g03-date-png-model-run95-v1.json';
+const NATIVE_G03_TOOLS = ['bangumi.query_subjects', 'bangumi.render_query_subjects'];
+
+// Signature/source/scope oracle. Real terminal/CI checks remain in the consumer.
+function nativeG03OfflineReportMatches(report: unknown, repositoryRoot = ROOT): boolean {
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      `
+import fs from 'node:fs';
+import {createHash} from 'node:crypto';
+import {G03_MODEL_PROFILE as P} from './scripts/lib/native-g03-date-png-profile.mjs';
+import {validateG03ModelReport} from './scripts/acceptance/native-g03-date-png-report.mjs';
+try {
+ const r=JSON.parse(fs.readFileSync(0,'utf8'));
+ const claim={...r.gate,state:'REPORT_WRITTEN',retryAllowed:false,reportWritten:true,
+   expectedArguments:P.calls.map(c=>c.arguments),
+   runnerReceiptPublicKeySha256:createHash('sha256').update(Buffer.from(r.gate.runnerReceiptPublicKey,'base64')).digest('hex')};
+ process.stdout.write(JSON.stringify(validateG03ModelReport(r,claim).passed===true));
+} catch {process.stdout.write('false');}
+`,
+    ],
+    {
+      cwd: repositoryRoot,
+      input: JSON.stringify(report),
+      encoding: 'utf8',
+      timeout: 5000,
+      maxBuffer: 65536,
+    },
+  );
+  return result.status === 0 && result.stdout === 'true';
+}
+const CURRENT_NATIVE_G03_REPORT = (() => {
+  const target = join(ROOT, NATIVE_G03_REPORT_PATH);
+  if (!existsSync(target)) return null;
+  try {
+    const bytes = readFileSync(target);
+    if (bytes.length > 65536) return null;
+    const report = JSON.parse(bytes.toString('utf8'));
+    return nativeG03OfflineReportMatches(report) ? report : null;
+  } catch {
+    return null;
+  }
+})();
 const P06_AGENT_MCP_REPORT_PATH =
   'docs/live-probes/p06-render-person-profile-agent-mcp-v3-run95.json';
 const RENDER_SUBJECT_CARD_V5_REPORT_PATH =
@@ -1185,6 +1231,37 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     }
   });
 
+  it('preflights the signed native G03 offline oracle without model or control traffic', () => {
+    const fixture = spawnSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `
+import {g03ModelReportFixture} from './tests/harness/fixtures/native-g03-model-report.mjs';
+const f=g03ModelReportFixture();process.stdout.write(JSON.stringify({root:f.root,report:f.build()}));
+`,
+      ],
+      { cwd: ROOT, encoding: 'utf8', timeout: 10000, maxBuffer: 256 * 1024 },
+    );
+    expect(fixture.status, fixture.stderr).toBe(0);
+    const value = JSON.parse(fixture.stdout);
+    try {
+      expect(nativeG03OfflineReportMatches(value.report, value.root)).toBe(true);
+      expect(value.report.source.descriptors.map((tool: { name: string }) => tool.name)).toEqual(
+        NATIVE_G03_TOOLS,
+      );
+      expect(value.report.execution.liveHttpRequests).toBe(0);
+      expect(value.report.observation.syntheticSource).toBe(true);
+      const changed = structuredClone(value.report);
+      changed.execution.cleanupComplete = false;
+      expect(nativeG03OfflineReportMatches(changed, value.root)).toBe(false);
+      expect(nativeG03OfflineReportMatches(value.report)).toBe(false);
+    } finally {
+      rmSync(value.root, { recursive: true, force: true });
+    }
+  });
+
   it('records observed model-to-MCP calls without implying QQ or TIM acceptance', () => {
     const rows = rowsByTool();
     const catalogNames = catalog.map((item) => item.name).sort();
@@ -1209,6 +1286,12 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       ...(CURRENT_P03_V4_AGENT_MCP_REPORT ? ['bangumi.get_person_profile'] : []),
       ...(CURRENT_RENDER_SUBJECT_CARD_V5_REPORT ? ['bangumi.render_subject_card'] : []),
       ...(CURRENT_NATIVE_PAGE_REPORT ? NATIVE_PAGE_TOOLS : []),
+      ...(CURRENT_NATIVE_G03_REPORT
+        ? [
+            ...(CURRENT_D05_REPORT ? [] : ['bangumi.query_subjects']),
+            'bangumi.render_query_subjects',
+          ]
+        : []),
     ];
 
     expect(rows.size).toBe(96);
@@ -1227,7 +1310,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     // Historical subject-card evidence stays catalog-bound; the signed v5 offline profile is checked separately.
     expect(uncoveredNames).toEqual(
       [
-        ...(CURRENT_D05_REPORT ? [] : ['bangumi.query_subjects']),
+        ...(CURRENT_D05_REPORT || CURRENT_NATIVE_G03_REPORT ? [] : ['bangumi.query_subjects']),
         ...(CURRENT_CAST_AGENT_MCP_REPORT ? [] : ['bangumi.get_subject_cast']),
         'bangumi.aggregate_subject_cohort',
         'bangumi.compare_subject_cohorts',
@@ -1236,7 +1319,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_series_watch_order',
         'bangumi.render_subject_cohort_aggregation',
         ...(CURRENT_C07_RENDERER_REPORT ? [] : ['bangumi.render_subject_cohort_comparison']),
-        'bangumi.render_query_subjects',
+        ...(CURRENT_NATIVE_G03_REPORT ? [] : ['bangumi.render_query_subjects']),
         ...(CURRENT_P06_AGENT_MCP_MATRIX ? [] : ['bangumi.render_person_profile']),
         ...(CURRENT_R04_RENDER_V2_REPORT ? [] : ['bangumi.render_series_watch_order']),
         'bangumi.auth_start',
@@ -1335,7 +1418,8 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_subject_stats_history',
         'bangumi.update_collection',
         'bangumi.update_episode_progress',
-        ...(CURRENT_D05_REPORT ? ['bangumi.query_subjects'] : []),
+        ...(CURRENT_D05_REPORT || CURRENT_NATIVE_G03_REPORT ? ['bangumi.query_subjects'] : []),
+        ...(CURRENT_NATIVE_G03_REPORT ? ['bangumi.render_query_subjects'] : []),
       ].sort(),
     );
 

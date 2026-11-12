@@ -100,6 +100,8 @@ import {
 import { makeP01Report } from './p01-report-fixture.mjs';
 import { nativePageReportFixture } from './fixtures/native-page-report.mjs';
 import { NATIVE_PAGE_SOURCE_PATHS, buildNativePageReport, writeNativePageReport } from '../../scripts/acceptance/native-entity-page-report.mjs';
+import { g03ModelReportFixture } from './fixtures/native-g03-model-report.mjs';
+import { G03_MODEL_SOURCE_PATHS, buildG03ModelReport, writeG03ModelReport } from '../../scripts/acceptance/native-g03-date-png-report.mjs';
 import { makeR05ProfileReportInput } from './fixtures/r05-profile-report-input.mjs';
 import { writeR05SharedPersonOverlapReport } from '../../scripts/acceptance/write-r05-shared-person-overlap-report.mjs';
 import {
@@ -182,6 +184,8 @@ const R04_RENDER_V2_PROFILE = getAgentMcpProfileById(
 const C04_PROFILE = getAgentMcpProfileById('c04-cohort-comparison-agent-mcp-matrix-v1');
 const TITLE_QUERY_RENDER_PROFILE = getAgentMcpProfileById('query-render-title-agent-mcp-v1');
 const NATIVE_PAGE_MODEL_PROFILE = getAgentMcpProfileById('native-entity-page-public-model-v1');
+const NATIVE_G03_MODEL_PROFILE = getAgentMcpProfileById('native-g03-date-png-model-v1');
+const NATIVE_G03_BUNDLE_SHA256 = JSON.parse(fs.readFileSync(path.join(root, 'docs/product/native-g03-date-png-mcp-bundle-attestation.json'))).bundleSha256;
 const RENDER_SUBJECT_CARD_V5_PROFILE = getAgentMcpProfileById(
   'render-subject-card-compact-typography-agent-mcp-v5',
 );
@@ -2398,7 +2402,9 @@ function run95P05ClaimFixture() {
 function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
   const { run, epoch } = passedCandidateFixture();
   const branch = `codex/epoch-${profile.epochId}`;
-  const reviewerId = profile.id === NATIVE_PAGE_MODEL_PROFILE.id
+  const reviewerId = profile.id === NATIVE_G03_MODEL_PROFILE.id
+    ? '/root/g03_model_product_review'
+    : profile.id === NATIVE_PAGE_MODEL_PROFILE.id
     ? '/root/native_page_product_review'
     : 'gpt-6-luna-max-run95-pr42-round1';
   run.state = 'EPOCH_ACTIVE';
@@ -2440,6 +2446,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
   const ciRunId = '38806371672';
   const ciRunUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
   const exactCiProfileIds = [
+    NATIVE_G03_MODEL_PROFILE.id,
     NATIVE_PAGE_MODEL_PROFILE.id,
     P06_PROFILE.id,
     'render-subject-card-compact-typography-agent-mcp-v3',
@@ -2835,6 +2842,112 @@ test('new native signed report is accepted through actual Harness dispatch and t
   }
 });
 
+function executeG03Mock(environment, args) {
+  return environment.execute(args, { HARNESS_G04_BUNDLE_SHA256: NATIVE_G03_BUNDLE_SHA256 });
+}
+
+test('native G03 Sol xhigh profile uses exact CI and one permanent claim without changing legacy execution contracts', () => {
+  const harnessRoot = createIsolatedHarnessRoot([NATIVE_G03_MODEL_PROFILE.reportPath]);
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(NATIVE_G03_MODEL_PROFILE, { harnessRoot });
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const args = ['--run', '95', '--pr', '42', '--profile-id', NATIVE_G03_MODEL_PROFILE.id];
+  try {
+    const initial = executeG03Mock(environment,['epoch:agent-mcp-profile-status', ...args]);
+    assert.equal(initial.status, 0, initial.stderr);
+    assert.equal(JSON.parse(initial.stdout).review_gate.eligible, true);
+    const result = executeG03Mock(environment,['epoch:agent-mcp-profile-claim', ...args,
+      '--bundle-sha256', NATIVE_G03_BUNDLE_SHA256, '--reviewer-id', reviewerId, '--runner-public-key', keyPair.publicKeyBase64]);
+    assert.equal(result.status, 0, result.stderr);
+    const claim = JSON.parse(result.stdout);
+    assert.equal(claim.state, 'AGENT_MCP_PROFILE_CLAIMED');
+    assert.equal(claim.ciRunId, '38806371672');
+    assert.equal(claim.ciChecks.length, 7);
+    const duplicate = executeG03Mock(environment,['epoch:agent-mcp-profile-claim', ...args,
+      '--bundle-sha256', NATIVE_G03_BUNDLE_SHA256, '--reviewer-id', reviewerId, '--runner-public-key', keyPair.publicKeyBase64]);
+    assert.notEqual(duplicate.status, 0);
+    const terminal = executeG03Mock(environment,['epoch:agent-mcp-profile-result', ...args,
+      '--claim-id', claim.claimId, '--state', 'INCONCLUSIVE']);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    const finished = JSON.parse(executeG03Mock(environment,['epoch:agent-mcp-profile-status', ...args]).stdout);
+    assert.equal(finished.state, 'INCONCLUSIVE');
+    assert.equal(finished.retry_allowed, false);
+  } finally { environment.cleanup(); fs.rmSync(harnessRoot, { recursive: true, force: true }); }
+});
+
+test('native G03 signed report is accepted through actual Harness dispatch and terminal receipt binding', () => {
+  const f = g03ModelReportFixture();
+  const harnessRoot = createIsolatedHarnessRoot([NATIVE_G03_MODEL_PROFILE.reportPath]);
+  const seeded = agentMcpProfileReviewReadyEnvironment(NATIVE_G03_MODEL_PROFILE);
+  seeded.environment.cleanup();
+  const { run, epoch, branch, reviewerId } = seeded;
+  const source = f.claim.sourceCandidateSha;
+  epoch.candidate_sha = source; epoch.review_pass_sha = source; epoch.ci.sha = source;
+  epoch.review_history[0].candidate_sha = source;
+  const ciRunId = '38806371672';
+  const gitObjects = Object.fromEntries([...G03_MODEL_SOURCE_PATHS, NATIVE_G03_MODEL_PROFILE.selectionEvidencePath,
+    'docs/tool-catalog.json'].map((relative) => [`${source}:${relative}`, fs.readFileSync(path.join(root, relative)).toString('base64')]));
+  const environment = createMockEnvironment({ harnessRoot, runIssueNumber: 95, runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch), branch, featureBranch: branch, featureHeadSha: source, baseSha: sha('a'),
+    draft: false, gitObjects, checks: mandatoryChecks.map((name, index) => ({ name, status: 'COMPLETED',
+      conclusion: 'SUCCESS', detailsUrl: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}/job/${116668186145 + index}` })) });
+  const args = ['--run', '95', '--pr', '42', '--profile-id', NATIVE_G03_MODEL_PROFILE.id];
+  try {
+    const claimed = executeG03Mock(environment,['epoch:agent-mcp-profile-claim', ...args,
+      '--bundle-sha256', NATIVE_G03_BUNDLE_SHA256, '--reviewer-id', reviewerId,
+      '--runner-public-key', f.claim.runnerReceiptPublicKey]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const state = environment.readState();
+    const claim = parseControlBlock(state.prBody, EPOCH_MARKER).adversarial_preflight.agent_mcp_profile_dispositions[NATIVE_G03_MODEL_PROFILE.id];
+    const report = buildG03ModelReport({ claim, observation: f.observation, execution: f.execution, answer: f.answer, artifact:f.artifact },
+      f.privateKey, { root: f.root });
+    writeG03ModelReport(report, harnessRoot);
+    state.dirty = `?? ${NATIVE_G03_MODEL_PROFILE.reportPath}`;
+    fs.writeFileSync(environment.statePath, JSON.stringify(state));
+    const digest = createHash('sha256').update(fs.readFileSync(path.join(harnessRoot, NATIVE_G03_MODEL_PROFILE.reportPath))).digest('hex');
+    const terminal = executeG03Mock(environment,['epoch:agent-mcp-profile-result', ...args,
+      '--claim-id', claim.claimId, '--state', 'REPORT_WRITTEN', '--report-sha256', digest]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    assert.equal(JSON.parse(terminal.stdout).reportSha256, digest);
+    const observed = JSON.parse(executeG03Mock(environment,['epoch:agent-mcp-profile-status', ...args]).stdout);
+    assert.equal(observed.state, 'REPORT_WRITTEN');
+    assert.equal(observed.disposition.runnerReceiptSha256, createHash('sha256').update(canonicalAgentMcpProfileJson({
+      signature: report.signature, publicKey: claim.runnerReceiptPublicKey,
+    })).digest('hex'));
+    assert.equal(observed.retry_allowed, false);
+    const terminalState = environment.readState();
+    const terminalEpoch = parseControlBlock(terminalState.prBody, EPOCH_MARKER);
+    // Frontier advancement has its own tests. Exercise the real post-report
+    // Candidate transition here without replacing the signed disposition.
+    terminalEpoch.advances_frontier_ids = [];
+    terminalState.prBody = renderEpochBody(terminalEpoch);
+    for (const extra of ['docs/research/run95-native-g03-date-png-model-result-2026-11-12.md',
+      'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md', 'docs/product/frontier-ledger.json',
+      '.github/workflows/ci.yml', 'scripts/agent-harness.mjs',
+      'scripts/acceptance/native_g03_date_png_evidence.py', 'packages/tools/src/registry.ts']) {
+      fs.writeFileSync(environment.statePath, JSON.stringify({ ...terminalState,
+        dirty: '', featureHeadSha: sha('e'), candidateRefreshRange: `${source}...${sha('e')}`,
+        candidateRefreshPaths: [NATIVE_G03_MODEL_PROFILE.reportPath, extra] }));
+      const refreshed = executeG03Mock(environment,['candidate:check', '--pr', '42', '--evidence',
+        candidateEvidence(environment, { candidate_sha: sha('e'),
+          candidate_refresh_reason: 'Integrate the native signed report and its bounded result document.',
+          ci: { url: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}` },
+          adversarial_preflight: terminalEpoch.adversarial_preflight })]);
+      if (['docs/research/run95-native-g03-date-png-model-result-2026-11-12.md',
+        'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md', 'docs/product/frontier-ledger.json'].includes(extra)) {
+        assert.equal(refreshed.status, 0, refreshed.stderr);
+        const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+        assert.equal(stored.state, 'REVIEW_READY');
+        assert.deepEqual(stored.adversarial_preflight, terminalEpoch.adversarial_preflight);
+      } else {
+        assert.notEqual(refreshed.status, 0);
+        assert.match(refreshed.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+      }
+    }
+  } finally {
+    environment.cleanup(); fs.rmSync(harnessRoot, { recursive: true, force: true }); f.close();
+  }
+});
+
 test('C03 Harness profile status, create-once claim, and terminal result are durable and fail closed', () => {
   const { environment, reviewerId } = c03ReviewReadyEnvironment();
   const keyPair = generateG04RunnerReceiptKeyPair();
@@ -3112,6 +3225,131 @@ test('C03 v2 ambiguous latch refuses reconciliation when a report exists', () =>
     assert.equal(
       parseControlBlock(state.prBody, EPOCH_MARKER).adversarial_preflight
         .agent_mcp_profile_dispositions?.[C03_ACTIVITY_V2_PROFILE.id],
+      undefined,
+    );
+  } finally {
+    environment.cleanup();
+    fs.rmSync(harnessRoot, { recursive: true, force: true });
+  }
+});
+
+test('native G03 ambiguous profile latch reconciliation is terminal, bounded, and idempotent', () => {
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(NATIVE_G03_MODEL_PROFILE, {
+    repositoryLabels: {
+      [NATIVE_G03_MODEL_PROFILE.claimLabelName]: {
+        name: NATIVE_G03_MODEL_PROFILE.claimLabelName,
+        description: agentMcpProfileClaimLabelDescription(NATIVE_G03_MODEL_PROFILE),
+      },
+    },
+  });
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', NATIVE_G03_MODEL_PROFILE.id];
+  try {
+    const ambiguous = executeG03Mock(environment,['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(ambiguous.status, 0, ambiguous.stderr);
+    assert.equal(JSON.parse(ambiguous.stdout).state, 'AMBIGUOUS');
+
+    const reconciled = executeG03Mock(environment,[
+      'epoch:agent-mcp-profile-reconcile-ambiguous',
+      ...runArgs,
+    ]);
+    assert.equal(reconciled.status, 0, reconciled.stderr);
+    assert.deepEqual(JSON.parse(reconciled.stdout), {
+      state: 'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_RECONCILED',
+      run: 95,
+      pr: 42,
+      profileId: NATIVE_G03_MODEL_PROFILE.id,
+      resultState: 'INCONCLUSIVE',
+      retryAllowed: false,
+    });
+
+    const status = executeG03Mock(environment,['epoch:agent-mcp-profile-status', ...runArgs]);
+    assert.equal(status.status, 0, status.stderr);
+    const profileStatus = JSON.parse(status.stdout);
+    assert.equal(profileStatus.state, 'INCONCLUSIVE');
+    assert.equal(profileStatus.retry_allowed, false);
+    assert.equal(profileStatus.disposition.ambiguousLatchReconciled, true);
+    assert.equal(profileStatus.disposition.claimIdentityRecovered, false);
+    assert.equal(profileStatus.disposition.claimId, null);
+    assert.deepEqual(profileStatus.disposition.failureDiagnostics, {
+      schemaVersion: 1,
+      reasonCode: 'G03_MODEL_AMBIGUOUS_LATCH_RECONCILED',
+      checks: { invocationStateUnknown: true },
+      counters: {},
+    });
+
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(
+      stored.adversarial_preflight.agent_mcp_profile_dispositions[NATIVE_G03_MODEL_PROFILE.id].state,
+      'INCONCLUSIVE',
+    );
+    assert.equal(
+      environment.readState().repositoryLabels[
+        NATIVE_G03_MODEL_PROFILE.claimLabelName.replace(/-claimed$/u, '-terminal')
+      ].description,
+      'Run95 G03 INCONCLUSIVE no-report',
+    );
+
+    const repeated = executeG03Mock(environment,[
+      'epoch:agent-mcp-profile-reconcile-ambiguous',
+      ...runArgs,
+    ]);
+    assert.equal(repeated.status, 0, repeated.stderr);
+    assert.equal(
+      JSON.parse(repeated.stdout).state,
+      'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED',
+    );
+
+    const noSecondClaim = executeG03Mock(environment,[
+      'epoch:agent-mcp-profile-claim',
+      ...runArgs,
+      '--bundle-sha256',
+      NATIVE_G03_BUNDLE_SHA256,
+      '--reviewer-id',
+      reviewerId,
+      '--runner-public-key',
+      generateG04RunnerReceiptKeyPair().publicKeyBase64,
+    ]);
+    assert.equal(noSecondClaim.status, 2);
+    assert.equal(JSON.parse(executeG03Mock(environment, ['epoch:agent-mcp-profile-status', ...runArgs]).stdout).state, 'INCONCLUSIVE');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('native G03 ambiguous latch refuses reconciliation when a report exists', () => {
+  const harnessRoot = createIsolatedHarnessRoot([
+    R05_PROFILE.reportPath,
+    NATIVE_G03_MODEL_PROFILE.reportPath,
+  ]);
+  fs.mkdirSync(path.dirname(path.join(harnessRoot, NATIVE_G03_MODEL_PROFILE.reportPath)), {
+    recursive: true,
+  });
+  fs.writeFileSync(path.join(harnessRoot, NATIVE_G03_MODEL_PROFILE.reportPath), '{}\n');
+  const { environment } = agentMcpProfileReviewReadyEnvironment(NATIVE_G03_MODEL_PROFILE, {
+    harnessRoot,
+    repositoryLabels: {
+      [NATIVE_G03_MODEL_PROFILE.claimLabelName]: {
+        name: NATIVE_G03_MODEL_PROFILE.claimLabelName,
+        description: agentMcpProfileClaimLabelDescription(NATIVE_G03_MODEL_PROFILE),
+      },
+    },
+  });
+  const runArgs = ['--run', '95', '--pr', '42', '--profile-id', NATIVE_G03_MODEL_PROFILE.id];
+  try {
+    const rejected = executeG03Mock(environment,[
+      'epoch:agent-mcp-profile-reconcile-ambiguous',
+      ...runArgs,
+    ]);
+    assert.equal(rejected.status, 2);
+    assert.match(rejected.stderr, /^AGENT_MCP_PROFILE_AMBIGUOUS_REPORT_PRESENT:/u);
+    const state = environment.readState();
+    assert.equal(
+      state.repositoryLabels[agentMcpProfileTerminalLabelName(NATIVE_G03_MODEL_PROFILE)],
+      undefined,
+    );
+    assert.equal(
+      parseControlBlock(state.prBody, EPOCH_MARKER).adversarial_preflight
+        .agent_mcp_profile_dispositions?.[NATIVE_G03_MODEL_PROFILE.id],
       undefined,
     );
   } finally {

@@ -13,12 +13,13 @@ import { nativePageEnvironment, nativePageHarness, assertNativePageClaimReadback
 import { buildNativePageCodexArgs, inspectNativePageModelResult, runNativePageProcess,
   reconcileNativePageResult } from '../../scripts/acceptance/run-native-entity-page-model.mjs';
 import { nativePageReportFixture } from './fixtures/native-page-report.mjs';
+import { G03_MODEL_PROFILE_ID } from '../../scripts/lib/native-g03-date-png-profile.mjs';
 
 test('new closed native profile permits only Sol xhigh while preserving every legacy execution pin', () => {
   assert.equal(isNativeEntityPageProfile(getAgentMcpProfileById(P.id)), true);
   assert.equal(profileRequiresExactCiRunEvidence(P.id), true);
   assert.equal(profileExecutionModelMatches(P), true);
-  for (const entry of listAgentMcpProfiles().filter((p) => p.id !== P.id)) {
+  for (const entry of listAgentMcpProfiles().filter((p) => p.id !== P.id && p.id !== G03_MODEL_PROFILE_ID)) {
     assert.equal(profileExecutionModelMatches(entry), true);
     assert.equal(profileExecutionModelMatches({ ...entry, model: 'gpt-6.1-sol', reasoningEffort: 'xhigh' }), false);
   }
