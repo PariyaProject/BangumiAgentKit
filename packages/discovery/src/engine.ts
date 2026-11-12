@@ -16,12 +16,11 @@ import {
   type SubjectDiscoveryProvider,
   type SubjectDiscoverySearchRequest,
 } from '@bangumi-agent-kit/provider-core';
-import {
-  compileDiscoveryPlan,
-} from './compiler.js';
+import { compileDiscoveryPlan, explicitDiscoveryDateRange } from './compiler.js';
 import {
   type ConceptCandidate,
   type ConceptResolution,
+  type DateRange,
   type DiscoveryItem,
   type DiscoveryHydrationRequirement,
   type DiscoveryPlan,
@@ -38,6 +37,7 @@ import { isNormalizedDiscoveryQuery, normalizeDiscoveryQuery } from './query.js'
 
 interface CandidateWithDetail {
   candidate: SubjectDiscoveryCandidate;
+  date?: string;
   detail?: ProviderSubjectData;
   detailResult?: CapabilityResult<ProviderSubjectData>;
   collectionCompletionRateResult?: CapabilityResult<number | null>;
@@ -356,12 +356,27 @@ function requiresHydration(
   return item.detailResult === undefined && requirements.some((requirement) => !requirementSatisfied(item, requirement));
 }
 
+function usableCalendarDate(date: string | undefined): string | undefined {
+  if (!date) return undefined;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date
+    ? date
+    : undefined;
+}
+
 function evaluateCandidate(
   item: CandidateWithDetail,
   query: NormalizedDiscoveryQuery,
   requirements: readonly DiscoveryHydrationRequirement[],
+  searchDateRange: DateRange | undefined,
 ): 'match' | 'non_match' | 'unresolved' {
   if (requirements.some((requirement) => !requirementSatisfied(item, requirement))) return 'unresolved';
+  const detailDate = item.detail?.date;
+  item.date = searchDateRange
+    ? usableCalendarDate(detailDate) ?? usableCalendarDate(item.candidate.date)
+    : detailDate ?? item.candidate.date;
+  if (searchDateRange && item.date &&
+      (item.date < searchDateRange.from || item.date >= searchDateRange.to)) return 'non_match';
   const collection = collectionFor(item.candidate, item.detail);
   const score = numberFor(item.candidate, item.detail, 'score');
   const rank = numberFor(item.candidate, item.detail, 'rank');
@@ -393,10 +408,10 @@ function sortItems(items: CandidateWithDetail[], query: NormalizedDiscoveryQuery
   if (query.sort === 'score' || query.sort === 'rank' || query.sort === 'date') {
     ordered.sort((left, right) => {
       const leftValue = query.sort === 'date'
-        ? left.detail?.date ?? left.candidate.date
+        ? left.date
         : numberFor(left.candidate, left.detail, query.sort === 'score' ? 'score' : 'rank');
       const rightValue = query.sort === 'date'
-        ? right.detail?.date ?? right.candidate.date
+        ? right.date
         : numberFor(right.candidate, right.detail, query.sort === 'score' ? 'score' : 'rank');
       if (leftValue === undefined && rightValue === undefined) return left.order - right.order;
       if (leftValue === undefined) return 1;
@@ -552,6 +567,8 @@ export class DiscoveryEngine {
       .filter((item) => item.state === 'exact')
       .flatMap((item) => item.candidates);
     const plan = compileDiscoveryPlan(query, conceptCandidates);
+    const searchDateRange =
+      plan.operation === 'searchSubjects' ? explicitDiscoveryDateRange(query) : undefined;
     if (conceptResolution.some((item) => item.state !== 'exact')) {
       return this.conceptFailure(query, plan, conceptResolution);
     }
@@ -704,7 +721,7 @@ export class DiscoveryEngine {
       }
       for (const item of candidates) {
         if (item.evaluation !== 'pending') continue;
-        const evaluation = evaluateCandidate(item, query, plan.hydrationRequirements);
+        const evaluation = evaluateCandidate(item, query, plan.hydrationRequirements, searchDateRange);
         item.evaluation = evaluation;
         if (evaluation === 'non_match') {
           postFilterCount += 1;
@@ -933,9 +950,7 @@ export class DiscoveryEngine {
       ...(categoryForPlatform(detail?.platform ?? item.candidate.platform) === undefined
         ? {}
         : { category: categoryForPlatform(detail?.platform ?? item.candidate.platform) }),
-      ...(detail?.date ?? item.candidate.date
-        ? { date: detail?.date ?? item.candidate.date }
-        : {}),
+      ...(item.date ? { date: item.date } : {}),
       ...(numberFor(item.candidate, detail, 'score') === undefined
         ? {}
         : { score: numberFor(item.candidate, detail, 'score') }),

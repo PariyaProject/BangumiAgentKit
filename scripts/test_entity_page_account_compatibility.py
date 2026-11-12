@@ -219,6 +219,7 @@ class CurrentCheckoutEntityPageCompatibilityTests(unittest.TestCase):
         self.assertEqual(set(current), evidence.TOOLS)
         for references in current.values():
             self.assertIn(evidence.SERIES_PRESENTER_REFERENCE, references)
+            self.assertIn(evidence.DISCOVERY_DATE_REFERENCE, references)
         self.assertEqual(union.real_account_read_sources(ROOT, catalog), current)
         self.assertEqual(evidence.prior.person_compatible_account_sources(ROOT, catalog), {})
         self.assertEqual(evidence.calendar.calendar_compatible_account_sources(ROOT, catalog), {})
@@ -227,18 +228,20 @@ class CurrentCheckoutEntityPageCompatibilityTests(unittest.TestCase):
     def test_presenter_successor_requires_exact_receipt_and_all_runtime_bytes(self):
         catalog = json.loads((ROOT / 'docs/tool-catalog.json').read_bytes())
         read = evidence._read
-        def corrupt_receipt(root, name, *args):
-            raw = read(root, name, *args)
-            return raw + b'\n' if name == evidence.SERIES_PRESENTER_REFERENCE else raw
-        with patch.object(evidence, '_read', side_effect=corrupt_receipt):
-            self.assertEqual(evidence.entity_page_compatible_account_sources(ROOT, catalog), {})
+        for reference in (evidence.SERIES_PRESENTER_REFERENCE, evidence.DISCOVERY_DATE_REFERENCE):
+            def corrupt_receipt(root, name, *args):
+                raw = read(root, name, *args)
+                return raw + b'\n' if name == reference else raw
+            with self.subTest(reference=reference), patch.object(evidence, '_read', side_effect=corrupt_receipt):
+                self.assertEqual(evidence.entity_page_compatible_account_sources(ROOT, catalog), {})
 
         read_regular = receipts._read_regular
-        def corrupt_runtime(root, name, *args):
-            raw = read_regular(root, name, *args)
-            return raw + b'\n' if name == 'apps/mcp/src/server.ts' else raw
-        with patch.object(receipts, '_read_regular', side_effect=corrupt_runtime):
-            self.assertEqual(evidence.entity_page_compatible_account_sources(ROOT, catalog), {})
+        for path in ('apps/mcp/src/server.ts', *evidence.DISCOVERY_DATE_PATHS):
+            def corrupt_runtime(root, name, *args):
+                raw = read_regular(root, name, *args)
+                return raw + b'\n' if name == path else raw
+            with self.subTest(path=path), patch.object(receipts, '_read_regular', side_effect=corrupt_runtime):
+                self.assertEqual(evidence.entity_page_compatible_account_sources(ROOT, catalog), {})
 
 
 if __name__ == '__main__':

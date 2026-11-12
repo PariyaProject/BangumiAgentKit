@@ -226,9 +226,11 @@
         "packages/discovery/src/compiler.ts",
         "packages/discovery/src/engine.ts",
         "packages/renderer/src/templates/DiscoveryResultsCard.tsx",
-        "tests/discovery/scenario-cases.test.ts"
+        "tests/discovery/scenario-cases.test.ts",
+        "tests/discovery/golden-e2e.test.ts",
+        "docs/research/run95-g03-native-discovery-date-boundary-2026-11-08.md"
       ],
-      "next_action": "Run 66 verified the half-open five-year interval, exact 原创 meta-tag, score >= 8.0, ratingCount >= 5001, and descending score through direct ToolRegistry and one-tool Agent/MCP; the 360 CSS px/2x card was visually checked. Two matching rows were returned and the bounded query exhausted its observed page, but totals are estimated and official search is experimental. Keep PARTIAL; do not imply complete Bangumi-wide coverage.",
+      "next_action": "Run 66 verified the historical half-open five-year interval, 原创 meta-tag, score >= 8.0, ratingCount >= 5001, and descending score through direct ToolRegistry and one-tool Agent/MCP. Current native SDK stdio reproduced contradictory known dates. The correction resolves the usable date consistently across filtering, sorting, and PNG output, and preserves the full MCP result even when long filter labels overflow the text cap. The fixed native fixtures retain the explicit half-open window, rating-count cutoff, and estimated and experimental scope. Keep PARTIAL; this isolated evidence adds no Agent/MCP, live, account or client matrix credit.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

@@ -570,7 +570,7 @@ function compactDiscoveryResult(result: DiscoveryToolResult): string {
     else break;
   }
 
-  const fallback = JSON.stringify({
+  const fallback = {
     state: result.state,
     plan: planSummary,
     coverage,
@@ -590,11 +590,32 @@ function compactDiscoveryResult(result: DiscoveryToolResult): string {
       maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
       fullResultUtf8Bytes: fullJsonBytes,
     },
+  };
+  const fallbackText = JSON.stringify(fallback);
+  if (utf8Bytes(fallbackText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return fallbackText;
+
+  // Only fixed provider metadata and bounded numeric/date predicates are
+  // needed at this tier. Variable tag labels and local filter details remain
+  // in the full structured result.
+  const essentialFilter = { ...planSummary.filter };
+  delete essentialFilter.tag;
+  delete essentialFilter.metaTags;
+  return JSON.stringify({
+    ...fallback,
+    plan: {
+      source: planSummary.source,
+      operation: planSummary.operation,
+      totalKind: planSummary.totalKind,
+      sort: planSummary.sort,
+      order: planSummary.order,
+      filter: essentialFilter,
+      filterDetailsOmittedFromText: true,
+    },
+    textProjection: {
+      ...fallback.textProjection,
+      textViewScope: 'No rows are shown in this text view. Tag and local filter details remain in structuredContent. Source coverage can still be partial.',
+    },
   });
-  if (utf8Bytes(fallback) > MCP_TOOL_TEXT_MAX_UTF8_BYTES) {
-    throw new Error('Unable to produce bounded MCP discovery text');
-  }
-  return fallback;
 }
 
 function firstDiscoveryRequest(plan: JsonObject): JsonObject | undefined {
@@ -608,6 +629,7 @@ function projectDiscoveryPlan(
   plan: JsonObject,
   filter: JsonObject,
 ): JsonObject & {
+  filter: JsonObject;
   filterValuesOmitted: number;
   postFiltersOmitted: number;
   derivedFiltersOmitted: number;
