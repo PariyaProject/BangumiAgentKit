@@ -494,6 +494,15 @@ claim identity and invocation state unknown, and grants no matrix credit. It
 does not issue a new claim or invoke Codex. Missing, mismatched, unreadable, or
 conflicting latch state fails closed.
 
+The exact `native-g03-date-png-model-v1` profile also uses this no-dispatch
+reconciliation when its permanent claim label exists without a durable claim.
+It requires the matching active G03 Epoch, completed preflight, ready PR,
+exact latch metadata, no report and a fresh control-state readback. It writes
+only an `INCONCLUSIVE`, no-report tombstone with unknown claim identity and
+invocation state, preserving the claim latch permanently. A known G03 claim
+uses the runner's ordinary `--reconcile` report/terminal path. Neither path
+grants another model job, reclaims a latch or changes any historical workload.
+
 The v2 synthetic offline profile is independent of the spent v1 latch: it has a
 new profile ID, network mode, exact arguments, synthetic subject, and report
 path. It may credit only the `aggregate_subject_cohort` Agent/MCP matrix row.
@@ -1257,10 +1266,11 @@ help` for exact arguments.
   the exact remote branch ref into its tracking ref and checks that SHA against
   the Candidate and PR head, so a stale local `origin/<branch>` ref cannot
   block a valid verdict.
-- `epoch:agent-mcp-profile-reconcile-ambiguous`: for the Run #95 A01 offline
-  aggregate profile only, reconcile an exact existing claim latch with no
-  durable disposition to terminal no-report `INCONCLUSIVE`; this grants no
-  invocation authority and never retries the claim.
+- `epoch:agent-mcp-profile-reconcile-ambiguous`: reconcile only the explicitly
+  registered Run #95 offline profiles described in §6, including the exact
+  native G03 profile, when an exact claim latch has no durable disposition.
+  It records terminal no-report `INCONCLUSIVE` without invocation authority
+  or a claim retry.
 - `review:runtime`: record explicit `ACTIVE`, `INTERRUPTED`, or `UNAVAILABLE`
   runtime truth for the exact reviewer id.
 - `review:wait`: after explicit `ACTIVE` observation, validate same-reviewer

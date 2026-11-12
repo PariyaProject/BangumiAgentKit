@@ -62,6 +62,9 @@ from acceptance.real_account_read_evidence import real_account_read_sources
 from acceptance.native_entity_page_evidence import (
     REPORT as NATIVE_PAGE_REPORT, native_page_evidence_sources,
 )
+from acceptance.native_g03_date_png_evidence import (
+    REPORT as NATIVE_G03_REPORT, native_g03_evidence_sources,
+)
 from acceptance.c03_person_activity_offline_v2_acceptance import (
     c03_person_activity_offline_v2_signed_report_matches,
 )
@@ -1389,7 +1392,8 @@ def r02_positive_agent_mcp_matches(name: str, relative_path: str, report: object
 
 
 def evidence_reference_error(name: str, cell: str, kind: str,
-                             native_sources: dict[str, set[str]] | None = None) -> str | None:
+                             native_sources: dict[str, set[str]] | None = None,
+                             native_g03_sources: dict[str, set[str]] | None = None) -> str | None:
     mark = status_mark(cell)
     expected_mark = {
         'public': '◐', 'auth_denial': '✅', 'agent_mcp': '✅',
@@ -1418,6 +1422,16 @@ def evidence_reference_error(name: str, cell: str, kind: str,
             report = json.loads(path.read_text(encoding='utf-8'))
         except (OSError, ValueError):
             return f'{name}: live evidence report {relative_path} is invalid JSON'
+
+        if relative_path == NATIVE_G03_REPORT:
+            sources = native_g03_sources
+            if kind == 'agent_mcp' and sources is None:
+                sources = native_g03_evidence_sources(
+                    ROOT, json.loads(CATALOG.read_text(encoding='utf-8')),
+                )
+            if kind != 'agent_mcp' or relative_path not in (sources or {}).get(name, set()):
+                return f'{name}: synthetic G03 report does not establish {kind} evidence for {name}'
+            continue
 
         if relative_path == NATIVE_PAGE_REPORT:
             # This signed envelope has no legacy selectedTools/scenarios shape.
@@ -1784,6 +1798,7 @@ def main() -> int:
 
     account_sources = real_account_read_sources(ROOT, catalog)
     native_sources = native_page_evidence_sources(ROOT, catalog)
+    native_g03_sources = native_g03_evidence_sources(ROOT, catalog)
     for name, fields in rows.items():
         account_error = account_auth_reference_error(
             catalog[catalog_index[name]], fields[8], account_sources,
@@ -1813,7 +1828,7 @@ def main() -> int:
             (6, 'public'), (7, 'auth_denial'), (9, 'agent_mcp'),
             (10, 'qq_pipeline'), (11, 'tim_client'),
         ):
-            reference_error = evidence_reference_error(name, fields[index], kind, native_sources)
+            reference_error = evidence_reference_error(name, fields[index], kind, native_sources, native_g03_sources)
             if reference_error:
                 raise SystemExit(reference_error)
 

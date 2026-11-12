@@ -1,0 +1,207 @@
+{
+  "schema": "run95-query-contract-comparison/v1",
+  "sourceCandidate": "8a56687841d425738cf0f4785400eb50643510b7",
+  "registrySha256": "3abc2a36d6710a6be700e6a048b9b8a39fbb3e67aaa6078d4c611edc1723502f",
+  "prior": [
+    {
+      "id": "query-render-title-agent-mcp-v1",
+      "argumentProfile": "harness-r95-title-query-render-20261017-v1",
+      "networkMode": "run95-title-query-render-matrix-public-v1",
+      "calls": [
+        {
+          "toolName": "bangumi.query_subjects",
+          "arguments": {
+            "keyword": "葬送的芙莉莲",
+            "media": "anime",
+            "resultMode": "all",
+            "limit": 1,
+            "sort": "relevance",
+            "explain": "compact",
+            "nsfw": false
+          }
+        },
+        {
+          "toolName": "bangumi.render_query_subjects",
+          "arguments": {
+            "keyword": "葬送的芙莉莲",
+            "media": "anime",
+            "resultMode": "all",
+            "limit": 1,
+            "sort": "relevance",
+            "explain": "compact",
+            "nsfw": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "g01-render-query-subjects-offline-agent-mcp-v1",
+      "argumentProfile": "fixed-g01-synthetic-render-query-990920-one-result-v1",
+      "networkMode": "run95-g01-render-query-subjects-synthetic-offline-v1",
+      "calls": [
+        {
+          "toolName": "bangumi.render_query_subjects",
+          "arguments": {
+            "keyword": "run95 g01 synthetic render query offline 20261017",
+            "media": "anime",
+            "reportedEpisodeCount": {
+              "min": 1,
+              "max": 1
+            },
+            "resultMode": "top",
+            "limit": 1,
+            "sort": "relevance",
+            "explain": "none",
+            "nsfw": "include"
+          }
+        }
+      ]
+    },
+    {
+      "id": "g01-render-query-subjects-offline-agent-mcp-v2",
+      "argumentProfile": "fixed-g01-synthetic-render-query-991111-one-result-v2",
+      "networkMode": "run95-g01-render-query-subjects-synthetic-offline-v2",
+      "calls": [
+        {
+          "toolName": "bangumi.render_query_subjects",
+          "arguments": {
+            "keyword": "run95 g01 fresh synthetic render query offline 20261018",
+            "media": "anime",
+            "reportedEpisodeCount": {
+              "min": 1,
+              "max": 1
+            },
+            "resultMode": "top",
+            "limit": 1,
+            "sort": "relevance",
+            "explain": "none",
+            "nsfw": "include"
+          }
+        }
+      ]
+    },
+    {
+      "id": "g01-query-subjects-offline-agent-mcp-matrix-v1",
+      "argumentProfile": "fixed-g01-synthetic-query-subjects-one-result-v1",
+      "networkMode": "run95-g01-query-subjects-synthetic-offline-v1",
+      "calls": [
+        {
+          "toolName": "bangumi.query_subjects",
+          "arguments": {
+            "keyword": "run95 synthetic query subjects matrix offline 20261017",
+            "media": "anime",
+            "resultMode": "top",
+            "limit": 1,
+            "sort": "relevance",
+            "explain": "none",
+            "nsfw": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "g01-query-subjects-offline-agent-mcp-matrix-v2",
+      "argumentProfile": "fixed-g01-synthetic-query-subjects-one-result-v2",
+      "networkMode": "run95-g01-query-subjects-synthetic-offline-v2",
+      "calls": [
+        {
+          "toolName": "bangumi.query_subjects",
+          "arguments": {
+            "keyword": "run95 synthetic query subjects matrix offline 20261022 v2",
+            "media": "anime",
+            "resultMode": "top",
+            "limit": 1,
+            "sort": "relevance",
+            "explain": "none",
+            "nsfw": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "query-subjects-fresh-public-matrix-v1",
+      "argumentProfile": "fixed-run95-query-subjects-attack-on-titan-public-v1",
+      "networkMode": "run95-query-subjects-fresh-public-matrix-v1",
+      "calls": [
+        {
+          "toolName": "bangumi.query_subjects",
+          "arguments": {
+            "keyword": "进击的巨人",
+            "media": "anime",
+            "resultMode": "top",
+            "limit": 1,
+            "sort": "relevance",
+            "explain": "compact",
+            "nsfw": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "query-subjects-fresh-public-matrix-v2",
+      "argumentProfile": "fixed-run95-query-subjects-castle-in-the-sky-public-v2",
+      "networkMode": "run95-query-subjects-fresh-public-matrix-v2",
+      "calls": [
+        {
+          "toolName": "bangumi.query_subjects",
+          "arguments": {
+            "keyword": "天空之城",
+            "media": "anime",
+            "resultMode": "top",
+            "limit": 1,
+            "sort": "relevance",
+            "explain": "compact",
+            "nsfw": false
+          }
+        }
+      ]
+    }
+  ],
+  "proposedCalls": [
+    {
+      "toolName": "bangumi.query_subjects",
+      "arguments": {
+        "media": "anime",
+        "from": "2024-01-01",
+        "to": "2024-05-01",
+        "rating": {
+          "min": 8
+        },
+        "ratingCount": {
+          "min": 5001
+        },
+        "sort": "date",
+        "order": "asc"
+      }
+    },
+    {
+      "toolName": "bangumi.render_query_subjects",
+      "arguments": {
+        "media": "anime",
+        "from": "2024-01-01",
+        "to": "2024-05-01",
+        "rating": {
+          "min": 8
+        },
+        "ratingCount": {
+          "min": 5001
+        },
+        "sort": "date",
+        "order": "asc"
+      }
+    }
+  ],
+  "materialChanges": [
+    "Explicit half-open date window and date order, without title keyword",
+    "Six required score hydrations exercise invalid/empty/incomplete/contradictory dates",
+    "Four matching results include three ordered usable dates and one unknown",
+    "Actual matching Chromium PNG and independent stored-byte hash"
+  ],
+  "limits": {
+    "contractComparisonOnly": true,
+    "newProfileRegistered": false,
+    "modelDispatched": false,
+    "claimCreated": false,
+    "acceptanceCredit": false
+  }
+}

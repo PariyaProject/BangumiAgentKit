@@ -232,9 +232,14 @@
         "scripts/lib/g03-native-discovery-verification.mjs",
         "scripts/acceptance/g03-native-discovery-mcp.mjs",
         "tests/integration/g03-native-discovery.test.mjs",
-        "docs/research/run95-g03-native-discovery-verification-2026-11-12.md"
+        "docs/research/run95-g03-native-discovery-verification-2026-11-12.md",
+        "docs/research/run95-native-g03-date-png-model-contract-2026-11-12.md",
+        "scripts/acceptance/run-native-g03-date-png-model.mjs",
+        "scripts/acceptance/native-g03-date-png-report.mjs",
+        "scripts/acceptance/native_g03_date_png_evidence.py",
+        "tests/integration/native-g03-model-runtime.test.mjs"
       ],
-      "next_action": "Run 66's historical half-open five-year, 原创, score and count evidence retains its original scope. PR294 corrected usable-date hydration and bounded MCP text. A reusable native query/PNG verifier now exercises six synthetic date cases through the actual Registry, SDK stdio, Chromium and artifact store, including terminal cancellation and owned-output cleanup. Prepare the separate reviewed create-once native model execution contract using that verifier. Keep PARTIAL: no model dispatched and no Agent/MCP, live, account or client matrix credit; all old query/render claims remain terminal.",
+      "next_action": "PR294 delivered usable-date hydration and bounded MCP text; PR295 delivered the finite native query/PNG verifier. The distinct Sol xhigh six-case model contract now supplies a guarded one-shot server/process, exact normal MCP/event/answer and stored-PNG checks, signed synthetic report and Agent-only consumer. Complete exact CI and comprehensive review before its sole model job, then reconcile and review any report-only refresh. Keep G03 PARTIAL: public completeness is unproven, all seven older query/render workloads stay terminal and no new model credit exists before accepted actual evidence.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

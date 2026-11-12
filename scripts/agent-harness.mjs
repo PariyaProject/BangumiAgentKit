@@ -106,7 +106,11 @@ import {
 } from './lib/agent-mcp-profile-claims.mjs';
 import { deriveP06CiRunEvidence, isValidP06CiRunEvidence } from './lib/p06-ci-run-evidence.mjs';
 import { profileRequiresExactCiRunEvidence } from './lib/agent-mcp-profile-ci-evidence.mjs';
-import { profileExecutionModelMatches, NATIVE_PAGE_PROFILE_ID } from './lib/native-entity-page-profile.mjs';
+import { NATIVE_PAGE_PROFILE_ID } from './lib/native-entity-page-profile.mjs';
+import { profileExecutionModelMatches } from './lib/agent-mcp-execution-model.mjs';
+import { G03_MODEL_PROFILE_ID, isG03ModelProfile } from './lib/native-g03-date-png-profile.mjs';
+import { validateG03ModelReportFile } from './acceptance/native-g03-date-png-report.mjs';
+import { readG03ModelBundleAttestation } from './lib/native-g03-date-png-gates.mjs';
 import { validateNativePageReportFile } from './acceptance/native-entity-page-report.mjs';
 import { readNativePageBundleAttestation } from './lib/native-entity-page-gates.mjs';
 import {
@@ -4120,7 +4124,9 @@ function agentMcpProfileBundleMatches(
             renderSubjectCardV5ReportWithValidatorFix))) &&
       git('rev-parse', 'HEAD') === candidateSha &&
       computeMcpBundleSha256(root) === bundleSha256 &&
-      (profile?.id === NATIVE_PAGE_PROFILE_ID
+      (profile?.id === G03_MODEL_PROFILE_ID
+        ? readG03ModelBundleAttestation(root)
+        : profile?.id === NATIVE_PAGE_PROFILE_ID
         ? readNativePageBundleAttestation(root)
         : readG26McpBundleAttestation(root)) === bundleSha256
     );
@@ -4151,6 +4157,9 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
       profile.reportPath,
       'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
       'docs/product/frontier-ledger.json',
+      ...(profile.id === G03_MODEL_PROFILE_ID
+        ? ['docs/research/run95-native-g03-date-png-model-result-2026-11-12.md']
+        : []),
       ...(profile.id === NATIVE_PAGE_PROFILE_ID
         ? [
             'docs/research/run95-native-entity-page-model-result-2026-11-06.md',
@@ -4471,17 +4480,19 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
   }
   const p02V2Profile = profile.id === 'p02-person-profile-offline-agent-mcp-v2';
   const c03ActivityV2Profile = profile.id === 'c03-person-activity-offline-agent-mcp-matrix-v2';
+  const g03ModelProfile = isG03ModelProfile(profile);
   if (
     Number(runNumber) !== 95 ||
     !Number.isSafeInteger(Number(prNumber)) ||
     Number(prNumber) < 1 ||
     (!A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS.includes(profile.id) &&
       !p02V2Profile &&
-      !c03ActivityV2Profile)
+      !c03ActivityV2Profile &&
+      !g03ModelProfile)
   ) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_RECONCILE_INVALID',
-      'Ambiguous-latch reconciliation is limited to the registered Run #95 A01, P02 v2, and C03 v2 offline profiles.',
+      'Ambiguous-latch reconciliation is limited to the registered Run #95 A01, P02 v2, C03 v2 and exact native G03 synthetic profiles.',
     );
   }
 
@@ -4833,6 +4844,8 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
       ? 'A01_AGGREGATE_MATRIX_AMBIGUOUS_CLAIM_TERMINALIZED'
       : c03ActivityV2Profile
         ? 'C03_ACTIVITY_V2_AMBIGUOUS_LATCH_RECONCILED'
+        : g03ModelProfile
+          ? 'G03_MODEL_AMBIGUOUS_LATCH_RECONCILED'
         : 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
     checks: { invocationStateUnknown: true },
     counters: {},
@@ -5088,6 +5101,8 @@ function assertAgentMcpProfileClaimCurrent(profile, claim) {
 
 function validateAgentMcpProfileReport(profile, claim, reportPath) {
   switch (profile.id) {
+    case G03_MODEL_PROFILE_ID:
+      return validateG03ModelReportFile(claim, root, reportPath);
     case NATIVE_PAGE_PROFILE_ID:
       return validateNativePageReportFile(claim, root, reportPath);
     case 'c01-rating-count-gap-v1':
@@ -5499,7 +5514,7 @@ function commandEpochAgentMcpProfileResult(options) {
       ? {
           reportPath: acceptedReport.reportPath,
           reportSha256: acceptedReport.reportSha256,
-          runnerReceiptSha256: profile.id === NATIVE_PAGE_PROFILE_ID
+          runnerReceiptSha256: [NATIVE_PAGE_PROFILE_ID, G03_MODEL_PROFILE_ID].includes(profile.id)
             ? acceptedReport.runnerReceiptSha256
             : canonicalHash(acceptedReport.report.runnerReceipt),
         }

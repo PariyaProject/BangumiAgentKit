@@ -20,6 +20,7 @@ from client_evidence import tool_client_e2e_sources
 from harness_control_codec import decode_control_state
 from acceptance.real_account_read_evidence import real_account_read_sources
 from acceptance.native_entity_page_evidence import native_page_evidence_sources
+from acceptance.native_g03_date_png_evidence import native_g03_evidence_sources
 from acceptance.signed_report_source_context import (
     catalog_bytes_for_signed_report, needs_original_context, validate_in_original_context,
 )
@@ -28084,6 +28085,8 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     ):
         sources.setdefault('bangumi.get_series_watch_order', set()).add(report_source_ref(s03_path))
     for name, refs in native_page_evidence_sources(ROOT, catalog, report_dir=LIVE_PROBE_DIR).items():
+        sources.setdefault(name, set()).update(refs)
+    for name, refs in native_g03_evidence_sources(ROOT, catalog, report_dir=LIVE_PROBE_DIR).items():
         sources.setdefault(name, set()).update(refs)
     return sources
 
