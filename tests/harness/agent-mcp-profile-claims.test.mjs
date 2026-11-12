@@ -16,6 +16,7 @@ import {
   getAgentMcpProfileById,
   listAgentMcpProfiles,
 } from '../../scripts/lib/agent-mcp-profile-claims.mjs';
+import { G03_MODEL_PROFILE } from '../../scripts/lib/native-g03-date-png-profile.mjs';
 import { isG16LunaMaxReviewerId } from '../../scripts/lib/g16-reviewer-id.mjs';
 
 const PROFILE = getAgentMcpProfile(
@@ -103,7 +104,8 @@ test('Agent/MCP profile registry is closed and immutable, including C03 exact ca
   assert.equal(getAgentMcpProfile('bangumi.get_person_activity', 'unknown'), null);
   assert.equal(getAgentMcpProfile('bangumi.get_subject_relations', PROFILE.argumentProfile), null);
   assert.equal(getAgentMcpProfileById('unknown-profile'), null);
-  assert.equal(listAgentMcpProfiles().length, 56);
+  assert.equal(listAgentMcpProfiles().length, 57);
+  assert.deepEqual(getAgentMcpProfileById(G03_MODEL_PROFILE.id), G03_MODEL_PROFILE);
   const r01TextProjection = getAgentMcpProfileById(
     'r01-subject-relations-text-projection-agent-mcp-v2',
   );
