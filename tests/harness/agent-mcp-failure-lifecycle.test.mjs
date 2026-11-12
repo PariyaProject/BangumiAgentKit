@@ -106,9 +106,15 @@ for (const mode of ['tool-error', 'cancel', 'timeout', 'output', 'summary-loss',
         assert.equal(retained.retryAllowed, false);
         assert.equal(retained.verified.cleanup, false);
         assert.equal(retained.verified.artifact, false);
-        assert.deepEqual(retained.calls[0].errorCodes, [
-          mode === 'cancel' ? 'G03_NATIVE_CANCELLED' : 'G03_NATIVE_RESULT_INVALID',
-        ]);
+        // Pipe writes may coalesce. The frozen process helper discards an entire
+        // over-limit chunk, which can include the initial event prefix. Preserve
+        // that absence of observation instead of inventing a retained tool error.
+        if (mode === 'output') assert(retained.calls.length <= 1);
+        else assert.equal(retained.calls.length, 1);
+        if (retained.calls.length === 1)
+          assert.deepEqual(retained.calls[0].errorCodes, [
+            mode === 'cancel' ? 'G03_NATIVE_CANCELLED' : 'G03_NATIVE_RESULT_INVALID',
+          ]);
         assert.equal(acknowledged, mode !== 'ack-failure');
         if (mode === 'timeout') assert.equal(retained.process.reason, 'timeout');
         if (mode === 'output') assert.equal(retained.process.reason, 'output_limit');
