@@ -228,9 +228,13 @@
         "packages/renderer/src/templates/DiscoveryResultsCard.tsx",
         "tests/discovery/scenario-cases.test.ts",
         "tests/discovery/golden-e2e.test.ts",
-        "docs/research/run95-g03-native-discovery-date-boundary-2026-11-08.md"
+        "docs/research/run95-g03-native-discovery-date-boundary-2026-11-08.md",
+        "scripts/lib/g03-native-discovery-verification.mjs",
+        "scripts/acceptance/g03-native-discovery-mcp.mjs",
+        "tests/integration/g03-native-discovery.test.mjs",
+        "docs/research/run95-g03-native-discovery-verification-2026-11-12.md"
       ],
-      "next_action": "Run 66 verified the historical half-open five-year interval, 原创 meta-tag, score >= 8.0, ratingCount >= 5001, and descending score through direct ToolRegistry and one-tool Agent/MCP. Current native SDK stdio reproduced contradictory known dates. The correction resolves the usable date consistently across filtering, sorting, and PNG output, and preserves the full MCP result even when long filter labels overflow the text cap. The fixed native fixtures retain the explicit half-open window, rating-count cutoff, and estimated and experimental scope. Keep PARTIAL; this isolated evidence adds no Agent/MCP, live, account or client matrix credit.",
+      "next_action": "Run 66's historical half-open five-year, 原创, score and count evidence retains its original scope. PR294 corrected usable-date hydration and bounded MCP text. A reusable native query/PNG verifier now exercises six synthetic date cases through the actual Registry, SDK stdio, Chromium and artifact store, including terminal cancellation and owned-output cleanup. Prepare the separate reviewed create-once native model execution contract using that verifier. Keep PARTIAL: no model dispatched and no Agent/MCP, live, account or client matrix credit; all old query/render claims remain terminal.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
