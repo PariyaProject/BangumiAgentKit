@@ -11,7 +11,18 @@ function privateDirectory(directory) {
     (stat.mode & 0o777) !== 0o700
   )
     throw new Error('FAILURE_OBSERVATION_DIRECTORY_INVALID');
-  return fs.realpathSync(directory);
+  return { realPath: fs.realpathSync(directory), device: stat.dev, inode: stat.ino };
+}
+
+function insideExecutionDirectory(target, execution) {
+  let current = target.realPath;
+  for (;;) {
+    const stat = fs.statSync(current);
+    if (stat.dev === execution.device && stat.ino === execution.inode) return true;
+    const parent = path.dirname(current);
+    if (parent === current) return false;
+    current = parent;
+  }
 }
 
 /** Publish outside the execution cleanup root, create-only. Call before cleanup. */
@@ -23,10 +34,10 @@ export function publishAgentMcpFailure(observation, { directory, executionDirect
   try {
     const target = privateDirectory(directory),
       execution = privateDirectory(executionDirectory);
-    if (target === execution || target.startsWith(execution + path.sep))
+    if (insideExecutionDirectory(target, execution))
       throw new Error('FAILURE_OBSERVATION_PUBLICATION_INSIDE_CLEANUP_ROOT');
     descriptor = fs.openSync(
-      path.join(target, 'agent-mcp-failure-observation.json'),
+      path.join(target.realPath, 'agent-mcp-failure-observation.json'),
       fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW,
       0o600,
     );

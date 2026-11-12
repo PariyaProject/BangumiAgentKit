@@ -95,7 +95,12 @@ current-owner 0700 directory, with regular-file/current-owner/single-link checks
 0600 permissions and file fsync before reporting success. The destination
 must be outside the separate execution cleanup root. Existing files, symlinks,
 unsafe directories and publication/durability failures fail explicitly; no
-first result is replaced. The caller owns and must keep both private directories
+first result is replaced. Containment walks directory identities (device/inode)
+through the destination's ancestors; a filesystem case alias cannot bypass it.
+This regression was reproduced and validated on the local case-insensitive Mac
+filesystem; that platform-specific test is explicitly skipped on case-sensitive
+CI filesystems, where the ordinary same-root/descendant checks still execute.
+The caller owns and must keep both private directories
 stable during publication. This is not a lock against another process running
 as the same trusted OS user, nor a power-loss guarantee beyond filesystem fsync.
 

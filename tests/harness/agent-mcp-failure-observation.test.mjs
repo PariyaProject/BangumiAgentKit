@@ -468,3 +468,35 @@ test('a syntactically complete captured prefix is limited when the producer repo
     noAuthority(o);
   }
 });
+
+test('cleanup containment uses directory identity across filesystem case aliases', (t) => {
+  const d = directories();
+  try {
+    const alias = path.join(d.root, 'EXECUTION');
+    if (!fs.existsSync(alias)) {
+      t.skip('case-sensitive filesystem has no such alias');
+      return;
+    }
+    const o = observe([call()]);
+    assert.throws(
+      () =>
+        publishAgentMcpFailure(o, { directory: alias, executionDirectory: d.executionDirectory }),
+      /PUBLICATION_FAILED/u,
+    );
+    fs.mkdirSync(path.join(d.executionDirectory, 'inside'), { mode: 0o700 });
+    assert.throws(
+      () =>
+        publishAgentMcpFailure(o, {
+          directory: path.join(alias, 'inside'),
+          executionDirectory: d.executionDirectory,
+        }),
+      /PUBLICATION_FAILED/u,
+    );
+    assert.equal(
+      fs.existsSync(path.join(d.executionDirectory, 'agent-mcp-failure-observation.json')),
+      false,
+    );
+  } finally {
+    d.close();
+  }
+});
