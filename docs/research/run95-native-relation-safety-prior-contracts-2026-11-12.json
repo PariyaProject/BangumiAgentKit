@@ -1,0 +1,366 @@
+{
+  "schema": "run95-relation-safety-prior-contracts/v1",
+  "observedAt": "2026-11-12",
+  "sourceBase": "9878d633655c68216006be3a627884ddd45eecab",
+  "registrySha256": "aa514cab47a09bec801c587165c9ba91115f1c63c87deed72c79b06178ece5d3",
+  "scope": "Dated selection evidence only. GitHub remains runtime authority; no entry authorizes invocation or retry.",
+  "prior": [
+    {
+      "id": "r04-series-watch-order-offline-agent-mcp-v1",
+      "epochId": "run95-r04-series-watch-order-offline-matrix-20261016",
+      "argumentProfile": "fixed-r04-synthetic-watch-order-990801-depth0-max1-anime-v1",
+      "calls": [
+        {
+          "toolName": "bangumi.get_series_watch_order",
+          "arguments": {
+            "subjectId": 990801,
+            "depth": 0,
+            "maxNodes": 1,
+            "media": "anime"
+          }
+        }
+      ],
+      "selectionEvidencePath": "docs/research/run95-r04-series-watch-order-offline-matrix-contract-2026-10-16.md",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "pr": 186,
+      "observedState": "INCONCLUSIVE",
+      "claimPresent": true,
+      "terminalPresent": true,
+      "reportWritten": false,
+      "retryAllowed": false,
+      "expectedArgumentsSha256": "1be1f8ba8c15499d96af8793c9f5bb40cf6d1c2f43617f7c8cb4632e3e2471d5"
+    },
+    {
+      "id": "r01-subject-relations-offline-agent-mcp-v1",
+      "epochId": "run95-r01-subject-relations-matrix-offline-20261016",
+      "argumentProfile": "fixed-r01-offline-relations-990902-one-row-v1",
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 990902,
+            "includeEvidence": true
+          }
+        }
+      ],
+      "selectionEvidencePath": "docs/research/run95-r01-subject-relations-offline-agent-mcp-matrix-2026-10-16.md",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "pr": 191,
+      "observedState": "INCONCLUSIVE",
+      "claimPresent": true,
+      "terminalPresent": true,
+      "reportWritten": false,
+      "retryAllowed": false,
+      "expectedArgumentsSha256": "0f281f0dd678784a70c311237ec860153a27d6c65ce8d682d5528fea14ca4128"
+    },
+    {
+      "id": "r02-positive-direct-relations-agent-mcp-v1",
+      "epochId": "run95-r02-positive-direct-relations-agent-mcp-20261016",
+      "argumentProfile": "fixed-r02-positive-direct-relations-4923-315-1428-v1",
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 4923,
+            "includeEvidence": true
+          }
+        },
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 315,
+            "includeEvidence": true
+          }
+        },
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 1428,
+            "includeEvidence": true
+          }
+        }
+      ],
+      "selectionEvidencePath": "docs/research/run95-r02-positive-direct-relations-agent-mcp-source-contract-2026-10-16.md",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "pr": 192,
+      "observedState": "INCONCLUSIVE",
+      "claimPresent": true,
+      "terminalPresent": true,
+      "reportWritten": false,
+      "retryAllowed": false,
+      "expectedArgumentsSha256": "1b087335e86d1c3365854e977ee35884faab6d5ffeed4d32a5232eb90306a2d3"
+    },
+    {
+      "id": "r03-two-hop-relations-offline-agent-mcp-v1",
+      "epochId": "run95-r03-two-hop-relations-offline-agent-mcp-20261017",
+      "argumentProfile": "fixed-r03-synthetic-two-hop-relations-990910-990911-v1",
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 990910,
+            "includeEvidence": true
+          }
+        },
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 990911,
+            "includeEvidence": true
+          }
+        }
+      ],
+      "selectionEvidencePath": "docs/research/run95-r03-relations-agent-mcp-offline-matrix-2026-10-17.md",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "pr": 208,
+      "observedState": "INCONCLUSIVE",
+      "claimPresent": true,
+      "terminalPresent": true,
+      "reportWritten": false,
+      "retryAllowed": false,
+      "expectedArgumentsSha256": "493d028ee2b75721341da498ea2ff9e8713b06578427f22415c6f1d8a0cbea62"
+    },
+    {
+      "id": "r03-direct-relations-offline-agent-mcp-matrix-v2",
+      "epochId": "run95-r03-direct-relations-offline-agent-mcp-matrix-v2-20261017",
+      "argumentProfile": "fixed-r03-synthetic-direct-relations-991020-v2",
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 991020,
+            "includeEvidence": true
+          }
+        }
+      ],
+      "selectionEvidencePath": "docs/research/run95-r03-direct-relations-offline-agent-mcp-matrix-v2-2026-10-17.md",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "pr": 212,
+      "observedState": "INCONCLUSIVE",
+      "claimPresent": true,
+      "terminalPresent": true,
+      "reportWritten": false,
+      "retryAllowed": false,
+      "expectedArgumentsSha256": "6013d5e4e47eed6dcd832d6ef2363af3ecd6d08a42cf0764399a1178efd856ec"
+    },
+    {
+      "id": "r04-series-watch-order-offline-agent-mcp-v2",
+      "epochId": "run95-r04-series-watch-order-agent-mcp-offline-v2-20261018",
+      "argumentProfile": "fixed-r04-synthetic-watch-order-990817-prequel-990818-depth1-max1-anime-v2",
+      "calls": [
+        {
+          "toolName": "bangumi.get_series_watch_order",
+          "arguments": {
+            "subjectId": 990817,
+            "depth": 1,
+            "maxNodes": 1,
+            "media": "anime"
+          }
+        }
+      ],
+      "selectionEvidencePath": "docs/research/run95-r04-series-watch-order-offline-matrix-v2-contract-2026-10-18.md",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "pr": 228,
+      "observedState": "INCONCLUSIVE",
+      "claimPresent": true,
+      "terminalPresent": true,
+      "reportWritten": false,
+      "retryAllowed": false,
+      "expectedArgumentsSha256": "0452c9a6ae9603b6980d3208cf529a000148b3891a23c4dae085399b107b7a03"
+    },
+    {
+      "id": "r04-series-watch-order-offline-agent-mcp-v3",
+      "epochId": "run95-r04-series-watch-order-offline-matrix-v3-20261023",
+      "argumentProfile": "fixed-r04-synthetic-watch-order-991404-two-direct-nodes-depth1-max2-anime-v3",
+      "calls": [
+        {
+          "toolName": "bangumi.get_series_watch_order",
+          "arguments": {
+            "subjectId": 991404,
+            "depth": 1,
+            "maxNodes": 2,
+            "media": "anime"
+          }
+        }
+      ],
+      "selectionEvidencePath": "docs/research/run95-r04-series-watch-order-offline-matrix-v3-contract-2026-10-23.md",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "pr": 267,
+      "observedState": "INCONCLUSIVE",
+      "claimPresent": true,
+      "terminalPresent": true,
+      "reportWritten": false,
+      "retryAllowed": false,
+      "expectedArgumentsSha256": "c45c85ec2368ae17a9e104342ea99f2038fe97296a9acfb1066c67284ffd85f8"
+    },
+    {
+      "id": "r01-subject-relations-text-projection-agent-mcp-v2",
+      "epochId": "run95-r01-relations-text-projection-offline-matrix-v2-20261023",
+      "argumentProfile": "fixed-r01-synthetic-relations-991408-30-row-mcp-text-projection-v2",
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 991408,
+            "includeEvidence": true
+          }
+        }
+      ],
+      "selectionEvidencePath": "docs/research/run95-r01-relations-text-projection-offline-matrix-v2-contract-2026-10-23.md",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "pr": 268,
+      "observedState": "INCONCLUSIVE",
+      "claimPresent": true,
+      "terminalPresent": true,
+      "reportWritten": false,
+      "retryAllowed": false,
+      "expectedArgumentsSha256": "5b047ac58b0d9c8f24915b901b0434b29ba73e24f3526211845f267d8853e73a"
+    },
+    {
+      "id": "r03-two-hop-rating-analysis-offline-agent-mcp-v1",
+      "epochId": "run95-r03-two-hop-rating-agent-mcp-offline-20261023",
+      "argumentProfile": "fixed-r03-two-hop-rating-analysis-993811-v1",
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 993811,
+            "analysisMode": "observed_two_hop_rating"
+          }
+        }
+      ],
+      "selectionEvidencePath": "docs/research/run95-r03-two-hop-rating-agent-mcp-offline-matrix-v1-2026-10-23.md",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "pr": 270,
+      "observedState": "INCONCLUSIVE",
+      "claimPresent": true,
+      "terminalPresent": true,
+      "reportWritten": false,
+      "retryAllowed": false,
+      "expectedArgumentsSha256": "36a0b3cfb216b8e6efc5acb04cce41ce2d1cbe7478723e65103a8c052d577751"
+    },
+    {
+      "id": "r04-render-series-watch-order-offline-agent-mcp-matrix-v2",
+      "epochId": "run95-r04-render-series-watch-order-offline-matrix-v2-20261018",
+      "argumentProfile": "fixed-r04-render-synthetic-watch-order-990803-depth0-max1-anime-v2",
+      "calls": [
+        {
+          "toolName": "bangumi.render_series_watch_order",
+          "arguments": {
+            "subjectId": 990803,
+            "depth": 0,
+            "maxNodes": 1,
+            "media": "anime"
+          }
+        }
+      ],
+      "selectionEvidencePath": "docs/research/run95-r04-render-series-watch-order-offline-matrix-v2-contract-2026-10-18.md",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "max",
+      "pr": 222,
+      "observedState": "REPORT_WRITTEN",
+      "claimPresent": true,
+      "terminalPresent": true,
+      "reportWritten": true,
+      "retryAllowed": false,
+      "expectedArgumentsSha256": "d9b59a2e8df58e82397c3998de44ab30dfe3d7e705654873f9af32c0e4608a9d"
+    }
+  ],
+  "legacy": [
+    {
+      "id": "legacy-r01-followup",
+      "pr": 147,
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 41529,
+            "includeEvidence": true
+          }
+        }
+      ],
+      "source": "scripts/acceptance/run-r01-codex-agent-mcp.mjs",
+      "observedState": "INCONCLUSIVE",
+      "reportWritten": false,
+      "retryAllowed": false,
+      "claimPresent": true,
+      "terminalPresent": true
+    },
+    {
+      "id": "legacy-g20",
+      "pr": 104,
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 227245,
+            "includeEvidence": true
+          }
+        }
+      ],
+      "source": "scripts/acceptance/run-g20-codex-agent-mcp.mjs",
+      "observedState": "not_exposed_by_current_legacy_epoch",
+      "historicalDispositionRef": "https://github.com/PariyaProject/BangumiAgentKit/pull/105",
+      "executionAuthority": false
+    },
+    {
+      "id": "legacy-s03-voice-overlap",
+      "pr": 110,
+      "calls": [
+        {
+          "toolName": "bangumi.get_series_watch_order",
+          "arguments": {
+            "subjectId": 329906,
+            "depth": 0,
+            "maxNodes": 8,
+            "media": "anime",
+            "voiceActorPersonId": 7602,
+            "maxVoiceCredits": 120
+          }
+        }
+      ],
+      "source": "scripts/acceptance/s03-agent-answer-check.mjs",
+      "observedState": "not_exposed_by_current_legacy_epoch",
+      "historicalScopeRef": "docs/research/run95-s03-voice-projection-bounded-stdio-2026-11-07.md",
+      "executionAuthority": false
+    },
+    {
+      "id": "legacy-g09-answer-contract",
+      "calls": [
+        {
+          "toolName": "bangumi.get_series_watch_order",
+          "arguments": {
+            "subjectId": 218707,
+            "depth": 2,
+            "maxNodes": 8,
+            "media": "anime"
+          }
+        }
+      ],
+      "source": "scripts/acceptance/g09-series-watch-order-answer-check.mjs",
+      "observedState": "not_reconciled_by_this_native_verification",
+      "executionAuthority": false
+    }
+  ],
+  "materialDifference": [
+    "Visible conflicting duplicate labels survive direct evidence while the same target is excluded from derived steps.",
+    "Non-anime source and unknown-direction anime remain visible but cannot become viewing requirements.",
+    "Safe prequel return edge is retained without revisiting the root; the same closed source is exercised through two real SDK tools.",
+    "Text omissions are explicit and structuredContent retains all exclusions; Agent evidence remains unobserved."
+  ],
+  "rejectedAlternatives": [
+    "Renumbering the old one- or two-node R04 fixtures",
+    "Repeating positive direct relations or old two-hop rating tests",
+    "Repeating the already accepted render or delivered voice branch",
+    "Starting a model merely to exercise the new failure logger"
+  ]
+}
