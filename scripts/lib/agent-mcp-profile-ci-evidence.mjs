@@ -1,4 +1,5 @@
 const PROFILE_CI_RUN_EVIDENCE_IDS = new Set([
+  'native-relation-safety-model-v1',
   'native-g03-date-png-model-v1',
   'native-entity-page-public-model-v1',
   'render-subject-card-offline-agent-mcp-v1',

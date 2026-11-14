@@ -111,6 +111,16 @@ import { profileExecutionModelMatches } from './lib/agent-mcp-execution-model.mj
 import { G03_MODEL_PROFILE_ID, isG03ModelProfile } from './lib/native-g03-date-png-profile.mjs';
 import { validateG03ModelReportFile } from './acceptance/native-g03-date-png-report.mjs';
 import { readG03ModelBundleAttestation } from './lib/native-g03-date-png-gates.mjs';
+import {
+  RELATION_MODEL_PROFILE as RELATION_PROFILE,
+  RELATION_MODEL_PROFILE_ID,
+  isRelationModelProfile,
+} from './lib/native-relation-model-profile.mjs';
+import {
+  validateRelationModelReportFile,
+  validRelationModelClaim,
+} from './acceptance/native-relation-model-report.mjs';
+import { readRelationModelBundleAttestation } from './lib/native-relation-model-gates.mjs';
 import { validateNativePageReportFile } from './acceptance/native-entity-page-report.mjs';
 import { readNativePageBundleAttestation } from './lib/native-entity-page-gates.mjs';
 import {
@@ -2344,6 +2354,16 @@ function commandReviewResult(options) {
   const result = applyReviewResult(runResult.state, epochResult.state, { verdict, findings });
   if (
     verdict === 'PASS' &&
+    result.epoch.epoch_id === RELATION_PROFILE.epochId &&
+    !['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(
+      agentMcpProfileClaims(result.epoch)[RELATION_MODEL_PROFILE_ID]?.state,
+    )
+  ) {
+    result.epoch.next_action = 'RUN_NATIVE_RELATION_MODEL_AND_RECONCILE_BEFORE_MERGE';
+    result.run.next_action = 'RUN_NATIVE_RELATION_MODEL_BEFORE_MERGE';
+  }
+  if (
+    verdict === 'PASS' &&
     result.epoch.epoch_id === G06_EPOCH_ID &&
     !Object.hasOwn(result.epoch.adversarial_preflight ?? {}, 'g06_one_shot_disposition')
   ) {
@@ -4124,11 +4144,13 @@ function agentMcpProfileBundleMatches(
             renderSubjectCardV5ReportWithValidatorFix))) &&
       git('rev-parse', 'HEAD') === candidateSha &&
       computeMcpBundleSha256(root) === bundleSha256 &&
-      (profile?.id === G03_MODEL_PROFILE_ID
-        ? readG03ModelBundleAttestation(root)
-        : profile?.id === NATIVE_PAGE_PROFILE_ID
-        ? readNativePageBundleAttestation(root)
-        : readG26McpBundleAttestation(root)) === bundleSha256
+      (profile?.id === RELATION_MODEL_PROFILE_ID
+        ? readRelationModelBundleAttestation(root)
+        : profile?.id === G03_MODEL_PROFILE_ID
+          ? readG03ModelBundleAttestation(root)
+          : profile?.id === NATIVE_PAGE_PROFILE_ID
+            ? readNativePageBundleAttestation(root)
+            : readG26McpBundleAttestation(root)) === bundleSha256
     );
   } catch {
     return false;
@@ -4157,6 +4179,9 @@ function assertAgentMcpProfileReportCandidateRefresh(epoch, candidateSha) {
       profile.reportPath,
       'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md',
       'docs/product/frontier-ledger.json',
+      ...(profile.id === RELATION_MODEL_PROFILE_ID
+        ? ['docs/research/run95-native-relation-safety-model-result-2026-11-12.md']
+        : []),
       ...(profile.id === G03_MODEL_PROFILE_ID
         ? ['docs/research/run95-native-g03-date-png-model-result-2026-11-12.md']
         : []),
@@ -4481,6 +4506,7 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
   const p02V2Profile = profile.id === 'p02-person-profile-offline-agent-mcp-v2';
   const c03ActivityV2Profile = profile.id === 'c03-person-activity-offline-agent-mcp-matrix-v2';
   const g03ModelProfile = isG03ModelProfile(profile);
+  const relationModelProfile = isRelationModelProfile(profile);
   if (
     Number(runNumber) !== 95 ||
     !Number.isSafeInteger(Number(prNumber)) ||
@@ -4488,11 +4514,12 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
     (!A01_AGGREGATE_COHORT_OFFLINE_PROFILE_IDS.includes(profile.id) &&
       !p02V2Profile &&
       !c03ActivityV2Profile &&
-      !g03ModelProfile)
+      !g03ModelProfile &&
+      !relationModelProfile)
   ) {
     throw new HarnessInvariantError(
       'AGENT_MCP_PROFILE_RECONCILE_INVALID',
-      'Ambiguous-latch reconciliation is limited to the registered Run #95 A01, P02 v2, C03 v2 and exact native G03 synthetic profiles.',
+      'Ambiguous-latch reconciliation is limited to the registered Run #95 A01, P02 v2, C03 v2 and exact native G03/relation synthetic profiles.',
     );
   }
 
@@ -4844,9 +4871,11 @@ function commandEpochAgentMcpProfileReconcileAmbiguous(options) {
       ? 'A01_AGGREGATE_MATRIX_AMBIGUOUS_CLAIM_TERMINALIZED'
       : c03ActivityV2Profile
         ? 'C03_ACTIVITY_V2_AMBIGUOUS_LATCH_RECONCILED'
-        : g03ModelProfile
-          ? 'G03_MODEL_AMBIGUOUS_LATCH_RECONCILED'
-        : 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
+        : relationModelProfile
+          ? 'RELATION_MODEL_AMBIGUOUS_LATCH_RECONCILED'
+          : g03ModelProfile
+            ? 'G03_MODEL_AMBIGUOUS_LATCH_RECONCILED'
+            : 'A01_AGGREGATE_MATRIX_AMBIGUOUS_LATCH_RECONCILED',
     checks: { invocationStateUnknown: true },
     counters: {},
   });
@@ -5101,6 +5130,8 @@ function assertAgentMcpProfileClaimCurrent(profile, claim) {
 
 function validateAgentMcpProfileReport(profile, claim, reportPath) {
   switch (profile.id) {
+    case RELATION_MODEL_PROFILE_ID:
+      return validateRelationModelReportFile(claim, root, reportPath);
     case G03_MODEL_PROFILE_ID:
       return validateG03ModelReportFile(claim, root, reportPath);
     case NATIVE_PAGE_PROFILE_ID:
@@ -5514,7 +5545,11 @@ function commandEpochAgentMcpProfileResult(options) {
       ? {
           reportPath: acceptedReport.reportPath,
           reportSha256: acceptedReport.reportSha256,
-          runnerReceiptSha256: [NATIVE_PAGE_PROFILE_ID, G03_MODEL_PROFILE_ID].includes(profile.id)
+          runnerReceiptSha256: [
+            NATIVE_PAGE_PROFILE_ID,
+            G03_MODEL_PROFILE_ID,
+            RELATION_MODEL_PROFILE_ID,
+          ].includes(profile.id)
             ? acceptedReport.runnerReceiptSha256
             : canonicalHash(acceptedReport.report.runnerReceipt),
         }
@@ -9570,6 +9605,84 @@ function assertG01QuerySubjectsOfflineProfileReconciledBeforeMerge(
   }
 }
 
+function assertRelationModelReconciledBeforeMerge(epoch, runNumber, prNumber) {
+  const profile = getAgentMcpProfileById(RELATION_MODEL_PROFILE_ID);
+  const disposition = agentMcpProfileClaims(epoch)[RELATION_MODEL_PROFILE_ID];
+  const latest = epoch.review_history?.at(-1);
+  const fail = () => {
+    throw new HarnessInvariantError(
+      'RELATION_MODEL_RECONCILIATION_REQUIRED',
+      'The native relation model Epoch needs its exact irreversible terminal disposition before integration.',
+    );
+  };
+  if (
+    !isRelationModelProfile(profile) ||
+    !agentMcpProfileClaimMatchesRegisteredProfile(profile, disposition, runNumber, prNumber) ||
+    disposition.retryAllowed !== false ||
+    !['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(disposition.state) ||
+    disposition.reportWritten !== (disposition.state === 'REPORT_WRITTEN') ||
+    epoch.epoch_id !== profile.epochId ||
+    epoch.pr_number !== Number(prNumber) ||
+    latest?.verdict !== 'PASS' ||
+    latest.candidate_sha !== epoch.candidate_sha ||
+    latest.reviewed_base_sha !== epoch.base_sha ||
+    epoch.review_pass_sha !== epoch.candidate_sha ||
+    canonicalHash(epoch.advances_frontier_ids) !== canonicalHash(['R01', 'R04'])
+  )
+    fail();
+  const tombstone =
+    disposition.state === 'INCONCLUSIVE' &&
+    disposition.ambiguousLatchReconciled === true &&
+    disposition.claimIdentityRecovered === false &&
+    disposition.claimId === null &&
+    ['sourceCandidateSha', 'baseSha', 'ciSha', 'reviewerId', 'bundleSha256'].every(
+      (key) => disposition[key] === null,
+    ) &&
+    disposition.ciStatus === 'UNKNOWN' &&
+    canonicalHash(disposition.failureDiagnostics) ===
+      canonicalHash({
+        schemaVersion: 1,
+        reasonCode: 'RELATION_MODEL_AMBIGUOUS_LATCH_RECONCILED',
+        checks: { invocationStateUnknown: true },
+        counters: {},
+      });
+  if (!tombstone) {
+    const review = epoch.review_history?.find(
+      (r) =>
+        r.verdict === 'PASS' &&
+        r.candidate_sha === disposition.sourceCandidateSha &&
+        r.reviewed_base_sha === disposition.baseSha &&
+        r.reviewer_id === disposition.reviewerId,
+    );
+    if (
+      !validRelationModelClaim({ ...disposition, state: 'CLAIMED' }) ||
+      !review ||
+      disposition.baseSha !== epoch.base_sha ||
+      !isAncestor(disposition.sourceCandidateSha, epoch.candidate_sha)
+    )
+      fail();
+  }
+  const labels = readAgentMcpProfileLabels();
+  const claim = labels.find((x) => x.name === profile.claimLabelName);
+  const terminal = labels.find((x) => x.name === agentMcpProfileTerminalLabelName(profile));
+  const description = agentMcpProfileTerminalLabelDescription(
+    profile,
+    disposition.state,
+    disposition.reportSha256 ?? disposition.unacceptedReportSha256 ?? null,
+  );
+  if (
+    claim?.description !== agentMcpProfileClaimLabelDescription(profile) ||
+    terminal?.description !== description ||
+    disposition.terminalLabel !== terminal.name ||
+    disposition.terminalLabelDescription !== description
+  )
+    fail();
+  if (disposition.state === 'REPORT_WRITTEN') {
+    const validated = validateRelationModelReportFile(disposition, root);
+    if (!validated.passed || validated.reportSha256 !== disposition.reportSha256) fail();
+  } else if (fs.existsSync(path.join(root, profile.reportPath))) fail();
+}
+
 function commandEpochMerge(options, { resumeBlocked = false } = {}) {
   ensureControlPlane();
   const runNumber = required(options, 'run');
@@ -9595,7 +9708,10 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
       'The Run Issue does not identify this PR as its active Epoch',
     );
   }
-  if (epoch.epoch_id === D07_EPOCH_ID) {
+  if (epoch.epoch_id === RELATION_PROFILE.epochId) {
+    assertRelationModelReconciledBeforeMerge(epoch, runNumber, prNumber);
+    ensureCleanWorkingTree();
+  } else if (epoch.epoch_id === D07_EPOCH_ID) {
     assertD07OneShotReconciledBeforeMerge(epoch, runNumber, prNumber);
     ensureCleanWorkingTree();
   } else if (epoch.epoch_id === G06_EPOCH_ID) {

@@ -536,15 +536,24 @@
       "calls": [
         {
           "toolName": "bangumi.get_subject_relations",
-          "arguments": { "subjectId": 4923, "includeEvidence": true }
+          "arguments": {
+            "subjectId": 4923,
+            "includeEvidence": true
+          }
         },
         {
           "toolName": "bangumi.get_subject_relations",
-          "arguments": { "subjectId": 315, "includeEvidence": true }
+          "arguments": {
+            "subjectId": 315,
+            "includeEvidence": true
+          }
         },
         {
           "toolName": "bangumi.get_subject_relations",
-          "arguments": { "subjectId": 1428, "includeEvidence": true }
+          "arguments": {
+            "subjectId": 1428,
+            "includeEvidence": true
+          }
         }
       ]
     },
@@ -1789,10 +1798,7 @@
       "frontierId": "G03",
       "epochId": "run95-native-g03-date-png-model-20261112",
       "toolName": "bangumi.query_subjects",
-      "toolNames": [
-        "bangumi.query_subjects",
-        "bangumi.render_query_subjects"
-      ],
+      "toolNames": ["bangumi.query_subjects", "bangumi.render_query_subjects"],
       "argumentProfile": "native-g03-explicit-date-hydration-six-case-png-v1",
       "claimLabelName": "harness-r95-native-g03-dates-v1-claimed",
       "reportPath": "docs/live-probes/native-g03-date-png-model-run95-v1.json",
@@ -1835,6 +1841,42 @@
             },
             "sort": "date",
             "order": "asc"
+          }
+        }
+      ]
+    },
+    {
+      "id": "native-relation-safety-model-v1",
+      "frontierId": "R01",
+      "epochId": "run95-native-relation-safety-model-20261112",
+      "toolName": "bangumi.get_subject_relations",
+      "toolNames": ["bangumi.get_subject_relations", "bangumi.get_series_watch_order"],
+      "argumentProfile": "native-conflicting-labels-media-exclusions-closed-source-v1",
+      "claimLabelName": "harness-r95-native-relation-safety-v1-claimed",
+      "reportPath": "docs/live-probes/native-relation-safety-model-run95-v1.json",
+      "selectionEvidencePath": "docs/research/run95-native-relation-safety-model-contract-2026-11-12.md",
+      "evidenceKind": "native_relation_safety_agent_mcp_v1",
+      "answerCheckMethod": "native-raw-conflicting-relations-versus-safe-steps-v1",
+      "acceptanceScope": "agent-mcp-native-relation-synthetic-only",
+      "networkMode": "run95-native-relation-safety-synthetic-v1",
+      "model": "gpt-6.1-sol",
+      "reasoningEffort": "xhigh",
+      "maxAnswerBytes": 4096,
+      "calls": [
+        {
+          "toolName": "bangumi.get_subject_relations",
+          "arguments": {
+            "subjectId": 9632001,
+            "includeEvidence": true
+          }
+        },
+        {
+          "toolName": "bangumi.get_series_watch_order",
+          "arguments": {
+            "subjectId": 9632001,
+            "depth": 1,
+            "maxNodes": 8,
+            "media": "all"
           }
         }
       ]

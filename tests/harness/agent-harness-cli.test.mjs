@@ -101,6 +101,8 @@ import { makeP01Report } from './p01-report-fixture.mjs';
 import { nativePageReportFixture } from './fixtures/native-page-report.mjs';
 import { NATIVE_PAGE_SOURCE_PATHS, buildNativePageReport, writeNativePageReport } from '../../scripts/acceptance/native-entity-page-report.mjs';
 import { g03ModelReportFixture } from './fixtures/native-g03-model-report.mjs';
+import { relationModelReportFixture } from './fixtures/native-relation-model-report.mjs';
+import { RELATION_MODEL_SOURCE_PATHS, buildRelationModelReport, writeRelationModelReport } from '../../scripts/acceptance/native-relation-model-report.mjs';
 import { G03_MODEL_SOURCE_PATHS, buildG03ModelReport, writeG03ModelReport } from '../../scripts/acceptance/native-g03-date-png-report.mjs';
 import { makeR05ProfileReportInput } from './fixtures/r05-profile-report-input.mjs';
 import { writeR05SharedPersonOverlapReport } from '../../scripts/acceptance/write-r05-shared-person-overlap-report.mjs';
@@ -2420,7 +2422,8 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
   epoch.reviewed_base_sha = sha('a');
   epoch.review_pass_sha = sha('b');
   epoch.state = 'REVIEW_PASSED';
-  epoch.advances_frontier_ids = [profile.frontierId];
+  epoch.advances_frontier_ids =
+    profile.id === 'native-relation-safety-model-v1' ? ['R01', 'R04'] : [profile.frontierId];
   epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
   epoch.scope_closure = {
     why_not_review_earlier: 'The registered profile and claim path form one coherent slice.',
@@ -2446,6 +2449,7 @@ function agentMcpProfileReviewReadyEnvironment(profile, overrides = {}) {
   const ciRunId = '38806371672';
   const ciRunUrl = `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}`;
   const exactCiProfileIds = [
+    'native-relation-safety-model-v1',
     NATIVE_G03_MODEL_PROFILE.id,
     NATIVE_PAGE_MODEL_PROFILE.id,
     P06_PROFILE.id,
@@ -11142,5 +11146,142 @@ test('terminal recovery CLI refuses another active Epoch, changed claim, missing
     } finally {
       environment.cleanup();
     }
+  }
+});
+
+test('native relation model Epoch cannot integrate before the irreversible first result', () => {
+  const profile = getAgentMcpProfileById('native-relation-safety-model-v1');
+  const { environment } = agentMcpProfileReviewReadyEnvironment(profile);
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '42']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^RELATION_MODEL_RECONCILIATION_REQUIRED:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
+    assert.equal(
+      environment
+        .readState()
+        .calls.some((c) => c.tool === 'gh' && c.args[0] === 'pr' && c.args[1] === 'merge'),
+      false,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('native relation model ambiguous startup is terminal without report or invocation authority', () => {
+  const profile = getAgentMcpProfileById('native-relation-safety-model-v1');
+  const { environment } = agentMcpProfileReviewReadyEnvironment(profile, {
+    repositoryLabels: {
+      [profile.claimLabelName]: {
+        name: profile.claimLabelName,
+        description: agentMcpProfileClaimLabelDescription(profile),
+      },
+    },
+  });
+  const args = ['--run', '95', '--pr', '42', '--profile-id', profile.id];
+  try {
+    const reconciled = environment.execute([
+      'epoch:agent-mcp-profile-reconcile-ambiguous',
+      ...args,
+    ]);
+    assert.equal(reconciled.status, 0, reconciled.stderr);
+    const result = environment.execute(['epoch:agent-mcp-profile-status', ...args]);
+    const status = JSON.parse(result.stdout);
+    assert.equal(status.state, 'INCONCLUSIVE');
+    assert.equal(status.disposition.claimId, null);
+    assert.equal(status.disposition.reportWritten, false);
+    assert.equal(status.retry_allowed, false);
+    assert.equal(
+      status.disposition.failureDiagnostics.reasonCode,
+      'RELATION_MODEL_AMBIGUOUS_LATCH_RECONCILED',
+    );
+    const repeated = environment.execute(['epoch:agent-mcp-profile-reconcile-ambiguous', ...args]);
+    assert.equal(repeated.status, 0, repeated.stderr);
+    assert.equal(
+      JSON.parse(repeated.stdout).state,
+      'AGENT_MCP_PROFILE_AMBIGUOUS_LATCH_ALREADY_RECONCILED',
+    );
+    const merged = environment.execute(['epoch:merge', '--run', '95', '--pr', '42']);
+    assert.equal(merged.status, 0, merged.stderr);
+    assert.equal(JSON.parse(merged.stdout).state, 'MERGED');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('native relation model signed report is accepted through actual Harness dispatch and terminal receipt binding', () => {
+  const RELATION_PROFILE_FOR_TEST = getAgentMcpProfileById('native-relation-safety-model-v1');
+  const f = relationModelReportFixture();
+  const relationBundle = f.claim.bundleSha256;
+  const executeRelation = (environment, args) => environment.execute(args, { HARNESS_G04_BUNDLE_SHA256: relationBundle });
+  const harnessRoot = createIsolatedHarnessRoot([RELATION_PROFILE_FOR_TEST.reportPath]);
+  const seeded = agentMcpProfileReviewReadyEnvironment(RELATION_PROFILE_FOR_TEST);
+  seeded.environment.cleanup();
+  const { run, epoch, branch, reviewerId } = seeded;
+  const source = f.claim.sourceCandidateSha;
+  epoch.candidate_sha = source; epoch.review_pass_sha = source; epoch.ci.sha = source;
+  epoch.review_history[0].candidate_sha = source;
+  const ciRunId = '38806371672';
+  const gitObjects = Object.fromEntries([...RELATION_MODEL_SOURCE_PATHS, RELATION_PROFILE_FOR_TEST.selectionEvidencePath,
+    'docs/tool-catalog.json'].map((relative) => [`${source}:${relative}`, fs.readFileSync(path.join(root, relative)).toString('base64')]));
+  const environment = createMockEnvironment({ harnessRoot, runIssueNumber: 95, runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch), branch, featureBranch: branch, featureHeadSha: source, baseSha: sha('a'),
+    draft: false, gitObjects, checks: mandatoryChecks.map((name, index) => ({ name, status: 'COMPLETED',
+      conclusion: 'SUCCESS', detailsUrl: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}/job/${116668186145 + index}` })) });
+  const args = ['--run', '95', '--pr', '42', '--profile-id', RELATION_PROFILE_FOR_TEST.id];
+  try {
+    const claimed = executeRelation(environment,['epoch:agent-mcp-profile-claim', ...args,
+      '--bundle-sha256', relationBundle, '--reviewer-id', reviewerId,
+      '--runner-public-key', f.claim.runnerReceiptPublicKey]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const state = environment.readState();
+    const claim = parseControlBlock(state.prBody, EPOCH_MARKER).adversarial_preflight.agent_mcp_profile_dispositions[RELATION_PROFILE_FOR_TEST.id];
+    const report = buildRelationModelReport({ claim, observation: f.observation, execution: f.execution, answer: f.answer, results:f.results },
+      f.privateKey, { root: f.root });
+    writeRelationModelReport(report, harnessRoot);
+    state.dirty = `?? ${RELATION_PROFILE_FOR_TEST.reportPath}`;
+    fs.writeFileSync(environment.statePath, JSON.stringify(state));
+    const digest = createHash('sha256').update(fs.readFileSync(path.join(harnessRoot, RELATION_PROFILE_FOR_TEST.reportPath))).digest('hex');
+    const terminal = executeRelation(environment,['epoch:agent-mcp-profile-result', ...args,
+      '--claim-id', claim.claimId, '--state', 'REPORT_WRITTEN', '--report-sha256', digest]);
+    assert.equal(terminal.status, 0, terminal.stderr);
+    assert.equal(JSON.parse(terminal.stdout).reportSha256, digest);
+    const observed = JSON.parse(executeRelation(environment,['epoch:agent-mcp-profile-status', ...args]).stdout);
+    assert.equal(observed.state, 'REPORT_WRITTEN');
+    assert.equal(observed.disposition.runnerReceiptSha256, createHash('sha256').update(canonicalAgentMcpProfileJson({
+      signature: report.signature, publicKey: claim.runnerReceiptPublicKey,
+    })).digest('hex'));
+    assert.equal(observed.retry_allowed, false);
+    const terminalState = environment.readState();
+    const terminalEpoch = parseControlBlock(terminalState.prBody, EPOCH_MARKER);
+    // Frontier advancement has its own tests. Exercise the real post-report
+    // Candidate transition here without replacing the signed disposition.
+    terminalEpoch.advances_frontier_ids = [];
+    terminalState.prBody = renderEpochBody(terminalEpoch);
+    for (const extra of ['docs/research/run95-native-relation-safety-model-result-2026-11-12.md',
+      'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md', 'docs/product/frontier-ledger.json',
+      '.github/workflows/ci.yml', 'scripts/agent-harness.mjs',
+      'scripts/acceptance/native_relation_model_evidence.py', 'packages/tools/src/registry.ts']) {
+      fs.writeFileSync(environment.statePath, JSON.stringify({ ...terminalState,
+        dirty: '', featureHeadSha: sha('e'), candidateRefreshRange: `${source}...${sha('e')}`,
+        candidateRefreshPaths: [RELATION_PROFILE_FOR_TEST.reportPath, extra] }));
+      const refreshed = executeRelation(environment,['candidate:check', '--pr', '42', '--evidence',
+        candidateEvidence(environment, { candidate_sha: sha('e'),
+          candidate_refresh_reason: 'Integrate the native signed report and its bounded result document.',
+          ci: { url: `https://github.com/PariyaProject/BangumiAgentKit/actions/runs/${ciRunId}` },
+          adversarial_preflight: terminalEpoch.adversarial_preflight })]);
+      if (['docs/research/run95-native-relation-safety-model-result-2026-11-12.md',
+        'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md', 'docs/product/frontier-ledger.json'].includes(extra)) {
+        assert.equal(refreshed.status, 0, refreshed.stderr);
+        const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+        assert.equal(stored.state, 'REVIEW_READY');
+        assert.deepEqual(stored.adversarial_preflight, terminalEpoch.adversarial_preflight);
+      } else {
+        assert.notEqual(refreshed.status, 0);
+        assert.match(refreshed.stderr, /^AGENT_MCP_PROFILE_REFRESH_SCOPE_INVALID:/u);
+      }
+    }
+  } finally {
+    environment.cleanup(); fs.rmSync(harnessRoot, { recursive: true, force: true }); f.close();
   }
 });

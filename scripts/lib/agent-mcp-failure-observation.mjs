@@ -56,6 +56,22 @@ const ERROR_CODES = new Set([
   'G03_MODEL_CLAIM_READBACK_FAILED',
   'G03_MODEL_NATIVE_CONSTRUCTION_FAILED',
   'G03_MODEL_SERVER_START_FAILED',
+  'NATIVE_RELATION_OPERATION_DENIED',
+  'NATIVE_RELATION_RESULT_INVALID',
+  'NATIVE_RELATION_OBSERVATION_FAILED',
+  'NATIVE_RELATION_INTERRUPTED',
+  'RELATION_MODEL_CONTROL_QUERY_FAILED',
+  'RELATION_MODEL_REVIEW_GATE_FAILED',
+  'RELATION_MODEL_SOURCE_GATE_FAILED',
+  'RELATION_MODEL_LIVE_CI_GATE_FAILED',
+  'RELATION_MODEL_CLAIM_GATE_FAILED',
+  'RELATION_MODEL_CLAIM_READBACK_FAILED',
+  'RELATION_MODEL_NATIVE_CONSTRUCTION_FAILED',
+  'RELATION_MODEL_SERVER_START_FAILED',
+  'RELATION_MODEL_WIRE_RESULT_INVALID',
+  'RELATION_MODEL_GATE_FILE_INVALID',
+  'RELATION_MODEL_GATE_CONTENT_INVALID',
+  'RELATION_MODEL_CLOSE_FAILED',
 ]);
 const RPC_CODES = new Map([
   [-32700, 'RPC_PARSE_ERROR'],
@@ -64,7 +80,15 @@ const RPC_CODES = new Map([
   [-32602, 'RPC_INVALID_PARAMS'],
   [-32603, 'RPC_INTERNAL_ERROR'],
 ]);
-const PHASES = new Set(['READY', 'RUNNING', 'QUERY_VERIFIED', 'COMPLETE', 'FAILED', 'STOPPED']);
+const PHASES = new Set([
+  'READY',
+  'RUNNING',
+  'QUERY_VERIFIED',
+  'DIRECT_VERIFIED',
+  'COMPLETE',
+  'FAILED',
+  'STOPPED',
+]);
 const STAGES = new Set([
   'preflight',
   'startup',
@@ -78,6 +102,7 @@ const PROCESS_REASONS = new Map([
   ['AGENT_MCP_PROCESS_TIMED_OUT', 'timeout'],
   ['AGENT_MCP_PROCESS_OUTPUT_LIMIT', 'output_limit'],
   ['AGENT_MCP_PROCESS_SPAWN_FAILED', 'spawn_failed'],
+  ['AGENT_MCP_PROCESS_CANCELLED', 'cancelled'],
 ]);
 const BRANDED = new WeakSet();
 const plain = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -252,6 +277,39 @@ function nativeFacts(summary) {
   if (Buffer.byteLength(summary) > 65536) return { ...empty, status: 'oversize' };
   try {
     const v = JSON.parse(summary);
+    if (
+      plain(v) &&
+      v.schema === 'native-relation-safety-server-summary/v1' &&
+      v.sourceMode === 'native-synthetic-relation-safety'
+    ) {
+      const o = v.observation;
+      if (o !== null && (!plain(o) || o.contract !== 'native-relation-safety-v1'))
+        return { ...empty, status: 'invalid' };
+      const stage = o?.failure?.stage ?? v.lifecycleStage;
+      return {
+        ...empty,
+        status: 'reported',
+        reportedPhase: PHASES.has(o?.phase) ? o.phase : null,
+        reportedClosed: typeof v.closed === 'boolean' ? v.closed : null,
+        denied: bounded(o?.denied),
+        fixtureReads: bounded(o?.fixtureReads, 5),
+        completedCalls: bounded(o?.completedCalls, 2),
+        reportedFailureCode: safeCode(o?.failure?.code ?? v.failureCode),
+        reportedNativeStage: new Set([
+          'request',
+          'source',
+          'service',
+          'execution',
+          'verification',
+          'presentation',
+          'cancellation',
+          'deadline',
+          ...STAGES,
+        ]).has(stage)
+          ? stage
+          : null,
+      };
+    }
     if (!plain(v) || v.schema !== 'native-g03-date-png-server-summary/v1' || !plain(v.observation))
       return { ...empty, status: 'invalid' };
     const o = v.observation;
