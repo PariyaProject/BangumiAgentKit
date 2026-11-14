@@ -198,7 +198,6 @@ export const RELATION_MODEL_SOURCE_PATHS = Object.freeze([
   'scripts/acceptance/native-relation-model-report.mjs',
   'scripts/acceptance/native-relation-model-server.mjs',
   'scripts/acceptance/run-native-relation-model.mjs',
-  'scripts/acceptance/run-native-entity-page-model.mjs',
   'scripts/acceptance/run-g26-codex-agent-mcp.mjs',
   'scripts/lib/codex-mcp-approval-config.mjs',
   'packages/bangumi-transport/src/http-client.ts',

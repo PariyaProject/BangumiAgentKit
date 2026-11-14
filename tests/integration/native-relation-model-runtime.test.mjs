@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { spawn, execFileSync } from 'node:child_process';
+import { setTimeout as delay } from 'node:timers/promises';
 import {
   runRelationModelProcess,
   inspectRelationModelResult,
@@ -114,4 +116,101 @@ for (const mode of [
       fs.rmSync(diagnostic, { recursive: true, force: true });
     }
   });
+}
+
+function activeProcess(pid) {
+  try {
+    const state = execFileSync('ps', ['-o', 'stat=', '-p', String(pid)], {
+      stdio: ['ignore', 'pipe', 'ignore'],
+      encoding: 'utf8',
+    }).trim();
+    return state.length > 0 && !state.startsWith('Z');
+  } catch (error) {
+    if (error.status === 1) return false;
+    throw error;
+  }
+}
+
+function killFixtureGroup(pid) {
+  try {
+    process.kill(-pid, 'SIGKILL');
+  } catch (error) {
+    if (error.code !== 'ESRCH') throw error;
+  }
+}
+
+for (const [signal, mode] of [
+  ['SIGTERM', 'running'],
+  ['SIGINT', 'ack-failure'],
+  ['SIGTERM', 'before-spawn'],
+]) {
+  test(
+    `parent ${signal} (${mode}) stops owned processes and retains cancellation through reconciliation`,
+    {
+      timeout: 15000,
+    },
+    async () => {
+      const execution = fs.mkdtempSync(path.join(os.tmpdir(), 'bgk-relation-cancel-exec-'));
+      const diagnostic = fs.mkdtempSync(path.join(os.tmpdir(), 'bgk-relation-cancel-diag-'));
+      const ready = path.join(execution, 'ready.json');
+      const messages = [];
+      const parent = spawn(
+        process.execPath,
+        [
+          fileURLToPath(
+            new URL('./fixtures/native-relation-model-cancellation.mjs', import.meta.url),
+          ),
+          mode,
+          execution,
+          diagnostic,
+        ],
+        { stdio: ['ignore', 'ignore', 'inherit', 'ipc'] },
+      );
+      parent.on('message', (message) => messages.push(message));
+      const exited = new Promise((resolve, reject) => {
+        parent.once('close', (code, signal) => resolve({ code, signal }));
+        parent.once('error', reject);
+      });
+      let pids = [];
+      try {
+        for (let i = 0; i < 200 && !fs.existsSync(ready) && !messages.includes('ready'); i++)
+          await delay(10);
+        if (mode === 'before-spawn') assert(messages.includes('ready'));
+        else {
+          pids = JSON.parse(fs.readFileSync(ready));
+          assert.equal(pids.length, 2);
+          assert(pids.every(activeProcess));
+        }
+        assert(parent.kill(signal));
+        assert.deepEqual(await exited, { code: 0, signal: null });
+        const result = messages.at(-1);
+        assert.equal(result.reason, 'AGENT_MCP_PROCESS_CANCELLED');
+        assert.equal(result.acknowledgement, 'INCONCLUSIVE');
+        assert.equal(
+          result.terminal.state,
+          mode === 'ack-failure' ? 'INCONCLUSIVE_ACK_PENDING' : 'INCONCLUSIVE',
+        );
+        assert.equal(result.terminal.retryAllowed, false);
+        assert.equal(result.executionRemoved, true);
+        const retained = JSON.parse(
+          fs.readFileSync(path.join(diagnostic, 'agent-mcp-failure-observation.json')),
+        );
+        assert.equal(retained.process.reason, 'cancelled');
+        assert.equal(retained.acceptanceCredit, false);
+        assert.equal(retained.retryAllowed, false);
+        if (mode === 'before-spawn') assert.equal(retained.process.reportedStdoutBytes, 0);
+        for (let i = 0; i < 50 && pids.some(activeProcess); i++) await delay(10);
+        assert(pids.every((pid) => !activeProcess(pid)));
+      } finally {
+        if (pids.length === 0 && fs.existsSync(ready)) pids = JSON.parse(fs.readFileSync(ready));
+        if (pids[0] && pids.some(activeProcess)) {
+          killFixtureGroup(pids[0]);
+        }
+        if (parent.exitCode === null && parent.signalCode === null) parent.kill('SIGKILL');
+        await exited;
+        fs.rmSync(execution, { recursive: true, force: true });
+        fs.rmSync(diagnostic, { recursive: true, force: true });
+      }
+    },
+  );
 }

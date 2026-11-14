@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawn } from 'node:child_process';
+import { setImmediate as yieldToSignals } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
-import { runNativePageProcess as runOwnedProcess } from './run-native-entity-page-model.mjs';
 import {
   projectRelationModelAnswer,
   relationModelAnswerMatches,
@@ -51,6 +52,22 @@ import {
 
 const MODEL_TIMEOUT_MS = 360000;
 const MAX_STDOUT = 8 * 1024 * 1024;
+const CANCELLED = 'AGENT_MCP_PROCESS_CANCELLED';
+
+/** Keep signals owned by this attempt through publication, acknowledgement and cleanup. */
+export async function withRelationModelCancellation(run) {
+  const controller = new AbortController();
+  const cancel = () => controller.abort();
+  process.on('SIGINT', cancel);
+  process.on('SIGTERM', cancel);
+  try {
+    return await run(controller.signal);
+  } finally {
+    await yieldToSignals();
+    process.off('SIGINT', cancel);
+    process.off('SIGTERM', cancel);
+  }
+}
 
 export function readRelationModelSummary(directory) {
   const file = path.join(directory, 'summary.json');
@@ -95,8 +112,75 @@ export function preflightRelationDiagnosticStorage() {
     fs.rmSync(executionDirectory, { recursive: true, force: true });
   }
 }
-/** The prior bounded process helper is frozen; use the new contract's explicit environment and caps. */
-export const runRelationModelProcess = runOwnedProcess;
+/** Stop and reap only the process group spawned for this attempt. */
+export function runRelationModelProcess(
+  command,
+  args,
+  {
+    signal,
+    timeoutMs = MODEL_TIMEOUT_MS,
+    maxStdout = MAX_STDOUT,
+    env = relationModelEnvironment(),
+  } = {},
+) {
+  const empty = { exitCode: null, stdout: '', stdoutBytes: 0, stderrBytes: 0 };
+  if (signal?.aborted) return Promise.resolve({ ...empty, reason: CANCELLED });
+  return new Promise((resolve) => {
+    let child;
+    try {
+      child = spawn(command, args, {
+        cwd: ROOT,
+        env,
+        detached: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    } catch {
+      resolve({ ...empty, reason: 'AGENT_MCP_PROCESS_SPAWN_FAILED' });
+      return;
+    }
+    const chunks = [];
+    let stdoutBytes = 0;
+    let stderrBytes = 0;
+    let reason = null;
+    const stopGroup = () => {
+      if (!child.pid) return;
+      try {
+        process.kill(-child.pid, 'SIGKILL');
+      } catch (error) {
+        if (error.code !== 'ESRCH') reason ??= 'AGENT_MCP_PROCESS_OBSERVATION_FAILED';
+      }
+    };
+    const stop = (failure) => {
+      reason ??= failure;
+      stopGroup();
+    };
+    const cancel = () => stop(CANCELLED);
+    const deadline = setTimeout(() => stop('AGENT_MCP_PROCESS_TIMED_OUT'), timeoutMs);
+    signal?.addEventListener('abort', cancel, { once: true });
+    child.stdout.on('data', (chunk) => {
+      const remaining = maxStdout - stdoutBytes;
+      stdoutBytes += chunk.length;
+      if (remaining > 0) chunks.push(chunk.subarray(0, remaining));
+      if (stdoutBytes > maxStdout) stop('AGENT_MCP_PROCESS_OUTPUT_LIMIT');
+    });
+    child.stderr.on('data', (chunk) => {
+      stderrBytes += chunk.length;
+    });
+    child.once('error', () => stop('AGENT_MCP_PROCESS_SPAWN_FAILED'));
+    child.once('close', (exitCode) => {
+      clearTimeout(deadline);
+      signal?.removeEventListener('abort', cancel);
+      stopGroup();
+      resolve({
+        exitCode,
+        stdout: Buffer.concat(chunks).toString('utf8'),
+        stdoutBytes,
+        stderrBytes,
+        reason,
+      });
+    });
+  });
+}
 
 export function inspectRelationModelResult(processResult, summary, claim) {
   const parsed = parseCodexJsonl(processResult.stdout);
@@ -315,7 +399,11 @@ export function reconcileRelationModelResult(status, validation, sha, persist) {
   }
 }
 
-export async function main(argv = process.argv.slice(2)) {
+export function main(argv = process.argv.slice(2)) {
+  return withRelationModelCancellation((signal) => runRelationModelAttempt(argv, signal));
+}
+
+async function runRelationModelAttempt(argv, signal) {
   if (
     !isDeepStrictEqual(argv, ['--run', '95']) &&
     !isDeepStrictEqual(argv, ['--run', '95', '--reconcile'])
@@ -359,6 +447,8 @@ export async function main(argv = process.argv.slice(2)) {
   readRelationModelSourceContext(ROOT, sourceRevision);
   const { version } = assertRelationModelCliSupport();
   preflightRelationDiagnosticStorage();
+  await yieldToSignals();
+  if (signal.aborted) throw new Error('RELATION_MODEL_CANCELLED_BEFORE_CLAIM');
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
   const publicKeyBase64 = publicKey.export({ format: 'der', type: 'spki' }).toString('base64');
   const created = relationModelHarness([
@@ -438,11 +528,15 @@ export async function main(argv = process.argv.slice(2)) {
       },
     );
     stage = 'AGENT_MCP_PROCESS_OBSERVATION_FAILED';
+    await yieldToSignals();
     processResult = await runRelationModelProcess('codex', buildRelationModelCodexArgs(gateFile), {
       timeoutMs: MODEL_TIMEOUT_MS,
       maxStdout: MAX_STDOUT,
       env: relationModelEnvironment(),
+      signal,
     });
+    await yieldToSignals();
+    if (signal.aborted && processResult.reason === null) processResult.reason = CANCELLED;
     let summary = null;
     try {
       summaryText = readRelationModelSummary(directory);
@@ -473,6 +567,11 @@ export async function main(argv = process.argv.slice(2)) {
         expectedClaim: claim,
       },
     );
+    await yieldToSignals();
+    if (signal.aborted) {
+      stage = CANCELLED;
+      throw new Error(CANCELLED);
+    }
     stage = 'AGENT_MCP_POSTRUN_GATE_FAILED';
     fs.rmSync(directory, { recursive: true });
     if (fs.existsSync(directory)) throw new Error('RELATION_MODEL_EXECUTION_CLEANUP_FAILED');
@@ -492,6 +591,11 @@ export async function main(argv = process.argv.slice(2)) {
       },
       privateKey,
     );
+    await yieldToSignals();
+    if (signal.aborted) {
+      stage = CANCELLED;
+      throw new Error(CANCELLED);
+    }
     writeRelationModelReport(report);
     reportSha256 = relationModelSha(fs.readFileSync(path.join(ROOT, P.reportPath)));
     stage = 'AGENT_MCP_TERMINAL_ACK_FAILED';
@@ -535,7 +639,10 @@ export async function main(argv = process.argv.slice(2)) {
       counters,
     });
     try {
-      return complete(recordResult(claim, 'INCONCLUSIVE', null, diagnostics));
+      return complete({
+        ...recordResult(claim, 'INCONCLUSIVE', null, diagnostics),
+        reasonCode: stage,
+      });
     } catch {
       return complete({
         state: 'INCONCLUSIVE_ACK_PENDING',

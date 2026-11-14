@@ -102,6 +102,7 @@ const PROCESS_REASONS = new Map([
   ['AGENT_MCP_PROCESS_TIMED_OUT', 'timeout'],
   ['AGENT_MCP_PROCESS_OUTPUT_LIMIT', 'output_limit'],
   ['AGENT_MCP_PROCESS_SPAWN_FAILED', 'spawn_failed'],
+  ['AGENT_MCP_PROCESS_CANCELLED', 'cancelled'],
 ]);
 const BRANDED = new WeakSet();
 const plain = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);

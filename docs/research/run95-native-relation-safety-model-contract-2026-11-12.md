@@ -77,9 +77,14 @@ readback precede invocation; a create-only child-start latch precedes child
 control reads. Ambiguity grants no execution authority. The profile and all old
 latches remain consumed after the first attempt, including failed startup.
 
-The parent uses the existing owned process-group helper, with a 360-second
-deadline and 8MiB stdout cap. Stderr is counted and discarded. The child has a
-420-second deadline; each native call retains its existing20-second bound.
+The parent owns one process group, with a 360-second deadline and an 8 MiB
+stdout cap. Stderr is counted and discarded. SIGINT and SIGTERM cancel the
+attempt, stop its process group and wait for the child to close. A signal before
+the claim prevents the claim. Once claimed, cancellation before publication
+prevents a positive report while the runner retains its diagnostic, reconciles
+the attempt and cleans up. The first observed process failure is preserved if termination
+conditions coincide. The child has a 420-second deadline, and each native call
+retains its 20-second bound.
 Internal provider HTTP counts and an invoice hard cap remain unobserved.
 
 The SDK bridge forwards normal results, independently hashes wire semantics and
