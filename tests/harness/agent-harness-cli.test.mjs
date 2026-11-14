@@ -102,6 +102,9 @@ import { nativePageReportFixture } from './fixtures/native-page-report.mjs';
 import { NATIVE_PAGE_SOURCE_PATHS, buildNativePageReport, writeNativePageReport } from '../../scripts/acceptance/native-entity-page-report.mjs';
 import { g03ModelReportFixture } from './fixtures/native-g03-model-report.mjs';
 import { relationModelReportFixture } from './fixtures/native-relation-model-report.mjs';
+import { terminalMcpObservation } from '../../scripts/lib/agent-mcp-terminal-observation.mjs';
+import { observeAgentMcpFailure } from '../../scripts/lib/agent-mcp-failure-observation.mjs';
+import { publishAgentMcpFailure } from '../../scripts/lib/agent-mcp-failure-publication.mjs';
 import { RELATION_MODEL_SOURCE_PATHS, buildRelationModelReport, writeRelationModelReport } from '../../scripts/acceptance/native-relation-model-report.mjs';
 import { G03_MODEL_SOURCE_PATHS, buildG03ModelReport, writeG03ModelReport } from '../../scripts/acceptance/native-g03-date-png-report.mjs';
 import { makeR05ProfileReportInput } from './fixtures/r05-profile-report-input.mjs';
@@ -11206,6 +11209,58 @@ test('native relation model ambiguous startup is terminal without report or invo
     assert.equal(JSON.parse(merged.stdout).state, 'MERGED');
   } finally {
     environment.cleanup();
+  }
+});
+
+test('offline terminal observation survives cleanup and actual Harness acknowledgement using simulated control', () => {
+  const profile = getAgentMcpProfileById('native-relation-safety-model-v1');
+  const f = relationModelReportFixture();
+  const harnessRoot = createIsolatedHarnessRoot([profile.reportPath]);
+  const { environment, reviewerId } = agentMcpProfileReviewReadyEnvironment(profile, { harnessRoot });
+  const executionDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-terminal-exec-'));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-terminal-observation-'));
+  const args = ['--run', '95', '--pr', '42', '--profile-id', profile.id];
+  const execute = (command) => environment.execute(command, { HARNESS_G04_BUNDLE_SHA256: f.claim.bundleSha256 });
+  try {
+    const claimed = execute(['epoch:agent-mcp-profile-claim', ...args,
+      '--bundle-sha256', f.claim.bundleSha256, '--reviewer-id', reviewerId,
+      '--runner-public-key', f.claim.runnerReceiptPublicKey]);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const { claimId } = JSON.parse(claimed.stdout);
+    const observation = observeAgentMcpFailure({
+      expected: { server: 'bgk_native_relation_safety', calls: profile.calls },
+      processResult: { exitCode: 1, stdoutBytes: 0, stderrBytes: 158 },
+      stage: 'inspection',
+    });
+    publishAgentMcpFailure(observation, { directory, executionDirectory });
+    const retained = path.join(directory, 'agent-mcp-failure-observation.json');
+    const firstBytes = fs.readFileSync(retained);
+    fs.rmSync(executionDirectory, { recursive: true });
+    const diagnostics = terminalMcpObservation(observation, { diagnosticPublished: true });
+    const terminalCommand = ['epoch:agent-mcp-profile-result', ...args, '--claim-id', claimId,
+      '--state', 'INCONCLUSIVE', '--diagnostics-json'];
+    const invalid = structuredClone(diagnostics);
+    invalid.counters.shellToolCalls = 0;
+    const rejected = execute([...terminalCommand, JSON.stringify(invalid)]);
+    assert.equal(rejected.status, 2);
+    assert.match(rejected.stderr, /AGENT_MCP_PROFILE_DIAGNOSTICS_INVALID/u);
+    assert.equal(JSON.parse(execute(['epoch:agent-mcp-profile-status', ...args]).stdout).state, 'CLAIMED');
+    assert(fs.readFileSync(retained).equals(firstBytes));
+    const accepted = execute([...terminalCommand, JSON.stringify(diagnostics)]);
+    assert.equal(accepted.status, 0, accepted.stderr);
+    const terminal = JSON.parse(execute(['epoch:agent-mcp-profile-status', ...args]).stdout);
+    assert.equal(terminal.state, 'INCONCLUSIVE');
+    assert.equal(terminal.terminal_label_present, true);
+    assert.equal(terminal.retry_allowed, false);
+    assert.equal(terminal.disposition.reportWritten, false);
+    assert.deepEqual(terminal.disposition.failureDiagnostics, diagnostics);
+    assert(fs.readFileSync(retained).equals(firstBytes));
+  } finally {
+    environment.cleanup();
+    fs.rmSync(harnessRoot, { recursive: true, force: true });
+    fs.rmSync(executionDirectory, { recursive: true, force: true });
+    fs.rmSync(directory, { recursive: true, force: true });
+    f.close();
   }
 });
 
